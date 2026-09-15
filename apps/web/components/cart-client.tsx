@@ -1,0 +1,74 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { formatPaise } from "@/lib/api";
+import { getCartSession } from "@/lib/cart-session";
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+
+type Cart = any;
+
+export function CartClient() {
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+
+  async function load() {
+    try {
+      const response = await fetch(`${API}/carts/${getCartSession()}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.message ?? "Unable to load bag");
+      setCart(data);
+    } catch (e: any) { setError(e.message); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function mutate(itemId: string, method: string, quantity?: number) {
+    setBusy(itemId); setError("");
+    try {
+      const response = await fetch(`${API}/carts/${getCartSession()}/items/${itemId}`, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: method === "DELETE" ? undefined : JSON.stringify({ quantity }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.message ?? "Unable to update bag");
+      setCart(data);
+      window.dispatchEvent(new CustomEvent("hidi-cart-updated", { detail: data.itemCount }));
+    } catch (e: any) { setError(e.message); }
+    finally { setBusy(""); }
+  }
+
+  if (!cart) return <p className="muted">Loading your bag…</p>;
+  if (cart.items.length === 0) return <div className="empty-state"><h2>Your bag is waiting.</h2><p>Find something you love from the latest HIDI edit.</p><Link className="button button-dark" href="/collections/new-arrivals">Browse new arrivals</Link></div>;
+
+  return <>
+    {error && <p className="form-error">{error}</p>}
+    <div className="cart-layout">
+      <section>
+        {cart.items.map((item: any) => <article className="cart-item" key={item.id}>
+          <Link href={`/products/${item.product.slug}`} className="cart-thumb product-art art-sand"><div className="art-monogram">H</div></Link>
+          <div className="cart-item-info">
+            <div><h2>{item.product.name}</h2><p>{item.variant.color}</p><p>Size: {item.variant.size}</p></div>
+            <strong>{formatPaise(item.lineTotalPaise)}</strong>
+            <div className="cart-actions">
+              <button disabled={busy === item.id || item.quantity <= 1} onClick={() => mutate(item.id, "PATCH", item.quantity - 1)}>−</button>
+              <span>{item.quantity}</span>
+              <button disabled={busy === item.id || item.quantity >= Math.min(10, item.variant.available)} onClick={() => mutate(item.id, "PATCH", item.quantity + 1)}>+</button>
+              <button className="remove" disabled={busy === item.id} onClick={() => mutate(item.id, "DELETE")}>Remove</button>
+            </div>
+          </div>
+        </article>)}
+      </section>
+      <aside className="order-summary">
+        <h2>Order summary</h2>
+        <div><span>Subtotal</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
+        <div><span>Shipping</span><span>Calculated at checkout</span></div>
+        <div className="summary-total"><span>Total</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
+        <Link className="button button-dark" href="/checkout">Continue to checkout</Link>
+        <p className="fine-print">Secure checkout · UPI · Cards · Net banking</p>
+      </aside>
+    </div>
+  </>;
+}

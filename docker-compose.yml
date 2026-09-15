@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hidi
+      POSTGRES_PASSWORD: hidi_local_password
+      POSTGRES_DB: hidi
+    ports:
+      - "5432:5432"
+    volumes:
+      - hidi_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hidi -d hidi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    ports:
+      - "6379:6379"
+    command: ["valkey-server", "--save", "60", "1"]
+    volumes:
+      - hidi_valkey:/data
+
+volumes:
+  hidi_postgres:
+  hidi_valkey:
