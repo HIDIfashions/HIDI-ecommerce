@@ -10,6 +10,11 @@ export class CheckoutController {
     return this.checkout.prepare(body);
   }
 
+  @Get("orders")
+  orders(@Query("sessionId") sessionId: string) {
+    return this.checkout.orders(sessionId);
+  }
+
   @Get("confirmation/:orderNumber")
   confirmation(
     @Param("orderNumber") orderNumber: string,
