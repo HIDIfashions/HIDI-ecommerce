@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { CatalogImage } from "@/components/catalog-image";
 import { formatPaise } from "@/lib/api";
 import { getCartSession } from "@/lib/cart-session";
+import styles from "./order-confirmation.module.css";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
 
@@ -80,7 +81,7 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
   const paymentLabel = receipt.payment?.status === "CAPTURED" ? "Paid" : receipt.payment?.status ?? "Pending";
   const orderLabel = receipt.status.replaceAll("_", " ").toLowerCase();
 
-  return <div className="container confirmation-page confirmation-wide">
+  return <div className={`container confirmation-page confirmation-wide ${styles.receipt}`}>
     <p className="eyebrow">{pendingReview ? "PAYMENT RECEIVED" : "ORDER CONFIRMED"}</p>
     <h1>{pendingReview ? "We’re confirming the final details." : "It’s yours."}</h1>
     <p>{pendingReview
