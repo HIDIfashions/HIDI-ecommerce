@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
 import { getProducts } from "@/lib/api";
@@ -18,9 +19,15 @@ export default async function Home() {
             <Link className="button button-light" href="/collections/work-edit">Explore Work Edit</Link>
           </div>
         </div>
-        <div className="hero-art" aria-label="HIDI campaign placeholder">
-          <div className="hero-frame frame-one" /><div className="hero-frame frame-two" />
-          <div className="hero-note">Campaign imagery<br />goes here</div>
+        <div className="hero-art">
+          <Image
+            src="/hero/hidi-work-edit-hero.png"
+            alt="HIDI Work Edit campaign"
+            fill
+            priority
+            sizes="(max-width: 900px) 100vw, 58vw"
+            style={{ objectFit: "cover", objectPosition: "center" }}
+          />
         </div>
       </section>
       <section className="editorial container section-space">
