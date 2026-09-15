@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RazorpayService } from "../razorpay/razorpay.service.js";
@@ -159,6 +159,65 @@ export class CheckoutService {
       await this.releaseOrder(order.id, "CANCELLED");
       throw error;
     }
+  }
+
+  async confirmation(orderNumber: string, sessionId?: string) {
+    if (!orderNumber || !sessionId || sessionId.length < 8) {
+      throw new BadRequestException("Order and cart session are required");
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: { images: { orderBy: { position: "asc" }, take: 1 } },
+            },
+          },
+          orderBy: { id: "asc" },
+        },
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    if (!order || order.cartSessionId !== sessionId) {
+      throw new NotFoundException("Order not found");
+    }
+
+    const payment = order.payments[0] ?? null;
+    const address = order.shippingAddress as any;
+
+    return {
+      orderNumber: order.orderNumber,
+      status: order.status,
+      createdAt: order.createdAt,
+      currency: order.currency,
+      subtotalPaise: order.subtotalPaise,
+      discountPaise: order.discountPaise,
+      shippingPaise: order.shippingPaise,
+      taxPaise: order.taxPaise,
+      totalPaise: order.totalPaise,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      shippingAddress: address,
+      payment: payment ? {
+        status: payment.status,
+        method: payment.method,
+        amountPaise: payment.amountPaise,
+      } : null,
+      items: order.items.map((item) => ({
+        id: item.id,
+        productName: item.productName,
+        slug: item.product.slug,
+        image: item.product.images[0]?.url ?? null,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        unitPricePaise: item.unitPricePaise,
+        totalPaise: item.totalPaise,
+      })),
+    };
   }
 
   async releaseExpiredReservations(limit = 100) {
