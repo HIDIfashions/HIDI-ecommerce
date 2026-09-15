@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
-import { CatalogImage } from "@/components/catalog-image";
+import { ProductGallery } from "@/components/product-gallery";
 import { formatPaise, getProduct } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -20,19 +20,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return <div className="container product-page">
     <div className="breadcrumbs"><Link href="/">Home</Link> / <Link href={`/collections/${collection.slug}`}>{collection.name}</Link> / {product.name}</div>
     <div className="pdp-grid">
-      <div className="pdp-gallery">
-        {gallery.map((image, index) => (
-          <div key={image.id ?? `${image.url}-${index}`} className="pdp-image product-art" style={{ position: "relative", background: "#eee8df" }}>
-            <CatalogImage
-              src={image.url}
-              alt={image.alt || `${product.name} image ${index + 1}`}
-              sizes="(max-width: 900px) 100vw, 38vw"
-              priority={index === 0}
-              fallbackLabel={`Image ${index + 1} · HIDI product photography`}
-            />
-          </div>
-        ))}
-      </div>
+      <ProductGallery productName={product.name} images={gallery} />
       <aside className="pdp-info">
         <p className="eyebrow">{product.category?.name ?? "HIDI EDIT"}</p><h1>{product.name}</h1><p className="pdp-subtitle">{product.shortDescription}</p>
         <div className="pdp-price">{formatPaise(product.minPricePaise)} <span>inclusive of taxes</span></div>
