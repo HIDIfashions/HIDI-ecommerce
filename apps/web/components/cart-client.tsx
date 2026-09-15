@@ -24,14 +24,20 @@ export function CartClient() {
   }
   useEffect(() => { load(); }, []);
 
-  async function mutate(itemId: string, method: string, quantity?: number) {
+  async function mutate(itemId: string, method: "PATCH" | "DELETE", quantity?: number) {
     setBusy(itemId); setError("");
     try {
-      const response = await fetch(`${API}/carts/${getCartSession()}/items/${itemId}`, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: method === "DELETE" ? undefined : JSON.stringify({ quantity }),
-      });
+      const options: RequestInit = { method };
+
+      if (method === "PATCH") {
+        options.headers = { "Content-Type": "application/json" };
+        options.body = JSON.stringify({ quantity });
+      }
+
+      const response = await fetch(
+        `${API}/carts/${getCartSession()}/items/${itemId}`,
+        options,
+      );
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message ?? "Unable to update bag");
       setCart(data);
