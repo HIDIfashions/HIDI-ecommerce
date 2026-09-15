@@ -2,6 +2,34 @@
   max-width: 1180px;
 }
 
+.updateNote {
+  margin-top: 12px !important;
+  font-size: 13px !important;
+  color: var(--muted);
+}
+
+.orderMeta {
+  margin-top: -1px;
+  padding: 14px 0 18px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 12px;
+}
+
+.orderMeta span {
+  color: var(--muted);
+}
+
+.contactDetails {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  word-break: break-word;
+}
+
 .receipt :global(.confirmation-grid) {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(320px, .7fr);
@@ -45,15 +73,15 @@
 
 .receipt :global(.confirmation-item) {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) auto;
-  gap: 18px;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: 22px;
   align-items: center;
-  padding: 20px 0;
+  padding: 22px 0;
   border-bottom: 1px solid var(--line);
 }
 
 .receipt :global(.confirmation-thumb) {
-  width: 92px;
+  width: 112px;
   aspect-ratio: 4 / 5;
   overflow: hidden;
   background: var(--ivory);
@@ -119,16 +147,22 @@
 }
 
 @media (max-width: 560px) {
+  .orderMeta {
+    flex-direction: column;
+    gap: 4px;
+  }
+
   .receipt :global(.confirmation-card) {
     padding: 20px;
   }
 
   .receipt :global(.confirmation-item) {
-    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 14px;
   }
 
   .receipt :global(.confirmation-thumb) {
-    width: 72px;
+    width: 78px;
   }
 
   .receipt :global(.confirmation-item > strong) {
