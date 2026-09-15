@@ -45,6 +45,14 @@ type Receipt = {
   }>;
 };
 
+function titleCase(value?: string | null) {
+  if (!value) return "Pending";
+  return value
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderNumber: string; initialStatus?: string }) {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [error, setError] = useState("");
@@ -78,8 +86,13 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
 
   const address = receipt.shippingAddress ?? {};
   const fullName = [address.firstName, address.lastName].filter(Boolean).join(" ");
-  const paymentLabel = receipt.payment?.status === "CAPTURED" ? "Paid" : receipt.payment?.status ?? "Pending";
-  const orderLabel = receipt.status.replaceAll("_", " ").toLowerCase();
+  const paymentLabel = receipt.payment?.status === "CAPTURED" ? "Paid" : titleCase(receipt.payment?.status);
+  const paymentMethod = receipt.payment?.method ? titleCase(receipt.payment.method) : "Razorpay";
+  const orderLabel = titleCase(receipt.status);
+  const placedAt = new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(receipt.createdAt));
 
   return <div className={`container confirmation-page confirmation-wide ${styles.receipt}`}>
     <p className="eyebrow">{pendingReview ? "PAYMENT RECEIVED" : "ORDER CONFIRMED"}</p>
@@ -87,8 +100,16 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
     <p>{pendingReview
       ? "Your payment is safe. Our system is completing the confirmation; please do not pay again."
       : "Thank you for choosing HIDI. We’ll keep you updated as your order moves from our team to your door."}</p>
+    <p className={styles.updateNote}>You’ll receive order updates by email and WhatsApp as fulfilment progresses.</p>
 
-    <div className="confirmation-number"><span>Order number</span><strong>{receipt.orderNumber}</strong></div>
+    <div className="confirmation-number">
+      <span>Order number</span>
+      <strong>{receipt.orderNumber}</strong>
+    </div>
+    <div className={styles.orderMeta}>
+      <span>Placed on</span>
+      <strong>{placedAt}</strong>
+    </div>
 
     <div className="confirmation-grid">
       <section className="confirmation-card">
@@ -99,7 +120,7 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
         <div className="confirmation-items">
           {receipt.items.map((item) => <article className="confirmation-item" key={item.id}>
             <Link href={`/products/${item.slug}`} className="confirmation-thumb" style={{ position: "relative" }}>
-              <CatalogImage src={item.image} alt={item.productName} sizes="110px" fallbackLabel={`HIDI / ${item.productName}`} />
+              <CatalogImage src={item.image} alt={item.productName} sizes="120px" fallbackLabel={`HIDI / ${item.productName}`} />
             </Link>
             <div className="confirmation-item-copy">
               <Link href={`/products/${item.slug}`} className="confirmation-item-name">{item.productName}</Link>
@@ -112,7 +133,7 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
         <div className="confirmation-totals">
           <div><span>Subtotal</span><strong>{formatPaise(receipt.subtotalPaise)}</strong></div>
           {receipt.discountPaise > 0 && <div><span>Discount</span><strong>−{formatPaise(receipt.discountPaise)}</strong></div>}
-          <div><span>Shipping</span><strong>{receipt.shippingPaise ? formatPaise(receipt.shippingPaise) : "₹0"}</strong></div>
+          <div><span>Shipping</span><strong>{receipt.shippingPaise ? formatPaise(receipt.shippingPaise) : "Free"}</strong></div>
           <div className="confirmation-total-row"><span>Total paid</span><strong>{formatPaise(receipt.totalPaise)}</strong></div>
         </div>
       </section>
@@ -128,13 +149,16 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
             {address.city}, {address.state} {address.postalCode}<br />
             India
           </p>
-          <p className="muted">{receipt.customerPhone}{receipt.customerEmail ? ` · ${receipt.customerEmail}` : ""}</p>
+          <div className={styles.contactDetails}>
+            <span>{receipt.customerPhone}</span>
+            {receipt.customerEmail && <span>{receipt.customerEmail}</span>}
+          </div>
         </section>
 
         <section className="confirmation-card">
           <p className="eyebrow">PAYMENT</p>
           <h2>{paymentLabel}</h2>
-          <p className="muted">{receipt.payment?.method ? `Paid via ${receipt.payment.method.toUpperCase()}` : "Razorpay secure payment"}</p>
+          <p className="muted">Paid via {paymentMethod}</p>
           <div className="confirmation-mini-row"><span>Payment status</span><strong>{paymentLabel}</strong></div>
           <div className="confirmation-mini-row"><span>Order status</span><strong>{orderLabel}</strong></div>
         </section>
@@ -143,6 +167,7 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
 
     <div className="confirmation-actions">
       <Link className="button button-dark" href="/collections/new-arrivals">Continue browsing</Link>
+      <Link className="text-link" href="/account">View my orders</Link>
       <Link className="text-link" href="/">Back to HIDI home</Link>
     </div>
   </div>;
