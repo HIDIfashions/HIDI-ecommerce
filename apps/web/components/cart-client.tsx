@@ -59,7 +59,14 @@ export function CartClient() {
             <div><h2>{item.product.name}</h2><p>{item.variant.color}</p><p>Size: {item.variant.size}</p></div>
             <strong>{formatPaise(item.lineTotalPaise)}</strong>
             <div className="cart-actions">
-              <button disabled={busy === item.id || item.quantity <= 1} onClick={() => mutate(item.id, "PATCH", item.quantity - 1)}>−</button>
+              <button
+                disabled={busy === item.id}
+                onClick={() => item.quantity === 1
+                  ? mutate(item.id, "DELETE")
+                  : mutate(item.id, "PATCH", item.quantity - 1)}
+                aria-label={item.quantity === 1 ? `Remove ${item.product.name} from bag` : `Decrease ${item.product.name} quantity`}
+                title={item.quantity === 1 ? "Remove item" : "Decrease quantity"}
+              >−</button>
               <span>{item.quantity}</span>
               <button disabled={busy === item.id || item.quantity >= Math.min(10, item.variant.available)} onClick={() => mutate(item.id, "PATCH", item.quantity + 1)}>+</button>
               <button className="remove" disabled={busy === item.id} onClick={() => mutate(item.id, "DELETE")}>Remove</button>
