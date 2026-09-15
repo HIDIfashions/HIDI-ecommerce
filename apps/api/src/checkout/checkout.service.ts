@@ -161,6 +161,50 @@ export class CheckoutService {
     }
   }
 
+  async orders(sessionId?: string) {
+    if (!sessionId || sessionId.length < 8) {
+      throw new BadRequestException("Cart session is required");
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        cartSessionId: sessionId,
+        status: { not: "CANCELLED" },
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: { images: { orderBy: { position: "asc" }, take: 1 } },
+            },
+          },
+          orderBy: { id: "asc" },
+        },
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    return orders.map((order) => ({
+      orderNumber: order.orderNumber,
+      status: order.status,
+      createdAt: order.createdAt,
+      totalPaise: order.totalPaise,
+      paymentStatus: order.payments[0]?.status ?? null,
+      itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
+      items: order.items.map((item) => ({
+        id: item.id,
+        productName: item.productName,
+        slug: item.product.slug,
+        image: item.product.images[0]?.url ?? null,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        totalPaise: item.totalPaise,
+      })),
+    }));
+  }
+
   async confirmation(orderNumber: string, sessionId?: string) {
     if (!orderNumber || !sessionId || sessionId.length < 8) {
       throw new BadRequestException("Order and cart session are required");
