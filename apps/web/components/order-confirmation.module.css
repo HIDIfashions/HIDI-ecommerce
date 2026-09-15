@@ -1,0 +1,141 @@
+.receipt {
+  max-width: 1180px;
+}
+
+.receipt :global(.confirmation-grid) {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, .7fr);
+  gap: 28px;
+  align-items: start;
+  margin-top: 34px;
+}
+
+.receipt :global(.confirmation-card) {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 28px;
+}
+
+.receipt :global(.confirmation-card-header) {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.receipt :global(.confirmation-card h2) {
+  font-size: 28px;
+  margin-bottom: 0;
+}
+
+.receipt :global(.status-chip) {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  font-size: 10px;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.receipt :global(.confirmation-items) {
+  display: grid;
+}
+
+.receipt :global(.confirmation-item) {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.receipt :global(.confirmation-thumb) {
+  width: 92px;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--ivory);
+}
+
+.receipt :global(.confirmation-item-name) {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+}
+
+.receipt :global(.confirmation-item-copy p) {
+  margin: 3px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.receipt :global(.confirmation-totals) {
+  padding-top: 14px;
+}
+
+.receipt :global(.confirmation-totals > div),
+.receipt :global(.confirmation-mini-row) {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.receipt :global(.confirmation-total-row) {
+  margin-top: 8px;
+  padding-top: 16px !important;
+  border-top: 1px solid var(--line);
+  font-size: 18px !important;
+}
+
+.receipt :global(.confirmation-side) {
+  display: grid;
+  gap: 18px;
+}
+
+.receipt :global(.confirmation-address) {
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.receipt :global(.confirmation-address strong) {
+  color: var(--ink);
+}
+
+.receipt :global(.confirmation-actions) {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 34px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 850px) {
+  .receipt :global(.confirmation-grid) {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .receipt :global(.confirmation-card) {
+    padding: 20px;
+  }
+
+  .receipt :global(.confirmation-item) {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .receipt :global(.confirmation-thumb) {
+    width: 72px;
+  }
+
+  .receipt :global(.confirmation-item > strong) {
+    grid-column: 2;
+  }
+
+  .receipt :global(.confirmation-card-header) {
+    flex-direction: column;
+  }
+}
