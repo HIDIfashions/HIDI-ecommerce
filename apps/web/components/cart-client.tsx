@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CatalogImage } from "@/components/catalog-image";
 import { formatPaise } from "@/lib/api";
 import { getCartSession } from "@/lib/cart-session";
 
@@ -54,7 +55,19 @@ export function CartClient() {
     <div className="cart-layout">
       <section>
         {cart.items.map((item: any) => <article className="cart-item" key={item.id}>
-          <Link href={`/products/${item.product.slug}`} className="cart-thumb product-art art-sand"><div className="art-monogram">H</div></Link>
+          <Link
+            href={`/products/${item.product.slug}`}
+            className="cart-thumb"
+            aria-label={`View ${item.product.name}`}
+            style={{ position: "relative", display: "block", overflow: "hidden", background: "#eee8df" }}
+          >
+            <CatalogImage
+              src={item.product.image}
+              alt={item.product.name}
+              sizes="180px"
+              fallbackLabel={`HIDI / ${item.product.name}`}
+            />
+          </Link>
           <div className="cart-item-info">
             <div><h2>{item.product.name}</h2><p>{item.variant.color}</p><p>Size: {item.variant.size}</p></div>
             <strong>{formatPaise(item.lineTotalPaise)}</strong>
