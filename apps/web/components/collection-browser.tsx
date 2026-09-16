@@ -6,6 +6,40 @@ import { ApiProduct } from "@/lib/api";
 import { ProductCard } from "./product-card";
 import styles from "./collection-browser.module.css";
 
+const COLOR_SWATCHES: Record<string, string> = {
+  Sage: "#9fa88d",
+  Sand: "#c9b69d",
+  Indigo: "#3f5577",
+  Beige: "#d9c9b2",
+  Olive: "#70764b",
+  "Dusty Rose": "#c78f94",
+  "Powder Blue": "#9db8d1",
+  Blue: "#4f7fb7",
+  Peach: "#dda790",
+  Mint: "#a9c9b4",
+  Ivory: "#f3eee3",
+  Wine: "#6f2937",
+  "Gold Beige": "#b99b63",
+  Gold: "#c7a445",
+  White: "#ffffff",
+  "Off White": "#f1eee5",
+  Black: "#292927",
+  Green: "#6ba268",
+  Pink: "#dda0b5",
+  Red: "#c9575c",
+  Yellow: "#ddca45",
+  Maroon: "#8b334c",
+  Purple: "#7d3f87",
+  Silver: "#b7b8b6",
+  Orange: "#dc8531",
+  Brown: "#8a5840",
+  Teal: "#3b8d8c",
+  Mustard: "#c3953e",
+  Grey: "#9ca3a6",
+};
+
+const LIGHT_SWATCHES = new Set(["White", "Off White", "Ivory", "Beige", "Sand"]);
+
 function toggleValue(current: string[], value: string) {
   return current.includes(value)
     ? current.filter((item) => item !== value)
@@ -25,6 +59,18 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
     () => Array.from(new Set(products.map((p) => p.fabric).filter((value): value is string => Boolean(value)))).sort(),
     [products],
   );
+  const colorCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach((product) => {
+      const availableColours = new Set(
+        product.variants.filter((variant) => variant.available > 0).map((variant) => variant.color),
+      );
+      availableColours.forEach((colour) => {
+        counts[colour] = (counts[colour] ?? 0) + 1;
+      });
+    });
+    return counts;
+  }, [products]);
 
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
@@ -93,9 +139,15 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
       <details className={styles.filterSection} open>
         <summary className={styles.filterSummary}><span>Colour</span><ChevronDown className={styles.chevron} size={16} strokeWidth={1.5} /></summary>
         <div className={styles.options}>
-          {colors.map((value) => <label className={styles.option} key={value}>
+          {colors.map((value) => <label className={styles.colorOption} key={value}>
             <input type="checkbox" checked={selectedColors.includes(value)} onChange={() => setSelectedColors((current) => toggleValue(current, value))} />
-            <span>{value}</span>
+            <span
+              className={`${styles.colorSwatch} ${LIGHT_SWATCHES.has(value) ? styles.colorSwatchLight : ""}`}
+              style={{ backgroundColor: COLOR_SWATCHES[value] ?? "#b8b5ae" }}
+              aria-hidden="true"
+            />
+            <span className={styles.colorLabel}>{value}</span>
+            <span className={styles.colorCount}>({colorCounts[value] ?? 0})</span>
           </label>)}
         </div>
       </details>
