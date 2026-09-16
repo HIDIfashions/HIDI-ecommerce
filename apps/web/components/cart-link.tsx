@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ShoppingBag } from "lucide-react";
 import { getCartSession } from "@/lib/cart-session";
+import iconStyles from "./header-icons.module.css";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
 
@@ -33,8 +35,14 @@ export function CartLink() {
   }, [pathname]);
 
   return (
-    <Link href="/cart" aria-label={`Bag with ${count} item${count === 1 ? "" : "s"}`}>
-      <span className="header-icon">Bag{count ? ` (${count})` : ""}</span>
+    <Link
+      href="/cart"
+      className={iconStyles.iconLink}
+      aria-label={`Bag with ${count} item${count === 1 ? "" : "s"}`}
+      title="Bag"
+    >
+      <ShoppingBag className={iconStyles.icon} aria-hidden="true" />
+      {count > 0 && <span className={iconStyles.count}>{count}</span>}
     </Link>
   );
 }
