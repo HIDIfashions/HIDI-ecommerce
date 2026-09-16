@@ -292,6 +292,21 @@
   border-color: var(--ink);
 }
 
+.shipmentHint {
+  margin: 0 !important;
+  font-size: 11px;
+  line-height: 1.5 !important;
+}
+
+.serviceability {
+  padding: 10px 12px;
+  border: 1px solid #a9b9a4;
+  background: #f5faf3;
+  color: #40553b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .saveShipment {
   min-height: 42px;
   border: 1px solid var(--ink);
@@ -304,7 +319,8 @@
   font-weight: 700;
 }
 
-.saveShipment:disabled {
+.saveShipment:disabled,
+.secondaryAction:disabled {
   opacity: .5;
   cursor: wait;
 }
