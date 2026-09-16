@@ -7,8 +7,8 @@ export default function AccountPage() {
     <main className="container collection-page">
       <header className="collection-header compact">
         <p className="eyebrow">ACCOUNT</p>
-        <h1>My orders.</h1>
-        <p>Review orders placed from this browser. Customer sign-in can be added before go-live so order history follows you across devices.</p>
+        <h1>My HIDI.</h1>
+        <p>Sign in securely with an email one-time code to see your HIDI orders across devices.</p>
       </header>
       <AccountOrdersClient />
     </main>
