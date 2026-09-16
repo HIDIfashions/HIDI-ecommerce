@@ -135,7 +135,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="promise container section-space">
+      <section className={`promise container ${styles.promiseSection}`}>
         <div><strong>Thoughtful fabrics</strong><span>Chosen for repeat wear and comfort.</span></div>
         <div><strong>Easy exchanges</strong><span>A simple, clear 7-day process.</span></div>
         <div><strong>Secure payments</strong><span>UPI, cards and trusted payment rails.</span></div>
