@@ -104,9 +104,7 @@ export class AdminService {
       include: this.orderInclude(),
     });
 
-    return {
-      orders: orders.map((order) => this.serializeOrder(order)),
-    };
+    return { orders: orders.map((order) => this.serializeOrder(order)) };
   }
 
   async getOrder(orderNumber: string) {
@@ -119,6 +117,65 @@ export class AdminService {
     return { order: this.serializeOrder(order) };
   }
 
+  async saveShipment(
+    orderNumber: string,
+    input: { provider?: string; awb?: string; trackingUrl?: string },
+  ) {
+    const provider = input.provider?.trim();
+    const awb = input.awb?.trim();
+    const trackingUrl = input.trackingUrl?.trim();
+
+    if (!provider) throw new BadRequestException("Courier is required");
+    if (!awb) throw new BadRequestException("AWB / tracking number is required");
+    if (!trackingUrl) throw new BadRequestException("Tracking URL is required");
+
+    try {
+      const parsed = new URL(trackingUrl);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("invalid protocol");
+    } catch {
+      throw new BadRequestException("Enter a valid tracking URL beginning with https:// or http://");
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber },
+      select: {
+        id: true,
+        status: true,
+        shipments: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.status !== "PACKED") {
+      throw new BadRequestException("Shipment details can be prepared only when the order is PACKED");
+    }
+
+    const existing = order.shipments[0];
+    const data = {
+      provider,
+      awb,
+      trackingUrl,
+      status: "READY_TO_SHIP" as any,
+    };
+
+    try {
+      const shipment = existing
+        ? await this.prisma.shipment.update({ where: { id: existing.id }, data })
+        : await this.prisma.shipment.create({ data: { orderId: order.id, ...data } });
+
+      return { shipment };
+    } catch (error: any) {
+      if (error?.code === "P2002") {
+        throw new BadRequestException("This AWB is already assigned to another order");
+      }
+      throw error;
+    }
+  }
+
   async updateStatus(orderNumber: string, nextStatus: string) {
     if (!ALLOWED_STATUSES.includes(nextStatus as ManagedOrderStatus)) {
       throw new BadRequestException("Unsupported order status");
@@ -126,7 +183,15 @@ export class AdminService {
 
     const order = await this.prisma.order.findUnique({
       where: { orderNumber },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        shipments: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { id: true, provider: true, awb: true, trackingUrl: true },
+        },
+      },
     });
 
     if (!order) throw new NotFoundException("Order not found");
@@ -140,6 +205,40 @@ export class AdminService {
 
     if (NEXT_STATUS[current] !== requested) {
       throw new BadRequestException(`Order can move from ${order.status} only to ${NEXT_STATUS[current] ?? "no further status"}`);
+    }
+
+    if (requested === "SHIPPED") {
+      const shipment = order.shipments[0];
+      if (!shipment?.provider || !shipment?.awb || !shipment?.trackingUrl) {
+        throw new BadRequestException("Add courier, AWB and tracking URL before marking this order as shipped");
+      }
+
+      return this.prisma.$transaction(async (tx) => {
+        await tx.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "SHIPPED" as any, shippedAt: new Date() },
+        });
+        return tx.order.update({
+          where: { orderNumber },
+          data: { status: requested },
+        });
+      });
+    }
+
+    if (requested === "DELIVERED") {
+      const shipment = order.shipments[0];
+      return this.prisma.$transaction(async (tx) => {
+        if (shipment) {
+          await tx.shipment.update({
+            where: { id: shipment.id },
+            data: { status: "DELIVERED" as any, deliveredAt: new Date() },
+          });
+        }
+        return tx.order.update({
+          where: { orderNumber },
+          data: { status: requested },
+        });
+      });
     }
 
     return this.prisma.order.update({
