@@ -232,11 +232,88 @@
 .activeStep { color: var(--ink) !important; }
 .activeStep > span { background: var(--ink); border-color: var(--ink) !important; }
 
+.shippingForm {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: #f8f5ef;
+  display: grid;
+  gap: 13px;
+}
+
+.shippingHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.shippingHeader strong {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.readyBadge {
+  border: 1px solid #95ab95;
+  background: #e8f0e8;
+  padding: 6px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.shippingForm label {
+  display: grid;
+  gap: 6px;
+}
+
+.shippingForm label > span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .05em;
+}
+
+.shippingForm input,
+.shippingForm select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  background: white;
+  padding: 0 11px;
+  color: var(--ink);
+  outline: none;
+}
+
+.shippingForm input:focus,
+.shippingForm select:focus {
+  border-color: var(--ink);
+}
+
+.saveShipment {
+  min-height: 42px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.saveShipment:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
 .shipmentBox {
   border-top: 1px solid var(--line);
   padding-top: 14px;
   display: grid;
-  gap: 5px;
+  gap: 7px;
   font-size: 11px;
 }
 
@@ -265,8 +342,8 @@
 }
 
 .primaryAction:disabled {
-  opacity: .5;
-  cursor: wait;
+  opacity: .42;
+  cursor: not-allowed;
 }
 
 .secondaryAction {
@@ -283,6 +360,7 @@
 }
 
 .error,
+.notice,
 .state {
   padding: 18px 20px;
   border: 1px solid var(--line);
@@ -293,6 +371,13 @@
   border-color: #c99797;
   background: #fff7f6;
   color: #8b3434;
+}
+
+.notice {
+  margin-bottom: 18px;
+  border-color: #a9b9a4;
+  background: #f5faf3;
+  color: #40553b;
 }
 
 @media (max-width: 900px) {
@@ -317,7 +402,8 @@
 @media print {
   .topline,
   .primaryAction,
-  .secondaryAction { display: none !important; }
+  .secondaryAction,
+  .shippingForm { display: none !important; }
   .page { width: 100%; padding: 0; }
   .card { break-inside: avoid; }
 }
