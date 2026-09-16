@@ -31,7 +31,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <WishlistButton slug={product.slug} />
         <div className="delivery-box"><strong>Delivery</strong><div><input placeholder="Enter PIN code" inputMode="numeric" /><button>Check</button></div></div>
         <ProductInfoAccordion product={product} />
-        <details><summary>Shipping & returns</summary><p>Clear delivery promise and easy returns/exchanges. Final launch policy should be approved before go-live.</p></details>
       </aside>
     </div>
   </div>;
