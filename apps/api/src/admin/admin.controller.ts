@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Patch, Query, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Query, UnauthorizedException } from "@nestjs/common";
 import { AdminService } from "./admin.service.js";
 
 @Controller("admin")
@@ -29,7 +29,7 @@ export class AdminController {
     @Body() body: { status?: string },
   ) {
     this.requireAdmin(adminKey);
-    if (!body?.status) throw new UnauthorizedException("Status is required");
+    if (!body?.status) throw new BadRequestException("Status is required");
     return this.admin.updateStatus(orderNumber, body.status);
   }
 }
