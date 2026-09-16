@@ -84,7 +84,7 @@ function dateTime(value: string) {
 }
 
 export function AdminOrdersClient() {
-  const [accessKey, setAccessKey] = useState("");
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [draftKey, setDraftKey] = useState("");
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [query, setQuery] = useState("");
@@ -93,13 +93,7 @@ export function AdminOrdersClient() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const saved = window.sessionStorage.getItem("hidi-admin-key") ?? "";
-    if (saved) setAccessKey(saved);
-  }, []);
-
   const loadOrders = useCallback(async () => {
-    if (!accessKey) return;
     setLoading(true);
     setError(null);
 
@@ -110,28 +104,29 @@ export function AdminOrdersClient() {
 
       const response = await fetch(`/api/admin/orders?${params.toString()}`, {
         cache: "no-store",
-        headers: { "x-hidi-admin": accessKey },
       });
 
-      const body = await response.json();
+      const body = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        setAuthenticated(false);
+        setOrders([]);
+        return;
+      }
       if (!response.ok) throw new Error(body?.message ?? "Unable to load orders");
+
+      setAuthenticated(true);
       setOrders(body.orders ?? []);
     } catch (err) {
       setOrders([]);
       setError(err instanceof Error ? err.message : "Unable to load orders");
-      if (err instanceof Error && /access/i.test(err.message)) {
-        window.sessionStorage.removeItem("hidi-admin-key");
-        setAccessKey("");
-      }
     } finally {
       setLoading(false);
     }
-  }, [accessKey, query, status]);
+  }, [query, status]);
 
   useEffect(() => {
-    if (!accessKey) return;
     void loadOrders();
-  }, [accessKey, status, loadOrders]);
+  }, [status, loadOrders]);
 
   const stats = useMemo(() => ({
     total: orders.length,
@@ -140,19 +135,38 @@ export function AdminOrdersClient() {
     shipped: orders.filter((order) => order.status === "SHIPPED").length,
   }), [orders]);
 
-  function unlock(event: FormEvent) {
+  async function unlock(event: FormEvent) {
     event.preventDefault();
     const key = draftKey.trim();
     if (!key) return;
-    window.sessionStorage.setItem("hidi-admin-key", key);
-    setAccessKey(key);
-    setDraftKey("");
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.message ?? "Unable to sign in");
+
+      setDraftKey("");
+      setAuthenticated(true);
+      await loadOrders();
+    } catch (err) {
+      setAuthenticated(false);
+      setError(err instanceof Error ? err.message : "Unable to sign in");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function lock() {
-    window.sessionStorage.removeItem("hidi-admin-key");
-    setAccessKey("");
+  async function lock() {
+    await fetch("/api/admin/session", { method: "DELETE" }).catch(() => undefined);
+    setAuthenticated(false);
     setOrders([]);
+    setError(null);
   }
 
   async function updateStatus(orderNumber: string, nextStatus: string) {
@@ -161,13 +175,14 @@ export function AdminOrdersClient() {
     try {
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(orderNumber)}/status`, {
         method: "PATCH",
-        headers: {
-          "content-type": "application/json",
-          "x-hidi-admin": accessKey,
-        },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ status: nextStatus }),
       });
-      const body = await response.json();
+      const body = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        setAuthenticated(false);
+        throw new Error("Admin session expired. Please sign in again.");
+      }
       if (!response.ok) throw new Error(body?.message ?? "Unable to update order");
       await loadOrders();
     } catch (err) {
@@ -177,13 +192,18 @@ export function AdminOrdersClient() {
     }
   }
 
-  if (!accessKey) {
+  if (authenticated === null && loading) {
+    return <main className={styles.loginPage}><section className={styles.loginCard}><p>Checking admin session…</p></section></main>;
+  }
+
+  if (!authenticated) {
     return (
       <main className={styles.loginPage}>
         <section className={styles.loginCard}>
           <p className={styles.eyebrow}>HIDI OPERATIONS</p>
           <h1>Admin access</h1>
           <p>Enter the private admin key configured for this environment.</p>
+          {error && <div className={styles.error}>{error}</div>}
           <form onSubmit={unlock} className={styles.loginForm}>
             <input
               type="password"
@@ -193,7 +213,7 @@ export function AdminOrdersClient() {
               autoComplete="current-password"
               autoFocus
             />
-            <button type="submit">Open dashboard</button>
+            <button type="submit" disabled={loading}>{loading ? "Opening…" : "Open dashboard"}</button>
           </form>
         </section>
       </main>
@@ -208,7 +228,7 @@ export function AdminOrdersClient() {
           <h1>Orders</h1>
           <p>Review paid orders and move fulfilment from confirmation through delivery.</p>
         </div>
-        <button className={styles.lockButton} type="button" onClick={lock}>Lock admin</button>
+        <button className={styles.lockButton} type="button" onClick={() => void lock()}>Lock admin</button>
       </header>
 
       <section className={styles.stats} aria-label="Order summary">
@@ -226,20 +246,14 @@ export function AdminOrdersClient() {
             void loadOrders();
           }}
         >
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search order, phone or email"
-          />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search order, phone or email" />
           <button type="submit">Search</button>
         </form>
 
         <label className={styles.statusFilter}>
           <span>Status</span>
           <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option} value={option}>{statusLabel(option)}</option>
-            ))}
+            {STATUS_OPTIONS.map((option) => <option key={option} value={option}>{statusLabel(option)}</option>)}
           </select>
         </label>
       </section>
@@ -317,12 +331,7 @@ export function AdminOrdersClient() {
                       {["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].map((step) => {
                         const orderIndex = ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].indexOf(order.status);
                         const stepIndex = ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].indexOf(step);
-                        return (
-                          <div className={stepIndex <= orderIndex ? styles.progressActive : ""} key={step}>
-                            <span />
-                            <small>{statusLabel(step)}</small>
-                          </div>
-                        );
+                        return <div className={stepIndex <= orderIndex ? styles.progressActive : ""} key={step}><span /><small>{statusLabel(step)}</small></div>;
                       })}
                     </div>
 
@@ -335,17 +344,10 @@ export function AdminOrdersClient() {
                     )}
 
                     {next ? (
-                      <button
-                        className={styles.primaryAction}
-                        type="button"
-                        disabled={updating === order.orderNumber}
-                        onClick={() => void updateStatus(order.orderNumber, next)}
-                      >
+                      <button className={styles.primaryAction} type="button" disabled={updating === order.orderNumber} onClick={() => void updateStatus(order.orderNumber, next)}>
                         {updating === order.orderNumber ? "Updating…" : `Mark as ${statusLabel(next)}`}
                       </button>
-                    ) : (
-                      <div className={styles.completed}>Fulfilment complete</div>
-                    )}
+                    ) : <div className={styles.completed}>Fulfilment complete</div>}
                   </section>
                 </div>
               </details>
