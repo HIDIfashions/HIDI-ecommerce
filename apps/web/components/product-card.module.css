@@ -1,0 +1,47 @@
+.card {
+  position: relative;
+}
+
+.imageLink {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: #eee8df;
+}
+
+.image {
+  transition: transform .45s cubic-bezier(.2,.65,.25,1), filter .35s ease;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.imageLink:hover .image,
+.imageLink:focus-visible .image {
+  transform: scale(1.075);
+  filter: saturate(1.02) contrast(1.01);
+}
+
+.imageLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(29,29,26,0);
+  transition: box-shadow .35s ease;
+}
+
+.imageLink:hover::after,
+.imageLink:focus-visible::after {
+  box-shadow: inset 0 0 0 1px rgba(29,29,26,.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image {
+    transition: none;
+  }
+
+  .imageLink:hover .image,
+  .imageLink:focus-visible .image {
+    transform: none;
+  }
+}
