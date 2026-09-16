@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CartLink } from "./cart-link";
+import { HeaderSearch } from "./header-search";
 
 const Icon = ({ children }: { children: React.ReactNode }) => (
   <span className="header-icon" aria-hidden="true">{children}</span>
@@ -39,7 +40,7 @@ export function Header() {
           <Link href="/collections/occasion">Occasion</Link>
         </nav>
         <nav className="utility-nav" aria-label="Utilities">
-          <Link href="/search" aria-label="Search"><Icon>⌕</Icon></Link>
+          <HeaderSearch />
           <Link href="/account" className="desktop-only">Account</Link>
           <Link href="/wishlist" aria-label="Wishlist"><Icon>♡</Icon></Link>
           <CartLink />
