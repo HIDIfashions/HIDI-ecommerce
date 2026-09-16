@@ -5,6 +5,7 @@ import { ApiProduct } from "@/lib/api";
 import { getCartSession } from "@/lib/cart-session";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+export const PRODUCT_VARIANT_EVENT = "hidi-product-variant-selected";
 
 export function AddToCart({ product }: { product: ApiProduct }) {
   const colors = useMemo(() => Array.from(new Set(product.variants.map((v) => v.color))), [product]);
@@ -16,6 +17,20 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   const [variantId, setVariantId] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+
+  function selectVariant(variant: ApiProduct["variants"][number]) {
+    setVariantId(variant.id);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(PRODUCT_VARIANT_EVENT, {
+        detail: {
+          slug: product.slug,
+          variantId: variant.id,
+          size: variant.size,
+          color: variant.color,
+        },
+      }));
+    }
+  }
 
   async function add() {
     if (!variantId) { setMessage("Please select a size."); return; }
@@ -51,7 +66,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
             type="button"
             disabled={variant.available < 1}
             className={variant.id === variantId ? "selected" : ""}
-            onClick={() => setVariantId(variant.id)}
+            onClick={() => selectVariant(variant)}
             title={variant.available < 1 ? "Sold out" : `${variant.available} available`}
           >{variant.size}</button>
         ))}
