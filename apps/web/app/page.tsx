@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
 import { getProducts } from "@/lib/api";
+import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -37,9 +38,9 @@ export default async function Home() {
 
   return (
     <>
-      <section className="home-video-hero" aria-label="Discover HIDI">
+      <section className={styles.videoHero} aria-label="Discover HIDI">
         <video
-          className="home-video-hero-media"
+          className={styles.video}
           autoPlay
           muted
           loop
@@ -50,23 +51,23 @@ export default async function Home() {
           <source src="/video/discover-hidi.mp4" type="video/mp4" />
         </video>
 
-        <div className="home-video-hero-shade" aria-hidden="true" />
+        <div className={styles.shade} aria-hidden="true" />
 
-        <div className="home-video-hero-content">
+        <div className={styles.content}>
           <Image
-            className="home-video-hero-logo"
+            className={styles.logo}
             src="/brand/hidi-logo-dark.png"
             alt="HIDI — Wear the Feeling"
             width={540}
             height={180}
             priority
           />
-          <p className="home-video-hero-line">For every role you carry.</p>
-          <div className="home-video-hero-actions">
-            <Link className="home-video-hero-button home-video-hero-button-light" href="/collections/new-arrivals">
+          <p className={styles.line}>For every role you carry.</p>
+          <div className={styles.actions}>
+            <Link className={`${styles.button} ${styles.lightButton}`} href="/collections/new-arrivals">
               Shop new arrivals
             </Link>
-            <Link className="home-video-hero-button home-video-hero-button-ghost" href="/about">
+            <Link className={`${styles.button} ${styles.ghostButton}`} href="/about">
               Discover HIDI
             </Link>
           </div>
