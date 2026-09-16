@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
-
-function authorized(request: NextRequest) {
-  const expected = process.env.ADMIN_DASHBOARD_KEY;
-  const supplied = request.headers.get("x-hidi-admin");
-  return Boolean(expected && supplied && supplied === expected);
-}
+import { isAdminRequest } from "@/lib/admin-auth";
 
 export async function GET(request: NextRequest) {
-  if (!process.env.ADMIN_DASHBOARD_KEY) {
-    return NextResponse.json(
-      { message: "ADMIN_DASHBOARD_KEY is missing in apps/web/.env.local" },
-      { status: 500 },
-    );
-  }
-
-  if (!authorized(request)) {
-    return NextResponse.json({ message: "Dashboard admin key is incorrect" }, { status: 401 });
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ message: "Admin session expired" }, { status: 401 });
   }
 
   const apiKey = process.env.ADMIN_API_KEY;
