@@ -1,0 +1,263 @@
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 42px;
+  align-items: start;
+}
+
+.sidebar {
+  position: sticky;
+  top: 124px;
+  align-self: start;
+}
+
+.filterHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.filterHeadingLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.clearButton {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.filterSection {
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.filterSummary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 56px;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.filterSummary::-webkit-details-marker {
+  display: none;
+}
+
+.chevron {
+  transition: transform .2s ease;
+}
+
+.filterSection[open] .chevron {
+  transform: rotate(180deg);
+}
+
+.options {
+  display: grid;
+  gap: 10px;
+  padding: 0 0 18px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.option input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+.content {
+  min-width: 0;
+}
+
+.toolbar {
+  min-height: 49px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 12px;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sortLabel {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.sortSelect {
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0 24px 0 6px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 30px 18px;
+}
+
+.empty {
+  padding: 70px 0;
+  text-align: center;
+}
+
+.empty h2 {
+  margin-bottom: 8px;
+}
+
+.empty p {
+  color: var(--muted);
+}
+
+.mobileFilterButton {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.drawerBackdrop {
+  display: none;
+}
+
+.drawerClose {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .productGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .layout {
+    display: block;
+  }
+
+  .mobileFilterButton {
+    display: inline-flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 90;
+    width: min(360px, 88vw);
+    padding: 22px 24px 40px;
+    background: var(--paper);
+    overflow-y: auto;
+    transform: translateX(-105%);
+    transition: transform .25s ease;
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .drawerBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    border: 0;
+    background: rgba(29, 29, 26, .28);
+  }
+
+  .drawerClose {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .filterHeading {
+    margin-bottom: 8px;
+  }
+
+  .toolbar {
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 560px) {
+  .productGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 10px;
+  }
+
+  .toolbarRight {
+    gap: 4px;
+  }
+
+  .sortLabel {
+    display: none;
+  }
+
+  .sortSelect {
+    max-width: 150px;
+  }
+}
