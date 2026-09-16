@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Put, Query, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, Put, Query, UnauthorizedException } from "@nestjs/common";
 import { AdminService } from "./admin.service.js";
 
 @Controller("admin")
@@ -29,6 +29,33 @@ export class AdminController {
   ) {
     this.requireAdmin(adminKey);
     return this.admin.getOrder(orderNumber);
+  }
+
+  @Get("orders/:orderNumber/delhivery/serviceability")
+  delhiveryServiceability(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.admin.checkDelhiveryServiceability(orderNumber);
+  }
+
+  @Post("orders/:orderNumber/delhivery/manifest")
+  delhiveryManifest(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.admin.createDelhiveryShipment(orderNumber);
+  }
+
+  @Get("orders/:orderNumber/delhivery/track")
+  delhiveryTrack(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.admin.trackDelhivery(orderNumber);
   }
 
   @Put("orders/:orderNumber/shipment")
