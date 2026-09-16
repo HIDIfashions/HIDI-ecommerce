@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { DelhiveryService } from "../delhivery/delhivery.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const ALLOWED_STATUSES = ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"] as const;
@@ -12,7 +13,10 @@ const NEXT_STATUS: Partial<Record<ManagedOrderStatus, ManagedOrderStatus>> = {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly delhivery: DelhiveryService,
+  ) {}
 
   private serializeOrder(order: any) {
     return {
@@ -115,6 +119,103 @@ export class AdminService {
 
     if (!order) throw new NotFoundException("Order not found");
     return { order: this.serializeOrder(order) };
+  }
+
+  async checkDelhiveryServiceability(orderNumber: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber },
+      select: { shippingAddress: true },
+    });
+    if (!order) throw new NotFoundException("Order not found");
+
+    const address = (order.shippingAddress ?? {}) as any;
+    const pin = String(address.postalCode ?? "").trim();
+    return this.delhivery.checkServiceability(pin);
+  }
+
+  async createDelhiveryShipment(orderNumber: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber },
+      include: {
+        items: {
+          include: {
+            variant: { select: { weightGrams: true } },
+          },
+        },
+        shipments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.status !== "PACKED") {
+      throw new BadRequestException("Only PACKED orders can be manifested with Delhivery");
+    }
+
+    if (order.shipments[0]?.awb) {
+      throw new BadRequestException(`This order already has AWB ${order.shipments[0].awb}`);
+    }
+
+    const address = (order.shippingAddress ?? {}) as any;
+    const customerName = [address.firstName, address.lastName].filter(Boolean).join(" ").trim() || "HIDI Customer";
+    const fullAddress = [address.line1, address.line2, address.landmark].filter(Boolean).join(", ");
+    const pin = String(address.postalCode ?? "").trim();
+    const quantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+    const fallbackWeight = Math.max(250, Number(process.env.DELHIVERY_DEFAULT_WEIGHT_GRAMS || 500));
+    const weightGrams = order.items.reduce(
+      (sum, item) => sum + (item.variant.weightGrams || fallbackWeight) * item.quantity,
+      0,
+    );
+    const productDescription = order.items
+      .map((item) => `${item.productName} (${item.color}, ${item.size}) x${item.quantity}`)
+      .join("; ")
+      .slice(0, 250);
+
+    const manifested = await this.delhivery.createForwardShipment({
+      orderNumber: order.orderNumber,
+      customerName,
+      phone: order.customerPhone,
+      address: fullAddress,
+      city: address.city,
+      state: address.state,
+      pin,
+      country: address.countryCode === "IN" || !address.countryCode ? "India" : address.countryCode,
+      productDescription,
+      quantity,
+      weightGrams,
+      totalAmountRupees: Math.round(order.totalPaise) / 100,
+      paymentMode: "Pre-paid",
+    });
+
+    const shipmentData = {
+      provider: "DELHIVERY",
+      providerOrderId: order.orderNumber,
+      awb: manifested.waybill,
+      trackingUrl: this.delhivery.publicTrackingUrl(manifested.waybill),
+      status: "READY_TO_SHIP" as any,
+    };
+
+    try {
+      const shipment = order.shipments[0]
+        ? await this.prisma.shipment.update({ where: { id: order.shipments[0].id }, data: shipmentData })
+        : await this.prisma.shipment.create({ data: { orderId: order.id, ...shipmentData } });
+
+      return { shipment, delhivery: { status: manifested.status, remarks: manifested.remarks } };
+    } catch (error: any) {
+      if (error?.code === "P2002") {
+        throw new BadRequestException("Delhivery returned an AWB already assigned to another order");
+      }
+      throw error;
+    }
+  }
+
+  async trackDelhivery(orderNumber: string) {
+    const shipment = await this.prisma.shipment.findFirst({
+      where: { order: { orderNumber }, provider: "DELHIVERY" },
+      orderBy: { createdAt: "desc" },
+      select: { awb: true },
+    });
+    if (!shipment?.awb) throw new BadRequestException("No Delhivery AWB exists for this order");
+    return this.delhivery.track(shipment.awb);
   }
 
   async saveShipment(
