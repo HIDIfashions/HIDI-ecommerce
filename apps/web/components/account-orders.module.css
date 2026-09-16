@@ -1,3 +1,105 @@
+.authWrap {
+  display: grid;
+  grid-template-columns: minmax(0, 560px) 1fr;
+  gap: 70px;
+  align-items: start;
+}
+
+.authCard {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 34px;
+}
+
+.authCard h2 {
+  font-size: 38px;
+  margin-bottom: 10px;
+}
+
+.authIntro {
+  color: var(--muted);
+  max-width: 460px;
+  margin-bottom: 24px;
+}
+
+.authForm {
+  display: grid;
+  gap: 12px;
+}
+
+.authForm label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.authForm input {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid var(--line);
+  background: white;
+  padding: 0 14px;
+  outline: none;
+}
+
+.authForm input:focus {
+  border-color: var(--ink);
+}
+
+.authForm .button {
+  margin-top: 6px;
+}
+
+.secondaryButton {
+  border: 0;
+  background: transparent;
+  text-decoration: underline;
+  cursor: pointer;
+  justify-self: start;
+  padding: 8px 0;
+  font-size: 12px;
+}
+
+.authMessage {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 16px 0 0;
+}
+
+.accountBar {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+
+.accountBar > div {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.accountBar span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.accountBar strong {
+  overflow-wrap: anywhere;
+}
+
+.accountBar button {
+  border: 0;
+  background: transparent;
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .list {
   display: grid;
   gap: 22px;
@@ -99,6 +201,21 @@
 .empty p {
   color: var(--muted);
   margin-bottom: 22px;
+}
+
+@media (max-width: 720px) {
+  .authWrap {
+    grid-template-columns: 1fr;
+  }
+
+  .authCard {
+    padding: 24px;
+  }
+
+  .accountBar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 620px) {
