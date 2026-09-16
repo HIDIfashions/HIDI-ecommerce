@@ -1,21 +1,22 @@
 import Link from "next/link";
 import { ApiProduct, formatPaise } from "@/lib/api";
 import { CatalogImage } from "./catalog-image";
+import styles from "./product-card.module.css";
 
 export function ProductCard({ product }: { product: ApiProduct }) {
   const primaryImage = product.images?.[0];
 
-  return <article className="product-card">
+  return <article className={`product-card ${styles.card}`}>
     <Link
       href={`/products/${product.slug}`}
-      className="product-art"
-      style={{ position: "relative", background: "#eee8df" }}
+      className={`product-art ${styles.imageLink}`}
     >
       <CatalogImage
         src={primaryImage?.url}
         alt={primaryImage?.alt ?? product.name}
         sizes="(max-width: 720px) 50vw, (max-width: 1100px) 33vw, 25vw"
         fallbackLabel={`HIDI / ${product.name}`}
+        className={styles.image}
       />
       {!product.inStock && <span className="product-badge" style={{ zIndex: 2 }}>Sold out</span>}
     </Link>
