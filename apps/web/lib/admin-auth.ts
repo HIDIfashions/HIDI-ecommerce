@@ -2,7 +2,11 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 
 export const ADMIN_COOKIE_NAME = "hidi_admin_session";
-const SESSION_LABEL = "hidi-admin-session-v1";
+const SESSION_LABEL = "hidi-admin-session-v2";
+
+function normalize(value?: string | null) {
+  return (value ?? "").trim();
+}
 
 function safeEqual(a: string, b: string) {
   const left = Buffer.from(a);
@@ -11,7 +15,9 @@ function safeEqual(a: string, b: string) {
 }
 
 function dashboardSecret() {
-  return process.env.ADMIN_DASHBOARD_KEY ?? "";
+  // Keep a single source of truth for admin access.
+  // ADMIN_API_KEY must be identical in apps/web/.env.local and apps/api/.env.
+  return normalize(process.env.ADMIN_API_KEY);
 }
 
 export function hasDashboardSecret() {
@@ -20,7 +26,8 @@ export function hasDashboardSecret() {
 
 export function verifyDashboardKey(key: string) {
   const expected = dashboardSecret();
-  return Boolean(expected && key && safeEqual(key, expected));
+  const supplied = normalize(key);
+  return Boolean(expected && supplied && safeEqual(supplied, expected));
 }
 
 export function adminSessionToken() {
@@ -30,7 +37,7 @@ export function adminSessionToken() {
 }
 
 export function isAdminRequest(request: NextRequest) {
-  const supplied = request.cookies.get(ADMIN_COOKIE_NAME)?.value ?? "";
+  const supplied = normalize(request.cookies.get(ADMIN_COOKIE_NAME)?.value);
   const expected = adminSessionToken();
   return Boolean(expected && supplied && safeEqual(supplied, expected));
 }
