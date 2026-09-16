@@ -1,0 +1,161 @@
+.page {
+  width: min(980px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 56px 0 110px;
+}
+
+.breadcrumbs {
+  margin-bottom: 28px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 42px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(42px, 6vw, 72px);
+  line-height: .98;
+  letter-spacing: -.035em;
+}
+
+.header p {
+  max-width: 640px;
+  margin: 18px auto 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.notice {
+  margin: 0 0 28px;
+  padding: 18px 20px;
+  background: var(--ivory);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.list {
+  border-top: 1px solid var(--line);
+}
+
+.item {
+  border-bottom: 1px solid var(--line);
+}
+
+.item summary {
+  list-style: none;
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.item summary::-webkit-details-marker {
+  display: none;
+}
+
+.plus {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.plus::before,
+.plus::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+}
+
+.plus::before {
+  width: 12px;
+  height: 1px;
+}
+
+.plus::after {
+  width: 1px;
+  height: 12px;
+  transition: transform .2s ease, opacity .2s ease;
+}
+
+.item[open] .plus::after {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.answer {
+  max-width: 780px;
+  padding: 0 4px 24px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.answer p {
+  margin: 0 0 10px;
+}
+
+.answer ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.answer li {
+  margin-bottom: 6px;
+}
+
+.footerNote {
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .page {
+    width: min(100% - 28px, 980px);
+    padding-top: 34px;
+  }
+
+  .header {
+    text-align: left;
+    margin-bottom: 30px;
+  }
+
+  .header p {
+    margin-left: 0;
+  }
+
+  .item summary {
+    min-height: 60px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+}
