@@ -18,10 +18,10 @@
   right: 0;
   top: 32px;
   z-index: 60;
-  background: #3f2518;
-  color: #fffaf5;
-  border-bottom: 1px solid rgba(255,255,255,.16);
-  box-shadow: 0 12px 32px rgba(0,0,0,.18);
+  background: var(--paper);
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 12px 32px rgba(0,0,0,.10);
 }
 
 .inner {
@@ -40,11 +40,11 @@
 .searchBox {
   width: min(800px, calc(100vw - 180px));
   height: 52px;
-  border: 1px solid rgba(255,255,255,.55);
+  border: 1px solid var(--ink);
   display: flex;
   align-items: center;
   padding: 0 16px 0 20px;
-  background: rgba(255,255,255,.02);
+  background: transparent;
 }
 
 .input {
@@ -52,7 +52,7 @@
   min-width: 0;
   border: 0;
   background: transparent;
-  color: #fffaf5;
+  color: var(--ink);
   padding: 0;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 17px;
@@ -60,18 +60,18 @@
 }
 
 .input::placeholder {
-  color: rgba(255,250,245,.88);
+  color: var(--muted);
 }
 
 .searchGlyph {
   font-size: 21px;
-  opacity: .95;
+  opacity: .9;
 }
 
 .close {
   border: 0;
   background: transparent;
-  color: #fffaf5;
+  color: var(--ink);
   cursor: pointer;
   font-size: 32px;
   line-height: 1;
@@ -82,7 +82,7 @@
 .empty {
   width: min(800px, calc(100vw - 180px));
   margin: 14px auto 0;
-  color: rgba(255,250,245,.8);
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -99,7 +99,7 @@
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
-  color: #fffaf5;
+  color: var(--ink);
   min-width: 0;
 }
 
@@ -108,7 +108,7 @@
   width: 72px;
   aspect-ratio: 4 / 5.2;
   overflow: hidden;
-  background: rgba(255,255,255,.08);
+  background: var(--ivory);
 }
 
 .name {
@@ -120,7 +120,7 @@
 
 .meta {
   margin: 4px 0 0;
-  color: rgba(255,250,245,.72);
+  color: var(--muted);
   font-size: 11px;
 }
 
@@ -129,7 +129,7 @@
   inset: 32px 0 0;
   z-index: 50;
   border: 0;
-  background: rgba(29,29,26,.28);
+  background: rgba(29,29,26,.22);
 }
 
 @media (max-width: 900px) {
