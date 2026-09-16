@@ -2,7 +2,7 @@
   position: relative;
   width: 100vw;
   margin-left: calc(50% - 50vw);
-  height: clamp(620px, calc(100vh - 108px), 900px);
+  height: clamp(560px, 76vh, 800px);
   overflow: hidden;
   background: #151513;
   isolation: isolate;
@@ -10,14 +10,15 @@
 
 .video {
   position: absolute;
-  inset: -6%;
-  width: 112%;
-  height: 112%;
-  min-width: 112%;
-  min-height: 112%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
   object-fit: cover;
   object-position: center center;
   display: block;
+  transform: scale(1.035);
 }
 
 .shade {
@@ -25,8 +26,8 @@
   inset: 0;
   z-index: 1;
   background:
-    linear-gradient(to bottom, rgba(0,0,0,.10) 0%, rgba(0,0,0,.04) 43%, rgba(0,0,0,.52) 100%),
-    linear-gradient(to right, rgba(0,0,0,.08) 0%, transparent 28%, transparent 72%, rgba(0,0,0,.08) 100%);
+    linear-gradient(to top, rgba(12,12,10,.62) 0%, rgba(12,12,10,.22) 38%, rgba(12,12,10,.04) 68%, rgba(12,12,10,.03) 100%),
+    linear-gradient(to right, rgba(12,12,10,.28) 0%, rgba(12,12,10,.08) 34%, transparent 62%);
   pointer-events: none;
 }
 
@@ -36,42 +37,45 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
-  text-align: center;
-  padding: 60px 32px 54px;
+  text-align: left;
+  padding:
+    56px
+    max(32px, calc((100vw - 1440px) / 2 + 32px))
+    52px;
   color: white;
 }
 
 .logo {
-  width: clamp(210px, 20vw, 340px);
+  width: clamp(150px, 13vw, 220px);
   height: auto;
-  filter: brightness(0) invert(1);
+  margin: 0 0 18px;
   opacity: .98;
-  margin-bottom: 10px;
-  drop-shadow: 0 3px 22px rgba(0,0,0,.26);
+  filter: brightness(0) invert(1) drop-shadow(0 3px 18px rgba(0,0,0,.22));
 }
 
 .line {
+  max-width: 620px;
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(24px, 2.5vw, 38px);
-  line-height: 1.05;
-  letter-spacing: -.02em;
-  text-shadow: 0 2px 22px rgba(0,0,0,.34);
+  font-size: clamp(34px, 4vw, 58px);
+  line-height: .98;
+  letter-spacing: -.035em;
+  text-shadow: 0 2px 22px rgba(0,0,0,.32);
 }
 
 .actions {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 24px;
   flex-wrap: wrap;
 }
 
 .button {
-  min-height: 44px;
+  min-height: 45px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -81,72 +85,92 @@
   font-weight: 700;
   letter-spacing: .11em;
   text-transform: uppercase;
-  transition: background .2s ease, color .2s ease, opacity .2s ease;
+  transition: background .2s ease, color .2s ease, opacity .2s ease, transform .2s ease;
 }
 
 .lightButton {
-  background: rgba(255,255,255,.96);
+  background: rgba(255,255,255,.97);
   color: #1d1d1a;
 }
 
 .ghostButton {
-  background: rgba(15,15,13,.18);
+  background: rgba(15,15,13,.16);
   color: white;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(6px);
 }
 
 .button:hover {
-  opacity: .82;
+  opacity: .9;
+  transform: translateY(-1px);
 }
 
 @media (max-width: 900px) {
   .videoHero {
-    height: 72vh;
-    min-height: 560px;
+    height: 70vh;
+    min-height: 540px;
   }
 
   .video {
-    inset: -8%;
-    width: 116%;
-    height: 116%;
-    min-width: 116%;
-    min-height: 116%;
-    object-position: center;
+    transform: scale(1.06);
   }
 
   .content {
-    padding: 42px 20px 38px;
+    padding: 40px 24px 36px;
+  }
+
+  .logo {
+    width: 170px;
+    margin-bottom: 14px;
+  }
+
+  .line {
+    max-width: 500px;
+    font-size: clamp(32px, 6vw, 46px);
   }
 }
 
 @media (max-width: 640px) {
   .videoHero {
-    height: 68vh;
-    min-height: 520px;
+    height: 66vh;
+    min-height: 500px;
   }
 
   .video {
-    inset: -10%;
-    width: 120%;
-    height: 120%;
-    min-width: 120%;
-    min-height: 120%;
+    transform: scale(1.08);
+  }
+
+  .shade {
+    background:
+      linear-gradient(to top, rgba(12,12,10,.68) 0%, rgba(12,12,10,.24) 45%, rgba(12,12,10,.04) 76%),
+      linear-gradient(to right, rgba(12,12,10,.16), transparent 70%);
+  }
+
+  .content {
+    align-items: center;
+    text-align: center;
+    padding: 34px 18px 28px;
   }
 
   .logo {
-    width: min(220px, 62vw);
+    width: min(180px, 52vw);
+    margin-bottom: 12px;
   }
 
   .line {
-    font-size: 28px;
+    max-width: 340px;
+    font-size: 34px;
+    line-height: 1;
   }
 
   .actions {
     width: 100%;
+    justify-content: center;
     gap: 8px;
+    margin-top: 18px;
   }
 
   .button {
-    min-width: 158px;
+    min-width: 152px;
+    padding: 0 16px;
   }
 }
