@@ -82,19 +82,21 @@ export function HeaderSearch() {
         <section className={styles.panel} aria-label="Search HIDI">
           <div className={styles.inner}>
             <div className={styles.topRow}>
-              <input
-                ref={inputRef}
-                className={styles.input}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search HIDI — style, colour, fabric…"
-                aria-label="Search HIDI products"
-              />
+              <div className={styles.searchBox}>
+                <input
+                  ref={inputRef}
+                  className={styles.input}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search"
+                  aria-label="Search HIDI products"
+                />
+                <span className={styles.searchGlyph} aria-hidden="true">⌕</span>
+              </div>
               <button className={styles.close} type="button" onClick={() => setOpen(false)} aria-label="Close search">×</button>
             </div>
 
-            {!query.trim() && <p className={styles.helper}>Try “sage”, “work”, “ivory” or “kurta”.</p>}
-            {loading && <p className={styles.helper}>Loading HIDI pieces…</p>}
+            {loading && !!query.trim() && <p className={styles.helper}>Searching HIDI…</p>}
             {!!query.trim() && !loading && results.length === 0 && <p className={styles.empty}>No HIDI pieces matched “{query.trim()}”.</p>}
 
             {results.length > 0 && <div className={styles.results}>
@@ -105,7 +107,7 @@ export function HeaderSearch() {
                     <CatalogImage
                       src={image?.url}
                       alt={image?.alt ?? product.name}
-                      sizes="74px"
+                      sizes="72px"
                       fallbackLabel={`HIDI / ${product.name}`}
                     />
                   </span>
