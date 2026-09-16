@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Search, X } from "lucide-react";
 import { ApiProduct, formatPaise } from "@/lib/api";
 import { CatalogImage } from "./catalog-image";
+import iconStyles from "./header-icons.module.css";
 import styles from "./header-search.module.css";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
@@ -68,13 +70,14 @@ export function HeaderSearch() {
   return (
     <div className={styles.wrap}>
       <button
-        className={styles.trigger}
+        className={iconStyles.iconButton}
         type="button"
         aria-label="Search"
         aria-expanded={open}
+        title="Search"
         onClick={() => setOpen((value) => !value)}
       >
-        <span className="header-icon" aria-hidden="true">⌕</span>
+        <Search className={iconStyles.icon} aria-hidden="true" />
       </button>
 
       {open && <>
@@ -91,9 +94,11 @@ export function HeaderSearch() {
                   placeholder="Search"
                   aria-label="Search HIDI products"
                 />
-                <span className={styles.searchGlyph} aria-hidden="true">⌕</span>
+                <Search className={styles.searchGlyph} aria-hidden="true" />
               </div>
-              <button className={styles.close} type="button" onClick={() => setOpen(false)} aria-label="Close search">×</button>
+              <button className={styles.close} type="button" onClick={() => setOpen(false)} aria-label="Close search">
+                <X aria-hidden="true" />
+              </button>
             </div>
 
             {loading && !!query.trim() && <p className={styles.helper}>Searching HIDI…</p>}
