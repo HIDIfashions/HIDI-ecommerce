@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPaise } from "@/lib/api";
 import { getCartSession, newCheckoutToken } from "@/lib/cart-session";
+import { getStoredSession } from "@/lib/supabase-auth";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
 
@@ -17,10 +18,12 @@ export function CheckoutClient() {
   const [cart, setCart] = useState<any>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [signedInEmail, setSignedInEmail] = useState("");
   const token = useRef<string>("");
 
   useEffect(() => {
     token.current = newCheckoutToken();
+    setSignedInEmail(getStoredSession()?.user?.email ?? "");
     fetch(`${API}/carts/${getCartSession()}`).then(async (r) => {
       const data = await r.json();
       if (!r.ok) throw new Error(data?.message ?? "Unable to load bag");
@@ -103,7 +106,7 @@ export function CheckoutClient() {
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
     <div className="checkout-grid">
       <form className="checkout-form" onSubmit={submit}>
-        <section><h2>Contact</h2><input name="email" placeholder="Email address" type="email" required /><input name="phone" placeholder="Mobile number" inputMode="tel" required /></section>
+        <section><h2>Contact</h2><input name="email" placeholder="Email address" type="email" defaultValue={signedInEmail} required /><input name="phone" placeholder="Mobile number" inputMode="tel" required /></section>
         <section><h2>Delivery address</h2><div className="two-col"><input name="firstName" placeholder="First name" required /><input name="lastName" placeholder="Last name" /></div><input name="line1" placeholder="Address" required /><input name="line2" placeholder="Apartment, suite, landmark (optional)" /><div className="two-col"><input name="postalCode" placeholder="PIN code" inputMode="numeric" pattern="[0-9]{6}" required /><input name="city" placeholder="City" required /></div><div className="two-col"><input name="state" placeholder="State" required /><input value="India" disabled readOnly /></div></section>
         <section><h2>Payment</h2><div className="payment-placeholder"><strong>Razorpay secure payment</strong><span>UPI · Cards · Net banking · Wallets</span></div><p className="fine-print left">Stock is reserved for 15 minutes only after you press Pay securely.</p></section>
         {error && <p className="form-error">{error}</p>}
