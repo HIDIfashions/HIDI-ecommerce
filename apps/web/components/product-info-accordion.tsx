@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ClipboardList, Shirt, SquareCheckBig } from "lucide-react";
+import { ChevronDown, ClipboardList, RotateCcw, Shirt, SquareCheckBig, Truck } from "lucide-react";
 import { ApiProduct } from "@/lib/api";
 import { COMMON_PRODUCT_DISCLAIMER, getProductInformation } from "@/lib/product-information";
 import styles from "./product-info-accordion.module.css";
@@ -59,6 +59,21 @@ export function ProductInfoAccordion({ product }: { product: ApiProduct }) {
             {info?.fitDetail && <li><strong>Fit &amp; detail:</strong> {info.fitDetail}</li>}
             {info?.edit && <li><strong>Edit:</strong> {info.edit}</li>}
           </ul>
+        </div>
+      </details>
+
+      <details className={styles.section}>
+        <summary className={styles.summary}>
+          <span className={styles.titleWrap}>
+            <Truck size={22} strokeWidth={1.5} aria-hidden="true" />
+            <span>Shipping &amp; Returns</span>
+          </span>
+          <ChevronDown className={styles.chevron} size={21} strokeWidth={1.5} aria-hidden="true" />
+        </summary>
+        <div className={styles.content}>
+          <p><strong>Shipping:</strong> Complimentary shipping on orders above ₹1,499.</p>
+          <p><strong>Returns:</strong> Easy 7-day returns on eligible items.</p>
+          <p className={styles.note}><RotateCcw size={16} strokeWidth={1.5} aria-hidden="true" /> Items should be unused, unworn and returned with original tags and packaging. Promotional or final-sale exclusions, where applicable, will be shown before purchase.</p>
         </div>
       </details>
     </div>
