@@ -34,27 +34,42 @@ const editorialCards = [
 
 export default async function Home() {
   const products = (await getProducts()).slice(0, 8);
+
   return (
     <>
-      <section className="hero">
-        <div className="hero-text">
-          <p className="eyebrow">THE NEW WORK EDIT</p>
-          <h1>Quietly confident.<br />Made for your every day.</h1>
-          <p>Indian silhouettes with clean lines, considered colour and comfort that carries you through the day.</p>
-          <div className="button-row">
-            <Link className="button button-dark" href="/collections/new-arrivals">Shop new arrivals</Link>
-            <Link className="button button-light" href="/collections/work-edit">Explore Work Edit</Link>
-          </div>
-        </div>
-        <div className="hero-art">
+      <section className="home-video-hero" aria-label="Discover HIDI">
+        <video
+          className="home-video-hero-media"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-label="HIDI brand film"
+        >
+          <source src="/video/discover-hidi.mp4" type="video/mp4" />
+        </video>
+
+        <div className="home-video-hero-shade" aria-hidden="true" />
+
+        <div className="home-video-hero-content">
           <Image
-            src="/hero/hidi-work-edit-hero.png"
-            alt="HIDI Work Edit campaign"
-            fill
+            className="home-video-hero-logo"
+            src="/brand/hidi-logo-dark.png"
+            alt="HIDI — Wear the Feeling"
+            width={540}
+            height={180}
             priority
-            sizes="(max-width: 900px) 100vw, 58vw"
-            style={{ objectFit: "cover", objectPosition: "center" }}
           />
+          <p className="home-video-hero-line">For every role you carry.</p>
+          <div className="home-video-hero-actions">
+            <Link className="home-video-hero-button home-video-hero-button-light" href="/collections/new-arrivals">
+              Shop new arrivals
+            </Link>
+            <Link className="home-video-hero-button home-video-hero-button-ghost" href="/about">
+              Discover HIDI
+            </Link>
+          </div>
         </div>
       </section>
 
