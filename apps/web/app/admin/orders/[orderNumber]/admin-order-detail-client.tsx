@@ -91,8 +91,11 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [savingShipment, setSavingShipment] = useState(false);
+  const [checkingDelhivery, setCheckingDelhivery] = useState(false);
+  const [creatingDelhivery, setCreatingDelhivery] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [serviceability, setServiceability] = useState<string | null>(null);
   const [provider, setProvider] = useState("");
   const [awb, setAwb] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
@@ -127,6 +130,47 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
     [order],
   );
 
+  async function checkDelhivery() {
+    if (!order) return;
+    setCheckingDelhivery(true);
+    setError(null);
+    setNotice(null);
+    setServiceability(null);
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.orderNumber)}/delhivery/serviceability`, { cache: "no-store" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.message ?? "Unable to check Delhivery serviceability");
+      const mode = body.prepaid ? "Prepaid serviceable" : "Prepaid not serviceable";
+      const cod = body.cod ? "COD available" : "COD unavailable";
+      setServiceability(`${body.pin}: ${mode} · ${cod}${body.city ? ` · ${body.city}` : ""}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to check Delhivery serviceability");
+    } finally {
+      setCheckingDelhivery(false);
+    }
+  }
+
+  async function createDelhiveryShipment() {
+    if (!order) return;
+    setCreatingDelhivery(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.orderNumber)}/delhivery/manifest`, {
+        method: "POST",
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.message ?? "Unable to create Delhivery shipment");
+      const createdAwb = body?.shipment?.awb;
+      setNotice(createdAwb ? `Delhivery test shipment created. AWB: ${createdAwb}` : "Delhivery test shipment created.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to create Delhivery shipment");
+    } finally {
+      setCreatingDelhivery(false);
+    }
+  }
+
   async function saveShipment(event: FormEvent) {
     event.preventDefault();
     if (!order) return;
@@ -157,7 +201,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
     if (!next) return;
 
     if (next === "SHIPPED" && !shipmentReady) {
-      setError("Save courier, AWB and tracking URL before marking this order as shipped.");
+      setError("Create a Delhivery shipment or save courier, AWB and tracking URL first.");
       return;
     }
 
@@ -286,14 +330,32 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               ))}
             </div>
 
-            {order.status === "PACKED" && (
+            {order.status === "PACKED" && !order.shipment?.awb && (
+              <div className={styles.shippingForm}>
+                <div className={styles.shippingHeader}>
+                  <div>
+                    <p className={styles.eyebrow}>DELHIVERY TEST API</p>
+                    <strong>Create courier shipment automatically</strong>
+                  </div>
+                </div>
+                <p className={styles.shipmentHint}>Destination PIN: {address.postalCode || "—"}. This uses the Delhivery staging account configured on the API server.</p>
+                {serviceability && <div className={styles.serviceability}>{serviceability}</div>}
+                <button className={styles.secondaryAction} type="button" onClick={() => void checkDelhivery()} disabled={checkingDelhivery}>
+                  {checkingDelhivery ? "Checking…" : "Check Delhivery serviceability"}
+                </button>
+                <button className={styles.saveShipment} type="button" onClick={() => void createDelhiveryShipment()} disabled={creatingDelhivery}>
+                  {creatingDelhivery ? "Creating shipment…" : "Create Delhivery test shipment"}
+                </button>
+              </div>
+            )}
+
+            {order.status === "PACKED" && !order.shipment?.awb && (
               <form className={styles.shippingForm} onSubmit={saveShipment}>
                 <div className={styles.shippingHeader}>
                   <div>
-                    <p className={styles.eyebrow}>SHIPPING DETAILS</p>
-                    <strong>Prepare dispatch</strong>
+                    <p className={styles.eyebrow}>MANUAL / OTHER COURIER</p>
+                    <strong>Enter dispatch details manually</strong>
                   </div>
-                  {shipmentReady && <span className={styles.readyBadge}>READY</span>}
                 </div>
 
                 <label>
@@ -315,12 +377,12 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
                 </label>
 
                 <button className={styles.saveShipment} type="submit" disabled={savingShipment}>
-                  {savingShipment ? "Saving…" : shipmentReady ? "Update shipping details" : "Save shipping details"}
+                  {savingShipment ? "Saving…" : "Save shipping details"}
                 </button>
               </form>
             )}
 
-            {order.shipment && order.status !== "PACKED" && (
+            {order.shipment?.awb && (
               <div className={styles.shipmentBox}>
                 <span>Courier: <strong>{order.shipment.provider ?? "—"}</strong></span>
                 <span>AWB: <strong>{order.shipment.awb ?? "—"}</strong></span>
@@ -335,9 +397,9 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
                 type="button"
                 onClick={() => void advanceStatus()}
                 disabled={updating || (next === "SHIPPED" && !shipmentReady)}
-                title={next === "SHIPPED" && !shipmentReady ? "Save shipping details first" : undefined}
+                title={next === "SHIPPED" && !shipmentReady ? "Create or save shipping details first" : undefined}
               >
-                {updating ? "Updating…" : next === "SHIPPED" && !shipmentReady ? "Add shipping details first" : `Mark as ${label(next)}`}
+                {updating ? "Updating…" : next === "SHIPPED" && !shipmentReady ? "Create shipment first" : `Mark as ${label(next)}`}
               </button>
             ) : (
               <div className={styles.complete}>Fulfilment complete</div>
