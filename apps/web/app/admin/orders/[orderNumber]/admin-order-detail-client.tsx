@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./order-detail.module.css";
 
 type Address = {
@@ -65,6 +65,8 @@ const NEXT_STATUS: Record<string, string | undefined> = {
   SHIPPED: "DELIVERED",
 };
 
+const COURIERS = ["Delhivery", "Blue Dart", "DTDC", "Xpressbees", "Ecom Express", "India Post", "Other"];
+
 function money(value: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -88,7 +90,12 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
   const [order, setOrder] = useState<AdminOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [savingShipment, setSavingShipment] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [provider, setProvider] = useState("");
+  const [awb, setAwb] = useState("");
+  const [trackingUrl, setTrackingUrl] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,7 +104,13 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(orderNumber)}`, { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message ?? "Unable to load order");
-      setOrder(body.order ?? null);
+      const loaded = body.order ?? null;
+      setOrder(loaded);
+      if (loaded?.shipment) {
+        setProvider(loaded.shipment.provider ?? "");
+        setAwb(loaded.shipment.awb ?? "");
+        setTrackingUrl(loaded.shipment.trackingUrl ?? "");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load order");
     } finally {
@@ -109,13 +122,48 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
     void load();
   }, [load]);
 
+  const shipmentReady = useMemo(
+    () => Boolean(order?.shipment?.provider && order?.shipment?.awb && order?.shipment?.trackingUrl),
+    [order],
+  );
+
+  async function saveShipment(event: FormEvent) {
+    event.preventDefault();
+    if (!order) return;
+
+    setSavingShipment(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.orderNumber)}/shipment`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider, awb, trackingUrl }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.message ?? "Unable to save shipment details");
+      setNotice("Shipment details saved. The order can now be marked as shipped.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save shipment details");
+    } finally {
+      setSavingShipment(false);
+    }
+  }
+
   async function advanceStatus() {
     if (!order) return;
     const next = NEXT_STATUS[order.status];
     if (!next) return;
 
+    if (next === "SHIPPED" && !shipmentReady) {
+      setError("Save courier, AWB and tracking URL before marking this order as shipped.");
+      return;
+    }
+
     setUpdating(true);
     setError(null);
+    setNotice(null);
     try {
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.orderNumber)}/status`, {
         method: "PATCH",
@@ -124,6 +172,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message ?? "Unable to update order");
+      setNotice(next === "SHIPPED" ? "Order marked as shipped." : `Order marked as ${label(next).toLowerCase()}.`);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update order");
@@ -165,6 +214,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
       </header>
 
       {error && <div className={styles.error}>{error}</div>}
+      {notice && <div className={styles.notice}>{notice}</div>}
 
       <section className={styles.grid}>
         <div className={styles.mainColumn}>
@@ -236,17 +286,58 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               ))}
             </div>
 
-            {order.shipment && (
+            {order.status === "PACKED" && (
+              <form className={styles.shippingForm} onSubmit={saveShipment}>
+                <div className={styles.shippingHeader}>
+                  <div>
+                    <p className={styles.eyebrow}>SHIPPING DETAILS</p>
+                    <strong>Prepare dispatch</strong>
+                  </div>
+                  {shipmentReady && <span className={styles.readyBadge}>READY</span>}
+                </div>
+
+                <label>
+                  <span>Courier</span>
+                  <select value={provider} onChange={(event) => setProvider(event.target.value)} required>
+                    <option value="">Select courier</option>
+                    {COURIERS.map((courier) => <option key={courier} value={courier}>{courier}</option>)}
+                  </select>
+                </label>
+
+                <label>
+                  <span>AWB / tracking number</span>
+                  <input value={awb} onChange={(event) => setAwb(event.target.value)} placeholder="e.g. 123456789012" required />
+                </label>
+
+                <label>
+                  <span>Tracking URL</span>
+                  <input type="url" value={trackingUrl} onChange={(event) => setTrackingUrl(event.target.value)} placeholder="https://..." required />
+                </label>
+
+                <button className={styles.saveShipment} type="submit" disabled={savingShipment}>
+                  {savingShipment ? "Saving…" : shipmentReady ? "Update shipping details" : "Save shipping details"}
+                </button>
+              </form>
+            )}
+
+            {order.shipment && order.status !== "PACKED" && (
               <div className={styles.shipmentBox}>
-                <span>Courier: {order.shipment.provider ?? "—"}</span>
-                <span>AWB: {order.shipment.awb ?? "—"}</span>
+                <span>Courier: <strong>{order.shipment.provider ?? "—"}</strong></span>
+                <span>AWB: <strong>{order.shipment.awb ?? "—"}</strong></span>
+                <span>Status: <strong>{label(order.shipment.status)}</strong></span>
                 {order.shipment.trackingUrl && <a href={order.shipment.trackingUrl} target="_blank" rel="noreferrer">Open tracking ↗</a>}
               </div>
             )}
 
             {next ? (
-              <button className={styles.primaryAction} type="button" onClick={() => void advanceStatus()} disabled={updating}>
-                {updating ? "Updating…" : `Mark as ${label(next)}`}
+              <button
+                className={styles.primaryAction}
+                type="button"
+                onClick={() => void advanceStatus()}
+                disabled={updating || (next === "SHIPPED" && !shipmentReady)}
+                title={next === "SHIPPED" && !shipmentReady ? "Save shipping details first" : undefined}
+              >
+                {updating ? "Updating…" : next === "SHIPPED" && !shipmentReady ? "Add shipping details first" : `Mark as ${label(next)}`}
               </button>
             ) : (
               <div className={styles.complete}>Fulfilment complete</div>
