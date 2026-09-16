@@ -32,6 +32,7 @@ export function Header() {
           />
         </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
+          <Link href="/collections/all">Shop All</Link>
           <Link href="/collections/new-arrivals">New Arrivals</Link>
           <Link href="/collections/work-edit">Work Edit</Link>
           <Link href="/collections/everyday">Everyday</Link>
