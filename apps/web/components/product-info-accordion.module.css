@@ -63,6 +63,19 @@
   gap: 7px;
 }
 
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px !important;
+}
+
+.note svg {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  color: var(--ink);
+}
+
 @media (max-width: 640px) {
   .summary {
     padding: 17px 0;
