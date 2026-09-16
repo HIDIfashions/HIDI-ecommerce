@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Query, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Put, Query, UnauthorizedException } from "@nestjs/common";
 import { AdminService } from "./admin.service.js";
 
 @Controller("admin")
@@ -29,6 +29,16 @@ export class AdminController {
   ) {
     this.requireAdmin(adminKey);
     return this.admin.getOrder(orderNumber);
+  }
+
+  @Put("orders/:orderNumber/shipment")
+  saveShipment(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+    @Body() body: { provider?: string; awb?: string; trackingUrl?: string },
+  ) {
+    this.requireAdmin(adminKey);
+    return this.admin.saveShipment(orderNumber, body ?? {});
   }
 
   @Patch("orders/:orderNumber/status")
