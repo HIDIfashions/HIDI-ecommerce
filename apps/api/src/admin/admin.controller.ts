@@ -22,6 +22,15 @@ export class AdminController {
     return this.admin.listOrders(query, status);
   }
 
+  @Get("orders/:orderNumber")
+  order(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.admin.getOrder(orderNumber);
+  }
+
   @Patch("orders/:orderNumber/status")
   updateStatus(
     @Headers("x-admin-key") adminKey: string | undefined,
