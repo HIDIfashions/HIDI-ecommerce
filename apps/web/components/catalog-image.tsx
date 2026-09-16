@@ -9,15 +9,17 @@ type CatalogImageProps = {
   sizes: string;
   priority?: boolean;
   fallbackLabel?: string;
+  className?: string;
 };
 
-export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel }: CatalogImageProps) {
+export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel, className }: CatalogImageProps) {
   const [failed, setFailed] = useState(false);
 
   if (!src || failed) {
     return (
       <div
         aria-label={alt}
+        className={className}
         style={{
           position: "absolute",
           inset: 0,
@@ -55,6 +57,7 @@ export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel 
       fill
       priority={priority}
       sizes={sizes}
+      className={className}
       onError={() => setFailed(true)}
       style={{ objectFit: "cover", objectPosition: "center", display: "block" }}
     />
