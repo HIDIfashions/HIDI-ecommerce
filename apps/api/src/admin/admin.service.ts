@@ -14,6 +14,74 @@ const NEXT_STATUS: Partial<Record<ManagedOrderStatus, ManagedOrderStatus>> = {
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private serializeOrder(order: any) {
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      subtotalPaise: order.subtotalPaise,
+      shippingPaise: order.shippingPaise,
+      discountPaise: order.discountPaise,
+      taxPaise: order.taxPaise,
+      totalPaise: order.totalPaise,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      shippingAddress: order.shippingAddress,
+      payment: order.payments[0]
+        ? {
+            status: order.payments[0].status,
+            method: order.payments[0].method,
+            provider: order.payments[0].provider,
+            providerPaymentId: order.payments[0].providerPaymentId,
+            createdAt: order.payments[0].createdAt,
+          }
+        : null,
+      shipment: order.shipments[0]
+        ? {
+            status: order.shipments[0].status,
+            provider: order.shipments[0].provider,
+            awb: order.shipments[0].awb,
+            trackingUrl: order.shipments[0].trackingUrl,
+            createdAt: order.shipments[0].createdAt,
+            updatedAt: order.shipments[0].updatedAt,
+          }
+        : null,
+      itemCount: order.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
+      items: order.items.map((item: any) => ({
+        id: item.id,
+        productName: item.productName,
+        slug: item.product.slug,
+        image: item.product.images[0]?.url ?? null,
+        sku: item.sku,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        unitPricePaise: item.unitPricePaise,
+        totalPaise: item.totalPaise,
+      })),
+    };
+  }
+
+  private orderInclude() {
+    return {
+      items: {
+        include: {
+          product: {
+            select: {
+              slug: true,
+              images: { orderBy: { position: "asc" as const }, take: 1 },
+            },
+          },
+        },
+        orderBy: { id: "asc" as const },
+      },
+      payments: { orderBy: { createdAt: "desc" as const }, take: 1 },
+      shipments: { orderBy: { createdAt: "desc" as const }, take: 1 },
+    };
+  }
+
   async listOrders(query?: string, status?: string) {
     const q = query?.trim();
     const statusFilter = status && status !== "ALL" ? status : undefined;
@@ -33,69 +101,22 @@ export class AdminService {
       },
       orderBy: { createdAt: "desc" },
       take: 100,
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                slug: true,
-                images: { orderBy: { position: "asc" }, take: 1 },
-              },
-            },
-          },
-          orderBy: { id: "asc" },
-        },
-        payments: { orderBy: { createdAt: "desc" }, take: 1 },
-        shipments: { orderBy: { createdAt: "desc" }, take: 1 },
-      },
+      include: this.orderInclude(),
     });
 
     return {
-      orders: orders.map((order) => ({
-        id: order.id,
-        orderNumber: order.orderNumber,
-        status: order.status,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
-        subtotalPaise: order.subtotalPaise,
-        shippingPaise: order.shippingPaise,
-        discountPaise: order.discountPaise,
-        taxPaise: order.taxPaise,
-        totalPaise: order.totalPaise,
-        customerEmail: order.customerEmail,
-        customerPhone: order.customerPhone,
-        shippingAddress: order.shippingAddress,
-        payment: order.payments[0]
-          ? {
-              status: order.payments[0].status,
-              method: order.payments[0].method,
-              provider: order.payments[0].provider,
-              providerPaymentId: order.payments[0].providerPaymentId,
-            }
-          : null,
-        shipment: order.shipments[0]
-          ? {
-              status: order.shipments[0].status,
-              provider: order.shipments[0].provider,
-              awb: order.shipments[0].awb,
-              trackingUrl: order.shipments[0].trackingUrl,
-            }
-          : null,
-        itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
-        items: order.items.map((item) => ({
-          id: item.id,
-          productName: item.productName,
-          slug: item.product.slug,
-          image: item.product.images[0]?.url ?? null,
-          sku: item.sku,
-          size: item.size,
-          color: item.color,
-          quantity: item.quantity,
-          unitPricePaise: item.unitPricePaise,
-          totalPaise: item.totalPaise,
-        })),
-      })),
+      orders: orders.map((order) => this.serializeOrder(order)),
     };
+  }
+
+  async getOrder(orderNumber: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber },
+      include: this.orderInclude(),
+    });
+
+    if (!order) throw new NotFoundException("Order not found");
+    return { order: this.serializeOrder(order) };
   }
 
   async updateStatus(orderNumber: string, nextStatus: string) {
