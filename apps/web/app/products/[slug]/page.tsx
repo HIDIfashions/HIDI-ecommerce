@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
 import { ProductGallery } from "@/components/product-gallery";
+import { ProductInfoAccordion } from "@/components/product-info-accordion";
 import { WishlistButton } from "@/components/wishlist-button";
 import { formatPaise, getProduct } from "@/lib/api";
 
@@ -29,7 +30,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <AddToCart product={product} />
         <WishlistButton slug={product.slug} />
         <div className="delivery-box"><strong>Delivery</strong><div><input placeholder="Enter PIN code" inputMode="numeric" /><button>Check</button></div></div>
-        <details open><summary>Product details</summary><p>{product.fabric ? `Fabric: ${product.fabric}. ` : ""}{product.care ?? "Final fabric composition and care details will come from the HIDI product master."}</p></details>
+        <ProductInfoAccordion product={product} />
         <details><summary>Shipping & returns</summary><p>Clear delivery promise and easy returns/exchanges. Final launch policy should be approved before go-live.</p></details>
       </aside>
     </div>
