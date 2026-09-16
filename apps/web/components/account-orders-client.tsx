@@ -53,7 +53,7 @@ export function AccountOrdersClient() {
   const [signedIn, setSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<"email" | "otp">("email");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState<string>("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -85,17 +85,23 @@ export function AccountOrdersClient() {
 
   useEffect(() => {
     const stored = getStoredSession();
-    if (stored?.user?.email) setEmail(stored.user.email);
+    setEmail(String(stored?.user?.email ?? ""));
     loadAccount();
   }, []);
 
   async function requestOtp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const normalizedEmail = String(email ?? "").trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError("Enter your email address");
+      return;
+    }
     setBusy(true); setError(""); setMessage("");
     try {
-      await sendEmailOtp(email);
+      await sendEmailOtp(normalizedEmail);
+      setEmail(normalizedEmail);
       setStep("otp");
-      setMessage(`We sent a 6-digit HIDI sign-in code to ${email.trim().toLowerCase()}.`);
+      setMessage(`We sent a 6-digit HIDI sign-in code to ${normalizedEmail}.`);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -109,7 +115,7 @@ export function AccountOrdersClient() {
     const otp = String(data.get("otp") ?? "");
     setBusy(true); setError("");
     try {
-      await verifyEmailOtp(email, otp);
+      await verifyEmailOtp(String(email ?? ""), otp);
       setSignedIn(true);
       setLoading(true);
       setMessage("");
@@ -127,6 +133,7 @@ export function AccountOrdersClient() {
     setAccount(null);
     setSignedIn(false);
     setStep("email");
+    setEmail("");
     setMessage("");
     setError("");
     setBusy(false);
@@ -150,7 +157,7 @@ export function AccountOrdersClient() {
 
         {step === "email" ? <form className={styles.authForm} onSubmit={requestOtp}>
           <label htmlFor="account-email">Email address</label>
-          <input id="account-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required autoComplete="email" />
+          <input id="account-email" type="email" value={email ?? ""} onChange={(event) => setEmail(event.target.value ?? "")} placeholder="you@example.com" required autoComplete="email" />
           <button className="button button-dark" disabled={busy}>{busy ? "Sending code…" : "Send sign-in code"}</button>
         </form> : <form className={styles.authForm} onSubmit={verifyOtp}>
           <label htmlFor="account-otp">6-digit code</label>
