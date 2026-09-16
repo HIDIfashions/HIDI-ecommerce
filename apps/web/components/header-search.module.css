@@ -1,0 +1,122 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.trigger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 108px;
+  z-index: 40;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 18px 40px rgba(0,0,0,.08);
+}
+
+.inner {
+  width: min(var(--max), calc(100% - 64px));
+  margin: 0 auto;
+  padding: 28px 0 34px;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.input {
+  flex: 1;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  background: transparent;
+  padding: 12px 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(25px, 3vw, 40px);
+  outline: none;
+}
+
+.close {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.helper {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.results {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.thumb {
+  position: relative;
+  width: 74px;
+  aspect-ratio: 4 / 5.2;
+  overflow: hidden;
+  background: #eee8df;
+}
+
+.name {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  line-height: 1.2;
+  display: block;
+}
+
+.meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.empty {
+  margin-top: 22px;
+  color: var(--muted);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 108px 0 0;
+  z-index: 35;
+  background: rgba(29,29,26,.18);
+}
+
+@media (max-width: 900px) {
+  .panel { top: 108px; }
+  .results { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .inner { width: min(100% - 32px, var(--max)); }
+  .results { grid-template-columns: 1fr; }
+  .panel { top: 108px; }
+  .input { font-size: 28px; }
+}
