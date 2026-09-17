@@ -10,7 +10,7 @@ import {
 export async function POST(request: NextRequest) {
   if (!hasDashboardSecret()) {
     return NextResponse.json(
-      { message: "ADMIN_DASHBOARD_KEY is missing in apps/web/.env.local" },
+      { message: "ADMIN_API_KEY is missing in apps/web/.env.local" },
       { status: 500 },
     );
   }

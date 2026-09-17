@@ -98,8 +98,13 @@
   font-size: 12px;
 }
 
-.adminTopbar nav span {
+.adminTopbar nav span,
+.adminTopbar nav a {
   color: var(--muted);
+}
+
+.adminTopbar nav a:hover {
+  color: var(--ink);
 }
 
 .lockButton {

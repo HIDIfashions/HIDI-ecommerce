@@ -1,9 +1,13 @@
 import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, Put, Query, UnauthorizedException } from "@nestjs/common";
+import { AdminInventoryService, type AdjustInventoryInput } from "./admin-inventory.service.js";
 import { AdminService } from "./admin.service.js";
 
 @Controller("admin")
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly inventory: AdminInventoryService,
+  ) {}
 
   private requireAdmin(key?: string) {
     const expected = process.env.ADMIN_API_KEY;
@@ -20,6 +24,36 @@ export class AdminController {
   ) {
     this.requireAdmin(adminKey);
     return this.admin.listOrders(query, status);
+  }
+
+  @Get("inventory")
+  inventoryList(
+    @Headers("x-admin-key") adminKey?: string,
+    @Query("q") query?: string,
+    @Query("status") status?: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.inventory.list(query, status);
+  }
+
+  @Get("inventory/:variantId/history")
+  inventoryHistory(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("variantId") variantId: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.inventory.history(variantId);
+  }
+
+  @Patch("inventory/:variantId")
+  adjustInventory(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Headers("x-admin-name") adminName: string | undefined,
+    @Param("variantId") variantId: string,
+    @Body() body: AdjustInventoryInput,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.inventory.adjust(variantId, body, adminName);
   }
 
   @Get("orders/:orderNumber")

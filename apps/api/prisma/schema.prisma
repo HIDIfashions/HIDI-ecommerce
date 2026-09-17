@@ -59,6 +59,14 @@ enum ShipmentStatus {
   CANCELLED
 }
 
+enum InventoryMovementType {
+  RECEIPT
+  CORRECTION
+  DAMAGE
+  RETURN_RESTOCK
+  OTHER
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String?  @unique
@@ -197,13 +205,33 @@ model ProductVariant {
 }
 
 model Inventory {
-  id        String         @id @default(cuid())
-  variantId String         @unique
-  onHand    Int            @default(0)
-  reserved  Int            @default(0)
-  safetyStock Int          @default(0)
-  updatedAt DateTime       @updatedAt
-  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  id           String              @id @default(cuid())
+  variantId    String              @unique
+  onHand       Int                 @default(0)
+  reserved     Int                 @default(0)
+  safetyStock  Int                 @default(0)
+  reorderLevel Int                 @default(5)
+  updatedAt    DateTime            @updatedAt
+  variant      ProductVariant      @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  movements    InventoryMovement[]
+}
+
+model InventoryMovement {
+  id           String                @id @default(cuid())
+  inventoryId  String
+  type         InventoryMovementType
+  delta        Int
+  onHandBefore Int
+  onHandAfter  Int
+  reason       String
+  note         String?
+  reference    String?
+  actor        String?
+  createdAt    DateTime              @default(now())
+  inventory    Inventory             @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryId, createdAt])
+  @@index([createdAt])
 }
 
 model Cart {

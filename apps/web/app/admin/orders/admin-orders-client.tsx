@@ -163,7 +163,7 @@ export function AdminOrdersClient() {
       <header className={styles.adminTopbar}>
         <div>
           <p className={styles.eyebrow}>HIDI ADMIN</p>
-          <nav><strong>Orders</strong><span>Products</span><span>Inventory</span><span>Customers</span></nav>
+          <nav><strong>Orders</strong><span>Products</span><Link href="/admin/inventory">Inventory</Link><span>Customers</span></nav>
         </div>
         <button className={styles.lockButton} type="button" onClick={() => void lock()}>Lock admin</button>
       </header>

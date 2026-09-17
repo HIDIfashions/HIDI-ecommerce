@@ -303,8 +303,8 @@ async function main() {
 
       await prisma.inventory.upsert({
         where: { variantId: variant.id },
-        update: { onHand: 10, reserved: 0, safetyStock: 0 },
-        create: { variantId: variant.id, onHand: 10, reserved: 0, safetyStock: 0 },
+        update: { reorderLevel: 5 },
+        create: { variantId: variant.id, onHand: 10, reserved: 0, safetyStock: 0, reorderLevel: 5 },
       });
     }
   }
