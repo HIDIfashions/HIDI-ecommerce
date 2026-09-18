@@ -7,6 +7,7 @@ import { WishlistButton } from "@/components/wishlist-button";
 import { ProductReviews } from "@/components/product-reviews";
 import { ProductQualitySummary } from "@/components/product-quality-summary";
 import { ProductContactActions } from "@/components/product-contact-actions";
+import { RetentionTracker } from "@/components/retention-tracker";
 import { formatPaise, getProduct, getProductReviews } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   ];
 
   return <div className="container product-page">
+    <RetentionTracker productId={product.id} slug={product.slug} />
     <div className="breadcrumbs"><Link href="/">Home</Link> / <Link href={`/collections/${collection.slug}`}>{collection.name}</Link> / {product.name}</div>
     <div className="pdp-grid">
       <ProductGallery productName={product.name} images={gallery} />
@@ -39,6 +41,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <ProductInfoAccordion product={product} />
       </aside>
     </div>
-    {reviews.reviewCount > 0 && <ProductReviews data={reviews} />}
+    <ProductReviews data={reviews} />
   </div>;
 }

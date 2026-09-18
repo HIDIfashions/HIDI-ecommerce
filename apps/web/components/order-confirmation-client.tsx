@@ -18,6 +18,7 @@ type Receipt = {
   shippingPaise: number;
   taxPaise: number;
   totalPaise: number;
+  walletAppliedPaise?: number;
   customerEmail?: string | null;
   customerPhone: string;
   shippingAddress: {
@@ -87,7 +88,9 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
   const address = receipt.shippingAddress ?? {};
   const fullName = [address.firstName, address.lastName].filter(Boolean).join(" ");
   const paymentLabel = receipt.payment?.status === "CAPTURED" ? "Paid" : titleCase(receipt.payment?.status);
-  const paymentMethod = receipt.payment?.method ? titleCase(receipt.payment.method) : "Razorpay";
+  const walletAppliedPaise = receipt.walletAppliedPaise ?? 0;
+  const paymentMethod = walletAppliedPaise === receipt.totalPaise && walletAppliedPaise > 0
+    ? "HIDI rewards" : receipt.payment?.method ? titleCase(receipt.payment.method) : "Razorpay";
   const orderLabel = titleCase(receipt.status);
   const placedAt = new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
@@ -100,7 +103,7 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
     <p>{pendingReview
       ? "Your payment is safe. Our system is completing the confirmation; please do not pay again."
       : "Thank you for choosing HIDI. We’ll keep you updated as your order moves from our team to your door."}</p>
-    <p className={styles.updateNote}>You’ll receive order updates by email and WhatsApp as fulfilment progresses.</p>
+    <p className={styles.updateNote}>You can check your latest order status in My account.</p>
 
     <div className="confirmation-number">
       <span>Order number</span>
@@ -134,7 +137,9 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
           <div><span>Subtotal</span><strong>{formatPaise(receipt.subtotalPaise)}</strong></div>
           {receipt.discountPaise > 0 && <div><span>Discount</span><strong>−{formatPaise(receipt.discountPaise)}</strong></div>}
           <div><span>Shipping</span><strong>{receipt.shippingPaise ? formatPaise(receipt.shippingPaise) : "Free"}</strong></div>
-          <div className="confirmation-total-row"><span>Total paid</span><strong>{formatPaise(receipt.totalPaise)}</strong></div>
+          <div className="confirmation-total-row"><span>Order total</span><strong>{formatPaise(receipt.totalPaise)}</strong></div>
+          {walletAppliedPaise > 0 && <div><span>HIDI rewards applied</span><strong>{formatPaise(walletAppliedPaise)}</strong></div>}
+          <div><span>{receipt.payment?.status === "CAPTURED" ? "Payment received" : "External payment amount"}</span><strong>{formatPaise(receipt.totalPaise - walletAppliedPaise)}</strong></div>
         </div>
       </section>
 

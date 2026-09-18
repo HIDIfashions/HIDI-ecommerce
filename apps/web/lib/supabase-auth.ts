@@ -70,16 +70,24 @@ export async function verifyEmailOtp(email: string, token: string) {
 
 async function refreshSession(session: StoredSession) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  function isCurrentSession() {
+    const current = getStoredSession();
+    return current?.user?.id === session.user.id && current?.refresh_token === session.refresh_token;
+  }
   const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({ refresh_token: session.refresh_token }),
   });
   if (!response.ok) {
-    clearStoredSession();
+    // A late failure must not sign out a different or already refreshed session.
+    if (isCurrentSession()) clearStoredSession();
     return null;
   }
-  return saveSession(await response.json());
+  const payload = await response.json();
+  // Logout/account switching may happen while either fetch or JSON parsing awaits.
+  if (!isCurrentSession() || payload?.user?.id !== session.user.id) return null;
+  return saveSession(payload);
 }
 
 export async function getAccessToken() {

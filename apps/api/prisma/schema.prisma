@@ -98,6 +98,8 @@ model User {
   carts         Cart[]
   orders        Order[]
   couponUses    CouponRedemption[]
+  retentionProfile RetentionProfile?
+  wallet        WalletAccount?
 
   @@index([createdAt])
 }
@@ -346,6 +348,7 @@ model Order {
   shippingPaise Int         @default(0)
   taxPaise      Int         @default(0)
   totalPaise    Int
+  walletAppliedPaise Int    @default(0)
   customerEmail String?
   customerPhone String
   shippingAddress Json
@@ -362,6 +365,9 @@ model Order {
   reservations  InventoryReservation[]
   reviewFollowUps ReviewFollowUp[]
   reviews         ProductReview[]
+  walletHold      WalletHold?
+  rewardAccrual   RewardAccrual?
+  walletEntries   WalletLedger[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -462,6 +468,7 @@ model Payment {
   amountPaise       Int
   method            String?
   rawReference      Json?
+  refunds           PaymentRefund[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -515,4 +522,150 @@ model CouponRedemption {
 
   @@unique([couponId, userId, orderId])
   @@index([couponId, userId])
+}
+
+// Backend-only retention data. Browser/Data API access is denied by the migration.
+model RetentionProfile {
+  id                    String   @id @default(cuid())
+  authSubject           String   @unique
+  userId                String   @unique
+  whatsappOptIn         Boolean  @default(false)
+  personalizationOptIn  Boolean  @default(false)
+  consentVersion        String   @default("hidi-retention-v1")
+  verifiedPhone         String?
+  phoneVerifiedAt       DateTime?
+  consentUpdatedAt      DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audits                RetentionConsentAudit[]
+  events                RetentionEvent[]
+  deliveries            RetentionDelivery[]
+}
+
+model RetentionConsentAudit {
+  id                    String   @id @default(cuid())
+  profileId             String
+  whatsappOptIn         Boolean
+  personalizationOptIn  Boolean
+  consentVersion        String
+  source                String
+  verifiedPhone         String?
+  createdAt             DateTime @default(now())
+  profile               RetentionProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+}
+
+model RetentionEvent {
+  id         String   @id @default(cuid())
+  profileId  String
+  productId  String
+  variantId  String?
+  kind       String
+  episodeKey String
+  createdAt  DateTime @default(now())
+  profile    RetentionProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, productId, createdAt])
+  @@index([createdAt])
+}
+
+model RetentionDelivery {
+  id         String   @id @default(cuid())
+  profileId  String
+  episodeKey String   @unique
+  kind       String
+  category   String   @default("MARKETING")
+  status     String
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+  profile    RetentionProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, category, sentAt])
+}
+
+// Server-only store credit. No client/Data API writes or transferable balances.
+model WalletAccount {
+  id            String   @id @default(cuid())
+  authSubject   String   @unique
+  userId        String   @unique
+  currency      String   @default("INR")
+  balancePaise  Int      @default(0)
+  reservedPaise Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  entries       WalletLedger[]
+  holds         WalletHold[]
+  accruals      RewardAccrual[]
+}
+
+model WalletLedger {
+  id         String   @id @default(cuid())
+  walletId   String
+  orderId    String?
+  kind       String
+  deltaPaise Int
+  eventKey   String   @unique
+  createdAt  DateTime @default(now())
+  wallet     WalletAccount @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  order      Order?        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([walletId, createdAt, id])
+  @@index([orderId])
+}
+
+model WalletHold {
+  id           String   @id @default(cuid())
+  walletId     String
+  orderId      String   @unique
+  amountPaise  Int
+  status       String   @default("ACTIVE")
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  releasedAt   DateTime?
+  refundedAt   DateTime?
+  createdAt    DateTime @default(now())
+  wallet       WalletAccount @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([walletId, status])
+  @@index([status, expiresAt])
+}
+
+model RewardAccrual {
+  id               String   @id @default(cuid())
+  walletId         String
+  orderId          String   @unique
+  basisPaise       Int
+  rewardPaise      Int
+  returnWindowDays Int
+  policyVersion   String
+  status          String   @default("PENDING")
+  eligibleAt      DateTime?
+  creditedAt      DateTime?
+  reversedAt      DateTime?
+  reason          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  wallet          WalletAccount @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([walletId, status])
+  @@index([status, eligibleAt, id])
+  @@index([createdAt, id])
+}
+
+model PaymentRefund {
+  id               String   @id @default(cuid())
+  paymentId        String
+  providerRefundId String   @unique
+  amountPaise      Int
+  status          String   @default("PROCESSED")
+  processedAt     DateTime
+  createdAt       DateTime @default(now())
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId, status])
 }

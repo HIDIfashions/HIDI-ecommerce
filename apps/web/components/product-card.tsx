@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight, Share2, MessageCircle } from "lucide-react";
+import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight, Share2 } from "lucide-react";
 import type { ApiProduct, ApiVariant } from "@/lib/api";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
 import { cardPrice, money, validColourHex, variantsForColour } from "@/lib/product-card-utils";
 import { getWishlistItems, removeWishlistSlug, saveWishlistItem, WISHLIST_EVENT } from "@/lib/wishlist";
 import { ProductCardMedia } from "./product-card-media";
 import { getProductCardVideos } from "@/lib/product-card-videos";
-import { shareProduct, whatsappOrderUrl } from "@/lib/product-sharing";
+import { configuredWhatsAppNumber, shareProduct } from "@/lib/product-sharing";
+import { WhatsAppIcon } from "./whatsapp-icon";
 import styles from "./product-card.module.css";
 
 type Props = { product: ApiProduct; initialVariantId?: string };
@@ -41,6 +42,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const busy = phase === "adding";
   const price = cardPrice(variants, selected?.id ?? "", product.minPricePaise);
   const href = `/products/${encodeURIComponent(product.slug)}`;
+  const whatsappConfigured = Boolean(configuredWhatsAppNumber());
 
   useEffect(() => {
     const sync = () => {
@@ -112,21 +114,18 @@ export function ProductCard({ product, initialVariantId }: Props) {
         text: `Take a look at ${product.name} from HIDI.`,
       });
       if (result === "copied") setMessage("Product link copied.");
-      if (result === "unsupported") setMessage("Copy the product link from your browser.");
+      if (result === "unsupported") setMessage("Open the product and copy its address to share.");
     } catch {
-      setMessage("Sharing was cancelled.");
+      setMessage("Couldn’t share this time. Open the product and copy its address.");
     }
   }
 
   function orderOnWhatsapp() {
-    const url = whatsappOrderUrl({
-      slug: product.slug,
-      name: product.name,
-      priceText: money(price.pricePaise),
-      color: activeColour || undefined,
-      size: selected?.size,
-    });
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (!whatsappConfigured) return;
+    const query = new URLSearchParams({ whatsapp: "1", colour: activeColour });
+    if (selected) query.set("variant", selected.id);
+    // The detail-page dialog refreshes stock and confirms size before handoff.
+    router.push(href + "?" + query.toString());
   }
 
   async function add() {
@@ -220,8 +219,8 @@ export function ProductCard({ product, initialVariantId }: Props) {
           <button type="button" onClick={() => void share()} aria-label={`Share ${product.name}`}>
             <Share2 size={15} aria-hidden="true" /> Share
           </button>
-          <button type="button" onClick={orderOnWhatsapp} aria-label={`Order ${product.name} on WhatsApp`}>
-            <MessageCircle size={15} aria-hidden="true" /> Order on WhatsApp
+          <button type="button" disabled={!whatsappConfigured} title={whatsappConfigured ? "Review your selection on the product page" : "WhatsApp ordering is not available yet"} onClick={orderOnWhatsapp} aria-label={`Order ${product.name} on WhatsApp${whatsappConfigured ? "" : " — not available yet"}`}>
+            <WhatsAppIcon size={16} /> Order on WhatsApp
           </button>
         </div>
         <div className={styles.feedback}>

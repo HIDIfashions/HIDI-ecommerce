@@ -4,6 +4,8 @@ type SupabaseAuthUser = {
   id: string;
   email?: string | null;
   email_confirmed_at?: string | null;
+  phone?: string | null;
+  phone_confirmed_at?: string | null;
   user_metadata?: Record<string, unknown> | null;
 };
 
@@ -11,6 +13,8 @@ export type VerifiedAuthUser = {
   id: string;
   email: string;
   metadata: Record<string, unknown>;
+  phone?: string | null;
+  phoneVerified?: boolean;
 };
 
 @Injectable()
@@ -41,7 +45,7 @@ export class SupabaseAuthService {
     const user = await response.json() as SupabaseAuthUser;
     const email = user.email?.trim().toLowerCase();
 
-    if (!user.id || !email) {
+    if (!user.id || !email || !user.email_confirmed_at) {
       throw new UnauthorizedException("A verified email address is required");
     }
 
@@ -49,6 +53,8 @@ export class SupabaseAuthService {
       id: user.id,
       email,
       metadata: user.user_metadata ?? {},
+      phone: user.phone_confirmed_at ? user.phone ?? null : null,
+      phoneVerified: Boolean(user.phone && user.phone_confirmed_at),
     };
   }
 

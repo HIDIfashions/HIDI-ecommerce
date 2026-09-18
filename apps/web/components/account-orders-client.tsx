@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { CatalogImage } from "@/components/catalog-image";
+import { RetentionPreferences } from "@/components/retention-preferences";
+import { WalletBalance } from "@/components/wallet-balance";
 import { formatPaise } from "@/lib/api";
+import { formatWalletPaise } from "@/lib/wallet-client";
 import {
   authConfigured,
   getAccessToken,
@@ -21,6 +24,8 @@ type OrderSummary = {
   status: string;
   createdAt: string;
   totalPaise: number;
+  walletAppliedPaise?: number;
+  cashPayablePaise?: number;
   paymentStatus?: string | null;
   itemCount: number;
   items: Array<{
@@ -207,6 +212,7 @@ export function AccountOrdersClient() {
             <div className={styles.statusBlock}>
               <span className={styles.status}>{titleCase(order.status)}</span>
               <strong>{formatPaise(order.totalPaise)}</strong>
+              {!!order.walletAppliedPaise && <span className={styles.meta}>Rewards: {formatWalletPaise(order.walletAppliedPaise)} · Cash: {formatWalletPaise(order.cashPayablePaise ?? Math.max(0, order.totalPaise - order.walletAppliedPaise))}</span>}
             </div>
           </div>
 
@@ -229,5 +235,8 @@ export function AccountOrdersClient() {
         </article>;
       })}
     </div>}
+
+    <WalletBalance />
+    <RetentionPreferences />
   </>;
 }
