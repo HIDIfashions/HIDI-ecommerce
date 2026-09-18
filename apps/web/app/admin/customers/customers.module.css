@@ -17,10 +17,10 @@
 .toolbar input { flex: 1; min-height: 46px; border: 1px solid #d3ccc0; padding: 11px 13px; font: inherit; background: white; }
 .toolbar span { color: #746a5d; font-size: 12px; white-space: nowrap; }
 .tableWrap { border: 1px solid #ddd7ce; overflow-x: auto; background: #fffdfa; }
-table { width: 100%; border-collapse: collapse; min-width: 980px; text-align: left; font-size: 13px; }
-th { text-transform: uppercase; font-size: 10px; letter-spacing: .07em; color: #766b5d; font-weight: 500; padding: 14px 16px; border-bottom: 1px solid #ddd7ce; }
-td { padding: 18px 16px; border-bottom: 1px solid #e5dfd6; vertical-align: top; }
-td small { display: block; color: #776f61; margin-top: 5px; }
+.tableWrap table { width: 100%; border-collapse: collapse; min-width: 980px; text-align: left; font-size: 13px; }
+.tableWrap th { text-transform: uppercase; font-size: 10px; letter-spacing: .07em; color: #766b5d; font-weight: 500; padding: 14px 16px; border-bottom: 1px solid #ddd7ce; }
+.tableWrap td { padding: 18px 16px; border-bottom: 1px solid #e5dfd6; vertical-align: top; }
+.tableWrap td small { display: block; color: #776f61; margin-top: 5px; }
 .products { max-width: 300px; line-height: 1.5; color: #625b51; }
 .error { padding: 14px 18px; color: #8a332c; background: #fff2ef; border: 1px solid #e5b6b1; margin: 18px 0; }
 .empty { padding: 36px; color: #766b5d; text-align: center; }
