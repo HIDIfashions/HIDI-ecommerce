@@ -156,6 +156,7 @@ model Product {
   images         ProductImage[]
   variants       ProductVariant[]
   orderItems     OrderItem[]
+  reviews        ProductReview[]
   cartItems      CartItem[]
   collections    ProductCollection[]
 
@@ -360,6 +361,7 @@ model Order {
   shipments     Shipment[]
   reservations  InventoryReservation[]
   reviewFollowUps ReviewFollowUp[]
+  reviews         ProductReview[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -378,6 +380,8 @@ model ReviewFollowUp {
   lastAttemptAt     DateTime?
   lastError         String?
   providerMessageId String?
+  reviewToken       String?               @unique
+  completedAt       DateTime?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
   order             Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -387,6 +391,26 @@ model ReviewFollowUp {
   @@index([orderId])
 }
 
+model ProductReview {
+  id               String    @id @default(cuid())
+  productId        String
+  orderId          String
+  orderItemId      String    @unique
+  rating           Int
+  title            String?
+  body             String
+  reviewerName     String
+  verifiedPurchase Boolean   @default(true)
+  published        Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem        OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([productId, published, createdAt])
+  @@index([orderId])
+}
 model OrderItem {
   id             String         @id @default(cuid())
   orderId        String
@@ -403,6 +427,7 @@ model OrderItem {
   order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product        Product        @relation(fields: [productId], references: [id])
   variant        ProductVariant @relation(fields: [variantId], references: [id])
+  review         ProductReview?
 
   @@index([orderId])
   @@index([variantId])
