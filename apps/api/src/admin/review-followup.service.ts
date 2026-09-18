@@ -60,9 +60,16 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
   async runOnce() {
     if (this.running) return { skipped: true, reason: "already_running" };
     this.running = true;
+    let databaseLock = false;
 
     try {
       if (!this.enabled()) return { skipped: true, reason: "disabled" };
+
+      const lockRows = await this.prisma.$queryRawUnsafe<Array<{ locked: boolean }>>(
+        "SELECT pg_try_advisory_lock(48273419) AS locked",
+      );
+      databaseLock = Boolean(lockRows[0]?.locked);
+      if (!databaseLock) return { skipped: true, reason: "another_instance_running" };
 
       const apiKey = process.env.RESEND_API_KEY?.trim();
       const from = process.env.REVIEW_FROM_EMAIL?.trim();
@@ -194,6 +201,11 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
         failed,
       };
     } finally {
+      if (databaseLock) {
+        await this.prisma.$queryRawUnsafe(
+          "SELECT pg_advisory_unlock(48273419)",
+        ).catch(() => undefined);
+      }
       this.running = false;
     }
   }
