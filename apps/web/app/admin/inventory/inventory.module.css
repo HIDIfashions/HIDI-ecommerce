@@ -80,6 +80,7 @@
 .searchForm button,
 .lockButton,
 .refreshButton,
+.receiveButton,
 .saveButton,
 .cancelButton {
   border: 1px solid var(--ink);
@@ -133,6 +134,7 @@
 
 .lockButton,
 .refreshButton,
+.receiveButton,
 .cancelButton {
   background: transparent;
   color: var(--ink);
@@ -153,6 +155,20 @@
 }
 
 .pageHeader p { margin: 0; }
+
+.headerActions {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.receiveButton {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ink);
+  color: white;
+  text-decoration: none;
+}
 
 .stats {
   display: grid;
@@ -265,7 +281,33 @@
 .productCell {
   min-width: 0;
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.productCell img,
+.imagePlaceholder {
+  width: 42px;
+  height: 50px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  margin-right: 8px;
+  background: var(--ivory);
+}
+
+.imagePlaceholder {
+  display: grid;
+  place-items: center;
+  font-family: Georgia, serif;
+  font-size: 24px;
+  color: #b9aa98;
+}
+
+.productCell > div {
+  display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 4px;
 }
 
@@ -281,6 +323,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.productCell em {
+  color: var(--muted);
+  font-size: 9px;
+  font-style: normal;
 }
 
 .variantCell {

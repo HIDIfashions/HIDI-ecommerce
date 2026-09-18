@@ -1,5 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InventoryMovementType } from "../generated/prisma/client.js";
+import { InventoryMovementType, Prisma, StockReceiptStatus } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 type InventoryStatus = "ALL" | "HEALTHY" | "LOW" | "OUT";
@@ -13,6 +14,28 @@ export type AdjustInventoryInput = {
   reference?: string;
   safetyStock?: number;
   reorderLevel?: number;
+};
+
+export type StockReceiptInput = {
+  supplierName?: string;
+  invoiceNumber?: string;
+  purchaseOrderNumber?: string;
+  receivedAt?: string;
+  note?: string;
+  action?: "DRAFT" | "POST";
+  lines?: Array<{
+    variantId?: string;
+    acceptedQuantity?: number;
+    rejectedQuantity?: number;
+    unitCostPaise?: number | null;
+  }>;
+};
+
+export type VariantImageInput = {
+  url?: string;
+  storagePath?: string;
+  alt?: string;
+  applyToColor?: boolean;
 };
 
 @Injectable()
@@ -36,7 +59,16 @@ export class AdminInventoryService {
           : {}),
       },
       include: {
-        product: { select: { id: true, name: true, slug: true, status: true } },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+            images: { orderBy: { position: "asc" }, take: 1 },
+          },
+        },
+        images: { orderBy: { position: "asc" } },
         inventory: {
           include: { movements: { orderBy: { createdAt: "desc" }, take: 1 } },
         },
@@ -132,12 +164,176 @@ export class AdminInventoryService {
       const variant = await tx.productVariant.findUnique({
         where: { id: variantId },
         include: {
-          product: { select: { id: true, name: true, slug: true, status: true } },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              status: true,
+              images: { orderBy: { position: "asc" }, take: 1 },
+            },
+          },
+          images: { orderBy: { position: "asc" } },
           inventory: { include: { movements: { orderBy: { createdAt: "desc" }, take: 1 } } },
         },
       });
       if (!variant) throw new NotFoundException("Inventory variant not found");
       return this.toRow(variant);
+    });
+  }
+
+  async listReceipts() {
+    return this.prisma.stockReceipt.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      include: {
+        lines: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            variant: {
+              select: {
+                sku: true,
+                size: true,
+                color: true,
+                product: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async createReceipt(input: StockReceiptInput, actor?: string) {
+    const receipt = this.validateReceipt(input);
+    const created = await this.prisma.stockReceipt.create({
+      data: {
+        receiptNumber: this.receiptNumber(),
+        supplierName: receipt.supplierName,
+        invoiceNumber: receipt.invoiceNumber,
+        purchaseOrderNumber: receipt.purchaseOrderNumber,
+        receivedAt: receipt.receivedAt,
+        note: receipt.note,
+        createdBy: actor?.trim() || "HIDI Admin",
+        totalAccepted: receipt.lines.reduce((sum, line) => sum + line.acceptedQuantity, 0),
+        totalRejected: receipt.lines.reduce((sum, line) => sum + line.rejectedQuantity, 0),
+        lines: { createMany: { data: receipt.lines } },
+      },
+    });
+
+    if (input.action === "POST") return this.postReceipt(created.id, actor);
+    return this.receipt(created.id);
+  }
+
+  async postReceipt(receiptId: string, actor?: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const lockedReceipt = await tx.$queryRaw<Array<{ id: string; status: StockReceiptStatus }>>`
+        SELECT "id", "status"
+        FROM "StockReceipt"
+        WHERE "id" = ${receiptId}
+        FOR UPDATE
+      `;
+      if (!lockedReceipt[0]) throw new NotFoundException("Stock receipt not found");
+      if (lockedReceipt[0].status === StockReceiptStatus.POSTED) return this.receipt(receiptId, tx);
+      if (lockedReceipt[0].status !== StockReceiptStatus.DRAFT) {
+        throw new BadRequestException("Only draft receipts can be posted");
+      }
+
+      const receipt = await tx.stockReceipt.findUnique({
+        where: { id: receiptId },
+        include: { lines: { orderBy: { variantId: "asc" } } },
+      });
+      if (!receipt) throw new NotFoundException("Stock receipt not found");
+      if (!receipt.invoiceNumber && !receipt.purchaseOrderNumber) {
+        throw new BadRequestException("Add an invoice number or purchase order before posting");
+      }
+      if (!receipt.lines.length) throw new BadRequestException("Add at least one SKU before posting");
+
+      for (const line of receipt.lines) {
+        const lockedInventory = await tx.$queryRaw<Array<{ id: string; onHand: number; reserved: number }>>`
+          SELECT "id", "onHand", "reserved"
+          FROM "Inventory"
+          WHERE "variantId" = ${line.variantId}
+          FOR UPDATE
+        `;
+        const inventory = lockedInventory[0];
+        if (!inventory) throw new BadRequestException(`Inventory is missing for variant ${line.variantId}`);
+        if (line.acceptedQuantity === 0) continue;
+
+        await tx.inventory.update({
+          where: { id: inventory.id },
+          data: {
+            onHand: { increment: line.acceptedQuantity },
+            movements: {
+              create: {
+                type: InventoryMovementType.RECEIPT,
+                delta: line.acceptedQuantity,
+                onHandBefore: inventory.onHand,
+                onHandAfter: inventory.onHand + line.acceptedQuantity,
+                reason: "Manufacturer stock received",
+                reference: receipt.receiptNumber,
+                note: [
+                  receipt.supplierName,
+                  receipt.invoiceNumber ? `Invoice ${receipt.invoiceNumber}` : null,
+                  receipt.purchaseOrderNumber ? `PO ${receipt.purchaseOrderNumber}` : null,
+                  line.rejectedQuantity ? `${line.rejectedQuantity} rejected` : null,
+                ].filter(Boolean).join(" · "),
+                actor: actor?.trim() || receipt.createdBy || "HIDI Admin",
+              },
+            },
+          },
+        });
+      }
+
+      await tx.stockReceipt.update({
+        where: { id: receiptId },
+        data: { status: StockReceiptStatus.POSTED, postedAt: new Date() },
+      });
+      return this.receipt(receiptId, tx);
+    }, { timeout: 20_000 });
+  }
+
+  async addVariantImage(variantId: string, input: VariantImageInput) {
+    const url = input.url?.trim() ?? "";
+    if (!this.validImageUrl(url)) throw new BadRequestException("Enter a valid HTTPS or local image URL");
+
+    const source = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      select: { id: true, productId: true, product: { select: { name: true } }, color: true, size: true },
+    });
+    if (!source) throw new NotFoundException("Product variant not found");
+
+    const targets = input.applyToColor
+      ? await this.prisma.productVariant.findMany({
+          where: { productId: source.productId, color: source.color },
+          select: { id: true, size: true },
+          orderBy: { size: "asc" },
+        })
+      : [{ id: source.id, size: source.size }];
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const target of targets) {
+        const count = await tx.productVariantImage.count({ where: { variantId: target.id } });
+        await tx.productVariantImage.upsert({
+          where: { variantId_url: { variantId: target.id, url } },
+          create: {
+            variantId: target.id,
+            url,
+            storagePath: input.storagePath?.trim() || null,
+            alt: input.alt?.trim() || `${source.product.name} · ${source.color} · ${target.size}`,
+            position: count,
+          },
+          update: {
+            storagePath: input.storagePath?.trim() || null,
+            alt: input.alt?.trim() || `${source.product.name} · ${source.color} · ${target.size}`,
+          },
+        });
+      }
+    });
+
+    return this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      select: { id: true, sku: true, images: { orderBy: { position: "asc" } } },
     });
   }
 
@@ -147,7 +343,14 @@ export class AdminInventoryService {
     size: string;
     color: string;
     active: boolean;
-    product: { id: string; name: string; slug: string; status: string };
+    product: {
+      id: string;
+      name: string;
+      slug: string;
+      status: string;
+      images: Array<{ url: string }>;
+    };
+    images: Array<{ id: string; url: string; alt: string; position: number }>;
     inventory: null | {
       onHand: number;
       reserved: number;
@@ -183,7 +386,95 @@ export class AdminInventoryService {
       status,
       updatedAt: variant.inventory.updatedAt,
       lastMovementAt: variant.inventory.movements[0]?.createdAt ?? null,
+      imageUrl: variant.images[0]?.url ?? variant.product.images[0]?.url ?? null,
+      photoCount: variant.images.length,
     };
+  }
+
+  private async receipt(receiptId: string, client: Prisma.TransactionClient | PrismaService = this.prisma) {
+    const receipt = await client.stockReceipt.findUnique({
+      where: { id: receiptId },
+      include: {
+        lines: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            variant: {
+              select: {
+                sku: true,
+                size: true,
+                color: true,
+                product: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!receipt) throw new NotFoundException("Stock receipt not found");
+    return receipt;
+  }
+
+  private validateReceipt(input: StockReceiptInput) {
+    const supplierName = input.supplierName?.trim() ?? "";
+    if (!supplierName) throw new BadRequestException("Supplier name is required");
+    if (!Array.isArray(input.lines) || input.lines.length === 0) {
+      throw new BadRequestException("Add at least one SKU to the receipt");
+    }
+    if (input.lines.length > 500) throw new BadRequestException("A receipt can contain at most 500 SKUs");
+
+    const receivedAt = new Date(input.receivedAt ?? "");
+    if (Number.isNaN(receivedAt.getTime())) throw new BadRequestException("Enter a valid received date");
+    const seen = new Set<string>();
+    const lines = input.lines.map((line) => {
+      const variantId = line.variantId?.trim() ?? "";
+      if (!variantId) throw new BadRequestException("Every receipt line needs a product variant");
+      if (seen.has(variantId)) throw new BadRequestException("The same SKU cannot appear twice in one receipt");
+      seen.add(variantId);
+
+      const acceptedQuantity = line.acceptedQuantity ?? 0;
+      const rejectedQuantity = line.rejectedQuantity ?? 0;
+      const unitCostPaise = line.unitCostPaise ?? null;
+      for (const [label, value] of [["Accepted quantity", acceptedQuantity], ["Rejected quantity", rejectedQuantity]] as const) {
+        if (!Number.isInteger(value) || value < 0) throw new BadRequestException(`${label} must be a whole number of zero or more`);
+      }
+      if (acceptedQuantity === 0 && rejectedQuantity === 0) {
+        throw new BadRequestException("Every receipt line needs an accepted or rejected quantity");
+      }
+      if (unitCostPaise !== null && (!Number.isInteger(unitCostPaise) || unitCostPaise < 0)) {
+        throw new BadRequestException("Unit cost must be zero or more");
+      }
+      return { variantId, acceptedQuantity, rejectedQuantity, unitCostPaise };
+    });
+
+    const invoiceNumber = input.invoiceNumber?.trim() || null;
+    const purchaseOrderNumber = input.purchaseOrderNumber?.trim() || null;
+    if (input.action === "POST" && !invoiceNumber && !purchaseOrderNumber) {
+      throw new BadRequestException("Add an invoice number or purchase order before posting");
+    }
+
+    return {
+      supplierName,
+      invoiceNumber,
+      purchaseOrderNumber,
+      receivedAt,
+      note: input.note?.trim() || null,
+      lines,
+    };
+  }
+
+  private receiptNumber() {
+    const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+    return `HIDI-GRN-${day}-${randomUUID().slice(0, 6).toUpperCase()}`;
+  }
+
+  private validImageUrl(value: string) {
+    if (value.startsWith("/")) return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" || (process.env.NODE_ENV !== "production" && url.protocol === "http:");
+    } catch {
+      return false;
+    }
   }
 
   private normaliseStatus(value?: string): InventoryStatus {

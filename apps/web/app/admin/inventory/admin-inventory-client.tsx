@@ -22,6 +22,8 @@ type InventoryRow = {
   status: InventoryStatus;
   updatedAt: string;
   lastMovementAt: string | null;
+  imageUrl?: string | null;
+  photoCount?: number;
 };
 
 type InventoryResponse = {
@@ -188,9 +190,12 @@ export function AdminInventoryClient() {
           <h1>Inventory</h1>
           <p>Live stock by product, colour and size. Checkout controls reserved pieces.</p>
         </div>
-        <button className={styles.refreshButton} type="button" onClick={() => void loadInventory()} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh stock"}
-        </button>
+        <div className={styles.headerActions}>
+          <Link className={styles.receiveButton} href="/admin/inventory/receive">Receive stock</Link>
+          <button className={styles.refreshButton} type="button" onClick={() => void loadInventory()} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh stock"}
+          </button>
+        </div>
       </section>
 
       <section className={styles.stats} aria-label="Inventory totals">
@@ -225,7 +230,10 @@ export function AdminInventoryClient() {
           </div>
           {inventory.rows.map((row) => (
             <div className={styles.inventoryRow} key={row.variantId}>
-              <div className={styles.productCell}><strong>{row.productName}</strong><small>{row.sku}</small></div>
+              <div className={styles.productCell}>
+                {row.imageUrl ? <img src={row.imageUrl} alt="" /> : <span className={styles.imagePlaceholder}>H</span>}
+                <div><strong>{row.productName}</strong><small>{row.sku}</small><em>{row.photoCount ?? 0} SKU photo{row.photoCount === 1 ? "" : "s"}</em></div>
+              </div>
               <div className={styles.variantCell}><span>{row.color}</span><b>{row.size}</b></div>
               <div className={styles.numberCell}>{row.onHand}</div>
               <div className={styles.numberCell}>{row.reserved}</div>
