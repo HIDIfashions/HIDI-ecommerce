@@ -10,7 +10,8 @@ import { useWalletSummary } from "@/components/wallet-balance";
 import { checkoutFingerprint, formatWalletPaise, parsePreparedCheckout, walletAccountId, walletAmountPaise, walletEnabled, WALLET_UPDATED_EVENT, type PreparedCheckout } from "@/lib/wallet-client";
 import walletStyles from "./wallet.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+import { BROWSER_API_URL } from "@/lib/browser-api";
+const API = BROWSER_API_URL;
 
 declare global {
   interface Window { Razorpay?: new (options: any) => { open: () => void; close?: () => void; on: (event: string, cb: (payload: any) => void) => void } }
