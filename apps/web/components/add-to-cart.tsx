@@ -5,7 +5,8 @@ import type { ApiProduct } from "@/lib/api";
 import { getCartSession } from "@/lib/cart-session";
 import { PRODUCT_VARIANT_EVENT, publishProductSelection, type ProductVariantSelection } from "@/lib/product-sharing";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+import { BROWSER_API_URL } from "@/lib/browser-api";
+const API = BROWSER_API_URL;
 export { PRODUCT_VARIANT_EVENT } from "@/lib/product-sharing";
 
 export function AddToCart({ product }: { product: ApiProduct }) {
