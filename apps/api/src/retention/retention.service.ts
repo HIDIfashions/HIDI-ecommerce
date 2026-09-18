@@ -57,8 +57,16 @@ export class RetentionService {
       const consentVersion = currentWording ? RETENTION_CONSENT_VERSION : (existing?.consentVersion ?? RETENTION_CONSENT_VERSION);
       let userId = existing?.userId;
       if (!userId) {
-        // Email has been verified against Supabase Auth, never supplied in this body.
-        const user = await tx.user.upsert({ where: { email: auth.email }, create: { email: auth.email }, update: {} });
+        // Use only server-verified Supabase Auth identity, never browser-supplied profile data.
+        const user = auth.phoneVerified && auth.phone
+          ? await tx.user.upsert({
+              where: { phone: auth.phone },
+              create: { phone: auth.phone, email: auth.email ?? null },
+              update: auth.email ? { email: auth.email } : {},
+            })
+          : auth.email
+            ? await tx.user.upsert({ where: { email: auth.email }, create: { email: auth.email }, update: {} })
+            : (() => { throw new BadRequestException("A verified mobile number or email address is required"); })();
         const prior = await tx.retentionProfile.findUnique({ where: { userId: user.id } });
         if (prior && prior.authSubject !== auth.id) throw new ConflictException("This customer account requires a support review before linking preferences");
         userId = user.id;
