@@ -1,6 +1,7 @@
 import { getCartSession } from "./cart-session";
 
-const API = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1").replace(/\/+$/, "");
+import { BROWSER_API_URL } from "@/lib/browser-api";
+const API = BROWSER_API_URL;
 const pending = new Set<string>();
 
 export class CatalogCartError extends Error {
