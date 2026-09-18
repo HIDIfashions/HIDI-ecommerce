@@ -100,6 +100,23 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
               priority={index === 0}
               fallbackLabel={`Image ${index + 1} · HIDI product photography`}
             />
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 14,
+                top: 14,
+                zIndex: 3,
+                padding: "6px 8px",
+                background: "rgba(255,253,249,.9)",
+                color: "#42352c",
+                fontSize: 9,
+                letterSpacing: ".12em",
+                textTransform: "uppercase",
+              }}
+            >
+              {String(index + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
+            </span>
             {image.url ? (
               <span
                 aria-hidden="true"
