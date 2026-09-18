@@ -73,6 +73,17 @@ enum StockReceiptStatus {
   CANCELLED
 }
 
+enum ReviewFollowUpStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum ReviewFollowUpChannel {
+  EMAIL
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String?  @unique
@@ -348,11 +359,32 @@ model Order {
   payments      Payment[]
   shipments     Shipment[]
   reservations  InventoryReservation[]
+  reviewFollowUps ReviewFollowUp[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([customerPhone])
   @@index([cartSessionId])
+}
+
+model ReviewFollowUp {
+  id                String                @id @default(cuid())
+  orderId           String
+  channel           ReviewFollowUpChannel @default(EMAIL)
+  status            ReviewFollowUpStatus  @default(PENDING)
+  dueAt             DateTime
+  sentAt            DateTime?
+  attempts          Int                   @default(0)
+  lastAttemptAt     DateTime?
+  lastError         String?
+  providerMessageId String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  order             Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, channel])
+  @@index([status, dueAt])
+  @@index([orderId])
 }
 
 model OrderItem {
