@@ -473,3 +473,27 @@ body {
     margin-top: 45px;
   }
 }
+
+/* Richer PDP photography */
+.pdp-gallery {
+  align-items: start;
+}
+.pdp-gallery .pdp-image:first-child {
+  grid-column: 1 / -1;
+  aspect-ratio: 16 / 13;
+}
+.pdp-gallery .pdp-image {
+  background: #f0ebe4 !important;
+}
+.pdp-gallery .pdp-image:hover img {
+  transform: scale(1.015);
+}
+.pdp-gallery .pdp-image img {
+  transition: transform .35s ease;
+}
+@media (max-width: 620px) {
+  .pdp-gallery .pdp-image:first-child {
+    grid-column: auto;
+    aspect-ratio: 4 / 5.1;
+  }
+}
