@@ -1,274 +1,199 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Sparkles, Truck, RefreshCcw } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  Gem,
+  HeartHandshake,
+  MessageCircle,
+  RefreshCcw,
+  ShieldCheck,
+  Sparkles,
+  Truck,
+} from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { getProducts } from "@/lib/api";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
 
-const edits = [
+const collections = [
   {
-    number: "01",
-    title: "Work Edit",
-    description: "Quiet polish for long days, sharp meetings and everything after.",
-    href: "/collections/work-edit",
-    image: "/products/aara-sage-work-kurta/01-main.png",
-    alt: "Aara Sage Work Kurta from the HIDI Work Edit",
-    tone: "For the workday",
+    title: "New Arrivals",
+    copy: "Fresh silhouettes, thoughtful details.",
+    href: "/collections/new-arrivals",
+    image: "/products/tara-dusty-rose-straight-kurta/01-main.png",
   },
   {
-    number: "02",
-    title: "Everyday Ease",
-    description: "Soft structure, easy silhouettes and pieces you will reach for again.",
+    title: "Work Edit",
+    copy: "Quiet elegance for long, real days.",
+    href: "/collections/work-edit",
+    image: "/products/ira-beige-office-kurta-set/01-main.png",
+  },
+  {
+    title: "Everyday",
+    copy: "Comfort that still feels considered.",
     href: "/collections/everyday",
     image: "/products/myra-peach-comfort-kurta-set/01-main.png",
-    alt: "Myra Peach Comfort Kurta Set from HIDI Everyday",
-    tone: "For every day",
   },
   {
-    number: "03",
     title: "Occasion",
-    description: "A little more presence, while still feeling unmistakably like you.",
+    copy: "Presence without excess.",
     href: "/collections/occasion",
     image: "/products/kiara-wine-festive-kurta-set/01-main.png",
-    alt: "Kiara Wine Festive Kurta Set from HIDI Occasion",
-    tone: "For the moments",
   },
 ] as const;
 
-const trust = [
-  { icon: Truck, title: "Complimentary shipping", text: "Above ₹1,499" },
-  { icon: RefreshCcw, title: "7-day exchange", text: "Simple & transparent" },
-  { icon: ShieldCheck, title: "Secure payments", text: "Trusted checkout" },
-  { icon: Sparkles, title: "Quality checked", text: "Before dispatch" },
+const standards = [
+  { icon: Sparkles, title: "Premium fabrics", copy: "Comfort-first materials chosen for repeat wear." },
+  { icon: BadgeCheck, title: "Quality checked", copy: "Every piece is reviewed before dispatch." },
+  { icon: Gem, title: "Timeless design", copy: "Refined silhouettes beyond one season." },
+  { icon: HeartHandshake, title: "Human support", copy: "Real help for fit, orders and exchanges." },
 ] as const;
 
 export default async function Home() {
   const catalogue = await getProducts();
-  const products = catalogue.slice(0, 8);
-  const galleryImages = new Set<string>();
-  const galleryProducts = new Set<string>();
-  const detailProducts = catalogue.filter((product) => {
-    const image = product.images?.find((candidate) => candidate.url?.trim());
-    if (!image || galleryImages.has(image.url) || galleryProducts.has(product.slug)) return false;
-    galleryImages.add(image.url);
-    galleryProducts.add(product.slug);
-    return true;
-  }).slice(0, 4);
+  const featured = catalogue.slice(0, 8);
+  const hero = catalogue.find((product) => product.slug === "meher-gold-beige-occasion-set")
+    ?? catalogue.find((product) => product.slug === "sana-sand-kurta-set")
+    ?? catalogue[0];
+  const heroImage = hero?.images?.find((image) => image.url?.trim())?.url
+    ?? "/products/sana-sand-kurta-set/01-main.png";
+  const whatsapp = (process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
+  const whatsappHref = whatsapp
+    ? "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent("Hi HIDI, I would like help choosing a style.")
+    : "/account";
 
   return (
     <>
       <section className={styles.hero}>
-        <div className={styles.heroEditorial}>
-          <div className={styles.heroMeta}>
-            <span>Indian wear for real days</span>
-            <span>Work · Everyday · Occasion</span>
-          </div>
-
-          <div className={styles.heroCopyWrap}>
-            <p className={styles.heroEyebrow}>QUIETLY CONFIDENT INDIAN WEAR</p>
-            <h1>For every role you carry.</h1>
-            <p className={styles.heroCopy}>
-              Indian wear for work, everyday rituals and occasions — calm in spirit, confident in presence.
-            </p>
-            <div className={styles.heroActions}>
-              <Link className={styles.primaryCta} href="/collections/new-arrivals">
-                Shop new arrivals <ArrowRight size={15} aria-hidden="true" />
-              </Link>
-              <Link className={styles.textCta} href="/collections/work-edit">
-                Explore Work Edit
-              </Link>
-            </div>
-          </div>
-
-          <div className={styles.heroSignature}>
-            <span>01</span>
-            <p>Designed around real routines, long days and repeat wear.</p>
-          </div>
-        </div>
-
-        <div className={styles.heroMedia}>
-          <video className={styles.video} autoPlay muted loop playsInline preload="metadata" aria-label="HIDI brand film">
-            <source src="/video/discover-hidi.mp4" type="video/mp4" />
-          </video>
-          <div className={styles.mediaShade} aria-hidden="true" />
-          <div className={styles.mediaCaption}>
-            <span>Quiet confidence</span>
-            <strong>Work · Everyday · Occasion</strong>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.trustBar} aria-label="Why shop HIDI">
-        <div className={styles.trustInner}>
-          {trust.map(({ icon: Icon, title, text }) => (
-            <div className={styles.trustItem} key={title}>
-              <Icon size={17} strokeWidth={1.5} aria-hidden="true" />
-              <div><strong>{title}</strong><span>{text}</span></div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className={`${styles.statement} container`}>
-        <div className={styles.statementIndex}>02</div>
-        <div className={styles.statementCopy}>
-          <p className={styles.kicker}>DRESS FOR THE DAY YOU HAVE</p>
-          <h2>Not louder.<br />Just more certain.</h2>
-        </div>
-        <div className={styles.statementText}>
-          <p>HIDI is built for the rhythm of real life: the commute, the meeting, the family lunch, the airport, the dinner after work.</p>
-          <Link className={styles.inlineLink} href="/about">Read our point of view <ArrowRight size={14} aria-hidden="true" /></Link>
-        </div>
-      </section>
-
-      <section className={`${styles.edits} container`}>
-        <Link href={edits[0].href} className={`${styles.editCard} ${styles.editLarge}`}>
-          <Image src={edits[0].image} alt={edits[0].alt} fill sizes="(max-width: 900px) 100vw, 65vw" className={styles.editImage} />
-          <div className={styles.editShade} />
-          <div className={styles.editTop}><span>{edits[0].number}</span><span>{edits[0].tone}</span></div>
-          <div className={styles.editBottom}>
-            <h3>{edits[0].title}</h3>
-            <p>{edits[0].description}</p>
-            <span className={styles.editLink}>Explore edit <ArrowRight size={14} /></span>
-          </div>
-        </Link>
-
-        <div className={styles.editStack}>
-          {edits.slice(1).map((card) => (
-            <Link key={card.title} href={card.href} className={`${styles.editCard} ${styles.editSmall}`}>
-              <Image src={card.image} alt={card.alt} fill sizes="(max-width: 900px) 100vw, 35vw" className={styles.editImage} />
-              <div className={styles.editShade} />
-              <div className={styles.editTop}><span>{card.number}</span><span>{card.tone}</span></div>
-              <div className={styles.editBottom}>
-                <h3>{card.title}</h3>
-                <p>{card.description}</p>
-                <span className={styles.editLink}>Explore edit <ArrowRight size={14} /></span>
-              </div>
+        <div className={styles.heroCopy}>
+          <p className={styles.eyebrow}>TRADITION, MADE BEAUTIFULLY MODERN</p>
+          <h1>Indian wear for every version of you.</h1>
+          <p className={styles.heroIntro}>
+            Calm colour, considered fabrics and graceful silhouettes for work,
+            everyday life and the moments you want to remember.
+          </p>
+          <div className={styles.heroActions}>
+            <Link href="/collections/new-arrivals" className={styles.primaryButton}>
+              Shop new arrivals <ArrowRight size={16} aria-hidden="true" />
             </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.launchValues}>
-        <div className="container">
-          <div className={styles.launchValuesGrid}>
-            <div className={styles.launchValuesLead}>
-              <p className={styles.kicker}>MADE FOR REPEAT WEAR</p>
-              <h2>Good clothes should make the day easier.</h2>
-            </div>
-            <div className={styles.valueCard}>
-              <span>01</span>
-              <strong>Thoughtful fabrics</strong>
-              <p>Chosen for comfort, movement and the kind of wear that lasts beyond one occasion.</p>
-            </div>
-            <div className={styles.valueCard}>
-              <span>02</span>
-              <strong>Easy silhouettes</strong>
-              <p>Shapes designed to feel composed without becoming restrictive or overworked.</p>
-            </div>
-            <div className={styles.valueCard}>
-              <span>03</span>
-              <strong>Quality checked</strong>
-              <p>Every piece is checked before dispatch so the product you receive matches the HIDI standard.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.closeUpFeature} aria-labelledby="hidi-standard-heading">
-        <div className={`${styles.closeUpInner} ${detailProducts.length < 2 ? styles.closeUpTextOnly : ""} container`}>
-          <div className={styles.closeUpCopy}>
-            <p className={styles.kicker}>THE HIDI STANDARD</p>
-            <h2 id="hidi-standard-heading">Beautiful online.<br />Clear before you buy.</h2>
-            <p>
-              Different pieces. One considered way to shop. Explore the materials, photographs and available sizes listed for each style, and ask us before you choose.
-            </p>
-
-            <div className={styles.closeUpFacts}>
-              <div><span>01</span><strong>Fabric & care</strong><p>Read the listed material and care details for the piece you choose.</p></div>
-              <div><span>02</span><strong>A closer look</strong><p>Open each product gallery to explore the photographs provided.</p></div>
-              <div><span>03</span><strong>Size choices</strong><p>See available sizes. Need help with fit? Ask before ordering.</p></div>
-              <div><span>04</span><strong>Room to decide</strong><p>Save a favourite, share it, or ask about a specific piece on WhatsApp.</p></div>
-            </div>
-
-            <Link href="/collections/new-arrivals" className={styles.closeUpCta}>
-              Explore the collection <ArrowRight size={16} aria-hidden="true" />
+            <Link href="/collections/all" className={styles.secondaryButton}>
+              Explore collections
             </Link>
           </div>
+          <div className={styles.heroNote}>
+            <span>Wear the feeling</span>
+            <p>More than outfits — pieces designed to feel naturally yours.</p>
+          </div>
+        </div>
 
-          {detailProducts.length >= 2 && <div className={styles.closeUpGallery} data-count={detailProducts.length} aria-label="A selection of HIDI styles">
-            {detailProducts.map((product) => {
-              const image = product.images?.find((candidate) => candidate.url?.trim());
-              if (!image) return null;
-              return (
-              <Link
-                href={`/products/${encodeURIComponent(product.slug)}`}
-                className={styles.closeUpStyle}
-                key={product.slug}
-              >
-                <div className={styles.closeUpImageWrap}>
-                  <Image
-                    src={image.url}
-                    alt={image.alt || product.name}
-                    fill
-                    sizes="(max-width: 900px) 46vw, 25vw"
-                    className={styles.closeUpImage}
-                  />
-                </div>
-                <div className={styles.closeUpCaption}>
-                  <span>{product.name}</span>
-                  <ArrowRight size={15} aria-hidden="true" />
-                </div>
-              </Link>
-              );
-            })}
-          </div>}
+        <div className={styles.heroVisual}>
+          <Image
+            src={heroImage}
+            alt={hero?.name ?? "HIDI ethnic wear"}
+            fill
+            priority
+            sizes="(max-width: 820px) 100vw, 58vw"
+            className={styles.heroImage}
+          />
+          <div className={styles.heroVeil} aria-hidden="true" />
+          <div className={styles.heroBadge}>
+            <span>THE HIDI EDIT</span>
+            <strong>{hero?.name ?? "Quietly elegant Indian wear"}</strong>
+          </div>
         </div>
       </section>
 
-      <section className={`${styles.productSection} container`}>
-        <div className={styles.sectionHeader}>
+      <section className={styles.collectionStrip} aria-label="Shop HIDI collections">
+        {collections.map((item) => (
+          <Link href={item.href} key={item.title} className={styles.collectionCard}>
+            <div className={styles.collectionImage}>
+              <Image src={item.image} alt="" fill sizes="(max-width: 760px) 50vw, 25vw" />
+            </div>
+            <div className={styles.collectionCopy}>
+              <span>{item.title}</span>
+              <p>{item.copy}</p>
+              <b>Discover <ArrowRight size={13} aria-hidden="true" /></b>
+            </div>
+          </Link>
+        ))}
+      </section>
+
+      <section className={styles.standardBar} aria-label="The HIDI standard">
+        {standards.map(({ icon: Icon, title, copy }) => (
+          <div className={styles.standardItem} key={title}>
+            <Icon size={19} strokeWidth={1.4} aria-hidden="true" />
+            <div>
+              <strong>{title}</strong>
+              <span>{copy}</span>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className={styles.featured + " container"}>
+        <header className={styles.sectionHeading}>
           <div>
-            <p className={styles.kicker}>JUST IN / 03</p>
-            <h2>The newest HIDI pieces</h2>
+            <p className={styles.eyebrow}>CURATED FOR YOU</p>
+            <h2>Pieces worth coming back for.</h2>
           </div>
-          <div className={styles.sectionHeaderAside}>
-            <p>Considered silhouettes, calm colour and details made for repeat wear.</p>
-            <Link className={styles.inlineLink} href="/collections/new-arrivals">View all <ArrowRight size={14} /></Link>
+          <div className={styles.sectionAside}>
+            <p>
+              Explore HIDI favourites with size selection, wishlist and WhatsApp
+              support built into every product card.
+            </p>
+            <Link href="/collections/all">
+              Shop all <ArrowRight size={14} aria-hidden="true" />
+            </Link>
           </div>
-        </div>
+        </header>
+
         <div className={styles.productGrid}>
-          {products.map((product) => <ProductCard key={product.slug} product={product} />)}
+          {featured.map((product) => (
+            <ProductCard key={product.slug} product={product} />
+          ))}
         </div>
       </section>
 
-      <section className={styles.manifesto}>
-        <div className={`${styles.manifestoInner} container`}>
-          <div className={styles.manifestoLeft}>
-            <span className={styles.manifestoNumber}>04</span>
-            <div className={styles.manifestoPhrase} aria-hidden="true">REAL<br />DAYS</div>
+      <section className={styles.brandBand}>
+        <div className={styles.brandBandInner + " container"}>
+          <div className={styles.brandStory}>
+            <p className={styles.eyebrow}>ROOTED IN HERITAGE. DESIGNED FOR TODAY.</p>
+            <h2>Premium does not have to feel distant.</h2>
+            <p>
+              HIDI brings together Indian silhouettes, restrained styling and an
+              easy online experience so getting dressed feels simpler — and more
+              like you.
+            </p>
+            <Link href="/about" className={styles.storyLink}>
+              Our story <ArrowRight size={14} aria-hidden="true" />
+            </Link>
           </div>
-          <div className={styles.manifestoCopy}>
-            <p className={styles.kicker}>OUR POINT OF VIEW</p>
-            <h2>Style should feel like you — only more certain.</h2>
-            <p>We choose restraint over noise, wearability over spectacle, and thoughtful detail over trend for trend’s sake.</p>
-            <Link className={styles.manifestoLink} href="/about">Discover HIDI <ArrowRight size={14} /></Link>
+
+          <div className={styles.whatsappCard}>
+            <MessageCircle size={32} strokeWidth={1.4} aria-hidden="true" />
+            <div>
+              <span>PERSONAL SHOPPING SUPPORT</span>
+              <h3>Need help choosing?</h3>
+              <p>Ask HIDI about a product, fit or size before you order.</p>
+            </div>
+            <Link href={whatsappHref} className={styles.whatsappButton}>
+              Chat on WhatsApp <ArrowRight size={14} aria-hidden="true" />
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className={`${styles.serviceSection} container`}>
-        <div className={styles.serviceIntro}>
-          <p className={styles.kicker}>05 / OUR STANDARD</p>
-          <h2>Thoughtful from first click to final fit.</h2>
+      <section className={styles.promise + " container"}>
+        <div className={styles.promiseLead}>
+          <p className={styles.eyebrow}>SHOP WITH CONFIDENCE</p>
+          <h2>A premium experience beyond the first impression.</h2>
         </div>
-        <div className={styles.serviceGrid}>
-          <div><span>01</span><strong>Wearable first</strong><p>Comfort, proportion and repeat wear matter as much as first impression.</p></div>
-          <div><span>02</span><strong>Clear choices</strong><p>Honest product detail, visible sizing and straightforward pricing.</p></div>
-          <div><span>03</span><strong>Human support</strong><p>Real help when fit, delivery or exchange questions come up.</p></div>
-          <div><span>04</span><strong>Built on trust</strong><p>Verified reviews and secure payment experiences as HIDI grows.</p></div>
+        <div className={styles.promiseGrid}>
+          <div><Truck size={20} /><strong>Complimentary shipping</strong><span>On qualifying orders.</span></div>
+          <div><RefreshCcw size={20} /><strong>Easy exchange</strong><span>Clear 7-day exchange support.</span></div>
+          <div><ShieldCheck size={20} /><strong>Secure payments</strong><span>Trusted payment flow through Razorpay.</span></div>
         </div>
       </section>
     </>
