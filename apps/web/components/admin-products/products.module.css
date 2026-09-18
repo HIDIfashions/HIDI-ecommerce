@@ -48,6 +48,7 @@
 .actions p { font-size: 13px; color: #776f61; margin: 0; line-height: 1.6; }
 .buttonGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .buttonGroup a, .actions a { font-size: 13px; color: #343025; }
+.buttonGroup .primaryLink { color: #fff; }
 .notice { color: #75664f; font-size: 13px; line-height: 1.65; padding: 13px 16px; background: #f4f0e7; margin: 20px 0; }
 .notice strong { color: #443b2f; }
 .error, .success { padding: 16px 20px; margin: 18px 0; line-height: 1.6; border: 1px solid; overflow-wrap: anywhere; }
