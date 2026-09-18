@@ -11,9 +11,10 @@ import {
   authConfigured,
   getAccessToken,
   getStoredSession,
-  sendEmailOtp,
+  maskedPhone,
+  sendPhoneOtp,
   signOut,
-  verifyEmailOtp,
+  verifyPhoneOtp,
 } from "@/lib/supabase-auth";
 import styles from "./account-orders.module.css";
 
@@ -41,7 +42,7 @@ type OrderSummary = {
 };
 
 type AccountPayload = {
-  customer: { email: string; firstName?: string | null; lastName?: string | null };
+  customer: { email?: string | null; phone?: string | null; firstName?: string | null; lastName?: string | null };
   orders: OrderSummary[];
 };
 
@@ -57,8 +58,8 @@ export function AccountOrdersClient() {
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<"email" | "otp">("email");
-  const [email, setEmail] = useState<string>("");
+  const [step, setStep] = useState<"phone" | "otp">("phone");
+  const [phone, setPhone] = useState<string>("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -90,23 +91,23 @@ export function AccountOrdersClient() {
 
   useEffect(() => {
     const stored = getStoredSession();
-    setEmail(String(stored?.user?.email ?? ""));
+    setPhone(String(stored?.user?.phone ?? "").replace(/^\+91/, ""));
     loadAccount();
   }, []);
 
   async function requestOtp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalizedEmail = String(email ?? "").trim().toLowerCase();
-    if (!normalizedEmail) {
-      setError("Enter your email address");
+    const enteredPhone = String(phone ?? "").trim();
+    if (!enteredPhone) {
+      setError("Enter your mobile number");
       return;
     }
     setBusy(true); setError(""); setMessage("");
     try {
-      await sendEmailOtp(normalizedEmail);
-      setEmail(normalizedEmail);
+      const normalized = await sendPhoneOtp(enteredPhone);
+      setPhone(normalized);
       setStep("otp");
-      setMessage(`We sent a 6-digit HIDI sign-in code to ${normalizedEmail}.`);
+      setMessage(`We sent a 6-digit HIDI sign-in code to ${maskedPhone(normalized)}.`);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -120,7 +121,7 @@ export function AccountOrdersClient() {
     const otp = String(data.get("otp") ?? "");
     setBusy(true); setError("");
     try {
-      await verifyEmailOtp(String(email ?? ""), otp);
+      await verifyPhoneOtp(String(phone ?? ""), otp);
       setSignedIn(true);
       setLoading(true);
       setMessage("");
@@ -137,8 +138,8 @@ export function AccountOrdersClient() {
     await signOut();
     setAccount(null);
     setSignedIn(false);
-    setStep("email");
-    setEmail("");
+    setStep("phone");
+    setPhone("");
     setMessage("");
     setError("");
     setBusy(false);
@@ -147,7 +148,7 @@ export function AccountOrdersClient() {
   if (!authConfigured()) {
     return <div className={styles.empty}>
       <h2>Customer sign-in needs configuration.</h2>
-      <p>Add the HIDI Supabase public URL and publishable key to the frontend environment before testing email OTP.</p>
+      <p>Add the HIDI Supabase public URL and publishable key to the frontend environment before testing mobile OTP.</p>
     </div>;
   }
 
@@ -155,20 +156,23 @@ export function AccountOrdersClient() {
     return <div className={styles.authWrap}>
       <div className={styles.authCard}>
         <p className="eyebrow">SECURE SIGN IN</p>
-        <h2>{step === "email" ? "Your HIDI account." : "Check your inbox."}</h2>
-        <p className={styles.authIntro}>{step === "email"
-          ? "Sign in with your email to see orders from any device. No password required."
-          : "Enter the 6-digit code from HIDI to continue."}</p>
+        <h2>{step === "phone" ? "Your HIDI account." : "Enter your OTP."}</h2>
+        <p className={styles.authIntro}>{step === "phone"
+          ? "Sign in with your mobile number. No password required."
+          : "Enter the 6-digit code sent to your mobile number."}</p>
 
-        {step === "email" ? <form className={styles.authForm} onSubmit={requestOtp}>
-          <label htmlFor="account-email">Email address</label>
-          <input id="account-email" type="email" value={email ?? ""} onChange={(event) => setEmail(event.target.value ?? "")} placeholder="you@example.com" required autoComplete="email" />
-          <button className="button button-dark" disabled={busy}>{busy ? "Sending code…" : "Send sign-in code"}</button>
+        {step === "phone" ? <form className={styles.authForm} onSubmit={requestOtp}>
+          <label htmlFor="account-phone">Mobile number</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <span style={{ display: "flex", alignItems: "center", padding: "0 12px", border: "1px solid #d8d3cb", borderRadius: 8 }}>+91</span>
+            <input id="account-phone" type="tel" value={phone.replace(/^\+91/, "")} onChange={(event) => setPhone(event.target.value ?? "")} placeholder="98765 43210" inputMode="numeric" autoComplete="tel" maxLength={10} required />
+          </div>
+          <button className="button button-dark" disabled={busy}>{busy ? "Sending OTP…" : "Continue"}</button>
         </form> : <form className={styles.authForm} onSubmit={verifyOtp}>
-          <label htmlFor="account-otp">6-digit code</label>
+          <label htmlFor="account-otp">6-digit OTP</label>
           <input id="account-otp" name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="000000" required autoComplete="one-time-code" />
           <button className="button button-dark" disabled={busy}>{busy ? "Signing in…" : "Verify & sign in"}</button>
-          <button className={styles.secondaryButton} type="button" onClick={() => { setStep("email"); setMessage(""); setError(""); }} disabled={busy}>Use a different email</button>
+          <button className={styles.secondaryButton} type="button" onClick={() => { setStep("phone"); setMessage(""); setError(""); }} disabled={busy}>Use a different mobile number</button>
         </form>}
 
         {message && <p className={styles.authMessage}>{message}</p>}
@@ -191,13 +195,13 @@ export function AccountOrdersClient() {
 
   return <>
     <div className={styles.accountBar}>
-      <div><span>Signed in as</span><strong>{account?.customer.email}</strong></div>
+      <div><span>Signed in as</span><strong>{account?.customer.phone ? maskedPhone(account.customer.phone) : account?.customer.email}</strong></div>
       <button type="button" onClick={logout} disabled={busy}>Sign out</button>
     </div>
 
     {orders.length === 0 ? <div className={styles.empty}>
       <h2>No orders yet.</h2>
-      <p>Orders placed with this verified email address will appear here automatically.</p>
+      <p>Orders placed with this verified mobile number will appear here automatically.</p>
       <Link className="button button-dark" href="/collections/new-arrivals">Explore new arrivals</Link>
     </div> : <div className={styles.list}>
       {orders.map((order) => {
