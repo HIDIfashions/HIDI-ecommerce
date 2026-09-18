@@ -44,13 +44,6 @@
   text-transform: uppercase;
 }
 
-.heroLogo {
-  width: clamp(135px, 11vw, 180px);
-  height: auto;
-  margin-bottom: 30px;
-  opacity: .96;
-}
-
 .heroCopyWrap h1 {
   margin: 0;
   max-width: 620px;
@@ -354,29 +347,28 @@
   text-transform: uppercase;
 }
 
-.socialProof {
+.launchValues {
   background: #f1eadf;
   border-top: 1px solid #ded3c5;
   border-bottom: 1px solid #ded3c5;
 }
 
-.socialProofInner {
-  min-height: 310px;
+.launchValuesGrid {
+  min-height: 320px;
   display: grid;
-  grid-template-columns: 1.45fr .75fr .75fr;
-  align-items: stretch;
+  grid-template-columns: 1.35fr repeat(3, .8fr);
 }
 
-.socialProofInner > div {
-  padding: 46px 34px;
+.launchValuesGrid > div {
+  padding: 44px 30px;
 }
 
-.socialProofInner > div + div {
+.launchValuesGrid > div + div {
   border-left: 1px solid #d8ccbd;
 }
 
-.socialProofInner h2 {
-  max-width: 640px;
+.launchValuesLead h2 {
+  max-width: 650px;
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(42px, 4.6vw, 66px);
@@ -385,28 +377,20 @@
   line-height: .98;
 }
 
-.proofCard {
+.valueCard {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
 }
 
-.proofStars {
-  display: flex;
-  gap: 4px;
+.valueCard span {
   margin-bottom: auto;
-  color: #8f6f3d;
+  color: #8d7258;
+  font-size: 9px;
+  letter-spacing: .14em;
 }
 
-.proofNumber {
-  margin-bottom: auto;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 54px;
-  line-height: 1;
-  color: #6b4b39;
-}
-
-.proofCard strong {
+.valueCard strong {
   display: block;
   margin-bottom: 8px;
   font-family: Georgia, "Times New Roman", serif;
@@ -414,7 +398,7 @@
   font-weight: 400;
 }
 
-.proofCard p {
+.valueCard p {
   margin: 0;
   color: #6d645c;
   font-size: 11px;
@@ -486,12 +470,13 @@
   color: #ceb7af;
 }
 
-.manifestoMark {
+.manifestoPhrase {
   font-family: Georgia, "Times New Roman", serif;
-  font-size: min(30vw, 420px);
-  line-height: .75;
-  color: rgba(255,255,255,.07);
-  transform: translateX(-5vw);
+  font-size: clamp(72px, 10vw, 150px);
+  line-height: .78;
+  letter-spacing: -.06em;
+  color: rgba(255,255,255,.08);
+  transform: translateX(-2vw);
 }
 
 .manifestoCopy {
@@ -603,13 +588,6 @@
   .editStack { grid-template-columns: 1fr 1fr; grid-template-rows: none; }
   .editSmall { min-height: 470px; }
 
-  .socialProofInner { grid-template-columns: 1.2fr .8fr; }
-  .socialProofInner > div:nth-child(3) {
-    grid-column: 1 / -1;
-    border-left: 0;
-    border-top: 1px solid #d8ccbd;
-  }
-
   .productGrid { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -644,14 +622,6 @@
   .editStack { grid-template-columns: 1fr; }
   .editSmall { min-height: 500px; }
 
-  .socialProofInner { grid-template-columns: 1fr; }
-  .socialProofInner > div + div {
-    border-left: 0;
-    border-top: 1px solid #d8ccbd;
-  }
-  .socialProofInner > div:nth-child(3) { grid-column: auto; }
-  .socialProofInner > div { padding: 32px 20px; }
-  .socialProofInner h2 { font-size: 48px; }
 
   .productSection { padding-top: 82px; padding-bottom: 92px; }
   .sectionHeader { grid-template-columns: 1fr; gap: 22px; }
@@ -662,7 +632,7 @@
     grid-template-columns: 1fr;
   }
   .manifestoLeft { min-height: 260px; }
-  .manifestoMark { font-size: 58vw; transform: translateX(-10vw); }
+  .manifestoPhrase { font-size: 26vw; transform: translateX(-6vw); }
   .manifestoCopy { padding: 10px 0 80px; }
   .manifestoCopy h2 { font-size: 50px; }
 
@@ -691,4 +661,37 @@
   .trustItem:nth-child(4) { border-left: 0; border-top: 1px solid rgba(255,255,255,.14); }
 
   .productGrid { grid-template-columns: 1fr 1fr; gap: 28px 10px; }
+}
+
+@media (max-width: 1080px) {
+  .launchValuesGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .launchValuesGrid > div:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid #d8ccbd;
+  }
+  .launchValuesGrid > div:nth-child(4) {
+    border-top: 1px solid #d8ccbd;
+  }
+}
+
+@media (max-width: 760px) {
+  .launchValuesGrid {
+    grid-template-columns: 1fr;
+  }
+  .launchValuesGrid > div,
+  .launchValuesGrid > div + div,
+  .launchValuesGrid > div:nth-child(3),
+  .launchValuesGrid > div:nth-child(4) {
+    border-left: 0;
+    border-top: 1px solid #d8ccbd;
+    padding: 30px 20px;
+  }
+  .launchValuesGrid > div:first-child {
+    border-top: 0;
+  }
+  .launchValuesLead h2 {
+    font-size: 46px;
+  }
 }
