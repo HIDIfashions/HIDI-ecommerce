@@ -147,49 +147,51 @@ export function ProductCard({ product, initialVariantId }: Props) {
           </button>;
         })}
       </div> : <p className={styles.singleColour}>{activeColour || "Standard colour"}</p>}
-      <div className={styles.sizeHeading}>
-        <span id={`${uid}-size`}>{selected ? `Your size: ${selected.size}` : "Choose your size"}</span>
-        <Link href={href} className={styles.details}>Details <ArrowUpRight size={12} aria-hidden="true" /></Link>
-      </div>
-      <div ref={sizesRef} role="group" aria-labelledby={`${uid}-size`}
-        aria-describedby={error ? `${uid}-error` : undefined}
-        className={`${styles.sizes} ${chooseSize ? styles.needsSize : ""}`}>
-        {variants.map((variant) => {
-          const unavailable = !product.inStock || variant.available < 1;
-          return <button key={variant.id} type="button" disabled={busy || unavailable}
-            aria-pressed={selected?.id === variant.id}
-            aria-label={`${variant.size}${unavailable ? " — sold out" : ""}`}
-            title={unavailable ? `${variant.size} is sold out` : `Choose size ${variant.size}`}
-            className={`${styles.sizeButton} ${selected?.id === variant.id ? styles.sizeActive : ""} ${unavailable ? styles.unavailable : ""}`}
-            onClick={() => selectSize(variant)}>{variant.size}</button>;
-        })}
-      </div>
-      <p className={styles.availability} aria-live="polite">
-        {soldOut ? "Save this piece to revisit later."
-          : !canBuy ? "This colour is sold out. Try another colour."
-          : selected?.available === 0 ? "This size is currently unavailable."
-          : selected && selected.available > 0 && selected.available <= 3 ? `Only ${selected.available} left in ${selected.size}`
-          : selected ? `${selected.size} · ${selected.color}` : "Find your fit. Make it yours."}
-      </p>
-      <div className={styles.actions}>
-        <button type="button" className={`${styles.addButton} ${phase === "added" ? styles.added : ""}`}
-          disabled={busy || !canBuy || phase === "added"} aria-busy={busy}
-          onClick={add} aria-label={`${!canBuy ? "Sold out" : "Add to Bag"} — ${product.name}`}>
-          {busy ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" />
-            : phase === "added" ? <Check size={17} aria-hidden="true" /> : <ShoppingBag size={17} aria-hidden="true" />}
-          <span>{busy ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to Bag"}</span>
-        </button>
-        <button type="button" aria-pressed={saved} disabled={!wishlistReady || busy}
-          aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`}
-          title={saved ? "Remove from wishlist" : "Save to wishlist"}
-          className={`${styles.wishButton} ${saved ? styles.wishSaved : ""}`} onClick={toggleWishlist}>
-          <Heart size={19} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
-        </button>
-      </div>
-      <div className={styles.feedback}>
-        <p className={styles.error} id={`${uid}-error`} role="alert">{error}</p>
-        <p role="status">{message}</p>
-        {bagLink && <Link href="/cart" className={styles.viewBag}>View bag <ArrowUpRight size={12} aria-hidden="true" /></Link>}
+      <div className={styles.quickShop}>
+        <div className={styles.sizeHeading}>
+          <span id={`${uid}-size`}>{selected ? `Your size: ${selected.size}` : "Choose your size"}</span>
+          <Link href={href} className={styles.details}>Details <ArrowUpRight size={12} aria-hidden="true" /></Link>
+        </div>
+        <div ref={sizesRef} role="group" aria-labelledby={`${uid}-size`}
+          aria-describedby={error ? `${uid}-error` : undefined}
+          className={`${styles.sizes} ${chooseSize ? styles.needsSize : ""}`}>
+          {variants.map((variant) => {
+            const unavailable = !product.inStock || variant.available < 1;
+            return <button key={variant.id} type="button" disabled={busy || unavailable}
+              aria-pressed={selected?.id === variant.id}
+              aria-label={`${variant.size}${unavailable ? " — sold out" : ""}`}
+              title={unavailable ? `${variant.size} is sold out` : `Choose size ${variant.size}`}
+              className={`${styles.sizeButton} ${selected?.id === variant.id ? styles.sizeActive : ""} ${unavailable ? styles.unavailable : ""}`}
+              onClick={() => selectSize(variant)}>{variant.size}</button>;
+          })}
+        </div>
+        <p className={styles.availability} aria-live="polite">
+          {soldOut ? "Save this piece to revisit later."
+            : !canBuy ? "This colour is sold out. Try another colour."
+            : selected?.available === 0 ? "This size is currently unavailable."
+            : selected && selected.available > 0 && selected.available <= 3 ? `Only ${selected.available} left in ${selected.size}`
+            : selected ? `${selected.size} · ${selected.color}` : "Find your fit. Make it yours."}
+        </p>
+        <div className={styles.actions}>
+          <button type="button" className={`${styles.addButton} ${phase === "added" ? styles.added : ""}`}
+            disabled={busy || !canBuy || phase === "added"} aria-busy={busy}
+            onClick={add} aria-label={`${!canBuy ? "Sold out" : "Add to Bag"} — ${product.name}`}>
+            {busy ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" />
+              : phase === "added" ? <Check size={17} aria-hidden="true" /> : <ShoppingBag size={17} aria-hidden="true" />}
+            <span>{busy ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to Bag"}</span>
+          </button>
+          <button type="button" aria-pressed={saved} disabled={!wishlistReady || busy}
+            aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`}
+            title={saved ? "Remove from wishlist" : "Save to wishlist"}
+            className={`${styles.wishButton} ${saved ? styles.wishSaved : ""}`} onClick={toggleWishlist}>
+            <Heart size={19} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
+          </button>
+        </div>
+        <div className={styles.feedback}>
+          <p className={styles.error} id={`${uid}-error`} role="alert">{error}</p>
+          <p role="status">{message}</p>
+          {bagLink && <Link href="/cart" className={styles.viewBag}>View bag <ArrowUpRight size={12} aria-hidden="true" /></Link>}
+        </div>
       </div>
     </div>
   </article>;
