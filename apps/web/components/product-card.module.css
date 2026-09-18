@@ -294,3 +294,36 @@
     transform: none;
   }
 }
+
+.secondaryActions {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.secondaryActions button {
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 9px !important;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+.secondaryActions button:hover {
+  border-color: var(--ink);
+  background: #f8f2ea;
+}
+
+@container (max-width: 225px) {
+  .secondaryActions {
+    grid-template-columns: 1fr;
+  }
+}
