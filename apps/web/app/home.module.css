@@ -695,3 +695,140 @@
     font-size: 46px;
   }
 }
+
+.detailStory {
+  padding-top: 120px;
+  padding-bottom: 130px;
+}
+
+.detailStoryHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, .65fr);
+  gap: 70px;
+  align-items: end;
+  margin-bottom: 42px;
+}
+
+.detailStoryHeader h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(48px, 5.3vw, 76px);
+  font-weight: 400;
+  line-height: .96;
+  letter-spacing: -.045em;
+}
+
+.detailStoryHeader > p {
+  margin: 0;
+  color: #6e655c;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.detailStoryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.detailStoryCard {
+  min-width: 0;
+}
+
+.detailStoryMedia {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5.35;
+  overflow: hidden;
+  background: #eee6dc;
+}
+
+.detailStoryImage,
+.detailInsetImage {
+  object-fit: cover;
+  transition: transform .5s ease;
+}
+
+.detailStoryMedia:hover .detailStoryImage {
+  transform: scale(1.02);
+}
+
+.detailInset {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 3;
+  width: 31%;
+  aspect-ratio: 4 / 5;
+  border: 5px solid rgba(255,253,249,.95);
+  background: #fffdf9;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(42,30,23,.12);
+}
+
+.detailNumber {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 3;
+  padding: 6px 8px;
+  background: rgba(255,253,249,.92);
+  color: #3e3028;
+  font-size: 9px;
+  letter-spacing: .12em;
+}
+
+.detailStoryCopy {
+  padding-top: 16px;
+}
+
+.detailStoryCopy > p {
+  margin: 0 0 6px;
+  color: #85786c;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.detailStoryCopy h3 {
+  margin: 0 0 7px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.detailStoryCopy > span {
+  display: block;
+  min-height: 40px;
+  margin-bottom: 13px;
+  color: #756b61;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+@media (max-width: 900px) {
+  .detailStoryHeader {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .detailStoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailStoryMedia {
+    aspect-ratio: 4 / 4.8;
+  }
+}
+
+@media (max-width: 760px) {
+  .detailStory {
+    padding-top: 82px;
+    padding-bottom: 88px;
+  }
+
+  .detailStoryHeader h2 {
+    font-size: 48px;
+  }
+}
