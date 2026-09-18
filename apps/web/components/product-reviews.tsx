@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ApiProductReviews } from "@/lib/api";
 import styles from "./product-reviews.module.css";
 
@@ -7,25 +8,42 @@ function reviewDate(value: string) {
   }).format(new Date(value));
 }
 
+function ReviewInvitationGuidance() {
+  return (
+    <details className={styles.reviewGuidance}>
+      <summary className={styles.reviewButton}>
+        How to write a review <span className={styles.reviewToggle} aria-hidden="true">+</span>
+      </summary>
+      <div className={styles.guidanceContent}>
+        <strong>Your purchase. Your honest experience.</strong>
+        <p>Reviews are linked to delivered orders. If you received a HIDI review email, open the private link in that message to review the pieces you bought.</p>
+        <p>Check the email address used at checkout, including your spam folder. The invitation is personal, so please don’t share its link.</p>
+        <Link href="/account">View my orders <span aria-hidden="true">→</span></Link>
+      </div>
+    </details>
+  );
+}
+
 export function ProductReviews({ data }: { data: ApiProductReviews }) {
   const rounded = Math.round(data.averageRating * 10) / 10;
+  const hasReviews = data.reviewCount > 0;
 
   return (
-    <section className={styles.section} id="reviews">
+    <section className={styles.section} id="reviews" aria-labelledby="product-reviews-heading">
       <div className={styles.heading}>
         <div>
           <p className={styles.eyebrow}>CUSTOMER REVIEWS</p>
-          <h2>What HIDI customers say</h2>
+          <h2 id="product-reviews-heading">What HIDI customers say</h2>
         </div>
-        <div className={styles.summary}>
-          <strong>{data.reviewCount ? rounded.toFixed(1) : "—"}</strong>
+        {hasReviews && <div className={styles.summary}>
+          <strong>{rounded.toFixed(1)}</strong>
           <div>
-            <span className={styles.stars}>
-              {data.reviewCount ? "★".repeat(Math.round(data.averageRating)) + "☆".repeat(5 - Math.round(data.averageRating)) : "☆☆☆☆☆"}
+            <span className={styles.stars} role="img" aria-label={`${rounded.toFixed(1)} out of 5 stars`}>
+              {"★".repeat(Math.round(data.averageRating)) + "☆".repeat(5 - Math.round(data.averageRating))}
             </span>
-            <small>{data.reviewCount} verified review{data.reviewCount === 1 ? "" : "s"}</small>
+            <small>{data.reviewCount} review{data.reviewCount === 1 ? "" : "s"}</small>
           </div>
-        </div>
+        </div>}
       </div>
 
       {data.reviews.length ? (
@@ -33,8 +51,8 @@ export function ProductReviews({ data }: { data: ApiProductReviews }) {
           {data.reviews.map((review) => (
             <article key={review.id} className={styles.card}>
               <div className={styles.cardTop}>
-                <span className={styles.stars}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
-                <span className={styles.verified}>Verified purchase</span>
+                <span className={styles.stars} role="img" aria-label={`${review.rating} out of 5 stars`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
+                {review.verifiedPurchase && <span className={styles.verified}>Verified purchase</span>}
               </div>
               {review.title && <h3>{review.title}</h3>}
               <p>{review.body}</p>
@@ -47,10 +65,13 @@ export function ProductReviews({ data }: { data: ApiProductReviews }) {
         </div>
       ) : (
         <div className={styles.empty}>
-          <strong>No reviews yet.</strong>
-          <p>Verified customer reviews will appear here after delivered HIDI orders are reviewed.</p>
+          <div>
+            <strong>No reviews yet.</strong>
+            <p>Your experience could help someone find their next favourite piece.</p>
+          </div>
         </div>
       )}
+      <ReviewInvitationGuidance />
     </section>
   );
 }

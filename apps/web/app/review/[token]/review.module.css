@@ -19,10 +19,11 @@
 .form label span { font-weight: 400; color: #8b8176; }
 .form input, .form textarea { width: 100%; border: 1px solid #cec3b4; background: white; padding: 12px 13px; color: inherit; font: inherit; resize: vertical; }
 .rating { display: flex; gap: 4px; }
-.star, .starActive { border: 0; background: transparent; cursor: pointer; font-size: 30px; padding: 0 2px; line-height: 1; }
+.star, .starActive { min-width: 44px; min-height: 48px; border: 0; background: transparent; cursor: pointer; font-size: 30px; padding: 0 2px; line-height: 1; }
 .star { color: #d1c7b9; }
 .starActive { color: #8e6e38; }
-.submit { width: fit-content; min-width: 170px; border: 0; background: #33261f; color: white; padding: 13px 20px; cursor: pointer; font: inherit; }
+.submit { width: fit-content; min-width: 200px; min-height: 52px; border: 0; border-radius: 3px; background: #33261f; color: white; padding: 13px 24px; cursor: pointer; font: inherit; font-weight: 600; }
+.submit:focus-visible, .star:focus-visible, .starActive:focus-visible { outline: 2px solid #8e6e38; outline-offset: 3px; }
 .submit:disabled { opacity: .45; cursor: not-allowed; }
 .completed { padding-top: 22px; }
 .completed .stars { color: #8e6e38; letter-spacing: .05em; font-size: 20px; margin-bottom: 10px; }
@@ -38,4 +39,5 @@
   .reviewCard { padding: 18px; }
   .product { grid-template-columns: 74px 1fr; }
   .product img, .imageFallback { width: 74px; height: 94px; }
+  .submit { width: 100%; }
 }

@@ -1,6 +1,40 @@
+export const PRODUCT_VARIANT_EVENT = "hidi-product-variant-selected";
+
+export type ProductVariantSelection = {
+  slug: string;
+  variantId: string;
+  color: string;
+  size?: string;
+};
+
+export function publishProductSelection(selection: ProductVariantSelection) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(PRODUCT_VARIANT_EVENT, { detail: selection }));
+  }
+}
+
 export function productUrl(slug: string) {
-  if (typeof window === "undefined") return `/products/${encodeURIComponent(slug)}`;
-  return `${window.location.origin}/products/${encodeURIComponent(slug)}`;
+  const path = `/products/${encodeURIComponent(slug)}`;
+  return typeof window === "undefined" ? path : `${window.location.origin}${path}`;
+}
+
+// Accept a complete international number, never a generic WhatsApp share URL.
+export function normalizeWhatsAppNumber(value: string | undefined) {
+  const candidate = value?.trim() ?? "";
+  if (!/^\+?[\d\s()-]+$/.test(candidate)) return null;
+  const digits = candidate.replace(/\D/g, "");
+  return /^[1-9]\d{7,14}$/.test(digits) ? digits : null;
+}
+
+export function configuredWhatsAppNumber() {
+  return normalizeWhatsAppNumber(process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER);
+}
+
+export function clampOrderQuantity(quantity: number, available: number) {
+  const stock = Number.isFinite(available) ? Math.max(0, Math.floor(available)) : 0;
+  if (stock === 0) return 0;
+  const requested = Number.isFinite(quantity) ? Math.floor(quantity) : 1;
+  return Math.max(1, Math.min(requested, stock));
 }
 
 export function whatsappOrderUrl(input: {
@@ -9,25 +43,27 @@ export function whatsappOrderUrl(input: {
   priceText: string;
   color?: string;
   size?: string;
-}) {
-  const number = (process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
-  const url = productUrl(input.slug);
+  quantity?: number;
+  sku?: string;
+}, phoneNumber: string | undefined = process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER) {
+  const number = normalizeWhatsAppNumber(phoneNumber);
+  if (!number) return null;
   const lines = [
-    "Hi HIDI, I'd like to order this product:",
+    "Hi HIDI, I'd like help ordering this product:",
     "",
     input.name,
-    `Price: ${input.priceText}`,
+    input.sku ? `SKU: ${input.sku}` : null,
+    `Unit price shown: ${input.priceText}`,
     input.color ? `Colour: ${input.color}` : null,
     input.size ? `Size: ${input.size}` : "Size: Please help me choose",
-    `Product: ${url}`,
+    `Quantity: ${clampOrderQuantity(input.quantity ?? 1, Number.MAX_SAFE_INTEGER)}`,
+    `Product: ${productUrl(input.slug)}`,
     "",
-    "Please confirm availability and help me place the order.",
-  ].filter(Boolean);
+    "Please confirm the final price, availability and delivery before I pay.",
+  ].filter((line) => line !== null);
 
   const text = encodeURIComponent(lines.join("\n"));
-  return number
-    ? `https://wa.me/${number}?text=${text}`
-    : `https://api.whatsapp.com/send?text=${text}`;
+  return `https://wa.me/${number}?text=${text}`;
 }
 
 export async function shareProduct(input: {
@@ -39,8 +75,13 @@ export async function shareProduct(input: {
   const text = input.text ?? `Take a look at ${input.name} from HIDI.`;
 
   if (typeof navigator !== "undefined" && navigator.share) {
-    await navigator.share({ title: input.name, text, url });
-    return "shared" as const;
+    try {
+      await navigator.share({ title: input.name, text, url });
+      return "shared" as const;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return "cancelled" as const;
+      // A browser may expose sharing but not support it in the current context.
+    }
   }
 
   if (typeof navigator !== "undefined" && navigator.clipboard) {

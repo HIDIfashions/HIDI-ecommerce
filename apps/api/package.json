@@ -10,7 +10,8 @@
     "lint": "eslint src --ext .ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "test:customer-experience": "node --import tsx --test ../../tests/*.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.2.3",

@@ -12,6 +12,7 @@
     "db:generate": "pnpm --filter @hidi/api prisma:generate",
     "db:migrate": "pnpm --filter @hidi/api prisma:migrate",
     "db:seed": "pnpm --filter @hidi/api prisma:seed",
-    "build:web:clean": "bash scripts/build-web-clean.sh"
+    "build:web:clean": "bash scripts/build-web-clean.sh",
+    "test:customer-experience": "pnpm --filter @hidi/api test:customer-experience && node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs"
   }
 }

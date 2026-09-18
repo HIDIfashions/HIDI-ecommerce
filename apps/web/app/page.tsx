@@ -45,8 +45,17 @@ const trust = [
 ] as const;
 
 export default async function Home() {
-  const products = (await getProducts()).slice(0, 8);
-  const detailProducts = products.slice(0, 3);
+  const catalogue = await getProducts();
+  const products = catalogue.slice(0, 8);
+  const galleryImages = new Set<string>();
+  const galleryProducts = new Set<string>();
+  const detailProducts = catalogue.filter((product) => {
+    const image = product.images?.find((candidate) => candidate.url?.trim());
+    if (!image || galleryImages.has(image.url) || galleryProducts.has(product.slug)) return false;
+    galleryImages.add(image.url);
+    galleryProducts.add(product.slug);
+    return true;
+  }).slice(0, 4);
 
   return (
     <>
@@ -168,46 +177,54 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className={styles.closeUpFeature}>
-        <div className={`${styles.closeUpInner} container`}>
+      <section className={styles.closeUpFeature} aria-labelledby="hidi-standard-heading">
+        <div className={`${styles.closeUpInner} ${detailProducts.length < 2 ? styles.closeUpTextOnly : ""} container`}>
           <div className={styles.closeUpCopy}>
-            <p className={styles.kicker}>WHY THIS PIECE WORKS</p>
-            <h2>See the garment. Understand the garment.</h2>
+            <p className={styles.kicker}>THE HIDI STANDARD</p>
+            <h2 id="hidi-standard-heading">Beautiful online.<br />Clear before you buy.</h2>
             <p>
-              The best online product pages do more than show a front pose. They help you understand the fabric, silhouette, finish and how the piece comes together.
+              Different pieces. One considered way to shop. Explore the materials, photographs and available sizes listed for each style, and ask us before you choose.
             </p>
 
             <div className={styles.closeUpFacts}>
-              <div><span>01</span><strong>Fabric first</strong><p>Know the base fabric and care before you buy.</p></div>
-              <div><span>02</span><strong>Fit clarity</strong><p>See the silhouette and available sizes with less guesswork.</p></div>
-              <div><span>03</span><strong>More views</strong><p>Use alternate imagery to judge drape, details and proportion.</p></div>
+              <div><span>01</span><strong>Fabric & care</strong><p>Read the listed material and care details for the piece you choose.</p></div>
+              <div><span>02</span><strong>A closer look</strong><p>Open each product gallery to explore the photographs provided.</p></div>
+              <div><span>03</span><strong>Size choices</strong><p>See available sizes. Need help with fit? Ask before ordering.</p></div>
+              <div><span>04</span><strong>Room to decide</strong><p>Save a favourite, share it, or ask about a specific piece on WhatsApp.</p></div>
             </div>
 
-            {detailProducts[0] && (
-              <Link href={`/products/${encodeURIComponent(detailProducts[0].slug)}`} className={styles.closeUpCta}>
-                Explore a product in detail <ArrowRight size={14} />
-              </Link>
-            )}
+            <Link href="/collections/new-arrivals" className={styles.closeUpCta}>
+              Explore the collection <ArrowRight size={16} aria-hidden="true" />
+            </Link>
           </div>
 
-          <div className={styles.closeUpGallery}>
-            {detailProducts[0]?.images?.slice(0, 3).map((image, index) => (
+          {detailProducts.length >= 2 && <div className={styles.closeUpGallery} data-count={detailProducts.length} aria-label="A selection of HIDI styles">
+            {detailProducts.map((product) => {
+              const image = product.images?.find((candidate) => candidate.url?.trim());
+              if (!image) return null;
+              return (
               <Link
-                href={`/products/${encodeURIComponent(detailProducts[0].slug)}`}
-                className={`${styles.closeUpImageWrap} ${index === 0 ? styles.closeUpMain : ""}`}
-                key={image.id}
+                href={`/products/${encodeURIComponent(product.slug)}`}
+                className={styles.closeUpStyle}
+                key={product.slug}
               >
-                <Image
-                  src={image.url}
-                  alt={image.alt || detailProducts[0].name}
-                  fill
-                  sizes={index === 0 ? "(max-width: 900px) 100vw, 48vw" : "(max-width: 900px) 50vw, 24vw"}
-                  className={styles.closeUpImage}
-                />
-                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div className={styles.closeUpImageWrap}>
+                  <Image
+                    src={image.url}
+                    alt={image.alt || product.name}
+                    fill
+                    sizes="(max-width: 900px) 46vw, 25vw"
+                    className={styles.closeUpImage}
+                  />
+                </div>
+                <div className={styles.closeUpCaption}>
+                  <span>{product.name}</span>
+                  <ArrowRight size={15} aria-hidden="true" />
+                </div>
               </Link>
-            ))}
-          </div>
+              );
+            })}
+          </div>}
         </div>
       </section>
 

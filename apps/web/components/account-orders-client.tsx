@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { CatalogImage } from "@/components/catalog-image";
+import { RetentionPreferences } from "@/components/retention-preferences";
 import { formatPaise } from "@/lib/api";
 import {
   authConfigured,
@@ -229,5 +230,7 @@ export function AccountOrdersClient() {
         </article>;
       })}
     </div>}
+
+    <RetentionPreferences />
   </>;
 }
