@@ -5,6 +5,7 @@ import { ProductGallery } from "@/components/product-gallery";
 import { ProductInfoAccordion } from "@/components/product-info-accordion";
 import { WishlistButton } from "@/components/wishlist-button";
 import { ProductReviews } from "@/components/product-reviews";
+import { ProductQualitySummary } from "@/components/product-quality-summary";
 import { formatPaise, getProduct, getProductReviews } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -31,10 +32,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <p className="pdp-description">{product.description}</p>
         <AddToCart product={product} />
         <WishlistButton slug={product.slug} />
+        <ProductQualitySummary product={product} />
         <div className="delivery-box"><strong>Delivery</strong><div><input placeholder="Enter PIN code" inputMode="numeric" /><button>Check</button></div></div>
         <ProductInfoAccordion product={product} />
       </aside>
     </div>
-    <ProductReviews data={reviews} />
+    {reviews.reviewCount > 0 && <ProductReviews data={reviews} />}
   </div>;
 }
