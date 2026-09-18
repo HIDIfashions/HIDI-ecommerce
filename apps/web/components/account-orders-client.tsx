@@ -7,8 +7,8 @@ import { RetentionPreferences } from "@/components/retention-preferences";
 import { WalletBalance } from "@/components/wallet-balance";
 import { formatPaise } from "@/lib/api";
 import { formatWalletPaise } from "@/lib/wallet-client";
-import {
 import { BROWSER_API_URL } from "@/lib/browser-api";
+import {
   authConfigured,
   getAccessToken,
   getStoredSession,
