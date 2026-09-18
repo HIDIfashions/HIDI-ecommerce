@@ -33,6 +33,18 @@ type FollowUpRecord = {
 
 type FollowUpStore = Record<string, FollowUpRecord>;
 
+type ServerFollowUp = {
+  id: string;
+  status: "PENDING" | "SENT" | "FAILED" | "CANCELLED";
+  dueAt: string;
+  sentAt?: string | null;
+  attempts: number;
+  lastError?: string | null;
+  order: {
+    orderNumber: string;
+  };
+};
+
 type Customer = {
   key: string;
   name: string;
@@ -129,6 +141,7 @@ export function AdminCustomersClient() {
   const [reviewFilter, setReviewFilter] = useState<"ALL" | "READY" | "WAITING" | "CONTACTED">("ALL");
   const [selected, setSelected] = useState<string[]>([]);
   const [followUps, setFollowUps] = useState<FollowUpStore>({});
+  const [serverFollowUps, setServerFollowUps] = useState<Record<string, ServerFollowUp>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -137,16 +150,27 @@ export function AdminCustomersClient() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/admin/orders", { cache: "no-store" });
-      const body = await response.json().catch(() => ({}));
-      if (response.status === 401) {
+      const [ordersResponse, followUpsResponse] = await Promise.all([
+        fetch("/api/admin/orders", { cache: "no-store" }),
+        fetch("/api/admin/review-followups", { cache: "no-store" }),
+      ]);
+      const ordersBody = await ordersResponse.json().catch(() => ({}));
+      const followUpsBody = await followUpsResponse.json().catch(() => ([]));
+
+      if (ordersResponse.status === 401 || followUpsResponse.status === 401) {
         setAuthenticated(false);
         setOrders([]);
+        setServerFollowUps({});
         return;
       }
-      if (!response.ok) throw new Error(body?.message ?? "Unable to load customers");
+      if (!ordersResponse.ok) throw new Error(ordersBody?.message ?? "Unable to load customers");
+      if (!followUpsResponse.ok) throw new Error(followUpsBody?.message ?? "Unable to load review follow-ups");
+
       setAuthenticated(true);
-      setOrders(body.orders ?? []);
+      setOrders(ordersBody.orders ?? []);
+      setServerFollowUps(Object.fromEntries(
+        (Array.isArray(followUpsBody) ? followUpsBody : []).map((item: ServerFollowUp) => [item.order.orderNumber, item]),
+      ));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load customers");
     } finally {
@@ -228,17 +252,32 @@ export function AdminCustomersClient() {
   }, [orders]);
 
   function followUpState(customer: Customer) {
+    const server = serverFollowUps[customer.lastOrderNumber];
+    if (server?.status === "SENT") return "CONTACTED" as const;
     if (followUps[customer.key]) return "CONTACTED" as const;
+    if (customer.lastOrderStatus !== "DELIVERED") return "WAITING" as const;
     if (reviewDueAt(customer).getTime() <= Date.now()) return "READY" as const;
     return "WAITING" as const;
+  }
+
+  function followUpLabel(customer: Customer, state: ReturnType<typeof followUpState>) {
+    const server = serverFollowUps[customer.lastOrderNumber];
+    if (server?.status === "SENT") return "Email sent";
+    if (server?.status === "FAILED") return "Retry queued";
+    if (state === "CONTACTED") return "Contacted";
+    if (customer.lastOrderStatus !== "DELIVERED") return "Waiting delivery";
+    if (state === "READY") return "Ready now";
+    const days = remainingDays(customer);
+    return `In ${days} day${days === 1 ? "" : "s"}`;
   }
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return customers.filter((customer) => {
-      const state = followUps[customer.key]
+      const server = serverFollowUps[customer.lastOrderNumber];
+      const state = server?.status === "SENT" || followUps[customer.key]
         ? "CONTACTED"
-        : reviewDueAt(customer).getTime() <= Date.now()
+        : customer.lastOrderStatus === "DELIVERED" && reviewDueAt(customer).getTime() <= Date.now()
           ? "READY"
           : "WAITING";
       if (reviewFilter !== "ALL" && state !== reviewFilter) return false;
@@ -246,7 +285,7 @@ export function AdminCustomersClient() {
       return [customer.name, customer.phone, customer.email, customer.lastProducts, customer.lastOrderNumber]
         .some((value) => value.toLowerCase().includes(needle));
     });
-  }, [customers, followUps, query, reviewFilter]);
+  }, [customers, followUps, query, reviewFilter, serverFollowUps]);
 
   const readyCount = customers.filter((customer) => followUpState(customer) === "READY").length;
   const contactedCount = customers.filter((customer) => followUpState(customer) === "CONTACTED").length;
@@ -270,6 +309,27 @@ export function AdminCustomersClient() {
     setFollowUps(next);
     saveFollowUps(next);
     setNotice("Review follow-up reset.");
+  }
+
+  async function runAutomation() {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/admin/review-followups/run", { method: "POST" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.message ?? "Unable to run review automation");
+      if (body?.skipped) {
+        setNotice(`Automation skipped: ${String(body.reason ?? "not configured").replaceAll("_", " ")}.`);
+      } else {
+        setNotice(`Automation checked. ${body.sent ?? 0} email${body.sent === 1 ? "" : "s"} sent, ${body.failed ?? 0} failed.`);
+      }
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to run review automation");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function copyMessage(customer: Customer) {
@@ -318,9 +378,12 @@ export function AdminCustomersClient() {
           <h1>Customers</h1>
           <p>Purchase history, review follow-up and recent product context in one place.</p>
         </div>
-        <button type="button" onClick={() => void load()} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
+        <div className={styles.headingActions}>
+          <button type="button" onClick={() => void runAutomation()} disabled={loading}>Run automation now</button>
+          <button type="button" onClick={() => void load()} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+        </div>
       </section>
 
       <section className={styles.stats}>
@@ -390,6 +453,7 @@ export function AdminCustomersClient() {
             {filtered.map((customer) => {
               const state = followUpState(customer);
               const record = followUps[customer.key];
+              const serverRecord = serverFollowUps[customer.lastOrderNumber];
               const canContact = state !== "WAITING";
               return (
                 <tr key={customer.key}>
@@ -415,19 +479,17 @@ export function AdminCustomersClient() {
                   <td>
                     <div className={styles.followUpCell}>
                       <span className={styles.followUpStatus} data-state={state}>
-                        {state === "READY"
-                          ? "Ready now"
-                          : state === "WAITING"
-                            ? `In ${remainingDays(customer)} day${remainingDays(customer) === 1 ? "" : "s"}`
-                            : "Contacted"}
+                        {followUpLabel(customer, state)}
                       </span>
-                      {record && <small>{dateTime(record.contactedAt)}{record.channel ? ` · ${record.channel.toLowerCase()}` : ""}</small>}
+                      {serverRecord?.sentAt && <small>{dateTime(serverRecord.sentAt)} · automatic email</small>}
+                      {serverRecord?.status === "FAILED" && serverRecord.lastError && <small>Last send failed · retry scheduled</small>}
+                      {!serverRecord?.sentAt && record && <small>{dateTime(record.contactedAt)}{record.channel ? ` · ${record.channel.toLowerCase()}` : ""}</small>}
                       <div className={styles.contactActions}>
                         {customer.phone && state !== "WAITING" && <a href={whatsappUrl(customer)} target="_blank" rel="noreferrer" onClick={() => markContacted([customer.key], "WHATSAPP")}>WhatsApp</a>}
                         {customer.phone && state !== "WAITING" && <a href={smsUrl(customer)} onClick={() => markContacted([customer.key], "SMS")}>SMS</a>}
                         {customer.email && state !== "WAITING" && <a href={emailUrl(customer)} onClick={() => markContacted([customer.key], "EMAIL")}>Email</a>}
                         {state !== "WAITING" && <button type="button" onClick={() => void copyMessage(customer)}>Copy text</button>}
-                        {state === "CONTACTED" && <button type="button" onClick={() => resetFollowUp(customer.key)}>Reset</button>}
+                        {state === "CONTACTED" && !serverRecord?.sentAt && <button type="button" onClick={() => resetFollowUp(customer.key)}>Reset</button>}
                       </div>
                     </div>
                   </td>
@@ -440,7 +502,7 @@ export function AdminCustomersClient() {
       </section>
 
       <p className={styles.footnote}>
-        Review reminders become ready 3 days after the latest order. Contact status is currently stored in this browser; automatic provider sending can be added later.
+        Automatic email follow-up runs hourly for delivered orders that are at least 3 days old. WhatsApp/SMS remain manual until a messaging provider is connected.
       </p>
     </main>
   );
