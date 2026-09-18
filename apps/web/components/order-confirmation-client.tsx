@@ -7,7 +7,8 @@ import { formatPaise } from "@/lib/api";
 import { getCartSession } from "@/lib/cart-session";
 import styles from "./order-confirmation.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+import { BROWSER_API_URL } from "@/lib/browser-api";
+const API = BROWSER_API_URL;
 
 type Receipt = {
   orderNumber: string;
