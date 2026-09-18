@@ -26,7 +26,7 @@ if ((${#PIDS[@]})); then
 fi
 
 fuser -k 3000/tcp 3001/tcp 4000/tcp 2>/dev/null || true
-sleep 1
+sleep 2
 
 echo "Clearing generated Next.js build output..."
 rm -rf "$ROOT/apps/web/.next"
@@ -36,8 +36,8 @@ echo "Memory before build:"
 free -h || true
 
 export NEXT_TELEMETRY_DISABLED=1
-export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=4096"
+export NODE_OPTIONS="--max-old-space-size=2304"
 
-echo "Building HIDI web..."
+echo "Building HIDI web with Webpack (lower memory than Turbopack in Codespaces)..."
 cd "$ROOT"
-pnpm --filter @hidi/web build
+pnpm --filter @hidi/web exec next build --webpack
