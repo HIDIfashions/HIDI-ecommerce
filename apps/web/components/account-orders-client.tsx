@@ -8,6 +8,7 @@ import { WalletBalance } from "@/components/wallet-balance";
 import { formatPaise } from "@/lib/api";
 import { formatWalletPaise } from "@/lib/wallet-client";
 import {
+import { BROWSER_API_URL } from "@/lib/browser-api";
   authConfigured,
   getAccessToken,
   getStoredSession,
@@ -18,7 +19,7 @@ import {
 } from "@/lib/supabase-auth";
 import styles from "./account-orders.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+const API = BROWSER_API_URL;
 
 type OrderSummary = {
   orderNumber: string;
