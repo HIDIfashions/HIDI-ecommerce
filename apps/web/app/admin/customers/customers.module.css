@@ -1,0 +1,40 @@
+.page { max-width: 1440px; margin: auto; padding: 28px 36px 80px; color: #24231f; background: #fffdf8; min-height: 100vh; }
+.page * { box-sizing: border-box; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid #ddd7ce; }
+.topbar nav { display: flex; flex-wrap: wrap; gap: 24px; font-size: 14px; }
+.topbar a { color: inherit; text-decoration: none; }
+.topbar button, .heading button, .loginCard button { background: transparent; border: 1px solid #48443d; color: #24231f; min-height: 42px; padding: 11px 17px; cursor: pointer; font: inherit; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .16em; margin: 0 0 12px; }
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 38px 0 28px; }
+.heading h1, .loginCard h1 { font-family: Georgia, serif; font-size: clamp(34px, 4vw, 54px); font-weight: 400; margin: 0 0 10px; }
+.heading p { margin: 0; color: #6e685d; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #ddd7ce; margin-bottom: 24px; }
+.stats > div { padding: 20px 24px; }
+.stats > div + div { border-left: 1px solid #ddd7ce; }
+.stats span { display: block; text-transform: uppercase; letter-spacing: .08em; color: #766b5d; font-size: 10px; }
+.stats strong { display: block; margin-top: 10px; font-family: Georgia, serif; font-size: 28px; font-weight: 400; }
+.toolbar { display: flex; align-items: center; gap: 16px; margin: 22px 0 16px; }
+.toolbar input { flex: 1; min-height: 46px; border: 1px solid #d3ccc0; padding: 11px 13px; font: inherit; background: white; }
+.toolbar span { color: #746a5d; font-size: 12px; white-space: nowrap; }
+.tableWrap { border: 1px solid #ddd7ce; overflow-x: auto; background: #fffdfa; }
+table { width: 100%; border-collapse: collapse; min-width: 980px; text-align: left; font-size: 13px; }
+th { text-transform: uppercase; font-size: 10px; letter-spacing: .07em; color: #766b5d; font-weight: 500; padding: 14px 16px; border-bottom: 1px solid #ddd7ce; }
+td { padding: 18px 16px; border-bottom: 1px solid #e5dfd6; vertical-align: top; }
+td small { display: block; color: #776f61; margin-top: 5px; }
+.products { max-width: 300px; line-height: 1.5; color: #625b51; }
+.error { padding: 14px 18px; color: #8a332c; background: #fff2ef; border: 1px solid #e5b6b1; margin: 18px 0; }
+.empty { padding: 36px; color: #766b5d; text-align: center; }
+.loginPage { min-height: 80vh; display: grid; place-items: center; padding: 32px 20px; background: #fffdfa; }
+.loginCard { width: min(460px, 100%); border: 1px solid #ddd7ce; padding: 32px; }
+.loginCard p { color: #746a5d; line-height: 1.6; }
+.loginCard form { display: grid; gap: 16px; }
+.loginCard input { min-height: 44px; border: 1px solid #d3ccc0; padding: 11px 13px; font: inherit; }
+@media (max-width: 780px) {
+  .page { padding: 20px 16px 60px; }
+  .topbar, .heading { align-items: flex-start; flex-direction: column; }
+  .topbar nav { gap: 13px; }
+  .stats { grid-template-columns: 1fr; }
+  .stats > div + div { border-left: 0; border-top: 1px solid #ddd7ce; }
+  .toolbar { align-items: stretch; flex-direction: column; }
+  .toolbar span { white-space: normal; }
+}
