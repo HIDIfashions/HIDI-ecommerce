@@ -4,7 +4,8 @@ import { AddToCart } from "@/components/add-to-cart";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductInfoAccordion } from "@/components/product-info-accordion";
 import { WishlistButton } from "@/components/wishlist-button";
-import { formatPaise, getProduct } from "@/lib/api";
+import { ProductReviews } from "@/components/product-reviews";
+import { formatPaise, getProduct, getProductReviews } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const product = await getProduct(slug);
   if (!product) notFound();
+  const reviews = await getProductReviews(product.id);
 
   const collection = product.collections[0] ?? { slug: "new-arrivals", name: "New Arrivals" };
   const gallery = product.images?.length ? product.images : [
@@ -33,5 +35,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <ProductInfoAccordion product={product} />
       </aside>
     </div>
+    <ProductReviews data={reviews} />
   </div>;
 }
