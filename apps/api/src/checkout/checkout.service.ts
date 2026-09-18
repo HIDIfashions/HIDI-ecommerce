@@ -108,7 +108,10 @@ export class CheckoutService {
         include: { items: { orderBy: { variantId: "asc" }, include: { product: true, variant: { include: { inventory: true } } } } },
       });
       if (!cart || !cart.items.length) throw new BadRequestException("Your bag is empty");
-      if (cart.userId && cart.userId !== userId) throw new UnauthorizedException("This bag belongs to another account");
+      // The bag is browser-session scoped. Account ownership is enforced on the
+      // Order and Wallet, not on the reusable browser cart. This lets a customer
+      // sign in with a new verified identity without losing the bag that is
+      // already open in this browser.
       let subtotalPaise = 0;
       for (const item of cart.items) {
         if (!item.variant.active || item.product.status !== "ACTIVE" || !item.variant.inventory) {
@@ -176,7 +179,9 @@ export class CheckoutService {
           },
         });
       }
-      if (userId && !cart.userId) await tx.cart.update({ where: { id: cart.id }, data: { userId } });
+      if (cart.userId !== userId) {
+        await tx.cart.update({ where: { id: cart.id }, data: { userId } });
+      }
       if (created.totalPaise === walletPaise) {
         if (!await this.wallet.consume(tx, created.id)) throw new ConflictException("Wallet funds changed. Please review your bag and try again.");
         for (const item of cart.items) await tx.inventory.update({ where: { variantId: item.variantId }, data: { onHand: { decrement: item.quantity }, reserved: { decrement: item.quantity } } });
