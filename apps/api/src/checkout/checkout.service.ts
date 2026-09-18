@@ -64,7 +64,21 @@ export class CheckoutService {
     const walletEnabled = this.wallet.enabled();
     const identityWallet = auth ? (walletEnabled ? await this.wallet.ensureWallet(auth) : await this.prisma.walletAccount.findUnique({ where: { authSubject: auth.id } })) : null;
     const walletAccount = walletEnabled ? identityWallet : null;
-    const customer = auth && !identityWallet ? await this.prisma.user.upsert({ where: { email: auth.email }, create: { email: auth.email }, update: {} }) : null;
+    const customer = auth && !identityWallet
+      ? auth.phoneVerified && auth.phone
+        ? await this.prisma.user.upsert({
+            where: { phone: auth.phone },
+            create: { phone: auth.phone, email: auth.email ?? null },
+            update: auth.email ? { email: auth.email } : {},
+          })
+        : auth.email
+          ? await this.prisma.user.upsert({
+              where: { email: auth.email },
+              create: { email: auth.email },
+              update: {},
+            })
+          : null
+      : null;
     if (customer && auth) {
       const binding = await this.prisma.walletAccount.findUnique({ where: { userId: customer.id } });
       if (binding && binding.authSubject !== auth.id) throw new ConflictException("Customer identity requires support review");
@@ -119,7 +133,7 @@ export class CheckoutService {
           totalPaise: subtotalPaise,
           walletAppliedPaise: walletPaise,
           customerEmail: auth?.email ?? input.customerEmail ?? null,
-          customerPhone: input.customerPhone!,
+          customerPhone: auth?.phoneVerified && auth.phone ? auth.phone : input.customerPhone!,
           shippingAddress: { ...input.shippingAddress!, countryCode: input.shippingAddress?.countryCode ?? "IN" },
           items: {
             create: cart.items.map((item) => ({
