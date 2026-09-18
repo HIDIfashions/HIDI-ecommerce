@@ -6,7 +6,8 @@ import { CatalogImage } from "@/components/catalog-image";
 import { formatPaise } from "@/lib/api";
 import { getCartSession } from "@/lib/cart-session";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+import { BROWSER_API_URL } from "@/lib/browser-api";
+const API = BROWSER_API_URL;
 
 type Cart = any;
 
