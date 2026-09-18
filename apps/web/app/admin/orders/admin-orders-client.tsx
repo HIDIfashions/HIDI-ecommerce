@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./orders.module.css";
+import { AdminNav } from "@/components/admin/admin-nav";
 
 type Address = {
   firstName?: string;
@@ -163,7 +164,7 @@ export function AdminOrdersClient() {
       <header className={styles.adminTopbar}>
         <div>
           <p className={styles.eyebrow}>HIDI ADMIN</p>
-          <nav><strong>Orders</strong><span>Products</span><Link href="/admin/inventory">Inventory</Link><span>Customers</span></nav>
+          <AdminNav />
         </div>
         <button className={styles.lockButton} type="button" onClick={() => void lock()}>Lock admin</button>
       </header>
