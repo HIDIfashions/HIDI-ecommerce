@@ -11,6 +11,7 @@
     "lint": "pnpm -r lint",
     "db:generate": "pnpm --filter @hidi/api prisma:generate",
     "db:migrate": "pnpm --filter @hidi/api prisma:migrate",
-    "db:seed": "pnpm --filter @hidi/api prisma:seed"
+    "db:seed": "pnpm --filter @hidi/api prisma:seed",
+    "build:web:clean": "bash scripts/build-web-clean.sh"
   }
 }
