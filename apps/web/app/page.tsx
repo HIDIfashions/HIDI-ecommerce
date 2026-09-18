@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Sparkles, Truck, RefreshCcw, Star } from "lucide-react";
+import { ArrowRight, ShieldCheck, Sparkles, Truck, RefreshCcw } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { getProducts } from "@/lib/api";
 import styles from "./home.module.css";
@@ -52,20 +52,12 @@ export default async function Home() {
       <section className={styles.hero}>
         <div className={styles.heroEditorial}>
           <div className={styles.heroMeta}>
-            <span>HIDI / 2026</span>
-            <span>Indian wear, redefined</span>
+            <span>Indian wear for real days</span>
+            <span>Work · Everyday · Occasion</span>
           </div>
 
           <div className={styles.heroCopyWrap}>
-            <p className={styles.heroEyebrow}>WEAR THE FEELING</p>
-            <Image
-              className={styles.heroLogo}
-              src="/brand/hidi-logo-dark.png"
-              alt="HIDI — Wear the Feeling"
-              width={540}
-              height={180}
-              priority
-            />
+            <p className={styles.heroEyebrow}>QUIETLY CONFIDENT INDIAN WEAR</p>
             <h1>For every role you carry.</h1>
             <p className={styles.heroCopy}>
               Indian wear for work, everyday rituals and occasions — calm in spirit, confident in presence.
@@ -82,7 +74,7 @@ export default async function Home() {
 
           <div className={styles.heroSignature}>
             <span>01</span>
-            <p>Designed around real routines, not fantasy wardrobes.</p>
+            <p>Designed around real routines, long days and repeat wear.</p>
           </div>
         </div>
 
@@ -149,24 +141,27 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className={styles.socialProof}>
+      <section className={styles.launchValues}>
         <div className="container">
-          <div className={styles.socialProofInner}>
-            <div>
-              <p className={styles.kicker}>BUILT ON TRUST</p>
-              <h2>Made to earn a place in your repeat wardrobe.</h2>
+          <div className={styles.launchValuesGrid}>
+            <div className={styles.launchValuesLead}>
+              <p className={styles.kicker}>MADE FOR REPEAT WEAR</p>
+              <h2>Good clothes should make the day easier.</h2>
             </div>
-            <div className={styles.proofCard}>
-              <div className={styles.proofStars}>
-                {Array.from({ length: 5 }).map((_, index) => <Star key={index} size={15} fill="currentColor" />)}
-              </div>
-              <strong>Verified reviews</strong>
-              <p>Only delivered HIDI purchases can create verified product reviews.</p>
+            <div className={styles.valueCard}>
+              <span>01</span>
+              <strong>Thoughtful fabrics</strong>
+              <p>Chosen for comfort, movement and the kind of wear that lasts beyond one occasion.</p>
             </div>
-            <div className={styles.proofCard}>
-              <span className={styles.proofNumber}>7</span>
-              <strong>Day exchange window</strong>
-              <p>Clear support when fit or size needs another try.</p>
+            <div className={styles.valueCard}>
+              <span>02</span>
+              <strong>Easy silhouettes</strong>
+              <p>Shapes designed to feel composed without becoming restrictive or overworked.</p>
+            </div>
+            <div className={styles.valueCard}>
+              <span>03</span>
+              <strong>Quality checked</strong>
+              <p>Every piece is checked before dispatch so the product you receive matches the HIDI standard.</p>
             </div>
           </div>
         </div>
@@ -192,10 +187,10 @@ export default async function Home() {
         <div className={`${styles.manifestoInner} container`}>
           <div className={styles.manifestoLeft}>
             <span className={styles.manifestoNumber}>04</span>
-            <div className={styles.manifestoMark} aria-hidden="true">H</div>
+            <div className={styles.manifestoPhrase} aria-hidden="true">REAL<br />DAYS</div>
           </div>
           <div className={styles.manifestoCopy}>
-            <p className={styles.kicker}>THE HIDI POINT OF VIEW</p>
+            <p className={styles.kicker}>OUR POINT OF VIEW</p>
             <h2>Style should feel like you — only more certain.</h2>
             <p>We choose restraint over noise, wearability over spectacle, and thoughtful detail over trend for trend’s sake.</p>
             <Link className={styles.manifestoLink} href="/about">Discover HIDI <ArrowRight size={14} /></Link>
@@ -205,7 +200,7 @@ export default async function Home() {
 
       <section className={`${styles.serviceSection} container`}>
         <div className={styles.serviceIntro}>
-          <p className={styles.kicker}>05 / THE HIDI STANDARD</p>
+          <p className={styles.kicker}>05 / OUR STANDARD</p>
           <h2>Thoughtful from first click to final fit.</h2>
         </div>
         <div className={styles.serviceGrid}>
