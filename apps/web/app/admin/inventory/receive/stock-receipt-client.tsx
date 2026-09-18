@@ -8,6 +8,7 @@ import { CreateProductInReceipt } from "@/components/admin-products/create-produ
 import { appendNewReceiptLines } from "@/lib/admin-products-contract";
 import { BulkReceiptCsvImport } from "@/components/admin-import/bulk-receipt-csv-import";
 import { uploadSkuPhotoBatch } from "@/lib/sku-photo-batch";
+import { AdminNav } from "@/components/admin/admin-nav";
 
 type Variant = {
   variantId: string;
@@ -251,7 +252,7 @@ export function AdminStockReceiptClient() {
   return (
     <main className={styles.page}>
       <header className={styles.topbar}>
-        <div><p className={styles.eyebrow}>HIDI ADMIN</p><nav><Link href="/admin/orders">Orders</Link><Link href="/admin/products">Products</Link><Link href="/admin/inventory">Inventory</Link><strong>Receive stock</strong><span>Customers</span></nav></div>
+        <div><p className={styles.eyebrow}>HIDI ADMIN</p><AdminNav /></div>
         <button type="button" className={styles.secondaryButton} onClick={() => void lock()}>Lock admin</button>
       </header>
 
