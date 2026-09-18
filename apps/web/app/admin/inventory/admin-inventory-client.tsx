@@ -175,7 +175,7 @@ export function AdminInventoryClient() {
           <p className={styles.eyebrow}>HIDI ADMIN</p>
           <nav aria-label="Admin navigation">
             <Link href="/admin/orders">Orders</Link>
-            <span>Products</span>
+            <Link href="/admin/products">Products</Link>
             <strong>Inventory</strong>
             <span>Customers</span>
           </nav>
