@@ -64,7 +64,21 @@ export class CheckoutService {
     const walletEnabled = this.wallet.enabled();
     const identityWallet = auth ? (walletEnabled ? await this.wallet.ensureWallet(auth) : await this.prisma.walletAccount.findUnique({ where: { authSubject: auth.id } })) : null;
     const walletAccount = walletEnabled ? identityWallet : null;
-    const customer = auth && !identityWallet ? await this.prisma.user.upsert({ where: { email: auth.email }, create: { email: auth.email }, update: {} }) : null;
+    const customer = auth && !identityWallet
+      ? auth.phoneVerified && auth.phone
+        ? await this.prisma.user.upsert({
+            where: { phone: auth.phone },
+            create: { phone: auth.phone, email: auth.email ?? null },
+            update: auth.email ? { email: auth.email } : {},
+          })
+        : auth.email
+          ? await this.prisma.user.upsert({
+              where: { email: auth.email },
+              create: { email: auth.email },
+              update: {},
+            })
+          : null
+      : null;
     if (customer && auth) {
       const binding = await this.prisma.walletAccount.findUnique({ where: { userId: customer.id } });
       if (binding && binding.authSubject !== auth.id) throw new ConflictException("Customer identity requires support review");
@@ -94,7 +108,10 @@ export class CheckoutService {
         include: { items: { orderBy: { variantId: "asc" }, include: { product: true, variant: { include: { inventory: true } } } } },
       });
       if (!cart || !cart.items.length) throw new BadRequestException("Your bag is empty");
-      if (cart.userId && cart.userId !== userId) throw new UnauthorizedException("This bag belongs to another account");
+      // The bag is browser-session scoped. Account ownership is enforced on the
+      // Order and Wallet, not on the reusable browser cart. This lets a customer
+      // sign in with a new verified identity without losing the bag that is
+      // already open in this browser.
       let subtotalPaise = 0;
       for (const item of cart.items) {
         if (!item.variant.active || item.product.status !== "ACTIVE" || !item.variant.inventory) {
@@ -119,7 +136,7 @@ export class CheckoutService {
           totalPaise: subtotalPaise,
           walletAppliedPaise: walletPaise,
           customerEmail: auth?.email ?? input.customerEmail ?? null,
-          customerPhone: input.customerPhone!,
+          customerPhone: auth?.phoneVerified && auth.phone ? auth.phone : input.customerPhone!,
           shippingAddress: { ...input.shippingAddress!, countryCode: input.shippingAddress?.countryCode ?? "IN" },
           items: {
             create: cart.items.map((item) => ({
@@ -162,7 +179,9 @@ export class CheckoutService {
           },
         });
       }
-      if (userId && !cart.userId) await tx.cart.update({ where: { id: cart.id }, data: { userId } });
+      if (cart.userId !== userId) {
+        await tx.cart.update({ where: { id: cart.id }, data: { userId } });
+      }
       if (created.totalPaise === walletPaise) {
         if (!await this.wallet.consume(tx, created.id)) throw new ConflictException("Wallet funds changed. Please review your bag and try again.");
         for (const item of cart.items) await tx.inventory.update({ where: { variantId: item.variantId }, data: { onHand: { decrement: item.quantity }, reserved: { decrement: item.quantity } } });

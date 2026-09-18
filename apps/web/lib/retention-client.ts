@@ -1,6 +1,7 @@
 import { getAccessToken, getStoredSession } from "@/lib/supabase-auth";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+import { BROWSER_API_URL } from "@/lib/browser-api";
+const API = BROWSER_API_URL;
 export const RETENTION_CONSENT_VERSION = "hidi-retention-v1" as const;
 export const RETENTION_PREFERENCES_EVENT = "hidi-retention-preferences-updated";
 export const retentionEnabled = process.env.NEXT_PUBLIC_RETENTION_ENABLED === "true";

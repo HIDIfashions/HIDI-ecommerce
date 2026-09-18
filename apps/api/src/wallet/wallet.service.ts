@@ -51,13 +51,24 @@ export class WalletService {
   /** Enrolment is only called from an authenticated checkout, never a GET. */
   async ensureWallet(authUser: VerifiedAuthUser) {
     this.requireEnabled();
-    if (!authUser.id || !authUser.email) throw new BadRequestException("A verified customer account is required");
+    if (!authUser.id || (!authUser.email && !(authUser.phoneVerified && authUser.phone))) {
+      throw new BadRequestException("A verified customer account is required");
+    }
     return withSerializableRetry(this.prisma, async (tx) => {
       const existing = await tx.walletAccount.findUnique({ where: { authSubject: authUser.id } });
       if (existing) return existing;
-      // Only server-verified email is used to resolve an existing local User.
-      // An email collision must never transfer an existing wallet between Auth subjects.
-      const user = await tx.user.upsert({ where: { email: authUser.email }, create: { email: authUser.email }, update: {} });
+      // Resolve only server-verified Auth identifiers. Never accept browser-supplied identity here.
+      const user = authUser.phoneVerified && authUser.phone
+        ? await tx.user.upsert({
+            where: { phone: authUser.phone },
+            create: { phone: authUser.phone, email: authUser.email ?? null },
+            update: authUser.email ? { email: authUser.email } : {},
+          })
+        : await tx.user.upsert({
+            where: { email: authUser.email! },
+            create: { email: authUser.email! },
+            update: {},
+          });
       const prior = await tx.walletAccount.findUnique({ where: { userId: user.id } });
       if (prior) {
         if (prior.authSubject !== authUser.id) throw new ConflictException("This account requires support review before linking a wallet");

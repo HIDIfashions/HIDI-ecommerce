@@ -10,7 +10,8 @@ import { useWalletSummary } from "@/components/wallet-balance";
 import { checkoutFingerprint, formatWalletPaise, parsePreparedCheckout, walletAccountId, walletAmountPaise, walletEnabled, WALLET_UPDATED_EVENT, type PreparedCheckout } from "@/lib/wallet-client";
 import walletStyles from "./wallet.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+import { BROWSER_API_URL } from "@/lib/browser-api";
+const API = BROWSER_API_URL;
 
 declare global {
   interface Window { Razorpay?: new (options: any) => { open: () => void; close?: () => void; on: (event: string, cb: (payload: any) => void) => void } }
@@ -30,6 +31,7 @@ export function CheckoutClient() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState("");
+  const [signedInPhone, setSignedInPhone] = useState("");
   const [accountId, setAccountId] = useState<string | null>(null);
   const [useWallet, setUseWallet] = useState(false);
   const [walletInput, setWalletInput] = useState("");
@@ -61,7 +63,14 @@ export function CheckoutClient() {
         lifecycle.current.userId = nextUserId;
         setAccountId(nextUserId);
       }
-      try { setSignedInEmail(getStoredSession()?.user?.email ?? ""); } catch { setSignedInEmail(""); }
+      try {
+        const session = getStoredSession();
+        setSignedInEmail(session?.user?.email ?? "");
+        setSignedInPhone(session?.user?.phone ?? "");
+      } catch {
+        setSignedInEmail("");
+        setSignedInPhone("");
+      }
     }
     function onStorage(event: StorageEvent) {
       if (event.key === null || event.key === "hidi_supabase_session") syncAuth();
@@ -210,7 +219,38 @@ export function CheckoutClient() {
     <div className="checkout-grid">
       <form className="checkout-form" onSubmit={submit} onChange={() => { if (!lock.current) { invalidate(false); setError(""); } }}>
         <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-          <section><h2>Contact</h2><input key={accountId ?? "guest"} name="email" aria-label="Email address" placeholder="Email address" type="email" defaultValue={signedInEmail} required /><input name="phone" aria-label="Mobile number" placeholder="Mobile number" inputMode="tel" required /></section>
+          <section>
+            <h2>Contact</h2>
+            <input
+              key={`${accountId ?? "guest"}:${signedInEmail}`}
+              name="email"
+              aria-label="Email address"
+              placeholder="Email address"
+              type="email"
+              defaultValue={signedInEmail}
+              required
+            />
+            {accountId && signedInPhone ? <>
+              <input type="hidden" name="phone" value={signedInPhone} />
+              <div
+                aria-label="Verified mobile number"
+                title="Verified mobile number used to sign in"
+                style={{
+                  border: "1px solid #d8d3cb",
+                  minHeight: 52,
+                  padding: "0 14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  background: "#f7f4ef",
+                }}
+              >
+                <span>{signedInPhone.replace(/^\+91/, "+91 ")}</span>
+                <small style={{ opacity: 0.65, whiteSpace: "nowrap" }}>Verified</small>
+              </div>
+            </> : <input name="phone" aria-label="Mobile number" placeholder="Mobile number" inputMode="tel" required />}
+          </section>
           <section><h2>Delivery address</h2><div className="two-col"><input name="firstName" aria-label="First name" placeholder="First name" required /><input name="lastName" aria-label="Last name" placeholder="Last name" /></div><input name="line1" aria-label="Address" placeholder="Address" required /><input name="line2" aria-label="Apartment, suite or landmark" placeholder="Apartment, suite, landmark (optional)" /><div className="two-col"><input name="postalCode" aria-label="PIN code" placeholder="PIN code" inputMode="numeric" pattern="[0-9]{6}" required /><input name="city" aria-label="City" placeholder="City" required /></div><div className="two-col"><input name="state" aria-label="State" placeholder="State" required /><input aria-label="Country" value="India" disabled readOnly /></div></section>
           <section><h2>Payment</h2>
             {walletEnabled && <div className={walletStyles.checkoutWallet}>

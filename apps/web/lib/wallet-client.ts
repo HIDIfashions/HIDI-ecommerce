@@ -1,6 +1,7 @@
 import { getAccessToken, getStoredSession } from "@/lib/supabase-auth";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+import { BROWSER_API_URL } from "@/lib/browser-api";
+const API = BROWSER_API_URL;
 export const walletEnabled = process.env.NEXT_PUBLIC_WALLET_ENABLED === "true";
 export const WALLET_UPDATED_EVENT = "hidi-wallet-updated";
 
