@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight } from "lucide-react";
+import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight, Share2, MessageCircle } from "lucide-react";
 import type { ApiProduct, ApiVariant } from "@/lib/api";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
 import { cardPrice, money, validColourHex, variantsForColour } from "@/lib/product-card-utils";
 import { getWishlistItems, removeWishlistSlug, saveWishlistItem, WISHLIST_EVENT } from "@/lib/wishlist";
 import { ProductCardMedia } from "./product-card-media";
 import { getProductCardVideos } from "@/lib/product-card-videos";
+import { shareProduct, whatsappOrderUrl } from "@/lib/product-sharing";
 import styles from "./product-card.module.css";
 
 type Props = { product: ApiProduct; initialVariantId?: string };
@@ -101,6 +102,33 @@ export function ProductCard({ product, initialVariantId }: Props) {
     } catch { setError("We couldn’t save your wishlist. Please enable browser storage."); }
   }
 
+  async function share() {
+    setError("");
+    setMessage("");
+    try {
+      const result = await shareProduct({
+        slug: product.slug,
+        name: product.name,
+        text: `Take a look at ${product.name} from HIDI.`,
+      });
+      if (result === "copied") setMessage("Product link copied.");
+      if (result === "unsupported") setMessage("Copy the product link from your browser.");
+    } catch {
+      setMessage("Sharing was cancelled.");
+    }
+  }
+
+  function orderOnWhatsapp() {
+    const url = whatsappOrderUrl({
+      slug: product.slug,
+      name: product.name,
+      priceText: money(price.pricePaise),
+      color: activeColour || undefined,
+      size: selected?.size,
+    });
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   async function add() {
     if (adding.current || !canBuy || phase === "added") return;
     setError(""); setMessage(""); setBagLink(false);
@@ -185,6 +213,15 @@ export function ProductCard({ product, initialVariantId }: Props) {
             title={saved ? "Remove from wishlist" : "Save to wishlist"}
             className={`${styles.wishButton} ${saved ? styles.wishSaved : ""}`} onClick={toggleWishlist}>
             <Heart size={19} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className={styles.secondaryActions}>
+          <button type="button" onClick={() => void share()} aria-label={`Share ${product.name}`}>
+            <Share2 size={15} aria-hidden="true" /> Share
+          </button>
+          <button type="button" onClick={orderOnWhatsapp} aria-label={`Order ${product.name} on WhatsApp`}>
+            <MessageCircle size={15} aria-hidden="true" /> Order on WhatsApp
           </button>
         </div>
         <div className={styles.feedback}>
