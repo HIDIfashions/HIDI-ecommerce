@@ -99,6 +99,7 @@ model User {
   orders        Order[]
   couponUses    CouponRedemption[]
   retentionProfile RetentionProfile?
+  wallet        WalletAccount?
 
   @@index([createdAt])
 }
@@ -347,6 +348,7 @@ model Order {
   shippingPaise Int         @default(0)
   taxPaise      Int         @default(0)
   totalPaise    Int
+  walletAppliedPaise Int    @default(0)
   customerEmail String?
   customerPhone String
   shippingAddress Json
@@ -363,6 +365,9 @@ model Order {
   reservations  InventoryReservation[]
   reviewFollowUps ReviewFollowUp[]
   reviews         ProductReview[]
+  walletHold      WalletHold?
+  rewardAccrual   RewardAccrual?
+  walletEntries   WalletLedger[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -463,6 +468,7 @@ model Payment {
   amountPaise       Int
   method            String?
   rawReference      Json?
+  refunds           PaymentRefund[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -577,4 +583,89 @@ model RetentionDelivery {
   profile    RetentionProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId, category, sentAt])
+}
+
+// Server-only store credit. No client/Data API writes or transferable balances.
+model WalletAccount {
+  id            String   @id @default(cuid())
+  authSubject   String   @unique
+  userId        String   @unique
+  currency      String   @default("INR")
+  balancePaise  Int      @default(0)
+  reservedPaise Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  entries       WalletLedger[]
+  holds         WalletHold[]
+  accruals      RewardAccrual[]
+}
+
+model WalletLedger {
+  id         String   @id @default(cuid())
+  walletId   String
+  orderId    String?
+  kind       String
+  deltaPaise Int
+  eventKey   String   @unique
+  createdAt  DateTime @default(now())
+  wallet     WalletAccount @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  order      Order?        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([walletId, createdAt, id])
+  @@index([orderId])
+}
+
+model WalletHold {
+  id           String   @id @default(cuid())
+  walletId     String
+  orderId      String   @unique
+  amountPaise  Int
+  status       String   @default("ACTIVE")
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  releasedAt   DateTime?
+  refundedAt   DateTime?
+  createdAt    DateTime @default(now())
+  wallet       WalletAccount @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([walletId, status])
+  @@index([status, expiresAt])
+}
+
+model RewardAccrual {
+  id               String   @id @default(cuid())
+  walletId         String
+  orderId          String   @unique
+  basisPaise       Int
+  rewardPaise      Int
+  returnWindowDays Int
+  policyVersion   String
+  status          String   @default("PENDING")
+  eligibleAt      DateTime?
+  creditedAt      DateTime?
+  reversedAt      DateTime?
+  reason          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  wallet          WalletAccount @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([walletId, status])
+  @@index([status, eligibleAt, id])
+  @@index([createdAt, id])
+}
+
+model PaymentRefund {
+  id               String   @id @default(cuid())
+  paymentId        String
+  providerRefundId String   @unique
+  amountPaise      Int
+  status          String   @default("PROCESSED")
+  processedAt     DateTime
+  createdAt       DateTime @default(now())
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId, status])
 }

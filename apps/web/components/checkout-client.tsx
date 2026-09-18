@@ -1,118 +1,243 @@
 "use client";
 
+import Link from "next/link";
 import Script from "next/script";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatPaise } from "@/lib/api";
-import { getCartSession, newCheckoutToken } from "@/lib/cart-session";
-import { getStoredSession } from "@/lib/supabase-auth";
+import { getCartSession, newCheckoutToken, startNewCartSession } from "@/lib/cart-session";
+import { getAccessToken, getStoredSession } from "@/lib/supabase-auth";
+import { useWalletSummary } from "@/components/wallet-balance";
+import { checkoutFingerprint, formatWalletPaise, parsePreparedCheckout, walletAccountId, walletAmountPaise, walletEnabled, WALLET_UPDATED_EVENT, type PreparedCheckout } from "@/lib/wallet-client";
+import walletStyles from "./wallet.module.css";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
 
 declare global {
-  interface Window { Razorpay?: new (options: any) => { open: () => void; on: (event: string, cb: (payload: any) => void) => void } }
+  interface Window { Razorpay?: new (options: any) => { open: () => void; close?: () => void; on: (event: string, cb: (payload: any) => void) => void } }
+}
+
+type CheckoutCart = { subtotalPaise: number; totalPaise?: number; itemCount: number; items: Array<{ id: string; quantity: number; lineTotalPaise: number; variant?: { id?: string } }> };
+type Attempt = { fingerprint: string; token: string; walletPaise: number };
+
+function cartSignature(cart: CheckoutCart) {
+  return JSON.stringify([cart.subtotalPaise, cart.totalPaise, cart.items.map((item) => [item.id, item.variant?.id, item.quantity, item.lineTotalPaise])]);
 }
 
 export function CheckoutClient() {
   const router = useRouter();
-  const [cart, setCart] = useState<any>(null);
+  const wallet = useWalletSummary();
+  const [cart, setCart] = useState<CheckoutCart | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState("");
-  const token = useRef<string>("");
+  const [accountId, setAccountId] = useState<string | null>(null);
+  const [useWallet, setUseWallet] = useState(false);
+  const [walletInput, setWalletInput] = useState("");
+  const [prepared, setPrepared] = useState<PreparedCheckout | null>(null);
+  const [reloadCart, setReloadCart] = useState(0);
+  const attempt = useRef<Attempt | null>(null);
+  const lock = useRef(false);
+  const lifecycle = useRef({ active: false, revision: 0, userId: null as string | null, cartSignature: "" });
+  const request = useRef<AbortController | null>(null);
+  const payment = useRef<InstanceType<NonNullable<Window["Razorpay"]>> | null>(null);
+
+  function invalidate(resetChoice: boolean) {
+    lifecycle.current.revision += 1;
+    request.current?.abort();
+    payment.current?.close?.();
+    payment.current = null;
+    attempt.current = null;
+    lock.current = false;
+    setBusy(false); setPrepared(null);
+    if (resetChoice) { setUseWallet(false); setWalletInput(""); }
+  }
 
   useEffect(() => {
-    token.current = newCheckoutToken();
-    setSignedInEmail(getStoredSession()?.user?.email ?? "");
-    fetch(`${API}/carts/${getCartSession()}`).then(async (r) => {
-      const data = await r.json();
-      if (!r.ok) throw new Error(data?.message ?? "Unable to load bag");
-      setCart(data);
-    }).catch((e) => setError(e.message));
+    lifecycle.current.active = true;
+    function syncAuth() {
+      const nextUserId = walletAccountId();
+      if (nextUserId !== lifecycle.current.userId) {
+        invalidate(true);
+        lifecycle.current.userId = nextUserId;
+        setAccountId(nextUserId);
+      }
+      try { setSignedInEmail(getStoredSession()?.user?.email ?? ""); } catch { setSignedInEmail(""); }
+    }
+    function onStorage(event: StorageEvent) {
+      if (event.key === null || event.key === "hidi_supabase_session") syncAuth();
+      if (event.key === null || event.key === "hidi_cart_session") { invalidate(true); setReloadCart((value) => value + 1); }
+    }
+    const refreshCart = () => { setReloadCart((value) => value + 1); };
+    syncAuth();
+    window.addEventListener("hidi-auth-updated", syncAuth);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("hidi-cart-updated", refreshCart);
+    return () => {
+      lifecycle.current.active = false;
+      lifecycle.current.revision += 1;
+      request.current?.abort();
+      payment.current?.close?.();
+      window.removeEventListener("hidi-auth-updated", syncAuth);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("hidi-cart-updated", refreshCart);
+    };
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const sessionId = getCartSession();
+    fetch(`${API}/carts/${sessionId}`, { cache: "no-store", signal: controller.signal }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.message ?? "Unable to load bag");
+      if (!Array.isArray(data.items) || !Number.isSafeInteger(data.subtotalPaise) || data.subtotalPaise < 0) throw new Error("Your bag is temporarily unavailable.");
+      if (controller.signal.aborted || getCartSession() !== sessionId) return;
+      const signature = cartSignature(data);
+      if (lifecycle.current.cartSignature && signature !== lifecycle.current.cartSignature) invalidate(true);
+      lifecycle.current.cartSignature = signature;
+      setCart(data);
+    }).catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Unable to load bag"); });
+    return () => controller.abort();
+  }, [reloadCart]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const RazorpayCheckout = window.Razorpay;
-    if (!RazorpayCheckout) { setError("Secure payment is still loading. Please try again."); return; }
-    setBusy(true); setError("");
+    if (lock.current || !cart) return;
+    const expectedUserId = walletAccountId();
+    if (expectedUserId !== lifecycle.current.userId) { invalidate(true); setError("Your sign-in changed. Please reload checkout before paying."); return; }
+    const requestedWallet = useWallet && walletEnabled ? walletAmountPaise(walletInput, cart.totalPaise ?? cart.subtotalPaise, cart.totalPaise ?? cart.subtotalPaise) : 0;
+    if (requestedWallet === null || (useWallet && !expectedUserId)) { setError("Enter a valid rewards amount and sign in to use your wallet."); return; }
+    const expectedCash = (cart.totalPaise ?? cart.subtotalPaise) - requestedWallet;
+    lock.current = true; setBusy(true); setError("");
     const data = new FormData(event.currentTarget);
+    const details = Object.fromEntries(["email", "phone", "firstName", "lastName", "line1", "line2", "postalCode", "city", "state"].map((key) => [key, String(data.get(key) ?? "")]));
+    const sessionId = getCartSession();
+    const fingerprint = checkoutFingerprint({ userId: expectedUserId, sessionId, cartSignature: cartSignature(cart), walletPaise: requestedWallet, details });
+    const retrying = attempt.current?.fingerprint === fingerprint;
+    if (expectedCash > 0 && !window.Razorpay && !retrying) {
+      lock.current = false; setBusy(false); setError("Secure payment is still loading. Please try again."); return;
+    }
+    const controller = new AbortController();
+    request.current?.abort(); request.current = controller;
+    const revision = lifecycle.current.revision;
+    const current = () => lifecycle.current.active && !controller.signal.aborted && lifecycle.current.revision === revision && walletAccountId() === expectedUserId && getCartSession() === sessionId;
+    const release = () => { if (current()) { lock.current = false; setBusy(false); } };
+
     try {
+      if (requestedWallet > 0 && expectedUserId) {
+        const latest = await wallet.refresh();
+        if (!current()) return;
+        if (!latest?.enabled) throw new Error("Wallet redemption is currently unavailable. Turn off rewards to continue.");
+        // A retry may already own a reservation excluded from availablePaise.
+        // The original idempotency key lets the server reuse that exact reservation.
+        if (!retrying && requestedWallet > latest.availablePaise) throw new Error(`Your available rewards changed to ${formatWalletPaise(latest.availablePaise)}. Please review the amount before continuing.`);
+      }
+      const accessToken = expectedUserId ? await getAccessToken() : null;
+      if (!current()) return;
+      if (expectedUserId && !accessToken) throw new Error("Please sign in again before completing your order.");
+      if (!retrying) attempt.current = { fingerprint, token: newCheckoutToken(), walletPaise: requestedWallet };
       const response = await fetch(`${API}/checkout/prepare`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", signal: controller.signal,
+        headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
         body: JSON.stringify({
-          sessionId: getCartSession(),
-          checkoutToken: token.current,
-          customerEmail: data.get("email"),
-          customerPhone: data.get("phone"),
-          shippingAddress: {
-            firstName: data.get("firstName"), lastName: data.get("lastName"), phone: data.get("phone"),
-            line1: data.get("line1"), line2: data.get("line2"), postalCode: data.get("postalCode"),
-            city: data.get("city"), state: data.get("state"), countryCode: "IN",
-          },
+          sessionId, checkoutToken: attempt.current!.token, walletPaise: requestedWallet, expectedTotalPaise: cart.subtotalPaise,
+          customerEmail: details.email, customerPhone: details.phone,
+          shippingAddress: { firstName: details.firstName, lastName: details.lastName, phone: details.phone, line1: details.line1, line2: details.line2, postalCode: details.postalCode, city: details.city, state: details.state, countryCode: "IN" },
         }),
       });
-      const prepared = await response.json();
-      if (!response.ok) throw new Error(prepared?.message ?? "Unable to prepare checkout");
-
+      const payload = await response.json();
+      if (!current()) return;
+      if (!response.ok) {
+        if (response.status === 409) setReloadCart((value) => value + 1);
+        if (payload?.message === "This checkout attempt has ended. Please retry payment." || payload?.message === "Checkout identity or wallet amount changed. Start a new checkout attempt.") {
+          attempt.current = null;
+          setPrepared(null);
+        }
+        throw new Error(typeof payload?.message === "string" ? payload.message : "Unable to prepare checkout");
+      }
+      const result = parsePreparedCheckout(payload);
+      setPrepared(result);
+      if (result.captured) {
+        window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
+        router.push(`/order-confirmed?order=${encodeURIComponent(result.orderNumber)}&status=${encodeURIComponent(result.status)}`);
+        return;
+      }
+      const RazorpayCheckout = window.Razorpay;
+      if (!RazorpayCheckout) throw new Error("Your checkout is reserved, but secure payment is still loading. Please retry this checkout; do not start a new order.");
       const rzp = new RazorpayCheckout({
-        key: prepared.razorpayKeyId,
-        amount: prepared.amountPaise,
-        currency: prepared.currency,
-        name: "HIDI",
-        description: `Order ${prepared.orderNumber}`,
-        order_id: prepared.providerOrderId,
-        prefill: {
-          name: `${data.get("firstName") ?? ""} ${data.get("lastName") ?? ""}`.trim(),
-          email: data.get("email") ?? "",
-          contact: data.get("phone") ?? "",
-        },
-        notes: { hidi_order_number: prepared.orderNumber },
-        theme: { color: "#1d1d1a" },
+        key: result.razorpayKeyId, amount: result.amountPaise, currency: result.currency,
+        name: "HIDI", description: `Order ${result.orderNumber}`, order_id: result.providerOrderId,
+        prefill: { name: `${details.firstName} ${details.lastName}`.trim(), email: details.email, contact: details.phone },
+        notes: { hidi_order_number: result.orderNumber }, theme: { color: "#1d1d1a" },
         handler: async (paymentResult: any) => {
+          if (!current()) return;
           try {
-            const verify = await fetch(`${API}/payments/razorpay/verify`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(paymentResult),
-            });
-            const result = await verify.json();
-            if (!verify.ok) throw new Error(result?.message ?? "Payment verification failed");
-            router.push(`/order-confirmed?order=${encodeURIComponent(result.orderNumber)}&status=${encodeURIComponent(result.status)}`);
-          } catch (e: any) {
-            setError(`${e.message}. If money was debited, do not pay again; HIDI will reconcile the payment automatically.`);
-            setBusy(false);
+            const verify = await fetch(`${API}/payments/razorpay/verify`, { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify(paymentResult) });
+            const confirmed = await verify.json();
+            if (!current()) return;
+            if (!verify.ok) throw new Error(confirmed?.message ?? "Payment verification failed");
+            window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
+            router.push(`/order-confirmed?order=${encodeURIComponent(confirmed.orderNumber)}&status=${encodeURIComponent(confirmed.status)}`);
+          } catch (cause) {
+            if (current()) setError(`${cause instanceof Error ? cause.message : "Payment verification failed"}. If money was debited, do not pay again; HIDI will reconcile the payment automatically.`);
+            release();
           }
         },
-        modal: { ondismiss: () => setBusy(false) },
+        modal: { ondismiss: () => { release(); if (current()) window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT)); } },
       });
+      payment.current = rzp;
       rzp.on("payment.failed", (failure: any) => {
-        setError(failure?.error?.description ?? "Payment did not complete. No order will be fulfilled until payment is confirmed.");
-        setBusy(false);
+        if (current()) setError(failure?.error?.description ?? "Payment did not complete. Please retry this checkout.");
+        release();
       });
       rzp.open();
-    } catch (e: any) {
-      token.current = newCheckoutToken();
-      setError(e.message ?? "Unable to start payment");
-      setBusy(false);
+    } catch (cause) {
+      if (current()) setError(cause instanceof Error ? cause.message : "Unable to start payment");
+      // Preserve the key on ambiguous failure: a server-side reservation may exist.
+      release();
     }
   }
 
-  if (!cart) return <p className="muted">Preparing secure checkout…</p>;
+  if (!cart) return <div><p className="muted">Preparing secure checkout…</p>{error && <p className="form-error" role="alert">{error}</p>}</div>;
   if (cart.items.length === 0) return <p>Your bag is empty.</p>;
+  const gross = cart.totalPaise ?? cart.subtotalPaise;
+  const maxWallet = Math.min(wallet.summary?.enabled ? wallet.summary.availablePaise : 0, gross);
+  const previewWallet = useWallet ? (walletAmountPaise(walletInput, gross, gross) ?? 0) : 0;
+  const applied = prepared?.walletAppliedPaise ?? previewWallet;
+  const payable = prepared?.amountPaise ?? Math.max(0, gross - previewWallet);
 
   return <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
     <div className="checkout-grid">
-      <form className="checkout-form" onSubmit={submit}>
-        <section><h2>Contact</h2><input name="email" placeholder="Email address" type="email" defaultValue={signedInEmail} required /><input name="phone" placeholder="Mobile number" inputMode="tel" required /></section>
-        <section><h2>Delivery address</h2><div className="two-col"><input name="firstName" placeholder="First name" required /><input name="lastName" placeholder="Last name" /></div><input name="line1" placeholder="Address" required /><input name="line2" placeholder="Apartment, suite, landmark (optional)" /><div className="two-col"><input name="postalCode" placeholder="PIN code" inputMode="numeric" pattern="[0-9]{6}" required /><input name="city" placeholder="City" required /></div><div className="two-col"><input name="state" placeholder="State" required /><input value="India" disabled readOnly /></div></section>
-        <section><h2>Payment</h2><div className="payment-placeholder"><strong>Razorpay secure payment</strong><span>UPI · Cards · Net banking · Wallets</span></div><p className="fine-print left">Stock is reserved for 15 minutes only after you press Pay securely.</p></section>
-        {error && <p className="form-error">{error}</p>}
-        <button className="button button-dark" type="submit" disabled={busy}>{busy ? "Opening secure payment…" : "Pay securely"}</button>
+      <form className="checkout-form" onSubmit={submit} onChange={() => { if (!lock.current) { invalidate(false); setError(""); } }}>
+        <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <section><h2>Contact</h2><input key={accountId ?? "guest"} name="email" aria-label="Email address" placeholder="Email address" type="email" defaultValue={signedInEmail} required /><input name="phone" aria-label="Mobile number" placeholder="Mobile number" inputMode="tel" required /></section>
+          <section><h2>Delivery address</h2><div className="two-col"><input name="firstName" aria-label="First name" placeholder="First name" required /><input name="lastName" aria-label="Last name" placeholder="Last name" /></div><input name="line1" aria-label="Address" placeholder="Address" required /><input name="line2" aria-label="Apartment, suite or landmark" placeholder="Apartment, suite, landmark (optional)" /><div className="two-col"><input name="postalCode" aria-label="PIN code" placeholder="PIN code" inputMode="numeric" pattern="[0-9]{6}" required /><input name="city" aria-label="City" placeholder="City" required /></div><div className="two-col"><input name="state" aria-label="State" placeholder="State" required /><input aria-label="Country" value="India" disabled readOnly /></div></section>
+          <section><h2>Payment</h2>
+            {walletEnabled && <div className={walletStyles.checkoutWallet}>
+              {!accountId ? <p className={walletStyles.note}><Link href="/account">Sign in</Link> to view and use your HIDI rewards. You can also continue as a guest.</p>
+                : wallet.loading && !wallet.summary ? <p role="status">Loading your rewards…</p>
+                : wallet.error ? <div><p className={walletStyles.warning} role="alert">{wallet.error}</p><button className={walletStyles.textButton} type="button" onClick={() => { void wallet.refresh().catch(() => undefined); }}>Try loading rewards again</button></div>
+                : wallet.unavailable ? <p className={walletStyles.note}>Wallet redemption is temporarily unavailable. You can pay securely without rewards.</p>
+                : wallet.summary ? <>
+                  <label className={walletStyles.toggle}><input type="checkbox" checked={useWallet} disabled={busy || wallet.loading || (maxWallet <= 0 && !useWallet)} onChange={(event) => { setUseWallet(event.target.checked); setWalletInput(event.target.checked ? (maxWallet / 100).toFixed(2) : ""); }} />Use HIDI rewards</label>
+                  <p className={walletStyles.note}>{formatWalletPaise(wallet.summary.availablePaise)} available · {formatWalletPaise(wallet.summary.pendingPaise)} pending</p>
+                  {useWallet && <label className={walletStyles.amount}>Rewards to use (₹)<input type="number" inputMode="decimal" min="0.01" step="0.01" max={Math.min(gross, Math.max(maxWallet, attempt.current?.walletPaise ?? 0)) / 100} value={walletInput} required aria-describedby="wallet-checkout-note" onChange={(event) => setWalletInput(event.target.value)} /><span id="wallet-checkout-note" className={walletStyles.note}>Use any amount up to your available rewards and order total. Your balance is checked again before payment.</span></label>}
+                </> : null}
+              {useWallet && (wallet.error || wallet.unavailable) && <button className={walletStyles.textButton} type="button" onClick={() => { invalidate(false); setUseWallet(false); setWalletInput(""); setError(""); }}>Continue without rewards</button>}
+            </div>}
+            {payable > 0 ? <div className="payment-placeholder"><strong>Razorpay secure payment</strong><span>UPI · Cards · Net banking · Wallets</span></div> : <div className="payment-placeholder"><strong>Pay with HIDI rewards</strong><span>No cash payment needed if the final amount is fully covered.</span></div>}
+            <p className="fine-print left">{walletEnabled && useWallet ? "Stock and selected rewards are" : "Stock is"} reserved for 15 minutes when checkout is prepared. Closing payment does not immediately release a reservation; retry the same checkout or wait for it to expire.</p>
+          </section>
+        </fieldset>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {error === "This bag belongs to another account" && <div><p className={walletStyles.note}>Sign in to the account that owns this bag, or start a new bag. The original bag will not be deleted.</p><button className={walletStyles.textButton} type="button" onClick={() => { invalidate(true); startNewCartSession(); router.push("/collections/new-arrivals"); }}>Start a new bag</button></div>}
+        <button className="button button-dark" type="submit" disabled={busy || (useWallet && (wallet.loading || !wallet.summary?.enabled || !!wallet.error))}>{busy ? "Preparing your order…" : payable === 0 ? "Place order with rewards" : "Pay securely"}</button>
       </form>
-      <aside className="checkout-summary"><p>Order total</p><strong>{formatPaise(cart.subtotalPaise)}</strong><span>{cart.itemCount} item(s) · Taxes included. Shipping policy can be applied before go-live.</span></aside>
+      <aside className="checkout-summary"><p>Order summary</p><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong><span>{cart.itemCount} item(s) · Taxes included</span>
+        <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Order total</span><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong></div>{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
+        {useWallet && !prepared && <p className={walletStyles.note}>Rewards are applied only after server confirmation.</p>}
+        {!!prepared?.walletAppliedPaise && prepared.provider === "RAZORPAY" && <p className={walletStyles.note}>{formatWalletPaise(prepared.walletAppliedPaise)} is reserved for this checkout while the remaining payment is completed.</p>}
+      </aside>
     </div>
   </>;
 }

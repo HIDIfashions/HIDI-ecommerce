@@ -1,8 +1,10 @@
 # Customer experience and retention: implementation status
 
-This change improves storefront interactions and adds disabled-by-default
-retention and reward **previews**. It does not deploy a WhatsApp bot, send a
-customer message, create spendable rewards, or modify checkout pricing.
+This change improves storefront interactions, adds disabled-by-default retention
+previews, and implements a real **feature-gated rewards wallet**. When enabled
+after staging acceptance, wallet code can credit, reserve, redeem and reverse
+store credit. No live balances, payments, migrations or messages were changed
+during implementation. WhatsApp automation is deferred.
 
 ## Delivered in this branch
 
@@ -14,9 +16,10 @@ customer message, create spendable rewards, or modify checkout pricing.
 | Retention preferences | Independent optional personalization/WhatsApp consent, audit trail, withdrawal, verified-phone enforcement | Phone-verification enrollment UI; current email sign-in does not verify a phone |
 | Behaviour signals | Signed-in, consent-gated product views after 30 visible seconds and size selections | Anonymous visitors cannot be contacted or retroactively identified |
 | Reminder policy | Protected dry-run eligibility preview with suppression and frequency rules | No outbound transport, delivery worker, Meta templates or STOP webhook |
-| Rewards | Read-only estimates: 2 points per complete INR 100; 1 point = INR 1 | No wallet balance, credit ledger, redemption, expiry, offer stacking or birthday promotion |
+| Rewards wallet | Immutable ledger, seven-day maturity, reserved funds, full/split wallet checkout, reversals and full-refund restoration | Staging/provider acceptance; partial-return allocation, birthday promotion and offer stacking remain separate |
 
-Existing header and payment/checkout implementation are unchanged. Customer
+The header is unchanged. Checkout/payment code now integrates wallet funding
+while retaining guest cash checkout. Customer
 authentication now requires a verified email; phone verification comes only from
 Supabase Auth's top-level confirmed phone, never editable user metadata. Late
 token refreshes cannot restore a logged-out account or overwrite another session.
@@ -32,15 +35,24 @@ Copy only the relevant variables into the existing application environments.
 | `NEXT_PUBLIC_RETENTION_ENABLED` | Web, build-time public | `false`; enables preference UI and consent-gated tracking only |
 | `RETENTION_ENABLED` | API | `false`; enables tracking and dry-run preview, never sending |
 | `HIDI_REWARDS_PREVIEW_ENABLED` | API | `false`; enables authenticated estimate endpoint only |
-| `HIDI_REWARD_RETURN_WINDOW_DAYS` | API | Empty; estimates held until approved whole days, 1–365, are supplied |
+| `HIDI_REWARD_RETURN_WINDOW_DAYS` | API | 7 in examples; controls only the old illustrative preview |
+| `HIDI_WALLET_ENABLED` | API | `false`; enables real enrollment, earning and redemption |
+| `HIDI_WALLET_WORKER_ENABLED` | API | `false`; optional bounded once-per-minute maturity processing |
+| `NEXT_PUBLIC_WALLET_ENABLED` | Web, build-time public | `false`; wallet account panel and checkout controls |
+
+The owner confirmed seven days after delivery and no percentage redemption cap.
+The real wallet snapshots that versioned policy. Earning is based on merchandise
+after discounts and wallet tender; shipping and separately recorded tax are
+excluded. Final customer terms must describe this basis and partial-return holds.
 
 Never put `ADMIN_API_KEY`, a database password, or a messaging secret in a
 `NEXT_PUBLIC_` variable. There is deliberately no switch that enables sending.
 Changing a public variable requires rebuilding the web app.
 
-The migration adds four private retention tables with foreign keys, indexes,
-event-type constraints, RLS enabled, and no grants to `PUBLIC`, `anon` or
-`authenticated`. Application access is through the server's existing Prisma
+The migrations add four private retention tables and five wallet/refund tables
+with foreign keys, indexes, check constraints, RLS and no grants to `PUBLIC`,
+`anon` or `authenticated`. Ledger updates/deletes are rejected; corrections use
+compensating entries. Access is through the server's existing Prisma
 database connection. Generate Prisma types after the schema change. Apply
 migrations to staging first using the established migration workflow; no live
 database migration was performed as part of this coding change.
@@ -63,6 +75,16 @@ Paths below are relative to the existing `/v1` API prefix.
   customer browser code or expose the admin secret.
 - `GET /rewards/summary`: verified-account preview; disabled returns 404. Always
   `mode: PREVIEW` and `spendablePaise: 0`. Estimates are not lifetime balances.
+- `GET /wallet`: verified-account real balance, reserved/available/pending/held
+  amounts and latest ledger history. Read-only; never credits on a GET.
+- `POST /wallet/admin/reconcile`: protected, bounded maturity/reversal pass.
+- `POST /wallet/admin/orders/:orderNumber/return-hold`: protected support action
+  to block/reverse earning, without issuing a cash refund.
+- `POST /wallet/admin/orders/:orderNumber/refund-wallet-only`: protected full
+  refund for orders funded entirely by rewards, requiring reason/reference.
+- `POST /checkout/prepare`: supports optional verified bearer identity,
+  `walletPaise` and `expectedTotalPaise`. Fully wallet-paid orders complete
+  without Razorpay. All amounts are validated on the server.
 
 ## Reminder policy and limitations
 
@@ -77,10 +99,10 @@ not evidence of improved conversion or CAC.
 
 Purchase suppression uses linked account orders and unclaimed orders matching
 the trusted verified account email, case-insensitively. It never claims orders.
-Guest/session-only carts are not silently attached to accounts. Orders using a
-different email, guest sessions, and local-only wishlist state cannot be safely
-correlated. Secure cart/order identity linking and wishlist/event reconciliation
-must be completed and tested before any sender is enabled.
+New authenticated checkout binds the order and current cart to the verified
+account. Historical guest/session-only carts, unrelated-email purchases and
+local-only wishlist state cannot be safely correlated. Identity/wishlist
+reconciliation and send-time checks still require testing before a sender exists.
 
 Event collection has five-minute deduplication and a daily cap; large preview
 inputs fail closed for manual review. Old events are pruned for active profiles,
@@ -100,11 +122,13 @@ expired browsing data. Consent audit retention/access policy also needs approval
    actual send time. Verify sender/withdrawal race handling.
 4. Build the separate commerce assistant and human handoff if 24/7 ordering
    support is required. An enquiry button is not that assistant.
-5. Approve reward basis, tax/shipping/discount treatment, return window,
-   redemption limits, offer stacking, expiry and birthday rules. Implement a
-   transaction-safe credit/debit/reversal ledger and checkout reservations with
-   authoritative payment/refund and item-level fulfillment reconciliation.
-   See `apps/api/src/rewards/README.md` for preview limitations.
+5. Validate the implemented wallet on staging, including real PostgreSQL
+   multi-session contention, Razorpay TEST capture/refund fixtures and deployed
+   scheduler operation. Seven-day release and no percentage cap are confirmed.
+   Finalize terms for earning basis, partial returns and offer stacking;
+   birthday/anniversary discounts remain unimplemented. Multi-shipment accruals
+   fail closed pending item-level reconciliation. See
+   `apps/api/src/wallet/README.md` for operational limits and activation steps.
 6. Stage a small consented cohort and measure incremental repeat purchases and
    contribution margin against holdout, along with unsubscribe/complaint rate.
    Lower CAC is a business objective, not a guaranteed result of these changes.
@@ -119,17 +143,29 @@ pnpm test:customer-experience
 pnpm --filter @hidi/api exec tsc --noEmit
 pnpm --filter @hidi/web exec tsc --noEmit
 pnpm --filter @hidi/web exec next build --webpack
+node --test tests/wallet-db.integration.mjs
+pnpm test:wallet-http
 ```
 
 The regression suite covers confirmed identity, refresh/logout races, consent
 withdrawal and tracking races, reminder decisions, account-scoped estimates,
-reward arithmetic/holds and product sharing. Tests use mocks, not live customer
+wallet arithmetic/holds/refunds, checkout, support operations, workers,
+storefront HTML/CSS contracts and sharing. Tests use mocks, not live customer
 messages, orders or payments. `tests/storefront-fixture-server.mjs` is an optional
 synthetic catalogue for local UI checks only; do not deploy it.
 
-All migrations were additionally applied to isolated PostgreSQL-compatible
-PGlite and the new tables checked for RLS/public-role denial. This supplements,
-but does not replace, a staging migration on the actual database version.
+The final local run passed 171 API tests, 68 web/storefront tests, 28 isolated
+database tests and six compiled HTTP guard tests (273 total, including parent
+test cases). API and web production builds passed. In this environment the
+test commands were run directly with Node and the installed build binaries;
+the pnpm wrapper attempted dependency reinstallation, which was not allowed to
+replace the shared dependency directories. The HTTP guards use a fake database
+provider and exercise real compiled Nest modules, not live services.
+
+All seven migrations were applied to isolated PostgreSQL-compatible PGlite.
+Wallet tests cover role denials, immutability, constraints, rollback and
+reservation bounds. PGlite uses one connection: this does not test independent
+session contention or replace staging PostgreSQL acceptance.
 
 Before merging/releasing:
 
@@ -146,4 +182,4 @@ Before merging/releasing:
 Production build, type checks, policy/unit tests and HTTP server-rendering checks
 were available in the coding environment. Browser access to the local preview
 was blocked, so visual and interactive browser QA remains outstanding. No live
-site deployment, customer notification or spendable wallet activation is claimed.
+site deployment, customer notification or live wallet activation is claimed.

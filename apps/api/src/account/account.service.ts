@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { VerifiedAuthUser } from "../auth/supabase-auth.service.js";
 
@@ -10,18 +10,25 @@ export class AccountService {
     const firstName = typeof authUser.metadata.first_name === "string" ? authUser.metadata.first_name : null;
     const lastName = typeof authUser.metadata.last_name === "string" ? authUser.metadata.last_name : null;
 
-    const user = await this.prisma.user.upsert({
+    const wallet = await this.prisma.walletAccount.findUnique({
+      where: { authSubject: authUser.id }, select: { userId: true },
+    });
+    const user = wallet ? await this.prisma.user.findUniqueOrThrow({ where: { id: wallet.userId } }) : await this.prisma.user.upsert({
       where: { email: authUser.email },
       create: {
         email: authUser.email,
         firstName,
         lastName,
       },
-      update: {
-        ...(firstName ? { firstName } : {}),
-        ...(lastName ? { lastName } : {}),
-      },
+      // Existing identity is verified below before any customer-owned fields
+      // could be changed. Reading orders must not edit another wallet's profile.
+      update: {},
     });
+
+    const linkedWallet = await this.prisma.walletAccount.findUnique({ where: { userId: user.id }, select: { authSubject: true } });
+    if (linkedWallet && linkedWallet.authSubject !== authUser.id) {
+      throw new ConflictException("This account requires support review before linking order history");
+    }
 
     const unclaimed = await this.prisma.order.findMany({
       where: {
@@ -33,7 +40,7 @@ export class AccountService {
 
     if (unclaimed.length) {
       await this.prisma.order.updateMany({
-        where: { id: { in: unclaimed.map((order) => order.id) } },
+        where: { id: { in: unclaimed.map((order) => order.id) }, userId: null, customerEmail: { equals: authUser.email, mode: "insensitive" } },
         data: { userId: user.id },
       });
     }
@@ -73,6 +80,8 @@ export class AccountService {
         status: order.status,
         createdAt: order.createdAt,
         totalPaise: order.totalPaise,
+        walletAppliedPaise: order.walletAppliedPaise,
+        cashPayablePaise: order.totalPaise - order.walletAppliedPaise,
         paymentStatus: order.payments[0]?.status ?? null,
         itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
         items: order.items.map((item) => ({
