@@ -16,14 +16,22 @@ export class RewardsService {
   async summary(authUser: VerifiedAuthUser) {
     if (process.env.HIDI_REWARDS_PREVIEW_ENABLED !== "true") throw new NotFoundException("Rewards preview is not enabled");
     const returnWindowDays = parseReturnWindowDays(process.env.HIDI_REWARD_RETURN_WINDOW_DAYS);
-    // Never accept an email/user ID from the request. requireUser verifies the
-    // bearer token with Auth; this email is the verified account identity.
-    const user = await this.prisma.user.findUnique({ where: { email: authUser.email }, select: { id: true } });
+    // Never accept identity fields from the request. requireUser verifies the
+    // bearer token with Supabase Auth; only verified phone/email values are used.
+    const verifiedPhone = authUser.phoneVerified && authUser.phone ? authUser.phone : null;
+    const verifiedEmail = authUser.email ?? null;
+    const user = verifiedPhone
+      ? await this.prisma.user.findUnique({ where: { phone: verifiedPhone }, select: { id: true } })
+      : verifiedEmail
+        ? await this.prisma.user.findUnique({ where: { email: verifiedEmail }, select: { id: true } })
+        : null;
+
     const orders = await this.prisma.order.findMany({
       where: {
         OR: [
           ...(user ? [{ userId: user.id }] : []),
-          { userId: null, customerEmail: { equals: authUser.email, mode: "insensitive" as const } },
+          ...(verifiedPhone ? [{ userId: null, customerPhone: verifiedPhone }] : []),
+          ...(verifiedEmail ? [{ userId: null, customerEmail: { equals: verifiedEmail, mode: "insensitive" as const } }] : []),
         ],
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
