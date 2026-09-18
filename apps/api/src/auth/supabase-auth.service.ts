@@ -11,7 +11,8 @@ type SupabaseAuthUser = {
 
 export type VerifiedAuthUser = {
   id: string;
-  email: string;
+  email?: string | null;
+  emailVerified?: boolean;
   metadata: Record<string, unknown>;
   phone?: string | null;
   phoneVerified?: boolean;
@@ -43,18 +44,20 @@ export class SupabaseAuthService {
     }
 
     const user = await response.json() as SupabaseAuthUser;
-    const email = user.email?.trim().toLowerCase();
+    const email = user.email_confirmed_at ? user.email?.trim().toLowerCase() ?? null : null;
+    const phone = user.phone_confirmed_at ? user.phone ?? null : null;
 
-    if (!user.id || !email || !user.email_confirmed_at) {
-      throw new UnauthorizedException("A verified email address is required");
+    if (!user.id || (!email && !phone)) {
+      throw new UnauthorizedException("A verified mobile number or email address is required");
     }
 
     return {
       id: user.id,
       email,
+      emailVerified: Boolean(email),
       metadata: user.user_metadata ?? {},
-      phone: user.phone_confirmed_at ? user.phone ?? null : null,
-      phoneVerified: Boolean(user.phone && user.phone_confirmed_at),
+      phone,
+      phoneVerified: Boolean(phone),
     };
   }
 
