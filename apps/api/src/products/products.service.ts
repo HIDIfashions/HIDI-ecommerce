@@ -15,7 +15,8 @@ export class ProductsService {
       include: {
         category: true,
         collections: { include: { collection: true }, orderBy: { position: "asc" } },
-        images: { orderBy: { position: "asc" }, take: 2 },
+        // Return all photo metadata for the card gallery; browsers load image bytes on demand.
+        images: { orderBy: { position: "asc" } },
         variants: {
           where: { active: true },
           include: { inventory: true },

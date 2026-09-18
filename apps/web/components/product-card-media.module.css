@@ -1,0 +1,264 @@
+.gallery {
+  position: relative;
+  min-width: 0;
+  color: #34251f;
+  container-type: inline-size;
+}
+
+.gallery button {
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gallery button:focus-visible {
+  outline: 3px solid #8c582d;
+  outline-offset: 3px;
+}
+
+.gallery button:disabled {
+  cursor: default;
+}
+
+.stage {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #eee6dc;
+  border-radius: 14px 14px 5px 5px;
+  isolation: isolate;
+}
+
+.slide,
+.photoButton,
+.videoBox {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.photoButton {
+  border: 0;
+  padding: 0;
+  background: none;
+  touch-action: pan-y pinch-zoom;
+  cursor: zoom-in !important;
+}
+
+.photo,
+.contain {
+  object-fit: cover;
+  object-position: center;
+}
+
+.contain {
+  object-fit: contain;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: linear-gradient(140deg, #f2ebe2, #d1bb9f);
+  color: #85664a;
+}
+
+.fallback > span {
+  font: 100px Georgia, serif;
+  opacity: .3;
+}
+
+.fallback small {
+  font-size: 11px;
+  text-align: center;
+  padding: 10px;
+}
+
+.badge {
+  position: absolute;
+  z-index: 4;
+  top: 10px;
+  left: 10px;
+  padding: 7px 11px;
+  background: rgba(253, 249, 242, .96);
+  border: 1px solid rgba(65, 43, 29, .12);
+  backdrop-filter: blur(6px);
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.expandIcon {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(65, 43, 29, .12);
+  background: rgba(253, 249, 242, .95);
+  color: #34251f;
+  box-shadow: 0 4px 16px rgba(48, 31, 22, .08);
+  pointer-events: none;
+}
+
+.videoBox {
+  background: #29211c;
+  color: #fff;
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.playCover {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: linear-gradient(0deg, rgba(24, 15, 8, .42), rgba(24, 15, 8, .04));
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.playDisc {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(254, 248, 236, .96);
+  color: #563622;
+  padding-left: 3px;
+  box-shadow: 0 8px 24px rgba(30, 18, 10, .16);
+}
+
+.resume {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  min-height: 44px;
+  border: 1px solid #e2d5c6;
+  border-radius: 8px;
+  background: #fffaf3;
+  color: #34251f;
+  white-space: nowrap;
+}
+
+.videoMessage {
+  position: absolute;
+  top: 10%;
+  left: 12%;
+  right: 12%;
+  padding: 8px;
+  border-radius: 6px;
+  background: #29211c;
+  color: #fff;
+  font-size: 12px;
+}
+
+.videoError {
+  position: absolute;
+  inset: 25% 16%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.videoError button {
+  min-height: 44px;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #f8efe2;
+  color: #34251f;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  padding: 16px;
+  width: min(92vw, 1000px);
+  max-width: 96vw;
+  max-height: 94dvh;
+  z-index: 10000;
+  border: 0;
+  border-radius: 14px;
+  background: #fff9ef;
+  color: #34251f;
+}
+
+.lightbox::backdrop {
+  background: rgba(25, 17, 12, .83);
+}
+
+.lightboxInner {
+  position: relative;
+}
+
+.largePhoto {
+  position: relative;
+  width: 100%;
+  height: 76dvh;
+}
+
+.close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #d6c7b5;
+  border-radius: 50%;
+  background: #fffaf1;
+  color: #34251f;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (hover: none) {
+  .stage {
+    touch-action: pan-y pinch-zoom;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery * {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
