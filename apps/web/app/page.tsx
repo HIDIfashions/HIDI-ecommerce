@@ -46,6 +46,7 @@ const trust = [
 
 export default async function Home() {
   const products = (await getProducts()).slice(0, 8);
+  const detailProducts = products.slice(0, 3);
 
   return (
     <>
@@ -164,6 +165,60 @@ export default async function Home() {
               <p>Every piece is checked before dispatch so the product you receive matches the HIDI standard.</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className={`${styles.detailStory} container`}>
+        <div className={styles.detailStoryHeader}>
+          <div>
+            <p className={styles.kicker}>SEE THE PRODUCT CLOSER</p>
+            <h2>More than a front view.</h2>
+          </div>
+          <p>
+            Online Indian wear needs more visual proof. Explore silhouette, surface detail and alternate product views before you decide.
+          </p>
+        </div>
+
+        <div className={styles.detailStoryGrid}>
+          {detailProducts.map((product, index) => {
+            const primary = product.images?.[0];
+            const secondary = product.images?.[1] ?? primary;
+            return (
+              <article className={styles.detailStoryCard} key={product.slug}>
+                <Link href={`/products/${encodeURIComponent(product.slug)}`} className={styles.detailStoryMedia}>
+                  {primary?.url && (
+                    <Image
+                      src={primary.url}
+                      alt={primary.alt || product.name}
+                      fill
+                      sizes="(max-width: 800px) 100vw, 33vw"
+                      className={styles.detailStoryImage}
+                    />
+                  )}
+                  {secondary?.url && secondary.url !== primary?.url && (
+                    <span className={styles.detailInset}>
+                      <Image
+                        src={secondary.url}
+                        alt={secondary.alt || `${product.name} alternate view`}
+                        fill
+                        sizes="150px"
+                        className={styles.detailInsetImage}
+                      />
+                    </span>
+                  )}
+                  <span className={styles.detailNumber}>0{index + 1}</span>
+                </Link>
+                <div className={styles.detailStoryCopy}>
+                  <p>{product.fabric || product.category?.name || "HIDI EDIT"}</p>
+                  <h3>{product.name}</h3>
+                  <span>{product.shortDescription || "Explore the complete product view, fit and details."}</span>
+                  <Link href={`/products/${encodeURIComponent(product.slug)}`} className={styles.inlineLink}>
+                    View product <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 
