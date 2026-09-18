@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import styles from "./inventory.module.css";
+import { AdminNav } from "@/components/admin/admin-nav";
 
 type InventoryStatus = "HEALTHY" | "LOW" | "OUT";
 
@@ -175,12 +176,7 @@ export function AdminInventoryClient() {
       <header className={styles.adminTopbar}>
         <div>
           <p className={styles.eyebrow}>HIDI ADMIN</p>
-          <nav aria-label="Admin navigation">
-            <Link href="/admin/orders">Orders</Link>
-            <Link href="/admin/products">Products</Link>
-            <strong>Inventory</strong>
-            <span>Customers</span>
-          </nav>
+          <AdminNav />
         </div>
         <button className={styles.lockButton} type="button" onClick={() => void lock()}>Lock admin</button>
       </header>
