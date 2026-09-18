@@ -8,7 +8,7 @@ export default function AccountPage() {
       <header className="collection-header compact">
         <p className="eyebrow">ACCOUNT</p>
         <h1>My HIDI.</h1>
-        <p>Sign in securely with an email one-time code to see your HIDI orders across devices.</p>
+        <p>Sign in securely with your mobile number and a one-time code to see your HIDI orders, rewards and preferences across devices.</p>
       </header>
       <AccountOrdersClient />
     </main>
