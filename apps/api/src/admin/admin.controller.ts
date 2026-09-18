@@ -6,12 +6,14 @@ import {
   type VariantImageInput,
 } from "./admin-inventory.service.js";
 import { AdminService } from "./admin.service.js";
+import { ReviewFollowUpService } from "./review-followup.service.js";
 
 @Controller("admin")
 export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly inventory: AdminInventoryService,
+    private readonly reviewFollowUps: ReviewFollowUpService,
   ) {}
 
   private requireAdmin(key?: string) {
@@ -29,6 +31,18 @@ export class AdminController {
   ) {
     this.requireAdmin(adminKey);
     return this.admin.listOrders(query, status);
+  }
+
+  @Get("review-followups")
+  reviewFollowUpList(@Headers("x-admin-key") adminKey?: string) {
+    this.requireAdmin(adminKey);
+    return this.reviewFollowUps.list();
+  }
+
+  @Post("review-followups/run")
+  reviewFollowUpRun(@Headers("x-admin-key") adminKey?: string) {
+    this.requireAdmin(adminKey);
+    return this.reviewFollowUps.runOnce();
   }
 
   @Get("inventory")
