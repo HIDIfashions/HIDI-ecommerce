@@ -102,6 +102,7 @@
   flex-shrink: 0;
 }
 
+.quickShop { margin-top: 10px; }
 .sizeHeading {
   display: flex;
   justify-content: space-between;
@@ -266,4 +267,30 @@
 @media (prefers-reduced-motion: reduce) {
   .sizeButton { transition: none; }
   .spinner { animation: none; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .quickShop {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(-4px);
+    transition: max-height .28s ease, opacity .2s ease, transform .2s ease;
+  }
+
+  .card:hover .quickShop,
+  .card:focus-within .quickShop {
+    max-height: 260px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (hover: none) {
+  .quickShop {
+    max-height: none;
+    opacity: 1;
+    overflow: visible;
+    transform: none;
+  }
 }
