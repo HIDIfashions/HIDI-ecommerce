@@ -13,36 +13,49 @@ export class AccountService {
     const wallet = await this.prisma.walletAccount.findUnique({
       where: { authSubject: authUser.id }, select: { userId: true },
     });
-    const user = wallet ? await this.prisma.user.findUniqueOrThrow({ where: { id: wallet.userId } }) : await this.prisma.user.upsert({
-      where: { email: authUser.email },
-      create: {
-        email: authUser.email,
-        firstName,
-        lastName,
-      },
-      // Existing identity is verified below before any customer-owned fields
-      // could be changed. Reading orders must not edit another wallet's profile.
-      update: {},
-    });
+
+    let user;
+    if (wallet) {
+      user = await this.prisma.user.findUniqueOrThrow({ where: { id: wallet.userId } });
+    } else if (authUser.phoneVerified && authUser.phone) {
+      user = await this.prisma.user.upsert({
+        where: { phone: authUser.phone },
+        create: { phone: authUser.phone, email: authUser.email ?? null, firstName, lastName },
+        update: authUser.email ? { email: authUser.email } : {},
+      });
+    } else if (authUser.email) {
+      user = await this.prisma.user.upsert({
+        where: { email: authUser.email },
+        create: { email: authUser.email, firstName, lastName },
+        update: {},
+      });
+    } else {
+      throw new ConflictException("A verified mobile number or email address is required");
+    }
 
     const linkedWallet = await this.prisma.walletAccount.findUnique({ where: { userId: user.id }, select: { authSubject: true } });
     if (linkedWallet && linkedWallet.authSubject !== authUser.id) {
       throw new ConflictException("This account requires support review before linking order history");
     }
 
-    const unclaimed = await this.prisma.order.findMany({
-      where: {
-        userId: null,
-        customerEmail: { equals: authUser.email, mode: "insensitive" },
-      },
-      select: { id: true },
-    });
+    const claimFilter = authUser.phoneVerified && authUser.phone
+      ? { customerPhone: authUser.phone }
+      : authUser.email
+        ? { customerEmail: { equals: authUser.email, mode: "insensitive" as const } }
+        : null;
 
-    if (unclaimed.length) {
-      await this.prisma.order.updateMany({
-        where: { id: { in: unclaimed.map((order) => order.id) }, userId: null, customerEmail: { equals: authUser.email, mode: "insensitive" } },
-        data: { userId: user.id },
+    if (claimFilter) {
+      const unclaimed = await this.prisma.order.findMany({
+        where: { userId: null, ...claimFilter },
+        select: { id: true },
       });
+
+      if (unclaimed.length) {
+        await this.prisma.order.updateMany({
+          where: { id: { in: unclaimed.map((order) => order.id) }, userId: null, ...claimFilter },
+          data: { userId: user.id },
+        });
+      }
     }
 
     return user;
@@ -51,18 +64,11 @@ export class AccountService {
   async orders(authUser: VerifiedAuthUser) {
     const user = await this.customer(authUser);
     const orders = await this.prisma.order.findMany({
-      where: {
-        userId: user.id,
-        status: { not: "CANCELLED" },
-      },
+      where: { userId: user.id, status: { not: "CANCELLED" } },
       orderBy: { createdAt: "desc" },
       include: {
         items: {
-          include: {
-            product: {
-              include: { images: { orderBy: { position: "asc" }, take: 1 } },
-            },
-          },
+          include: { product: { include: { images: { orderBy: { position: "asc" }, take: 1 } } } },
           orderBy: { id: "asc" },
         },
         payments: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -71,7 +77,8 @@ export class AccountService {
 
     return {
       customer: {
-        email: authUser.email,
+        email: authUser.email ?? user.email,
+        phone: authUser.phone ?? user.phone,
         firstName: user.firstName,
         lastName: user.lastName,
       },
