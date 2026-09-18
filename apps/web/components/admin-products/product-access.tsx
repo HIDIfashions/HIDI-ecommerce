@@ -1,9 +1,9 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { productApi, ProductApiError } from "@/lib/admin-products-client";
 import styles from "./products.module.css";
+import { AdminNav } from "@/components/admin/admin-nav";
 
 export function ProductAccess({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -36,5 +36,5 @@ export function ProductAccess({ children }: { children: ReactNode }) {
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to lock admin."); }
   }
   if (!ready) return <main className={styles.loginPage}><section className={styles.loginCard}><p className={styles.eyebrow}>HIDI OPERATIONS</p><h1>Product administration</h1><p>Use the same private admin key as Inventory.</p>{error && <div className={styles.error} role="alert">{error}</div>}<form onSubmit={unlock}><label>Admin key<input type="password" required value={key} autoComplete="current-password" onChange={e => setKey(e.target.value)} /></label><button className={styles.primary} disabled={checking}>{checking ? "Checking…" : "Open products"}</button></form></section></main>;
-  return <main className={styles.page}><header className={styles.topbar}><div><p className={styles.eyebrow}>HIDI ADMIN</p><nav aria-label="Admin navigation"><Link href="/admin/orders">Orders</Link><Link href="/admin/products" aria-current="page">Products</Link><Link href="/admin/import">Imports</Link><Link href="/admin/inventory">Inventory</Link><Link href="/admin/inventory/receive">Receive stock</Link></nav></div><button type="button" onClick={() => void lock()}>Lock admin</button></header>{error && <div className={styles.error} role="alert">{error}</div>}{children}</main>;
+  return <main className={styles.page}><header className={styles.topbar}><div><p className={styles.eyebrow}>HIDI ADMIN</p><AdminNav /></div><button type="button" onClick={() => void lock()}>Lock admin</button></header>{error && <div className={styles.error} role="alert">{error}</div>}{children}</main>;
 }
