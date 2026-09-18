@@ -8,6 +8,7 @@
 .heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 38px 0 28px; }
 .heading h1, .loginCard h1 { font-family: Georgia, serif; font-size: clamp(34px, 4vw, 54px); font-weight: 400; margin: 0 0 10px; }
 .heading p { margin: 0; color: #6e685d; }
+.headingActions { display: flex; gap: 10px; flex-wrap: wrap; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #ddd7ce; margin-bottom: 24px; }
 .stats > div { padding: 20px 24px; }
 .stats > div + div { border-left: 1px solid #ddd7ce; }
