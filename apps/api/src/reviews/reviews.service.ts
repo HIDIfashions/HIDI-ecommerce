@@ -134,14 +134,11 @@ export class ReviewsService {
       },
     });
 
-    const remaining = await this.prisma.orderItem.count({
-      where: {
-        orderId: followUp.order.id,
-        review: null,
-      },
+    const reviewedCount = await this.prisma.productReview.count({
+      where: { orderId: followUp.order.id },
     });
 
-    if (remaining === 0) {
+    if (reviewedCount >= followUp.order.items.length) {
       await this.prisma.reviewFollowUp.update({
         where: { id: followUp.id },
         data: { completedAt: new Date() },
