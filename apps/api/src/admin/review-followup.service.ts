@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -111,6 +112,7 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
             channel: "EMAIL" as any,
             status: "PENDING" as any,
             dueAt: now,
+            reviewToken: randomBytes(24).toString("hex"),
           },
         }).catch((error: any) => {
           if (error?.code !== "P2002") throw error;
@@ -152,6 +154,16 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
         }
 
         try {
+          let token = followUp.reviewToken;
+          if (!token) {
+            token = randomBytes(24).toString("hex");
+            await this.prisma.reviewFollowUp.update({
+              where: { id: followUp.id },
+              data: { reviewToken: token },
+            });
+          }
+          const invitationUrl = `${reviewUrl.replace(/\/$/, "")}/${token}`;
+
           const response = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
@@ -162,8 +174,8 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
               from,
               to: [email],
               subject: "How was your HIDI purchase?",
-              text: this.textMessage(followUp.order, reviewUrl),
-              html: this.htmlMessage(followUp.order, reviewUrl),
+              text: this.textMessage(followUp.order, invitationUrl),
+              html: this.htmlMessage(followUp.order, invitationUrl),
             }),
           });
 
