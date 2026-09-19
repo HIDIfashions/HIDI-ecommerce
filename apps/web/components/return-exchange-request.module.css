@@ -43,6 +43,37 @@
   flex-basis: 100%;
 }
 
+.requestStatus a {
+  flex-basis: 100%;
+  width: fit-content;
+  color: #651f23;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cancelRequest {
+  flex-basis: 100%;
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #651f23;
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.cancelRequest:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.statusError {
+  color: #8a302c;
+}
+
 .backdrop {
   position: fixed;
   inset: 0;
