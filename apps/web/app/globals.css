@@ -613,26 +613,26 @@ body {
 }
 
 
-/* Mulberry Clay site chrome — header/footer only */
+/* Midnight Teal site chrome — header/footer only */
 .announcement {
-  background: #4a1719;
-  color: #f7eadf;
-  border-bottom: 1px solid rgba(214, 170, 103, .42);
+  background: #073f43;
+  color: #f4ead7;
+  border-bottom: 1px solid rgba(214, 171, 91, .46);
 }
 
 .site-header {
-  --ink: #f8ede2;
+  --ink: #f8efe1;
   background:
-    radial-gradient(circle at 94% 10%, rgba(165, 91, 78, .10), transparent 28%),
-    rgba(84, 29, 31, .985);
-  color: #f8ede2;
-  border-bottom: 1px solid rgba(218, 174, 104, .58);
-  box-shadow: 0 10px 30px rgba(54, 15, 17, .14);
+    radial-gradient(circle at 94% 10%, rgba(31, 103, 107, .10), transparent 30%),
+    rgba(6, 76, 80, .985);
+  color: #f8efe1;
+  border-bottom: 1px solid rgba(216, 174, 91, .62);
+  box-shadow: 0 10px 30px rgba(3, 43, 46, .16);
   backdrop-filter: blur(16px);
 }
 
 .site-header .header-inner {
-  color: #f8ede2;
+  color: #f8efe1;
 }
 
 .site-header .wordmark img {
@@ -640,79 +640,79 @@ body {
 }
 
 .site-header .desktop-nav {
-  color: #f8ede2;
+  color: #f8efe1;
 }
 
 .site-header .desktop-nav a,
 .site-header .utility-nav a,
 .site-header .utility-nav button,
 .site-header .mobile-menu {
-  color: #f8ede2;
+  color: #f8efe1;
 }
 
 .site-header .desktop-nav a::after {
-  background: #d6a34f;
+  background: #d6a84f;
 }
 
 .site-header .desktop-nav a:hover,
 .site-header .utility-nav a:hover,
 .site-header .utility-nav button:hover {
-  color: #f3c875;
+  color: #f3cb78;
   opacity: 1;
 }
 
 .site-header [class*="count"] {
-  background: #d09a43;
-  color: #4a1719;
+  background: #d29d45;
+  color: #063f43;
 }
 
 .footer {
-  --ink: #f8ede2;
-  --muted: #d9c6b9;
+  --ink: #f8efe1;
+  --muted: #c9d4cf;
   background:
-    radial-gradient(circle at 10% 0%, rgba(209, 154, 91, .08), transparent 30%),
-    #561f22;
-  color: #f8ede2;
-  border-top: 1px solid rgba(218, 174, 104, .58);
+    radial-gradient(circle at 10% 0%, rgba(208, 158, 83, .08), transparent 30%),
+    #075156;
+  color: #f8efe1;
+  border-top: 1px solid rgba(216, 174, 91, .62);
 }
 
 .footer h3,
 .footer strong,
 .footer .footer-wordmark,
 .footer .footer-note {
-  color: #e0b66d;
+  color: #e1b86c;
 }
 
 .footer-grid a {
-  color: #f2e3d7;
+  color: #eef0e7;
 }
 
 .footer-grid a:hover {
-  color: #f3c875;
+  color: #f3cb78;
 }
 
 .footer .muted,
 .footer-small,
 .footer-bottom {
-  color: #d3c0b2;
+  color: #c7d2cd;
 }
 
 .footer .newsletter {
-  border-bottom-color: rgba(236, 207, 166, .62);
+  border-bottom-color: rgba(232, 211, 172, .62);
 }
 
 .footer .newsletter input {
-  color: #f8ede2;
+  color: #f8efe1;
 }
 
 .footer .newsletter input::placeholder {
-  color: #baa79a;
+  color: #aebeb9;
 }
 
 .footer .newsletter button {
-  color: #e0b66d;
+  color: #e1b86c;
 }
 
 .footer-bottom {
-  border-top-color: rgba(222, 181, 123, .24);
+  border-top-color: rgba(222, 183, 126, .24);
 }
