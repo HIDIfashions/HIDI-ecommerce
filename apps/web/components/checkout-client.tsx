@@ -282,7 +282,7 @@ export function CheckoutClient() {
         </fieldset>
         {error && <p className="form-error" role="alert">{error}</p>}
         {error === "This bag belongs to another account" && <div><p className={walletStyles.note}>Sign in to the account that owns this bag, or start a new bag. The original bag will not be deleted.</p><button className={walletStyles.textButton} type="button" onClick={() => { invalidate(true); startNewCartSession(); router.push("/collections/new-arrivals"); }}>Start a new bag</button></div>}
-        <button className="button button-dark" type="submit" disabled={busy || (useWallet && (wallet.loading || !wallet.summary?.enabled || !!wallet.error))}>{busy ? "Preparing your order…" : payable === 0 ? "Place order with rewards" : "Pay securely"}</button>
+        <button className="button checkout-pay-button" type="submit" disabled={busy || (useWallet && (wallet.loading || !wallet.summary?.enabled || !!wallet.error))}>{busy ? "Preparing your order…" : payable === 0 ? "Place order with rewards" : "Pay securely"}</button>
       </form>
       <aside className="checkout-summary"><p>Order summary</p><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong><span>{cart.itemCount} item(s) · Taxes included</span>
         <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Order total</span><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong></div>{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
