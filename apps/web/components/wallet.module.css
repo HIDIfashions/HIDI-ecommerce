@@ -1,23 +1,46 @@
-.panel { margin: 30px 0; padding: 30px; border: 1px solid #d9dfd6; background: #f4f6f0; }
+.panel { margin: 30px 0; padding: 30px; border: 1px solid var(--line); background: #ffffff; }
 .heading { margin-bottom: 23px; }
 .eyebrow { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: .15em; color: #40533c; }
 .heading h2 { margin: 10px 0 0; font-size: clamp(25px, 3vw, 34px); letter-spacing: -.02em; line-height: 1.18; }
 .balances { display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: 20px; }
-.balances > div { display: flex; flex-direction: column; gap: 8px; padding: 18px; background: #ffffff; border: 1px solid #e1e4dc; }
-.balances > .primary { background: #304333; color: white; border-color: #304333; }
+.balances > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  background: #ffffff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease;
+}
+.balances > .primary {
+  background: #ffffff;
+  color: var(--ink);
+  border-color: var(--line);
+}
+.balances > div:hover {
+  background: #541d1f;
+  color: #fff8ef;
+  border-color: #541d1f;
+  transform: translateY(-2px);
+}
+.balances > div:hover span,
+.balances > div:hover small {
+  color: inherit;
+}
 .balances span { font-size: 11px; }
 .balances strong { font-size: clamp(24px, 3vw, 36px); font-weight: 500; line-height: 1.1; }
 .balances small { font-size: 10px; line-height: 1.6; opacity: .8; }
-.rule, .note { font-size: 11px; color: #566050; line-height: 1.75; margin: 16px 0 0; }
+.rule, .note { font-size: 11px; color: var(--muted); line-height: 1.75; margin: 16px 0 0; }
 .empty { font-size: 12px; margin: 20px 0 0; }
-.history { border-top: 1px solid #d9dfd6; margin-top: 24px; padding-top: 18px; }
+.history { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 18px; }
 .history h3 { display: flex; align-items: center; gap: 8px; font-family: inherit; font-size: 13px; }
 .history ul { list-style: none; padding: 0; margin: 0; }
-.history li { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 11px 0; border-bottom: 1px solid #e3e7df; }
+.history li { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 11px 0; border-bottom: 1px solid var(--line); }
 .history li > div { display: flex; flex-direction: column; gap: 3px; }
 .history strong, .history b { font-size: 12px; font-weight: 600; }
 .history span { font-size: 10px; color: #64705e; }
-.credit { color: #345b36; }
+.credit { color: #541d1f; }
 .textButton { background: transparent; border: 0; padding: 10px 0; min-height: 44px; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
 .checkoutWallet { border: 1px solid #d9dfd6; padding: 19px; margin-bottom: 20px; background: #f4f6f0; }
 .toggle { display: flex; gap: 11px; align-items: center; cursor: pointer; font-size: 13px; font-weight: 600; }
@@ -38,4 +61,10 @@
   .balances { grid-template-columns: 1fr 1fr; gap: 10px; }
   .balances > .primary { grid-column: 1 / -1; }
   .balances > div { padding: 15px; }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .balances > div { transition: none; }
+  .balances > div:hover { transform: none; }
 }
