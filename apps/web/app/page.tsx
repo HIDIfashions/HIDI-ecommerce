@@ -3,10 +3,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
-  BadgePercent,
-  Coins,
   Gem,
-  Gift,
   HeartHandshake,
   RefreshCcw,
   ShieldCheck,
@@ -15,6 +12,7 @@ import {
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { WhatsAppIcon } from "@/components/whatsapp-icon";
+import { LaunchBenefits } from "@/components/launch-benefits";
 import { getBestSellers, getProducts } from "@/lib/api";
 import styles from "./home.module.css";
 
@@ -127,42 +125,7 @@ export default async function Home() {
         ))}
       </section>
 
-      <section className={styles.launchBenefits} aria-labelledby="hidi-launch-benefits">
-        <div className={styles.launchIntro}>
-          <p className={styles.eyebrow}>HIDI LAUNCH BENEFITS</p>
-          <h2 id="hidi-launch-benefits">More value every time you choose HIDI.</h2>
-          <p>
-            Celebrate our launch with rewards and limited-period offers designed
-            to make your first HIDI wardrobe edit even more rewarding.
-          </p>
-          <Link href="/collections/all" className={styles.launchCta}>
-            Shop the launch <ArrowRight size={14} aria-hidden="true" />
-          </Link>
-        </div>
-
-        <div className={styles.launchOfferGrid}>
-          <article className={styles.launchOfferCard}>
-            <span className={styles.launchOfferIcon}><Coins size={23} strokeWidth={1.5} /></span>
-            <p>HIDI REWARDS</p>
-            <strong>₹2 back for every ₹100 you spend.</strong>
-            <span>HIDI Rewards become eligible after the applicable return window closes.</span>
-          </article>
-
-          <article className={styles.launchOfferCard}>
-            <span className={styles.launchOfferIcon}><Gift size={23} strokeWidth={1.5} /></span>
-            <p>₹1 EXTRA DRESS</p>
-            <strong>Shop ₹3,500+ and unlock another eligible dress for ₹1.</strong>
-            <span>Launch offer on eligible styles and qualifying orders. Terms apply.</span>
-          </article>
-
-          <article className={styles.launchOfferCard}>
-            <span className={styles.launchOfferIcon}><BadgePercent size={23} strokeWidth={1.5} /></span>
-            <p>INAUGURAL OFFER</p>
-            <strong>Flat 15% off eligible launch purchases.</strong>
-            <span>Limited-period inaugural benefit on eligible orders. Terms apply.</span>
-          </article>
-        </div>
-      </section>
+      <LaunchBenefits />
 
       <section className={styles.standardBar} aria-label="The HIDI standard">
         {standards.map(({ icon: Icon, title, copy }) => (
