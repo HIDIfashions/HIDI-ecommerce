@@ -945,3 +945,55 @@ body {
     padding: 0;
   }
 }
+
+
+/* PDP recommendations */
+.pdp-related {
+  margin-top: 96px;
+  padding-top: 52px;
+  border-top: 1px solid var(--line);
+}
+
+.pdp-related-heading {
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 24px;
+}
+
+.pdp-related-heading h2 {
+  margin: 0;
+  font-size: clamp(32px, 3.6vw, 52px);
+  font-weight: 400;
+  letter-spacing: -.025em;
+}
+
+.pdp-related-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 40px 18px;
+}
+
+@media (max-width: 1000px) {
+  .pdp-related-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .pdp-related {
+    margin-top: 64px;
+    padding-top: 34px;
+  }
+
+  .pdp-related-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pdp-related-grid {
+    gap: 28px 10px;
+  }
+}
