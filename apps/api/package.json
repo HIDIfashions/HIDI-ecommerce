@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "nest start --watch",
     "start:dev": "nest start --watch",
     "build": "nest build",
     "start:prod": "node dist/main.js",
