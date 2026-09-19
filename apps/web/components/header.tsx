@@ -15,12 +15,12 @@ export function Header() {
 
         <Link className="wordmark" href="/" aria-label="HIDI — Wear the Feeling">
           <Image
-            src="/brand/hidi-logo-dark.png"
+            src="/brand/hidi-logo-gold.jpg"
             alt="HIDI — Wear the Feeling"
-            width={2172}
-            height={724}
+            width={600}
+            height={325}
             priority
-            sizes="(max-width: 720px) 118px, 154px"
+            sizes="(max-width: 720px) 138px, 168px"
             style={{ width: "100%", height: "auto", display: "block" }}
           />
         </Link>
