@@ -58,6 +58,9 @@ export class AdminService {
       afterSalesStatus: (order.returnRequests ?? []).find((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status))?.status
         ?? order.returnRequests?.[0]?.status
         ?? null,
+      afterSalesType: (order.returnRequests ?? []).find((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status))?.type
+        ?? order.returnRequests?.[0]?.type
+        ?? null,
       returns: (order.returnRequests ?? []).map((request: any) => ({
         id: request.id,
         orderItemId: request.orderItemId,
