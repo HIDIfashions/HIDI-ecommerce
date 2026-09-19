@@ -310,6 +310,41 @@ export class AccountService {
     });
   }
 
+  async cancelReturnRequest(authUser: VerifiedAuthUser, orderNumber: string, requestId: string) {
+    const user = await this.customer(authUser);
+    const updated = await withSerializableRetry(this.prisma, async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "Order" WHERE "orderNumber" = ${orderNumber} FOR UPDATE
+      `;
+      if (!locked[0]) throw new NotFoundException("Order not found");
+
+      const request = await tx.returnRequest.findFirst({
+        where: {
+          id: requestId,
+          order: { orderNumber, userId: user.id },
+        },
+      });
+      if (!request) throw new NotFoundException("Return request not found");
+      if (request.status !== "REQUESTED") {
+        throw new ConflictException("Only a newly requested return or exchange can be cancelled online");
+      }
+
+      return tx.returnRequest.update({
+        where: { id: request.id },
+        data: {
+          status: "CANCELLED",
+          processedAt: new Date(),
+          completedAt: new Date(),
+        },
+      });
+    });
+
+    // Cancellation is already durable. Reward reconciliation is a follow-up
+    // calculation and the normal worker can retry it if the database is busy.
+    await this.wallet.reconcileOrder(updated.orderId).catch(() => undefined);
+    return updated;
+  }
+
   async ownsOrder(authUser: VerifiedAuthUser, orderNumber: string) {
     const user = await this.customer(authUser);
     const order = await this.prisma.order.findFirst({
