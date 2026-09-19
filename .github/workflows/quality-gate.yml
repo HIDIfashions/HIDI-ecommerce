@@ -13,6 +13,8 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/hidi_ci
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,10 +31,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Show lockfile drift
-        run: git diff -- pnpm-lock.yaml
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
         run: pnpm db:generate
