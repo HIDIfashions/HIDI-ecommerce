@@ -20,15 +20,16 @@ type Props = {
   soldOut?: boolean;
   intervalMs?: number;
   href: string;
+  autoLoop?: boolean;
 };
 
 /**
  * Minimal HIDI collection-card gallery.
- * - Desktop: photos roll automatically while the card is hovered.
- * - Mobile: customers swipe horizontally.
- * - No arrows, album strip, media count, or gallery description.
- * - Photos can be expanded without leaving the collection page.
- * - Videos appear in the media sequence and play only after a customer gesture.
+ * - Shop All can continuously loop through every product photo while visible.
+ * - Other catalogue cards retain hover rollover on desktop.
+ * - Mobile customers can still swipe horizontally.
+ * - Clicking the photo opens product details; the expand control opens the lightbox.
+ * - Videos never autoplay and require a customer gesture.
  */
 export function ProductCardMedia({ name, images, videos = EMPTY_VIDEOS, ...rest }: Props) {
   const items = useMemo(() => buildCardMedia(name, images, videos), [name, images, videos]);
@@ -219,12 +220,20 @@ function InlineVideo({ item, owner }: {
   );
 }
 
-function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL, href }: {
+function Gallery({
+  name,
+  items,
+  soldOut = false,
+  intervalMs = DEFAULT_INTERVAL,
+  href,
+  autoLoop = false,
+}: {
   name: string;
   items: CardMedia[];
   soldOut?: boolean;
   intervalMs?: number;
   href: string;
+  autoLoop?: boolean;
 }) {
   const id = useId();
   const router = useRouter();
@@ -247,15 +256,21 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL, 
   const active = items[index];
   const interval = Number.isFinite(intervalMs) ? Math.max(2000, intervalMs) : DEFAULT_INTERVAL;
 
-  // Automatic rollover pauses when a video comes into view so the customer has time to play it.
-  const rotating = items.length > 1
+  const imageIndexes = useMemo(
+    () => items.flatMap((item, itemIndex) => item.kind === "image" ? [itemIndex] : []),
+    [items],
+  );
+
+  // Shop All loops photos automatically while visible. Other collection cards
+  // retain the original hover rollover. Videos never autoplay.
+  const rotating = imageIndexes.length > 1
     && active?.kind === "image"
     && !reduceMotion
     && !saveData
     && visible
     && pageVisible
     && !expanded
-    && hover;
+    && (autoLoop || hover);
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -298,11 +313,19 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL, 
     if (!rotating || loaded !== active?.id) return;
 
     const timer = window.setTimeout(() => {
-      setIndex(current => wrapMediaIndex(current + 1, items.length));
+      setIndex(current => {
+        if (!autoLoop) return wrapMediaIndex(current + 1, items.length);
+
+        const currentImagePosition = imageIndexes.indexOf(current);
+        const nextImagePosition = currentImagePosition < 0
+          ? 0
+          : (currentImagePosition + 1) % imageIndexes.length;
+        return imageIndexes[nextImagePosition] ?? current;
+      });
     }, interval);
 
     return () => window.clearTimeout(timer);
-  }, [rotating, loaded, active?.id, items.length, interval]);
+  }, [rotating, loaded, active?.id, items.length, interval, autoLoop, imageIndexes]);
 
   useEffect(() => {
     if (!expanded || !dialog.current) return;
