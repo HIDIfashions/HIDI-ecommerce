@@ -254,7 +254,7 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
                   <label className={refundDestination === "ORIGINAL" ? styles.refundActive : styles.refund}>
                     <input type="radio" name="refund" checked={refundDestination === "ORIGINAL"} onChange={() => setRefundDestination("ORIGINAL")} />
                     <RotateCcw size={18} />
-                    <span><strong>Original payment source</strong><small>Processed after approval; bank/payment-provider timelines apply.</small></span>
+                    <span><strong>Original payment source</strong><small>Processed after inspection. If you paid with HIDI Wallet + online payment, HIDI restores the refundable amount across those original tenders.</small></span>
                   </label>
                   <p className={styles.amount}>Estimated item refund: {formatPaise(Math.floor((item.totalPaise * quantity) / item.quantity))}</p>
                 </fieldset>
