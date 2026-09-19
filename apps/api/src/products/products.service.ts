@@ -34,6 +34,7 @@ export class ProductsService {
       where: {
         order: {
           status: { in: ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"] },
+          payments: { some: { status: "CAPTURED" } },
         },
         product: { status: "ACTIVE" },
       },
