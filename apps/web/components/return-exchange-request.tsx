@@ -25,6 +25,7 @@ type ReturnItem = {
   size: string;
   color: string;
   quantity: number;
+  returnableQuantity: number;
   totalPaise: number;
   exchangeSizes: string[];
   returnRequests: ReturnRequestSummary[];
@@ -118,7 +119,7 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
     );
   }
 
-  if (!eligible) {
+  if (!eligible || item.returnableQuantity <= 0) {
     return latest ? (
       <div className={styles.requestStatus}>
         <strong>{latest.type === "EXCHANGE" ? "Exchange" : "Return"}</strong>
@@ -172,11 +173,11 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
                 </select>
               </label>
 
-              {item.quantity > 1 && (
+              {item.returnableQuantity > 1 && (
                 <label>
                   Quantity
                   <select value={quantity} onChange={(event) => setQuantity(Number(event.target.value))}>
-                    {Array.from({ length: item.quantity }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}</option>)}
+                    {Array.from({ length: item.returnableQuantity }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}</option>)}
                   </select>
                 </label>
               )}
