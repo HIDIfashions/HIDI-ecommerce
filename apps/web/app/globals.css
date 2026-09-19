@@ -611,3 +611,106 @@ body {
     display: none;
   }
 }
+
+
+/* Sage Stone site chrome — header/footer only */
+.announcement {
+  background: #343b2a;
+  color: #f5ead7;
+  border-bottom: 1px solid rgba(202, 158, 77, .42);
+}
+
+.site-header {
+  --ink: #f6eddd;
+  background: rgba(62, 70, 49, .98);
+  color: #f6eddd;
+  border-bottom: 1px solid rgba(205, 163, 82, .58);
+  box-shadow: 0 10px 30px rgba(32, 38, 24, .12);
+  backdrop-filter: blur(16px);
+}
+
+.site-header .header-inner {
+  color: #f6eddd;
+}
+
+.site-header .wordmark img {
+  filter: none;
+}
+
+.site-header .desktop-nav {
+  color: #f6eddd;
+}
+
+.site-header .desktop-nav a,
+.site-header .utility-nav a,
+.site-header .utility-nav button,
+.site-header .mobile-menu {
+  color: #f6eddd;
+}
+
+.site-header .desktop-nav a::after {
+  background: #d2a85b;
+}
+
+.site-header .desktop-nav a:hover,
+.site-header .utility-nav a:hover,
+.site-header .utility-nav button:hover {
+  color: #f2c977;
+  opacity: 1;
+}
+
+.site-header [class*="count"] {
+  background: #c99443;
+  color: #34402d;
+}
+
+.footer {
+  --ink: #f6eddd;
+  --muted: #d5c8b4;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(194, 154, 83, .08), transparent 30%),
+    #3e4631;
+  color: #f6eddd;
+  border-top: 1px solid rgba(205, 163, 82, .58);
+}
+
+.footer h3,
+.footer strong,
+.footer .footer-wordmark,
+.footer .footer-note {
+  color: #e0b96c;
+}
+
+.footer-grid a {
+  color: #f0e5d3;
+}
+
+.footer-grid a:hover {
+  color: #f2c977;
+}
+
+.footer .muted,
+.footer-small,
+.footer-bottom {
+  color: #cfc2ae;
+}
+
+.footer .newsletter {
+  border-bottom-color: rgba(232, 210, 172, .66);
+}
+
+.footer .newsletter input {
+  color: #f6eddd;
+}
+
+.footer .newsletter input::placeholder {
+  color: #bfb39f;
+}
+
+.footer .newsletter button {
+  color: #e0b96c;
+}
+
+.footer-bottom {
+  border-top-color: rgba(220, 190, 137, .24);
+}
