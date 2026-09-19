@@ -53,6 +53,28 @@
   object-position: center;
 }
 
+.photoStack {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.photoLayer {
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transition: opacity .28s ease;
+  will-change: opacity;
+}
+
+.photoLayerActive {
+  opacity: 1;
+}
+
+
 .contain {
   object-fit: contain;
 }
