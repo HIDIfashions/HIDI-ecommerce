@@ -53,7 +53,7 @@
   object-position: center;
 }
 
-.photoStack {
+.photoPreload {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -62,15 +62,15 @@
   overflow: hidden;
 }
 
-.photoLayer {
+.nextPhotoLayer {
   object-fit: cover;
   object-position: center;
   opacity: 0;
-  transition: opacity .28s ease;
+  transition: opacity .36s ease;
   will-change: opacity;
 }
 
-.photoLayerActive {
+.nextPhotoLayerVisible {
   opacity: 1;
 }
 
