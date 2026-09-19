@@ -118,9 +118,42 @@ pnpm test:customer-experience
 pnpm build
 ```
 
-For local development, use `prisma migrate dev` instead of `migrate deploy` if that is the normal HIDI development workflow.
+API `dev`, `start:dev` and `build` now regenerate the Prisma client before
+compilation. If generation fails, compilation does not start. Client generation
+does not connect to or migrate the database; the existing Prisma configuration
+still requires `DATABASE_URL` in `apps/api/.env`. Apply the checked-in migrations
+explicitly to the intended database before testing the new return fields.
 
 The API environment must have the existing database, admin and Razorpay variables, including a valid `RAZORPAY_WEBHOOK_SECRET`. The Razorpay dashboard must deliver `refund.processed` events to HIDI's payment webhook endpoint.
+
+## Missing ReturnRequest fields during compilation
+
+Errors such as `Property 'pickupProvider' does not exist`, missing
+`refundWalletPaise`/`refundProviderId`, and related `request.order` or implicit-any
+errors can occur when newer source code is compiled against an older generated
+Prisma client. The fields are already defined in `prisma/schema.prisma` and the
+`20260919213000_return_operations` migration.
+
+Stop the running API watcher with Ctrl+C, pull this branch with a clean working
+tree, then run from the repository root:
+
+```bash
+git switch feature/returns-operations
+git pull --ff-only origin feature/returns-operations
+pnpm --filter @hidi/api build
+pnpm dev:api
+```
+
+The updated build/start commands regenerate the client automatically. If the
+watcher was already running when the schema changed, it must be restarted;
+generation runs at startup, not on every file change. You can also explicitly
+run `pnpm --filter @hidi/api exec prisma generate`.
+
+If runtime reports a missing database column after compilation succeeds, check
+`pnpm --filter @hidi/api exec prisma migrate status`, then apply the pending
+checked-in migrations with `prisma migrate deploy` against the confirmed test
+database before testing. Do not reset the database, edit generated Prisma files,
+or hide these errors with `any` casts.
 
 ## Operational items intentionally kept separate
 

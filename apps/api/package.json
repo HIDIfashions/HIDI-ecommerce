@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nest start --watch",
-    "start:dev": "nest start --watch",
-    "build": "nest build",
+    "dev": "prisma generate && nest start --watch",
+    "start:dev": "prisma generate && nest start --watch",
+    "build": "prisma generate && nest build",
     "start:prod": "node dist/main.js",
     "lint": "eslint src --ext .ts",
     "prisma:generate": "prisma generate",
