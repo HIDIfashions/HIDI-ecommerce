@@ -130,7 +130,7 @@
   height: 15px;
   margin: 0;
   flex: 0 0 auto;
-  accent-color: var(--ink);
+  accent-color: #651f23;
 }
 
 .colorOption {
@@ -199,9 +199,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #cfbfa9;
-  background: #f3e8d8;
-  color: #4f3824;
+  border: 1px solid #bd918d;
+  background: #f8efeb;
+  color: #651f23;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .13em;
@@ -211,8 +211,8 @@
 }
 
 .mobileFilterButton:hover {
-  background: #eadac5;
-  border-color: #aa8556;
+  background: #f3e5e2;
+  border-color: #651f23;
   transform: translateY(-1px);
 }
 
@@ -223,8 +223,8 @@
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
-  background: #7b572e;
-  color: #fffaf3;
+  background: #651f23;
+  color: #fff8ef;
   font-size: 9px;
   letter-spacing: 0;
 }
