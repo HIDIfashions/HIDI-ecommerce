@@ -46,13 +46,7 @@ function toggleValue(current: string[], value: string) {
     : [...current, value];
 }
 
-export function CollectionBrowser({
-  products,
-  autoLoopImages = false,
-}: {
-  products: ApiProduct[];
-  autoLoopImages?: boolean;
-}) {
+export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   const sizes = useMemo(
     () => Array.from(new Set(products.flatMap((p) => p.variants.map((v) => v.size)))).sort(),
     [products],
@@ -212,7 +206,7 @@ export function CollectionBrowser({
 
         {filtered.length
           ? <div className={styles.productGrid}>{filtered.map((product) => (
-              <ProductCard key={product.id} product={product} autoLoopImages={autoLoopImages} />
+              <ProductCard key={product.id} product={product} />
             ))}</div>
           : <div className={styles.empty}><h2>No styles match those filters.</h2><p>Try clearing one or more filters.</p><button className="button button-light" type="button" onClick={clearFilters}>Clear filters</button></div>}
       </section>
