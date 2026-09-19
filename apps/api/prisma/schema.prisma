@@ -221,9 +221,25 @@ model ProductVariant {
   orderItems  OrderItem[]
   reservations InventoryReservation[]
   stockReceiptLines StockReceiptLine[]
+  adminMediaUploadTickets AdminMediaUploadTicket[]
 
   @@unique([productId, size, color])
   @@index([productId, active])
+}
+
+model AdminMediaUploadTicket {
+  id         String         @id @default(cuid())
+  tokenHash  String         @unique
+  variantId  String
+  mimeType   String
+  maxBytes   Int
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime       @default(now())
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId, expiresAt])
+  @@index([expiresAt, usedAt])
 }
 
 model ProductVariantImage {
