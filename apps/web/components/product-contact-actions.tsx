@@ -16,9 +16,10 @@ import {
   type ProductVariantSelection,
 } from "@/lib/product-sharing";
 import { WhatsAppIcon } from "@/components/whatsapp-icon";
+import { BROWSER_API_URL } from "@/lib/browser-api";
 import styles from "./product-contact-actions.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+const API = BROWSER_API_URL;
 
 export function ProductContactActions({ product }: { product: ApiProduct }) {
   const dialog = useRef<HTMLDialogElement>(null);
