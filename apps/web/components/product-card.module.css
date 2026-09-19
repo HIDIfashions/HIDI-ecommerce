@@ -134,7 +134,7 @@
   border-radius: 4px;
 }
 
-.needsSize { outline: 1px solid #995743; outline-offset: 3px; }
+.needsSize { outline: 1px solid #651f23; outline-offset: 3px; }
 
 .sizeButton {
   min-width: 34px;
@@ -148,8 +148,8 @@
   transition: background .15s, border-color .15s, color .15s;
 }
 
-.sizeButton:not(:disabled):hover { border-color: var(--ink); }
-.sizeButton.sizeActive { background: var(--ink); color: #fffaf1; border-color: var(--ink); }
+.sizeButton:not(:disabled):hover { border-color: #651f23; color: #651f23; }
+.sizeButton.sizeActive { background: #651f23; color: #fff8ef; border-color: #651f23; }
 .sizeButton.unavailable { color: #aaa198; background: #f6f2ed; text-decoration: line-through; border-color: #ebe4db; }
 
 .availability {
@@ -175,19 +175,19 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px solid var(--ink);
+  border: 1px solid #651f23;
   border-radius: 0;
-  color: #fffaf1;
-  background: var(--ink);
+  color: #fff8ef;
+  background: #651f23;
   font-size: 10px !important;
   font-weight: 600 !important;
   letter-spacing: .06em;
   text-transform: uppercase;
 }
 
-.addButton:not(:disabled):hover { background: #4b382d; }
+.addButton:not(:disabled):hover { background: #782b2f; border-color: #782b2f; }
 .addButton:disabled:not(.added) { opacity: .5; }
-.addButton.added { background: #506751; border-color: #506751; }
+.addButton.added { background: #8b6036; border-color: #8b6036; }
 
 .wishButton {
   min-width: 42px;
@@ -203,8 +203,8 @@
   color: var(--ink);
 }
 
-.wishButton:hover,
-.wishSaved { background: #f6ece7; border-color: #b48e82; color: #8b4a3e; }
+.wishButton:hover { background: #f8efeb; border-color: #bd918d; color: #651f23; }
+.wishSaved { background: #651f23; border-color: #651f23; color: #fff8ef; }
 .wishButton:disabled { opacity: .55; }
 
 .feedback {
