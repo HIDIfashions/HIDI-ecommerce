@@ -2,15 +2,17 @@
 
 import Image from "next/image";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
-import { Expand, Play, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
+import { ChevronLeft, ChevronRight, Expand, Minus, Plus, Play, X } from "lucide-react";
 import { buildCardMedia, swipeStep, wrapMediaIndex } from "@/lib/product-card-media-utils";
 import type { CardImage, CardMedia, CardVideo } from "@/lib/product-card-media-utils";
 import styles from "./product-card-media.module.css";
 
 const VIDEO_PLAY_EVENT = "hidi-card-video-play";
+const CARD_ZOOM_LEVELS = [1, 1.8, 2.6, 3.4, 4.2] as const;
 const EMPTY_VIDEOS: readonly CardVideo[] = [];
-const DEFAULT_INTERVAL = 2600;
+const DEFAULT_INTERVAL = 1400;
 
 type Props = {
   name: string;
@@ -18,15 +20,16 @@ type Props = {
   videos?: readonly CardVideo[];
   soldOut?: boolean;
   intervalMs?: number;
+  href: string;
 };
 
 /**
  * Minimal HIDI collection-card gallery.
- * - Desktop: photos roll automatically while the card is hovered.
- * - Mobile: customers swipe horizontally.
- * - No arrows, album strip, media count, or gallery description.
- * - Photos can be expanded without leaving the collection page.
- * - Videos appear in the media sequence and play only after a customer gesture.
+ * - Desktop: only the product under the cursor loops through its photos.
+ * - Products that are not hovered remain static.
+ * - Mobile customers can still swipe horizontally.
+ * - Clicking the photo opens product details; the expand control opens the lightbox.
+ * - Videos never autoplay and require a customer gesture.
  */
 export function ProductCardMedia({ name, images, videos = EMPTY_VIDEOS, ...rest }: Props) {
   const items = useMemo(() => buildCardMedia(name, images, videos), [name, images, videos]);
@@ -217,18 +220,27 @@ function InlineVideo({ item, owner }: {
   );
 }
 
-function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }: {
+function Gallery({
+  name,
+  items,
+  soldOut = false,
+  intervalMs = DEFAULT_INTERVAL,
+  href,
+}: {
   name: string;
   items: CardMedia[];
   soldOut?: boolean;
   intervalMs?: number;
+  href: string;
 }) {
   const id = useId();
+  const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const expandButton = useRef<HTMLButtonElement>(null);
   const gesture = useRef<{ x: number; y: number; id: number } | null>(null);
   const suppressedClickUntil = useRef(0);
+  const zoomDrag = useRef<{ x: number; y: number; id: number } | null>(null);
 
   const [index, setIndex] = useState(0);
   const [hover, setHover] = useState(false);
@@ -239,12 +251,25 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }
   const [loaded, setLoaded] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const [preloadIndex, setPreloadIndex] = useState<number | null>(null);
+  const [preloadReady, setPreloadReady] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const [zoomIndex, setZoomIndex] = useState(0);
+  const [zoomPan, setZoomPan] = useState({ x: 0, y: 0 });
+  const [zoomDragging, setZoomDragging] = useState(false);
 
   const active = items[index];
-  const interval = Number.isFinite(intervalMs) ? Math.max(2000, intervalMs) : DEFAULT_INTERVAL;
+  const preload = preloadIndex !== null ? items[preloadIndex] : undefined;
+  const interval = Number.isFinite(intervalMs) ? Math.max(1000, intervalMs) : DEFAULT_INTERVAL;
+  const zoom = CARD_ZOOM_LEVELS[zoomIndex];
 
-  // Automatic rollover pauses when a video comes into view so the customer has time to play it.
-  const rotating = items.length > 1
+  const imageIndexes = useMemo(
+    () => items.flatMap((item, itemIndex) => item.kind === "image" ? [itemIndex] : []),
+    [items],
+  );
+  // Only the hovered card rotates. Non-hovered cards remain still.
+  // Rotation is photo-only; videos never autoplay or interrupt the loop.
+  const rotating = imageIndexes.length > 1
     && active?.kind === "image"
     && !reduceMotion
     && !saveData
@@ -291,20 +316,55 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }
   }, []);
 
   useEffect(() => {
-    if (!rotating || loaded !== active?.id) return;
+    if (!rotating || transitioning) {
+      if (!hover) {
+        setPreloadIndex(null);
+        setPreloadReady(false);
+        setTransitioning(false);
+      }
+      return;
+    }
+
+    const currentImagePosition = imageIndexes.indexOf(index);
+    const nextImagePosition = currentImagePosition < 0
+      ? 0
+      : (currentImagePosition + 1) % imageIndexes.length;
+    const target = imageIndexes[nextImagePosition] ?? null;
+
+    if (target !== preloadIndex) {
+      setPreloadIndex(target);
+      setPreloadReady(false);
+    }
+  }, [rotating, transitioning, hover, imageIndexes, index, preloadIndex]);
+
+  useEffect(() => {
+    if (!rotating || !preloadReady || preloadIndex === null || transitioning) return;
 
     const timer = window.setTimeout(() => {
-      setIndex(current => wrapMediaIndex(current + 1, items.length));
+      setTransitioning(true);
     }, interval);
 
     return () => window.clearTimeout(timer);
-  }, [rotating, loaded, active?.id, items.length, interval]);
+  }, [rotating, preloadReady, preloadIndex, transitioning, interval]);
+
+  useEffect(() => {
+    if (!transitioning || preloadIndex === null) return;
+
+    const timer = window.setTimeout(() => {
+      setIndex(preloadIndex);
+      setTransitioning(false);
+      setPreloadIndex(null);
+      setPreloadReady(false);
+    }, 240);
+
+    return () => window.clearTimeout(timer);
+  }, [transitioning, preloadIndex]);
 
   useEffect(() => {
     if (!expanded || !dialog.current) return;
 
     const node = dialog.current;
-    node.showModal();
+    if (!node.open) node.showModal();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -313,6 +373,92 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }
       document.body.style.overflow = previousOverflow;
     };
   }, [expanded]);
+
+  useEffect(() => {
+    if (!expanded) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        stepExpanded(-1);
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        stepExpanded(1);
+      }
+      if (event.key === "+" || event.key === "=") {
+        event.preventDefault();
+        setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1));
+      }
+      if (event.key === "-") {
+        event.preventDefault();
+        setZoomIndex((current) => {
+          const target = Math.max(0, current - 1);
+          if (target === 0) setZoomPan({ x: 0, y: 0 });
+          return target;
+        });
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [expanded, index, imageIndexes]);
+
+  function resetExpandedView() {
+    setZoomIndex(0);
+    setZoomPan({ x: 0, y: 0 });
+    setZoomDragging(false);
+    zoomDrag.current = null;
+  }
+
+  function stepExpanded(step: -1 | 1) {
+    if (!imageIndexes.length) return;
+    const currentPosition = imageIndexes.indexOf(index);
+    const safePosition = currentPosition < 0 ? 0 : currentPosition;
+    const nextPosition = (safePosition + step + imageIndexes.length) % imageIndexes.length;
+    const target = imageIndexes[nextPosition];
+    if (target === undefined) return;
+    setIndex(target);
+    resetExpandedView();
+    const targetItem = items[target];
+    if (targetItem) {
+      setAnnouncement(`Photo ${target + 1} of ${items.length}: ${targetItem.label}`);
+    }
+  }
+
+  function lightboxPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (zoom <= 1 || !event.isPrimary) return;
+    zoomDrag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setZoomDragging(true);
+  }
+
+  function lightboxPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = zoomDrag.current;
+    if (!start || start.id !== event.pointerId || zoom <= 1) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    zoomDrag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    setZoomPan((current) => ({ x: current.x + dx, y: current.y + dy }));
+  }
+
+  function lightboxPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (zoomDrag.current?.id === event.pointerId) zoomDrag.current = null;
+    setZoomDragging(false);
+  }
+
+  function lightboxWheel(event: ReactWheelEvent<HTMLDivElement>) {
+    event.preventDefault();
+    if (event.deltaY < 0) {
+      setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1));
+    } else {
+      setZoomIndex((current) => {
+        const target = Math.max(0, current - 1);
+        if (target === 0) setZoomPan({ x: 0, y: 0 });
+        return target;
+      });
+    }
+  }
 
   function choose(next: number) {
     const target = wrapMediaIndex(next, items.length);
@@ -323,12 +469,19 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }
   }
 
   function openPhoto() {
-    if (Date.now() < suppressedClickUntil.current || active?.kind !== "image") return;
+    if (active?.kind !== "image") return;
+    resetExpandedView();
     setExpanded(true);
+  }
+
+  function openProduct() {
+    if (Date.now() < suppressedClickUntil.current || active?.kind !== "image") return;
+    router.push(href);
   }
 
   function closePhoto() {
     setExpanded(false);
+    resetExpandedView();
     expandButton.current?.focus({ preventScroll: true });
   }
 
@@ -383,33 +536,62 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }
           {active?.kind === "video" ? (
             <InlineVideo key={active.id} item={active} owner={id} />
           ) : (
-            <button
-              type="button"
-              ref={expandButton}
-              className={styles.photoButton}
-              disabled={!active}
-              onClick={openPhoto}
-              aria-label={`Expand ${active?.label ?? name}`}
-              onPointerDown={pointerDown}
-              onPointerUp={pointerUp}
-              onPointerCancel={() => {
-                gesture.current = null;
-                suppressedClickUntil.current = Date.now() + 500;
-              }}
-            >
-              <Photo
-                key={active?.id ?? "empty"}
-                src={active?.url}
-                alt={active?.label ?? name}
-                sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
-                ready={() => setLoaded(active?.id ?? "")}
-              />
+            <div className={styles.photoArea}>
+              <button
+                type="button"
+                className={styles.photoButton}
+                disabled={!active}
+                onClick={openProduct}
+                aria-label={`View details for ${name}`}
+                onPointerDown={pointerDown}
+                onPointerUp={pointerUp}
+                onPointerCancel={() => {
+                  gesture.current = null;
+                  suppressedClickUntil.current = Date.now() + 500;
+                }}
+              >
+                <Photo
+                  key={active?.id ?? "empty"}
+                  src={active?.url}
+                  alt={active?.label ?? name}
+                  sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
+                  ready={() => setLoaded(active?.id ?? "")}
+                />
+
+                {hover && preload?.kind === "image" && (
+                  <span className={styles.photoPreload} aria-hidden="true">
+                    <Image
+                      key={preload.id}
+                      src={preload.url}
+                      alt=""
+                      fill
+                      sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
+                      loading="eager"
+                      draggable={false}
+                      className={`${styles.nextPhotoLayer} ${transitioning ? styles.nextPhotoLayerVisible : ""}`}
+                      onLoad={() => setPreloadReady(true)}
+                      onError={() => setPreloadReady(true)}
+                    />
+                  </span>
+                )}
+              </button>
+
               {active && (
-                <span className={styles.expandIcon} aria-hidden="true">
-                  <Expand size={17} />
-                </span>
+                <button
+                  type="button"
+                  ref={expandButton}
+                  className={styles.expandIcon}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openPhoto();
+                  }}
+                  aria-label={`Expand ${active.label}`}
+                  title="Enlarge photo"
+                >
+                  <Expand size={17} aria-hidden="true" />
+                </button>
               )}
-            </button>
+            </div>
           )}
         </div>
 
@@ -424,7 +606,7 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }
         <dialog
           ref={dialog}
           className={styles.lightbox}
-          aria-label={`${name} enlarged photo`}
+          aria-label={`${name} detailed image viewer`}
           onCancel={event => {
             event.preventDefault();
             closePhoto();
@@ -434,18 +616,77 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }
           }}
         >
           <div className={styles.lightboxInner}>
-            <button
-              type="button"
-              className={styles.close}
-              onClick={closePhoto}
-              autoFocus
-              aria-label="Close enlarged photo"
-            >
-              <X size={24} aria-hidden="true" />
-            </button>
-            <div className={styles.largePhoto}>
-              <Photo key={active.id} src={active.url} alt={active.label} sizes="90vw" contain />
+            <div className={styles.zoomToolbar} aria-label="Zoom controls">
+              <button
+                type="button"
+                className={styles.zoomButton}
+                onClick={() => setZoomIndex((current) => {
+                  const target = Math.max(0, current - 1);
+                  if (target === 0) setZoomPan({ x: 0, y: 0 });
+                  return target;
+                })}
+                disabled={zoomIndex === 0}
+                aria-label="Zoom out"
+              >
+                <Minus size={18} />
+              </button>
+              <span className={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
+              <button
+                type="button"
+                className={styles.zoomButton}
+                onClick={() => setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1))}
+                disabled={zoomIndex === CARD_ZOOM_LEVELS.length - 1}
+                aria-label="Zoom in"
+              >
+                <Plus size={18} />
+              </button>
             </div>
+
+            <div
+              className={`${styles.largePhoto} ${zoomDragging ? styles.largePhotoDragging : ""}`}
+              onPointerDown={lightboxPointerDown}
+              onPointerMove={lightboxPointerMove}
+              onPointerUp={lightboxPointerUp}
+              onPointerCancel={lightboxPointerUp}
+              onWheel={lightboxWheel}
+              onDoubleClick={() => {
+                if (zoomIndex === 0) setZoomIndex(2);
+                else resetExpandedView();
+              }}
+              title={zoom > 1 ? "Drag to inspect stitching details" : "Double-click or use + to zoom"}
+            >
+              <div
+                className={styles.largePhotoLayer}
+                style={{ transform: `translate3d(${zoomPan.x}px, ${zoomPan.y}px, 0) scale(${zoom})` }}
+              >
+                <Photo key={active.id} src={active.url} alt={active.label} sizes="100vw" contain />
+              </div>
+            </div>
+
+            <div className={styles.lightboxControls}>
+              <button type="button" className={styles.lightboxNav} onClick={() => stepExpanded(-1)} aria-label="Previous product image">
+                <ChevronLeft size={23} />
+              </button>
+              <button
+                type="button"
+                className={styles.lightboxClose}
+                onClick={closePhoto}
+                autoFocus
+                aria-label="Close enlarged photo"
+              >
+                <X size={24} />
+              </button>
+              <button type="button" className={styles.lightboxNav} onClick={() => stepExpanded(1)} aria-label="Next product image">
+                <ChevronRight size={23} />
+              </button>
+            </div>
+
+            <span className={styles.lightboxCounter}>
+              {imageIndexes.indexOf(index) + 1} / {imageIndexes.length}
+            </span>
+            <span className={styles.lightboxHint}>
+              Scroll / + to zoom · Drag to inspect · Double-click to reset
+            </span>
           </div>
         </dialog>
       )}

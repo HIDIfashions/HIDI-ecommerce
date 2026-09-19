@@ -70,13 +70,15 @@
 }
 
 .primaryButton {
-  background: #8d642f;
-  color: #fffaf3;
+  background: #541d1f;
+  border-color: #541d1f;
+  color: #fff8ef;
 }
 
 .secondaryButton {
-  background: rgba(255,255,255,.35);
-  color: #5e4123;
+  background: #f6ede2;
+  border-color: #b99268;
+  color: #541d1f;
 }
 
 .primaryButton:hover,
@@ -85,8 +87,16 @@
   transform: translateY(-1px);
 }
 
+.primaryButton:hover {
+  background: #f6ede2;
+  border-color: #b99268;
+  color: #541d1f;
+}
+
 .secondaryButton:hover {
-  background: #fffaf3;
+  background: #541d1f;
+  border-color: #541d1f;
+  color: #fff8ef;
 }
 
 .heroNote {
@@ -123,8 +133,8 @@
 
 .heroImage {
   object-fit: cover;
-  object-position: center 16%;
-  transform: scale(1.015);
+  object-position: 63% center;
+  transform: scale(1.01);
 }
 
 .heroVeil {
@@ -179,12 +189,14 @@
   overflow: hidden;
   border: 1px solid #e2d4c3;
   background: linear-gradient(135deg, #f7efe5, #f2e5d5);
-  transition: transform .25s ease, box-shadow .25s ease;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
 }
 
-.collectionCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(92,64,35,.10);
+.collectionCard:hover,
+.collectionCard:focus-visible {
+  transform: translateY(-3px);
+  border-color: #541d1f;
+  box-shadow: 0 16px 36px rgba(84,29,31,.14);
 }
 
 .collectionImage {
@@ -203,6 +215,14 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  background: transparent;
+  transition: background .25s ease, color .25s ease;
+}
+
+.collectionCard:hover .collectionCopy,
+.collectionCard:focus-visible .collectionCopy {
+  background: #541d1f;
+  color: #fff8ef;
 }
 
 .collectionCopy > span {
@@ -216,6 +236,12 @@
   color: #786a5e;
   font-size: 11px;
   line-height: 1.5;
+  transition: color .25s ease;
+}
+
+.collectionCard:hover .collectionCopy p,
+.collectionCard:focus-visible .collectionCopy p {
+  color: #ddc8ba;
 }
 
 .collectionCopy b {
@@ -226,6 +252,113 @@
   font-size: 9px;
   letter-spacing: .11em;
   text-transform: uppercase;
+  transition: color .25s ease;
+}
+
+.collectionCard:hover .collectionCopy b,
+.collectionCard:focus-visible .collectionCopy b {
+  color: #f0c875;
+}
+
+.launchBenefits {
+  padding: clamp(54px, 6vw, 86px) max(24px, calc((100vw - 1440px)/2 + 32px));
+  display: grid;
+  grid-template-columns: minmax(280px, .82fr) minmax(0, 1.7fr);
+  gap: clamp(34px, 6vw, 84px);
+  align-items: start;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(214,163,79,.09), transparent 30%),
+    linear-gradient(135deg, #5a1e22 0%, #6a2529 100%);
+  color: #fff6ec;
+  border-top: 1px solid rgba(214,163,79,.44);
+  border-bottom: 1px solid rgba(214,163,79,.44);
+}
+
+.launchIntro h2 {
+  margin: 0;
+  max-width: 560px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(38px, 4.4vw, 64px);
+  font-weight: 400;
+  line-height: .98;
+  letter-spacing: -.04em;
+}
+
+.launchIntro > p:not(.eyebrow) {
+  max-width: 520px;
+  margin: 22px 0 0;
+  color: #dfcbc0;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.launchBenefits .eyebrow {
+  color: #d8a950;
+}
+
+.launchCta {
+  margin-top: 26px;
+  padding-bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid #d8a950;
+  color: #f0c875;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.launchOfferGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.launchOfferCard {
+  min-height: 252px;
+  padding: 27px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid rgba(238,211,175,.20);
+  background: rgba(255,248,239,.055);
+  backdrop-filter: blur(6px);
+}
+
+.launchOfferIcon {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(224,182,109,.48);
+  border-radius: 50%;
+  color: #e0b66d;
+}
+
+.launchOfferCard > p {
+  margin: 0 0 10px;
+  color: #d9a94f;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .16em;
+}
+
+.launchOfferCard strong {
+  margin-bottom: 14px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(20px, 1.8vw, 28px);
+  font-weight: 400;
+  line-height: 1.18;
+}
+
+.launchOfferCard > span:last-child {
+  margin-top: auto;
+  color: #d6c4b8;
+  font-size: 10px;
+  line-height: 1.55;
 }
 
 .standardBar {
@@ -699,6 +832,16 @@
   }
 }
 
+@media (max-width: 960px) {
+  .launchBenefits {
+    grid-template-columns: 1fr;
+  }
+
+  .launchOfferGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 780px) {
   .whatsappCard {
     grid-template-columns: 1fr;
@@ -750,6 +893,16 @@
   .promise {
     padding-top: 76px;
     padding-bottom: 82px;
+  }
+}
+
+@media (max-width: 700px) {
+  .launchOfferGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .launchOfferCard {
+    min-height: 210px;
   }
 }
 

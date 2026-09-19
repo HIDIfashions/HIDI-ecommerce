@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { WhatsAppIcon } from "@/components/whatsapp-icon";
+import { LaunchBenefits } from "@/components/launch-benefits";
 import { getBestSellers, getProducts } from "@/lib/api";
 import styles from "./home.module.css";
 
@@ -61,8 +62,7 @@ export default async function Home() {
   const hero = catalogue.find((product) => product.slug === "meher-gold-beige-occasion-set")
     ?? catalogue.find((product) => product.slug === "sana-sand-kurta-set")
     ?? catalogue[0];
-  const heroImage = hero?.images?.find((image) => image.url?.trim())?.url
-    ?? "/products/sana-sand-kurta-set/01-main.png";
+  const heroImage = "/brand/hidi-hero-purple-full.avif";
   const whatsapp = (process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
   const whatsappHref = whatsapp
     ? "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent("Hi HIDI, I would like help choosing a style.")
@@ -95,16 +95,17 @@ export default async function Home() {
         <div className={styles.heroVisual}>
           <Image
             src={heroImage}
-            alt={hero?.name ?? "HIDI ethnic wear"}
+            alt="HIDI signature purple saree editorial look"
             fill
             priority
+            unoptimized
             sizes="(max-width: 820px) 100vw, 58vw"
             className={styles.heroImage}
           />
           <div className={styles.heroVeil} aria-hidden="true" />
           <div className={styles.heroBadge}>
             <span>THE HIDI EDIT</span>
-            <strong>{hero?.name ?? "Quietly elegant Indian wear"}</strong>
+            <strong>The HIDI Purple Edit</strong>
           </div>
         </div>
       </section>
@@ -123,6 +124,8 @@ export default async function Home() {
           </Link>
         ))}
       </section>
+
+      <LaunchBenefits />
 
       <section className={styles.standardBar} aria-label="The HIDI standard">
         {standards.map(({ icon: Icon, title, copy }) => (

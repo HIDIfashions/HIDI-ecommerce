@@ -71,6 +71,64 @@ export class ProductsService {
     });
   }
 
+  async related(slug: string, limit = 4) {
+    const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 8) : 4;
+    const source = await this.prisma.product.findUnique({
+      where: { slug },
+      include: {
+        category: true,
+        collections: { include: { collection: true } },
+        images: { orderBy: { position: "asc" } },
+        variants: { where: { active: true }, include: { inventory: true } },
+      },
+    });
+    if (!source || source.status !== "ACTIVE") throw new NotFoundException("Product not found");
+
+    const collectionIds = source.collections.map((item) => item.collectionId);
+    const relationFilters: any[] = [];
+    if (source.categoryId) relationFilters.push({ categoryId: source.categoryId });
+    if (collectionIds.length) {
+      relationFilters.push({ collections: { some: { collectionId: { in: collectionIds } } } });
+    }
+
+    const candidates = await this.prisma.product.findMany({
+      where: {
+        status: "ACTIVE",
+        id: { not: source.id },
+        ...(relationFilters.length ? { OR: relationFilters } : {}),
+      },
+      orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
+      take: Math.max(safeLimit * 4, 12),
+      include: {
+        category: true,
+        collections: { include: { collection: true }, orderBy: { position: "asc" } },
+        images: { orderBy: { position: "asc" } },
+        variants: {
+          where: { active: true },
+          include: { inventory: true },
+          orderBy: [{ color: "asc" }, { size: "asc" }],
+        },
+      },
+    });
+
+    const sourceView = this.toView(source);
+    const sourceCollections = new Set(sourceView.collections.map((item: any) => item.id));
+    return candidates
+      .map((product) => this.toView(product))
+      .map((product) => {
+        const sharedCollections = product.collections.filter((item: any) => sourceCollections.has(item.id)).length;
+        const categoryMatch = sourceView.category?.id && product.category?.id === sourceView.category.id ? 1 : 0;
+        const priceGap = Math.abs(product.minPricePaise - sourceView.minPricePaise);
+        return {
+          product,
+          score: sharedCollections * 10 + categoryMatch * 5 - Math.min(priceGap / 100000, 4),
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, safeLimit)
+      .map(({ product }) => product);
+  }
+
   async bySlug(slug: string) {
     const product = await this.prisma.product.findUnique({
       where: { slug },

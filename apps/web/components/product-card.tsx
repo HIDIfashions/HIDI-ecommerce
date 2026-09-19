@@ -154,8 +154,13 @@ export function ProductCard({ product, initialVariantId }: Props) {
   }
 
   return <article className={styles.card} aria-labelledby={`${uid}-name`}>
-    <ProductCardMedia name={product.name} images={product.images ?? []}
-      videos={getProductCardVideos(product.slug)} soldOut={soldOut} />
+    <ProductCardMedia
+      name={product.name}
+      images={product.images ?? []}
+      videos={getProductCardVideos(product.slug)}
+      soldOut={soldOut}
+      href={href}
+    />
     <div className={styles.body}>
       <p className={styles.eyebrow}>{product.fabric || product.category?.name || "THE HIDI EDIT"}</p>
       <h3 id={`${uid}-name`} className={styles.name}><Link href={href}>{product.name}</Link></h3>

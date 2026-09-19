@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { CatalogImage } from "@/components/catalog-image";
 import { RetentionPreferences } from "@/components/retention-preferences";
 import { WalletBalance } from "@/components/wallet-balance";
+import { ReturnExchangeRequest } from "@/components/return-exchange-request";
 import { formatPaise } from "@/lib/api";
 import { formatWalletPaise } from "@/lib/wallet-client";
 import { BROWSER_API_URL } from "@/lib/browser-api";
@@ -29,6 +30,9 @@ type OrderSummary = {
   walletAppliedPaise?: number;
   cashPayablePaise?: number;
   paymentStatus?: string | null;
+  deliveredAt?: string | null;
+  returnWindowEndsAt?: string | null;
+  canReturnOrExchange?: boolean;
   itemCount: number;
   items: Array<{
     id: string;
@@ -39,6 +43,18 @@ type OrderSummary = {
     color: string;
     quantity: number;
     totalPaise: number;
+    exchangeSizes: string[];
+    returnRequests: Array<{
+      id: string;
+      type: string;
+      reason: string;
+      quantity: number;
+      refundDestination?: string | null;
+      requestedSize?: string | null;
+      refundPaise: number;
+      status: string;
+      createdAt: string;
+    }>;
   }>;
 };
 
@@ -222,13 +238,20 @@ export function AccountOrdersClient() {
           </div>
 
           <div className={styles.items}>
-            {order.items.slice(0, 3).map((item) => <div className={styles.item} key={item.id}>
+            {order.items.map((item) => <div className={styles.item} key={item.id}>
               <Link href={`/products/${item.slug}`} className={styles.thumb} style={{ position: "relative" }}>
                 <CatalogImage src={item.image} alt={item.productName} sizes="86px" fallbackLabel={`HIDI / ${item.productName}`} />
               </Link>
               <div>
                 <Link className={styles.name} href={`/products/${item.slug}`}>{item.productName}</Link>
                 <p>{item.color} · Size {item.size} · Qty {item.quantity}</p>
+                <ReturnExchangeRequest
+                  orderNumber={order.orderNumber}
+                  item={item}
+                  eligible={Boolean(order.canReturnOrExchange)}
+                  returnWindowEndsAt={order.returnWindowEndsAt}
+                  onCreated={loadAccount}
+                />
               </div>
             </div>)}
           </div>

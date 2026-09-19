@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
+import { Footer } from "@/components/site-footer";
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

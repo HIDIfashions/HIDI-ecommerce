@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Filter, SlidersHorizontal, X } from "lucide-react";
 import { ApiProduct } from "@/lib/api";
 import { ProductCard } from "./product-card";
@@ -79,6 +79,20 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   const [sort, setSort] = useState("featured");
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileOpen]);
+
   const filtered = useMemo(() => {
     const result = products.filter((product) => {
       if (
@@ -117,7 +131,13 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   }
 
   const sidebar = (
-    <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ""}`} aria-label="Product filters">
+    <aside
+      className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ""}`}
+      aria-label="Product filters"
+      aria-hidden={!mobileOpen}
+      role="dialog"
+      aria-modal={mobileOpen ? "true" : undefined}
+    >
       <div className={styles.filterHeading}>
         <span className={styles.filterHeadingLabel}><SlidersHorizontal size={16} strokeWidth={1.6} /> Filter</span>
         <span>
@@ -181,16 +201,24 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
 
   return <>
     {mobileOpen && <button className={styles.drawerBackdrop} type="button" aria-label="Close filters" onClick={() => setMobileOpen(false)} />}
-    <div className={styles.layout}>
-      {sidebar}
+    {sidebar}
 
+    <div className={styles.layout}>
       <section className={styles.content}>
         <div className={styles.toolbar}>
-          <div>
-            <button className={styles.mobileFilterButton} type="button" onClick={() => setMobileOpen(true)}>
-              <Filter size={16} strokeWidth={1.6} /> Filter
+          <div className={styles.toolbarLeft}>
+            <button
+              className={styles.mobileFilterButton}
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen(true)}
+            >
+              <Filter size={16} strokeWidth={1.6} />
+              Filter
+              {hasFilters && <span className={styles.filterCount}>{selectedSizes.length + selectedColors.length + selectedFabrics.length + (price ? 1 : 0)}</span>}
             </button>
-            <span className="desktop-only">{filtered.length} styles</span>
+            <span className={styles.styleCount}>{filtered.length} styles</span>
           </div>
 
           <div className={styles.toolbarRight}>
@@ -205,7 +233,9 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
         </div>
 
         {filtered.length
-          ? <div className={styles.productGrid}>{filtered.map((product) => <ProductCard key={product.id} product={product} />)}</div>
+          ? <div className={styles.productGrid}>{filtered.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}</div>
           : <div className={styles.empty}><h2>No styles match those filters.</h2><p>Try clearing one or more filters.</p><button className="button button-light" type="button" onClick={clearFilters}>Clear filters</button></div>}
       </section>
     </div>

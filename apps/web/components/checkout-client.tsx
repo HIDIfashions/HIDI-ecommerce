@@ -4,7 +4,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCartSession, newCheckoutToken, startNewCartSession } from "@/lib/cart-session";
+import { adoptCartSession, getCartSession, newCheckoutToken, startNewCartSession } from "@/lib/cart-session";
 import { getAccessToken, getStoredSession } from "@/lib/supabase-auth";
 import { useWalletSummary } from "@/components/wallet-balance";
 import { checkoutFingerprint, formatWalletPaise, parsePreparedCheckout, walletAccountId, walletAmountPaise, walletEnabled, WALLET_UPDATED_EVENT, type PreparedCheckout } from "@/lib/wallet-client";
@@ -90,6 +90,17 @@ export function CheckoutClient() {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("hidi-cart-updated", refreshCart);
     };
+  }, []);
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const whatsappCart = query.get("waCart");
+    if (!whatsappCart) return;
+    if (!adoptCartSession(whatsappCart)) {
+      setError("This WhatsApp checkout link is invalid or has expired.");
+      return;
+    }
+    window.history.replaceState({}, "", window.location.pathname);
   }, []);
 
   useEffect(() => {
