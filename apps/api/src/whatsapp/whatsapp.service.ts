@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 function xmlEscape(value: string) {
@@ -255,7 +255,7 @@ export class WhatsAppService {
           );
         }
 
-        const sessionId = crypto.randomUUID();
+        const sessionId = randomUUID();
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         const cart = await this.prisma.cart.create({
           data: { sessionId, expiresAt },
