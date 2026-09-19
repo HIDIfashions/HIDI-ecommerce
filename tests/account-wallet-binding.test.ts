@@ -75,7 +75,7 @@ function accountFixture(input: {
       },
     },
   };
-  return { service: new AccountService(db as never), calls, users, wallets, orders };
+  return { service: new AccountService(db as never, {} as never), calls, users, wallets, orders };
 }
 
 test("existing wallet authSubject binding remains authoritative when verified email changes", async () => {
