@@ -332,6 +332,10 @@ export class AdminReturnsService {
     if (cashShare <= 0) {
       return withSerializableRetry(this.prisma, async (tx) => {
         await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WHERE "id" = ${request.id} FOR UPDATE`;
+        const current = await tx.returnRequest.findUnique({ where: { id: request.id } });
+        if (!current || current.status !== "RECEIVED") {
+          throw new ConflictException("Return status changed. Refresh and try again.");
+        }
         await this.wallet.creditReturnRefund(tx, request.orderId, request.id, request.refundPaise);
         await this.wallet.reverseEarned(tx, request.orderId, `RETURN_REFUNDED:${request.id}`);
         return tx.returnRequest.update({
