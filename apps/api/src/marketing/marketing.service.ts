@@ -12,7 +12,7 @@ export class MarketingService {
       ? body.source.trim().slice(0, 80)
       : "FOOTER";
 
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
       throw new BadRequestException("Enter a valid email address.");
     }
 
