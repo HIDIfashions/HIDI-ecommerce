@@ -11,7 +11,7 @@ import styles from "./product-card-media.module.css";
 
 const VIDEO_PLAY_EVENT = "hidi-card-video-play";
 const EMPTY_VIDEOS: readonly CardVideo[] = [];
-const DEFAULT_INTERVAL = 2600;
+const DEFAULT_INTERVAL = 1800;
 
 type Props = {
   name: string;
@@ -254,7 +254,7 @@ function Gallery({
   const [announcement, setAnnouncement] = useState("");
 
   const active = items[index];
-  const interval = Number.isFinite(intervalMs) ? Math.max(2000, intervalMs) : DEFAULT_INTERVAL;
+  const interval = Number.isFinite(intervalMs) ? Math.max(1400, intervalMs) : DEFAULT_INTERVAL;
 
   const imageIndexes = useMemo(
     () => items.flatMap((item, itemIndex) => item.kind === "image" ? [itemIndex] : []),
