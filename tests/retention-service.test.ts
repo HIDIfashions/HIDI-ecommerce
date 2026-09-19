@@ -58,7 +58,7 @@ test("explicit opt-in writes an audit and does not update legacy broad marketing
   assert.equal(saved.whatsappOptIn, true);
   assert.equal(saved.personalizationOptIn, true);
   assert.equal(calls.filter((call) => call.action === "audit.create").length, 1);
-  assert.deepEqual(calls.find((call) => call.action === "user.upsert")!.input.update, {});
+  assert.deepEqual(calls.find((call) => call.action === "user.upsert")!.input.update, { email: auth.email });
 });
 
 test("withdrawal accepts an old version, deletes browsing events and cancels queued sends", async () => {
