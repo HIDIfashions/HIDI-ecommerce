@@ -44,7 +44,8 @@ export class SupabaseAuthService {
     }
 
     const user = await response.json() as SupabaseAuthUser;
-    const email = user.email_confirmed_at ? user.email?.trim().toLowerCase() ?? null : null;
+    const normalizedEmail = user.email?.trim().toLowerCase() ?? "";
+    const email = user.email_confirmed_at && normalizedEmail ? normalizedEmail : null;
     const phone = user.phone_confirmed_at ? user.phone ?? null : null;
 
     if (!user.id || (!email && !phone)) {
