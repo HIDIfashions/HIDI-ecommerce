@@ -25,6 +25,7 @@ const API = BROWSER_API_URL;
 type OrderSummary = {
   orderNumber: string;
   status: string;
+  afterSales?: { id: string; type: string; status: string; createdAt: string } | null;
   createdAt: string;
   totalPaise: number;
   walletAppliedPaise?: number;
@@ -42,6 +43,7 @@ type OrderSummary = {
     size: string;
     color: string;
     quantity: number;
+    returnableQuantity: number;
     totalPaise: number;
     exchangeSizes: string[];
     returnRequests: Array<{
@@ -231,7 +233,9 @@ export function AccountOrdersClient() {
               <p className={styles.meta}>{placedAt} · {order.itemCount} item{order.itemCount === 1 ? "" : "s"}</p>
             </div>
             <div className={styles.statusBlock}>
-              <span className={styles.status}>{titleCase(order.status)}</span>
+              <span className={styles.status}>
+                {order.afterSales ? `${titleCase(order.afterSales.type)} · ${titleCase(order.afterSales.status)}` : titleCase(order.status)}
+              </span>
               <strong>{formatPaise(order.totalPaise)}</strong>
               {!!order.walletAppliedPaise && <span className={styles.meta}>Rewards: {formatWalletPaise(order.walletAppliedPaise)} · Cash: {formatWalletPaise(order.cashPayablePaise ?? Math.max(0, order.totalPaise - order.walletAppliedPaise))}</span>}
             </div>
