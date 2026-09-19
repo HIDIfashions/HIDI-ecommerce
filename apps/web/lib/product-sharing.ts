@@ -49,6 +49,7 @@ export function whatsappOrderUrl(input: {
   const number = normalizeWhatsAppNumber(phoneNumber);
   if (!number) return null;
   const lines = [
+    "HIDI_ORDER_REQUEST",
     "Hi HIDI, I'd like help ordering this product:",
     "",
     input.name,
