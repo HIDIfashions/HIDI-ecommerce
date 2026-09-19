@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { RazorpayService } from "../razorpay/razorpay.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
+import { allocateOriginalTenderRefund } from "./return-refund-policy.js";
 
 const ACTIONS = new Set([
   "APPROVE",
@@ -311,26 +312,21 @@ export class AdminReturnsService {
       .filter((entry) => entry.id !== request.id)
       .reduce((sum, entry) => sum + entry.refundWalletPaise, 0);
 
-    const walletTenderRemaining = Math.max(0, request.order.walletAppliedPaise - priorOriginalWalletRefunds);
-    const cashTenderRemaining = Math.max(0, (payment?.amountPaise ?? 0) - alreadyRefunded);
-    const desiredWalletShare = Math.floor((request.refundPaise * request.order.walletAppliedPaise) / total);
-
-    let walletShare = Math.min(desiredWalletShare, walletTenderRemaining);
-    let cashShare = Math.min(request.refundPaise - walletShare, cashTenderRemaining);
-    let unallocated = request.refundPaise - walletShare - cashShare;
-
-    if (unallocated > 0) {
-      const extraWallet = Math.min(unallocated, walletTenderRemaining - walletShare);
-      walletShare += extraWallet;
-      unallocated -= extraWallet;
-    }
-    if (unallocated > 0) {
-      const extraCash = Math.min(unallocated, cashTenderRemaining - cashShare);
-      cashShare += extraCash;
-      unallocated -= extraCash;
-    }
-    if (unallocated > 0) {
-      throw new ConflictException("The original payment tenders do not have enough refundable balance");
+    let walletShare: number;
+    let cashShare: number;
+    try {
+      const allocation = allocateOriginalTenderRefund({
+        refundPaise: request.refundPaise,
+        orderTotalPaise: total,
+        walletAppliedPaise: request.order.walletAppliedPaise,
+        walletAlreadyRefundedPaise: priorOriginalWalletRefunds,
+        cashPaidPaise: payment?.amountPaise ?? 0,
+        cashAlreadyRefundedPaise: alreadyRefunded,
+      });
+      walletShare = allocation.walletPaise;
+      cashShare = allocation.cashPaise;
+    } catch (error) {
+      throw new ConflictException(error instanceof Error ? error.message : "Refund allocation requires reconciliation");
     }
 
     if (cashShare <= 0) {
