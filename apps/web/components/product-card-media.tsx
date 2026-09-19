@@ -11,7 +11,7 @@ import styles from "./product-card-media.module.css";
 
 const VIDEO_PLAY_EVENT = "hidi-card-video-play";
 const EMPTY_VIDEOS: readonly CardVideo[] = [];
-const DEFAULT_INTERVAL = 1800;
+const DEFAULT_INTERVAL = 2700;
 
 type Props = {
   name: string;
@@ -249,24 +249,17 @@ function Gallery({
   const [loaded, setLoaded] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [announcement, setAnnouncement] = useState("");
-  const [hoverLoaded, setHoverLoaded] = useState<string[]>([]);
+  const [preloadIndex, setPreloadIndex] = useState<number | null>(null);
+  const [preloadReady, setPreloadReady] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
 
   const active = items[index];
-  const interval = Number.isFinite(intervalMs) ? Math.max(1400, intervalMs) : DEFAULT_INTERVAL;
+  const interval = Number.isFinite(intervalMs) ? Math.max(2200, intervalMs) : DEFAULT_INTERVAL;
 
   const imageIndexes = useMemo(
     () => items.flatMap((item, itemIndex) => item.kind === "image" ? [itemIndex] : []),
     [items],
   );
-  const imageItems = useMemo(
-    () => imageIndexes
-      .map((itemIndex) => items[itemIndex])
-      .filter((item): item is Extract<CardMedia, { kind: "image" }> => item?.kind === "image"),
-    [imageIndexes, items],
-  );
-  const hoverPhotosReady = imageItems.length > 1
-    && imageItems.every((item) => hoverLoaded.includes(item.id));
-
   // Only the hovered card rotates. Non-hovered cards remain still.
   // Rotation is photo-only; videos never autoplay or interrupt the loop.
   const rotating = imageIndexes.length > 1
@@ -276,8 +269,7 @@ function Gallery({
     && visible
     && pageVisible
     && !expanded
-    && hover
-    && hoverPhotosReady;
+    && hover;
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -317,20 +309,49 @@ function Gallery({
   }, []);
 
   useEffect(() => {
-    if (!rotating) return;
+    if (!rotating || transitioning) {
+      if (!hover) {
+        setPreloadIndex(null);
+        setPreloadReady(false);
+        setTransitioning(false);
+      }
+      return;
+    }
+
+    const currentImagePosition = imageIndexes.indexOf(index);
+    const nextImagePosition = currentImagePosition < 0
+      ? 0
+      : (currentImagePosition + 1) % imageIndexes.length;
+    const target = imageIndexes[nextImagePosition] ?? null;
+
+    if (target !== preloadIndex) {
+      setPreloadIndex(target);
+      setPreloadReady(false);
+    }
+  }, [rotating, transitioning, hover, imageIndexes, index, preloadIndex]);
+
+  useEffect(() => {
+    if (!rotating || !preloadReady || preloadIndex === null || transitioning) return;
 
     const timer = window.setTimeout(() => {
-      setIndex(current => {
-        const currentImagePosition = imageIndexes.indexOf(current);
-        const nextImagePosition = currentImagePosition < 0
-          ? 0
-          : (currentImagePosition + 1) % imageIndexes.length;
-        return imageIndexes[nextImagePosition] ?? current;
-      });
+      setTransitioning(true);
     }, interval);
 
     return () => window.clearTimeout(timer);
-  }, [rotating, loaded, active?.id, interval, imageIndexes]);
+  }, [rotating, preloadReady, preloadIndex, transitioning, interval]);
+
+  useEffect(() => {
+    if (!transitioning || preloadIndex === null) return;
+
+    const timer = window.setTimeout(() => {
+      setIndex(preloadIndex);
+      setTransitioning(false);
+      setPreloadIndex(null);
+      setPreloadReady(false);
+    }, 360);
+
+    return () => window.clearTimeout(timer);
+  }, [transitioning, preloadIndex]);
 
   useEffect(() => {
     if (!expanded || !dialog.current) return;
@@ -345,10 +366,6 @@ function Gallery({
       document.body.style.overflow = previousOverflow;
     };
   }, [expanded]);
-
-  function markHoverLoaded(id: string) {
-    setHoverLoaded((current) => current.includes(id) ? current : [...current, id]);
-  }
 
   function choose(next: number) {
     const target = wrapMediaIndex(next, items.length);
@@ -446,21 +463,20 @@ function Gallery({
                   ready={() => setLoaded(active?.id ?? "")}
                 />
 
-                {hover && imageItems.length > 1 && (
-                  <span className={styles.photoStack} aria-hidden="true">
-                    {imageItems.map((item) => (
-                      <Image
-                        key={item.id}
-                        src={item.url}
-                        alt=""
-                        fill
-                        sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
-                        draggable={false}
-                        className={`${styles.photoLayer} ${item.id === active?.id ? styles.photoLayerActive : ""}`}
-                        onLoad={() => markHoverLoaded(item.id)}
-                        onError={() => markHoverLoaded(item.id)}
-                      />
-                    ))}
+                {hover && preloadIndex !== null && items[preloadIndex]?.kind === "image" && (
+                  <span className={styles.photoPreload} aria-hidden="true">
+                    <Image
+                      key={items[preloadIndex].id}
+                      src={items[preloadIndex].url}
+                      alt=""
+                      fill
+                      sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
+                      loading="eager"
+                      draggable={false}
+                      className={`${styles.nextPhotoLayer} ${transitioning ? styles.nextPhotoLayerVisible : ""}`}
+                      onLoad={() => setPreloadReady(true)}
+                      onError={() => setPreloadReady(true)}
+                    />
                   </span>
                 )}
               </button>
