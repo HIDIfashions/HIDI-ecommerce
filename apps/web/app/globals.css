@@ -142,11 +142,22 @@ details p { color: var(--muted); font-size: 13px; }
 .cart-actions { grid-column: 1 / -1; align-self: end; display: flex; align-items: center; gap: 12px; }
 .cart-actions button { width: 32px; height: 32px; border: 1px solid var(--line); background: transparent; }
 .cart-actions .remove { width: auto; border: 0; text-decoration: underline; margin-left: 10px; }
-.order-summary { background: var(--ivory); padding: 28px; }
+.order-summary { background: #ffffff; padding: 28px; border: 1px solid var(--line); }
 .order-summary h2 { font-size: 25px; }
 .order-summary > div { display: flex; justify-content: space-between; gap: 15px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .order-summary .summary-total { padding: 20px 0; font-size: 18px; }
 .order-summary .button { width: 100%; margin-top: 20px; }
+.order-summary .cart-checkout-button {
+  background: #541d1f;
+  border-color: #541d1f;
+  color: #fff8ef;
+}
+.order-summary .cart-checkout-button:hover,
+.order-summary .cart-checkout-button:focus-visible {
+  background: #651f23;
+  border-color: #651f23;
+  color: #fff8ef;
+}
 .fine-print { text-align: center; color: var(--muted); font-size: 10px; }
 .checkout-grid { display: grid; grid-template-columns: 1.2fr .6fr; gap: 70px; align-items: start; }
 .checkout-form section { padding: 24px 0; border-top: 1px solid var(--line); display: grid; gap: 12px; }
