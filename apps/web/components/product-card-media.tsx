@@ -20,13 +20,12 @@ type Props = {
   soldOut?: boolean;
   intervalMs?: number;
   href: string;
-  autoLoop?: boolean;
 };
 
 /**
  * Minimal HIDI collection-card gallery.
- * - Shop All can continuously loop through every product photo while visible.
- * - Other catalogue cards retain hover rollover on desktop.
+ * - Desktop: only the product under the cursor loops through its photos.
+ * - Products that are not hovered remain static.
  * - Mobile customers can still swipe horizontally.
  * - Clicking the photo opens product details; the expand control opens the lightbox.
  * - Videos never autoplay and require a customer gesture.
@@ -226,14 +225,12 @@ function Gallery({
   soldOut = false,
   intervalMs = DEFAULT_INTERVAL,
   href,
-  autoLoop = false,
 }: {
   name: string;
   items: CardMedia[];
   soldOut?: boolean;
   intervalMs?: number;
   href: string;
-  autoLoop?: boolean;
 }) {
   const id = useId();
   const router = useRouter();
@@ -261,8 +258,8 @@ function Gallery({
     [items],
   );
 
-  // Shop All loops photos automatically while visible. Other collection cards
-  // retain the original hover rollover. Videos never autoplay.
+  // Only the hovered card rotates. Non-hovered cards remain still.
+  // Rotation is photo-only; videos never autoplay or interrupt the loop.
   const rotating = imageIndexes.length > 1
     && active?.kind === "image"
     && !reduceMotion
@@ -270,7 +267,7 @@ function Gallery({
     && visible
     && pageVisible
     && !expanded
-    && (autoLoop || hover);
+    && hover;
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -314,8 +311,6 @@ function Gallery({
 
     const timer = window.setTimeout(() => {
       setIndex(current => {
-        if (!autoLoop) return wrapMediaIndex(current + 1, items.length);
-
         const currentImagePosition = imageIndexes.indexOf(current);
         const nextImagePosition = currentImagePosition < 0
           ? 0
@@ -325,7 +320,7 @@ function Gallery({
     }, interval);
 
     return () => window.clearTimeout(timer);
-  }, [rotating, loaded, active?.id, items.length, interval, autoLoop, imageIndexes]);
+  }, [rotating, loaded, active?.id, interval, imageIndexes]);
 
   useEffect(() => {
     if (!expanded || !dialog.current) return;
