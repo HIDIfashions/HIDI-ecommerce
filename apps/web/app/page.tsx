@@ -62,8 +62,7 @@ export default async function Home() {
   const hero = catalogue.find((product) => product.slug === "meher-gold-beige-occasion-set")
     ?? catalogue.find((product) => product.slug === "sana-sand-kurta-set")
     ?? catalogue[0];
-  const heroImage = hero?.images?.find((image) => image.url?.trim())?.url
-    ?? "/products/sana-sand-kurta-set/01-main.png";
+  const heroImage = "/brand/hidi-hero-purple.webp";
   const whatsapp = (process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
   const whatsappHref = whatsapp
     ? "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent("Hi HIDI, I would like help choosing a style.")
@@ -96,7 +95,7 @@ export default async function Home() {
         <div className={styles.heroVisual}>
           <Image
             src={heroImage}
-            alt={hero?.name ?? "HIDI ethnic wear"}
+            alt="HIDI signature purple saree editorial look"
             fill
             priority
             sizes="(max-width: 820px) 100vw, 58vw"
@@ -105,7 +104,7 @@ export default async function Home() {
           <div className={styles.heroVeil} aria-hidden="true" />
           <div className={styles.heroBadge}>
             <span>THE HIDI EDIT</span>
-            <strong>{hero?.name ?? "Quietly elegant Indian wear"}</strong>
+            <strong>The HIDI Purple Edit</strong>
           </div>
         </div>
       </section>
