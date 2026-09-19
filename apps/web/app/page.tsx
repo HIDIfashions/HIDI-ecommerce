@@ -5,13 +5,13 @@ import {
   BadgeCheck,
   Gem,
   HeartHandshake,
-  MessageCircle,
   RefreshCcw,
   ShieldCheck,
   Sparkles,
   Truck,
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
+import { WhatsAppIcon } from "@/components/whatsapp-icon";
 import { getBestSellers, getProducts } from "@/lib/api";
 import styles from "./home.module.css";
 
@@ -177,15 +177,78 @@ export default async function Home() {
           </div>
 
           <div className={styles.whatsappCard}>
-            <MessageCircle size={32} strokeWidth={1.4} aria-hidden="true" />
-            <div>
-              <span>PERSONAL SHOPPING SUPPORT</span>
+            <div className={styles.whatsappCopy}>
+              <div className={styles.whatsappBrandRow}>
+                <div className={styles.whatsappIconBadge} aria-hidden="true">
+                  <WhatsAppIcon size={31} />
+                </div>
+                <div>
+                  <span>PERSONAL SHOPPING SUPPORT</span>
+                  <small>HIDI styling desk · WhatsApp</small>
+                </div>
+              </div>
+
               <h3>Need help choosing?</h3>
-              <p>Ask HIDI about a product, fit or size before you order.</p>
+              <p>
+                Ask HIDI about a product, fit, size or styling before you order.
+                Get a human response without leaving the shopping flow.
+              </p>
+
+              <div className={styles.whatsappBenefits} aria-label="WhatsApp shopping support">
+                <span>Fit & size help</span>
+                <span>Product questions</span>
+                <span>Order assistance</span>
+              </div>
+
+              <Link
+                href={whatsappHref}
+                className={styles.whatsappButton}
+                target={whatsapp ? "_blank" : undefined}
+                rel={whatsapp ? "noreferrer" : undefined}
+              >
+                <WhatsAppIcon size={17} />
+                Chat on WhatsApp
+                <ArrowRight size={14} aria-hidden="true" />
+              </Link>
+
+              <small className={styles.whatsappFinePrint}>
+                Opens WhatsApp with a ready-to-send HIDI message.
+              </small>
             </div>
-            <Link href={whatsappHref} className={styles.whatsappButton}>
-              Chat on WhatsApp <ArrowRight size={14} aria-hidden="true" />
-            </Link>
+
+            <div className={styles.whatsappVisual} aria-hidden="true">
+              <div className={styles.phoneMockup}>
+                <div className={styles.phoneTop}>
+                  <span className={styles.phoneAvatar}>
+                    <WhatsAppIcon size={16} />
+                  </span>
+                  <div>
+                    <strong>HIDI Styling Desk</strong>
+                    <small>Typically replies during store hours</small>
+                  </div>
+                  <i />
+                </div>
+
+                <div className={styles.phoneChat}>
+                  <div className={styles.receivedBubble}>
+                    Hi ✨ Tell us the style you’re considering and your usual size.
+                    We’ll help you choose.
+                  </div>
+                  <div className={styles.sentBubble}>
+                    I like this kurta set. Would M or L suit a relaxed fit?
+                  </div>
+                  <div className={styles.receivedBubble}>
+                    Share your usual fit preference and we’ll guide you before you order.
+                  </div>
+                </div>
+
+                <div className={styles.phoneComposer}>
+                  <span>Message HIDI…</span>
+                  <b>➤</b>
+                </div>
+              </div>
+              <span className={styles.visualNote}>Human help. Before you buy.</span>
+            </div>
           </div>
         </div>
       </section>
