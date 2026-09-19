@@ -1,11 +1,36 @@
 import Link from "next/link";
-import { Facebook, Instagram, Youtube } from "lucide-react";
 import { NewsletterSignup } from "@/components/newsletter-signup";
+
+function InstagramIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4.2" />
+      <circle cx="17.4" cy="6.6" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function FacebookIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M13.6 21v-8h2.8l.42-3.2H13.6V7.75c0-.93.26-1.56 1.62-1.56H17V3.33A23.8 23.8 0 0 0 14.55 3C12.13 3 10.48 4.48 10.48 7.2v2.6H7.75V13h2.73v8h3.12Z" />
+    </svg>
+  );
+}
 
 function XIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
       <path d="M18.244 2H21l-6.52 7.45L22 22h-5.89l-4.61-6.03L6.22 22H3.46l6.75-7.72L3 2h6.04l4.17 5.52L18.244 2Zm-1.03 18h1.53L8.2 3.9H6.56L17.214 20Z" />
+    </svg>
+  );
+}
+
+function YouTubeIcon({ size = 19 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M21.58 7.19a2.9 2.9 0 0 0-2.04-2.05C17.74 4.65 12 4.65 12 4.65s-5.74 0-7.54.49A2.9 2.9 0 0 0 2.42 7.2 30.1 30.1 0 0 0 1.93 12a30.1 30.1 0 0 0 .49 4.81 2.9 2.9 0 0 0 2.04 2.05c1.8.49 7.54.49 7.54.49s5.74 0 7.54-.49a2.9 2.9 0 0 0 2.04-2.05 30.1 30.1 0 0 0 .49-4.81 30.1 30.1 0 0 0-.49-4.81ZM9.95 15.15V8.85L15.4 12l-5.45 3.15Z" />
     </svg>
   );
 }
@@ -65,10 +90,10 @@ export function Footer() {
           <p className="muted">Subscribe for launch offers, rewards updates, new edits and restocks.</p>
 
           <div className="social-links" aria-label="HIDI social channels">
-            <SocialLink href={instagram} label="HIDI on Instagram"><Instagram size={18} strokeWidth={1.6} /></SocialLink>
-            <SocialLink href={facebook} label="HIDI on Facebook"><Facebook size={18} strokeWidth={1.6} /></SocialLink>
+            <SocialLink href={instagram} label="HIDI on Instagram"><InstagramIcon size={18} /></SocialLink>
+            <SocialLink href={facebook} label="HIDI on Facebook"><FacebookIcon size={18} /></SocialLink>
             <SocialLink href={x} label="HIDI on X"><XIcon size={17} /></SocialLink>
-            <SocialLink href={youtube} label="HIDI on YouTube"><Youtube size={19} strokeWidth={1.6} /></SocialLink>
+            <SocialLink href={youtube} label="HIDI on YouTube"><YouTubeIcon size={19} /></SocialLink>
           </div>
 
           <NewsletterSignup />
