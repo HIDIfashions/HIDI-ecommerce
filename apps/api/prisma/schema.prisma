@@ -696,3 +696,16 @@ model WhatsAppMessage {
 
   @@index([conversationId, createdAt])
 }
+
+
+model NewsletterSubscriber {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  status         String   @default("ACTIVE")
+  source         String   @default("FOOTER")
+  consentVersion String   @default("hidi-newsletter-v1")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
