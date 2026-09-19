@@ -117,7 +117,7 @@ export class AccountService {
           : null;
         const canReturnOrExchange = order.status === "DELIVERED"
           && !!returnWindowEndsAt
-          && returnWindowEndsAt.getTime() >= Date.now();
+          && returnWindowEndsAt.getTime() > Date.now();
 
         const allRequests = order.items
           .flatMap((item) => item.returnRequests)
@@ -244,7 +244,7 @@ export class AccountService {
 
       const deliveredAt = order.shipments.find((shipment) => shipment.deliveredAt)?.deliveredAt ?? order.updatedAt;
       const deadline = new Date(deliveredAt.getTime() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-      if (deadline.getTime() < Date.now()) throw new ConflictException("The 7-day return and exchange window has closed");
+      if (deadline.getTime() <= Date.now()) throw new ConflictException("The 7-day return and exchange window has closed");
 
       const item = order.items.find((entry) => entry.id === orderItemId);
       if (!item) throw new NotFoundException("Order item not found");
