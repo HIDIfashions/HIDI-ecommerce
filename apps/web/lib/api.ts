@@ -10,6 +10,7 @@ export type ApiVariant = {
   mrpPaise: number;
   pricePaise: number;
   available: number;
+  images?: { id: string; url: string; alt: string; position: number }[];
 };
 
 export type ApiProductReview = {
