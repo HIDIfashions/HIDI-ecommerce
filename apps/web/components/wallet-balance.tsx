@@ -52,10 +52,14 @@ export function useWalletSummary() {
     }
     function onStorage(event: StorageEvent) { if (event.key === null || event.key === "hidi_supabase_session") syncAuth(); }
     const update = () => { if (walletAccountId()) void refresh().catch(() => undefined); };
+    const onFocus = () => update();
+    const onVisibility = () => { if (document.visibilityState === "visible") update(); };
     syncAuth();
     window.addEventListener("hidi-auth-updated", syncAuth);
     window.addEventListener("storage", onStorage);
     window.addEventListener(WALLET_UPDATED_EVENT, update);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       context.current.active = false;
       context.current.userId = null;
@@ -64,6 +68,8 @@ export function useWalletSummary() {
       window.removeEventListener("hidi-auth-updated", syncAuth);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener(WALLET_UPDATED_EVENT, update);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [refresh]);
 
