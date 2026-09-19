@@ -98,8 +98,8 @@ export class AdminReturnsService {
       }
 
       if (action === "REJECT") {
-        if (!["REQUESTED", "APPROVED", "PICKUP_SCHEDULED"].includes(request.status)) {
-          throw new ConflictException("This return can no longer be rejected");
+        if (!["REQUESTED", "APPROVED"].includes(request.status)) {
+          throw new ConflictException("This request can only be rejected before pickup is scheduled");
         }
         const reason = this.requiredText(body.rejectionReason, "Rejection reason", 300);
         if (request.type === "EXCHANGE" && request.exchangeReservationStatus === "ACTIVE" && request.requestedVariantId) {
