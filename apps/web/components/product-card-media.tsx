@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Expand, Play, X } from "lucide-react";
 import { buildCardMedia, swipeStep, wrapMediaIndex } from "@/lib/product-card-media-utils";
@@ -18,6 +19,7 @@ type Props = {
   videos?: readonly CardVideo[];
   soldOut?: boolean;
   intervalMs?: number;
+  href: string;
 };
 
 /**
@@ -217,13 +219,15 @@ function InlineVideo({ item, owner }: {
   );
 }
 
-function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }: {
+function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL, href }: {
   name: string;
   items: CardMedia[];
   soldOut?: boolean;
   intervalMs?: number;
+  href: string;
 }) {
   const id = useId();
+  const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const expandButton = useRef<HTMLButtonElement>(null);
@@ -323,8 +327,13 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }
   }
 
   function openPhoto() {
-    if (Date.now() < suppressedClickUntil.current || active?.kind !== "image") return;
+    if (active?.kind !== "image") return;
     setExpanded(true);
+  }
+
+  function openProduct() {
+    if (Date.now() < suppressedClickUntil.current || active?.kind !== "image") return;
+    router.push(href);
   }
 
   function closePhoto() {
@@ -383,33 +392,45 @@ function Gallery({ name, items, soldOut = false, intervalMs = DEFAULT_INTERVAL }
           {active?.kind === "video" ? (
             <InlineVideo key={active.id} item={active} owner={id} />
           ) : (
-            <button
-              type="button"
-              ref={expandButton}
-              className={styles.photoButton}
-              disabled={!active}
-              onClick={openPhoto}
-              aria-label={`Expand ${active?.label ?? name}`}
-              onPointerDown={pointerDown}
-              onPointerUp={pointerUp}
-              onPointerCancel={() => {
-                gesture.current = null;
-                suppressedClickUntil.current = Date.now() + 500;
-              }}
-            >
-              <Photo
-                key={active?.id ?? "empty"}
-                src={active?.url}
-                alt={active?.label ?? name}
-                sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
-                ready={() => setLoaded(active?.id ?? "")}
-              />
+            <div className={styles.photoArea}>
+              <button
+                type="button"
+                className={styles.photoButton}
+                disabled={!active}
+                onClick={openProduct}
+                aria-label={`View details for ${name}`}
+                onPointerDown={pointerDown}
+                onPointerUp={pointerUp}
+                onPointerCancel={() => {
+                  gesture.current = null;
+                  suppressedClickUntil.current = Date.now() + 500;
+                }}
+              >
+                <Photo
+                  key={active?.id ?? "empty"}
+                  src={active?.url}
+                  alt={active?.label ?? name}
+                  sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
+                  ready={() => setLoaded(active?.id ?? "")}
+                />
+              </button>
+
               {active && (
-                <span className={styles.expandIcon} aria-hidden="true">
-                  <Expand size={17} />
-                </span>
+                <button
+                  type="button"
+                  ref={expandButton}
+                  className={styles.expandIcon}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openPhoto();
+                  }}
+                  aria-label={`Expand ${active.label}`}
+                  title="Enlarge photo"
+                >
+                  <Expand size={17} aria-hidden="true" />
+                </button>
               )}
-            </button>
+            </div>
           )}
         </div>
 
