@@ -255,7 +255,8 @@
 .productGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 42px 22px;
+  column-gap: clamp(28px, 2.6vw, 46px);
+  row-gap: clamp(48px, 5vw, 72px);
 }
 
 .empty {
@@ -303,7 +304,8 @@
 @media (max-width: 1050px) {
   .productGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 34px 16px;
+    column-gap: 24px;
+    row-gap: 46px;
   }
 }
 
@@ -343,7 +345,8 @@
 @media (max-width: 560px) {
   .productGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px 10px;
+    column-gap: 12px;
+    row-gap: 30px;
   }
 
   .mobileFilterButton {
