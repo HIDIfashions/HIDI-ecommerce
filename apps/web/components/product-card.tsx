@@ -14,10 +14,10 @@ import { configuredWhatsAppNumber, shareProduct } from "@/lib/product-sharing";
 import { WhatsAppIcon } from "./whatsapp-icon";
 import styles from "./product-card.module.css";
 
-type Props = { product: ApiProduct; initialVariantId?: string; autoLoopImages?: boolean };
+type Props = { product: ApiProduct; initialVariantId?: string };
 type Phase = "idle" | "adding" | "added";
 
-export function ProductCard({ product, initialVariantId, autoLoopImages = false }: Props) {
+export function ProductCard({ product, initialVariantId }: Props) {
   const router = useRouter();
   const uid = useId();
   const initial = product.variants.find((entry) => entry.id === initialVariantId && entry.available > 0);
@@ -160,7 +160,6 @@ export function ProductCard({ product, initialVariantId, autoLoopImages = false 
       videos={getProductCardVideos(product.slug)}
       soldOut={soldOut}
       href={href}
-      autoLoop={autoLoopImages}
     />
     <div className={styles.body}>
       <p className={styles.eyebrow}>{product.fabric || product.category?.name || "THE HIDI EDIT"}</p>
