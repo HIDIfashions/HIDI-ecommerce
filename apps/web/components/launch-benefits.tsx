@@ -52,6 +52,7 @@ const offers = [
 export function LaunchBenefits() {
   const [active, setActive] = useState<OfferKey | null>(null);
   const selected = offers.find((offer) => offer.key === active) ?? null;
+  const SelectedIcon = selected?.icon ?? null;
 
   useEffect(() => {
     if (!active) return;
@@ -110,7 +111,7 @@ export function LaunchBenefits() {
               <X size={20} />
             </button>
 
-            <span className={styles.modalIcon}><selected.icon size={24} strokeWidth={1.5} /></span>
+            {SelectedIcon && <span className={styles.modalIcon}><SelectedIcon size={24} strokeWidth={1.5} /></span>}
             <p className={styles.modalEyebrow}>{selected.eyebrow}</p>
             <h3>{selected.title}</h3>
             <p className={styles.modalIntro}>Terms & conditions</p>
