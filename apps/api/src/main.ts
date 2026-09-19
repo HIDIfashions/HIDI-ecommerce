@@ -16,7 +16,8 @@ async function bootstrap() {
     { parseAs: "string" },
     (_request, body, done) => {
       try {
-        done(null, Object.fromEntries(new URLSearchParams(body)));
+        const text = typeof body === "string" ? body : body.toString("utf8");
+        done(null, Object.fromEntries(new URLSearchParams(text)));
       } catch (error) {
         done(error instanceof Error ? error : new Error("Invalid form body"));
       }
