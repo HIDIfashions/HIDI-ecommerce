@@ -73,9 +73,20 @@ export async function getBestSellers(limit = 8): Promise<ApiProduct[]> {
 }
 
 export async function getRelatedProducts(slug: string, limit = 4): Promise<ApiProduct[]> {
+  const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 8) : 4;
   const url = new URL(`${API_URL}/products/${encodeURIComponent(slug)}/related`);
-  url.searchParams.set("limit", String(limit));
-  return fetchPublicList(url);
+  url.searchParams.set("limit", String(safeLimit));
+
+  const related = await fetchPublicList(url);
+  if (related.length > 0) return related.slice(0, safeLimit);
+
+  // Keep the PDP recommendation section visible even if the dedicated related
+  // endpoint is temporarily unavailable or the current product has no direct
+  // category/collection matches.
+  const catalogue = await getProducts();
+  return catalogue
+    .filter((product) => product.slug !== slug)
+    .slice(0, safeLimit);
 }
 
 export async function getProduct(slug: string): Promise<ApiProduct | null> {
