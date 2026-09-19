@@ -134,7 +134,7 @@ export class ProductsService {
       where: { slug },
       include: {
         images: { orderBy: { position: "asc" } },
-        variants: { where: { active: true }, include: { inventory: true } },
+        variants: { where: { active: true }, include: { inventory: true, images: { orderBy: { position: "asc" } } } },
         category: true,
         collections: { include: { collection: true }, orderBy: { position: "asc" } },
       },
