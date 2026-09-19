@@ -7,6 +7,7 @@ import {
 } from "./admin-inventory.service.js";
 import { AdminService } from "./admin.service.js";
 import { ReviewFollowUpService } from "./review-followup.service.js";
+import { AdminReturnsService } from "./admin-returns.service.js";
 
 @Controller("admin")
 export class AdminController {
@@ -14,6 +15,7 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly inventory: AdminInventoryService,
     private readonly reviewFollowUps: ReviewFollowUpService,
+    private readonly returns: AdminReturnsService,
   ) {}
 
   private requireAdmin(key?: string) {
@@ -109,6 +111,24 @@ export class AdminController {
   ) {
     this.requireAdmin(adminKey);
     return this.inventory.addVariantImage(variantId, body ?? {});
+  }
+
+  @Patch("returns/:requestId")
+  updateReturn(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("requestId") requestId: string,
+    @Body() body: {
+      action?: unknown;
+      note?: unknown;
+      rejectionReason?: unknown;
+      inventoryDisposition?: unknown;
+      provider?: unknown;
+      awb?: unknown;
+      trackingUrl?: unknown;
+    },
+  ) {
+    this.requireAdmin(adminKey);
+    return this.returns.update(requestId, body ?? {});
   }
 
   @Get("orders/:orderNumber")
