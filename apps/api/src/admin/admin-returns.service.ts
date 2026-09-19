@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { InventoryMovementType } from "../generated/prisma/client.js";
+import { InventoryMovementType, type Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RazorpayService } from "../razorpay/razorpay.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
@@ -335,29 +335,46 @@ export class AdminReturnsService {
       });
     });
 
+    let providerRefund;
     try {
-      const providerRefund = await this.razorpay.createRefund(payment.providerPaymentId, {
+      providerRefund = await this.razorpay.createRefund(payment.providerPaymentId, {
         amountPaise: cashShare,
         returnRequestId: request.id,
         orderNumber: request.order.orderNumber,
       });
-      if (providerRefund.payment_id !== payment.providerPaymentId || providerRefund.amount !== cashShare || providerRefund.currency !== "INR") {
-        throw new ConflictException("Razorpay returned an unexpected refund");
-      }
-      return this.prisma.returnRequest.update({
-        where: { id: request.id },
-        data: {
-          refundProviderId: providerRefund.id,
-          refundStatus: providerRefund.status === "processed" ? "PROCESSING_WEBHOOK" : "PROCESSING",
-        },
-      });
     } catch (error) {
+      // The provider did not return a refund identity. The admin can safely retry.
       await this.prisma.returnRequest.updateMany({
         where: { id: request.id, status: "REFUND_PROCESSING", refundProviderId: null },
         data: { status: "RECEIVED", refundStatus: "FAILED" },
       });
       throw error;
     }
+
+    if (providerRefund.payment_id !== payment.providerPaymentId || providerRefund.amount !== cashShare || providerRefund.currency !== "INR") {
+      // A provider refund identity exists, so never move the request back to RECEIVED:
+      // retrying could create a second refund. Force an operations review instead.
+      await this.prisma.returnRequest.updateMany({
+        where: { id: request.id, status: "REFUND_PROCESSING" },
+        data: {
+          refundProviderId: providerRefund.id,
+          refundStatus: "REVIEW_REQUIRED",
+          adminNote: [this.note(body.note), "Provider refund response needs reconciliation before any retry."].filter(Boolean).join("\n"),
+        },
+      });
+      throw new ConflictException("Razorpay refund needs reconciliation. Do not retry until the provider refund is reviewed.");
+    }
+
+    // A webhook may have completed the request before this API call returns.
+    // Update only while it is still processing so we never overwrite COMPLETED.
+    await this.prisma.returnRequest.updateMany({
+      where: { id: request.id, status: "REFUND_PROCESSING" },
+      data: {
+        refundProviderId: providerRefund.id,
+        refundStatus: providerRefund.status === "processed" ? "PROCESSING_WEBHOOK" : "PROCESSING",
+      },
+    });
+    return this.prisma.returnRequest.findUniqueOrThrow({ where: { id: request.id } });
   }
 
   private async completeExchange(requestId: string, body: ReturnActionInput) {
@@ -382,7 +399,7 @@ export class AdminReturnsService {
     return updated;
   }
 
-  private async releaseExchangeReservation(tx: any, variantId: string, quantity: number) {
+  private async releaseExchangeReservation(tx: Prisma.TransactionClient, variantId: string, quantity: number) {
     const rows = await tx.$queryRaw<Array<{ id: string; reserved: number }>>`
       SELECT "id", "reserved" FROM "Inventory" WHERE "variantId" = ${variantId} FOR UPDATE
     `;
