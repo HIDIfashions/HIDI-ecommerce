@@ -45,8 +45,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <ProductInfoAccordion product={product} />
       </aside>
     </div>
-    <ProductReviews data={reviews} />
-
     {related.length > 0 && (
       <section className="pdp-related">
         <div className="pdp-related-heading">
@@ -61,5 +59,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
     )}
+
+    <ProductReviews data={reviews} />
   </div>;
 }
