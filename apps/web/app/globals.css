@@ -536,10 +536,15 @@ body {
 }
 
 .wordmark {
-  width: 168px;
+  width: 178px;
+  height: 66px;
 }
 
 .wordmark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
   filter: none;
   border-radius: 2px;
 }
@@ -580,7 +585,8 @@ body {
   }
 
   .wordmark {
-    width: 138px;
+    width: 142px;
+    height: 58px;
   }
 }
 
