@@ -540,7 +540,7 @@ body {
 }
 
 .wordmark img {
-  filter: sepia(.92) saturate(1.65) hue-rotate(347deg) brightness(1.05) contrast(.96);
+  filter: none;
   border-radius: 2px;
 }
 
