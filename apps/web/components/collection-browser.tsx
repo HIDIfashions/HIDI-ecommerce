@@ -181,16 +181,24 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
 
   return <>
     {mobileOpen && <button className={styles.drawerBackdrop} type="button" aria-label="Close filters" onClick={() => setMobileOpen(false)} />}
-    <div className={styles.layout}>
-      {sidebar}
+    {sidebar}
 
+    <div className={styles.layout}>
       <section className={styles.content}>
         <div className={styles.toolbar}>
-          <div>
-            <button className={styles.mobileFilterButton} type="button" onClick={() => setMobileOpen(true)}>
-              <Filter size={16} strokeWidth={1.6} /> Filter
+          <div className={styles.toolbarLeft}>
+            <button
+              className={styles.mobileFilterButton}
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen(true)}
+            >
+              <Filter size={16} strokeWidth={1.6} />
+              Filter
+              {hasFilters && <span className={styles.filterCount}>{selectedSizes.length + selectedColors.length + selectedFabrics.length + (price ? 1 : 0)}</span>}
             </button>
-            <span className="desktop-only">{filtered.length} styles</span>
+            <span className={styles.styleCount}>{filtered.length} styles</span>
           </div>
 
           <div className={styles.toolbarRight}>
