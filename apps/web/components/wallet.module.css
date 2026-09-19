@@ -42,7 +42,27 @@
 .history span { font-size: 10px; color: #64705e; }
 .credit { color: #541d1f; }
 .textButton { background: transparent; border: 0; padding: 10px 0; min-height: 44px; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
-.checkoutWallet { border: 1px solid var(--line); padding: 19px; margin-bottom: 20px; background: #ffffff; }
+.checkoutWallet {
+  border: 1px solid var(--line);
+  padding: 19px;
+  margin-bottom: 20px;
+  background: #ffffff;
+  color: var(--ink);
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease;
+}
+.checkoutWallet:hover {
+  background: #541d1f;
+  color: #fff8ef;
+  border-color: #541d1f;
+  transform: translateY(-2px);
+}
+.checkoutWallet:hover .note,
+.checkoutWallet:hover .amount,
+.checkoutWallet:hover .warning,
+.checkoutWallet:hover .textButton,
+.checkoutWallet:hover a {
+  color: inherit;
+}
 .toggle { display: flex; gap: 11px; align-items: center; cursor: pointer; font-size: 13px; font-weight: 600; }
 .toggle input { width: 20px !important; min-height: 20px !important; height: 20px; margin: 0; padding: 0; accent-color: #541d1f; flex-shrink: 0; }
 .amount { margin-top: 16px; display: grid; gap: 7px; font-size: 12px; }
@@ -65,6 +85,8 @@
 
 
 @media (prefers-reduced-motion: reduce) {
-  .balances > div { transition: none; }
-  .balances > div:hover { transform: none; }
+  .balances > div,
+  .checkoutWallet { transition: none; }
+  .balances > div:hover,
+  .checkoutWallet:hover { transform: none; }
 }
