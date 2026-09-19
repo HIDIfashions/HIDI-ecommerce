@@ -70,7 +70,13 @@ export function useWalletSummary() {
   return { userId, summary, loading, error, unavailable, refresh };
 }
 
-const historyLabels: Record<string, string> = { EARN: "Rewards earned", REDEEM: "Used at checkout", REVERSE_EARN: "Rewards reversed", REFUND_REDEEM: "Wallet payment returned" };
+const historyLabels: Record<string, string> = {
+  EARN: "Rewards earned",
+  REDEEM: "Used at checkout",
+  REVERSE_EARN: "Rewards reversed",
+  REFUND_REDEEM: "Wallet payment returned",
+  RETURN_REFUND: "Return refund credited",
+};
 
 export function WalletBalance() {
   const { userId, summary, loading, error, unavailable, refresh } = useWalletSummary();
