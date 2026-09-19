@@ -46,28 +46,36 @@ export type ApiProduct = {
   soldQuantity?: number;
 };
 
+async function fetchPublicList(url: URL | string): Promise<ApiProduct[]> {
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) return [];
+    return response.json();
+  } catch (error) {
+    // The API can briefly be unavailable while the Nest watcher restarts in
+    // local/Codespaces development. Public catalogue pages should render an
+    // empty/fallback state instead of turning the entire Next page into a 500.
+    console.error("[HIDI catalogue] API unavailable:", error);
+    return [];
+  }
+}
+
 export async function getProducts(category?: string): Promise<ApiProduct[]> {
   const url = new URL(`${API_URL}/products`);
   if (category) url.searchParams.set("category", category);
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) throw new Error("Unable to load HIDI catalogue");
-  return response.json();
+  return fetchPublicList(url);
 }
 
 export async function getBestSellers(limit = 8): Promise<ApiProduct[]> {
   const url = new URL(`${API_URL}/products/best-sellers`);
   url.searchParams.set("limit", String(limit));
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) return [];
-  return response.json();
+  return fetchPublicList(url);
 }
 
 export async function getRelatedProducts(slug: string, limit = 4): Promise<ApiProduct[]> {
   const url = new URL(`${API_URL}/products/${encodeURIComponent(slug)}/related`);
   url.searchParams.set("limit", String(limit));
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) return [];
-  return response.json();
+  return fetchPublicList(url);
 }
 
 export async function getProduct(slug: string): Promise<ApiProduct | null> {
