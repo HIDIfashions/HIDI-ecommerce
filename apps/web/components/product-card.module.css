@@ -327,3 +327,25 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* WhatsApp brand treatment */
+.secondaryActions button:last-child {
+  background: #25D366;
+  border-color: #25D366;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(37, 211, 102, .16);
+}
+
+.secondaryActions button:last-child:hover:not(:disabled) {
+  background: #1ebe5d;
+  border-color: #1ebe5d;
+  color: #ffffff;
+}
+
+.secondaryActions button:last-child:disabled {
+  background: #25D366;
+  border-color: #25D366;
+  color: #ffffff;
+  opacity: .45;
+}

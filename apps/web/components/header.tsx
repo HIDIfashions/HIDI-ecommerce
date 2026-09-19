@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Heart, Menu, UserRound } from "lucide-react";
 import { CartLink } from "./cart-link";
@@ -14,14 +13,9 @@ export function Header() {
         </button>
 
         <Link className="wordmark" href="/" aria-label="HIDI — Wear the Feeling">
-          <Image
-            src="/brand/hidi-logo-dark.png"
+          <img
+            src="/brand/hidi-logo-gold-inline.svg"
             alt="HIDI — Wear the Feeling"
-            width={2172}
-            height={724}
-            priority
-            sizes="(max-width: 720px) 118px, 154px"
-            style={{ width: "100%", height: "auto", display: "block" }}
           />
         </Link>
 
