@@ -30,6 +30,7 @@
 }
 
 .slide,
+.photoArea,
 .photoButton,
 .videoBox {
   position: absolute;
@@ -43,7 +44,7 @@
   padding: 0;
   background: none;
   touch-action: pan-y pinch-zoom;
-  cursor: zoom-in !important;
+  cursor: pointer !important;
 }
 
 .photo,
@@ -93,6 +94,7 @@
 
 .expandIcon {
   position: absolute;
+  z-index: 5;
   right: 10px;
   bottom: 10px;
   display: grid;
@@ -104,7 +106,7 @@
   background: rgba(253, 249, 242, .95);
   color: #34251f;
   box-shadow: 0 4px 16px rgba(48, 31, 22, .08);
-  pointer-events: none;
+  cursor: zoom-in;
 }
 
 .videoBox {
