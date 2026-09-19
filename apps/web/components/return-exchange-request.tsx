@@ -118,6 +118,32 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
     }
   }
 
+  async function cancelRequest(requestId: string) {
+    const token = await getAccessToken();
+    if (!token) {
+      setError("Please sign in again before cancelling this request.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `${BROWSER_API_URL}/account/orders/${encodeURIComponent(orderNumber)}/returns/${encodeURIComponent(requestId)}/cancel`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.message ?? "Unable to cancel the request.");
+      await onCreated();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to cancel the request.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (active) {
     return (
       <div className={styles.requestStatus}>
@@ -130,6 +156,12 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
         {active.pickupTrackingUrl && <a href={active.pickupTrackingUrl} target="_blank" rel="noreferrer">Track return pickup ↗</a>}
         {active.replacementAwb && <small>Replacement: {active.replacementProvider ?? "Courier"} · {active.replacementAwb}</small>}
         {active.replacementTrackingUrl && <a href={active.replacementTrackingUrl} target="_blank" rel="noreferrer">Track replacement ↗</a>}
+        {active.status === "REQUESTED" && (
+          <button className={styles.cancelRequest} type="button" onClick={() => void cancelRequest(active.id)} disabled={busy}>
+            {busy ? "Cancelling…" : "Cancel request"}
+          </button>
+        )}
+        {error && <small className={styles.statusError}>{error}</small>}
       </div>
     );
   }
