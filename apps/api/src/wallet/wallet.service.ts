@@ -93,9 +93,26 @@ export class WalletService {
         enabled, currency: "INR", balancePaise: 0, reservedPaise: 0, availablePaise: 0, debtPaise: 0,
         pendingPaise: 0, heldPaise: 0, history: [], historyTruncated: false, policy,
       };
-      const [pending, held, history] = await Promise.all([
-        tx.rewardAccrual.aggregate({ where: { walletId: wallet.id, status: "PENDING" }, _sum: { rewardPaise: true } }),
+      const [pending, held, staleActiveReturnPending, history] = await Promise.all([
+        // Defensive read rule: an active return must never appear as spendable/pending
+        // reward even if an older request predates the transactional hold logic.
+        tx.rewardAccrual.aggregate({
+          where: {
+            walletId: wallet.id,
+            status: "PENDING",
+            order: { returnRequests: { none: { status: { in: ACTIVE_RETURN_STATUSES } } } },
+          },
+          _sum: { rewardPaise: true },
+        }),
         tx.rewardAccrual.aggregate({ where: { walletId: wallet.id, status: "HELD" }, _sum: { rewardPaise: true } }),
+        tx.rewardAccrual.aggregate({
+          where: {
+            walletId: wallet.id,
+            status: "PENDING",
+            order: { returnRequests: { some: { status: { in: ACTIVE_RETURN_STATUSES } } } },
+          },
+          _sum: { rewardPaise: true },
+        }),
         tx.walletLedger.findMany({
           where: { walletId: wallet.id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 21,
           select: { id: true, kind: true, deltaPaise: true, createdAt: true, order: { select: { orderNumber: true } } },
@@ -105,7 +122,8 @@ export class WalletService {
         enabled, currency: "INR", balancePaise: wallet.balancePaise, reservedPaise: wallet.reservedPaise,
         availablePaise: enabled ? spendablePaise(wallet.balancePaise, wallet.reservedPaise) : 0,
         debtPaise: Math.max(0, -wallet.balancePaise),
-        pendingPaise: pending._sum.rewardPaise ?? 0, heldPaise: held._sum.rewardPaise ?? 0,
+        pendingPaise: pending._sum.rewardPaise ?? 0,
+        heldPaise: (held._sum.rewardPaise ?? 0) + (staleActiveReturnPending._sum.rewardPaise ?? 0),
         history: history.slice(0, 20).map(({ order, ...entry }) => ({ ...entry, orderNumber: order?.orderNumber ?? null })),
         historyTruncated: history.length > 20, policy,
       };
