@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Param, Patch, Post } from "@nestjs/common";
 import { SupabaseAuthService } from "../auth/supabase-auth.service.js";
 import { AccountService } from "./account.service.js";
 
@@ -13,6 +13,16 @@ export class AccountController {
   async orders(@Headers("authorization") authorization?: string) {
     const user = await this.auth.requireUser(authorization);
     return this.account.orders(user);
+  }
+
+  @Patch("orders/:orderNumber/returns/:requestId/cancel")
+  async cancelReturnRequest(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+    @Param("requestId") requestId: string,
+  ) {
+    const user = await this.auth.requireUser(authorization);
+    return this.account.cancelReturnRequest(user, orderNumber, requestId);
   }
 
   @Post("orders/:orderNumber/returns")
