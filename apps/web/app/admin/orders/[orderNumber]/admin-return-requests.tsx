@@ -165,11 +165,16 @@ function ReturnRequestCard({
         </div>
       )}
 
-      {request.status === "REFUND_PROCESSING" && (
+      {request.status === "REFUND_PROCESSING" && request.refundStatus === "REVIEW_REQUIRED" ? (
+        <div className={styles.reviewRequired}>
+          <strong>Refund reconciliation required.</strong>
+          <span>Do not retry this refund. Check the Razorpay refund ID below and reconcile it before any manual adjustment.</span>
+        </div>
+      ) : request.status === "REFUND_PROCESSING" ? (
         <div className={styles.processing}>
           Refund initiated. HIDI will complete the request only after Razorpay confirms the processed refund webhook.
         </div>
-      )}
+      ) : null}
 
       {(request.refundWalletPaise || request.refundCashPaise || request.refundStatus) && (
         <div className={styles.logBox}>
