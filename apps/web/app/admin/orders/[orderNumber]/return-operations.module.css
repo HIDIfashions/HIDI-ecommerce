@@ -159,7 +159,8 @@
 }
 
 .logBox,
-.processing {
+.processing,
+.reviewRequired {
   margin-top: 12px;
   padding: 12px;
   border: 1px solid var(--line);
@@ -183,6 +184,13 @@
   border-color: #d8bf86;
   background: #fff9ea;
   color: #6b5426;
+  line-height: 1.5;
+}
+
+.reviewRequired {
+  border-color: #c99797;
+  background: #fff7f6;
+  color: #8b3434;
   line-height: 1.5;
 }
 
