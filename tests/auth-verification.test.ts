@@ -68,23 +68,38 @@ for (const [label, email, emailConfirmedAt] of [
   ["null email confirmation", "customer@example.com", null],
   ["empty email confirmation", "customer@example.com", ""],
 ] as const) {
-  test(`requireUser rejects ${label} even with a valid user ID`, async (t) => {
+  test(`requireUser accepts a verified mobile number with ${label}`, async (t) => {
     const { service } = mockAuth(t, {
       id: verifiedEmailUser.id,
       email,
       email_confirmed_at: emailConfirmedAt,
-      // A phone confirmation or generic confirmation cannot establish email ownership.
       phone: "+919999999999",
       phone_confirmed_at: confirmedAt,
       confirmed_at: confirmedAt,
       user_metadata: { email: "customer@example.com", email_verified: true },
     });
-    await assert.rejects(service.requireUser("Bearer test-session"), {
-      name: "UnauthorizedException",
-      message: "A verified email address is required",
-    });
+    const user = await service.requireUser("Bearer test-session");
+    assert.equal(user.email, null);
+    assert.equal(user.emailVerified, false);
+    assert.equal(user.phone, "+919999999999");
+    assert.equal(user.phoneVerified, true);
   });
 }
+
+test("requireUser rejects an account with neither a verified mobile number nor verified email", async (t) => {
+  const { service } = mockAuth(t, {
+    id: verifiedEmailUser.id,
+    email: "customer@example.com",
+    email_confirmed_at: null,
+    phone: "+919999999999",
+    phone_confirmed_at: null,
+    user_metadata: {},
+  });
+  await assert.rejects(service.requireUser("Bearer test-session"), {
+    name: "UnauthorizedException",
+    message: "A verified mobile number or email address is required",
+  });
+});
 
 test("requireUser returns normalized verified email and forwards the bearer only to Auth", async (t) => {
   const { service, fetchMock } = mockAuth(t);
@@ -92,6 +107,7 @@ test("requireUser returns normalized verified email and forwards the bearer only
   assert.deepEqual(user, {
     id: verifiedEmailUser.id,
     email: "customer@example.com",
+    emailVerified: true,
     metadata: {},
     phone: null,
     phoneVerified: false,
