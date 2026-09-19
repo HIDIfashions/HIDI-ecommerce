@@ -257,6 +257,22 @@ function ReturnRequestCard({
               Item already received
             </button>
           </div>
+          <div className={styles.rejectRow}>
+            <input
+              value={rejectionReason}
+              onChange={(event) => setRejectionReason(event.target.value)}
+              placeholder="Reject before pickup — reason required"
+              maxLength={300}
+            />
+            <button
+              className={styles.dangerButton}
+              type="button"
+              onClick={() => void run("REJECT", { rejectionReason })}
+              disabled={busy || !rejectionReason.trim()}
+            >
+              Reject before pickup
+            </button>
+          </div>
         </div>
       )}
 
