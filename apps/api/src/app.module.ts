@@ -13,9 +13,10 @@ import { RetentionModule } from "./retention/retention.module.js";
 import { RewardsModule } from "./rewards/rewards.module.js";
 import { WalletModule } from "./wallet/wallet.module.js";
 import { WhatsAppModule } from "./whatsapp/whatsapp.module.js";
+import { MarketingModule } from "./marketing/marketing.module.js";
 
 @Module({
-  imports: [PrismaModule, AuthModule, AccountModule, ProductsModule, CartsModule, CheckoutModule, PaymentsModule, AdminModule, ReviewsModule, RetentionModule, RewardsModule, WalletModule, WhatsAppModule],
+  imports: [PrismaModule, AuthModule, AccountModule, ProductsModule, CartsModule, CheckoutModule, PaymentsModule, AdminModule, ReviewsModule, RetentionModule, RewardsModule, WalletModule, WhatsAppModule, MarketingModule],
   controllers: [HealthController],
 })
 export class AppModule {}
