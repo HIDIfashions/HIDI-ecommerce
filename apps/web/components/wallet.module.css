@@ -42,9 +42,9 @@
 .history span { font-size: 10px; color: #64705e; }
 .credit { color: #541d1f; }
 .textButton { background: transparent; border: 0; padding: 10px 0; min-height: 44px; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
-.checkoutWallet { border: 1px solid #d9dfd6; padding: 19px; margin-bottom: 20px; background: #f4f6f0; }
+.checkoutWallet { border: 1px solid var(--line); padding: 19px; margin-bottom: 20px; background: #ffffff; }
 .toggle { display: flex; gap: 11px; align-items: center; cursor: pointer; font-size: 13px; font-weight: 600; }
-.toggle input { width: 20px !important; min-height: 20px !important; height: 20px; margin: 0; padding: 0; accent-color: #304333; flex-shrink: 0; }
+.toggle input { width: 20px !important; min-height: 20px !important; height: 20px; margin: 0; padding: 0; accent-color: #541d1f; flex-shrink: 0; }
 .amount { margin-top: 16px; display: grid; gap: 7px; font-size: 12px; }
 .amount input { max-width: 220px; }
 .summaryRows { margin-top: 20px; padding-top: 18px; border-top: 1px solid #d6d6ce; display: grid; gap: 12px; width: 100%; }
@@ -54,7 +54,7 @@
 .summaryRows .payable { border-top: 1px solid #d6d6ce; padding-top: 14px; }
 .summaryRows .payable strong { font-size: 23px; }
 .warning { color: #91362a; font-size: 12px; }
-.textButton:focus-visible, .toggle input:focus-visible { outline: 2px solid #304333; outline-offset: 4px; }
+.textButton:focus-visible, .toggle input:focus-visible { outline: 2px solid #541d1f; outline-offset: 4px; }
 
 @media (max-width: 720px) {
   .panel { padding: 23px; }
