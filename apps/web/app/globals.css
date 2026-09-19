@@ -1008,3 +1008,20 @@ body {
     gap: 28px 10px;
   }
 }
+
+
+.checkout-pay-button {
+  background: #541d1f;
+  border-color: #541d1f;
+  color: #fff8ef;
+}
+.checkout-pay-button:hover:not(:disabled),
+.checkout-pay-button:focus-visible {
+  background: #651f23;
+  border-color: #651f23;
+  color: #fff8ef;
+}
+.checkout-pay-button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
