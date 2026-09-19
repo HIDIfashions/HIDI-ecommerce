@@ -269,6 +269,21 @@
 .statusPACKED { background: #eee9df; }
 .statusSHIPPED { background: #e8edf1; }
 .statusDELIVERED { background: #e6eee6; }
+.afterSalesPill {
+  border-color: #b4836d;
+  background: #fff3ec;
+  color: #6d3527;
+}
+.statusCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+.statusCell small {
+  color: var(--muted);
+  font-size: 9px;
+}
 
 .viewCell {
   text-align: right;
