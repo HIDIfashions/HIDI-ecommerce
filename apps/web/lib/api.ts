@@ -43,6 +43,7 @@ export type ApiProduct = {
   minPricePaise: number;
   maxPricePaise: number;
   inStock: boolean;
+  soldQuantity?: number;
 };
 
 export async function getProducts(category?: string): Promise<ApiProduct[]> {
@@ -50,6 +51,14 @@ export async function getProducts(category?: string): Promise<ApiProduct[]> {
   if (category) url.searchParams.set("category", category);
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) throw new Error("Unable to load HIDI catalogue");
+  return response.json();
+}
+
+export async function getBestSellers(limit = 8): Promise<ApiProduct[]> {
+  const url = new URL(`${API_URL}/products/best-sellers`);
+  url.searchParams.set("limit", String(limit));
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) return [];
   return response.json();
 }
 
