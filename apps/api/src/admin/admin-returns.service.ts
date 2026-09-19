@@ -251,6 +251,19 @@ export class AdminReturnsService {
               include: { refunds: true },
             },
             walletHold: true,
+            returnRequests: {
+              where: {
+                type: "RETURN",
+                refundDestination: "ORIGINAL",
+                status: { in: ["REFUND_PROCESSING", "REFUNDED"] },
+              },
+              select: {
+                id: true,
+                refundWalletPaise: true,
+                refundCashPaise: true,
+                status: true,
+              },
+            },
           },
         },
       },
@@ -287,8 +300,38 @@ export class AdminReturnsService {
 
     const total = request.order.totalPaise;
     if (!Number.isSafeInteger(total) || total <= 0) throw new ConflictException("Order total requires reconciliation");
-    const walletShare = Math.floor((request.refundPaise * request.order.walletAppliedPaise) / total);
-    const cashShare = request.refundPaise - walletShare;
+
+    const payment = request.order.payments[0];
+    const alreadyRefunded = payment
+      ? payment.refunds
+          .filter((refund) => refund.status === "PROCESSED")
+          .reduce((sum, refund) => sum + refund.amountPaise, 0)
+      : 0;
+    const priorOriginalWalletRefunds = request.order.returnRequests
+      .filter((entry) => entry.id !== request.id)
+      .reduce((sum, entry) => sum + entry.refundWalletPaise, 0);
+
+    const walletTenderRemaining = Math.max(0, request.order.walletAppliedPaise - priorOriginalWalletRefunds);
+    const cashTenderRemaining = Math.max(0, (payment?.amountPaise ?? 0) - alreadyRefunded);
+    const desiredWalletShare = Math.floor((request.refundPaise * request.order.walletAppliedPaise) / total);
+
+    let walletShare = Math.min(desiredWalletShare, walletTenderRemaining);
+    let cashShare = Math.min(request.refundPaise - walletShare, cashTenderRemaining);
+    let unallocated = request.refundPaise - walletShare - cashShare;
+
+    if (unallocated > 0) {
+      const extraWallet = Math.min(unallocated, walletTenderRemaining - walletShare);
+      walletShare += extraWallet;
+      unallocated -= extraWallet;
+    }
+    if (unallocated > 0) {
+      const extraCash = Math.min(unallocated, cashTenderRemaining - cashShare);
+      cashShare += extraCash;
+      unallocated -= extraCash;
+    }
+    if (unallocated > 0) {
+      throw new ConflictException("The original payment tenders do not have enough refundable balance");
+    }
 
     if (cashShare <= 0) {
       return withSerializableRetry(this.prisma, async (tx) => {
@@ -310,11 +353,7 @@ export class AdminReturnsService {
       });
     }
 
-    const payment = request.order.payments[0];
     if (!payment?.providerPaymentId) throw new ConflictException("Captured Razorpay payment is missing");
-    const alreadyRefunded = payment.refunds
-      .filter((refund) => refund.status === "PROCESSED")
-      .reduce((sum, refund) => sum + refund.amountPaise, 0);
     if (alreadyRefunded + cashShare > payment.amountPaise) {
       throw new ConflictException("Refund exceeds the remaining captured payment");
     }
