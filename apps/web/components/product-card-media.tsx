@@ -249,6 +249,7 @@ function Gallery({
   const [loaded, setLoaded] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const [hoverLoaded, setHoverLoaded] = useState<string[]>([]);
 
   const active = items[index];
   const interval = Number.isFinite(intervalMs) ? Math.max(1400, intervalMs) : DEFAULT_INTERVAL;
@@ -257,6 +258,14 @@ function Gallery({
     () => items.flatMap((item, itemIndex) => item.kind === "image" ? [itemIndex] : []),
     [items],
   );
+  const imageItems = useMemo(
+    () => imageIndexes
+      .map((itemIndex) => items[itemIndex])
+      .filter((item): item is Extract<CardMedia, { kind: "image" }> => item?.kind === "image"),
+    [imageIndexes, items],
+  );
+  const hoverPhotosReady = imageItems.length > 1
+    && imageItems.every((item) => hoverLoaded.includes(item.id));
 
   // Only the hovered card rotates. Non-hovered cards remain still.
   // Rotation is photo-only; videos never autoplay or interrupt the loop.
@@ -267,7 +276,8 @@ function Gallery({
     && visible
     && pageVisible
     && !expanded
-    && hover;
+    && hover
+    && hoverPhotosReady;
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -307,7 +317,7 @@ function Gallery({
   }, []);
 
   useEffect(() => {
-    if (!rotating || loaded !== active?.id) return;
+    if (!rotating) return;
 
     const timer = window.setTimeout(() => {
       setIndex(current => {
@@ -335,6 +345,10 @@ function Gallery({
       document.body.style.overflow = previousOverflow;
     };
   }, [expanded]);
+
+  function markHoverLoaded(id: string) {
+    setHoverLoaded((current) => current.includes(id) ? current : [...current, id]);
+  }
 
   function choose(next: number) {
     const target = wrapMediaIndex(next, items.length);
@@ -431,6 +445,24 @@ function Gallery({
                   sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
                   ready={() => setLoaded(active?.id ?? "")}
                 />
+
+                {hover && imageItems.length > 1 && (
+                  <span className={styles.photoStack} aria-hidden="true">
+                    {imageItems.map((item) => (
+                      <Image
+                        key={item.id}
+                        src={item.url}
+                        alt=""
+                        fill
+                        sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
+                        draggable={false}
+                        className={`${styles.photoLayer} ${item.id === active?.id ? styles.photoLayerActive : ""}`}
+                        onLoad={() => markHoverLoaded(item.id)}
+                        onError={() => markHoverLoaded(item.id)}
+                      />
+                    ))}
+                  </span>
+                )}
               </button>
 
               {active && (
