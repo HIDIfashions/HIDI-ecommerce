@@ -89,14 +89,12 @@ export default async function Home() {
         </div>
 
         <div className={styles.heroVisual}>
-          <Image
-            src={heroImage}
+          <img
+            src={`${heroImage}?v=20260919-hero2`}
             alt="HIDI cream embroidered ethnic wear in a sunlit garden"
-            fill
-            priority
-            unoptimized
-            sizes="(max-width: 820px) 100vw, 58vw"
             className={styles.heroImage}
+            loading="eager"
+            fetchPriority="high"
           />
           <div className={styles.heroVeil} aria-hidden="true" />
           <div className={styles.heroBadge}>
