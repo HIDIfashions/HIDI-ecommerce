@@ -17,6 +17,6 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
   const products = await getProducts(slug === "all" ? undefined : slug);
   return <div className="container collection-page">
     <header className="collection-header"><p className="eyebrow">HIDI EDIT</p><h1>{collection.title}</h1><p>{collection.copy}</p></header>
-    <CollectionBrowser products={products} autoLoopImages={slug === "all"} />
+    <CollectionBrowser products={products} />
   </div>;
 }
