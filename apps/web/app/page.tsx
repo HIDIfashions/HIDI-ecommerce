@@ -94,7 +94,7 @@ export default async function Home() {
             alt="HIDI cream embroidered ethnic wear in a sunlit garden"
             fill
             priority
-            quality={95}
+            unoptimized
             sizes="(max-width: 820px) 100vw, 58vw"
             className={styles.heroImage}
           />
