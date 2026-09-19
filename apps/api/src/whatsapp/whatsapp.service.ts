@@ -100,7 +100,7 @@ export class WhatsAppService {
   private async setState(id: string, state: string, context: Record<string, unknown> = {}) {
     await this.prisma.whatsAppConversation.update({
       where: { id },
-      data: { state, context },
+      data: { state, context: JSON.parse(JSON.stringify(context)) },
     });
   }
 
@@ -132,6 +132,11 @@ export class WhatsAppService {
     }
 
     const conversation = await this.conversation(phone);
+    const duplicate = await this.prisma.whatsAppMessage.findUnique({
+      where: { providerMessageSid: providerSid },
+      select: { id: true },
+    });
+    if (duplicate) return twiml("");
     await this.rememberMessage(conversation.id, providerSid, "INBOUND", message);
     await this.prisma.whatsAppConversation.update({
       where: { id: conversation.id },
