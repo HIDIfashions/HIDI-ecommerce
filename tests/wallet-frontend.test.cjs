@@ -30,7 +30,10 @@ const prepare = (overrides = {}) => ({
 function clientHarness({ enabled = true, userId = "customer-a" } = {}) {
   const state = { userId, calls: [], token: async () => "test-token", payload: summary(), status: 200 };
   const auth = { getStoredSession: () => state.userId ? { user: { id: state.userId, email: `${state.userId}@example.test` } } : null, getAccessToken: () => state.token() };
-  const client = loadModule("apps/web/lib/wallet-client.ts", { "@/lib/supabase-auth": auth }, {
+  const client = loadModule("apps/web/lib/wallet-client.ts", {
+    "@/lib/supabase-auth": auth,
+    "@/lib/browser-api": { BROWSER_API_URL: "http://test.invalid/v1" },
+  }, {
     process: { env: { NEXT_PUBLIC_WALLET_ENABLED: String(enabled), NEXT_PUBLIC_API_URL: "http://test.invalid/v1" } },
     fetch: async (url, init) => { state.calls.push({ url, init }); return { ok: state.status < 400, status: state.status, json: async () => typeof state.payload === "function" ? state.payload() : state.payload }; },
   });
@@ -122,6 +125,7 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
     "next/link": "Link", "next/script": "Script", "next/navigation": { useRouter: () => ({ push: (url) => state.redirects.push(url) }) },
     "@/lib/cart-session": { getCartSession: () => "bag-a", newCheckoutToken: () => `token-${++state.nextToken}`, startNewCartSession: () => { state.newBagCalls++; return "bag-new"; } },
     "@/lib/supabase-auth": h.auth,
+    "@/lib/browser-api": { BROWSER_API_URL: "http://test.invalid/v1" },
     "@/lib/wallet-client": h.client,
     "@/components/wallet-balance": { useWalletSummary: () => ({ userId: h.state.userId, summary: state.walletData, loading: false, error: "", unavailable: !state.walletData.enabled, refresh: async () => { state.walletRefreshes++; return state.walletData; } }) },
     "./wallet.module.css": new Proxy({}, { get: (_, key) => key }),
