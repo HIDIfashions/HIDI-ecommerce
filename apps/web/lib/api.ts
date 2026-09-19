@@ -62,6 +62,14 @@ export async function getBestSellers(limit = 8): Promise<ApiProduct[]> {
   return response.json();
 }
 
+export async function getRelatedProducts(slug: string, limit = 4): Promise<ApiProduct[]> {
+  const url = new URL(`${API_URL}/products/${encodeURIComponent(slug)}/related`);
+  url.searchParams.set("limit", String(limit));
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) return [];
+  return response.json();
+}
+
 export async function getProduct(slug: string): Promise<ApiProduct | null> {
   const response = await fetch(`${API_URL}/products/${encodeURIComponent(slug)}`, { cache: "no-store" });
   if (response.status === 404) return null;
