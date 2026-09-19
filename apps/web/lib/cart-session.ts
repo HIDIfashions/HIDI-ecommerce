@@ -22,3 +22,14 @@ export function startNewCartSession() {
   window.dispatchEvent(new CustomEvent("hidi-cart-updated", { detail: 0 }));
   return id;
 }
+
+
+export function adoptCartSession(id: string) {
+  if (typeof window === "undefined") return false;
+  const value = id.trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    return false;
+  }
+  window.localStorage.setItem(KEY, value);
+  return true;
+}
