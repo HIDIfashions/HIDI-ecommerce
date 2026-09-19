@@ -613,26 +613,26 @@ body {
 }
 
 
-/* Midnight Teal site chrome — header/footer only */
+/* Terracotta Mist site chrome — header/footer only */
 .announcement {
-  background: #073f43;
-  color: #f4ead7;
-  border-bottom: 1px solid rgba(214, 171, 91, .46);
+  background: #8f533f;
+  color: #fbefe6;
+  border-bottom: 1px solid rgba(221, 180, 111, .46);
 }
 
 .site-header {
-  --ink: #f8efe1;
+  --ink: #fff3e9;
   background:
-    radial-gradient(circle at 94% 10%, rgba(31, 103, 107, .10), transparent 30%),
-    rgba(6, 76, 80, .985);
-  color: #f8efe1;
-  border-bottom: 1px solid rgba(216, 174, 91, .62);
-  box-shadow: 0 10px 30px rgba(3, 43, 46, .16);
+    radial-gradient(circle at 94% 10%, rgba(201, 132, 102, .13), transparent 30%),
+    rgba(163, 94, 72, .985);
+  color: #fff3e9;
+  border-bottom: 1px solid rgba(225, 184, 112, .62);
+  box-shadow: 0 10px 30px rgba(92, 50, 36, .15);
   backdrop-filter: blur(16px);
 }
 
 .site-header .header-inner {
-  color: #f8efe1;
+  color: #fff3e9;
 }
 
 .site-header .wordmark img {
@@ -640,79 +640,79 @@ body {
 }
 
 .site-header .desktop-nav {
-  color: #f8efe1;
+  color: #fff3e9;
 }
 
 .site-header .desktop-nav a,
 .site-header .utility-nav a,
 .site-header .utility-nav button,
 .site-header .mobile-menu {
-  color: #f8efe1;
+  color: #fff3e9;
 }
 
 .site-header .desktop-nav a::after {
-  background: #d6a84f;
+  background: #d9a64f;
 }
 
 .site-header .desktop-nav a:hover,
 .site-header .utility-nav a:hover,
 .site-header .utility-nav button:hover {
-  color: #f3cb78;
+  color: #f4cf84;
   opacity: 1;
 }
 
 .site-header [class*="count"] {
-  background: #d29d45;
-  color: #063f43;
+  background: #d6a24a;
+  color: #7e4938;
 }
 
 .footer {
-  --ink: #f8efe1;
-  --muted: #c9d4cf;
+  --ink: #fff3e9;
+  --muted: #ead7ca;
   background:
-    radial-gradient(circle at 10% 0%, rgba(208, 158, 83, .08), transparent 30%),
-    #075156;
-  color: #f8efe1;
-  border-top: 1px solid rgba(216, 174, 91, .62);
+    radial-gradient(circle at 10% 0%, rgba(224, 170, 105, .09), transparent 30%),
+    #9e5d49;
+  color: #fff3e9;
+  border-top: 1px solid rgba(225, 184, 112, .62);
 }
 
 .footer h3,
 .footer strong,
 .footer .footer-wordmark,
 .footer .footer-note {
-  color: #e1b86c;
+  color: #edc476;
 }
 
 .footer-grid a {
-  color: #eef0e7;
+  color: #fae9de;
 }
 
 .footer-grid a:hover {
-  color: #f3cb78;
+  color: #f4cf84;
 }
 
 .footer .muted,
 .footer-small,
 .footer-bottom {
-  color: #c7d2cd;
+  color: #e2cec1;
 }
 
 .footer .newsletter {
-  border-bottom-color: rgba(232, 211, 172, .62);
+  border-bottom-color: rgba(238, 213, 175, .64);
 }
 
 .footer .newsletter input {
-  color: #f8efe1;
+  color: #fff3e9;
 }
 
 .footer .newsletter input::placeholder {
-  color: #aebeb9;
+  color: #ccb4a7;
 }
 
 .footer .newsletter button {
-  color: #e1b86c;
+  color: #edc476;
 }
 
 .footer-bottom {
-  border-top-color: rgba(222, 183, 126, .24);
+  border-top-color: rgba(229, 190, 134, .25);
 }
