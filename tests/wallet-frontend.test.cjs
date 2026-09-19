@@ -11,7 +11,7 @@ function loadModule(file, imports, globals = {}) {
   const source = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const exports = {};
-  vm.runInNewContext(js, { exports, require: (name) => { if (!(name in imports)) throw Error(`Unexpected dependency: ${name}`); return imports[name]; }, AbortController, CustomEvent, Intl, ...globals });
+  vm.runInNewContext(js, { exports, require: (name) => { if (!(name in imports)) throw Error(`Unexpected dependency: ${name}`); return imports[name]; }, AbortController, CustomEvent, Intl, URL, URLSearchParams, ...globals });
   return exports;
 }
 
@@ -109,6 +109,8 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } = {}) {
   const h = clientHarness({ userId, enabled });
   const window = new EventTarget();
+  window.location = { search: "", pathname: "/checkout" };
+  window.history = { replaceState() {} };
   const state = { prepareCalls: [], redirects: [], paymentOptions: [], walletRefreshes: 0, nextToken: 0, walletData: summary(), prepareResult: prepare(), prepareStatus: 200, prepareImpl: null, newBagCalls: 0 };
   if (sdk) window.Razorpay = class { constructor(options) { state.paymentOptions.push(options); } open() {} close() {} on() {} };
   const hooks = [];
@@ -123,7 +125,12 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
   const checkout = loadModule("apps/web/components/checkout-client.tsx", {
     react, "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
     "next/link": "Link", "next/script": "Script", "next/navigation": { useRouter: () => ({ push: (url) => state.redirects.push(url) }) },
-    "@/lib/cart-session": { getCartSession: () => "bag-a", newCheckoutToken: () => `token-${++state.nextToken}`, startNewCartSession: () => { state.newBagCalls++; return "bag-new"; } },
+    "@/lib/cart-session": {
+      getCartSession: () => "bag-a",
+      newCheckoutToken: () => `token-${++state.nextToken}`,
+      startNewCartSession: () => { state.newBagCalls++; return "bag-new"; },
+      adoptCartSession: () => true,
+    },
     "@/lib/supabase-auth": h.auth,
     "@/lib/browser-api": { BROWSER_API_URL: "http://test.invalid/v1" },
     "@/lib/wallet-client": h.client,
