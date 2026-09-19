@@ -79,7 +79,7 @@ export class ProductsService {
         category: true,
         collections: { include: { collection: true } },
         images: { orderBy: { position: "asc" } },
-        variants: { where: { active: true }, include: { inventory: true } },
+        variants: { where: { active: true }, include: { inventory: true, images: { orderBy: { position: "asc" } } } },
       },
     });
     if (!source || source.status !== "ACTIVE") throw new NotFoundException("Product not found");
