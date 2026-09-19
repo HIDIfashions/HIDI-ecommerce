@@ -249,7 +249,7 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
                   <label className={refundDestination === "WALLET" ? styles.refundActive : styles.refund}>
                     <input type="radio" name="refund" checked={refundDestination === "WALLET"} onChange={() => setRefundDestination("WALLET")} />
                     <WalletCards size={18} />
-                    <span><strong>HIDI Wallet</strong><small>Fastest — credited instantly after HIDI approves the returned item.</small></span>
+                    <span><strong>HIDI Wallet</strong><small>Fastest — credited after HIDI receives and approves the returned item.</small></span>
                   </label>
                   <label className={refundDestination === "ORIGINAL" ? styles.refundActive : styles.refund}>
                     <input type="radio" name="refund" checked={refundDestination === "ORIGINAL"} onChange={() => setRefundDestination("ORIGINAL")} />
