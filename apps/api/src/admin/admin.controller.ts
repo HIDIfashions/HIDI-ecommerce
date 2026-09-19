@@ -4,6 +4,7 @@ import {
   type AdjustInventoryInput,
   type StockReceiptInput,
   type VariantImageInput,
+  type VariantImageUploadTicketInput,
 } from "./admin-inventory.service.js";
 import { AdminService } from "./admin.service.js";
 import { ReviewFollowUpService } from "./review-followup.service.js";
@@ -101,6 +102,16 @@ export class AdminController {
   ) {
     this.requireAdmin(adminKey);
     return this.inventory.adjust(variantId, body, adminName);
+  }
+
+  @Post("inventory/:variantId/images/ticket")
+  createInventoryVariantImageUploadTicket(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("variantId") variantId: string,
+    @Body() body: VariantImageUploadTicketInput,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.inventory.createVariantImageUploadTicket(variantId, body ?? {});
   }
 
   @Post("inventory/:variantId/images")
