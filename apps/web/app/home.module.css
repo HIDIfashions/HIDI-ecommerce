@@ -133,7 +133,7 @@
 
 .heroImage {
   object-fit: cover;
-  object-position: 63% center;
+  object-position: 63% top;
   transform: scale(1.01);
 }
 
