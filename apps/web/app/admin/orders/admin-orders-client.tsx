@@ -28,6 +28,7 @@ type AdminOrder = {
   returnCount?: number;
   activeReturnCount?: number;
   afterSalesStatus?: string | null;
+  afterSalesType?: string | null;
 };
 
 const STATUS_OPTIONS = ["ALL", "RETURNS", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"];
@@ -225,7 +226,7 @@ export function AdminOrdersClient() {
                   {order.activeReturnCount ? (
                     <>
                       <span className={`${styles.status} ${styles.afterSalesPill}`}>
-                        {statusLabel(order.afterSalesStatus ?? "RETURN REQUESTED")}
+                        {order.afterSalesType ? `${statusLabel(order.afterSalesType)} · ${statusLabel(order.afterSalesStatus ?? "REQUESTED")}` : statusLabel(order.afterSalesStatus ?? "RETURN REQUESTED")}
                       </span>
                       <small>Fulfilment: {statusLabel(order.status)}</small>
                     </>
