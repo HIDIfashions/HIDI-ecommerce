@@ -19,7 +19,7 @@ export class ProductsService {
         images: { orderBy: { position: "asc" } },
         variants: {
           where: { active: true },
-          include: { inventory: true },
+          include: { inventory: true, images: { orderBy: { position: "asc" } } },
           orderBy: [{ color: "asc" }, { size: "asc" }],
         },
       },
@@ -54,7 +54,7 @@ export class ProductsService {
         images: { orderBy: { position: "asc" } },
         variants: {
           where: { active: true },
-          include: { inventory: true },
+          include: { inventory: true, images: { orderBy: { position: "asc" } } },
           orderBy: [{ color: "asc" }, { size: "asc" }],
         },
       },
@@ -105,7 +105,7 @@ export class ProductsService {
         images: { orderBy: { position: "asc" } },
         variants: {
           where: { active: true },
-          include: { inventory: true },
+          include: { inventory: true, images: { orderBy: { position: "asc" } } },
           orderBy: [{ color: "asc" }, { size: "asc" }],
         },
       },
@@ -155,8 +155,36 @@ export class ProductsService {
       available: variant.inventory
         ? Math.max(0, variant.inventory.onHand - variant.inventory.reserved - variant.inventory.safetyStock)
         : 0,
+      images: (variant.images ?? []).map((image: any) => ({
+        id: image.id,
+        url: image.url,
+        alt: image.alt,
+        position: image.position,
+      })),
     }));
     const prices = variants.map((v: any) => v.pricePaise);
+
+    // Product-level images are optional in Admin. When photography was added to
+    // SKU/colour variants, expose a de-duplicated gallery publicly instead of
+    // returning an empty product.images array and forcing the storefront fallback.
+    const imageSource = product.images?.length
+      ? product.images
+      : product.variants.flatMap((variant: any) => variant.images ?? []);
+    const seenUrls = new Set<string>();
+    const images = imageSource
+      .filter((image: any) => {
+        const url = typeof image?.url === "string" ? image.url : "";
+        if (!url || seenUrls.has(url)) return false;
+        seenUrls.add(url);
+        return true;
+      })
+      .map((image: any, position: number) => ({
+        id: image.id,
+        url: image.url,
+        alt: image.alt,
+        position,
+      }));
+
     return {
       id: product.id,
       slug: product.slug,
@@ -167,7 +195,7 @@ export class ProductsService {
       care: product.care,
       category: product.category,
       collections: product.collections?.map((item: any) => item.collection) ?? [],
-      images: product.images,
+      images,
       variants,
       minPricePaise: prices.length ? Math.min(...prices) : 0,
       maxPricePaise: prices.length ? Math.max(...prices) : 0,
