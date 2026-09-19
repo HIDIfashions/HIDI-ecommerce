@@ -254,6 +254,7 @@ function Gallery({
   const [transitioning, setTransitioning] = useState(false);
 
   const active = items[index];
+  const preload = preloadIndex !== null ? items[preloadIndex] : undefined;
   const interval = Number.isFinite(intervalMs) ? Math.max(2200, intervalMs) : DEFAULT_INTERVAL;
 
   const imageIndexes = useMemo(
@@ -463,11 +464,11 @@ function Gallery({
                   ready={() => setLoaded(active?.id ?? "")}
                 />
 
-                {hover && preloadIndex !== null && items[preloadIndex]?.kind === "image" && (
+                {hover && preload?.kind === "image" && (
                   <span className={styles.photoPreload} aria-hidden="true">
                     <Image
-                      key={items[preloadIndex].id}
-                      src={items[preloadIndex].url}
+                      key={preload.id}
+                      src={preload.url}
                       alt=""
                       fill
                       sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
