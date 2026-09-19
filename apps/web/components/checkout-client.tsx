@@ -254,7 +254,7 @@ export function CheckoutClient() {
                   alignItems: "center",
                   justifyContent: "space-between",
                   gap: 12,
-                  background: "#f7f4ef",
+                  background: "#fcf9f9",
                 }}
               >
                 <span>{signedInPhone.replace(/^\+91/, "+91 ")}</span>

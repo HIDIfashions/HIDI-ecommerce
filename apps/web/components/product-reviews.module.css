@@ -8,14 +8,14 @@
 .summary small { color: #756c61; }
 .stars { color: #8e6e38; letter-spacing: .04em; }
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.card { border: 1px solid #ded7cd; padding: 22px; background: #fffdfa; min-height: 210px; display: flex; flex-direction: column; }
+.card { border: 1px solid #ded7cd; padding: 22px; background: #ffffff; min-height: 210px; display: flex; flex-direction: column; }
 .cardTop { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 .verified { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #547052; }
 .card h3 { margin: 18px 0 7px; font-family: Georgia, serif; font-size: 20px; font-weight: 400; }
 .card > p { margin: 10px 0 20px; color: #625a50; line-height: 1.65; flex: 1; }
 .card footer { display: flex; justify-content: space-between; gap: 12px; color: #7b7166; font-size: 11px; }
 .card footer strong { color: #403830; }
-.empty { border: 1px solid #ded7cd; background: #fffdfa; padding: 28px; color: #6f665d; }
+.empty { border: 1px solid #ded7cd; background: #ffffff; padding: 28px; color: #6f665d; }
 .empty strong { color: #352e28; }
 .empty p { margin: 7px 0 0; line-height: 1.65; }
 .reviewGuidance { margin-top: 24px; }
@@ -25,7 +25,7 @@
 .reviewButton:focus-visible, .guidanceContent a:focus-visible { outline: 2px solid #8e6e38; outline-offset: 4px; }
 .reviewToggle { font-size: 22px; font-weight: 400; line-height: 1; }
 .reviewGuidance[open] .reviewToggle { transform: rotate(45deg); }
-.guidanceContent { max-width: 680px; padding: 22px 24px; margin-top: 12px; background: #f5efe6; border-left: 2px solid #b59c7b; color: #65594e; font-size: 14px; line-height: 1.7; }
+.guidanceContent { max-width: 680px; padding: 22px 24px; margin-top: 12px; background: #fcf9f9; border-left: 2px solid #b59c7b; color: #65594e; font-size: 14px; line-height: 1.7; }
 .guidanceContent strong { color: #352e28; }
 .guidanceContent p { margin: 10px 0; }
 .guidanceContent a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: #352e28; text-decoration: underline; text-underline-offset: 4px; }

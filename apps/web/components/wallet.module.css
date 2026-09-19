@@ -3,7 +3,7 @@
 .eyebrow { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: .15em; color: #40533c; }
 .heading h2 { margin: 10px 0 0; font-size: clamp(25px, 3vw, 34px); letter-spacing: -.02em; line-height: 1.18; }
 .balances { display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: 20px; }
-.balances > div { display: flex; flex-direction: column; gap: 8px; padding: 18px; background: #fffdf9; border: 1px solid #e1e4dc; }
+.balances > div { display: flex; flex-direction: column; gap: 8px; padding: 18px; background: #ffffff; border: 1px solid #e1e4dc; }
 .balances > .primary { background: #304333; color: white; border-color: #304333; }
 .balances span { font-size: 11px; }
 .balances strong { font-size: clamp(24px, 3vw, 36px); font-weight: 500; line-height: 1.1; }

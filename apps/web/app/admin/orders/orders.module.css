@@ -221,7 +221,7 @@
 }
 
 .orderRow:last-child { border-bottom: 0; }
-.orderRow:hover { background: #fbfaf7; }
+.orderRow:hover { background: #f9f5f5; }
 
 .orderRow > div:first-child,
 .orderRow > div:nth-child(2) {

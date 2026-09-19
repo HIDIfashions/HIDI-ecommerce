@@ -60,7 +60,7 @@ export function CartClient() {
             href={`/products/${item.product.slug}`}
             className="cart-thumb"
             aria-label={`View ${item.product.name}`}
-            style={{ position: "relative", display: "block", overflow: "hidden", background: "#eee8df" }}
+            style={{ position: "relative", display: "block", overflow: "hidden", background: "#ffffff" }}
           >
             <CatalogImage
               src={item.product.image}

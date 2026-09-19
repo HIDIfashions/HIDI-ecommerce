@@ -37,7 +37,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(255,250,243,.98);
+  background: rgba(255,255,255,.98);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(12px);
   font-size: 12px;
@@ -292,13 +292,13 @@
   justify-content: center;
   border: 1px solid #ddd0bf;
   border-radius: 50%;
-  background: #fffaf3;
+  background: #ffffff;
   color: #3e3026;
   cursor: pointer;
 }
 
 .drawerClose:hover {
-  background: #f2e8dc;
+  background: #f9f5f5;
 }
 
 @media (max-width: 1050px) {

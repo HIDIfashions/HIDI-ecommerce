@@ -1,8 +1,8 @@
 :root {
   --ink: #1d1d1a;
   --muted: #706c65;
-  --ivory: #f7f3ed;
-  --paper: #fffdf9;
+  --ivory: #fcf9f9;
+  --paper: #ffffff;
   --line: #ded8cf;
   --wine: #6b2430;
   --soft-wine: #93606a;
@@ -232,7 +232,7 @@ details p { color: var(--muted); font-size: 13px; }
 
 /* HIDI storefront refresh */
 body {
-  background: #fffdf9;
+  background: #ffffff;
   color: #29231f;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -257,7 +257,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255,253,249,.94);
+  background: rgba(255,255,255,.94);
   border-bottom: 1px solid rgba(91,73,60,.14);
   backdrop-filter: blur(16px);
 }
@@ -329,7 +329,7 @@ body {
 .footer {
   border-top: 1px solid #d9d0c5;
   padding: 78px 0 24px;
-  background: #f4eee5;
+  background: #fcf9f9;
 }
 
 .footer-grid {
@@ -491,7 +491,7 @@ body {
   aspect-ratio: 16 / 13;
 }
 .pdp-gallery .pdp-image {
-  background: #f0ebe4 !important;
+  background: #ffffff !important;
 }
 .pdp-gallery .pdp-image:hover img {
   transform: scale(1.015);
@@ -511,20 +511,20 @@ body {
 :root {
   --ink: #34271f;
   --muted: #76695f;
-  --ivory: #f4ecdf;
-  --paper: #fffaf3;
+  --ivory: #fcf9f9;
+  --paper: #ffffff;
   --line: #ddd0bf;
   --sand: #d9c2a6;
   --gold: #b77c31;
 }
 
 body {
-  background: #fffaf3;
+  background: #ffffff;
   color: #34271f;
 }
 
 .announcement {
-  background: #ead9c3;
+  background: #fcf9f9;
   color: #654723;
   border-bottom: 1px solid #d7c2a7;
   min-height: 34px;
@@ -533,7 +533,7 @@ body {
 }
 
 .site-header {
-  background: rgba(255,250,243,.95);
+  background: rgba(255,255,255,.95);
   border-bottom: 1px solid #dfd2c2;
   box-shadow: 0 8px 26px rgba(86,60,31,.035);
 }
@@ -572,7 +572,7 @@ body {
 }
 
 .footer {
-  background: #efe4d5;
+  background: #fcf9f9;
   border-top-color: #d7c8b6;
 }
 
@@ -724,7 +724,7 @@ body {
   --hidi-mulberry-deep: #4a1719;
   --hidi-mulberry-hover: #782b2f;
   --hidi-mulberry-soft: #f3e5e2;
-  --hidi-mulberry-mist: #f8efeb;
+  --hidi-mulberry-mist: #f9f5f5;
   --hidi-gold-accent: #c99646;
   --hidi-ivory-text: #fff8ef;
 }
@@ -779,7 +779,7 @@ body {
 /* PDP colour + size selection */
 .colour-options button {
   border-color: #ddcec6;
-  background: #fffaf3;
+  background: #ffffff;
   color: #46342e;
   transition: background .18s ease, border-color .18s ease, color .18s ease;
 }
@@ -799,13 +799,13 @@ body {
 
 .sizes button {
   border-color: #ddcec6;
-  background: #fffaf3;
+  background: #ffffff;
   color: #46342e;
   transition: background .18s ease, border-color .18s ease, color .18s ease;
 }
 
 .sizes button:disabled {
-  background: #f3eee9;
+  background: #f9f5f5;
   color: #aaa096;
   border-color: #e9dfd7;
 }
