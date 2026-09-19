@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Filter, SlidersHorizontal, X } from "lucide-react";
 import { ApiProduct } from "@/lib/api";
 import { ProductCard } from "./product-card";
@@ -79,6 +79,20 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   const [sort, setSort] = useState("featured");
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileOpen]);
+
   const filtered = useMemo(() => {
     const result = products.filter((product) => {
       if (
@@ -117,7 +131,13 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   }
 
   const sidebar = (
-    <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ""}`} aria-label="Product filters">
+    <aside
+      className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ""}`}
+      aria-label="Product filters"
+      aria-hidden={!mobileOpen}
+      role="dialog"
+      aria-modal={mobileOpen ? "true" : undefined}
+    >
       <div className={styles.filterHeading}>
         <span className={styles.filterHeadingLabel}><SlidersHorizontal size={16} strokeWidth={1.6} /> Filter</span>
         <span>
