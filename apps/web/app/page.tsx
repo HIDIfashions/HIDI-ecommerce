@@ -12,7 +12,7 @@ import {
   Truck,
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getProducts } from "@/lib/api";
+import { getBestSellers, getProducts } from "@/lib/api";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -52,8 +52,12 @@ const standards = [
 ] as const;
 
 export default async function Home() {
-  const catalogue = await getProducts();
-  const featured = catalogue.slice(0, 8);
+  const [catalogue, bestSellers] = await Promise.all([
+    getProducts(),
+    getBestSellers(8),
+  ]);
+  const hasSales = bestSellers.length > 0;
+  const featured = hasSales ? bestSellers : catalogue.slice(0, 8);
   const hero = catalogue.find((product) => product.slug === "meher-gold-beige-occasion-set")
     ?? catalogue.find((product) => product.slug === "sana-sand-kurta-set")
     ?? catalogue[0];
@@ -135,13 +139,14 @@ export default async function Home() {
       <section className={styles.featured + " container"}>
         <header className={styles.sectionHeading}>
           <div>
-            <p className={styles.eyebrow}>CURATED FOR YOU</p>
-            <h2>Pieces worth coming back for.</h2>
+            <p className={styles.eyebrow}>{hasSales ? "BEST SELLERS" : "FEATURED FOR LAUNCH"}</p>
+            <h2>{hasSales ? "The HIDI pieces customers choose most." : "A considered first look at HIDI."}</h2>
           </div>
           <div className={styles.sectionAside}>
             <p>
-              Explore HIDI favourites with size selection, wishlist and WhatsApp
-              support built into every product card.
+              {hasSales
+                ? "Ranked by sold quantity from confirmed and fulfilled HIDI orders — never by invented ratings."
+                : "Best Sellers will appear here automatically once confirmed customer orders create real sales data."}
             </p>
             <Link href="/collections/all">
               Shop all <ArrowRight size={14} aria-hidden="true" />
