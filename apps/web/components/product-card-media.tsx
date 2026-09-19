@@ -4,14 +4,15 @@ import Image from "next/image";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { Expand, Play, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Expand, Minus, Plus, Play, X } from "lucide-react";
 import { buildCardMedia, swipeStep, wrapMediaIndex } from "@/lib/product-card-media-utils";
 import type { CardImage, CardMedia, CardVideo } from "@/lib/product-card-media-utils";
 import styles from "./product-card-media.module.css";
 
 const VIDEO_PLAY_EVENT = "hidi-card-video-play";
+const CARD_ZOOM_LEVELS = [1, 1.8, 2.6, 3.4, 4.2] as const;
 const EMPTY_VIDEOS: readonly CardVideo[] = [];
-const DEFAULT_INTERVAL = 2700;
+const DEFAULT_INTERVAL = 1400;
 
 type Props = {
   name: string;
@@ -239,6 +240,7 @@ function Gallery({
   const expandButton = useRef<HTMLButtonElement>(null);
   const gesture = useRef<{ x: number; y: number; id: number } | null>(null);
   const suppressedClickUntil = useRef(0);
+  const zoomDrag = useRef<{ x: number; y: number; id: number } | null>(null);
 
   const [index, setIndex] = useState(0);
   const [hover, setHover] = useState(false);
@@ -252,10 +254,14 @@ function Gallery({
   const [preloadIndex, setPreloadIndex] = useState<number | null>(null);
   const [preloadReady, setPreloadReady] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
+  const [zoomIndex, setZoomIndex] = useState(0);
+  const [zoomPan, setZoomPan] = useState({ x: 0, y: 0 });
+  const [zoomDragging, setZoomDragging] = useState(false);
 
   const active = items[index];
   const preload = preloadIndex !== null ? items[preloadIndex] : undefined;
-  const interval = Number.isFinite(intervalMs) ? Math.max(2200, intervalMs) : DEFAULT_INTERVAL;
+  const interval = Number.isFinite(intervalMs) ? Math.max(1000, intervalMs) : DEFAULT_INTERVAL;
+  const zoom = CARD_ZOOM_LEVELS[zoomIndex];
 
   const imageIndexes = useMemo(
     () => items.flatMap((item, itemIndex) => item.kind === "image" ? [itemIndex] : []),
@@ -349,7 +355,7 @@ function Gallery({
       setTransitioning(false);
       setPreloadIndex(null);
       setPreloadReady(false);
-    }, 360);
+    }, 240);
 
     return () => window.clearTimeout(timer);
   }, [transitioning, preloadIndex]);
@@ -358,7 +364,7 @@ function Gallery({
     if (!expanded || !dialog.current) return;
 
     const node = dialog.current;
-    node.showModal();
+    if (!node.open) node.showModal();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -367,6 +373,92 @@ function Gallery({
       document.body.style.overflow = previousOverflow;
     };
   }, [expanded]);
+
+  useEffect(() => {
+    if (!expanded) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        stepExpanded(-1);
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        stepExpanded(1);
+      }
+      if (event.key === "+" || event.key === "=") {
+        event.preventDefault();
+        setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1));
+      }
+      if (event.key === "-") {
+        event.preventDefault();
+        setZoomIndex((current) => {
+          const target = Math.max(0, current - 1);
+          if (target === 0) setZoomPan({ x: 0, y: 0 });
+          return target;
+        });
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [expanded, index, imageIndexes]);
+
+  function resetExpandedView() {
+    setZoomIndex(0);
+    setZoomPan({ x: 0, y: 0 });
+    setZoomDragging(false);
+    zoomDrag.current = null;
+  }
+
+  function stepExpanded(step: -1 | 1) {
+    if (!imageIndexes.length) return;
+    const currentPosition = imageIndexes.indexOf(index);
+    const safePosition = currentPosition < 0 ? 0 : currentPosition;
+    const nextPosition = (safePosition + step + imageIndexes.length) % imageIndexes.length;
+    const target = imageIndexes[nextPosition];
+    if (target === undefined) return;
+    setIndex(target);
+    resetExpandedView();
+    const targetItem = items[target];
+    if (targetItem) {
+      setAnnouncement(`Photo ${target + 1} of ${items.length}: ${targetItem.label}`);
+    }
+  }
+
+  function lightboxPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (zoom <= 1 || !event.isPrimary) return;
+    zoomDrag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setZoomDragging(true);
+  }
+
+  function lightboxPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = zoomDrag.current;
+    if (!start || start.id !== event.pointerId || zoom <= 1) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    zoomDrag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    setZoomPan((current) => ({ x: current.x + dx, y: current.y + dy }));
+  }
+
+  function lightboxPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (zoomDrag.current?.id === event.pointerId) zoomDrag.current = null;
+    setZoomDragging(false);
+  }
+
+  function lightboxWheel(event: React.WheelEvent<HTMLDivElement>) {
+    event.preventDefault();
+    if (event.deltaY < 0) {
+      setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1));
+    } else {
+      setZoomIndex((current) => {
+        const target = Math.max(0, current - 1);
+        if (target === 0) setZoomPan({ x: 0, y: 0 });
+        return target;
+      });
+    }
+  }
 
   function choose(next: number) {
     const target = wrapMediaIndex(next, items.length);
@@ -378,6 +470,7 @@ function Gallery({
 
   function openPhoto() {
     if (active?.kind !== "image") return;
+    resetExpandedView();
     setExpanded(true);
   }
 
@@ -388,6 +481,7 @@ function Gallery({
 
   function closePhoto() {
     setExpanded(false);
+    resetExpandedView();
     expandButton.current?.focus({ preventScroll: true });
   }
 
@@ -512,7 +606,7 @@ function Gallery({
         <dialog
           ref={dialog}
           className={styles.lightbox}
-          aria-label={`${name} enlarged photo`}
+          aria-label={`${name} detailed image viewer`}
           onCancel={event => {
             event.preventDefault();
             closePhoto();
@@ -522,18 +616,77 @@ function Gallery({
           }}
         >
           <div className={styles.lightboxInner}>
-            <button
-              type="button"
-              className={styles.close}
-              onClick={closePhoto}
-              autoFocus
-              aria-label="Close enlarged photo"
-            >
-              <X size={24} aria-hidden="true" />
-            </button>
-            <div className={styles.largePhoto}>
-              <Photo key={active.id} src={active.url} alt={active.label} sizes="90vw" contain />
+            <div className={styles.zoomToolbar} aria-label="Zoom controls">
+              <button
+                type="button"
+                className={styles.zoomButton}
+                onClick={() => setZoomIndex((current) => {
+                  const target = Math.max(0, current - 1);
+                  if (target === 0) setZoomPan({ x: 0, y: 0 });
+                  return target;
+                })}
+                disabled={zoomIndex === 0}
+                aria-label="Zoom out"
+              >
+                <Minus size={18} />
+              </button>
+              <span className={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
+              <button
+                type="button"
+                className={styles.zoomButton}
+                onClick={() => setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1))}
+                disabled={zoomIndex === CARD_ZOOM_LEVELS.length - 1}
+                aria-label="Zoom in"
+              >
+                <Plus size={18} />
+              </button>
             </div>
+
+            <div
+              className={`${styles.largePhoto} ${zoomDragging ? styles.largePhotoDragging : ""}`}
+              onPointerDown={lightboxPointerDown}
+              onPointerMove={lightboxPointerMove}
+              onPointerUp={lightboxPointerUp}
+              onPointerCancel={lightboxPointerUp}
+              onWheel={lightboxWheel}
+              onDoubleClick={() => {
+                if (zoomIndex === 0) setZoomIndex(2);
+                else resetExpandedView();
+              }}
+              title={zoom > 1 ? "Drag to inspect stitching details" : "Double-click or use + to zoom"}
+            >
+              <div
+                className={styles.largePhotoLayer}
+                style={{ transform: `translate3d(${zoomPan.x}px, ${zoomPan.y}px, 0) scale(${zoom})` }}
+              >
+                <Photo key={active.id} src={active.url} alt={active.label} sizes="100vw" contain />
+              </div>
+            </div>
+
+            <div className={styles.lightboxControls}>
+              <button type="button" className={styles.lightboxNav} onClick={() => stepExpanded(-1)} aria-label="Previous product image">
+                <ChevronLeft size={23} />
+              </button>
+              <button
+                type="button"
+                className={styles.lightboxClose}
+                onClick={closePhoto}
+                autoFocus
+                aria-label="Close enlarged photo"
+              >
+                <X size={24} />
+              </button>
+              <button type="button" className={styles.lightboxNav} onClick={() => stepExpanded(1)} aria-label="Next product image">
+                <ChevronRight size={23} />
+              </button>
+            </div>
+
+            <span className={styles.lightboxCounter}>
+              {imageIndexes.indexOf(index) + 1} / {imageIndexes.length}
+            </span>
+            <span className={styles.lightboxHint}>
+              Scroll / + to zoom · Drag to inspect · Double-click to reset
+            </span>
           </div>
         </dialog>
       )}
