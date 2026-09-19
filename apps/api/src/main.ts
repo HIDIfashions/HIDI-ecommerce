@@ -10,6 +10,19 @@ async function bootstrap() {
     new FastifyAdapter({ logger: true, trustProxy: true, bodyLimit: 1024 * 1024 }),
     { rawBody: true },
   );
+  const fastify = app.getHttpAdapter().getInstance();
+  fastify.addContentTypeParser(
+    "application/x-www-form-urlencoded",
+    { parseAs: "string" },
+    (_request: unknown, body: string, done: (error: Error | null, value?: unknown) => void) => {
+      try {
+        done(null, Object.fromEntries(new URLSearchParams(body)));
+      } catch (error) {
+        done(error instanceof Error ? error : new Error("Invalid form body"));
+      }
+    },
+  );
+
   app.setGlobalPrefix("v1");
   app.enableCors({
     origin: (process.env.WEB_ORIGIN ?? "http://localhost:3000").split(",").map((v) => v.trim()),
