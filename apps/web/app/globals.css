@@ -716,3 +716,152 @@ body {
 .footer-bottom {
   border-top-color: rgba(222, 181, 123, .24);
 }
+
+
+/* HIDI Mulberry interaction system */
+:root {
+  --hidi-mulberry: #651f23;
+  --hidi-mulberry-deep: #4a1719;
+  --hidi-mulberry-hover: #782b2f;
+  --hidi-mulberry-soft: #f3e5e2;
+  --hidi-mulberry-mist: #f8efeb;
+  --hidi-gold-accent: #c99646;
+  --hidi-ivory-text: #fff8ef;
+}
+
+/* Collection title treatment shared by New Arrivals, Work Edit, Everyday,
+   Occasion and Shop All. Keeps the catalogue calm and visually connected
+   to the Mulberry header without turning the entire page dark. */
+.collection-page .collection-header {
+  max-width: none;
+  margin: 26px 0 46px;
+  padding: clamp(30px, 4vw, 54px) clamp(28px, 4.5vw, 66px);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(201,150,70,.10), transparent 30%),
+    linear-gradient(115deg, #f8efeb 0%, #f4e5e2 58%, #f7eee8 100%);
+  border: 1px solid #e7d4cd;
+  border-left: 5px solid var(--hidi-mulberry);
+}
+
+.collection-page .collection-header::after {
+  content: "";
+  position: absolute;
+  right: -60px;
+  bottom: -95px;
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  border: 1px solid rgba(101,31,35,.09);
+  box-shadow: 0 0 0 28px rgba(101,31,35,.025);
+  pointer-events: none;
+}
+
+.collection-page .collection-header .eyebrow {
+  margin-bottom: 12px;
+  color: #9f6e31;
+  letter-spacing: .22em;
+}
+
+.collection-page .collection-header h1 {
+  margin-bottom: 14px;
+  color: var(--hidi-mulberry-deep);
+  font-size: clamp(48px, 6vw, 80px);
+}
+
+.collection-page .collection-header > p:last-child {
+  max-width: 650px;
+  margin: 0;
+  color: #765f57;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* PDP colour + size selection */
+.colour-options button {
+  border-color: #ddcec6;
+  background: #fffaf3;
+  color: #46342e;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.colour-options button:hover:not(:disabled),
+.sizes button:hover:not(:disabled) {
+  border-color: var(--hidi-mulberry);
+}
+
+.colour-options button.selected,
+.sizes button.selected {
+  background: var(--hidi-mulberry);
+  border-color: var(--hidi-mulberry);
+  color: var(--hidi-ivory-text);
+  box-shadow: none;
+}
+
+.sizes button {
+  border-color: #ddcec6;
+  background: #fffaf3;
+  color: #46342e;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.sizes button:disabled {
+  background: #f3eee9;
+  color: #aaa096;
+  border-color: #e9dfd7;
+}
+
+/* Primary commerce action */
+.add-to-bag.button-dark {
+  background: var(--hidi-mulberry);
+  border-color: var(--hidi-mulberry);
+  color: var(--hidi-ivory-text);
+  box-shadow: 0 10px 24px rgba(74,23,25,.12);
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.add-to-bag.button-dark:hover:not(:disabled) {
+  background: var(--hidi-mulberry-hover);
+  border-color: var(--hidi-mulberry-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 13px 28px rgba(74,23,25,.17);
+}
+
+/* PDP wishlist */
+.wishlist-button {
+  min-height: 48px;
+  margin-top: 8px;
+  border: 1px solid #dfd0c8;
+  background: transparent;
+  color: var(--hidi-mulberry);
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.wishlist-button:hover {
+  background: var(--hidi-mulberry-mist);
+  border-color: #bd918d;
+}
+
+.wishlist-button[aria-pressed="true"] {
+  background: var(--hidi-mulberry);
+  border-color: var(--hidi-mulberry);
+  color: var(--hidi-ivory-text);
+}
+
+@media (max-width: 620px) {
+  .collection-page .collection-header {
+    margin-top: 12px;
+    margin-bottom: 28px;
+    padding: 28px 22px;
+    border-left-width: 4px;
+  }
+
+  .collection-page .collection-header h1 {
+    font-size: clamp(42px, 13vw, 58px);
+  }
+
+  .collection-page .collection-header > p:last-child {
+    font-size: 13px;
+  }
+}
