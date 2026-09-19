@@ -73,7 +73,27 @@ function harness() {
       findUnique: async (args: any) => byWhere(accruals, args.where) ?? null,
       create: async (args: any) => { writes += 1; const row = { id: `accrual-${accruals.length + 1}`, ...args.data }; accruals.push(row); return row; },
       update: async (args: any) => update(accruals, args),
-      aggregate: async (args: any) => ({ _sum: { rewardPaise: accruals.filter((a) => a.walletId === args.where.walletId && a.status === args.where.status).reduce((sum, a) => sum + a.rewardPaise, 0) } }),
+      aggregate: async (args: any) => {
+        const relationFilter = args.where.order?.returnRequests;
+        const rows = accruals.filter((a) => {
+          if (a.walletId !== args.where.walletId || a.status !== args.where.status) return false;
+          if (!relationFilter) return true;
+          const activeForOrder = returnRequests.some((request) =>
+            request.orderId === a.orderId &&
+            (!relationFilter.some?.status?.in || relationFilter.some.status.in.includes(request.status)),
+          );
+          if (relationFilter.none) {
+            const disallowed = returnRequests.some((request) =>
+              request.orderId === a.orderId &&
+              (!relationFilter.none.status?.in || relationFilter.none.status.in.includes(request.status)),
+            );
+            return !disallowed;
+          }
+          if (relationFilter.some) return activeForOrder;
+          return true;
+        });
+        return { _sum: { rewardPaise: rows.reduce((sum, a) => sum + a.rewardPaise, 0) } };
+      },
       findMany: async (args: any) => accruals.filter((a) => args.where.status.in.includes(a.status) && (!args.where.id || a.id > args.where.id.gt)).slice(0, args.take),
     },
   };
@@ -111,6 +131,19 @@ test("GET summary is read-only, shows exact ledger not estimates and bounded his
   const none = await h.service.getSummary({ ...auth, id: "new-auth" });
   assert.equal(none.balancePaise, 0);
   assert.equal(h.wallets.length, 1);
+}));
+
+test("wallet summary excludes stale active-return accruals from pending and exposes them as held", async () => enabledTest(async () => {
+  const h = harness();
+  h.accruals.push(
+    { id: "accrual-clean", orderId: "order-1", walletId: "wallet-1", rewardPaise: 8_600, status: "PENDING" },
+    { id: "accrual-return", orderId: "order-return", walletId: "wallet-1", rewardPaise: 3_600, status: "PENDING" },
+  );
+  h.returnRequests.push({ id: "return-old", orderId: "order-return", status: "REQUESTED" });
+  const result = await h.service.getSummary(auth);
+  assert.equal(result.pendingPaise, 8_600);
+  assert.equal(result.heldPaise, 3_600);
+  assert.equal(h.writes(), 0, "summary stays read-only while correcting presentation");
 }));
 
 test("reservation then consumption debit once and lock order before wallet", async () => enabledTest(async () => {
