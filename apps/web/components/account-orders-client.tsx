@@ -238,7 +238,7 @@ export function AccountOrdersClient() {
           </div>
 
           <div className={styles.items}>
-            {order.items.slice(0, 3).map((item) => <div className={styles.item} key={item.id}>
+            {order.items.map((item) => <div className={styles.item} key={item.id}>
               <Link href={`/products/${item.slug}`} className={styles.thumb} style={{ position: "relative" }}>
                 <CatalogImage src={item.image} alt={item.productName} sizes="86px" fallbackLabel={`HIDI / ${item.productName}`} />
               </Link>
