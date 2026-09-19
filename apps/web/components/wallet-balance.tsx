@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Wallet, ArrowUpRight } from "lucide-react";
+import { WalletCards, ArrowUpRight } from "lucide-react";
 import { formatWalletPaise, getWalletSummary, walletAccountId, walletEnabled, WALLET_UPDATED_EVENT, type WalletSummary } from "@/lib/wallet-client";
 import styles from "./wallet.module.css";
 
@@ -82,7 +82,7 @@ export function WalletBalance() {
   const { userId, summary, loading, error, unavailable, refresh } = useWalletSummary();
   if (!walletEnabled || !userId || (unavailable && !summary)) return null;
   return <section className={styles.panel} aria-labelledby="wallet-title" aria-busy={loading}>
-    <div className={styles.heading}><span className={styles.eyebrow}><Wallet size={16} aria-hidden="true" /> YOUR HIDI WALLET</span><h2 id="wallet-title">Good choices. A little back.</h2></div>
+    <div className={styles.heading}><span className={styles.eyebrow}><WalletCards size={18} strokeWidth={1.8} aria-hidden="true" /> YOUR HIDI WALLET</span><h2 id="wallet-title">Good choices. A little back.</h2></div>
     {loading && !summary ? <p role="status">Loading your wallet…</p> : error ? <div role="alert"><p>{error}</p><button className={styles.textButton} type="button" onClick={() => { void refresh().catch(() => undefined); }}>Try again</button></div> : summary ? <>
       {!summary.enabled && <p className={styles.note}>Wallet redemption is temporarily unavailable. Your recorded balance and history are shown below.</p>}
       <div className={styles.balances}>
