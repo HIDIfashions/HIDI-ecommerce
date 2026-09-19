@@ -5,6 +5,7 @@ import { ArrowLeftRight, RotateCcw, WalletCards, X } from "lucide-react";
 import { BROWSER_API_URL } from "@/lib/browser-api";
 import { getAccessToken } from "@/lib/supabase-auth";
 import { formatPaise } from "@/lib/api";
+import { WALLET_UPDATED_EVENT } from "@/lib/wallet-client";
 import styles from "./return-exchange-request.module.css";
 
 type ReturnRequestSummary = {
@@ -110,6 +111,7 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.message ?? "Unable to create the request.");
       setOpen(false);
+      window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
       await onCreated();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to create the request.");
@@ -136,6 +138,7 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
       );
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.message ?? "Unable to cancel the request.");
+      window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
       await onCreated();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to cancel the request.");
