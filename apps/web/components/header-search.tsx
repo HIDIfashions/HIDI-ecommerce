@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { ApiProduct, formatPaise } from "@/lib/api";
 import { CatalogImage } from "./catalog-image";
 import iconStyles from "./header-icons.module.css";
 import styles from "./header-search.module.css";
+import { BROWSER_API_URL } from "@/lib/browser-api";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+const API = BROWSER_API_URL;
 
 function productSearchText(product: ApiProduct) {
   return [
@@ -26,6 +28,7 @@ function productSearchText(product: ApiProduct) {
 }
 
 export function HeaderSearch() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<ApiProduct[]>([]);
@@ -91,7 +94,14 @@ export function HeaderSearch() {
                   className={styles.input}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search"
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    const value = query.trim();
+                    if (!value) return;
+                    setOpen(false);
+                    router.push("/search?q=" + encodeURIComponent(value));
+                  }}
+                  placeholder="Search products, colours, collections…"
                   aria-label="Search HIDI products"
                 />
                 <Search className={styles.searchGlyph} aria-hidden="true" />
