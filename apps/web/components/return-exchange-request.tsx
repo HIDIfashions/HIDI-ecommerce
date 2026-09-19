@@ -16,6 +16,17 @@ type ReturnRequestSummary = {
   requestedSize?: string | null;
   refundPaise: number;
   status: string;
+  pickupProvider?: string | null;
+  pickupAwb?: string | null;
+  pickupTrackingUrl?: string | null;
+  refundWalletPaise?: number;
+  refundCashPaise?: number;
+  refundStatus?: string | null;
+  replacementProvider?: string | null;
+  replacementAwb?: string | null;
+  replacementTrackingUrl?: string | null;
+  rejectionReason?: string | null;
+  completedAt?: string | null;
   createdAt: string;
 };
 
@@ -65,7 +76,7 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
   const [error, setError] = useState("");
 
   const active = item.returnRequests.find((request) =>
-    ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED"].includes(request.status),
+    ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"].includes(request.status),
   );
   const latest = item.returnRequests[0];
 
@@ -110,11 +121,15 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
   if (active) {
     return (
       <div className={styles.requestStatus}>
-        <strong>{active.type === "EXCHANGE" ? "Exchange" : "Return"} requested</strong>
-        <span>{labelStatus(active.status)}</span>
+        <strong>{active.type === "EXCHANGE" ? "Exchange" : "Return"} · {labelStatus(active.status)}</strong>
+        <span>{active.status === "REQUESTED" ? "HIDI has received your request." : "We’ll keep this status updated as it moves."}</span>
         {active.requestedSize && <small>Replacement size: {active.requestedSize}</small>}
         {active.refundDestination === "WALLET" && <small>Refund choice: HIDI Wallet</small>}
         {active.refundDestination === "ORIGINAL" && <small>Refund choice: Original payment source</small>}
+        {active.pickupAwb && <small>Pickup: {active.pickupProvider ?? "Courier"} · {active.pickupAwb}</small>}
+        {active.pickupTrackingUrl && <a href={active.pickupTrackingUrl} target="_blank" rel="noreferrer">Track return pickup ↗</a>}
+        {active.replacementAwb && <small>Replacement: {active.replacementProvider ?? "Courier"} · {active.replacementAwb}</small>}
+        {active.replacementTrackingUrl && <a href={active.replacementTrackingUrl} target="_blank" rel="noreferrer">Track replacement ↗</a>}
       </div>
     );
   }
@@ -122,8 +137,12 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
   if (!eligible || item.returnableQuantity <= 0) {
     return latest ? (
       <div className={styles.requestStatus}>
-        <strong>{latest.type === "EXCHANGE" ? "Exchange" : "Return"}</strong>
-        <span>{labelStatus(latest.status)}</span>
+        <strong>{latest.type === "EXCHANGE" ? "Exchange" : "Return"} · {labelStatus(latest.status)}</strong>
+        {latest.status === "REFUNDED" && (
+          <small>Refund completed: {formatPaise((latest.refundWalletPaise ?? 0) + (latest.refundCashPaise ?? 0) || latest.refundPaise)}</small>
+        )}
+        {latest.rejectionReason && <small>Reason: {latest.rejectionReason}</small>}
+        {latest.replacementTrackingUrl && <a href={latest.replacementTrackingUrl} target="_blank" rel="noreferrer">Track replacement ↗</a>}
       </div>
     ) : null;
   }
