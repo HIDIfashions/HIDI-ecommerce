@@ -17,7 +17,7 @@ function fixture() {
     inventory: { variantId: "variant-1", onHand: 10, reserved: 1, safetyStock: 0 },
     wallet: { balancePaise: 10000, reservedPaise: 4000, accruedReversed: false },
     hold: { orderId: "order-1", amountPaise: 4000, status: "ACTIVE", expiresAt: new Date(Date.now() + 900000) },
-    refunds: [], cart: { id: "cart-1", userId: "user-1" }, cartItems: 1,
+    refunds: [], returnRequests: [], cart: { id: "cart-1", userId: "user-1" }, cartItems: 1,
   };
   let provider: any = { id: "rzp-payment-1", order_id: "rzp-order-1", amount: 196000, currency: "INR", status: "captured", captured: true, method: "upi", amount_refunded: 0, refund_status: null };
   const record = (action: string, value?: unknown) => calls.push({ action, input: value === undefined ? undefined : structuredClone(value) });
@@ -56,6 +56,15 @@ function fixture() {
       updateMany: async (q: any) => { record("inventory.updateMany", q); if (!matches(state.inventory, q.where)) return { count: 0 }; mutate(state.inventory, q.data); return { count: 1 }; },
     },
     inventoryReservation: { update: async (q: any) => { record("reservation.update", q); const row = state.reservations.find((r: any) => matches(r, q.where)); assert.ok(row); return mutate(row, q.data); } },
+    returnRequest: {
+      findUnique: async (q: any) => structuredClone(state.returnRequests.find((r: any) => matches(r, q.where)) ?? null),
+      update: async (q: any) => {
+        record("return.update", q);
+        const row = state.returnRequests.find((r: any) => matches(r, q.where));
+        assert.ok(row);
+        return mutate(row, q.data);
+      },
+    },
     paymentRefund: {
       findUnique: async (q: any) => structuredClone(state.refunds.find((r: any) => matches(r, q.where)) ?? null),
       aggregate: async (q: any) => ({ _sum: { amountPaise: state.refunds.filter((r: any) => matches(r, q.where)).reduce((sum: number, r: any) => sum + r.amountPaise, 0) } }),
@@ -88,6 +97,11 @@ function fixture() {
       if (state.hold?.status === "ACTIVE") { state.wallet.reservedPaise -= state.hold.amountPaise; state.hold.status = "RELEASED"; }
     },
     reverseEarned: async (_tx: any, orderId: string, reason: string) => { record("wallet.reverseEarned", { orderId, reason }); state.wallet.accruedReversed = true; },
+    creditReturnRefund: async (_tx: any, orderId: string, requestId: string, amountPaise: number) => {
+      record("wallet.creditReturnRefund", { orderId, requestId, amountPaise });
+      state.wallet.balancePaise += amountPaise;
+      return true;
+    },
     restoreRedeemed: async (_tx: any, orderId: string) => {
       record("wallet.restoreRedeemed", { orderId, orderStatus: state.order.status });
       assert.equal(state.order.status, "REFUNDED", "Order must be fully refunded before wallet restoration");
@@ -226,6 +240,30 @@ test("signed partial refund is provider-verified and deduplicated, reverses earn
   assert.equal(f.calls.some((c) => c.action === "wallet.restoreRedeemed"), false);
   assert.equal(f.state().wallet.balancePaise, 6000); assert.equal(f.state().hold.status, "CONSUMED");
   assert.ok(f.calls.some((c) => c.action === "razorpay.fetchPayment" && c.input.id === "rzp-payment-1"));
+});
+
+test("item-level return refund closes ReturnRequest without overwriting delivered fulfilment", async () => {
+  const f = fixture();
+  await f.capture();
+  f.state().order.status = "DELIVERED";
+  f.state().returnRequests.push({
+    id: "return-1",
+    orderId: "order-1",
+    type: "RETURN",
+    status: "REFUND_PROCESSING",
+    refundCashPaise: 10000,
+    refundWalletPaise: 0,
+    refundProviderId: null,
+  });
+  f.setProvider({ amount_refunded: 10000, refund_status: "partial" });
+  await f.refund(10000, "rzp-return-refund-1", { notes: { hidi_return_request_id: "return-1" } });
+  assert.equal(f.state().order.status, "DELIVERED");
+  assert.equal(f.state().payments[0].status, "PARTIALLY_REFUNDED");
+  assert.equal(f.state().returnRequests[0].status, "REFUNDED");
+  assert.equal(f.state().returnRequests[0].refundStatus, "COMPLETED");
+  assert.equal(f.state().returnRequests[0].refundProviderId, "rzp-return-refund-1");
+  assert.equal(f.calls.filter((call) => call.action === "wallet.reverseEarned").length, 1);
+  assert.equal(f.calls.some((call) => call.action === "wallet.restoreRedeemed"), false);
 });
 
 test("all cash refunded across multiple events restores original wallet tender once", async () => {
