@@ -58,11 +58,7 @@ export default async function Home() {
   ]);
   const hasSales = bestSellers.length > 0;
   const featured = hasSales ? bestSellers : catalogue.slice(0, 8);
-  const hero = catalogue.find((product) => product.slug === "meher-gold-beige-occasion-set")
-    ?? catalogue.find((product) => product.slug === "sana-sand-kurta-set")
-    ?? catalogue[0];
-  const heroImage = hero?.images?.find((image) => image.url?.trim())?.url
-    ?? "/products/sana-sand-kurta-set/01-main.png";
+  const heroImage = "/hero/hidi-sunlit-garden-hero.avif";
   const whatsapp = (process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
   const whatsappHref = whatsapp
     ? "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent("Hi HIDI, I would like help choosing a style.")
@@ -95,16 +91,17 @@ export default async function Home() {
         <div className={styles.heroVisual}>
           <Image
             src={heroImage}
-            alt={hero?.name ?? "HIDI ethnic wear"}
+            alt="HIDI cream embroidered ethnic wear in a sunlit garden"
             fill
             priority
+            quality={95}
             sizes="(max-width: 820px) 100vw, 58vw"
             className={styles.heroImage}
           />
           <div className={styles.heroVeil} aria-hidden="true" />
           <div className={styles.heroBadge}>
             <span>THE HIDI EDIT</span>
-            <strong>{hero?.name ?? "Quietly elegant Indian wear"}</strong>
+            <strong>Quietly elegant Indian wear</strong>
           </div>
         </div>
       </section>
