@@ -14,7 +14,7 @@ async function bootstrap() {
   fastify.addContentTypeParser(
     "application/x-www-form-urlencoded",
     { parseAs: "string" },
-    (_request: unknown, body: string, done: (error: Error | null, value?: unknown) => void) => {
+    (_request, body, done) => {
       try {
         done(null, Object.fromEntries(new URLSearchParams(body)));
       } catch (error) {
