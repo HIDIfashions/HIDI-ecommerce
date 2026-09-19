@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { ChevronLeft, ChevronRight, Expand, Minus, Plus, Play, X } from "lucide-react";
 import { buildCardMedia, swipeStep, wrapMediaIndex } from "@/lib/product-card-media-utils";
 import type { CardImage, CardMedia, CardVideo } from "@/lib/product-card-media-utils";
@@ -447,7 +447,7 @@ function Gallery({
     setZoomDragging(false);
   }
 
-  function lightboxWheel(event: React.WheelEvent<HTMLDivElement>) {
+  function lightboxWheel(event: ReactWheelEvent<HTMLDivElement>) {
     event.preventDefault();
     if (event.deltaY < 0) {
       setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1));
