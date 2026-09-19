@@ -27,6 +27,49 @@ export class ProductsService {
     return products.map((p) => this.toView(p));
   }
 
+  async bestSellers(limit = 8) {
+    const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 12) : 8;
+    const ranked = await this.prisma.orderItem.groupBy({
+      by: ["productId"],
+      where: {
+        order: {
+          status: { in: ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"] },
+        },
+        product: { status: "ACTIVE" },
+      },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: "desc" } },
+      take: safeLimit,
+    });
+
+    if (!ranked.length) return [];
+
+    const productIds = ranked.map((row) => row.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds }, status: "ACTIVE" },
+      include: {
+        category: true,
+        collections: { include: { collection: true }, orderBy: { position: "asc" } },
+        images: { orderBy: { position: "asc" } },
+        variants: {
+          where: { active: true },
+          include: { inventory: true },
+          orderBy: [{ color: "asc" }, { size: "asc" }],
+        },
+      },
+    });
+
+    const byId = new Map(products.map((product) => [product.id, product]));
+    return ranked.flatMap((row) => {
+      const product = byId.get(row.productId);
+      if (!product) return [];
+      return [{
+        ...this.toView(product),
+        soldQuantity: row._sum.quantity ?? 0,
+      }];
+    });
+  }
+
   async bySlug(slug: string) {
     const product = await this.prisma.product.findUnique({
       where: { slug },
