@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.15.1",
   "scripts": {
     "dev": "pnpm --parallel --filter @hidi/web --filter @hidi/api dev",
-    "dev:web": "pnpm dev",
+    "dev:web": "pnpm --filter @hidi/web dev",
     "dev:web-only": "pnpm --filter @hidi/web dev",
     "dev:api": "pnpm --filter @hidi/api start:dev",
     "build": "pnpm -r build",
