@@ -33,7 +33,7 @@ CREATE INDEX "OrderAuditEvent_correlationId_idx"
 ALTER TABLE "OrderAuditEvent"
   ADD CONSTRAINT "OrderAuditEvent_orderId_fkey"
   FOREIGN KEY ("orderId") REFERENCES "Order"("id")
-  ON DELETE CASCADE ON UPDATE CASCADE;
+  ON DELETE RESTRICT ON UPDATE CASCADE;
 
 ALTER TABLE "OrderAuditEvent"
   ADD CONSTRAINT "OrderAuditEvent_amount_nonnegative"
