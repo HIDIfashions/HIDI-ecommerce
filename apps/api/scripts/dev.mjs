@@ -36,6 +36,20 @@ function shutdown(code = 0) {
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
+function clearPort(portNumber) {
+  const result = spawnSync(
+    "bash",
+    [
+      "-lc",
+      `pids="$(lsof -ti :${portNumber} 2>/dev/null || true)"; if [ -n "$pids" ]; then kill $pids 2>/dev/null || true; sleep 1; pids="$(lsof -ti :${portNumber} 2>/dev/null || true)"; if [ -n "$pids" ]; then kill -9 $pids 2>/dev/null || true; fi; fi`,
+    ],
+    { cwd, stdio: "inherit" },
+  );
+  if (result.error) throw result.error;
+}
+
+clearPort(4000);
+
 // A stale incremental cache can tell TypeScript that the project is up to date
 // even after dist/ has been removed. Development must always start from a real
 // emitted entrypoint, otherwise Node watches a file that does not exist.
