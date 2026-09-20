@@ -63,6 +63,30 @@ test("verified staff email claims the Supabase subject once and returns the conf
   assert.ok(f.staff[0].lastLoginAt instanceof Date);
 });
 
+test("the first owner can be bootstrapped only by the explicitly configured verified email", async () => {
+  const before = process.env.ADMIN_BOOTSTRAP_EMAIL;
+  try {
+    process.env.ADMIN_BOOTSTRAP_EMAIL = "owner@example.test";
+    const f = fixture({ staff: [] });
+    const actor = await f.service.resolveActor({ authorization: "Bearer valid" });
+    assert.equal(actor.role, "OWNER");
+    assert.equal(actor.authMode, "SUPABASE");
+    assert.equal(f.staff.length, 1);
+    assert.equal(f.staff[0].email, "owner@example.test");
+    assert.equal(f.staff[0].authSubject, "auth-admin-1");
+
+    const denied = fixture({
+      staff: [],
+      user: { id: "auth-other", email: "other@example.test", emailVerified: true, metadata: {} },
+    });
+    await assert.rejects(() => denied.service.resolveActor({ authorization: "Bearer valid" }), { name: "ForbiddenException" });
+    assert.equal(denied.staff.length, 0);
+  } finally {
+    if (before === undefined) delete process.env.ADMIN_BOOTSTRAP_EMAIL;
+    else process.env.ADMIN_BOOTSTRAP_EMAIL = before;
+  }
+});
+
 test("disabled, unknown and subject-conflicting staff cannot enter admin", async () => {
   await assert.rejects(
     () => fixture({ staff: [{ id: "a", authSubject: null, email: "owner@example.test", displayName: "Owner", role: "OWNER", active: false }] }).service.resolveActor({ authorization: "Bearer valid" }),
@@ -88,7 +112,9 @@ test("admin RBAC permissions separate support, operations, catalog and owner dut
   const service = fixture().service;
 
   assert.equal(service.hasPermission(owner, "return:write"), true);
+  assert.equal(service.hasPermission(owner, "staff:manage"), true);
   assert.equal(service.hasPermission(operations, "return:write"), true);
+  assert.equal(service.hasPermission(operations, "staff:manage"), false);
   assert.equal(service.hasPermission(support, "return:write"), false);
   assert.equal(service.hasPermission(support, "order:read"), true);
   assert.equal(service.hasPermission(catalog, "catalog:write"), true);
