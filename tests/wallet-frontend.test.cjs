@@ -134,6 +134,7 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
     "@/lib/supabase-auth": h.auth,
     "@/lib/browser-api": { BROWSER_API_URL: "http://test.invalid/v1" },
     "@/lib/wallet-client": h.client,
+    "@/components/catalog-image": { CatalogImage: (props) => jsx("img", props) },
     "@/components/wallet-balance": { useWalletSummary: () => ({ userId: h.state.userId, summary: state.walletData, loading: false, error: "", unavailable: !state.walletData.enabled, refresh: async () => { state.walletRefreshes++; return state.walletData; } }) },
     "./wallet.module.css": new Proxy({}, { get: (_, key) => key }),
   }, {
