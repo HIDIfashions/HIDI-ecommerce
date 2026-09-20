@@ -111,7 +111,7 @@ export class AdminAuthService {
         throw new UnauthorizedException("Admin access requires a verified email account");
       }
 
-      const staff = await this.prisma.adminStaff.findFirst({
+      let staff = await this.prisma.adminStaff.findFirst({
         where: {
           OR: [
             { authSubject: user.id },
@@ -119,6 +119,28 @@ export class AdminAuthService {
           ],
         },
       });
+
+      if (!staff) {
+        const bootstrapEmail = normalize(process.env.ADMIN_BOOTSTRAP_EMAIL).toLowerCase();
+        const staffCount = await this.prisma.adminStaff.count();
+        if (staffCount === 0 && bootstrapEmail && bootstrapEmail === email) {
+          const metadataName = typeof user.metadata?.full_name === "string"
+            ? user.metadata.full_name.trim()
+            : typeof user.metadata?.name === "string"
+              ? user.metadata.name.trim()
+              : "";
+          staff = await this.prisma.adminStaff.create({
+            data: {
+              authSubject: user.id,
+              email,
+              displayName: metadataName || email.split("@")[0] || "HIDI Owner",
+              role: "OWNER",
+              active: true,
+              lastLoginAt: new Date(),
+            },
+          });
+        }
+      }
 
       if (!staff || !staff.active) {
         throw new ForbiddenException("This account is not authorized for HIDI Admin");
