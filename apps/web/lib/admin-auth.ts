@@ -26,6 +26,10 @@ export function hasDashboardSecret() {
   return Boolean(dashboardSecret());
 }
 
+export function legacyAdminEnabled() {
+  return process.env.ADMIN_LEGACY_KEY_ENABLED === "true";
+}
+
 export function verifyDashboardKey(key: string) {
   const expected = dashboardSecret();
   const supplied = normalize(key);
@@ -47,6 +51,7 @@ export function adminRefreshToken(request: NextRequest) {
 }
 
 export function isLegacyAdminRequest(request: NextRequest) {
+  if (!legacyAdminEnabled()) return false;
   const supplied = normalize(request.cookies.get(ADMIN_COOKIE_NAME)?.value);
   const expected = adminSessionToken();
   return Boolean(expected && supplied && safeEqual(supplied, expected));
