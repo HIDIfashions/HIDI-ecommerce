@@ -75,8 +75,28 @@
 .editor .fileButton { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; border: 1px solid #48443d; font-size: 12px; padding: 10px 14px; cursor: pointer; position: relative; overflow: hidden; }
 .fileButton input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .fileButton[aria-disabled=true] { opacity: .5; cursor: not-allowed; }
-.thumbnails { display: flex; gap: 5px; }
-.thumbnails img { width: 36px; height: 48px; object-fit: cover; background: #ffffff; }
+.thumbnails { display: flex; flex-wrap: wrap; gap: 6px; max-width: 260px; }
+.photoThumb { position: relative; display: inline-block; width: 44px; height: 58px; flex: 0 0 auto; }
+.thumbnails .photoThumb img { width: 44px; height: 58px; object-fit: cover; background: #ffffff; display: block; border: 1px solid #ddd7ce; }
+.editor .photoRemove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 21px;
+  height: 21px;
+  min-height: 21px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid #6f2929;
+  background: #fff;
+  color: #7b2424;
+  font-size: 15px;
+  line-height: 1;
+  box-shadow: 0 1px 5px rgb(0 0 0 / 16%);
+}
+.editor .photoRemove:hover:not(:disabled) { background: #7b2424; color: #fff; }
 .variantEdit { padding: 24px; background: #fcf9f9; margin-top: 24px; }
 .variantEdit h3 { margin: 0; font-family: Georgia, serif; font-size: 22px; font-weight: 400; }
 .variantEdit p { font-size: 13px; color: #746a5d; }
