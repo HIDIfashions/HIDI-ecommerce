@@ -92,3 +92,17 @@ BEGIN
     REVOKE ALL ON TABLE "OrderAuditEvent" FROM authenticated;
   END IF;
 END $$;
+
+-- The operational timeline is append-only. Corrections are represented by a
+-- new event rather than rewriting history.
+CREATE FUNCTION hidi_order_audit_immutable() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $$
+BEGIN
+  RAISE EXCEPTION 'Order audit timeline is append-only; record a new event instead';
+END;
+$$;
+REVOKE ALL ON FUNCTION hidi_order_audit_immutable() FROM PUBLIC;
+
+CREATE TRIGGER "OrderAuditEvent_immutable"
+BEFORE UPDATE OR DELETE ON "OrderAuditEvent"
+FOR EACH ROW EXECUTE FUNCTION hidi_order_audit_immutable();
