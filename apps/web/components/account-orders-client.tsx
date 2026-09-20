@@ -224,7 +224,7 @@ export function AccountOrdersClient() {
       <Link className="button button-dark" href="/collections/new-arrivals">Explore new arrivals</Link>
     </div> : <div className={styles.list}>
       {orders.map((order) => {
-        const placedAt = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(order.createdAt));
+        const placedAt = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(order.createdAt));\n        const activeStatuses = new Set(["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"]);\n        const activeReturnQuantity = order.items.reduce((sum, item) => sum + item.returnRequests.filter((request) => activeStatuses.has(request.status)).reduce((itemSum, request) => itemSum + request.quantity, 0), 0);
         return <article className={styles.card} key={order.orderNumber}>
           <div className={styles.header}>
             <div>
@@ -234,9 +234,9 @@ export function AccountOrdersClient() {
             </div>
             <div className={styles.statusBlock}>
               <span className={styles.status}>
-                {order.afterSales ? `${titleCase(order.afterSales.type)} · ${titleCase(order.afterSales.status)}` : titleCase(order.status)}
+                {order.afterSales && activeReturnQuantity > 0 ? `${activeReturnQuantity} of ${order.itemCount} item${order.itemCount === 1 ? "" : "s"} · ${order.afterSales.type === "EXCHANGE" ? "Exchange" : "Return"} in progress` : titleCase(order.status)}
               </span>
-              <strong>{formatPaise(order.totalPaise)}</strong>
+              {order.afterSales && activeReturnQuantity > 0 && <span className={styles.meta}>{titleCase(order.afterSales.status)} · Order {titleCase(order.status)}</span>}\n              <strong>{formatPaise(order.totalPaise)}</strong>
               {!!order.walletAppliedPaise && <span className={styles.meta}>Rewards: {formatWalletPaise(order.walletAppliedPaise)} · Cash: {formatWalletPaise(order.cashPayablePaise ?? Math.max(0, order.totalPaise - order.walletAppliedPaise))}</span>}
             </div>
           </div>
