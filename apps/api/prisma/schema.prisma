@@ -351,6 +351,8 @@ model CartItem {
 
   @@unique([cartId, variantId])
   @@index([cartId])
+  @@index([productId])
+  @@index([variantId])
 }
 
 model Order {
@@ -479,6 +481,7 @@ model OrderItem {
 
   @@index([orderId])
   @@index([variantId])
+  @@index([productId])
 }
 
 
@@ -564,6 +567,7 @@ model CouponRedemption {
 
   @@unique([couponId, userId, orderId])
   @@index([couponId, userId])
+  @@index([userId])
 }
 
 // Backend-only retention data. Browser/Data API access is denied by the migration.
