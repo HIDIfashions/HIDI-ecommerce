@@ -13,7 +13,7 @@ const input = (changes: Record<string, unknown> = {}) => ({
 function fixture(options: { enabled?: boolean; gatewayFailure?: boolean; price?: number; quantity?: number; balance?: number; ownedCart?: string } = {}) {
   const calls: { action: string; input?: any }[] = [];
   let state: any = {
-    orders: [], payments: [], reservations: [], holds: [],
+    orders: [], payments: [], reservations: [], holds: [], auditEvents: [],
     wallet: { id: "wallet-1", userId: "user-1", authSubject: auth.id, balancePaise: options.balance ?? 300000, reservedPaise: 0 },
     inventory: { variantId: "variant-1", onHand: 10, reserved: 0, safetyStock: 0 },
     cart: { id: "cart-1", sessionId: "session-12345678", userId: options.ownedCart ?? null, items: [{
@@ -54,6 +54,19 @@ function fixture(options: { enabled?: boolean; gatewayFailure?: boolean; price?:
       },
     },
     payment: { create: async (q: any) => { record("payment.create", q); const row = { id: `payment-${state.payments.length + 1}`, provider: "RAZORPAY", ...q.data }; state.payments.push(row); return { ...row }; } },
+    orderAuditEvent: {
+      create: async (q: any) => {
+        record("audit.create", q);
+        if (q.data.eventKey && state.auditEvents.some((event: any) => event.eventKey === q.data.eventKey)) {
+          const error: any = new Error("Duplicate audit event");
+          error.code = "P2002";
+          throw error;
+        }
+        const row = { id: `audit-${state.auditEvents.length + 1}`, createdAt: new Date(), ...q.data };
+        state.auditEvents.push(row);
+        return structuredClone(row);
+      },
+    },
     cart: {
       findUnique: async (q: any) => q.where.sessionId === state.cart.sessionId ? structuredClone(state.cart) : null,
       update: async (q: any) => { record("cart.update", q); return mutate(state.cart, q.data); },
@@ -125,6 +138,7 @@ test("full-wallet checkout is confirmed atomically without gateway creation or p
   assert.equal(f.state().wallet.balancePaise, 100000); assert.equal(f.state().wallet.reservedPaise, 0);
   assert.equal(f.state().inventory.onHand, 9); assert.equal(f.state().inventory.reserved, 0); assert.equal(f.state().reservations[0].status, "CONSUMED");
   assert.equal(f.state().cart.items.length, 0);
+  assert.deepEqual(f.state().auditEvents.map((event: any) => event.eventType), ["ORDER_CREATED", "PAYMENT_CAPTURED", "ORDER_CONFIRMED"]);
 });
 
 test("full-wallet retry returns the original order without double debit, payment, or stock consumption", async () => {
@@ -145,6 +159,7 @@ test("mixed checkout reserves wallet funds and charges only the exact cash remai
   assert.equal(f.state().wallet.balancePaise, 300000); assert.equal(f.state().wallet.reservedPaise, 4000);
   assert.equal(f.state().inventory.onHand, 10); assert.equal(f.state().inventory.reserved, 1);
   assert.equal(f.state().orders[0].userId, "user-1"); assert.equal(f.state().cart.userId, "user-1");
+  assert.deepEqual(f.state().auditEvents.map((event: any) => event.eventType), ["ORDER_CREATED", "PAYMENT_CREATED"]);
 });
 
 test("anonymous wallet use is rejected before any database, wallet or gateway action", async () => {
@@ -220,6 +235,7 @@ test("gateway failure releases wallet and inventory holds and cancels the order 
   assert.equal(f.state().reservations[0].status, "RELEASED"); assert.equal(f.state().wallet.balancePaise, 300000);
   assert.equal(f.state().wallet.reservedPaise, 0); assert.equal(f.state().inventory.reserved, 0); assert.equal(f.state().inventory.onHand, 10);
   assert.equal(f.calls.filter((c) => c.action === "wallet.reverseEarned").length, 1);
+  assert.ok(f.state().auditEvents.some((event: any) => event.eventType === "ORDER_CANCELLED"));
   await f.service.releaseOrder("order-1");
   assert.equal(f.calls.filter((c) => c.action === "wallet.release").length, 1);
   assert.equal(f.state().wallet.reservedPaise, 0);

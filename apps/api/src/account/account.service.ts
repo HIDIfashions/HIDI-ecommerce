@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import type { VerifiedAuthUser } from "../auth/supabase-auth.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
+import { appendOrderAudit } from "../audit/order-audit.js";
 
 const RETURN_WINDOW_DAYS = 7;
 const RETURN_REASONS = new Set([
@@ -309,6 +310,27 @@ export class AccountService {
       });
 
       await this.wallet.holdForReturn(tx, order.id, created.id);
+      await appendOrderAudit(tx, {
+        orderId: order.id,
+        eventType: type === "RETURN" ? "RETURN_REQUESTED" : "EXCHANGE_REQUESTED",
+        actorType: "CUSTOMER",
+        actorId: authUser.id,
+        entityType: "RETURN_REQUEST",
+        entityId: created.id,
+        toStatus: "REQUESTED",
+        amountPaise: type === "RETURN" ? refundPaise : null,
+        eventKey: `return:${created.id}:requested`,
+        source: "CUSTOMER_ACCOUNT",
+        metadata: {
+          orderItemId: item.id,
+          productName: item.productName,
+          sku: item.sku,
+          quantity,
+          reason,
+          refundDestination,
+          requestedSize,
+        },
+      });
       return created;
     });
   }
@@ -332,7 +354,7 @@ export class AccountService {
         throw new ConflictException("Only a newly requested return or exchange can be cancelled online");
       }
 
-      return tx.returnRequest.update({
+      const cancelled = await tx.returnRequest.update({
         where: { id: request.id },
         data: {
           status: "CANCELLED",
@@ -340,6 +362,19 @@ export class AccountService {
           completedAt: new Date(),
         },
       });
+      await appendOrderAudit(tx, {
+        orderId: request.orderId,
+        eventType: request.type === "RETURN" ? "RETURN_CANCELLED" : "EXCHANGE_CANCELLED",
+        actorType: "CUSTOMER",
+        actorId: authUser.id,
+        entityType: "RETURN_REQUEST",
+        entityId: request.id,
+        fromStatus: request.status,
+        toStatus: "CANCELLED",
+        eventKey: `return:${request.id}:cancelled`,
+        source: "CUSTOMER_ACCOUNT",
+      });
+      return cancelled;
     });
 
     // Cancellation is already durable. Reward reconciliation is a follow-up

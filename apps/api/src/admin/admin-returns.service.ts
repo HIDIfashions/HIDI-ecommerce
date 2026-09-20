@@ -5,6 +5,7 @@ import { RazorpayService } from "../razorpay/razorpay.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 import { allocateOriginalTenderRefund } from "./return-refund-policy.js";
+import { appendOrderAudit } from "../audit/order-audit.js";
 
 const ACTIONS = new Set([
   "APPROVE",
@@ -85,7 +86,7 @@ export class AdminReturnsService {
           exchangeReservedAt = new Date();
         }
 
-        return tx.returnRequest.update({
+        const updated = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "APPROVED",
@@ -95,6 +96,22 @@ export class AdminReturnsService {
             exchangeReservedAt,
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: request.type === "EXCHANGE" ? "EXCHANGE_APPROVED" : "RETURN_APPROVED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "APPROVED",
+          eventKey: `return:${request.id}:approved`,
+          source: "ADMIN_PORTAL",
+          metadata: request.type === "EXCHANGE"
+            ? { requestedVariantId: request.requestedVariantId, quantity: request.quantity, exchangeReservationStatus }
+            : { quantity: request.quantity },
+        });
+        return updated;
       }
 
       if (action === "REJECT") {
@@ -116,23 +133,52 @@ export class AdminReturnsService {
             exchangeReservationStatus: request.exchangeReservationStatus === "ACTIVE" ? "RELEASED" : request.exchangeReservationStatus,
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: request.type === "EXCHANGE" ? "EXCHANGE_REJECTED" : "RETURN_REJECTED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "REJECTED",
+          eventKey: `return:${request.id}:rejected`,
+          source: "ADMIN_PORTAL",
+          metadata: { reason },
+        });
         return updated;
       }
 
       if (action === "SCHEDULE_PICKUP") {
         if (request.status !== "APPROVED") throw new ConflictException("Approve the request before scheduling pickup");
         const provider = this.requiredText(body.provider, "Pickup provider", 80);
-        return tx.returnRequest.update({
+        const pickupAwb = this.optionalText(body.awb, 120);
+        const pickupTrackingUrl = this.optionalUrl(body.trackingUrl);
+        const updated = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "PICKUP_SCHEDULED",
             pickupProvider: provider,
-            pickupAwb: this.optionalText(body.awb, 120),
-            pickupTrackingUrl: this.optionalUrl(body.trackingUrl),
+            pickupAwb,
+            pickupTrackingUrl,
             pickupScheduledAt: new Date(),
             adminNote: this.note(body.note),
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: request.type === "EXCHANGE" ? "EXCHANGE_PICKUP_SCHEDULED" : "RETURN_PICKUP_SCHEDULED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "PICKUP_SCHEDULED",
+          eventKey: `return:${request.id}:pickup-scheduled`,
+          source: "ADMIN_PORTAL",
+          metadata: { provider, awb: pickupAwb, trackingUrl: pickupTrackingUrl },
+        });
+        return updated;
       }
 
       if (action === "MARK_RECEIVED") {
@@ -175,7 +221,7 @@ export class AdminReturnsService {
           });
         }
 
-        return tx.returnRequest.update({
+        const updated = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "RECEIVED",
@@ -184,6 +230,25 @@ export class AdminReturnsService {
             adminNote: this.note(body.note),
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: request.type === "EXCHANGE" ? "EXCHANGE_RECEIVED" : "RETURN_RECEIVED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "RECEIVED",
+          eventKey: `return:${request.id}:received`,
+          source: "ADMIN_PORTAL",
+          metadata: {
+            inventoryDisposition: disposition,
+            quantity: request.quantity,
+            originalVariantId: request.orderItem.variantId,
+            inventoryRestocked: disposition === "RESTOCK",
+          },
+        });
+        return updated;
       }
 
       if (action === "SHIP_EXCHANGE") {
@@ -216,7 +281,7 @@ export class AdminReturnsService {
           },
         });
 
-        return tx.returnRequest.update({
+        const updated = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "EXCHANGE_SHIPPED",
@@ -228,6 +293,26 @@ export class AdminReturnsService {
             adminNote: this.note(body.note),
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: "EXCHANGE_SHIPPED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "EXCHANGE_SHIPPED",
+          eventKey: `return:${request.id}:exchange-shipped`,
+          source: "ADMIN_PORTAL",
+          metadata: {
+            provider,
+            awb,
+            trackingUrl,
+            requestedVariantId: request.requestedVariantId,
+            quantity: request.quantity,
+          },
+        });
+        return updated;
       }
 
       throw new BadRequestException("Unsupported return action");
@@ -282,7 +367,7 @@ export class AdminReturnsService {
         if (!current || current.status !== "RECEIVED") throw new ConflictException("Return status changed. Refresh and try again.");
         await this.wallet.creditReturnRefund(tx, request.orderId, request.id, request.refundPaise);
         await this.wallet.reverseEarned(tx, request.orderId, `RETURN_REFUNDED:${request.id}`);
-        return tx.returnRequest.update({
+        const refunded = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "REFUNDED",
@@ -294,6 +379,21 @@ export class AdminReturnsService {
             adminNote: this.note(body.note),
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: "RETURN_REFUNDED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: current.status,
+          toStatus: "REFUNDED",
+          amountPaise: request.refundPaise,
+          eventKey: `return:${request.id}:refunded`,
+          source: "ADMIN_PORTAL",
+          metadata: { destination: "WALLET", walletPaise: request.refundPaise, cashPaise: 0 },
+        });
+        return refunded;
       });
     }
 
@@ -338,7 +438,7 @@ export class AdminReturnsService {
         }
         await this.wallet.creditReturnRefund(tx, request.orderId, request.id, request.refundPaise);
         await this.wallet.reverseEarned(tx, request.orderId, `RETURN_REFUNDED:${request.id}`);
-        return tx.returnRequest.update({
+        const refunded = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "REFUNDED",
@@ -350,6 +450,21 @@ export class AdminReturnsService {
             adminNote: this.note(body.note),
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: "RETURN_REFUNDED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: current.status,
+          toStatus: "REFUNDED",
+          amountPaise: request.refundPaise,
+          eventKey: `return:${request.id}:refunded`,
+          source: "ADMIN_PORTAL",
+          metadata: { destination: "WALLET", walletPaise: request.refundPaise, cashPaise: 0 },
+        });
+        return refunded;
       });
     }
 
@@ -372,6 +487,26 @@ export class AdminReturnsService {
           adminNote: this.note(body.note),
         },
       });
+      await appendOrderAudit(tx, {
+        orderId: request.orderId,
+        eventType: "REFUND_INITIATED",
+        actorType: "ADMIN",
+        actorId: "HIDI_ADMIN",
+        entityType: "RETURN_REQUEST",
+        entityId: request.id,
+        fromStatus: current.status,
+        toStatus: "REFUND_PROCESSING",
+        amountPaise: request.refundPaise,
+        eventKey: `return:${request.id}:refund-initiated`,
+        source: "ADMIN_PORTAL",
+        metadata: {
+          destination: "ORIGINAL",
+          walletPaise: walletShare,
+          cashPaise: cashShare,
+          provider: "RAZORPAY",
+          providerPaymentId: payment.providerPaymentId,
+        },
+      });
     });
 
     let providerRefund;
@@ -383,17 +518,34 @@ export class AdminReturnsService {
       });
     } catch (error) {
       // The provider did not return a refund identity. The admin can safely retry.
-      await this.prisma.returnRequest.updateMany({
+      const reverted = await this.prisma.returnRequest.updateMany({
         where: { id: request.id, status: "REFUND_PROCESSING", refundProviderId: null },
         data: { status: "RECEIVED", refundStatus: "FAILED" },
       });
+      if (reverted.count > 0) {
+        await appendOrderAudit(this.prisma, {
+          orderId: request.orderId,
+          eventType: "REFUND_PROVIDER_FAILED",
+          actorType: "SYSTEM",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: "REFUND_PROCESSING",
+          toStatus: "RECEIVED",
+          amountPaise: request.refundPaise,
+          source: "RAZORPAY_API",
+          metadata: {
+            cashPaise: cashShare,
+            error: error instanceof Error ? error.message.slice(0, 500) : "Provider refund request failed",
+          },
+        });
+      }
       throw error;
     }
 
     if (providerRefund.payment_id !== payment.providerPaymentId || providerRefund.amount !== cashShare || providerRefund.currency !== "INR") {
       // A provider refund identity exists, so never move the request back to RECEIVED:
       // retrying could create a second refund. Force an operations review instead.
-      await this.prisma.returnRequest.updateMany({
+      const flagged = await this.prisma.returnRequest.updateMany({
         where: { id: request.id, status: "REFUND_PROCESSING" },
         data: {
           refundProviderId: providerRefund.id,
@@ -401,18 +553,60 @@ export class AdminReturnsService {
           adminNote: [this.note(body.note), "Provider refund response needs reconciliation before any retry."].filter(Boolean).join("\n"),
         },
       });
+      if (flagged.count > 0) {
+        await appendOrderAudit(this.prisma, {
+          orderId: request.orderId,
+          eventType: "REFUND_REVIEW_REQUIRED",
+          actorType: "SYSTEM",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: "REFUND_PROCESSING",
+          toStatus: "REFUND_PROCESSING",
+          amountPaise: request.refundPaise,
+          eventKey: `refund:${providerRefund.id}:review-required`,
+          source: "RAZORPAY_API",
+          metadata: {
+            providerRefundId: providerRefund.id,
+            expectedCashPaise: cashShare,
+            providerAmountPaise: providerRefund.amount,
+            providerCurrency: providerRefund.currency,
+          },
+        });
+      }
       throw new ConflictException("Razorpay refund needs reconciliation. Do not retry until the provider refund is reviewed.");
     }
 
     // A webhook may have completed the request before this API call returns.
     // Update only while it is still processing so we never overwrite COMPLETED.
-    await this.prisma.returnRequest.updateMany({
+    const accepted = await this.prisma.returnRequest.updateMany({
       where: { id: request.id, status: "REFUND_PROCESSING" },
       data: {
         refundProviderId: providerRefund.id,
         refundStatus: providerRefund.status === "processed" ? "PROCESSING_WEBHOOK" : "PROCESSING",
       },
     });
+    if (accepted.count > 0) {
+      await appendOrderAudit(this.prisma, {
+        orderId: request.orderId,
+        eventType: "REFUND_PROVIDER_ACCEPTED",
+        actorType: "PROVIDER",
+        actorId: "RAZORPAY",
+        entityType: "RETURN_REQUEST",
+        entityId: request.id,
+        fromStatus: "REFUND_PROCESSING",
+        toStatus: "REFUND_PROCESSING",
+        amountPaise: request.refundPaise,
+        eventKey: `refund:${providerRefund.id}:accepted`,
+        source: "RAZORPAY_API",
+        metadata: {
+          providerRefundId: providerRefund.id,
+          providerPaymentId: payment.providerPaymentId,
+          providerStatus: providerRefund.status,
+          cashPaise: cashShare,
+          walletPaise: walletShare,
+        },
+      });
+    }
     return this.prisma.returnRequest.findUniqueOrThrow({ where: { id: request.id } });
   }
 
@@ -424,7 +618,7 @@ export class AdminReturnsService {
       if (request.type !== "EXCHANGE" || request.status !== "EXCHANGE_SHIPPED") {
         throw new ConflictException("Only a shipped exchange can be completed");
       }
-      return tx.returnRequest.update({
+      const completed = await tx.returnRequest.update({
         where: { id: request.id },
         data: {
           status: "EXCHANGED",
@@ -433,6 +627,19 @@ export class AdminReturnsService {
           adminNote: this.note(body.note),
         },
       });
+      await appendOrderAudit(tx, {
+        orderId: request.orderId,
+        eventType: "EXCHANGE_COMPLETED",
+        actorType: "ADMIN",
+        actorId: "HIDI_ADMIN",
+        entityType: "RETURN_REQUEST",
+        entityId: request.id,
+        fromStatus: request.status,
+        toStatus: "EXCHANGED",
+        eventKey: `return:${request.id}:exchanged`,
+        source: "ADMIN_PORTAL",
+      });
+      return completed;
     });
     await this.wallet.reconcileOrder(updated.orderId).catch(() => undefined);
     return updated;

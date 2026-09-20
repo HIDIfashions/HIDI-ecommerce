@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { DelhiveryService } from "../delhivery/delhivery.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { appendOrderAudit } from "../audit/order-audit.js";
 
 const ALLOWED_STATUSES = ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"] as const;
 const ACTIVE_RETURN_STATUSES = ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"];
@@ -108,11 +109,26 @@ export class AdminService {
         unitPricePaise: item.unitPricePaise,
         totalPaise: item.totalPaise,
       })),
+      auditEvents: (order.auditEvents ?? []).map((event: any) => ({
+        id: event.id,
+        eventType: event.eventType,
+        actorType: event.actorType,
+        actorId: event.actorId,
+        entityType: event.entityType,
+        entityId: event.entityId,
+        fromStatus: event.fromStatus,
+        toStatus: event.toStatus,
+        amountPaise: event.amountPaise,
+        correlationId: event.correlationId,
+        source: event.source,
+        metadata: event.metadata,
+        createdAt: event.createdAt,
+      })),
     };
   }
 
-  private orderInclude() {
-    return {
+  private orderInclude(includeAudit = false) {
+    const base = {
       items: {
         include: {
           product: {
@@ -128,6 +144,15 @@ export class AdminService {
       shipments: { orderBy: { createdAt: "desc" as const }, take: 1 },
       returnRequests: { orderBy: { createdAt: "desc" as const } },
     };
+    return includeAudit
+      ? {
+          ...base,
+          auditEvents: {
+            orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }],
+            take: 200,
+          },
+        }
+      : base;
   }
 
   async listOrders(query?: string, status?: string) {
@@ -154,7 +179,7 @@ export class AdminService {
       },
       orderBy: { createdAt: "desc" },
       take: 100,
-      include: this.orderInclude(),
+      include: this.orderInclude(false),
     });
 
     return { orders: orders.map((order) => this.serializeOrder(order)) };
@@ -163,7 +188,7 @@ export class AdminService {
   async getOrder(orderNumber: string) {
     const order = await this.prisma.order.findUnique({
       where: { orderNumber },
-      include: this.orderInclude(),
+      include: this.orderInclude(true),
     });
 
     if (!order) throw new NotFoundException("Order not found");
@@ -244,11 +269,30 @@ export class AdminService {
     };
 
     try {
-      const shipment = order.shipments[0]
-        ? await this.prisma.shipment.update({ where: { id: order.shipments[0].id }, data: shipmentData })
-        : await this.prisma.shipment.create({ data: { orderId: order.id, ...shipmentData } });
+      return await this.prisma.$transaction(async (tx) => {
+        const shipment = order.shipments[0]
+          ? await tx.shipment.update({ where: { id: order.shipments[0].id }, data: shipmentData })
+          : await tx.shipment.create({ data: { orderId: order.id, ...shipmentData } });
 
-      return { shipment, delhivery: { status: manifested.status, remarks: manifested.remarks } };
+        await appendOrderAudit(tx, {
+          orderId: order.id,
+          eventType: "SHIPMENT_PREPARED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "SHIPMENT",
+          entityId: shipment.id,
+          toStatus: "READY_TO_SHIP",
+          eventKey: `shipment:${manifested.waybill}:prepared`,
+          source: "ADMIN_PORTAL",
+          metadata: {
+            provider: "DELHIVERY",
+            awb: manifested.waybill,
+            trackingUrl: shipmentData.trackingUrl,
+          },
+        });
+
+        return { shipment, delhivery: { status: manifested.status, remarks: manifested.remarks } };
+      });
     } catch (error: any) {
       if (error?.code === "P2002") {
         throw new BadRequestException("Delhivery returned an AWB already assigned to another order");
@@ -313,11 +357,26 @@ export class AdminService {
     };
 
     try {
-      const shipment = existing
-        ? await this.prisma.shipment.update({ where: { id: existing.id }, data })
-        : await this.prisma.shipment.create({ data: { orderId: order.id, ...data } });
+      return await this.prisma.$transaction(async (tx) => {
+        const shipment = existing
+          ? await tx.shipment.update({ where: { id: existing.id }, data })
+          : await tx.shipment.create({ data: { orderId: order.id, ...data } });
 
-      return { shipment };
+        await appendOrderAudit(tx, {
+          orderId: order.id,
+          eventType: "SHIPMENT_PREPARED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "SHIPMENT",
+          entityId: shipment.id,
+          toStatus: "READY_TO_SHIP",
+          eventKey: `shipment:${awb}:prepared`,
+          source: "ADMIN_PORTAL",
+          metadata: { provider, awb, trackingUrl },
+        });
+
+        return { shipment };
+      });
     } catch (error: any) {
       if (error?.code === "P2002") {
         throw new BadRequestException("This AWB is already assigned to another order");
@@ -357,43 +416,51 @@ export class AdminService {
       throw new BadRequestException(`Order can move from ${order.status} only to ${NEXT_STATUS[current] ?? "no further status"}`);
     }
 
-    if (requested === "SHIPPED") {
-      const shipment = order.shipments[0];
-      if (!shipment?.provider || !shipment?.awb || !shipment?.trackingUrl) {
-        throw new BadRequestException("Add courier, AWB and tracking URL before marking this order as shipped");
-      }
+    const shipment = order.shipments[0];
+    if (requested === "SHIPPED" && (!shipment?.provider || !shipment?.awb || !shipment?.trackingUrl)) {
+      throw new BadRequestException("Add courier, AWB and tracking URL before marking this order as shipped");
+    }
 
-      return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+
+      if (requested === "SHIPPED" && shipment) {
         await tx.shipment.update({
           where: { id: shipment.id },
-          data: { status: "SHIPPED" as any, shippedAt: new Date() },
+          data: { status: "SHIPPED" as any, shippedAt: now },
         });
-        return tx.order.update({
-          where: { orderNumber },
-          data: { status: requested },
-        });
-      });
-    }
+      }
 
-    if (requested === "DELIVERED") {
-      const shipment = order.shipments[0];
-      return this.prisma.$transaction(async (tx) => {
-        if (shipment) {
-          await tx.shipment.update({
-            where: { id: shipment.id },
-            data: { status: "DELIVERED" as any, deliveredAt: new Date() },
-          });
-        }
-        return tx.order.update({
-          where: { orderNumber },
-          data: { status: requested },
+      if (requested === "DELIVERED" && shipment) {
+        await tx.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "DELIVERED" as any, deliveredAt: now },
         });
-      });
-    }
+      }
 
-    return this.prisma.order.update({
-      where: { orderNumber },
-      data: { status: requested },
+      const updated = await tx.order.update({
+        where: { orderNumber },
+        data: { status: requested },
+      });
+
+      await appendOrderAudit(tx, {
+        orderId: order.id,
+        eventType: `ORDER_${requested}`,
+        actorType: "ADMIN",
+        actorId: "HIDI_ADMIN",
+        entityType: "ORDER",
+        entityId: order.id,
+        fromStatus: current,
+        toStatus: requested,
+        eventKey: `order:${order.id}:status:${requested}`,
+        source: "ADMIN_PORTAL",
+        metadata: shipment
+          ? { shipmentId: shipment.id, provider: shipment.provider, awb: shipment.awb }
+          : undefined,
+      });
+
+      return updated;
     });
   }
+
 }
