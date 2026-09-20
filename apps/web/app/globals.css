@@ -493,27 +493,37 @@ body {
   }
 }
 
-/* Richer PDP photography */
+/* Richer PDP photography
+   Product photos are portrait-first. Keep the complete garment visible instead
+   of cropping it into a landscape hero frame. */
 .pdp-gallery {
   align-items: start;
 }
 .pdp-gallery .pdp-image:first-child {
   grid-column: 1 / -1;
-  aspect-ratio: 16 / 13;
+  aspect-ratio: 4 / 5.1;
+  min-height: 720px;
 }
 .pdp-gallery .pdp-image {
   background: #ffffff !important;
 }
-.pdp-gallery .pdp-image:hover img {
-  transform: scale(1.015);
-}
 .pdp-gallery .pdp-image img {
-  transition: transform .35s ease;
+  object-fit: contain !important;
+  object-position: center center !important;
+  transition: transform .28s ease;
+}
+.pdp-gallery .pdp-image:hover img {
+  transform: scale(1.005);
+}
+@media (max-width: 1000px) {
+  .pdp-gallery .pdp-image:first-child {
+    min-height: 0;
+  }
 }
 @media (max-width: 620px) {
   .pdp-gallery .pdp-image:first-child {
     grid-column: auto;
-    aspect-ratio: 4 / 5.1;
+    aspect-ratio: 3 / 4;
   }
 }
 
