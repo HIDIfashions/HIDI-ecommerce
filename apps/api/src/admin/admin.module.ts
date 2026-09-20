@@ -8,10 +8,12 @@ import { ReviewFollowUpService } from "./review-followup.service.js";
 import { AdminReturnsService } from "./admin-returns.service.js";
 import { WalletModule } from "../wallet/wallet.module.js";
 import { RazorpayModule } from "../razorpay/razorpay.module.js";
+import { AdminAuthService, AdminGuard } from "./admin-auth.js";
 
 @Module({
   imports: [AdminProductsModule, DelhiveryModule, WalletModule, RazorpayModule],
   controllers: [AdminController],
-  providers: [AdminService, AdminInventoryService, ReviewFollowUpService, AdminReturnsService],
+  providers: [AdminService, AdminInventoryService, ReviewFollowUpService, AdminReturnsService, AdminAuthService, AdminGuard],
+  exports: [AdminAuthService, AdminGuard],
 })
 export class AdminModule {}
