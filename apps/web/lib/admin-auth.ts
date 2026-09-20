@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 export const ADMIN_COOKIE_NAME = "hidi_admin_session";
 export const ADMIN_ACCESS_COOKIE_NAME = "hidi_admin_access";
+export const ADMIN_REFRESH_COOKIE_NAME = "hidi_admin_refresh";
 const SESSION_LABEL = "hidi-admin-session-v2";
 
 function normalize(value?: string | null) {
@@ -39,6 +40,10 @@ export function adminSessionToken() {
 
 export function adminAccessToken(request: NextRequest) {
   return normalize(request.cookies.get(ADMIN_ACCESS_COOKIE_NAME)?.value);
+}
+
+export function adminRefreshToken(request: NextRequest) {
+  return normalize(request.cookies.get(ADMIN_REFRESH_COOKIE_NAME)?.value);
 }
 
 export function isLegacyAdminRequest(request: NextRequest) {
@@ -84,3 +89,12 @@ export function adminAccessCookieOptions(expiresInSeconds?: number) {
     maxAge,
   };
 }
+
+
+export const adminRefreshCookieOptions = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 7,
+};
