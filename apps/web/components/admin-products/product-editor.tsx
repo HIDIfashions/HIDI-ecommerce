@@ -68,13 +68,34 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setError(null);
+    setMessage(null);
+
+    // Next.js may reuse this client component when moving from an edited product
+    // to /admin/products/new. Explicitly reset every draft field so the next
+    // product always starts from a genuinely blank workspace.
+    if (!productId) {
+      setProduct(null);
+      setForm(blankFields());
+      setMatrix(blankMatrix());
+      setAdding(blankMatrix());
+      setEditing(null);
+      setDirty(false);
+      setAddDirty(false);
+      setPhotoForColor(true);
+      requestId.current = null;
+    }
+
     void Promise.all([
       productApi<ProductOptions>("/options"),
       productId ? productApi<ProductRecord>(`/${encodeURIComponent(productId)}`) : Promise.resolve(null),
     ]).then(([nextOptions, record]) => {
       if (!active) return;
       setOptions(nextOptions);
-      if (record) { setProduct(record); setForm(toFields(record)); }
+      if (record) {
+        setProduct(record);
+        setForm(toFields(record));
+      }
       setDirty(false);
     }).catch(e => { if (active) setError(e instanceof Error ? e.message : "Unable to open product form."); })
       .finally(() => { if (active) setLoading(false); });
@@ -150,7 +171,19 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
       : `Move this product to ${status.toLowerCase()} and hide it from the storefront? Existing stock and orders will be retained.`)) return;
     void run(async () => {
       const result = await productApi<ProductRecord>(`/${encodeURIComponent(product.id)}/status`, "POST", { status, expectedUpdatedAt: product.updatedAt });
-      accept(result); setMessage(status === "ACTIVE" ? "Product published. Check its customer page." : "Product hidden from the storefront. Stock and order history are retained.");
+      accept(result);
+
+      if (status === "ACTIVE" && !onUse) {
+        // Publishing completes this product-entry cycle. Move straight to a fresh
+        // blank form so details from the published product cannot leak into the next one.
+        requestId.current = null;
+        router.replace("/admin/products/new");
+        return;
+      }
+
+      setMessage(status === "ACTIVE"
+        ? "Product published. Check its customer page."
+        : "Product hidden from the storefront. Stock and order history are retained.");
     });
   }
 
@@ -179,6 +212,33 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
       }
       if (failure) throw failure;
       setMessage(`${uploaded} photo${uploaded === 1 ? "" : "s"} attached ${applyToColor ? `to all existing ${variant.color} sizes` : `to ${variant.sku}`}.`);
+    });
+  }
+
+  function removePhoto(variant: ProductVariant, photo: ProductVariant["images"][number]) {
+    if (!product || pending || busy) return;
+    const applyToColor = photoForColor;
+    const scope = applyToColor ? `all existing ${variant.color} sizes` : variant.sku;
+    if (!window.confirm(`Remove this photo from ${scope}? This removes it from the HIDI product gallery.`)) return;
+
+    const productId = product.id;
+    void run(async () => {
+      const params = new URLSearchParams({
+        imageId: photo.id,
+        applyToColor: String(applyToColor),
+      });
+      const response = await fetch(
+        `/api/admin/inventory/${encodeURIComponent(variant.id)}/images?${params}`,
+        { method: "DELETE", cache: "no-store" },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const detail = Array.isArray(body?.message) ? body.message.join(". ") : body?.message;
+        throw new Error(typeof detail === "string" ? detail : "Unable to remove photo.");
+      }
+
+      accept(await productApi<ProductRecord>(`/${encodeURIComponent(productId)}`));
+      setMessage(`Photo removed from ${scope}.`);
     });
   }
 
@@ -211,11 +271,11 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
     {product && <>
       <section className={styles.card}>
         <div className={styles.sectionTitle}><span>02</span><div><h2>SKUs & photography</h2><p>{product.variants.length} SKUs · {product.variants.reduce((n, v) => n + (v.inventory?.onHand ?? 0), 0)} pieces on hand. Add quantities only through Receive Stock.</p></div></div>
-        <label className={styles.inlineCheck}><input type="checkbox" checked={photoForColor} onChange={e => setPhotoForColor(e.target.checked)} disabled={busy || pending} /> Apply each uploaded photo to all existing sizes of that colour</label>
+        <label className={styles.inlineCheck}><input type="checkbox" checked={photoForColor} onChange={e => setPhotoForColor(e.target.checked)} disabled={busy || pending} /> Apply photo changes (add or remove) to all existing sizes of that colour</label>
         <p className={styles.notice}>Select up to 8 photos at a time, up to 5 MB each. Choosing files starts the upload. Uploads are saved separately from stock receipts. Keep this page open until the batch finishes.</p>
         {pending && <p className={styles.notice}>Save or cancel your pending edits before uploading photos, publishing or returning SKUs to a receipt.</p>}
         <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>SKU / colour / size</th><th>Selling / MRP</th><th>Stock</th><th>Photos</th><th>Actions</th></tr></thead><tbody>
-          {product.variants.map(v => <tr key={v.id}><td><strong>{v.color} / {v.size}</strong><small>{v.sku}</small><span className={styles.smallBadge}>{v.active ? "Enabled" : "Disabled"}</span></td><td>{money(v.pricePaise)}<small>MRP {money(v.mrpPaise)}</small></td><td>{v.inventory?.onHand ?? 0} on hand<small>{v.inventory?.reserved ?? 0} reserved</small></td><td><div className={styles.thumbnails}>{v.images.slice(0, 4).map(photo => <img key={photo.id} src={photo.url} alt={photo.alt || `${v.color} ${v.size}`} loading="lazy" />)}</div><small>{v.images.length} photo{v.images.length === 1 ? "" : "s"}</small></td><td><div className={styles.rowActions}><button type="button" disabled={busy || pending} onClick={() => setEditing({ variant: v, price: rupees(v.pricePaise), mrp: rupees(v.mrpPaise), weight: v.weightGrams?.toString() ?? "", active: v.active })}>Edit SKU</button><label className={styles.fileButton} aria-disabled={busy || pending}>Add photos<input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" disabled={busy || pending} onChange={e => { const files = Array.from(e.currentTarget.files ?? []); e.currentTarget.value = ""; if (files.length) upload(v, files); }} /></label></div></td></tr>)}
+          {product.variants.map(v => <tr key={v.id}><td><strong>{v.color} / {v.size}</strong><small>{v.sku}</small><span className={styles.smallBadge}>{v.active ? "Enabled" : "Disabled"}</span></td><td>{money(v.pricePaise)}<small>MRP {money(v.mrpPaise)}</small></td><td>{v.inventory?.onHand ?? 0} on hand<small>{v.inventory?.reserved ?? 0} reserved</small></td><td><div className={styles.thumbnails}>{v.images.length ? v.images.map(photo => <span className={styles.photoThumb} key={photo.id}><img src={photo.url} alt={photo.alt || `${v.color} ${v.size}`} loading="lazy" /><button type="button" className={styles.photoRemove} disabled={busy || pending} onClick={() => removePhoto(v, photo)} aria-label={`Remove photo from ${photoForColor ? `all ${v.color} sizes` : v.sku}`} title="Remove photo">×</button></span>) : <small>No photos</small>}</div><small>{v.images.length} photo{v.images.length === 1 ? "" : "s"}</small></td><td><div className={styles.rowActions}><button type="button" disabled={busy || pending} onClick={() => setEditing({ variant: v, price: rupees(v.pricePaise), mrp: rupees(v.mrpPaise), weight: v.weightGrams?.toString() ?? "", active: v.active })}>Edit SKU</button><label className={styles.fileButton} aria-disabled={busy || pending}>Add photos<input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" disabled={busy || pending} onChange={e => { const files = Array.from(e.currentTarget.files ?? []); e.currentTarget.value = ""; if (files.length) upload(v, files); }} /></label></div></td></tr>)}
         </tbody></table></div>
         {editing && <form onSubmit={saveVariant} className={styles.variantEdit}><h3>Edit {editing.variant.color} / {editing.variant.size}</h3><p>SKU, colour, size and stock remain unchanged.</p><fieldset disabled={busy} className={styles.fieldset}><div className={styles.grid}>
           <label>Selling price ₹<input required inputMode="decimal" value={editing.price} onChange={e => setEditing({ ...editing, price: e.target.value })} /></label><label>MRP ₹<input required inputMode="decimal" value={editing.mrp} onChange={e => setEditing({ ...editing, mrp: e.target.value })} /></label><label>Weight (grams)<input inputMode="numeric" value={editing.weight} onChange={e => setEditing({ ...editing, weight: e.target.value })} /></label><label className={styles.inlineCheck}><input type="checkbox" checked={editing.active} onChange={e => setEditing({ ...editing, active: e.target.checked })} />SKU enabled</label></div><div className={styles.actions}><button type="button" onClick={() => setEditing(null)}>Cancel SKU edit</button><button type="submit" className={styles.primary}>Save SKU</button></div></fieldset></form>}
