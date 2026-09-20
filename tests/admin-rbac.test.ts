@@ -38,6 +38,12 @@ function fixture(input: {
         Object.assign(row, args.data);
         return structuredClone(row);
       },
+      count: async () => staff.length,
+      create: async (args: any) => {
+        const row = { id: `admin-${staff.length + 1}`, lastLoginAt: null, ...args.data };
+        staff.push(row);
+        return structuredClone(row);
+      },
     },
   };
   const supabase: any = {
