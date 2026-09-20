@@ -5,6 +5,7 @@ import { RazorpayService } from "../razorpay/razorpay.service.js";
 import type { VerifiedAuthUser } from "../auth/supabase-auth.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
+import { appendOrderAudit } from "../audit/order-audit.js";
 
 const RESERVATION_MINUTES = 15;
 const MAX_PAISE = 2_147_483_647;
@@ -153,6 +154,24 @@ export class CheckoutService {
           },
         },
       });
+      await appendOrderAudit(tx, {
+        orderId: created.id,
+        eventType: "ORDER_CREATED",
+        actorType: auth ? "CUSTOMER" : "SYSTEM",
+        actorId: auth?.id ?? null,
+        entityType: "ORDER",
+        entityId: created.id,
+        toStatus: "PENDING_PAYMENT",
+        amountPaise: created.totalPaise,
+        eventKey: `order:${created.id}:created`,
+        source: "CHECKOUT",
+        metadata: {
+          itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
+          subtotalPaise,
+          walletAppliedPaise: walletPaise,
+          guestCheckout: !auth,
+        },
+      });
       // Created order is exclusively owned by this transaction. Every other
       // lifecycle path locks Order first, then Wallet, then sorted Inventory.
       if (walletAccount) {
@@ -186,9 +205,36 @@ export class CheckoutService {
         if (!await this.wallet.consume(tx, created.id)) throw new ConflictException("Wallet funds changed. Please review your bag and try again.");
         for (const item of cart.items) await tx.inventory.update({ where: { variantId: item.variantId }, data: { onHand: { decrement: item.quantity }, reserved: { decrement: item.quantity } } });
         await tx.inventoryReservation.updateMany({ where: { orderId: created.id, status: "ACTIVE" }, data: { status: "CONSUMED", consumedAt: new Date() } });
-        await tx.payment.create({ data: { orderId: created.id, provider: "WALLET", amountPaise: 0, status: "CAPTURED", method: "wallet" } });
+        const walletPayment = await tx.payment.create({ data: { orderId: created.id, provider: "WALLET", amountPaise: 0, status: "CAPTURED", method: "wallet" } });
+        const confirmed = await tx.order.update({ where: { id: created.id }, data: { status: "CONFIRMED" } });
+        await appendOrderAudit(tx, {
+          orderId: created.id,
+          eventType: "PAYMENT_CAPTURED",
+          actorType: "SYSTEM",
+          actorId: "HIDI_WALLET",
+          entityType: "PAYMENT",
+          entityId: walletPayment.id,
+          fromStatus: "CREATED",
+          toStatus: "CAPTURED",
+          amountPaise: created.totalPaise,
+          eventKey: `wallet-payment:${walletPayment.id}:captured`,
+          source: "CHECKOUT",
+          metadata: { provider: "WALLET", walletAppliedPaise: created.walletAppliedPaise },
+        });
+        await appendOrderAudit(tx, {
+          orderId: created.id,
+          eventType: "ORDER_CONFIRMED",
+          actorType: "SYSTEM",
+          entityType: "ORDER",
+          entityId: created.id,
+          fromStatus: "PENDING_PAYMENT",
+          toStatus: "CONFIRMED",
+          eventKey: `order:${created.id}:payment-outcome:CONFIRMED`,
+          source: "CHECKOUT",
+          metadata: { provider: "WALLET" },
+        });
         await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-        return tx.order.update({ where: { id: created.id }, data: { status: "CONFIRMED" } });
+        return confirmed;
       }
       return created;
     });
@@ -206,10 +252,24 @@ export class CheckoutService {
         await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
         const pending = await tx.order.findUnique({ where: { id: order.id } });
         if (!pending || pending.status !== "PENDING_PAYMENT" || expiresAt <= new Date()) throw new ConflictException("Checkout expired before payment was ready. Please start a new attempt.");
-        return tx.payment.create({ data: {
+        const payment = await tx.payment.create({ data: {
           orderId: order.id, providerOrderId: providerOrder.id,
           amountPaise: order.totalPaise - order.walletAppliedPaise, status: "CREATED",
         } });
+        await appendOrderAudit(tx, {
+          orderId: order.id,
+          eventType: "PAYMENT_CREATED",
+          actorType: "SYSTEM",
+          entityType: "PAYMENT",
+          entityId: payment.id,
+          toStatus: "CREATED",
+          amountPaise: payment.amountPaise,
+          eventKey: `payment:${providerOrder.id}:created`,
+          correlationId: providerOrder.id,
+          source: "CHECKOUT",
+          metadata: { provider: "RAZORPAY", providerOrderId: providerOrder.id },
+        });
+        return payment;
       });
       return this.checkoutView(order, payment);
     } catch (error) {
@@ -369,10 +429,24 @@ export class CheckoutService {
           data: { status: "RELEASED", releasedAt: new Date() },
         });
       }
-      await tx.order.updateMany({
+      const released = await tx.order.updateMany({
         where: { id: orderId, status: "PENDING_PAYMENT" },
         data: { status: orderStatus },
       });
+      if (released.count > 0) {
+        await appendOrderAudit(tx, {
+          orderId,
+          eventType: "ORDER_CANCELLED",
+          actorType: "SYSTEM",
+          entityType: "ORDER",
+          entityId: orderId,
+          fromStatus: "PENDING_PAYMENT",
+          toStatus: orderStatus,
+          eventKey: `order:${orderId}:cancelled`,
+          source: "CHECKOUT_RESERVATION",
+          metadata: { releasedReservationCount: reservations.length },
+        });
+      }
     });
   }
 
