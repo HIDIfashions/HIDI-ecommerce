@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "prisma generate && tsx watch src/main.ts",
-    "start:dev": "prisma generate && tsx watch src/main.ts",
+    "dev": "prisma generate && node scripts/dev.mjs",
+    "start:dev": "prisma generate && node scripts/dev.mjs",
     "build": "prisma generate && nest build",
     "start:prod": "node dist/main.js",
     "lint": "eslint src --ext .ts",
