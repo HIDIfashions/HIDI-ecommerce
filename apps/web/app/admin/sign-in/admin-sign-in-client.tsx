@@ -21,8 +21,16 @@ export function AdminSignInClient() {
   useEffect(() => {
     let active = true;
     void fetch("/api/admin/session", { cache: "no-store" })
-      .then((response) => {
-        if (active && response.ok) router.replace("/admin/orders");
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!active) return;
+        if (response.ok && body?.admin?.authMode === "SUPABASE") {
+          router.replace("/admin/orders");
+          return;
+        }
+        if (response.ok && body?.admin?.authMode === "LEGACY_KEY") {
+          await fetch("/api/admin/session", { method: "DELETE" }).catch(() => undefined);
+        }
       })
       .finally(() => {
         if (active) setBusy(false);
