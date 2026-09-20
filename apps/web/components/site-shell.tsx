@@ -13,11 +13,14 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <div className="announcement">
-        <span>Complimentary shipping above ₹1,499</span>
-        <span aria-hidden="true">•</span>
-        <span>Easy exchange within 7 days</span>
-        <span aria-hidden="true">•</span>
-        <span>100% secure payments</span>
+        <div className="announcement-desktop">
+          <span>Complimentary shipping above ₹1,499</span>
+          <span aria-hidden="true">•</span>
+          <span>Easy exchange within 7 days</span>
+          <span aria-hidden="true">•</span>
+          <span>100% secure payments</span>
+        </div>
+        <span className="announcement-mobile">Free shipping ₹1,499+ · 7-day exchange</span>
       </div>
       <Header />
       <main>{children}</main>
