@@ -93,6 +93,9 @@ export class AccountService {
                 },
               },
             },
+            variant: {
+              include: { images: { orderBy: { position: "asc" }, take: 1 } },
+            },
             returnRequests: { orderBy: { createdAt: "desc" } },
           },
           orderBy: { id: "asc" },
@@ -157,7 +160,7 @@ export class AccountService {
               id: item.id,
               productName: item.productName,
               slug: item.product.slug,
-              image: item.product.images[0]?.url ?? null,
+              image: item.variant.images[0]?.url ?? item.product.images[0]?.url ?? null,
               size: item.size,
               color: item.color,
               quantity: item.quantity,
