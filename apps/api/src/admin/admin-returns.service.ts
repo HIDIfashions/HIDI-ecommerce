@@ -5,6 +5,7 @@ import { RazorpayService } from "../razorpay/razorpay.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 import { allocateOriginalTenderRefund } from "./return-refund-policy.js";
+import { appendOrderAudit } from "../audit/order-audit.js";
 
 const ACTIONS = new Set([
   "APPROVE",
@@ -85,7 +86,7 @@ export class AdminReturnsService {
           exchangeReservedAt = new Date();
         }
 
-        return tx.returnRequest.update({
+        const updated = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "APPROVED",
@@ -95,6 +96,22 @@ export class AdminReturnsService {
             exchangeReservedAt,
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: request.type === "EXCHANGE" ? "EXCHANGE_APPROVED" : "RETURN_APPROVED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "APPROVED",
+          eventKey: `return:${request.id}:approved`,
+          source: "ADMIN_PORTAL",
+          metadata: request.type === "EXCHANGE"
+            ? { requestedVariantId: request.requestedVariantId, quantity: request.quantity, exchangeReservationStatus }
+            : { quantity: request.quantity },
+        });
+        return updated;
       }
 
       if (action === "REJECT") {
@@ -116,23 +133,52 @@ export class AdminReturnsService {
             exchangeReservationStatus: request.exchangeReservationStatus === "ACTIVE" ? "RELEASED" : request.exchangeReservationStatus,
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: request.type === "EXCHANGE" ? "EXCHANGE_REJECTED" : "RETURN_REJECTED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "REJECTED",
+          eventKey: `return:${request.id}:rejected`,
+          source: "ADMIN_PORTAL",
+          metadata: { reason },
+        });
         return updated;
       }
 
       if (action === "SCHEDULE_PICKUP") {
         if (request.status !== "APPROVED") throw new ConflictException("Approve the request before scheduling pickup");
         const provider = this.requiredText(body.provider, "Pickup provider", 80);
-        return tx.returnRequest.update({
+        const pickupAwb = this.optionalText(body.awb, 120);
+        const pickupTrackingUrl = this.optionalUrl(body.trackingUrl);
+        const updated = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "PICKUP_SCHEDULED",
             pickupProvider: provider,
-            pickupAwb: this.optionalText(body.awb, 120),
-            pickupTrackingUrl: this.optionalUrl(body.trackingUrl),
+            pickupAwb,
+            pickupTrackingUrl,
             pickupScheduledAt: new Date(),
             adminNote: this.note(body.note),
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: request.type === "EXCHANGE" ? "EXCHANGE_PICKUP_SCHEDULED" : "RETURN_PICKUP_SCHEDULED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "PICKUP_SCHEDULED",
+          eventKey: `return:${request.id}:pickup-scheduled`,
+          source: "ADMIN_PORTAL",
+          metadata: { provider, awb: pickupAwb, trackingUrl: pickupTrackingUrl },
+        });
+        return updated;
       }
 
       if (action === "MARK_RECEIVED") {
@@ -175,7 +221,7 @@ export class AdminReturnsService {
           });
         }
 
-        return tx.returnRequest.update({
+        const updated = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "RECEIVED",
@@ -184,6 +230,25 @@ export class AdminReturnsService {
             adminNote: this.note(body.note),
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: request.type === "EXCHANGE" ? "EXCHANGE_RECEIVED" : "RETURN_RECEIVED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "RECEIVED",
+          eventKey: `return:${request.id}:received`,
+          source: "ADMIN_PORTAL",
+          metadata: {
+            inventoryDisposition: disposition,
+            quantity: request.quantity,
+            originalVariantId: request.orderItem.variantId,
+            inventoryRestocked: disposition === "RESTOCK",
+          },
+        });
+        return updated;
       }
 
       if (action === "SHIP_EXCHANGE") {
@@ -216,7 +281,7 @@ export class AdminReturnsService {
           },
         });
 
-        return tx.returnRequest.update({
+        const updated = await tx.returnRequest.update({
           where: { id: request.id },
           data: {
             status: "EXCHANGE_SHIPPED",
@@ -228,6 +293,26 @@ export class AdminReturnsService {
             adminNote: this.note(body.note),
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: request.orderId,
+          eventType: "EXCHANGE_SHIPPED",
+          actorType: "ADMIN",
+          actorId: "HIDI_ADMIN",
+          entityType: "RETURN_REQUEST",
+          entityId: request.id,
+          fromStatus: request.status,
+          toStatus: "EXCHANGE_SHIPPED",
+          eventKey: `return:${request.id}:exchange-shipped`,
+          source: "ADMIN_PORTAL",
+          metadata: {
+            provider,
+            awb,
+            trackingUrl,
+            requestedVariantId: request.requestedVariantId,
+            quantity: request.quantity,
+          },
+        });
+        return updated;
       }
 
       throw new BadRequestException("Unsupported return action");
