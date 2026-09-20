@@ -409,7 +409,7 @@ model OrderAuditEvent {
   source        String?
   metadata      Json?
   createdAt     DateTime @default(now())
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
   @@index([orderId, createdAt, id])
   @@index([eventType, createdAt])
