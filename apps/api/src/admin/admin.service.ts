@@ -54,7 +54,8 @@ export class AdminService {
           }
         : null,
       returnCount: order.returnRequests?.length ?? 0,
-      activeReturnCount: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).length,\n      activeReturnQuantity: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).reduce((sum: number, request: any) => sum + request.quantity, 0),
+      activeReturnCount: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).length,
+      activeReturnQuantity: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).reduce((sum: number, request: any) => sum + request.quantity, 0),
       afterSalesStatus: (order.returnRequests ?? []).find((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status))?.status
         ?? order.returnRequests?.[0]?.status
         ?? null,
