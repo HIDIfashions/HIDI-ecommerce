@@ -1,6 +1,10 @@
 import { spawn, spawnSync } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const cwd = new URL("..", import.meta.url).pathname;
+const cwd = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const entry = resolve(cwd, "dist/main.js");
 const children = new Set();
 
 function runOnce(command, args) {
@@ -12,11 +16,9 @@ function runOnce(command, args) {
 function start(command, args) {
   const child = spawn(command, args, { cwd, stdio: "inherit" });
   children.add(child);
-  child.on("exit", (code, signal) => {
+  child.on("exit", (code) => {
     children.delete(child);
-    if (!shuttingDown && code && code !== 0) {
-      shutdown(code);
-    }
+    if (!shuttingDown && code && code !== 0) shutdown(code);
   });
   return child;
 }
@@ -34,7 +36,24 @@ function shutdown(code = 0) {
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
-runOnce("pnpm", ["exec", "tsc", "-p", "tsconfig.json"]);
+// A stale incremental cache can tell TypeScript that the project is up to date
+// even after dist/ has been removed. Development must always start from a real
+// emitted entrypoint, otherwise Node watches a file that does not exist.
+rmSync(resolve(cwd, "dist"), { recursive: true, force: true });
+rmSync(resolve(cwd, "tsconfig.tsbuildinfo"), { force: true });
+
+runOnce("pnpm", [
+  "exec",
+  "tsc",
+  "-p",
+  "tsconfig.json",
+  "--incremental",
+  "false",
+]);
+
+if (!existsSync(entry)) {
+  throw new Error(`TypeScript completed without creating ${entry}`);
+}
 
 start("pnpm", [
   "exec",
@@ -42,7 +61,9 @@ start("pnpm", [
   "-p",
   "tsconfig.json",
   "--watch",
+  "--incremental",
+  "false",
   "--preserveWatchOutput",
 ]);
 
-start(process.execPath, ["--watch", "dist/main.js"]);
+start(process.execPath, ["--watch", entry]);
