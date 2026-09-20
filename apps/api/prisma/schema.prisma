@@ -385,11 +385,35 @@ model Order {
   rewardAccrual   RewardAccrual?
   walletEntries   WalletLedger[]
   returnRequests  ReturnRequest[]
+  auditEvents     OrderAuditEvent[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([customerPhone])
   @@index([cartSessionId])
+}
+
+model OrderAuditEvent {
+  id            String   @id @default(cuid())
+  orderId       String
+  eventType     String
+  actorType     String
+  actorId       String?
+  entityType    String?
+  entityId      String?
+  fromStatus    String?
+  toStatus      String?
+  amountPaise   Int?
+  eventKey      String?  @unique
+  correlationId String?
+  source        String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt, id])
+  @@index([eventType, createdAt])
+  @@index([correlationId])
 }
 
 model ReviewFollowUp {
