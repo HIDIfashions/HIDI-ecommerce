@@ -16,7 +16,9 @@ async function bootstrap() {
     credentials: true,
   });
   app.enableShutdownHooks();
-  const port = Number(process.env.API_PORT ?? 4000);
+
+  // Cloud platforms such as Railway inject PORT. Keep API_PORT for local/Codespaces use.
+  const port = Number(process.env.PORT ?? process.env.API_PORT ?? 4000);
   await app.listen({ port, host: "0.0.0.0" });
 }
 
