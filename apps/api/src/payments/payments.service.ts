@@ -50,10 +50,39 @@ export class PaymentsService {
       await this.captureOrder(payment.id, entity.id, entity.method, entity);
     }
     if (event === "payment.failed" && entity?.order_id) {
-      await this.prisma.payment.updateMany({
-        where: { providerOrderId: entity.order_id, provider: "RAZORPAY", status: { in: ["CREATED", "AUTHORIZED"] } },
-        data: { status: "FAILED", providerPaymentId: entity.id ?? null, rawReference: entity as any },
+      const failedPayment = await this.prisma.payment.findFirst({
+        where: { providerOrderId: entity.order_id, provider: "RAZORPAY" },
       });
+      if (failedPayment) {
+        await this.prisma.$transaction(async (tx) => {
+          const updated = await tx.payment.updateMany({
+            where: { id: failedPayment.id, status: { in: ["CREATED", "AUTHORIZED"] } },
+            data: { status: "FAILED", providerPaymentId: entity.id ?? null, rawReference: entity as any },
+          });
+          if (updated.count > 0) {
+            await appendOrderAudit(tx, {
+              orderId: failedPayment.orderId,
+              eventType: "PAYMENT_FAILED",
+              actorType: "PROVIDER",
+              actorId: "RAZORPAY",
+              entityType: "PAYMENT",
+              entityId: failedPayment.id,
+              fromStatus: failedPayment.status,
+              toStatus: "FAILED",
+              amountPaise: failedPayment.amountPaise,
+              eventKey: `payment:${entity.id ?? entity.order_id}:failed`,
+              correlationId: entity.order_id,
+              source: "RAZORPAY_WEBHOOK",
+              metadata: {
+                providerPaymentId: entity.id ?? null,
+                providerOrderId: entity.order_id,
+                errorCode: entity.error_code ?? null,
+                errorDescription: entity.error_description ?? null,
+              },
+            });
+          }
+        });
+      }
       // A retry can use the same provider order: expiry releases the hold.
     }
     if (event === "refund.processed") await this.processRefund(payload?.payload?.refund?.entity);
