@@ -26,7 +26,8 @@ type AdminOrder = {
   };
   itemCount: number;
   returnCount?: number;
-  activeReturnCount?: number;\n  activeReturnQuantity?: number;
+  activeReturnCount?: number;
+  activeReturnQuantity?: number;
   afterSalesStatus?: string | null;
   afterSalesType?: string | null;
 };
