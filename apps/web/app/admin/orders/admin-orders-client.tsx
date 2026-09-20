@@ -26,7 +26,7 @@ type AdminOrder = {
   };
   itemCount: number;
   returnCount?: number;
-  activeReturnCount?: number;
+  activeReturnCount?: number;\n  activeReturnQuantity?: number;
   afterSalesStatus?: string | null;
   afterSalesType?: string | null;
 };
@@ -226,9 +226,9 @@ export function AdminOrdersClient() {
                   {order.activeReturnCount ? (
                     <>
                       <span className={`${styles.status} ${styles.afterSalesPill}`}>
-                        {order.afterSalesType ? `${statusLabel(order.afterSalesType)} · ${statusLabel(order.afterSalesStatus ?? "REQUESTED")}` : statusLabel(order.afterSalesStatus ?? "RETURN REQUESTED")}
+                        {`${order.activeReturnQuantity ?? order.activeReturnCount ?? 0} of ${order.itemCount} item${order.itemCount === 1 ? "" : "s"} · ${order.afterSalesType === "EXCHANGE" ? "Exchange" : "Return"} in progress`}
                       </span>
-                      <small>Fulfilment: {statusLabel(order.status)}</small>
+                      <small>{statusLabel(order.afterSalesStatus ?? "REQUESTED")} · Fulfilment: {statusLabel(order.status)}</small>
                     </>
                   ) : (
                     <span className={`${styles.status} ${styles[`status${order.status}`] ?? ""}`}>{statusLabel(order.status)}</span>
