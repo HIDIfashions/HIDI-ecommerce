@@ -122,19 +122,13 @@ test("admin RBAC permissions separate support, operations, catalog and owner dut
   assert.equal(service.hasPermission(operations, "catalog:write"), false);
 });
 
-test("legacy shared key remains a development-only break-glass path unless explicitly enabled in production", async () => {
+test("legacy shared key is disabled by default and requires an explicit break-glass flag", async () => {
   const beforeKey = process.env.ADMIN_API_KEY;
   const beforeLegacy = process.env.ADMIN_LEGACY_KEY_ENABLED;
-  const beforeNodeEnv = process.env.NODE_ENV;
   try {
     process.env.ADMIN_API_KEY = "test-admin-key";
-    process.env.NODE_ENV = "test";
     delete process.env.ADMIN_LEGACY_KEY_ENABLED;
-    const actor = await fixture().service.resolveActor({ adminKey: "test-admin-key" });
-    assert.equal(actor.role, "OWNER");
-    assert.equal(actor.authMode, "LEGACY_KEY");
 
-    process.env.NODE_ENV = "production";
     await assert.rejects(
       () => fixture().service.resolveActor({ adminKey: "test-admin-key" }),
       { name: "UnauthorizedException" },
@@ -142,10 +136,10 @@ test("legacy shared key remains a development-only break-glass path unless expli
 
     process.env.ADMIN_LEGACY_KEY_ENABLED = "true";
     const emergency = await fixture().service.resolveActor({ adminKey: "test-admin-key" });
+    assert.equal(emergency.role, "OWNER");
     assert.equal(emergency.authMode, "LEGACY_KEY");
   } finally {
     if (beforeKey === undefined) delete process.env.ADMIN_API_KEY; else process.env.ADMIN_API_KEY = beforeKey;
     if (beforeLegacy === undefined) delete process.env.ADMIN_LEGACY_KEY_ENABLED; else process.env.ADMIN_LEGACY_KEY_ENABLED = beforeLegacy;
-    if (beforeNodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = beforeNodeEnv;
   }
 });
