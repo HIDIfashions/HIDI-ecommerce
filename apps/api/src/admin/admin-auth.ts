@@ -174,9 +174,7 @@ export class AdminAuthService {
 
     const supplied = normalize(input.adminKey);
     const expected = normalize(process.env.ADMIN_API_KEY);
-    const legacyEnabled =
-      process.env.ADMIN_LEGACY_KEY_ENABLED === "true" ||
-      process.env.NODE_ENV !== "production";
+    const legacyEnabled = process.env.ADMIN_LEGACY_KEY_ENABLED === "true";
 
     if (legacyEnabled && supplied && expected && safeEqual(supplied, expected)) {
       return {
