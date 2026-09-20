@@ -103,3 +103,36 @@ export async function POST(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ variantId: string }> },
+) {
+  if (!isAdminRequest(request)) return NextResponse.json({ message: "Admin session expired" }, { status: 401 });
+  const apiKey = process.env.ADMIN_API_KEY;
+  if (!apiKey) return NextResponse.json({ message: "ADMIN_API_KEY is missing in apps/web/.env.local" }, { status: 500 });
+
+  const { variantId } = await context.params;
+  const imageId = request.nextUrl.searchParams.get("imageId")?.trim() ?? "";
+  const applyToColor = request.nextUrl.searchParams.get("applyToColor") === "true";
+  if (!imageId) return NextResponse.json({ message: "Choose a photo to remove" }, { status: 400 });
+
+  try {
+    const response = await fetch(
+      `${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images/${encodeURIComponent(imageId)}?applyToColor=${applyToColor}`,
+      {
+        method: "DELETE",
+        headers: { "x-admin-key": apiKey },
+        cache: "no-store",
+      },
+    );
+    const body = await response.json().catch(() => ({ message: "Unable to remove SKU photo" }));
+    return NextResponse.json(body, { status: response.status });
+  } catch (error) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Unable to remove SKU photo" },
+      { status: 502 },
+    );
+  }
+}
+
