@@ -351,7 +351,7 @@ export function AdminCustomersClient() {
         <section className={styles.loginCard}>
           <p className={styles.eyebrow}>HIDI OPERATIONS</p>
           <h1>Admin access</h1>
-          <p>Use your verified HIDI staff email for role-based access.</p>\n          <p><a href="/admin/sign-in">Staff sign in →</a></p>\n          <p className={styles.meta}>Development / break-glass key:</p>
+          <p>Use your verified HIDI staff email for role-based access.</p>\n          <p><a href="/admin/sign-in">Staff sign in →</a></p>\n          <small>Development / break-glass key:</small>
           {error && <div className={styles.error}>{error}</div>}
           <form onSubmit={unlock}>
             <input type="password" value={draftKey} onChange={(event) => setDraftKey(event.target.value)} placeholder="Admin key" autoFocus />
