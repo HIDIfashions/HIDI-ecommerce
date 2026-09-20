@@ -171,6 +171,47 @@ details p { color: var(--muted); font-size: 13px; }
 .checkout-summary p { margin: 0; text-transform: uppercase; letter-spacing: .12em; font-size: 10px; }
 .checkout-summary strong { font-family: Georgia, serif; font-size: 42px; }
 .checkout-summary span { color: var(--muted); font-size: 12px; }
+.checkout-summary-items {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.checkout-summary-item {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+}
+.checkout-summary-thumb {
+  position: relative;
+  display: block;
+  width: 72px;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+.checkout-summary-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.checkout-summary-copy b {
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.checkout-summary-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
 
 @media (max-width: 1000px) {
   .header-inner { grid-template-columns: auto 1fr auto; width: calc(100% - 32px); height: 66px; }
