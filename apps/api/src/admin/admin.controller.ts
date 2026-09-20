@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Query, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from "@nestjs/common";
 import {
   AdminInventoryService,
   type AdjustInventoryInput,
@@ -9,8 +9,15 @@ import {
 import { AdminService } from "./admin.service.js";
 import { ReviewFollowUpService } from "./review-followup.service.js";
 import { AdminReturnsService } from "./admin-returns.service.js";
+import {
+  AdminGuard,
+  CurrentAdmin,
+  RequireAdminPermissions,
+  type AdminActor,
+} from "./admin-auth.js";
 
 @Controller("admin")
+@UseGuards(AdminGuard)
 export class AdminController {
   constructor(
     private readonly admin: AdminService,
@@ -19,125 +26,121 @@ export class AdminController {
     private readonly returns: AdminReturnsService,
   ) {}
 
-  private requireAdmin(key?: string) {
-    const expected = process.env.ADMIN_API_KEY;
-    if (!expected || !key || key !== expected) {
-      throw new UnauthorizedException("Admin access required");
-    }
+  @Get("me")
+  me(@CurrentAdmin() actor: AdminActor) {
+    return {
+      admin: {
+        id: actor.id,
+        email: actor.email,
+        displayName: actor.displayName,
+        role: actor.role,
+        authMode: actor.authMode,
+      },
+    };
   }
 
   @Get("orders")
+  @RequireAdminPermissions("order:read")
   orders(
-    @Headers("x-admin-key") adminKey?: string,
     @Query("q") query?: string,
     @Query("status") status?: string,
   ) {
-    this.requireAdmin(adminKey);
     return this.admin.listOrders(query, status);
   }
 
   @Get("review-followups")
-  reviewFollowUpList(@Headers("x-admin-key") adminKey?: string) {
-    this.requireAdmin(adminKey);
+  @RequireAdminPermissions("review:read")
+  reviewFollowUpList() {
     return this.reviewFollowUps.list();
   }
 
   @Post("review-followups/run")
-  reviewFollowUpRun(@Headers("x-admin-key") adminKey?: string) {
-    this.requireAdmin(adminKey);
+  @RequireAdminPermissions("review:write")
+  reviewFollowUpRun() {
     return this.reviewFollowUps.runOnce();
   }
 
   @Get("inventory")
+  @RequireAdminPermissions("inventory:read")
   inventoryList(
-    @Headers("x-admin-key") adminKey?: string,
     @Query("q") query?: string,
     @Query("status") status?: string,
   ) {
-    this.requireAdmin(adminKey);
     return this.inventory.list(query, status);
   }
 
   @Get("inventory/receipts")
-  inventoryReceipts(@Headers("x-admin-key") adminKey?: string) {
-    this.requireAdmin(adminKey);
+  @RequireAdminPermissions("inventory:read")
+  inventoryReceipts() {
     return this.inventory.listReceipts();
   }
 
   @Post("inventory/receipts")
+  @RequireAdminPermissions("inventory:write")
   createInventoryReceipt(
-    @Headers("x-admin-key") adminKey: string | undefined,
-    @Headers("x-admin-name") adminName: string | undefined,
+    @CurrentAdmin() actor: AdminActor,
     @Body() body: StockReceiptInput,
   ) {
-    this.requireAdmin(adminKey);
-    return this.inventory.createReceipt(body ?? {}, adminName);
+    return this.inventory.createReceipt(body ?? {}, actor.displayName);
   }
 
   @Post("inventory/receipts/:receiptId/post")
+  @RequireAdminPermissions("inventory:write")
   postInventoryReceipt(
-    @Headers("x-admin-key") adminKey: string | undefined,
-    @Headers("x-admin-name") adminName: string | undefined,
+    @CurrentAdmin() actor: AdminActor,
     @Param("receiptId") receiptId: string,
   ) {
-    this.requireAdmin(adminKey);
-    return this.inventory.postReceipt(receiptId, adminName);
+    return this.inventory.postReceipt(receiptId, actor.displayName);
   }
 
   @Get("inventory/:variantId/history")
-  inventoryHistory(
-    @Headers("x-admin-key") adminKey: string | undefined,
-    @Param("variantId") variantId: string,
-  ) {
-    this.requireAdmin(adminKey);
+  @RequireAdminPermissions("inventory:read")
+  inventoryHistory(@Param("variantId") variantId: string) {
     return this.inventory.history(variantId);
   }
 
   @Patch("inventory/:variantId")
+  @RequireAdminPermissions("inventory:write")
   adjustInventory(
-    @Headers("x-admin-key") adminKey: string | undefined,
-    @Headers("x-admin-name") adminName: string | undefined,
+    @CurrentAdmin() actor: AdminActor,
     @Param("variantId") variantId: string,
     @Body() body: AdjustInventoryInput,
   ) {
-    this.requireAdmin(adminKey);
-    return this.inventory.adjust(variantId, body, adminName);
+    return this.inventory.adjust(variantId, body, actor.displayName);
   }
 
   @Post("inventory/:variantId/images/ticket")
+  @RequireAdminPermissions("catalog:write")
   createInventoryVariantImageUploadTicket(
-    @Headers("x-admin-key") adminKey: string | undefined,
     @Param("variantId") variantId: string,
     @Body() body: VariantImageUploadTicketInput,
   ) {
-    this.requireAdmin(adminKey);
     return this.inventory.createVariantImageUploadTicket(variantId, body ?? {});
   }
 
   @Post("inventory/:variantId/images")
+  @RequireAdminPermissions("catalog:write")
   addInventoryVariantImage(
-    @Headers("x-admin-key") adminKey: string | undefined,
     @Param("variantId") variantId: string,
     @Body() body: VariantImageInput,
   ) {
-    this.requireAdmin(adminKey);
     return this.inventory.addVariantImage(variantId, body ?? {});
   }
 
   @Delete("inventory/:variantId/images/:imageId")
+  @RequireAdminPermissions("catalog:write")
   removeInventoryVariantImage(
-    @Headers("x-admin-key") adminKey: string | undefined,
     @Param("variantId") variantId: string,
     @Param("imageId") imageId: string,
     @Query("applyToColor") applyToColor?: string,
   ) {
-    this.requireAdmin(adminKey);
     return this.inventory.removeVariantImage(variantId, imageId, applyToColor === "true");
   }
 
   @Patch("returns/:requestId")
+  @RequireAdminPermissions("return:write")
   updateReturn(
-    @Headers("x-admin-key") adminKey: string | undefined,
+    @CurrentAdmin() actor: AdminActor,
     @Param("requestId") requestId: string,
     @Body() body: {
       action?: unknown;
@@ -149,64 +152,54 @@ export class AdminController {
       trackingUrl?: unknown;
     },
   ) {
-    this.requireAdmin(adminKey);
-    return this.returns.update(requestId, body ?? {});
+    return this.returns.update(requestId, body ?? {}, actor);
   }
 
   @Get("orders/:orderNumber")
-  order(
-    @Headers("x-admin-key") adminKey: string | undefined,
-    @Param("orderNumber") orderNumber: string,
-  ) {
-    this.requireAdmin(adminKey);
+  @RequireAdminPermissions("order:read")
+  order(@Param("orderNumber") orderNumber: string) {
     return this.admin.getOrder(orderNumber);
   }
 
   @Get("orders/:orderNumber/delhivery/serviceability")
-  delhiveryServiceability(
-    @Headers("x-admin-key") adminKey: string | undefined,
-    @Param("orderNumber") orderNumber: string,
-  ) {
-    this.requireAdmin(adminKey);
+  @RequireAdminPermissions("order:read")
+  delhiveryServiceability(@Param("orderNumber") orderNumber: string) {
     return this.admin.checkDelhiveryServiceability(orderNumber);
   }
 
   @Post("orders/:orderNumber/delhivery/manifest")
+  @RequireAdminPermissions("order:write")
   delhiveryManifest(
-    @Headers("x-admin-key") adminKey: string | undefined,
+    @CurrentAdmin() actor: AdminActor,
     @Param("orderNumber") orderNumber: string,
   ) {
-    this.requireAdmin(adminKey);
-    return this.admin.createDelhiveryShipment(orderNumber);
+    return this.admin.createDelhiveryShipment(orderNumber, actor);
   }
 
   @Get("orders/:orderNumber/delhivery/track")
-  delhiveryTrack(
-    @Headers("x-admin-key") adminKey: string | undefined,
-    @Param("orderNumber") orderNumber: string,
-  ) {
-    this.requireAdmin(adminKey);
+  @RequireAdminPermissions("order:read")
+  delhiveryTrack(@Param("orderNumber") orderNumber: string) {
     return this.admin.trackDelhivery(orderNumber);
   }
 
   @Put("orders/:orderNumber/shipment")
+  @RequireAdminPermissions("order:write")
   saveShipment(
-    @Headers("x-admin-key") adminKey: string | undefined,
+    @CurrentAdmin() actor: AdminActor,
     @Param("orderNumber") orderNumber: string,
     @Body() body: { provider?: string; awb?: string; trackingUrl?: string },
   ) {
-    this.requireAdmin(adminKey);
-    return this.admin.saveShipment(orderNumber, body ?? {});
+    return this.admin.saveShipment(orderNumber, body ?? {}, actor);
   }
 
   @Patch("orders/:orderNumber/status")
+  @RequireAdminPermissions("order:write")
   updateStatus(
-    @Headers("x-admin-key") adminKey: string | undefined,
+    @CurrentAdmin() actor: AdminActor,
     @Param("orderNumber") orderNumber: string,
     @Body() body: { status?: string },
   ) {
-    this.requireAdmin(adminKey);
     if (!body?.status) throw new BadRequestException("Status is required");
-    return this.admin.updateStatus(orderNumber, body.status);
+    return this.admin.updateStatus(orderNumber, body.status, actor);
   }
 }
