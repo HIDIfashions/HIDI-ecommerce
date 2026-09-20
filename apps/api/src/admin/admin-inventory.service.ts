@@ -380,6 +380,60 @@ export class AdminInventoryService {
     });
   }
 
+  async removeVariantImage(variantId: string, imageId: string, applyToColor = false) {
+    const image = await this.prisma.productVariantImage.findFirst({
+      where: { id: imageId, variantId },
+      select: {
+        id: true,
+        url: true,
+        storagePath: true,
+        variant: { select: { id: true, productId: true, color: true, sku: true } },
+      },
+    });
+    if (!image) throw new NotFoundException("Product photo not found");
+
+    const targetVariants = applyToColor
+      ? await this.prisma.productVariant.findMany({
+          where: { productId: image.variant.productId, color: image.variant.color },
+          select: { id: true },
+        })
+      : [{ id: image.variant.id }];
+    const targetIds = targetVariants.map((target) => target.id);
+
+    const removed = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.productVariantImage.deleteMany({
+        where: { variantId: { in: targetIds }, url: image.url },
+      });
+
+      // Keep display order compact after a photo is removed so new uploads append cleanly.
+      for (const targetId of targetIds) {
+        const remaining = await tx.productVariantImage.findMany({
+          where: { variantId: targetId },
+          orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+          select: { id: true, position: true },
+        });
+        for (let position = 0; position < remaining.length; position += 1) {
+          if (remaining[position].position !== position) {
+            await tx.productVariantImage.update({
+              where: { id: remaining[position].id },
+              data: { position },
+            });
+          }
+        }
+      }
+      return result.count;
+    });
+
+    return {
+      removed,
+      variantId,
+      imageId,
+      applyToColor,
+      url: image.url,
+      storagePath: image.storagePath,
+    };
+  }
+
   private toRow(variant: {
     id: string;
     sku: string;
