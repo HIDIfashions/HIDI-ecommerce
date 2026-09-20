@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   SetMetadata,
@@ -22,7 +24,8 @@ export type AdminPermission =
   | "catalog:read"
   | "catalog:write"
   | "review:read"
-  | "review:write";
+  | "review:write"
+  | "staff:manage";
 
 export type AdminActor = {
   id: string;
@@ -46,6 +49,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
     "catalog:write",
     "review:read",
     "review:write",
+    "staff:manage",
   ]),
   OPERATIONS: new Set<AdminPermission>([
     "order:read",
@@ -164,6 +168,111 @@ export class AdminAuthService {
     }
 
     throw new UnauthorizedException("Admin access required");
+  }
+
+  async listStaff() {
+    return this.prisma.adminStaff.findMany({
+      orderBy: [{ active: "desc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        role: true,
+        active: true,
+        authSubject: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async createStaff(input: { email?: unknown; displayName?: unknown; role?: unknown }) {
+    const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
+    const displayName = typeof input.displayName === "string" ? input.displayName.trim() : "";
+    const role = typeof input.role === "string" ? input.role.trim().toUpperCase() : "";
+
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw new BadRequestException("Enter a valid admin email");
+    if (displayName.length < 2 || displayName.length > 120) throw new BadRequestException("Enter a valid admin display name");
+    if (!isAdminRole(role)) throw new BadRequestException("Choose a valid admin role");
+
+    try {
+      return await this.prisma.adminStaff.create({
+        data: { email, displayName, role, active: true },
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          role: true,
+          active: true,
+          authSubject: true,
+          lastLoginAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    } catch (error: unknown) {
+      const code = typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : "";
+      if (code === "P2002") throw new ConflictException("An admin account already exists for this email");
+      throw error;
+    }
+  }
+
+  async updateStaff(
+    staffId: string,
+    input: { displayName?: unknown; role?: unknown; active?: unknown },
+    actor: AdminActor,
+  ) {
+    const current = await this.prisma.adminStaff.findUnique({ where: { id: staffId } });
+    if (!current) throw new BadRequestException("Admin staff account not found");
+
+    const nextDisplayName = input.displayName === undefined
+      ? current.displayName
+      : typeof input.displayName === "string"
+        ? input.displayName.trim()
+        : "";
+    const nextRole = input.role === undefined
+      ? current.role
+      : typeof input.role === "string"
+        ? input.role.trim().toUpperCase()
+        : "";
+    const nextActive = input.active === undefined ? current.active : input.active === true;
+
+    if (nextDisplayName.length < 2 || nextDisplayName.length > 120) {
+      throw new BadRequestException("Enter a valid admin display name");
+    }
+    if (!isAdminRole(nextRole)) throw new BadRequestException("Choose a valid admin role");
+
+    if (actor.id === current.id && (!nextActive || nextRole !== current.role)) {
+      throw new ConflictException("You cannot deactivate or change your own admin role");
+    }
+
+    if (current.role === "OWNER" && current.active && (!nextActive || nextRole !== "OWNER")) {
+      const activeOwners = await this.prisma.adminStaff.count({ where: { role: "OWNER", active: true } });
+      if (activeOwners <= 1) throw new ConflictException("HIDI must keep at least one active owner");
+    }
+
+    return this.prisma.adminStaff.update({
+      where: { id: current.id },
+      data: {
+        displayName: nextDisplayName,
+        role: nextRole,
+        active: nextActive,
+      },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        role: true,
+        active: true,
+        authSubject: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 
   hasPermission(actor: AdminActor, permission: AdminPermission) {
