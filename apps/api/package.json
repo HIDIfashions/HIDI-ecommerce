@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nest start --watch",
-    "start:dev": "nest start --watch",
-    "build": "nest build",
+    "dev": "prisma generate && node scripts/dev.mjs",
+    "start:dev": "prisma generate && node scripts/dev.mjs",
+    "build": "prisma generate && nest build",
     "start:prod": "node dist/main.js",
     "lint": "eslint src --ext .ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
     "test:customer-experience": "node --import tsx --test ../../tests/*.test.ts"
   },

@@ -9,6 +9,7 @@ import { ProductQualitySummary } from "@/components/product-quality-summary";
 import { ProductContactActions } from "@/components/product-contact-actions";
 import { RetentionTracker } from "@/components/retention-tracker";
 import { ProductCard } from "@/components/product-card";
+import { RecentlyViewedProducts } from "@/components/recently-viewed-products";
 import { formatPaise, getProduct, getProductReviews, getRelatedProducts } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
     )}
+
+    <RecentlyViewedProducts currentSlug={product.slug} />
 
     <ProductReviews data={reviews} />
   </div>;

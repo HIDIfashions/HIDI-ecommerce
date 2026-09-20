@@ -20,6 +20,7 @@ function harness() {
   const holds: any[] = [];
   const ledger: any[] = [];
   const accruals: any[] = [];
+  const returnRequests: any[] = [];
   const locks: string[] = [];
   const userLookups: unknown[] = [];
   let writes = 0;
@@ -63,16 +64,41 @@ function harness() {
       create: async (args: any) => { assert.equal(ledger.some((l) => l.eventKey === args.data.eventKey), false, "event key is unique"); writes += 1; const row = { id: `entry-${ledger.length + 1}`, createdAt: new Date(), ...args.data }; ledger.push(row); return row; },
       findMany: async (args: any) => ledger.filter((l) => l.walletId === args.where.walletId).slice().reverse().slice(0, args.take).map((l) => ({ ...l, order: { orderNumber: "HIDI-1" } })),
     },
+    returnRequest: {
+      findFirst: async (args: any) => returnRequests.find((request) =>
+        request.orderId === args.where.orderId && (!args.where.status?.in || args.where.status.in.includes(request.status)),
+      ) ?? null,
+    },
     rewardAccrual: {
       findUnique: async (args: any) => byWhere(accruals, args.where) ?? null,
       create: async (args: any) => { writes += 1; const row = { id: `accrual-${accruals.length + 1}`, ...args.data }; accruals.push(row); return row; },
       update: async (args: any) => update(accruals, args),
-      aggregate: async (args: any) => ({ _sum: { rewardPaise: accruals.filter((a) => a.walletId === args.where.walletId && a.status === args.where.status).reduce((sum, a) => sum + a.rewardPaise, 0) } }),
+      aggregate: async (args: any) => {
+        const relationFilter = args.where.order?.returnRequests;
+        const rows = accruals.filter((a) => {
+          if (a.walletId !== args.where.walletId || a.status !== args.where.status) return false;
+          if (!relationFilter) return true;
+          const activeForOrder = returnRequests.some((request) =>
+            request.orderId === a.orderId &&
+            (!relationFilter.some?.status?.in || relationFilter.some.status.in.includes(request.status)),
+          );
+          if (relationFilter.none) {
+            const disallowed = returnRequests.some((request) =>
+              request.orderId === a.orderId &&
+              (!relationFilter.none.status?.in || relationFilter.none.status.in.includes(request.status)),
+            );
+            return !disallowed;
+          }
+          if (relationFilter.some) return activeForOrder;
+          return true;
+        });
+        return { _sum: { rewardPaise: rows.reduce((sum, a) => sum + a.rewardPaise, 0) } };
+      },
       findMany: async (args: any) => accruals.filter((a) => args.where.status.in.includes(a.status) && (!args.where.id || a.id > args.where.id.gt)).slice(0, args.take),
     },
   };
   const prisma = { ...tx, $transaction: async (callback: any) => callback(tx) } as PrismaService;
-  return { tx, prisma, service: new WalletService(prisma), wallets, orders, holds, ledger, accruals, locks, userLookups, writes: () => writes };
+  return { tx, prisma, service: new WalletService(prisma), wallets, orders, holds, ledger, accruals, returnRequests, locks, userLookups, writes: () => writes };
 }
 
 async function enabledTest(fn: () => Promise<void>) {
@@ -105,6 +131,19 @@ test("GET summary is read-only, shows exact ledger not estimates and bounded his
   const none = await h.service.getSummary({ ...auth, id: "new-auth" });
   assert.equal(none.balancePaise, 0);
   assert.equal(h.wallets.length, 1);
+}));
+
+test("wallet summary excludes stale active-return accruals from pending and exposes them as held", async () => enabledTest(async () => {
+  const h = harness();
+  h.accruals.push(
+    { id: "accrual-clean", orderId: "order-1", walletId: "wallet-1", rewardPaise: 8_600, status: "PENDING" },
+    { id: "accrual-return", orderId: "order-return", walletId: "wallet-1", rewardPaise: 3_600, status: "PENDING" },
+  );
+  h.returnRequests.push({ id: "return-old", orderId: "order-return", status: "REQUESTED" });
+  const result = await h.service.getSummary(auth);
+  assert.equal(result.pendingPaise, 8_600);
+  assert.equal(result.heldPaise, 3_600);
+  assert.equal(h.writes(), 0, "summary stays read-only while correcting presentation");
 }));
 
 test("reservation then consumption debit once and lock order before wallet", async () => enabledTest(async () => {
@@ -191,6 +230,31 @@ test("return before maturity permanently suppresses accrual without inventing a 
   assert.equal(h.accruals[0].status, "REVERSED");
   assert.equal(h.wallets[0].balancePaise, 10_000);
   assert.equal(h.ledger.length, 0);
+}));
+
+test("active item return holds reward maturity and release lets normal reconciliation resume", async () => enabledTest(async () => {
+  const h = harness();
+  h.orders[0].walletAppliedPaise = 0;
+  h.orders[0].payments[0].amountPaise = 200_000;
+  h.orders[0].status = "DELIVERED";
+  await h.service.createAccrual(h.tx, h.orders[0], "wallet-1");
+  h.returnRequests.push({ id: "return-1", orderId: "order-1", status: "REQUESTED" });
+  assert.equal((await h.service.reconcileOrder("order-1")).status, "HELD");
+  assert.equal(h.accruals[0].status, "HELD");
+  h.returnRequests[0].status = "REJECTED";
+  assert.equal((await h.service.reconcileOrder("order-1")).status, "CREDITED");
+  assert.equal(h.wallets[0].balancePaise, 14_000);
+}));
+
+test("return refund wallet credit is idempotent and uses an immutable request key", async () => enabledTest(async () => {
+  const h = harness();
+  const first = await h.service.creditReturnRefund(h.tx, "order-1", "return-1", 2_500);
+  const second = await h.service.creditReturnRefund(h.tx, "order-1", "return-1", 2_500);
+  assert.equal(first, true);
+  assert.equal(second, false);
+  assert.equal(h.wallets[0].balancePaise, 12_500);
+  assert.equal(h.ledger.filter((entry) => entry.kind === "RETURN_REFUND").length, 1);
+  assert.equal(h.ledger.find((entry) => entry.kind === "RETURN_REFUND")?.eventKey, "wallet:return-refund:return-1");
 }));
 
 test("redeemed wallet funds restore only once after a full cash refund, never a partial", async () => enabledTest(async () => {

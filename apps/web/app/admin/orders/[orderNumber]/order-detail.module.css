@@ -79,6 +79,26 @@
 .statusSHIPPED { background: #e8edf1; }
 .statusDELIVERED { background: #e6eee6; }
 
+.afterSalesHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.afterSalesHeader small {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.afterSalesStatus {
+  border-color: #b4836d;
+  background: #fff3ec;
+  color: #6d3527;
+}
+
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(320px, .75fr);
@@ -236,7 +256,7 @@
   margin-top: 20px;
   padding: 18px;
   border: 1px solid var(--line);
-  background: #f8f5ef;
+  background: #fcf9f9;
   display: grid;
   gap: 13px;
 }
@@ -406,6 +426,7 @@
   .page { width: min(100% - 24px, 1280px); padding-top: 22px; }
   .header { align-items: flex-start; flex-direction: column; }
   .headerRight { width: 100%; justify-content: space-between; }
+  .afterSalesHeader { align-items: flex-end; }
   .sideColumn { grid-template-columns: 1fr; }
   .sideColumn .card:last-child { grid-column: auto; }
   .addressGrid { grid-template-columns: 1fr; gap: 0; }

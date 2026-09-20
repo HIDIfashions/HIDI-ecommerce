@@ -6,7 +6,7 @@ const cartInclude = {
     orderBy: { createdAt: "asc" as const },
     include: {
       product: { include: { images: { orderBy: { position: "asc" as const }, take: 1 } } },
-      variant: { include: { inventory: true } },
+      variant: { include: { inventory: true, images: { orderBy: { position: "asc" as const }, take: 1 } } },
     },
   },
 };
@@ -131,7 +131,7 @@ export class CartsService {
           id: item.product.id,
           slug: item.product.slug,
           name: item.product.name,
-          image: item.product.images[0]?.url ?? null,
+          image: item.variant.images[0]?.url ?? item.product.images[0]?.url ?? null,
         },
         variant: {
           id: item.variant.id,

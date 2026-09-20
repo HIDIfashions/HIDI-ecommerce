@@ -3,6 +3,7 @@ import { DelhiveryService } from "../delhivery/delhivery.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const ALLOWED_STATUSES = ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"] as const;
+const ACTIVE_RETURN_STATUSES = ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"];
 type ManagedOrderStatus = (typeof ALLOWED_STATUSES)[number];
 
 const NEXT_STATUS: Partial<Record<ManagedOrderStatus, ManagedOrderStatus>> = {
@@ -52,6 +53,48 @@ export class AdminService {
             updatedAt: order.shipments[0].updatedAt,
           }
         : null,
+      returnCount: order.returnRequests?.length ?? 0,
+      activeReturnCount: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).length,
+      activeReturnQuantity: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).reduce((sum: number, request: any) => sum + request.quantity, 0),
+      afterSalesStatus: (order.returnRequests ?? []).find((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status))?.status
+        ?? order.returnRequests?.[0]?.status
+        ?? null,
+      afterSalesType: (order.returnRequests ?? []).find((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status))?.type
+        ?? order.returnRequests?.[0]?.type
+        ?? null,
+      returns: (order.returnRequests ?? []).map((request: any) => ({
+        id: request.id,
+        orderItemId: request.orderItemId,
+        type: request.type,
+        reason: request.reason,
+        detail: request.detail,
+        quantity: request.quantity,
+        refundDestination: request.refundDestination,
+        requestedSize: request.requestedSize,
+        refundPaise: request.refundPaise,
+        status: request.status,
+        adminNote: request.adminNote,
+        rejectionReason: request.rejectionReason,
+        pickupProvider: request.pickupProvider,
+        pickupAwb: request.pickupAwb,
+        pickupTrackingUrl: request.pickupTrackingUrl,
+        pickupScheduledAt: request.pickupScheduledAt,
+        receivedAt: request.receivedAt,
+        inventoryDisposition: request.inventoryDisposition,
+        refundWalletPaise: request.refundWalletPaise,
+        refundCashPaise: request.refundCashPaise,
+        refundStatus: request.refundStatus,
+        refundProviderId: request.refundProviderId,
+        replacementProvider: request.replacementProvider,
+        replacementAwb: request.replacementAwb,
+        replacementTrackingUrl: request.replacementTrackingUrl,
+        replacementShippedAt: request.replacementShippedAt,
+        exchangeReservationStatus: request.exchangeReservationStatus,
+        createdAt: request.createdAt,
+        approvedAt: request.approvedAt,
+        processedAt: request.processedAt,
+        completedAt: request.completedAt,
+      })),
       itemCount: order.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
       items: order.items.map((item: any) => ({
         id: item.id,
@@ -83,16 +126,22 @@ export class AdminService {
       },
       payments: { orderBy: { createdAt: "desc" as const }, take: 1 },
       shipments: { orderBy: { createdAt: "desc" as const }, take: 1 },
+      returnRequests: { orderBy: { createdAt: "desc" as const } },
     };
   }
 
   async listOrders(query?: string, status?: string) {
     const q = query?.trim();
     const statusFilter = status && status !== "ALL" ? status : undefined;
+    const returnsOnly = statusFilter === "RETURNS";
 
     const orders = await this.prisma.order.findMany({
       where: {
-        ...(statusFilter ? { status: statusFilter as any } : {}),
+        ...(returnsOnly
+          ? { returnRequests: { some: { status: { in: ACTIVE_RETURN_STATUSES } } } }
+          : statusFilter
+            ? { status: statusFilter as any }
+            : {}),
         ...(q
           ? {
               OR: [

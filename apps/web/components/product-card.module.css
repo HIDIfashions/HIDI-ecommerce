@@ -2,7 +2,7 @@
   --ink: #30251f;
   --muted: #756d65;
   --line: #ddd4c8;
-  --paper: #fffdf9;
+  --paper: #ffffff;
   min-width: 0;
   height: 100%;
   display: flex;
@@ -92,7 +92,7 @@
 }
 
 .colourButton:hover { border-color: var(--line); }
-.colourActive { border-color: #a58e79; background: #f7f1e8; }
+.colourActive { border-color: #a58e79; background: #f9f5f5; }
 
 .swatch {
   width: 10px;
@@ -150,7 +150,7 @@
 
 .sizeButton:not(:disabled):hover { border-color: #651f23; color: #651f23; }
 .sizeButton.sizeActive { background: #651f23; color: #fff8ef; border-color: #651f23; }
-.sizeButton.unavailable { color: #aaa198; background: #f6f2ed; text-decoration: line-through; border-color: #ebe4db; }
+.sizeButton.unavailable { color: #aaa198; background: #f9f5f5; text-decoration: line-through; border-color: #ebe4db; }
 
 .availability {
   margin: 8px 0 10px;
@@ -203,7 +203,7 @@
   color: var(--ink);
 }
 
-.wishButton:hover { background: #f8efeb; border-color: #bd918d; color: #651f23; }
+.wishButton:hover { background: #f9f5f5; border-color: #bd918d; color: #651f23; }
 .wishSaved { background: #651f23; border-color: #651f23; color: #fff8ef; }
 .wishButton:disabled { opacity: .55; }
 
@@ -319,7 +319,7 @@
 
 .secondaryActions button:hover {
   border-color: var(--ink);
-  background: #f8f2ea;
+  background: #f9f5f5;
 }
 
 @container (max-width: 225px) {

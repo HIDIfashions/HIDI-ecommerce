@@ -14,6 +14,7 @@ type Tx = Prisma.TransactionClient;
 type WalletRow = { id: string; userId: string; authSubject: string; currency: string; balancePaise: number; reservedPaise: number };
 type AccrualOrder = WalletOrderAmounts & { id: string; userId: string | null; currency: string; createdAt: Date };
 type ReconciliationStatus = "CREDITED" | "REVERSED" | "HELD" | "PENDING" | "SKIPPED" | "UNCHANGED";
+const ACTIVE_RETURN_STATUSES = ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"];
 
 /**
  * Store-credit only. Every funds mutation locks Order -> WalletAccount in that
@@ -92,9 +93,26 @@ export class WalletService {
         enabled, currency: "INR", balancePaise: 0, reservedPaise: 0, availablePaise: 0, debtPaise: 0,
         pendingPaise: 0, heldPaise: 0, history: [], historyTruncated: false, policy,
       };
-      const [pending, held, history] = await Promise.all([
-        tx.rewardAccrual.aggregate({ where: { walletId: wallet.id, status: "PENDING" }, _sum: { rewardPaise: true } }),
+      const [pending, held, staleActiveReturnPending, history] = await Promise.all([
+        // Defensive read rule: an active return must never appear as spendable/pending
+        // reward even if an older request predates the transactional hold logic.
+        tx.rewardAccrual.aggregate({
+          where: {
+            walletId: wallet.id,
+            status: "PENDING",
+            order: { returnRequests: { none: { status: { in: ACTIVE_RETURN_STATUSES } } } },
+          },
+          _sum: { rewardPaise: true },
+        }),
         tx.rewardAccrual.aggregate({ where: { walletId: wallet.id, status: "HELD" }, _sum: { rewardPaise: true } }),
+        tx.rewardAccrual.aggregate({
+          where: {
+            walletId: wallet.id,
+            status: "PENDING",
+            order: { returnRequests: { some: { status: { in: ACTIVE_RETURN_STATUSES } } } },
+          },
+          _sum: { rewardPaise: true },
+        }),
         tx.walletLedger.findMany({
           where: { walletId: wallet.id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 21,
           select: { id: true, kind: true, deltaPaise: true, createdAt: true, order: { select: { orderNumber: true } } },
@@ -104,7 +122,8 @@ export class WalletService {
         enabled, currency: "INR", balancePaise: wallet.balancePaise, reservedPaise: wallet.reservedPaise,
         availablePaise: enabled ? spendablePaise(wallet.balancePaise, wallet.reservedPaise) : 0,
         debtPaise: Math.max(0, -wallet.balancePaise),
-        pendingPaise: pending._sum.rewardPaise ?? 0, heldPaise: held._sum.rewardPaise ?? 0,
+        pendingPaise: pending._sum.rewardPaise ?? 0,
+        heldPaise: (held._sum.rewardPaise ?? 0) + (staleActiveReturnPending._sum.rewardPaise ?? 0),
         history: history.slice(0, 20).map(({ order, ...entry }) => ({ ...entry, orderNumber: order?.orderNumber ?? null })),
         historyTruncated: history.length > 20, policy,
       };
@@ -201,6 +220,45 @@ export class WalletService {
     return true;
   }
 
+  /** Freeze reward maturity as soon as a customer opens a return/exchange. */
+  async holdForReturn(tx: Tx, orderId: string, requestId: string) {
+    await this.lockOrder(tx, orderId);
+    const accrual = await tx.rewardAccrual.findUnique({ where: { orderId } });
+    if (!accrual || accrual.status === "REVERSED") return false;
+    if (accrual.status === "CREDITED") {
+      return this.reverseEarned(tx, orderId, `RETURN_REQUESTED:${requestId}`);
+    }
+    await tx.rewardAccrual.update({
+      where: { id: accrual.id },
+      data: { status: "HELD", reason: `ACTIVE_RETURN:${requestId}`.slice(0, 240) },
+    });
+    return true;
+  }
+
+  /** Credit an approved customer refund to HIDI Wallet exactly once. */
+  async creditReturnRefund(tx: Tx, orderId: string, requestId: string, amountPaise: number) {
+    if (!validPaise(amountPaise) || amountPaise <= 0) throw new BadRequestException("Invalid wallet refund amount");
+    await this.lockOrder(tx, orderId);
+    const order = await tx.order.findUnique({ where: { id: orderId }, select: { userId: true, currency: true } });
+    if (!order?.userId || order.currency !== "INR") throw new ConflictException("Refund wallet requires a linked customer");
+    const account = await tx.walletAccount.findUnique({ where: { userId: order.userId } });
+    if (!account) throw new ConflictException("Customer wallet is not available for this refund");
+    const wallet = await this.lockWallet(tx, account.id);
+    const eventKey = `wallet:return-refund:${requestId}`;
+    const existing = await tx.walletLedger.findUnique({ where: { eventKey } });
+    if (existing) {
+      if (existing.walletId !== wallet.id || existing.orderId !== orderId || existing.deltaPaise !== amountPaise || existing.kind !== "RETURN_REFUND") {
+        throw new ConflictException("Wallet refund requires reconciliation");
+      }
+      return false;
+    }
+    await tx.walletLedger.create({
+      data: { walletId: wallet.id, orderId, kind: "RETURN_REFUND", deltaPaise: amountPaise, eventKey },
+    });
+    await tx.walletAccount.update({ where: { id: wallet.id }, data: { balancePaise: { increment: amountPaise } } });
+    return true;
+  }
+
   /** Conservative full reward reversal on any recorded return/refund. */
   async reverseEarned(tx: Tx, orderId: string, reason: string) {
     await this.lockOrder(tx, orderId);
@@ -257,6 +315,23 @@ export class WalletService {
       const wallet = await this.lockWallet(tx, accrual.walletId);
       if (order.userId !== wallet.userId) throw new ConflictException("Reward owner mismatch");
       if (accrual.status === "REVERSED") return { orderId, status: "UNCHANGED", reason: "ALREADY_REVERSED" };
+      const activeReturn = await tx.returnRequest.findFirst({
+        where: { orderId, status: { in: ACTIVE_RETURN_STATUSES } },
+        select: { id: true },
+      });
+      if (activeReturn) {
+        if (accrual.status === "CREDITED") {
+          await this.reverseEarned(tx, orderId, `ACTIVE_RETURN:${activeReturn.id}`);
+          return { orderId, status: "REVERSED", reason: "ACTIVE_RETURN" };
+        }
+        if (accrual.status !== "HELD" || accrual.reason !== `ACTIVE_RETURN:${activeReturn.id}`) {
+          await tx.rewardAccrual.update({
+            where: { id: accrual.id },
+            data: { status: "HELD", reason: `ACTIVE_RETURN:${activeReturn.id}` },
+          });
+        }
+        return { orderId, status: "HELD", reason: "ACTIVE_RETURN" };
+      }
       const decision = walletMaturity({ ...order, hold: order.walletHold }, accrual.returnWindowDays, new Date());
       if (decision.status === "REVERSE") {
         await this.reverseEarned(tx, orderId, decision.reason);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./order-detail.module.css";
+import { AdminReturnRequests, type AdminReturnRequest } from "./admin-return-requests";
 
 type Address = {
   firstName?: string;
@@ -44,6 +45,10 @@ type AdminOrder = {
     trackingUrl?: string | null;
   };
   itemCount: number;
+  returnCount?: number;
+  activeReturnCount?: number;
+  afterSalesStatus?: string | null;
+  returns?: AdminReturnRequest[];
   items: Array<{
     id: string;
     productName: string;
@@ -237,6 +242,9 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
   const name = [address.firstName, address.lastName].filter(Boolean).join(" ") || "Customer";
   const currentIndex = FLOW.indexOf(order.status);
   const next = NEXT_STATUS[order.status];
+  const activeReturn = (order.returns ?? []).find((request) =>
+    ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"].includes(request.status),
+  );
 
   return (
     <main className={styles.page}>
@@ -253,7 +261,14 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
         </div>
         <div className={styles.headerRight}>
           <strong>{money(order.totalPaise)}</strong>
-          <span className={`${styles.status} ${styles[`status${order.status}`] ?? ""}`}>{label(order.status)}</span>
+          {activeReturn ? (
+            <div className={styles.afterSalesHeader}>
+              <span className={`${styles.status} ${styles.afterSalesStatus}`}>{label(activeReturn.type)} · {label(activeReturn.status)}</span>
+              <small>Fulfilment: {label(order.status)}</small>
+            </div>
+          ) : (
+            <span className={`${styles.status} ${styles[`status${order.status}`] ?? ""}`}>{label(order.status)}</span>
+          )}
         </div>
       </header>
 
@@ -286,6 +301,13 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               <span className={styles.total}>Total <strong>{money(order.totalPaise)}</strong></span>
             </div>
           </section>
+
+          <AdminReturnRequests
+            orderNumber={order.orderNumber}
+            requests={order.returns ?? []}
+            items={order.items}
+            onUpdated={load}
+          />
 
           <section className={styles.card}>
             <p className={styles.eyebrow}>DELIVERY</p>

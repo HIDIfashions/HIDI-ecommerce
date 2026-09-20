@@ -1,4 +1,4 @@
-.page { min-height: 100vh; background: #f7f2e9; color: #2c2520; padding: 54px 20px 80px; }
+.page { min-height: 100vh; background: #ffffff; color: #2c2520; padding: 54px 20px 80px; }
 .hero, .list, .error, .notice, .footer { width: min(900px, 100%); margin-left: auto; margin-right: auto; }
 .hero { text-align: center; margin-bottom: 34px; }
 .eyebrow { margin: 0 0 12px; font-size: 10px; font-weight: 700; letter-spacing: .18em; }
@@ -6,9 +6,9 @@
 .hero > p:not(.eyebrow) { max-width: 670px; margin: 0 auto; color: #675e55; line-height: 1.7; }
 .progress { margin-top: 20px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #675e55; }
 .list { display: grid; gap: 22px; }
-.reviewCard { background: #fffdf9; border: 1px solid #ded4c5; padding: 26px; }
+.reviewCard { background: #ffffff; border: 1px solid #ded4c5; padding: 26px; }
 .product { display: grid; grid-template-columns: 92px 1fr; gap: 18px; align-items: center; padding-bottom: 22px; border-bottom: 1px solid #e8e0d5; }
-.product img, .imageFallback { width: 92px; height: 116px; object-fit: cover; background: #eee6da; }
+.product img, .imageFallback { width: 92px; height: 116px; object-fit: cover; background: #ffffff; }
 .imageFallback { display: grid; place-items: center; font-family: Georgia, serif; letter-spacing: .14em; }
 .product h2 { font-family: Georgia, serif; font-weight: 400; font-size: 23px; margin: 0 0 7px; }
 .product p { margin: 0 0 8px; color: #776d62; }
@@ -33,7 +33,7 @@
 .error { background: #fff2ef; border-color: #e3b8b1; color: #85372f; }
 .notice { background: #f0f6ed; border-color: #bfd1b9; color: #38553b; }
 .footer { text-align: center; color: #81776c; font-size: 11px; margin-top: 28px; }
-.card { width: min(620px, 100%); margin: 10vh auto 0; background: #fffdf9; border: 1px solid #ded4c5; padding: 34px; }
+.card { width: min(620px, 100%); margin: 10vh auto 0; background: #ffffff; border: 1px solid #ded4c5; padding: 34px; }
 @media (max-width: 620px) {
   .page { padding: 34px 14px 60px; }
   .reviewCard { padding: 18px; }

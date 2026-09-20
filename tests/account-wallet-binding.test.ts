@@ -58,7 +58,9 @@ function accountFixture(input: {
         record("order.findMany", args);
         return orders.filter((order) => matches(order, args.where)).map((order) => args.select?.id ? { id: order.id } : {
           ...order, createdAt: new Date("2026-09-01T00:00:00Z"), totalPaise: 100_000, walletAppliedPaise: 5_000,
-          payments: [{ status: "CAPTURED" }], items: [],
+          payments: [{ status: "CAPTURED" }],
+          shipments: [{ deliveredAt: new Date("2026-09-02T00:00:00Z"), createdAt: new Date("2026-09-01T00:00:00Z") }],
+          items: [],
         });
       },
       updateMany: async (args: any) => {
@@ -75,7 +77,7 @@ function accountFixture(input: {
       },
     },
   };
-  return { service: new AccountService(db as never), calls, users, wallets, orders };
+  return { service: new AccountService(db as never, {} as never), calls, users, wallets, orders };
 }
 
 test("existing wallet authSubject binding remains authoritative when verified email changes", async () => {

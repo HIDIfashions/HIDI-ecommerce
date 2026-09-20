@@ -1,14 +1,10 @@
-import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
 import { isAdminRequest } from "@/lib/admin-auth";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-
-function safePart(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
-}
+const UPLOAD_FUNCTION = "hidi-admin-product-image-upload";
 
 async function saveImageMetadata(apiKey: string, variantId: string, payload: Record<string, unknown>) {
   return fetch(`${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images`, {
@@ -16,6 +12,23 @@ async function saveImageMetadata(apiKey: string, variantId: string, payload: Rec
     headers: { "content-type": "application/json", "x-admin-key": apiKey },
     body: JSON.stringify(payload),
   });
+}
+
+async function createUploadTicket(apiKey: string, variantId: string, file: File) {
+  const response = await fetch(
+    `${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images/ticket`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-admin-key": apiKey },
+      body: JSON.stringify({ mimeType: file.type, sizeBytes: file.size }),
+      cache: "no-store",
+    },
+  );
+  const body = await response.json().catch(() => ({ message: "Unable to authorize image upload" }));
+  if (!response.ok || typeof body?.token !== "string") {
+    throw new Error(typeof body?.message === "string" ? body.message : "Unable to authorize image upload");
+  }
+  return body.token as string;
 }
 
 export async function POST(
@@ -47,44 +60,37 @@ export async function POST(
     }
 
     const supabaseUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, "");
-    const secretKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const bucket = process.env.SUPABASE_PRODUCT_IMAGES_BUCKET?.trim() || "hidi-products";
-    if (!supabaseUrl || !secretKey) {
+    if (!supabaseUrl) {
       return NextResponse.json(
-        { message: "Configure SUPABASE_URL and the server-only SUPABASE_SECRET_KEY to upload SKU photos" },
+        { message: "SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL is missing from the web server configuration" },
         { status: 500 },
       );
     }
-    if (!/^[a-zA-Z0-9_-]+$/.test(bucket)) {
-      return NextResponse.json({ message: "SUPABASE_PRODUCT_IMAGES_BUCKET contains unsupported characters" }, { status: 500 });
-    }
 
-    const original = safePart(file.name) || "product-image";
-    const extension = original.includes(".") ? original.split(".").pop() : file.type.split("/").pop();
-    const objectPath = `variants/${safePart(variantId)}/${Date.now()}-${randomUUID()}.${extension}`;
-    const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
-    const upload = await fetch(`${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodedPath}`, {
+    // The browser never receives a Supabase secret. HIDI's API issues a short-lived,
+    // one-use ticket and the Supabase Edge Function validates that ticket before upload.
+    const token = await createUploadTicket(apiKey, variantId, file);
+    const uploadForm = new FormData();
+    uploadForm.set("token", token);
+    uploadForm.set("variantId", variantId);
+    uploadForm.set("file", file);
+
+    const upload = await fetch(`${supabaseUrl}/functions/v1/${UPLOAD_FUNCTION}`, {
       method: "POST",
-      headers: {
-        apikey: secretKey,
-        authorization: `Bearer ${secretKey}`,
-        "content-type": file.type,
-        "x-upsert": "false",
-      },
-      body: await file.arrayBuffer(),
+      body: uploadForm,
+      signal: AbortSignal.timeout(90_000),
     });
-    if (!upload.ok) {
-      const details = await upload.json().catch(() => null);
+    const uploaded = await upload.json().catch(() => null);
+    if (!upload.ok || !uploaded?.url || !uploaded?.storagePath) {
       return NextResponse.json(
-        { message: details?.message ?? details?.error ?? "Supabase Storage rejected the image upload" },
+        { message: uploaded?.message ?? "Supabase Storage rejected the image upload" },
         { status: upload.status >= 400 && upload.status < 500 ? upload.status : 502 },
       );
     }
 
-    const publicUrl = `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encodedPath}`;
     const response = await saveImageMetadata(apiKey, variantId, {
-      url: publicUrl,
-      storagePath: objectPath,
+      url: uploaded.url,
+      storagePath: uploaded.storagePath,
       alt: String(form.get("alt") ?? ""),
       applyToColor: String(form.get("applyToColor") ?? "false") === "true",
     });
@@ -97,3 +103,36 @@ export async function POST(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ variantId: string }> },
+) {
+  if (!isAdminRequest(request)) return NextResponse.json({ message: "Admin session expired" }, { status: 401 });
+  const apiKey = process.env.ADMIN_API_KEY;
+  if (!apiKey) return NextResponse.json({ message: "ADMIN_API_KEY is missing in apps/web/.env.local" }, { status: 500 });
+
+  const { variantId } = await context.params;
+  const imageId = request.nextUrl.searchParams.get("imageId")?.trim() ?? "";
+  const applyToColor = request.nextUrl.searchParams.get("applyToColor") === "true";
+  if (!imageId) return NextResponse.json({ message: "Choose a photo to remove" }, { status: 400 });
+
+  try {
+    const response = await fetch(
+      `${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images/${encodeURIComponent(imageId)}?applyToColor=${applyToColor}`,
+      {
+        method: "DELETE",
+        headers: { "x-admin-key": apiKey },
+        cache: "no-store",
+      },
+    );
+    const body = await response.json().catch(() => ({ message: "Unable to remove SKU photo" }));
+    return NextResponse.json(body, { status: response.status });
+  } catch (error) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Unable to remove SKU photo" },
+      { status: 502 },
+    );
+  }
+}
+

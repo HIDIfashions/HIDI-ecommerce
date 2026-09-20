@@ -149,7 +149,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
             title="Click to inspect stitching and details"
             style={{
               position: "relative",
-              background: "#eee8df",
+              background: "#ffffff",
               border: 0,
               padding: 0,
               margin: 0,
@@ -175,7 +175,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
                 top: 14,
                 zIndex: 3,
                 padding: "6px 8px",
-                background: "rgba(255,253,249,.9)",
+                background: "rgba(255,255,255,.9)",
                 color: "#42352c",
                 fontSize: 9,
                 letterSpacing: ".12em",

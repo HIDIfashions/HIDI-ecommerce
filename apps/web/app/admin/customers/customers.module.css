@@ -1,4 +1,4 @@
-.page { max-width: 1540px; margin: auto; padding: 28px 36px 80px; color: #24231f; background: #fffdf8; min-height: 100vh; }
+.page { max-width: 1540px; margin: auto; padding: 28px 36px 80px; color: #24231f; background: #ffffff; min-height: 100vh; }
 .page * { box-sizing: border-box; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid #ddd7ce; }
 .topbar nav { display: flex; flex-wrap: wrap; gap: 24px; font-size: 14px; }
@@ -19,9 +19,9 @@
 .toolbar label { display: flex; flex-direction: column; gap: 6px; color: #746a5d; font-size: 11px; }
 .toolbar select { min-height: 46px; min-width: 180px; border: 1px solid #d3ccc0; padding: 9px 11px; background: white; color: #24231f; font: inherit; }
 .toolbar > span { color: #746a5d; font-size: 12px; white-space: nowrap; padding-bottom: 14px; }
-.batchBar { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin: 0 0 16px; background: #f3eee4; border: 1px solid #d9cebf; }
+.batchBar { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin: 0 0 16px; background: #fcf9f9; border: 1px solid #d9cebf; }
 .batchBar span { flex: 1; color: #6d6459; font-size: 12px; line-height: 1.5; }
-.tableWrap { border: 1px solid #ddd7ce; overflow-x: auto; background: #fffdfa; }
+.tableWrap { border: 1px solid #ddd7ce; overflow-x: auto; background: #ffffff; }
 .tableWrap table { width: 100%; border-collapse: collapse; min-width: 1320px; text-align: left; font-size: 13px; }
 .tableWrap th { text-transform: uppercase; font-size: 10px; letter-spacing: .07em; color: #766b5d; font-weight: 500; padding: 14px 12px; border-bottom: 1px solid #ddd7ce; }
 .tableWrap td { padding: 16px 12px; border-bottom: 1px solid #e5dfd6; vertical-align: top; }
@@ -41,7 +41,7 @@
 .notice { color: #37523f; background: #f0f6ef; border-color: #b8cfb8; }
 .empty { padding: 36px; color: #766b5d; text-align: center; }
 .footnote { color: #7a7063; font-size: 11px; line-height: 1.6; margin-top: 14px; }
-.loginPage { min-height: 80vh; display: grid; place-items: center; padding: 32px 20px; background: #fffdfa; }
+.loginPage { min-height: 80vh; display: grid; place-items: center; padding: 32px 20px; background: #ffffff; }
 .loginCard { width: min(460px, 100%); border: 1px solid #ddd7ce; padding: 32px; }
 .loginCard p { color: #746a5d; line-height: 1.6; }
 .loginCard form { display: grid; gap: 16px; }

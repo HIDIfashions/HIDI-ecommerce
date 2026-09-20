@@ -1,12 +1,14 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, Put, Query, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Query, UnauthorizedException } from "@nestjs/common";
 import {
   AdminInventoryService,
   type AdjustInventoryInput,
   type StockReceiptInput,
   type VariantImageInput,
+  type VariantImageUploadTicketInput,
 } from "./admin-inventory.service.js";
 import { AdminService } from "./admin.service.js";
 import { ReviewFollowUpService } from "./review-followup.service.js";
+import { AdminReturnsService } from "./admin-returns.service.js";
 
 @Controller("admin")
 export class AdminController {
@@ -14,6 +16,7 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly inventory: AdminInventoryService,
     private readonly reviewFollowUps: ReviewFollowUpService,
+    private readonly returns: AdminReturnsService,
   ) {}
 
   private requireAdmin(key?: string) {
@@ -101,6 +104,16 @@ export class AdminController {
     return this.inventory.adjust(variantId, body, adminName);
   }
 
+  @Post("inventory/:variantId/images/ticket")
+  createInventoryVariantImageUploadTicket(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("variantId") variantId: string,
+    @Body() body: VariantImageUploadTicketInput,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.inventory.createVariantImageUploadTicket(variantId, body ?? {});
+  }
+
   @Post("inventory/:variantId/images")
   addInventoryVariantImage(
     @Headers("x-admin-key") adminKey: string | undefined,
@@ -109,6 +122,35 @@ export class AdminController {
   ) {
     this.requireAdmin(adminKey);
     return this.inventory.addVariantImage(variantId, body ?? {});
+  }
+
+  @Delete("inventory/:variantId/images/:imageId")
+  removeInventoryVariantImage(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("variantId") variantId: string,
+    @Param("imageId") imageId: string,
+    @Query("applyToColor") applyToColor?: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.inventory.removeVariantImage(variantId, imageId, applyToColor === "true");
+  }
+
+  @Patch("returns/:requestId")
+  updateReturn(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("requestId") requestId: string,
+    @Body() body: {
+      action?: unknown;
+      note?: unknown;
+      rejectionReason?: unknown;
+      inventoryDisposition?: unknown;
+      provider?: unknown;
+      awb?: unknown;
+      trackingUrl?: unknown;
+    },
+  ) {
+    this.requireAdmin(adminKey);
+    return this.returns.update(requestId, body ?? {});
   }
 
   @Get("orders/:orderNumber")

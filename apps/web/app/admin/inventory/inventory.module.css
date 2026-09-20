@@ -276,7 +276,7 @@
 }
 
 .inventoryRow:last-child { border-bottom: 0; }
-.inventoryRow:hover { background: #fbfaf7; }
+.inventoryRow:hover { background: #f9f5f5; }
 
 .productCell {
   min-width: 0;
@@ -412,7 +412,7 @@
   width: min(100%, 560px);
   height: 100%;
   overflow-y: auto;
-  background: #f8f7f3;
+  background: #fcf9f9;
   color: var(--ink);
   box-shadow: -20px 0 60px rgb(0 0 0 / 22%);
   padding: 34px;
@@ -525,7 +525,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0 14px;
-  background: #ece9e2;
+  background: #fcf9f9;
   font-size: 12px;
 }
 

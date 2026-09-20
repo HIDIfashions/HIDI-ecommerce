@@ -5,6 +5,7 @@ import { ArrowLeftRight, RotateCcw, WalletCards, X } from "lucide-react";
 import { BROWSER_API_URL } from "@/lib/browser-api";
 import { getAccessToken } from "@/lib/supabase-auth";
 import { formatPaise } from "@/lib/api";
+import { WALLET_UPDATED_EVENT } from "@/lib/wallet-client";
 import styles from "./return-exchange-request.module.css";
 
 type ReturnRequestSummary = {
@@ -16,6 +17,17 @@ type ReturnRequestSummary = {
   requestedSize?: string | null;
   refundPaise: number;
   status: string;
+  pickupProvider?: string | null;
+  pickupAwb?: string | null;
+  pickupTrackingUrl?: string | null;
+  refundWalletPaise?: number;
+  refundCashPaise?: number;
+  refundStatus?: string | null;
+  replacementProvider?: string | null;
+  replacementAwb?: string | null;
+  replacementTrackingUrl?: string | null;
+  rejectionReason?: string | null;
+  completedAt?: string | null;
   createdAt: string;
 };
 
@@ -25,6 +37,7 @@ type ReturnItem = {
   size: string;
   color: string;
   quantity: number;
+  returnableQuantity: number;
   totalPaise: number;
   exchangeSizes: string[];
   returnRequests: ReturnRequestSummary[];
@@ -64,7 +77,7 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
   const [error, setError] = useState("");
 
   const active = item.returnRequests.find((request) =>
-    ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED"].includes(request.status),
+    ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"].includes(request.status),
   );
   const latest = item.returnRequests[0];
 
@@ -98,6 +111,7 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.message ?? "Unable to create the request.");
       setOpen(false);
+      window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
       await onCreated();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to create the request.");
@@ -106,23 +120,64 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
     }
   }
 
+  async function cancelRequest(requestId: string) {
+    const token = await getAccessToken();
+    if (!token) {
+      setError("Please sign in again before cancelling this request.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `${BROWSER_API_URL}/account/orders/${encodeURIComponent(orderNumber)}/returns/${encodeURIComponent(requestId)}/cancel`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.message ?? "Unable to cancel the request.");
+      window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
+      await onCreated();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to cancel the request.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (active) {
     return (
       <div className={styles.requestStatus}>
-        <strong>{active.type === "EXCHANGE" ? "Exchange" : "Return"} requested</strong>
-        <span>{labelStatus(active.status)}</span>
+        <strong>{active.type === "EXCHANGE" ? "Exchange" : "Return"} · {labelStatus(active.status)}</strong>
+        <span>{active.status === "REQUESTED" ? "HIDI has received your request." : "We’ll keep this status updated as it moves."}</span>
         {active.requestedSize && <small>Replacement size: {active.requestedSize}</small>}
         {active.refundDestination === "WALLET" && <small>Refund choice: HIDI Wallet</small>}
         {active.refundDestination === "ORIGINAL" && <small>Refund choice: Original payment source</small>}
+        {active.pickupAwb && <small>Pickup: {active.pickupProvider ?? "Courier"} · {active.pickupAwb}</small>}
+        {active.pickupTrackingUrl && <a href={active.pickupTrackingUrl} target="_blank" rel="noreferrer">Track return pickup ↗</a>}
+        {active.replacementAwb && <small>Replacement: {active.replacementProvider ?? "Courier"} · {active.replacementAwb}</small>}
+        {active.replacementTrackingUrl && <a href={active.replacementTrackingUrl} target="_blank" rel="noreferrer">Track replacement ↗</a>}
+        {active.status === "REQUESTED" && (
+          <button className={styles.cancelRequest} type="button" onClick={() => void cancelRequest(active.id)} disabled={busy}>
+            {busy ? "Cancelling…" : "Cancel request"}
+          </button>
+        )}
+        {error && <small className={styles.statusError}>{error}</small>}
       </div>
     );
   }
 
-  if (!eligible) {
+  if (!eligible || item.returnableQuantity <= 0) {
     return latest ? (
       <div className={styles.requestStatus}>
-        <strong>{latest.type === "EXCHANGE" ? "Exchange" : "Return"}</strong>
-        <span>{labelStatus(latest.status)}</span>
+        <strong>{latest.type === "EXCHANGE" ? "Exchange" : "Return"} · {labelStatus(latest.status)}</strong>
+        {latest.status === "REFUNDED" && (
+          <small>Refund completed: {formatPaise((latest.refundWalletPaise ?? 0) + (latest.refundCashPaise ?? 0) || latest.refundPaise)}</small>
+        )}
+        {latest.rejectionReason && <small>Reason: {latest.rejectionReason}</small>}
+        {latest.replacementTrackingUrl && <a href={latest.replacementTrackingUrl} target="_blank" rel="noreferrer">Track replacement ↗</a>}
       </div>
     ) : null;
   }
@@ -172,11 +227,11 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
                 </select>
               </label>
 
-              {item.quantity > 1 && (
+              {item.returnableQuantity > 1 && (
                 <label>
                   Quantity
                   <select value={quantity} onChange={(event) => setQuantity(Number(event.target.value))}>
-                    {Array.from({ length: item.quantity }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}</option>)}
+                    {Array.from({ length: item.returnableQuantity }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}</option>)}
                   </select>
                 </label>
               )}
@@ -197,12 +252,12 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
                   <label className={refundDestination === "WALLET" ? styles.refundActive : styles.refund}>
                     <input type="radio" name="refund" checked={refundDestination === "WALLET"} onChange={() => setRefundDestination("WALLET")} />
                     <WalletCards size={18} />
-                    <span><strong>HIDI Wallet</strong><small>Fastest — credited instantly after HIDI approves the returned item.</small></span>
+                    <span><strong>HIDI Wallet</strong><small>Fastest — credited after HIDI receives and approves the returned item.</small></span>
                   </label>
                   <label className={refundDestination === "ORIGINAL" ? styles.refundActive : styles.refund}>
                     <input type="radio" name="refund" checked={refundDestination === "ORIGINAL"} onChange={() => setRefundDestination("ORIGINAL")} />
                     <RotateCcw size={18} />
-                    <span><strong>Original payment source</strong><small>Processed after approval; bank/payment-provider timelines apply.</small></span>
+                    <span><strong>Original payment source</strong><small>Processed after inspection. If you paid with HIDI Wallet + online payment, HIDI restores the refundable amount across those original tenders.</small></span>
                   </label>
                   <p className={styles.amount}>Estimated item refund: {formatPaise(Math.floor((item.totalPaise * quantity) / item.quantity))}</p>
                 </fieldset>

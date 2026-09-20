@@ -60,7 +60,7 @@ export function CartClient() {
             href={`/products/${item.product.slug}`}
             className="cart-thumb"
             aria-label={`View ${item.product.name}`}
-            style={{ position: "relative", display: "block", overflow: "hidden", background: "#eee8df" }}
+            style={{ position: "relative", display: "block", overflow: "hidden", background: "#ffffff" }}
           >
             <CatalogImage
               src={item.product.image}
@@ -93,7 +93,7 @@ export function CartClient() {
         <div><span>Subtotal</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
         <div><span>Shipping</span><span>Calculated at checkout</span></div>
         <div className="summary-total"><span>Total</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
-        <Link className="button button-dark" href="/checkout">Continue to checkout</Link>
+        <Link className="button button-dark cart-checkout-button" href="/checkout">Continue to checkout</Link>
         <p className="fine-print">Secure checkout · UPI · Cards · Net banking</p>
       </aside>
     </div>

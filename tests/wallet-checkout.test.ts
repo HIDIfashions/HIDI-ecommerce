@@ -258,8 +258,12 @@ test("checkout cancelled while awaiting the provider cannot publish a usable pay
   assert.equal(f.state().wallet.reservedPaise, 0); assert.equal(f.state().inventory.reserved, 0);
 });
 
-test("an account-owned cart cannot be purchased by another verified customer", async () => {
+test("a verified customer can adopt the same browser-session cart at purchase", async () => {
   const f = fixture({ ownedCart: "other-user" });
-  await assert.rejects(() => f.service.prepare(input({ walletPaise: 4000 }), auth), /another account/);
-  assert.equal(f.state().orders.length, 0); assert.equal(f.state().wallet.reservedPaise, 0);
+  const result = await f.service.prepare(input({ walletPaise: 4000 }), auth);
+  assert.equal(result.provider, "RAZORPAY");
+  assert.equal(f.state().orders.length, 1);
+  assert.equal(f.state().orders[0].userId, "user-1");
+  assert.equal(f.state().cart.userId, "user-1");
+  assert.equal(f.state().wallet.reservedPaise, 4000);
 });

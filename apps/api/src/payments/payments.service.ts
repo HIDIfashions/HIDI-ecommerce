@@ -115,25 +115,69 @@ export class PaymentsService {
     // A signed event is cross-checked against authenticated provider totals.
     const provider = await this.razorpay.fetchPayment(entity.payment_id) as Awaited<ReturnType<RazorpayService["fetchPayment"]>> & { amount_refunded?: number; refund_status?: string | null };
     if (provider.id !== entity.payment_id || provider.order_id !== payment.providerOrderId || provider.currency !== "INR" || provider.amount !== payment.amountPaise || !["captured", "refunded"].includes(provider.status) || !Number.isSafeInteger(provider.amount_refunded) || provider.amount_refunded! < entity.amount || provider.amount_refunded! > payment.amountPaise) throw new BadRequestException("Refund does not match verified provider payment totals");
+
+    const noteReturnRequestId = typeof entity?.notes?.hidi_return_request_id === "string"
+      ? entity.notes.hidi_return_request_id
+      : null;
+
     return withSerializableRetry(this.prisma, async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${payment.orderId} FOR UPDATE`;
       const current = await tx.payment.findUnique({ where: { id: payment.id } });
       if (!current || current.providerPaymentId !== entity.payment_id || !PAID_STATES.includes(current.status)) throw new ConflictException("Capture must be reconciled before processing this refund");
+
       const existing = await tx.paymentRefund.findUnique({ where: { providerRefundId: entity.id } });
       if (existing) {
         if (existing.paymentId !== current.id || existing.amountPaise !== entity.amount || existing.status !== "PROCESSED") throw new ConflictException("Refund event identity does not match the recorded refund");
         return;
       }
+
       const aggregate = await tx.paymentRefund.aggregate({ where: { paymentId: current.id, status: "PROCESSED" }, _sum: { amountPaise: true } });
       const refundedPaise = (aggregate._sum.amountPaise ?? 0) + entity.amount;
       if (refundedPaise > current.amountPaise || refundedPaise > provider.amount_refunded!) throw new ConflictException("Refund total exceeds the confirmed cash payment");
+
+      const linkedReturn = noteReturnRequestId
+        ? await tx.returnRequest.findUnique({ where: { id: noteReturnRequestId } })
+        : await tx.returnRequest.findUnique({ where: { refundProviderId: entity.id } });
+
+      if (linkedReturn) {
+        if (linkedReturn.orderId !== current.orderId || linkedReturn.type !== "RETURN" || linkedReturn.refundCashPaise !== entity.amount) {
+          throw new ConflictException("Refund does not match the HIDI return request");
+        }
+        if (!["REFUND_PROCESSING", "REFUNDED"].includes(linkedReturn.status)) {
+          throw new ConflictException("Return request is not ready for this refund");
+        }
+      }
+
       await tx.paymentRefund.create({ data: { providerRefundId: entity.id, paymentId: current.id, amountPaise: entity.amount, status: "PROCESSED", processedAt: new Date() } });
+      const fullCashRefund = refundedPaise === current.amountPaise && provider.amount_refunded === current.amountPaise;
+      await tx.payment.update({ where: { id: current.id }, data: { status: fullCashRefund ? "REFUNDED" : "PARTIALLY_REFUNDED" } });
+
+      if (linkedReturn) {
+        if (linkedReturn.refundWalletPaise > 0) {
+          await this.wallet.creditReturnRefund(tx, current.orderId, linkedReturn.id, linkedReturn.refundWalletPaise);
+        }
+        await this.wallet.reverseEarned(tx, current.orderId, `RETURN_REFUNDED:${linkedReturn.id}`);
+        await tx.returnRequest.update({
+          where: { id: linkedReturn.id },
+          data: {
+            status: "REFUNDED",
+            refundProviderId: entity.id,
+            refundStatus: "COMPLETED",
+            processedAt: new Date(),
+            completedAt: new Date(),
+          },
+        });
+        // Fulfilment remains DELIVERED for a partial item return. The customer/admin
+        // UI derives after-sales status from ReturnRequest instead of corrupting the
+        // forward-delivery lifecycle.
+        return;
+      }
+
+      // Legacy/provider-led refunds not linked to an item-level return keep the
+      // previous whole-order reconciliation behaviour.
       await this.wallet.reverseEarned(tx, current.orderId, "PAYMENT_REFUNDED");
-      // Restore redeemed rewards only after every cash refund is reconciled.
-      const full = refundedPaise === current.amountPaise && provider.amount_refunded === current.amountPaise;
-      await tx.order.update({ where: { id: current.orderId }, data: { status: full ? "REFUNDED" : "RETURN_REQUESTED" } });
-      await tx.payment.update({ where: { id: current.id }, data: { status: full ? "REFUNDED" : "PARTIALLY_REFUNDED" } });
-      if (full) {
+      await tx.order.update({ where: { id: current.orderId }, data: { status: fullCashRefund ? "REFUNDED" : "RETURN_REQUESTED" } });
+      if (fullCashRefund) {
         const hold = await tx.walletHold.findUnique({ where: { orderId: current.orderId } });
         const restored = await this.wallet.restoreRedeemed(tx, current.orderId);
         if (hold?.status === "CONSUMED" && !restored) throw new ConflictException("Wallet refund needs reconciliation before completion");

@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { VerifiedAuthUser } from "../auth/supabase-auth.service.js";
+import { WalletService } from "../wallet/wallet.service.js";
+import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 
 const RETURN_WINDOW_DAYS = 7;
 const RETURN_REASONS = new Set([
@@ -12,11 +14,11 @@ const RETURN_REASONS = new Set([
   "CHANGED_MIND",
   "OTHER",
 ]);
-const ACTIVE_RETURN_STATUSES = ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED"];
+const ACTIVE_RETURN_STATUSES = ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"];
 
 @Injectable()
 export class AccountService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly wallet: WalletService) {}
 
   private async customer(authUser: VerifiedAuthUser) {
     const firstName = typeof authUser.metadata.first_name === "string" ? authUser.metadata.first_name : null;
@@ -91,6 +93,9 @@ export class AccountService {
                 },
               },
             },
+            variant: {
+              include: { images: { orderBy: { position: "asc" }, take: 1 } },
+            },
             returnRequests: { orderBy: { createdAt: "desc" } },
           },
           orderBy: { id: "asc" },
@@ -115,11 +120,23 @@ export class AccountService {
           : null;
         const canReturnOrExchange = order.status === "DELIVERED"
           && !!returnWindowEndsAt
-          && returnWindowEndsAt.getTime() >= Date.now();
+          && returnWindowEndsAt.getTime() > Date.now();
+
+        const allRequests = order.items
+          .flatMap((item) => item.returnRequests)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const activeAfterSales = allRequests.find((request) => ACTIVE_RETURN_STATUSES.includes(request.status));
+        const latestAfterSales = activeAfterSales ?? allRequests[0] ?? null;
 
         return {
           orderNumber: order.orderNumber,
           status: order.status,
+          afterSales: latestAfterSales ? {
+            id: latestAfterSales.id,
+            type: latestAfterSales.type,
+            status: latestAfterSales.status,
+            createdAt: latestAfterSales.createdAt,
+          } : null,
           createdAt: order.createdAt,
           deliveredAt,
           returnWindowEndsAt,
@@ -143,10 +160,13 @@ export class AccountService {
               id: item.id,
               productName: item.productName,
               slug: item.product.slug,
-              image: item.product.images[0]?.url ?? null,
+              image: item.variant.images[0]?.url ?? item.product.images[0]?.url ?? null,
               size: item.size,
               color: item.color,
               quantity: item.quantity,
+              returnableQuantity: Math.max(0, item.quantity - item.returnRequests
+                .filter((request) => !["REJECTED", "CANCELLED"].includes(request.status))
+                .reduce((sum, request) => sum + request.quantity, 0)),
               totalPaise: item.totalPaise,
               exchangeSizes,
               returnRequests: item.returnRequests.map((request) => ({
@@ -158,6 +178,17 @@ export class AccountService {
                 requestedSize: request.requestedSize,
                 refundPaise: request.refundPaise,
                 status: request.status,
+                pickupProvider: request.pickupProvider,
+                pickupAwb: request.pickupAwb,
+                pickupTrackingUrl: request.pickupTrackingUrl,
+                refundWalletPaise: request.refundWalletPaise,
+                refundCashPaise: request.refundCashPaise,
+                refundStatus: request.refundStatus,
+                replacementProvider: request.replacementProvider,
+                replacementAwb: request.replacementAwb,
+                replacementTrackingUrl: request.replacementTrackingUrl,
+                rejectionReason: request.rejectionReason,
+                completedAt: request.completedAt,
                 createdAt: request.createdAt,
               })),
             };
@@ -194,88 +225,127 @@ export class AccountService {
       throw new BadRequestException("Invalid return quantity");
     }
 
-    const order = await this.prisma.order.findFirst({
-      where: { orderNumber, userId: user.id },
-      include: {
-        items: true,
-        shipments: { orderBy: [{ deliveredAt: "desc" }, { createdAt: "desc" }] },
-      },
-    });
-    if (!order) throw new NotFoundException("Order not found");
-    if (order.status !== "DELIVERED") throw new ConflictException("Returns and exchanges are available after delivery");
-
-    const deliveredAt = order.shipments.find((shipment) => shipment.deliveredAt)?.deliveredAt ?? order.updatedAt;
-    const deadline = new Date(deliveredAt.getTime() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-    if (deadline.getTime() < Date.now()) throw new ConflictException("The 7-day return and exchange window has closed");
-
-    const item = order.items.find((entry) => entry.id === orderItemId);
-    if (!item) throw new NotFoundException("Order item not found");
-    if (quantity > item.quantity) throw new BadRequestException("Return quantity exceeds purchased quantity");
-
-    const existing = await this.prisma.returnRequest.findFirst({
-      where: { orderItemId: item.id, status: { in: ACTIVE_RETURN_STATUSES } },
-      select: { id: true },
-    });
-    if (existing) throw new ConflictException("A return or exchange request is already active for this item");
-
-    let refundDestination: string | null = null;
-    let requestedSize: string | null = null;
-    let requestedVariantId: string | null = null;
-
-    if (type === "RETURN") {
-      refundDestination = body.refundDestination === "WALLET" || body.refundDestination === "ORIGINAL"
+    const refundDestination = type === "RETURN"
+      ? body.refundDestination === "WALLET" || body.refundDestination === "ORIGINAL"
         ? body.refundDestination
-        : null;
-      if (!refundDestination) throw new BadRequestException("Choose how you want the refund");
-    } else {
-      requestedSize = typeof body.requestedSize === "string" ? body.requestedSize.trim().toUpperCase() : "";
-      if (!requestedSize) throw new BadRequestException("Choose the replacement size");
-      const replacement = await this.prisma.productVariant.findFirst({
-        where: {
-          productId: item.productId,
-          color: item.color,
-          size: requestedSize,
-          active: true,
+        : null
+      : null;
+    if (type === "RETURN" && !refundDestination) throw new BadRequestException("Choose how you want the refund");
+    if (refundDestination === "WALLET") await this.wallet.ensureWallet(authUser);
+
+    return withSerializableRetry(this.prisma, async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "orderNumber" = ${orderNumber} FOR UPDATE`;
+      const order = await tx.order.findFirst({
+        where: { orderNumber, userId: user.id },
+        include: {
+          items: { include: { returnRequests: true } },
+          shipments: { orderBy: [{ deliveredAt: "desc" }, { createdAt: "desc" }] },
         },
-        include: { inventory: true },
       });
-      const available = replacement?.inventory
-        ? Math.max(0, replacement.inventory.onHand - replacement.inventory.reserved - replacement.inventory.safetyStock)
+      if (!order) throw new NotFoundException("Order not found");
+      if (order.status !== "DELIVERED") throw new ConflictException("Returns and exchanges are available after delivery");
+
+      const deliveredAt = order.shipments.find((shipment) => shipment.deliveredAt)?.deliveredAt ?? order.updatedAt;
+      const deadline = new Date(deliveredAt.getTime() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+      if (deadline.getTime() <= Date.now()) throw new ConflictException("The 7-day return and exchange window has closed");
+
+      const item = order.items.find((entry) => entry.id === orderItemId);
+      if (!item) throw new NotFoundException("Order item not found");
+
+      const active = item.returnRequests.find((request) => ACTIVE_RETURN_STATUSES.includes(request.status));
+      if (active) throw new ConflictException("A return or exchange request is already active for this item");
+
+      const alreadyHandled = item.returnRequests
+        .filter((request) => !["REJECTED", "CANCELLED"].includes(request.status))
+        .reduce((sum, request) => sum + request.quantity, 0);
+      const remaining = Math.max(0, item.quantity - alreadyHandled);
+      if (quantity > remaining) throw new BadRequestException(`Only ${remaining} item(s) remain eligible for return or exchange`);
+
+      let requestedSize: string | null = null;
+      let requestedVariantId: string | null = null;
+      if (type === "EXCHANGE") {
+        requestedSize = typeof body.requestedSize === "string" ? body.requestedSize.trim().toUpperCase() : "";
+        if (!requestedSize) throw new BadRequestException("Choose the replacement size");
+        const replacement = await tx.productVariant.findFirst({
+          where: { productId: item.productId, color: item.color, size: requestedSize, active: true },
+          include: { inventory: true },
+        });
+        const available = replacement?.inventory
+          ? Math.max(0, replacement.inventory.onHand - replacement.inventory.reserved - replacement.inventory.safetyStock)
+          : 0;
+        if (!replacement || available < quantity) throw new ConflictException("The selected replacement size is not currently available");
+        requestedVariantId = replacement.id;
+      }
+
+      const refundPaise = type === "RETURN"
+        ? Math.floor((item.totalPaise * quantity) / item.quantity)
         : 0;
-      if (!replacement || available < quantity) throw new ConflictException("The selected replacement size is not currently available");
-      requestedVariantId = replacement.id;
-    }
 
-    const refundPaise = type === "RETURN"
-      ? Math.floor((item.totalPaise * quantity) / item.quantity)
-      : 0;
+      const created = await tx.returnRequest.create({
+        data: {
+          orderId: order.id,
+          orderItemId: item.id,
+          type,
+          reason,
+          quantity,
+          refundDestination,
+          requestedVariantId,
+          requestedSize,
+          refundPaise,
+          detail: detail || null,
+          status: "REQUESTED",
+        },
+        select: {
+          id: true,
+          type: true,
+          reason: true,
+          quantity: true,
+          refundDestination: true,
+          requestedSize: true,
+          refundPaise: true,
+          status: true,
+          createdAt: true,
+        },
+      });
 
-    return this.prisma.returnRequest.create({
-      data: {
-        orderId: order.id,
-        orderItemId: item.id,
-        type,
-        reason,
-        quantity,
-        refundDestination,
-        requestedVariantId,
-        requestedSize,
-        refundPaise,
-        detail: detail || null,
-        status: "REQUESTED",
-      },
-      select: {
-        id: true,
-        type: true,
-        reason: true,
-        quantity: true,
-        refundDestination: true,
-        requestedSize: true,
-        refundPaise: true,
-        status: true,
-        createdAt: true,
-      },
+      await this.wallet.holdForReturn(tx, order.id, created.id);
+      return created;
     });
+  }
+
+  async cancelReturnRequest(authUser: VerifiedAuthUser, orderNumber: string, requestId: string) {
+    const user = await this.customer(authUser);
+    const updated = await withSerializableRetry(this.prisma, async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "Order" WHERE "orderNumber" = ${orderNumber} FOR UPDATE
+      `;
+      if (!locked[0]) throw new NotFoundException("Order not found");
+
+      const request = await tx.returnRequest.findFirst({
+        where: {
+          id: requestId,
+          order: { orderNumber, userId: user.id },
+        },
+      });
+      if (!request) throw new NotFoundException("Return request not found");
+      if (request.status !== "REQUESTED") {
+        throw new ConflictException("Only a newly requested return or exchange can be cancelled online");
+      }
+
+      return tx.returnRequest.update({
+        where: { id: request.id },
+        data: {
+          status: "CANCELLED",
+          processedAt: new Date(),
+          completedAt: new Date(),
+        },
+      });
+    });
+
+    // Cancellation is already durable. Reward reconciliation is a follow-up
+    // calculation and the normal worker can retry it if the database is busy.
+    await this.wallet.reconcileOrder(updated.orderId).catch(() => undefined);
+    return updated;
   }
 
   async ownsOrder(authUser: VerifiedAuthUser, orderNumber: string) {

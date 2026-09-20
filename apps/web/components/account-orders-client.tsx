@@ -25,6 +25,7 @@ const API = BROWSER_API_URL;
 type OrderSummary = {
   orderNumber: string;
   status: string;
+  afterSales?: { id: string; type: string; status: string; createdAt: string } | null;
   createdAt: string;
   totalPaise: number;
   walletAppliedPaise?: number;
@@ -42,6 +43,7 @@ type OrderSummary = {
     size: string;
     color: string;
     quantity: number;
+    returnableQuantity: number;
     totalPaise: number;
     exchangeSizes: string[];
     returnRequests: Array<{
@@ -223,6 +225,8 @@ export function AccountOrdersClient() {
     </div> : <div className={styles.list}>
       {orders.map((order) => {
         const placedAt = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(order.createdAt));
+        const activeStatuses = new Set(["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"]);
+        const activeReturnQuantity = order.items.reduce((sum, item) => sum + item.returnRequests.filter((request) => activeStatuses.has(request.status)).reduce((itemSum, request) => itemSum + request.quantity, 0), 0);
         return <article className={styles.card} key={order.orderNumber}>
           <div className={styles.header}>
             <div>
@@ -231,7 +235,10 @@ export function AccountOrdersClient() {
               <p className={styles.meta}>{placedAt} · {order.itemCount} item{order.itemCount === 1 ? "" : "s"}</p>
             </div>
             <div className={styles.statusBlock}>
-              <span className={styles.status}>{titleCase(order.status)}</span>
+              <span className={styles.status}>
+                {order.afterSales && activeReturnQuantity > 0 ? `${activeReturnQuantity} of ${order.itemCount} item${order.itemCount === 1 ? "" : "s"} · ${order.afterSales.type === "EXCHANGE" ? "Exchange" : "Return"} in progress` : titleCase(order.status)}
+              </span>
+              {order.afterSales && activeReturnQuantity > 0 && <span className={styles.meta}>{titleCase(order.afterSales.status)} · Order {titleCase(order.status)}</span>}
               <strong>{formatPaise(order.totalPaise)}</strong>
               {!!order.walletAppliedPaise && <span className={styles.meta}>Rewards: {formatWalletPaise(order.walletAppliedPaise)} · Cash: {formatWalletPaise(order.cashPayablePaise ?? Math.max(0, order.totalPaise - order.walletAppliedPaise))}</span>}
             </div>

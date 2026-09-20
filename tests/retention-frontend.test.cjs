@@ -30,6 +30,7 @@ function clientHarness({ enabled = true, userId = "customer-a" } = {}) {
   const events = new EventTarget();
   const client = moduleFromSource("apps/web/lib/retention-client.ts", {
     "@/lib/supabase-auth": { getStoredSession: () => state.userId ? { user: { id: state.userId } } : null, getAccessToken: () => state.token() },
+    "@/lib/browser-api": { BROWSER_API_URL: "http://test.invalid/v1" },
   }, {
     process: { env: { NEXT_PUBLIC_RETENTION_ENABLED: String(enabled), NEXT_PUBLIC_API_URL: "http://test.invalid/v1" } },
     window: events,

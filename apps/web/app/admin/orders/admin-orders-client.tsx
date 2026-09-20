@@ -25,9 +25,14 @@ type AdminOrder = {
     provider: string;
   };
   itemCount: number;
+  returnCount?: number;
+  activeReturnCount?: number;
+  activeReturnQuantity?: number;
+  afterSalesStatus?: string | null;
+  afterSalesType?: string | null;
 };
 
-const STATUS_OPTIONS = ["ALL", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"];
+const STATUS_OPTIONS = ["ALL", "RETURNS", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"];
 
 function money(value: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -99,7 +104,7 @@ export function AdminOrdersClient() {
       confirmed: orders.filter((order) => order.status === "CONFIRMED").length,
       packed: orders.filter((order) => order.status === "PACKED").length,
       shipped: orders.filter((order) => order.status === "SHIPPED").length,
-      delivered: orders.filter((order) => order.status === "DELIVERED").length,
+      returns: orders.reduce((sum, order) => sum + (order.activeReturnCount ?? 0), 0),
       sales: todayOrders.reduce((sum, order) => sum + order.totalPaise, 0),
     };
   }, [orders]);
@@ -172,7 +177,7 @@ export function AdminOrdersClient() {
       <section className={styles.pageHeader}>
         <div>
           <h1>Orders</h1>
-          <p>Process paid orders from confirmation through delivery.</p>
+          <p>Manage fulfilment, return requests, exchanges, refunds and inventory follow-up.</p>
         </div>
       </section>
 
@@ -181,7 +186,7 @@ export function AdminOrdersClient() {
         <div><span>Confirmed</span><strong>{stats.confirmed}</strong></div>
         <div><span>Packed</span><strong>{stats.packed}</strong></div>
         <div><span>Shipped</span><strong>{stats.shipped}</strong></div>
-        <div><span>Delivered</span><strong>{stats.delivered}</strong></div>
+        <div><span>Returns to action</span><strong>{stats.returns}</strong></div>
         <div><span>Today&apos;s sales</span><strong>{money(stats.sales)}</strong></div>
       </section>
 
@@ -218,7 +223,18 @@ export function AdminOrdersClient() {
                 <div>{order.itemCount}</div>
                 <div className={styles.rowAmount}>{money(order.totalPaise)}</div>
                 <div><span className={styles.paymentPill}>{order.payment?.status ? statusLabel(order.payment.status) : "—"}</span></div>
-                <div><span className={`${styles.status} ${styles[`status${order.status}`] ?? ""}`}>{statusLabel(order.status)}</span></div>
+                <div className={styles.statusCell}>
+                  {order.activeReturnCount ? (
+                    <>
+                      <span className={`${styles.status} ${styles.afterSalesPill}`}>
+                        {`${order.activeReturnQuantity ?? order.activeReturnCount ?? 0} of ${order.itemCount} item${order.itemCount === 1 ? "" : "s"} · ${order.afterSalesType === "EXCHANGE" ? "Exchange" : "Return"} in progress`}
+                      </span>
+                      <small>{statusLabel(order.afterSalesStatus ?? "REQUESTED")} · Fulfilment: {statusLabel(order.status)}</small>
+                    </>
+                  ) : (
+                    <span className={`${styles.status} ${styles[`status${order.status}`] ?? ""}`}>{statusLabel(order.status)}</span>
+                  )}
+                </div>
                 <div className={styles.viewCell}><Link href={`/admin/orders/${encodeURIComponent(order.orderNumber)}`}>View →</Link></div>
               </div>
             );

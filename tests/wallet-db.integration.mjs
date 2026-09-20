@@ -189,7 +189,7 @@ test("wallet migration and SQL persistence invariants in isolated PGlite", async
 
   await t.test("ledger signs and event kinds are checked by PostgreSQL", async () => {
     const account = await wallet("signs");
-    for (const [kind, delta] of [["EARN", 200], ["REFUND_REDEEM", 200], ["REDEEM", -200], ["REVERSE_EARN", -200]]) {
+    for (const [kind, delta] of [["EARN", 200], ["REFUND_REDEEM", 200], ["RETURN_REFUND", 200], ["REDEEM", -200], ["REVERSE_EARN", -200]]) {
       await insert(db, "WalletLedger", ledgerFields(`valid-${kind}`, account.id, { kind, deltaPaise: delta }));
       await rejectsCode(() => insert(db, "WalletLedger", ledgerFields(`bad-sign-${kind}`, account.id, { kind, deltaPaise: -delta })), "23514", `${kind} wrong sign`);
       await rejectsCode(() => insert(db, "WalletLedger", ledgerFields(`zero-${kind}`, account.id, { kind, deltaPaise: 0 })), "23514", `${kind} zero entry`);

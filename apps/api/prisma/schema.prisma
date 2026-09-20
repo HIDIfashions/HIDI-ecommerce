@@ -221,9 +221,25 @@ model ProductVariant {
   orderItems  OrderItem[]
   reservations InventoryReservation[]
   stockReceiptLines StockReceiptLine[]
+  adminMediaUploadTickets AdminMediaUploadTicket[]
 
   @@unique([productId, size, color])
   @@index([productId, active])
+}
+
+model AdminMediaUploadTicket {
+  id         String         @id @default(cuid())
+  tokenHash  String         @unique
+  variantId  String
+  mimeType   String
+  maxBytes   Int
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime       @default(now())
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId, expiresAt])
+  @@index([expiresAt, usedAt])
 }
 
 model ProductVariantImage {
@@ -714,25 +730,45 @@ model NewsletterSubscriber {
 
 
 model ReturnRequest {
-  id                String    @id @default(cuid())
-  orderId           String
-  orderItemId       String
-  type              String
-  reason            String
-  detail            String?
-  quantity          Int       @default(1)
-  refundDestination String?
-  requestedVariantId String?
-  requestedSize     String?
-  refundPaise       Int       @default(0)
-  status            String    @default("REQUESTED")
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  approvedAt        DateTime?
-  processedAt       DateTime?
-  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderItem         OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  id                       String    @id @default(cuid())
+  orderId                  String
+  orderItemId              String
+  type                     String
+  reason                   String
+  detail                   String?
+  quantity                 Int       @default(1)
+  refundDestination        String?
+  requestedVariantId       String?
+  requestedSize            String?
+  refundPaise              Int       @default(0)
+  status                   String    @default("REQUESTED")
+  adminNote                String?
+  rejectionReason          String?
+  pickupProvider           String?
+  pickupAwb                String?
+  pickupTrackingUrl        String?
+  pickupScheduledAt        DateTime?
+  receivedAt               DateTime?
+  inventoryDisposition     String?
+  refundWalletPaise        Int       @default(0)
+  refundCashPaise          Int       @default(0)
+  refundStatus             String?
+  refundProviderId         String?   @unique
+  replacementProvider      String?
+  replacementAwb           String?
+  replacementTrackingUrl   String?
+  replacementShippedAt     DateTime?
+  exchangeReservationStatus String?
+  exchangeReservedAt       DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  approvedAt               DateTime?
+  processedAt              DateTime?
+  completedAt              DateTime?
+  order                    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem                OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
 
   @@index([orderId, status, createdAt])
   @@index([orderItemId, status])
+  @@index([status, updatedAt])
 }

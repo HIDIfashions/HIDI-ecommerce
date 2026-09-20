@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InventoryMovementType, Prisma, StockReceiptStatus } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -36,6 +36,11 @@ export type VariantImageInput = {
   storagePath?: string;
   alt?: string;
   applyToColor?: boolean;
+};
+
+export type VariantImageUploadTicketInput = {
+  mimeType?: string;
+  sizeBytes?: number;
 };
 
 @Injectable()
@@ -293,6 +298,44 @@ export class AdminInventoryService {
     }, { timeout: 20_000 });
   }
 
+  async createVariantImageUploadTicket(variantId: string, input: VariantImageUploadTicketInput) {
+    const mimeType = input.mimeType?.trim().toLowerCase() ?? "";
+    const sizeBytes = Number(input.sizeBytes);
+    const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
+
+    if (!allowed.has(mimeType)) throw new BadRequestException("Use a JPEG, PNG, WebP or AVIF image");
+    if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > 8 * 1024 * 1024) {
+      throw new BadRequestException("Image must be smaller than 8 MB");
+    }
+
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      select: { id: true },
+    });
+    if (!variant) throw new NotFoundException("Product variant not found");
+
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.adminMediaUploadTicket.deleteMany({
+        where: { expiresAt: { lt: new Date(Date.now() - 10 * 60 * 1000) } },
+      });
+      await tx.adminMediaUploadTicket.create({
+        data: {
+          tokenHash,
+          variantId,
+          mimeType,
+          maxBytes: sizeBytes,
+          expiresAt,
+        },
+      });
+    });
+
+    return { token, expiresAt };
+  }
+
   async addVariantImage(variantId: string, input: VariantImageInput) {
     const url = input.url?.trim() ?? "";
     if (!this.validImageUrl(url)) throw new BadRequestException("Enter a valid HTTPS or local image URL");
@@ -335,6 +378,60 @@ export class AdminInventoryService {
       where: { id: variantId },
       select: { id: true, sku: true, images: { orderBy: { position: "asc" } } },
     });
+  }
+
+  async removeVariantImage(variantId: string, imageId: string, applyToColor = false) {
+    const image = await this.prisma.productVariantImage.findFirst({
+      where: { id: imageId, variantId },
+      select: {
+        id: true,
+        url: true,
+        storagePath: true,
+        variant: { select: { id: true, productId: true, color: true, sku: true } },
+      },
+    });
+    if (!image) throw new NotFoundException("Product photo not found");
+
+    const targetVariants = applyToColor
+      ? await this.prisma.productVariant.findMany({
+          where: { productId: image.variant.productId, color: image.variant.color },
+          select: { id: true },
+        })
+      : [{ id: image.variant.id }];
+    const targetIds = targetVariants.map((target) => target.id);
+
+    const removed = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.productVariantImage.deleteMany({
+        where: { variantId: { in: targetIds }, url: image.url },
+      });
+
+      // Keep display order compact after a photo is removed so new uploads append cleanly.
+      for (const targetId of targetIds) {
+        const remaining = await tx.productVariantImage.findMany({
+          where: { variantId: targetId },
+          orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+          select: { id: true, position: true },
+        });
+        for (let position = 0; position < remaining.length; position += 1) {
+          if (remaining[position].position !== position) {
+            await tx.productVariantImage.update({
+              where: { id: remaining[position].id },
+              data: { position },
+            });
+          }
+        }
+      }
+      return result.count;
+    });
+
+    return {
+      removed,
+      variantId,
+      imageId,
+      applyToColor,
+      url: image.url,
+      storagePath: image.storagePath,
+    };
   }
 
   private toRow(variant: {

@@ -37,6 +37,18 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const activeColour = colours.includes(colour) ? colour : colours[0] ?? "";
   const variants = variantsForColour(product.variants, activeColour);
   const selected = variants.find((entry) => entry.id === variantId);
+  const colourImages = (() => {
+    const seen = new Set<string>();
+    return variants
+      .flatMap((entry) => entry.images ?? [])
+      .filter((image) => {
+        if (!image.url || seen.has(image.url)) return false;
+        seen.add(image.url);
+        return true;
+      })
+      .sort((a, b) => a.position - b.position);
+  })();
+  const cardImages = colourImages.length ? colourImages : product.images;
   const canBuy = product.inStock && variants.some((entry) => entry.available > 0);
   const soldOut = !product.inStock || !product.variants.some((entry) => entry.available > 0);
   const busy = phase === "adding";
@@ -156,7 +168,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
   return <article className={styles.card} aria-labelledby={`${uid}-name`}>
     <ProductCardMedia
       name={product.name}
-      images={product.images ?? []}
+      images={cardImages ?? []}
       videos={getProductCardVideos(product.slug)}
       soldOut={soldOut}
       href={href}

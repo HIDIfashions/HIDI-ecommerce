@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { adoptCartSession, getCartSession, newCheckoutToken, startNewCartSession } from "@/lib/cart-session";
 import { getAccessToken, getStoredSession } from "@/lib/supabase-auth";
 import { useWalletSummary } from "@/components/wallet-balance";
+import { CatalogImage } from "@/components/catalog-image";
 import { checkoutFingerprint, formatWalletPaise, parsePreparedCheckout, walletAccountId, walletAmountPaise, walletEnabled, WALLET_UPDATED_EVENT, type PreparedCheckout } from "@/lib/wallet-client";
 import walletStyles from "./wallet.module.css";
 
@@ -17,7 +18,18 @@ declare global {
   interface Window { Razorpay?: new (options: any) => { open: () => void; close?: () => void; on: (event: string, cb: (payload: any) => void) => void } }
 }
 
-type CheckoutCart = { subtotalPaise: number; totalPaise?: number; itemCount: number; items: Array<{ id: string; quantity: number; lineTotalPaise: number; variant?: { id?: string } }> };
+type CheckoutCart = {
+  subtotalPaise: number;
+  totalPaise?: number;
+  itemCount: number;
+  items: Array<{
+    id: string;
+    quantity: number;
+    lineTotalPaise: number;
+    product: { slug: string; name: string; image?: string | null };
+    variant: { id: string; size: string; color: string };
+  }>;
+};
 type Attempt = { fingerprint: string; token: string; walletPaise: number };
 
 function cartSignature(cart: CheckoutCart) {
@@ -254,7 +266,7 @@ export function CheckoutClient() {
                   alignItems: "center",
                   justifyContent: "space-between",
                   gap: 12,
-                  background: "#f7f4ef",
+                  background: "#fcf9f9",
                 }}
               >
                 <span>{signedInPhone.replace(/^\+91/, "+91 ")}</span>
@@ -282,9 +294,33 @@ export function CheckoutClient() {
         </fieldset>
         {error && <p className="form-error" role="alert">{error}</p>}
         {error === "This bag belongs to another account" && <div><p className={walletStyles.note}>Sign in to the account that owns this bag, or start a new bag. The original bag will not be deleted.</p><button className={walletStyles.textButton} type="button" onClick={() => { invalidate(true); startNewCartSession(); router.push("/collections/new-arrivals"); }}>Start a new bag</button></div>}
-        <button className="button button-dark" type="submit" disabled={busy || (useWallet && (wallet.loading || !wallet.summary?.enabled || !!wallet.error))}>{busy ? "Preparing your order…" : payable === 0 ? "Place order with rewards" : "Pay securely"}</button>
+        <button className="button checkout-pay-button" type="submit" disabled={busy || (useWallet && (wallet.loading || !wallet.summary?.enabled || !!wallet.error))}>{busy ? "Preparing your order…" : payable === 0 ? "Place order with rewards" : "Pay securely"}</button>
       </form>
-      <aside className="checkout-summary"><p>Order summary</p><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong><span>{cart.itemCount} item(s) · Taxes included</span>
+      <aside className="checkout-summary">
+        <p>Order summary</p>
+        <strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong>
+        <span>{cart.itemCount} item(s) · Taxes included</span>
+
+        <div className="checkout-summary-items">
+          {cart.items.map((item) => (
+            <Link key={item.id} href={`/products/${item.product.slug}`} className="checkout-summary-item">
+              <span className="checkout-summary-thumb">
+                <CatalogImage
+                  src={item.product.image}
+                  alt={item.product.name}
+                  sizes="72px"
+                  fallbackLabel={`HIDI / ${item.product.name}`}
+                />
+              </span>
+              <span className="checkout-summary-copy">
+                <b>{item.product.name}</b>
+                <small>{item.variant.color} · Size {item.variant.size}</small>
+                <small>Qty {item.quantity} · {formatWalletPaise(item.lineTotalPaise)}</small>
+              </span>
+            </Link>
+          ))}
+        </div>
+
         <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Order total</span><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong></div>{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
         {useWallet && !prepared && <p className={walletStyles.note}>Rewards are applied only after server confirmation.</p>}
         {!!prepared?.walletAppliedPaise && prepared.provider === "RAZORPAY" && <p className={walletStyles.note}>{formatWalletPaise(prepared.walletAppliedPaise)} is reserved for this checkout while the remaining payment is completed.</p>}

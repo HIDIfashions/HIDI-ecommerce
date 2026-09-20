@@ -172,9 +172,9 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
     </div>
 
     <div className="confirmation-actions">
-      <Link className="button button-dark" href="/collections/new-arrivals">Continue browsing</Link>
-      <Link className="text-link" href="/account">View my orders</Link>
-      <Link className="text-link" href="/">Back to HIDI home</Link>
+      <Link className="confirmation-action-link" href="/collections/new-arrivals">Continue browsing</Link>
+      <Link className="confirmation-action-link" href="/account">View my orders</Link>
+      <Link className="confirmation-action-link" href="/">Back to HIDI home</Link>
     </div>
   </div>;
 }
