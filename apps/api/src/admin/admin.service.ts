@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { DelhiveryService } from "../delhivery/delhivery.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { appendOrderAudit } from "../audit/order-audit.js";
+import type { AdminActor } from "./admin-auth.js";
 
 const ALLOWED_STATUSES = ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"] as const;
 const ACTIVE_RETURN_STATUSES = ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"];
@@ -207,7 +208,7 @@ export class AdminService {
     return this.delhivery.checkServiceability(pin);
   }
 
-  async createDelhiveryShipment(orderNumber: string) {
+  async createDelhiveryShipment(orderNumber: string, actor: AdminActor) {
     const order = await this.prisma.order.findUnique({
       where: { orderNumber },
       include: {
@@ -278,7 +279,7 @@ export class AdminService {
           orderId: order.id,
           eventType: "SHIPMENT_PREPARED",
           actorType: "ADMIN",
-          actorId: "HIDI_ADMIN",
+          actorId: actor.id,
           entityType: "SHIPMENT",
           entityId: shipment.id,
           toStatus: "READY_TO_SHIP",
@@ -288,6 +289,8 @@ export class AdminService {
             provider: "DELHIVERY",
             awb: manifested.waybill,
             trackingUrl: shipmentData.trackingUrl,
+            adminName: actor.displayName,
+            adminRole: actor.role,
           },
         });
 
@@ -314,6 +317,7 @@ export class AdminService {
   async saveShipment(
     orderNumber: string,
     input: { provider?: string; awb?: string; trackingUrl?: string },
+    actor: AdminActor,
   ) {
     const provider = input.provider?.trim();
     const awb = input.awb?.trim();
@@ -366,13 +370,13 @@ export class AdminService {
           orderId: order.id,
           eventType: "SHIPMENT_PREPARED",
           actorType: "ADMIN",
-          actorId: "HIDI_ADMIN",
+          actorId: actor.id,
           entityType: "SHIPMENT",
           entityId: shipment.id,
           toStatus: "READY_TO_SHIP",
           eventKey: `shipment:${awb}:prepared`,
           source: "ADMIN_PORTAL",
-          metadata: { provider, awb, trackingUrl },
+          metadata: { provider, awb, trackingUrl, adminName: actor.displayName, adminRole: actor.role },
         });
 
         return { shipment };
@@ -385,7 +389,7 @@ export class AdminService {
     }
   }
 
-  async updateStatus(orderNumber: string, nextStatus: string) {
+  async updateStatus(orderNumber: string, nextStatus: string, actor: AdminActor) {
     if (!ALLOWED_STATUSES.includes(nextStatus as ManagedOrderStatus)) {
       throw new BadRequestException("Unsupported order status");
     }
@@ -447,7 +451,7 @@ export class AdminService {
         orderId: order.id,
         eventType: `ORDER_${requested}`,
         actorType: "ADMIN",
-        actorId: "HIDI_ADMIN",
+        actorId: actor.id,
         entityType: "ORDER",
         entityId: order.id,
         fromStatus: current,
@@ -455,8 +459,8 @@ export class AdminService {
         eventKey: `order:${order.id}:status:${requested}`,
         source: "ADMIN_PORTAL",
         metadata: shipment
-          ? { shipmentId: shipment.id, provider: shipment.provider, awb: shipment.awb }
-          : undefined,
+          ? { shipmentId: shipment.id, provider: shipment.provider, awb: shipment.awb, adminName: actor.displayName, adminRole: actor.role }
+          : { adminName: actor.displayName, adminRole: actor.role },
       });
 
       return updated;
