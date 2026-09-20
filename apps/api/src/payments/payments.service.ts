@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { RazorpayService } from "../razorpay/razorpay.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
+import { appendOrderAudit } from "../audit/order-audit.js";
 
 const PAID_STATES = ["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED"];
 const FULFILLED_STATES = ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"];
@@ -100,6 +101,45 @@ export class PaymentsService {
       await tx.payment.update({ where: { id: payment.id }, data: { providerPaymentId, status: "CAPTURED", method: method ?? null, rawReference: raw ?? undefined } });
       const status = reviewRequired ? (RETURN_STATES.includes(order.status) || FULFILLED_STATES.includes(order.status) ? order.status : "PAYMENT_REVIEW") : "CONFIRMED";
       await tx.order.update({ where: { id: order.id }, data: { status: status as any } });
+
+      await appendOrderAudit(tx, {
+        orderId: order.id,
+        eventType: "PAYMENT_CAPTURED",
+        actorType: "PROVIDER",
+        actorId: "RAZORPAY",
+        entityType: "PAYMENT",
+        entityId: payment.id,
+        fromStatus: payment.status,
+        toStatus: "CAPTURED",
+        amountPaise: payment.amountPaise,
+        eventKey: `payment:${providerPaymentId}:captured`,
+        correlationId: payment.providerOrderId,
+        source: "RAZORPAY",
+        metadata: {
+          providerPaymentId,
+          providerOrderId: payment.providerOrderId,
+          method: method ?? null,
+          reviewRequired,
+          walletAppliedPaise: order.walletAppliedPaise,
+        },
+      });
+
+      if (status !== order.status) {
+        await appendOrderAudit(tx, {
+          orderId: order.id,
+          eventType: status === "CONFIRMED" ? "ORDER_CONFIRMED" : "PAYMENT_REVIEW_REQUIRED",
+          actorType: "SYSTEM",
+          entityType: "ORDER",
+          entityId: order.id,
+          fromStatus: order.status,
+          toStatus: status,
+          eventKey: `order:${order.id}:payment-outcome:${status}`,
+          correlationId: payment.providerOrderId,
+          source: "PAYMENTS_SERVICE",
+          metadata: { providerPaymentId, reviewRequired },
+        });
+      }
+
       if (!reviewRequired && order.cartSessionId) {
         const cart = await tx.cart.findUnique({ where: { sessionId: order.cartSessionId } });
         if (cart && (!cart.userId || cart.userId === order.userId)) await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
@@ -167,6 +207,26 @@ export class PaymentsService {
             completedAt: new Date(),
           },
         });
+        await appendOrderAudit(tx, {
+          orderId: current.orderId,
+          eventType: "RETURN_REFUNDED",
+          actorType: "PROVIDER",
+          actorId: "RAZORPAY",
+          entityType: "RETURN_REQUEST",
+          entityId: linkedReturn.id,
+          fromStatus: linkedReturn.status,
+          toStatus: "REFUNDED",
+          amountPaise: linkedReturn.refundCashPaise + linkedReturn.refundWalletPaise,
+          eventKey: `refund:${entity.id}:processed`,
+          correlationId: entity.payment_id,
+          source: "RAZORPAY_WEBHOOK",
+          metadata: {
+            providerRefundId: entity.id,
+            providerPaymentId: entity.payment_id,
+            cashPaise: linkedReturn.refundCashPaise,
+            walletPaise: linkedReturn.refundWalletPaise,
+          },
+        });
         // Fulfilment remains DELIVERED for a partial item return. The customer/admin
         // UI derives after-sales status from ReturnRequest instead of corrupting the
         // forward-delivery lifecycle.
@@ -176,7 +236,24 @@ export class PaymentsService {
       // Legacy/provider-led refunds not linked to an item-level return keep the
       // previous whole-order reconciliation behaviour.
       await this.wallet.reverseEarned(tx, current.orderId, "PAYMENT_REFUNDED");
-      await tx.order.update({ where: { id: current.orderId }, data: { status: fullCashRefund ? "REFUNDED" : "RETURN_REQUESTED" } });
+      const legacyStatus = fullCashRefund ? "REFUNDED" : "RETURN_REQUESTED";
+      const legacyOrder = await tx.order.findUnique({ where: { id: current.orderId }, select: { status: true } });
+      await tx.order.update({ where: { id: current.orderId }, data: { status: legacyStatus } });
+      await appendOrderAudit(tx, {
+        orderId: current.orderId,
+        eventType: fullCashRefund ? "PAYMENT_REFUNDED" : "PAYMENT_PARTIALLY_REFUNDED",
+        actorType: "PROVIDER",
+        actorId: "RAZORPAY",
+        entityType: "PAYMENT",
+        entityId: current.id,
+        fromStatus: legacyOrder?.status ?? null,
+        toStatus: legacyStatus,
+        amountPaise: entity.amount,
+        eventKey: `refund:${entity.id}:legacy-processed`,
+        correlationId: entity.payment_id,
+        source: "RAZORPAY_WEBHOOK",
+        metadata: { providerRefundId: entity.id, providerPaymentId: entity.payment_id, fullCashRefund },
+      });
       if (fullCashRefund) {
         const hold = await tx.walletHold.findUnique({ where: { orderId: current.orderId } });
         const restored = await this.wallet.restoreRedeemed(tx, current.orderId);
