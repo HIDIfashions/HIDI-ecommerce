@@ -167,9 +167,13 @@ export class ProductsService {
     // Product-level images are optional in Admin. When photography was added to
     // SKU/colour variants, expose a de-duplicated gallery publicly instead of
     // returning an empty product.images array and forcing the storefront fallback.
-    const imageSource = product.images?.length
-      ? product.images
-      : product.variants.flatMap((variant: any) => variant.images ?? []);
+    // SKU/colour photography uploaded from Admin is the primary storefront
+    // media source. Product-level photography remains a fallback for legacy data.
+    // Merge both so wishlist/cards never lose newly uploaded variant photos.
+    const imageSource = [
+      ...product.variants.flatMap((variant: any) => variant.images ?? []),
+      ...(product.images ?? []),
+    ];
     const seenUrls = new Set<string>();
     const images = imageSource
       .filter((image: any) => {
