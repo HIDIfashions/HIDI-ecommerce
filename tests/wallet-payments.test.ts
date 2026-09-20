@@ -240,6 +240,17 @@ test("failed or authorized messages after capture cannot downgrade paid state", 
   assert.equal(result.captured, true); assert.equal(f.state().payments[0].status, "CAPTURED"); assert.equal(f.state().order.status, "CONFIRMED");
 });
 
+test("failed payment webhook records one immutable audit event and is retry-safe", async () => {
+  const f = fixture();
+  const failed = { ...f.provider(), status: "failed", captured: false, error_code: "BAD_REQUEST_ERROR", error_description: "Payment failed in test" };
+  await f.webhook({ event: "payment.failed", payload: { payment: { entity: failed } } });
+  await f.webhook({ event: "payment.failed", payload: { payment: { entity: failed } } });
+  assert.equal(f.state().payments[0].status, "FAILED");
+  const events = f.state().auditEvents.filter((event: any) => event.eventType === "PAYMENT_FAILED");
+  assert.equal(events.length, 1);
+  assert.equal(events[0].eventKey, "payment:rzp-payment-1:failed");
+});
+
 test("capture does not clear a cart subsequently owned by a different account", async () => {
   const f = fixture(); f.state().cart.userId = "another-user";
   await f.capture(); assert.equal(f.state().order.status, "CONFIRMED"); assert.equal(f.state().cartItems, 1);
