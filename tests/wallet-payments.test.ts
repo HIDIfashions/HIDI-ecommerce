@@ -17,7 +17,7 @@ function fixture() {
     inventory: { variantId: "variant-1", onHand: 10, reserved: 1, safetyStock: 0 },
     wallet: { balancePaise: 10000, reservedPaise: 4000, accruedReversed: false },
     hold: { orderId: "order-1", amountPaise: 4000, status: "ACTIVE", expiresAt: new Date(Date.now() + 900000) },
-    refunds: [], returnRequests: [], cart: { id: "cart-1", userId: "user-1" }, cartItems: 1,
+    refunds: [], returnRequests: [], auditEvents: [], cart: { id: "cart-1", userId: "user-1" }, cartItems: 1,
   };
   let provider: any = { id: "rzp-payment-1", order_id: "rzp-order-1", amount: 196000, currency: "INR", status: "captured", captured: true, method: "upi", amount_refunded: 0, refund_status: null };
   const record = (action: string, value?: unknown) => calls.push({ action, input: value === undefined ? undefined : structuredClone(value) });
@@ -69,6 +69,19 @@ function fixture() {
       findUnique: async (q: any) => structuredClone(state.refunds.find((r: any) => matches(r, q.where)) ?? null),
       aggregate: async (q: any) => ({ _sum: { amountPaise: state.refunds.filter((r: any) => matches(r, q.where)).reduce((sum: number, r: any) => sum + r.amountPaise, 0) } }),
       create: async (q: any) => { record("refund.create", q); if (state.refunds.some((r: any) => r.providerRefundId === q.data.providerRefundId)) throw new Error("Duplicate refund identity"); const row = { id: `refund-${state.refunds.length + 1}`, ...q.data }; state.refunds.push(row); return structuredClone(row); },
+    },
+    orderAuditEvent: {
+      create: async (q: any) => {
+        record("audit.create", q);
+        if (q.data.eventKey && state.auditEvents.some((event: any) => event.eventKey === q.data.eventKey)) {
+          const error: any = new Error("Duplicate audit event");
+          error.code = "P2002";
+          throw error;
+        }
+        const row = { id: `audit-${state.auditEvents.length + 1}`, createdAt: new Date(), ...q.data };
+        state.auditEvents.push(row);
+        return structuredClone(row);
+      },
     },
     cart: { findUnique: async () => structuredClone(state.cart) },
     cartItem: { deleteMany: async (q: any) => { record("cartItem.deleteMany", q); const count = state.cartItems; state.cartItems = 0; return { count }; } },
@@ -133,6 +146,7 @@ test("capture updates the exact matching payment record, consumes wallet and inv
   assert.equal(f.state().order.status, "CONFIRMED"); assert.equal(f.state().inventory.onHand, 9); assert.equal(f.state().inventory.reserved, 0);
   assert.equal(f.state().wallet.balancePaise, 6000); assert.equal(f.state().wallet.reservedPaise, 0); assert.equal(f.state().hold.status, "CONSUMED");
   assert.equal(f.state().reservations[0].status, "CONSUMED"); assert.equal(f.state().cartItems, 0);
+  assert.deepEqual(f.state().auditEvents.map((event: any) => event.eventType), ["PAYMENT_CAPTURED", "ORDER_CONFIRMED"]);
   const locks = f.calls.filter((c) => c.action === "lock");
   assert.match(locks[0].input.sql, /FROM "Order"/); assert.match(locks[1].input.sql, /FROM "WalletAccount"/); assert.match(locks[2].input.sql, /FROM "Inventory"/);
 });
@@ -262,6 +276,7 @@ test("item-level return refund closes ReturnRequest without overwriting delivere
   assert.equal(f.state().returnRequests[0].status, "REFUNDED");
   assert.equal(f.state().returnRequests[0].refundStatus, "COMPLETED");
   assert.equal(f.state().returnRequests[0].refundProviderId, "rzp-return-refund-1");
+  assert.ok(f.state().auditEvents.some((event: any) => event.eventType === "RETURN_REFUNDED" && event.eventKey === "refund:rzp-return-refund-1:processed"));
   assert.equal(f.calls.filter((call) => call.action === "wallet.reverseEarned").length, 1);
   assert.equal(f.calls.some((call) => call.action === "wallet.restoreRedeemed"), false);
 });
