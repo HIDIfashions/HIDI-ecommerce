@@ -1,0 +1,50 @@
+name: Staging Readiness
+
+on:
+  pull_request:
+    branches:
+      - main
+      - staging
+      - feature/returns-operations
+  push:
+    branches:
+      - chore/staging-deployment-readiness
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build web and API
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://hidi:hidi@127.0.0.1:5432/hidi?schema=public
+      NEXT_PUBLIC_APP_ENV: staging
+      NEXT_PUBLIC_API_URL: https://api-staging.example.invalid/v1
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+      ADMIN_API_KEY: ci-placeholder-admin-key-not-for-runtime
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API
+        run: pnpm --filter @hidi/api build
+
+      - name: Build web
+        run: pnpm --filter @hidi/web build
