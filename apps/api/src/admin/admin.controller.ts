@@ -43,8 +43,8 @@ export class AdminController {
 
   @Get("staff")
   @RequireAdminPermissions("staff:manage")
-  staffList() {
-    return { staff: this.adminAuth.listStaff() };
+  async staffList() {
+    return { staff: await this.adminAuth.listStaff() };
   }
 
   @Post("staff")
