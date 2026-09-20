@@ -13,6 +13,7 @@ import {
   hasDashboardSecret,
   isAdminRequest,
   isLegacyAdminRequest,
+  legacyAdminEnabled,
   verifyDashboardKey,
 } from "@/lib/admin-auth";
 
@@ -84,10 +85,16 @@ export async function POST(request: NextRequest) {
   }
 
   const key = typeof body?.key === "string" ? body.key.trim() : "";
+  if (!legacyAdminEnabled()) {
+    return NextResponse.json(
+      { message: "Admin staff sign-in is required. Legacy admin key access is disabled." },
+      { status: 401 },
+    );
+  }
   if (!hasDashboardSecret()) {
     return NextResponse.json(
-      { message: "Admin staff sign-in is required. Legacy admin key is not configured." },
-      { status: 401 },
+      { message: "Legacy admin key is enabled but not configured." },
+      { status: 500 },
     );
   }
   if (!verifyDashboardKey(key)) {
