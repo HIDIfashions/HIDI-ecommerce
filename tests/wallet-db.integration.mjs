@@ -10,7 +10,7 @@ import test from "node:test";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const migrationsDir = path.join(repo, "apps/api/prisma/migrations");
-const privateTables = ["WalletAccount", "WalletLedger", "WalletHold", "RewardAccrual", "PaymentRefund"];
+const privateTables = ["WalletAccount", "WalletLedger", "WalletHold", "RewardAccrual", "PaymentRefund", "OrderAuditEvent"];
 
 function resolvePGlite() {
   const configured = process.env.HIDI_PGLITE_MODULE;
@@ -109,6 +109,8 @@ test("wallet migration and SQL persistence invariants in isolated PGlite", async
     assert.deepEqual(policies.rows, [], "private wallet tables must not gain public policies");
     const triggers = await db.query(`SELECT tgname FROM pg_trigger WHERE tgrelid = '"WalletLedger"'::regclass AND NOT tgisinternal AND tgenabled <> 'D'`);
     assert.ok(triggers.rows.some((row) => row.tgname === "WalletLedger_immutable"), "append-only trigger must exist and be enabled");
+    const auditTriggers = await db.query(`SELECT tgname FROM pg_trigger WHERE tgrelid = '"OrderAuditEvent"'::regclass AND NOT tgisinternal AND tgenabled <> 'D'`);
+    assert.ok(auditTriggers.rows.some((row) => row.tgname === "OrderAuditEvent_immutable"), "order audit trigger must exist and be enabled");
     const columns = await db.query(`SELECT column_default, is_nullable FROM information_schema.columns WHERE table_name = 'Order' AND column_name = 'walletAppliedPaise'`);
     assert.equal(columns.rows.length, 1);
     assert.equal(columns.rows[0].is_nullable, "NO");
@@ -227,6 +229,38 @@ test("wallet migration and SQL persistence invariants in isolated PGlite", async
     const functionSecurity = await db.query("SELECT prosecdef FROM pg_proc WHERE proname = 'hidi_wallet_ledger_immutable'");
     assert.equal(functionSecurity.rows.length, 1);
     assert.equal(functionSecurity.rows[0].prosecdef, false, "immutability function must not introduce SECURITY DEFINER");
+  });
+
+  await t.test("order operations timeline is private, idempotent and append-only", async () => {
+    const userId = await user("order-audit");
+    const orderId = await order("order-audit", userId);
+    const event = {
+      id: "audit-order-created",
+      orderId,
+      eventType: "ORDER_CREATED",
+      actorType: "SYSTEM",
+      entityType: "ORDER",
+      entityId: orderId,
+      toStatus: "PENDING_PAYMENT",
+      eventKey: "audit:qa:order-created",
+      source: "QA",
+    };
+    await insert(db, "OrderAuditEvent", event);
+    await rejectsCode(
+      () => insert(db, "OrderAuditEvent", { ...event, id: "audit-order-created-duplicate" }),
+      "23505",
+      "audit event key idempotency",
+    );
+    const before = await db.query('SELECT * FROM "OrderAuditEvent" WHERE "id" = \'audit-order-created\'');
+    for (const statement of [
+      'UPDATE "OrderAuditEvent" SET "eventType" = \'ALTERED\' WHERE "id" = \'audit-order-created\'',
+      'DELETE FROM "OrderAuditEvent" WHERE "id" = \'audit-order-created\'',
+    ]) await assert.rejects(() => db.query(statement), (error) => error.code === "P0001" && /append-only/.test(error.message));
+    assert.deepEqual((await db.query('SELECT * FROM "OrderAuditEvent" WHERE "id" = \'audit-order-created\'')).rows, before.rows);
+    await rejectsCode(() => db.query('DELETE FROM "Order" WHERE "id" = $1', [orderId]), "23503", "audited order cannot be deleted");
+    const functionSecurity = await db.query("SELECT prosecdef FROM pg_proc WHERE proname = 'hidi_order_audit_immutable'");
+    assert.equal(functionSecurity.rows.length, 1);
+    assert.equal(functionSecurity.rows[0].prosecdef, false, "audit immutability function must not introduce SECURITY DEFINER");
   });
 
   await t.test("a failed multi-write transaction rolls back balance, ledger and accrual together", async () => {
