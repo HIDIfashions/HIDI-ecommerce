@@ -10,6 +10,7 @@ import { AdminService } from "./admin.service.js";
 import { ReviewFollowUpService } from "./review-followup.service.js";
 import { AdminReturnsService } from "./admin-returns.service.js";
 import {
+  AdminAuthService,
   AdminGuard,
   CurrentAdmin,
   RequireAdminPermissions,
@@ -24,6 +25,7 @@ export class AdminController {
     private readonly inventory: AdminInventoryService,
     private readonly reviewFollowUps: ReviewFollowUpService,
     private readonly returns: AdminReturnsService,
+    private readonly adminAuth: AdminAuthService,
   ) {}
 
   @Get("me")
@@ -37,6 +39,28 @@ export class AdminController {
         authMode: actor.authMode,
       },
     };
+  }
+
+  @Get("staff")
+  @RequireAdminPermissions("staff:manage")
+  staffList() {
+    return { staff: this.adminAuth.listStaff() };
+  }
+
+  @Post("staff")
+  @RequireAdminPermissions("staff:manage")
+  async createStaff(@Body() body: { email?: unknown; displayName?: unknown; role?: unknown }) {
+    return { staff: await this.adminAuth.createStaff(body ?? {}) };
+  }
+
+  @Patch("staff/:staffId")
+  @RequireAdminPermissions("staff:manage")
+  async updateStaff(
+    @CurrentAdmin() actor: AdminActor,
+    @Param("staffId") staffId: string,
+    @Body() body: { displayName?: unknown; role?: unknown; active?: unknown },
+  ) {
+    return { staff: await this.adminAuth.updateStaff(staffId, body ?? {}, actor) };
   }
 
   @Get("orders")
