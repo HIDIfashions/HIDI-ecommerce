@@ -12,6 +12,7 @@ import {
   adminSessionToken,
   hasDashboardSecret,
   isAdminRequest,
+  isLegacyAdminRequest,
   verifyDashboardKey,
 } from "@/lib/admin-auth";
 
@@ -107,6 +108,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  if (isLegacyAdminRequest(request)) {
+    return NextResponse.json({ ok: true, legacy: true });
+  }
+
   const refreshToken = adminRefreshToken(request);
   if (!refreshToken) {
     const response = NextResponse.json({ message: "Admin session expired" }, { status: 401 });
