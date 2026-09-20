@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, Put, Query, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Query, UnauthorizedException } from "@nestjs/common";
 import {
   AdminInventoryService,
   type AdjustInventoryInput,
@@ -122,6 +122,17 @@ export class AdminController {
   ) {
     this.requireAdmin(adminKey);
     return this.inventory.addVariantImage(variantId, body ?? {});
+  }
+
+  @Delete("inventory/:variantId/images/:imageId")
+  removeInventoryVariantImage(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("variantId") variantId: string,
+    @Param("imageId") imageId: string,
+    @Query("applyToColor") applyToColor?: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.inventory.removeVariantImage(variantId, imageId, applyToColor === "true");
   }
 
   @Patch("returns/:requestId")
