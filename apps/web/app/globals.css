@@ -1299,3 +1299,93 @@ summary {
     letter-spacing: 0.07em;
   }
 }
+
+
+/* ==========================================================================
+   HIDI MOBILE SHELL
+   Compact chrome for phone-first shopping.
+   ========================================================================== */
+
+.announcement-desktop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+}
+
+.announcement-mobile {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .announcement {
+    min-height: 28px;
+    padding: 5px 12px;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 0.625rem;
+    letter-spacing: .055em;
+    white-space: nowrap;
+  }
+
+  .announcement-desktop {
+    display: none;
+  }
+
+  .announcement-mobile {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header-inner {
+    width: calc(100% - 24px);
+    height: 58px;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .mobile-menu {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .wordmark {
+    width: 118px;
+    height: 44px;
+    justify-self: center;
+  }
+
+  .utility-nav {
+    gap: 2px;
+  }
+
+  .mobile-secondary-utility {
+    display: none !important;
+  }
+
+  .site-header .utility-nav a,
+  .site-header .utility-nav button,
+  .site-header .mobile-menu {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .container {
+    width: calc(100% - 32px);
+  }
+
+  .footer-grid {
+    gap: 32px 20px;
+  }
+}
