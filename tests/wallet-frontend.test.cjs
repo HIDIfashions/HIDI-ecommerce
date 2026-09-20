@@ -141,7 +141,7 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
     window, process: { env: { NEXT_PUBLIC_API_URL: "http://test.invalid/v1" } },
     FormData: class { constructor(form) { this.form = form; } get(key) { return this.form[key] ?? ""; } },
     fetch: async (url, init = {}) => {
-      if (url.includes("/carts/")) return { ok: true, json: async () => ({ subtotalPaise: 100000, itemCount: 1, items: [{ id: "line-1", quantity: 1, lineTotalPaise: 100000, variant: { id: "v1" } }] }) };
+      if (url.includes("/carts/")) return { ok: true, json: async () => ({ subtotalPaise: 100000, itemCount: 1, items: [{ id: "line-1", quantity: 1, lineTotalPaise: 100000, variant: { id: "v1", size: "M", color: "Test", images: [], product: { name: "Test Product", slug: "test-product", images: [] } } }] }) };
       if (url.endsWith("/checkout/prepare")) {
         state.prepareCalls.push({ url, init, body: JSON.parse(init.body) });
         if (state.prepareImpl) return state.prepareImpl();
