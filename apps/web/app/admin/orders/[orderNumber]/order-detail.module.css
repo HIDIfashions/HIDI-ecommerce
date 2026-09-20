@@ -395,6 +395,74 @@
   font-size: 11px;
 }
 
+.auditTimeline {
+  display: grid;
+  gap: 0;
+  margin-top: 8px;
+}
+
+.auditEvent {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 10px;
+  padding: 0 0 18px;
+}
+
+.auditEvent:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 12px;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.auditDot {
+  position: relative;
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  margin-top: 3px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.auditContent {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.auditContent strong {
+  font-family: Georgia, serif;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.auditContent small,
+.auditContent time,
+.auditEmpty {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.auditContent time {
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.auditEmpty {
+  margin: 0 !important;
+}
+
+
 .error,
 .notice,
 .state {
