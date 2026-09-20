@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 const ITEMS = [
   { label: "Orders", href: "/admin/orders" },
@@ -14,6 +15,12 @@ const ITEMS = [
 
 export function AdminNav() {
   const pathname = usePathname();
+
+  useEffect(() => {
+    const refresh = () => fetch("/api/admin/session", { method: "PUT" }).catch(() => undefined);
+    const timer = window.setInterval(refresh, 40 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <nav aria-label="Admin navigation">
