@@ -1,16 +1,15 @@
 import Link from "next/link";
-import { Heart, Menu, UserRound } from "lucide-react";
+import { Heart, UserRound } from "lucide-react";
 import { CartLink } from "./cart-link";
 import { HeaderSearch } from "./header-search";
 import iconStyles from "./header-icons.module.css";
+import { MobileNav } from "./mobile-nav";
 
 export function Header() {
   return (
     <header className="site-header">
       <div className="header-inner">
-        <button className="mobile-menu" aria-label="Open menu">
-          <Menu size={21} aria-hidden="true" />
-        </button>
+        <MobileNav />
 
         <Link className="wordmark" href="/" aria-label="HIDI — Wear the Feeling">
           <img
@@ -29,10 +28,10 @@ export function Header() {
 
         <nav className="utility-nav" aria-label="Utilities">
           <HeaderSearch />
-          <Link href="/account" className={iconStyles.iconLink} aria-label="Account" title="Account">
+          <Link href="/account" className={`${iconStyles.iconLink} mobile-secondary-utility`} aria-label="Account" title="Account">
             <UserRound className={iconStyles.icon} aria-hidden="true" />
           </Link>
-          <Link href="/wishlist" className={iconStyles.iconLink} aria-label="Wishlist" title="Wishlist">
+          <Link href="/wishlist" className={`${iconStyles.iconLink} mobile-secondary-utility`} aria-label="Wishlist" title="Wishlist">
             <Heart className={iconStyles.icon} aria-hidden="true" />
           </Link>
           <CartLink />
