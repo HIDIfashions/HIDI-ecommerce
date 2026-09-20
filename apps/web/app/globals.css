@@ -996,6 +996,20 @@ body {
   gap: 40px 18px;
 }
 
+.pdp-recent {
+  margin-top: 72px;
+  padding-top: 52px;
+  border-top: 1px solid var(--line);
+}
+
+.pdp-recent-copy {
+  max-width: 520px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 @media (max-width: 1000px) {
   .pdp-related-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1005,6 +1019,11 @@ body {
 @media (max-width: 620px) {
   .pdp-related {
     margin-top: 64px;
+    padding-top: 34px;
+  }
+
+  .pdp-recent {
+    margin-top: 52px;
     padding-top: 34px;
   }
 
