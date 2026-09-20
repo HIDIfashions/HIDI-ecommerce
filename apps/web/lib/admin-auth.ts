@@ -56,7 +56,7 @@ export function isAdminRequest(request: NextRequest) {
   return Boolean(adminAccessToken(request) || isLegacyAdminRequest(request));
 }
 
-export function adminApiHeaders(request: NextRequest) {
+export function adminApiHeaders(request: NextRequest): Record<string, string> {
   const accessToken = adminAccessToken(request);
   if (accessToken) return { Authorization: `Bearer ${accessToken}` };
 
