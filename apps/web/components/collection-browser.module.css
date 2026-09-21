@@ -375,3 +375,47 @@
     transition: none;
   }
 }
+
+
+/* HIDI collection typography phase 2 */
+.filterHeading,
+.filterSummary,
+.option,
+.colorOption,
+.toolbar,
+.mobileFilterButton,
+.sortLabel,
+.sortSelect {
+  font-family: var(--font-sans);
+}
+
+.filterHeading {
+  font-size: 12px;
+  letter-spacing: .10em;
+}
+
+.clearButton,
+.mobileFilterButton {
+  font-size: 12px;
+  letter-spacing: .07em;
+}
+
+.filterSummary {
+  font-size: 12px;
+  letter-spacing: .09em;
+}
+
+.option,
+.colorOption,
+.colorCount,
+.styleCount,
+.sortLabel,
+.sortSelect {
+  font-size: 12px;
+}
+
+.filterCount { font-size: 11px; }
+
+@media (max-width: 560px) {
+  .mobileFilterButton { font-size: 11px; }
+}

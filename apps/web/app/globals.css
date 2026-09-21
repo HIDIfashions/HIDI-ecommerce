@@ -1299,3 +1299,78 @@ summary {
     letter-spacing: 0.07em;
   }
 }
+
+
+/* ==========================================================================
+   HIDI TYPOGRAPHY PHASE 2
+   Calm editorial hierarchy for customer-facing commerce.
+   ========================================================================== */
+
+.collection-header h1 {
+  font-size: clamp(2.75rem, 5vw, 4.5rem);
+  line-height: .98;
+  letter-spacing: -.03em;
+}
+
+.pdp-info h1 {
+  font-size: clamp(2.25rem, 4vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -.025em;
+}
+
+.pdp-subtitle,
+.pdp-description,
+.confirmation-page > p:not(.eyebrow) {
+  font-size: var(--text-base);
+  line-height: 1.65;
+}
+
+.cart-item-info h2,
+.order-summary h2,
+.checkout-form h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -.015em;
+}
+
+.announcement,
+.desktop-nav,
+.eyebrow,
+.button,
+.newsletter button,
+.delivery-box button,
+.breadcrumbs,
+.product-badge,
+.checkout-summary p,
+.pdp-price span,
+.fine-print,
+.footer h3,
+.footer-bottom {
+  font-size: .75rem;
+}
+
+.announcement,
+.desktop-nav,
+.button,
+.newsletter button,
+.delivery-box button {
+  letter-spacing: .06em;
+}
+
+.eyebrow,
+.footer h3 {
+  letter-spacing: .10em;
+}
+
+.pdp-price,
+.order-summary .summary-total,
+.checkout-summary strong,
+.confirmation-number {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 620px) {
+  .announcement { font-size: .75rem; }
+  .collection-header h1 { font-size: clamp(2.6rem, 12vw, 3.5rem); }
+  .pdp-info h1 { font-size: clamp(2.15rem, 10vw, 2.75rem); }
+}

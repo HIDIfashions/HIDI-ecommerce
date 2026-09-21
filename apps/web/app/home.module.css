@@ -982,3 +982,102 @@
     transition: none;
   }
 }
+
+
+/* HIDI homepage typography phase 2 */
+.heroCopy h1,
+.heroNote span,
+.heroBadge strong,
+.collectionCopy > span,
+.launchIntro h2,
+.launchOfferCard strong,
+.sectionHeading h2,
+.brandStory h2,
+.whatsappCard h3,
+.visualNote,
+.promiseLead h2,
+.promiseGrid strong {
+  font-family: var(--font-display);
+}
+
+.heroCopy h1 {
+  font-size: clamp(52px, 5.8vw, 82px);
+  font-weight: 500;
+  line-height: .98;
+  letter-spacing: -.035em;
+}
+
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: .10em;
+}
+
+.primaryButton,
+.secondaryButton,
+.whatsappButton {
+  font-size: 12px;
+  letter-spacing: .06em;
+}
+
+.heroIntro {
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.heroNote span {
+  font-size: 17px;
+  font-style: normal;
+}
+
+.heroBadge span {
+  font-size: 11px;
+  letter-spacing: .09em;
+}
+
+.collectionCopy > span { font-size: 26px; }
+.collectionCopy p { font-size: 13px; line-height: 1.55; }
+.collectionCopy b { font-size: 11px; letter-spacing: .07em; }
+
+.launchIntro h2 {
+  font-size: clamp(40px, 4.2vw, 58px);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -.03em;
+}
+
+.launchIntro > p:not(.eyebrow) { font-size: 15px; line-height: 1.7; }
+.launchCta { font-size: 12px; letter-spacing: .06em; }
+.launchOfferCard > p { font-size: 11px; letter-spacing: .09em; }
+.launchOfferCard strong { font-weight: 500; }
+.launchOfferCard > span:last-child { font-size: 12px; line-height: 1.6; }
+
+.standardItem strong { font-size: 13px; letter-spacing: 0; }
+.standardItem span { font-size: 12px; }
+
+.sectionHeading h2,
+.brandStory h2,
+.promiseLead h2 {
+  font-size: clamp(42px, 4.6vw, 64px);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -.03em;
+}
+
+.sectionAside p { font-size: 14px; }
+.sectionAside a,
+.storyLink { font-size: 12px; letter-spacing: .06em; }
+.brandStory > p:not(.eyebrow) { font-size: 16px; }
+
+.whatsappBrandRow span,
+.whatsappCard > span,
+.whatsappCopy > span { font-size: 11px; letter-spacing: .09em; }
+.whatsappBrandRow small { font-size: 12px; }
+.whatsappCard p { font-size: 14px; }
+.whatsappBenefits span { font-size: 11px; }
+.whatsappFinePrint { font-size: 11px; }
+.visualNote { font-style: normal; }
+.promiseGrid span { font-size: 13px; }
+
+@media (max-width: 780px) {
+  .heroCopy h1 { font-size: clamp(48px, 13vw, 64px); }
+}

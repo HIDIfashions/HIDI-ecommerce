@@ -349,3 +349,46 @@
   color: #ffffff;
   opacity: .45;
 }
+
+
+/* HIDI product-card typography phase 2 */
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: .09em;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.22;
+}
+
+.priceRow { font-size: 14px; }
+.priceRow s,
+.from,
+.saving,
+.singleColour,
+.colourButton,
+.sizeHeading,
+.sizeButton { font-size: 12px !important; }
+
+.details,
+.availability,
+.feedback,
+.secondaryActions button { font-size: 11px !important; }
+
+.addButton {
+  font-size: 12px !important;
+  letter-spacing: .05em;
+}
+
+.viewBag { font-size: 12px; }
+
+@container (max-width: 225px) {
+  .name { font-size: 17px; }
+  .eyebrow { font-size: 10px; letter-spacing: .07em; }
+  .sizeHeading { font-size: 11px; }
+  .addButton { font-size: 11px !important; }
+  .priceRow { font-size: 13px; }
+}

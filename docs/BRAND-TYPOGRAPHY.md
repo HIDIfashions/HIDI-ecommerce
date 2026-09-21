@@ -45,3 +45,12 @@ Good: "Free shipping above ₹1,999"
 Avoid: "Hurry!!! Grab this amazing deal now"
 
 This file is the typography source of truth for future storefront work.
+
+
+## Phase 2 usage
+
+- Cormorant is reserved for editorial meaning: hero, collection/section headings, product names and brand statements.
+- Manrope owns every functional decision: navigation, search, filters, prices, sizes, buttons, forms, cart, checkout, account and operational text.
+- Customer-facing commerce text should not rely on 8–10px micro-type. Functional labels are 12px or larger wherever space permits.
+- All-caps remains limited to short UI labels; tracking is restrained to roughly 0.06–0.10em.
+- Prices and totals use tabular numerals so scanning and comparison stay clean.
