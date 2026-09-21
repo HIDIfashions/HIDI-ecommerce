@@ -31,6 +31,14 @@ type PackOrder = {
   } | null;
 };
 
+type ScanResult = {
+  tone: "MATCH" | "WRONG" | "EXTRA";
+  sku: string;
+  title: string;
+  detail: string;
+  item?: PackItem;
+};
+
 function normalizeOrderScan(raw: string) {
   let value = raw.trim();
   value = value.replace(/^HIDI-ORDER:/i, "").replace(/^ORDER:/i, "").trim();
@@ -78,6 +86,7 @@ export function ScanPackClient() {
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const orderRef = useRef<HTMLInputElement>(null);
   const skuRef = useRef<HTMLInputElement>(null);
 
@@ -92,6 +101,59 @@ export function ScanPackClient() {
     }
   }, []);
 
+  const openOrder = useCallback(async (rawOrderNumber: string) => {
+    const orderNumber = normalizeOrderScan(rawOrderNumber);
+    if (!orderNumber) return;
+
+    setLoadingOrder(true);
+    setError(null);
+    setNotice(null);
+    setScanResult(null);
+    setOrder(null);
+    setScans([]);
+
+    try {
+      const response = await fetch("/api/admin/orders/" + encodeURIComponent(orderNumber), {
+        cache: "no-store",
+      });
+      const body = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        setAuthenticated(false);
+        throw new Error("Admin session expired");
+      }
+      if (!response.ok) throw new Error(body?.message ?? "Order not found");
+
+      const loaded = body.order as PackOrder;
+      setOrder(loaded);
+      setOrderInput("");
+
+      if (loaded.status !== "CONFIRMED") {
+        setError(
+          loaded.status === "PACKED"
+            ? "This order is already packed. Open another confirmed order."
+            : "This order cannot enter Scan & Pack while its status is " + loaded.status + ".",
+        );
+      } else {
+        setNotice(
+          "Order " +
+            loaded.orderNumber +
+            " loaded. Scan the price-tag barcode on " +
+            loaded.itemCount +
+            " garment" +
+            (loaded.itemCount === 1 ? "" : "s") +
+            ".",
+        );
+        navigator.vibrate?.(35);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load order");
+      window.setTimeout(() => orderRef.current?.focus(), 30);
+    } finally {
+      setLoadingOrder(false);
+    }
+  }, []);
+
   useEffect(() => {
     void checkSession();
   }, [checkSession]);
@@ -102,11 +164,10 @@ export function ScanPackClient() {
 
   useEffect(() => {
     const queuedOrder = searchParams.get("order")?.trim();
-    if (authenticated && !order && queuedOrder && !orderInput) {
-      setOrderInput(queuedOrder);
-      window.setTimeout(() => orderRef.current?.focus(), 20);
+    if (authenticated && !order && queuedOrder && !loadingOrder) {
+      void openOrder(queuedOrder);
     }
-  }, [authenticated, order, orderInput, searchParams]);
+  }, [authenticated, loadingOrder, openOrder, order, searchParams]);
 
   useEffect(() => {
     if (order?.status === "CONFIRMED") skuRef.current?.focus();
@@ -155,55 +216,7 @@ export function ScanPackClient() {
 
   async function loadOrder(event: FormEvent) {
     event.preventDefault();
-    const orderNumber = normalizeOrderScan(orderInput);
-    if (!orderNumber) return;
-
-    setLoadingOrder(true);
-    setError(null);
-    setNotice(null);
-    setOrder(null);
-    setScans([]);
-
-    try {
-      const response = await fetch("/api/admin/orders/" + encodeURIComponent(orderNumber), {
-        cache: "no-store",
-      });
-      const body = await response.json().catch(() => ({}));
-
-      if (response.status === 401) {
-        setAuthenticated(false);
-        throw new Error("Admin session expired");
-      }
-      if (!response.ok) throw new Error(body?.message ?? "Order not found");
-
-      const loaded = body.order as PackOrder;
-      setOrder(loaded);
-      setOrderInput("");
-
-      if (loaded.status !== "CONFIRMED") {
-        setError(
-          loaded.status === "PACKED"
-            ? "This order is already packed. Scan another order."
-            : "This order cannot enter Scan & Pack while its status is " + loaded.status + ".",
-        );
-      } else {
-        setNotice(
-          "Order " +
-            loaded.orderNumber +
-            " loaded. Scan " +
-            loaded.itemCount +
-            " item" +
-            (loaded.itemCount === 1 ? "" : "s") +
-            ".",
-        );
-        navigator.vibrate?.(35);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load order");
-      window.setTimeout(() => orderRef.current?.focus(), 30);
-    } finally {
-      setLoadingOrder(false);
-    }
+    await openOrder(orderInput);
   }
 
   function scanSku(event: FormEvent) {
@@ -214,6 +227,7 @@ export function ScanPackClient() {
     setSkuInput("");
     setError(null);
     setNotice(null);
+    setScanResult(null);
 
     if (!sku) {
       skuRef.current?.focus();
@@ -221,8 +235,16 @@ export function ScanPackClient() {
     }
 
     const expectedQty = expected.get(sku);
-    if (!expectedQty) {
-      setError("Wrong item: " + sku + " is not part of order " + order.orderNumber + ".");
+    const matchedItem = order.items.find((item) => item.sku.trim().toUpperCase() === sku);
+    if (!expectedQty || !matchedItem) {
+      const message = "Wrong item: " + sku + " is not part of order " + order.orderNumber + ".";
+      setError(message);
+      setScanResult({
+        tone: "WRONG",
+        sku,
+        title: "WRONG ITEM — DO NOT PACK",
+        detail: "This price-tag barcode does not belong to the customer order.",
+      });
       navigator.vibrate?.([100, 60, 100]);
       skuRef.current?.focus();
       return;
@@ -230,22 +252,45 @@ export function ScanPackClient() {
 
     const currentQty = scannedCounts.get(sku) ?? 0;
     if (currentQty >= expectedQty) {
-      setError(
+      const message =
         "Extra scan blocked: " +
-          sku +
-          " already has all " +
-          expectedQty +
-          " required piece" +
-          (expectedQty === 1 ? "" : "s") +
-          ".",
-      );
+        sku +
+        " already has all " +
+        expectedQty +
+        " required piece" +
+        (expectedQty === 1 ? "" : "s") +
+        ".";
+      setError(message);
+      setScanResult({
+        tone: "EXTRA",
+        sku,
+        title: "EXTRA PIECE — DO NOT PACK",
+        detail: matchedItem.productName + " · " + matchedItem.color + " · Size " + matchedItem.size,
+        item: matchedItem,
+      });
       navigator.vibrate?.([100, 60, 100]);
       skuRef.current?.focus();
       return;
     }
 
     setScans((current) => [...current, sku]);
-    setNotice("Verified " + sku + " · " + (scannedTotal + 1) + " of " + expectedTotal);
+    setNotice("Verified " + matchedItem.productName + " · " + (scannedTotal + 1) + " of " + expectedTotal);
+    setScanResult({
+      tone: "MATCH",
+      sku,
+      title: "MATCHED — SAFE TO PACK",
+      detail:
+        matchedItem.productName +
+        " · " +
+        matchedItem.color +
+        " · Size " +
+        matchedItem.size +
+        " · Piece " +
+        (currentQty + 1) +
+        " of " +
+        expectedQty,
+      item: matchedItem,
+    });
     navigator.vibrate?.(35);
     window.setTimeout(() => skuRef.current?.focus(), 10);
   }
@@ -255,6 +300,7 @@ export function ScanPackClient() {
     const removed = scans.at(-1);
     setScans((current) => current.slice(0, -1));
     setError(null);
+    setScanResult(null);
     setNotice(removed ? "Removed last scan: " + removed : null);
     window.setTimeout(() => skuRef.current?.focus(), 10);
   }
@@ -266,6 +312,7 @@ export function ScanPackClient() {
     setOrderInput("");
     setError(null);
     setNotice(null);
+    setScanResult(null);
     window.setTimeout(() => orderRef.current?.focus(), 30);
   }
 
@@ -381,8 +428,8 @@ export function ScanPackClient() {
           <p className={styles.eyebrow}>FULFILMENT</p>
           <h1>Scan & Pack</h1>
           <p>
-            Scan the order first, then every garment going into the parcel.
-            Wrong SKU, colour, size or extra quantity is blocked.
+            Open a confirmed customer order, then scan the barcode already attached to each garment price tag.
+            HIDI verifies SKU, colour, size and required quantity before packing can complete.
           </p>
         </div>
         <div className={styles.scannerTip}>
@@ -394,13 +441,13 @@ export function ScanPackClient() {
       {!order && (
         <section className={styles.orderScanCard}>
           <p className={styles.step}>STEP 1</p>
-          <h2>Scan order</h2>
+          <h2>Open confirmed order</h2>
           <form onSubmit={loadOrder}>
             <input
               ref={orderRef}
               value={orderInput}
               onChange={(event) => setOrderInput(event.target.value)}
-              placeholder="Scan order barcode or type order number"
+              placeholder="Type or scan order number"
               autoComplete="off"
               spellCheck={false}
             />
@@ -409,7 +456,7 @@ export function ScanPackClient() {
             </button>
           </form>
           <small>
-            Accepted test values: plain order number, ORDER:&lt;number&gt; or HIDI-ORDER:&lt;number&gt;.
+            Normally start from Admin → Orders → Start scan & pack. Manual order entry remains available as a fallback.
           </small>
         </section>
       )}
@@ -439,7 +486,7 @@ export function ScanPackClient() {
             <section className={styles.workspace}>
               <div className={styles.scanPanel}>
                 <p className={styles.step}>STEP 2</p>
-                <h2>Scan garments</h2>
+                <h2>Scan garment price tags</h2>
                 <div
                   className={styles.progressTrack}
                   aria-label={scannedTotal + " of " + expectedTotal + " items verified"}
@@ -458,12 +505,30 @@ export function ScanPackClient() {
                     ref={skuRef}
                     value={skuInput}
                     onChange={(event) => setSkuInput(event.target.value)}
-                    placeholder="Scanner ready — scan SKU"
+                    placeholder="Scanner ready — scan price-tag barcode"
                     autoComplete="off"
                     spellCheck={false}
                   />
                   <button type="submit">Verify</button>
                 </form>
+
+                {scanResult && (
+                  <div
+                    className={
+                      styles.scanResult +
+                      " " +
+                      (scanResult.tone === "MATCH" ? styles.scanMatch : styles.scanMismatch)
+                    }
+                    role={scanResult.tone === "MATCH" ? "status" : "alert"}
+                  >
+                    <div className={styles.scanResultMark}>{scanResult.tone === "MATCH" ? "✓" : "!"}</div>
+                    <div>
+                      <strong>{scanResult.title}</strong>
+                      <span>{scanResult.detail}</span>
+                      <code>{scanResult.sku}</code>
+                    </div>
+                  </div>
+                )}
 
                 <div className={styles.scanActions}>
                   <button type="button" onClick={undoLastScan} disabled={!scans.length}>
