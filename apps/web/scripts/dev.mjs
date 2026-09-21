@@ -28,7 +28,7 @@ function clearPort(portNumber) {
         `if [ -n "$pids" ]; then kill -KILL $pids 2>/dev/null || true; sleep 0.25; fi`,
         `pids="$(lsof -tiTCP:${portNumber} -sTCP:LISTEN 2>/dev/null || true)"`,
         `if [ -n "$pids" ]; then echo "Unable to free port ${portNumber}; remaining PID(s): $pids" >&2; exit 1; fi`,
-      ].join("; "),
+      ].join("\n"),
     ],
     { cwd, stdio: "inherit" },
   );
