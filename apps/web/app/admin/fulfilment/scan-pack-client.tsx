@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AdminNav } from "@/components/admin/admin-nav";
 import styles from "./scan-pack.module.css";
 
@@ -66,6 +67,7 @@ function quantityBySku(items: PackItem[]) {
 }
 
 export function ScanPackClient() {
+  const searchParams = useSearchParams();
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [draftKey, setDraftKey] = useState("");
   const [orderInput, setOrderInput] = useState("");
@@ -97,6 +99,14 @@ export function ScanPackClient() {
   useEffect(() => {
     if (authenticated && !order) orderRef.current?.focus();
   }, [authenticated, order]);
+
+  useEffect(() => {
+    const queuedOrder = searchParams.get("order")?.trim();
+    if (authenticated && !order && queuedOrder && !orderInput) {
+      setOrderInput(queuedOrder);
+      window.setTimeout(() => orderRef.current?.focus(), 20);
+    }
+  }, [authenticated, order, orderInput, searchParams]);
 
   useEffect(() => {
     if (order?.status === "CONFIRMED") skuRef.current?.focus();
