@@ -211,7 +211,7 @@ export function AdminOrdersClient() {
       ) : (
         <section className={styles.tableWrap}>
           <div className={styles.tableHeader}>
-            <span>Order</span><span>Customer</span><span>Items</span><span>Total</span><span>Payment</span><span>Status</span><span />
+            <span>Order</span><span>Customer</span><span>Items</span><span>Total</span><span>Payment</span><span>Status</span><span>Actions</span>
           </div>
           {orders.map((order) => {
             const address = order.shippingAddress ?? {};
@@ -235,7 +235,17 @@ export function AdminOrdersClient() {
                     <span className={`${styles.status} ${styles[`status${order.status}`] ?? ""}`}>{statusLabel(order.status)}</span>
                   )}
                 </div>
-                <div className={styles.viewCell}><Link href={`/admin/orders/${encodeURIComponent(order.orderNumber)}`}>View →</Link></div>
+                <div className={styles.viewCell}>
+                  <Link href={`/admin/orders/${encodeURIComponent(order.orderNumber)}`}>View →</Link>
+                  {order.status === "CONFIRMED" && (
+                    <Link
+                      className={styles.labelLink}
+                      href={`/admin/fulfilment?order=${encodeURIComponent(order.orderNumber)}`}
+                    >
+                      Start scan & pack
+                    </Link>
+                  )}
+                </div>
               </div>
             );
           })}

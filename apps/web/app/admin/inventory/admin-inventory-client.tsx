@@ -187,6 +187,7 @@ export function AdminInventoryClient() {
           <p>Live stock by product, colour and size. Checkout controls reserved pieces.</p>
         </div>
         <div className={styles.headerActions}>
+          <Link className={styles.receiveButton} href="/admin/labels">Reprint labels</Link>
           <Link className={styles.receiveButton} href="/admin/inventory/receive">Receive stock</Link>
           <button className={styles.refreshButton} type="button" onClick={() => void loadInventory()} disabled={loading}>
             {loading ? "Refreshing…" : "Refresh stock"}

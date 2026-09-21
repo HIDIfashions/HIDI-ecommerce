@@ -64,6 +64,15 @@ export class AdminController {
     return this.inventory.listReceipts();
   }
 
+  @Get("inventory/receipts/:receiptId")
+  inventoryReceipt(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("receiptId") receiptId: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.inventory.getReceipt(receiptId);
+  }
+
   @Post("inventory/receipts")
   createInventoryReceipt(
     @Headers("x-admin-key") adminKey: string | undefined,
@@ -197,6 +206,16 @@ export class AdminController {
   ) {
     this.requireAdmin(adminKey);
     return this.admin.saveShipment(orderNumber, body ?? {});
+  }
+
+  @Post("orders/:orderNumber/scan-pack")
+  completeScanPack(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+    @Body() body: { scans?: unknown },
+  ) {
+    this.requireAdmin(adminKey);
+    return this.admin.completeScanPack(orderNumber, body ?? {});
   }
 
   @Patch("orders/:orderNumber/status")

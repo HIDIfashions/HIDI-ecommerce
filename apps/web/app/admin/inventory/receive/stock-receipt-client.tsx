@@ -62,6 +62,7 @@ export function AdminStockReceiptClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState<string | null>(null);
   const [photoProgress, setPhotoProgress] = useState("");
+  const [postedReceipt, setPostedReceipt] = useState<{ id: string; receiptNumber: string; totalAccepted: number } | null>(null);
   const photoLock = useRef(false);
 
   const load = useCallback(async () => {
@@ -211,7 +212,16 @@ export function AdminStockReceiptClient() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(Array.isArray(body?.message) ? body.message.join(". ") : body?.message ?? "Unable to save receipt");
-      setMessage(action === "POST" ? `${body.receiptNumber} posted. Sellable stock is updated.` : `${body.receiptNumber} saved as draft. Stock is unchanged.`);
+      setMessage(action === "POST" ? `${body.receiptNumber} posted. Sellable stock is updated and price-tag barcodes are ready.` : `${body.receiptNumber} saved as draft. Stock is unchanged.`);
+      if (action === "POST") {
+        setPostedReceipt({
+          id: body.id,
+          receiptNumber: body.receiptNumber,
+          totalAccepted: body.totalAccepted ?? totals.accepted,
+        });
+      } else {
+        setPostedReceipt(null);
+      }
       setLines([]);
       setSupplierName("");
       setInvoiceNumber("");
@@ -233,7 +243,14 @@ export function AdminStockReceiptClient() {
     const response = await fetch(`/api/admin/inventory/receipts/${encodeURIComponent(receiptId)}/post`, { method: "POST" });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) setError(body?.message ?? "Unable to post receipt");
-    else setMessage(`${body.receiptNumber} posted. Sellable stock is updated.`);
+    else {
+      setMessage(`${body.receiptNumber} posted. Sellable stock is updated and price-tag barcodes are ready.`);
+      setPostedReceipt({
+        id: body.id,
+        receiptNumber: body.receiptNumber,
+        totalAccepted: body.totalAccepted ?? 0,
+      });
+    }
     await load();
   }
 
@@ -263,6 +280,24 @@ export function AdminStockReceiptClient() {
 
       {error && <div className={styles.error} role="alert">{error}</div>}
       {message && <div className={styles.success} role="status">{message}</div>}
+      {postedReceipt && (
+        <section className={styles.labelReady} aria-label="Price-tag barcodes ready">
+          <div>
+            <p className={styles.eyebrow}>NEXT STEP</p>
+            <strong>Price-tag barcodes ready</strong>
+            <span>
+              {postedReceipt.totalAccepted} accepted piece{postedReceipt.totalAccepted === 1 ? "" : "s"} from {postedReceipt.receiptNumber}.
+              Attach one barcode label to each garment before it is shelved.
+            </span>
+          </div>
+          <Link
+            href={"/admin/inventory/receipts/" + encodeURIComponent(postedReceipt.id) + "/labels"}
+            target="_blank"
+          >
+            Print {postedReceipt.totalAccepted} price-tag label{postedReceipt.totalAccepted === 1 ? "" : "s"}
+          </Link>
+        </section>
+      )}
 
       <section className={styles.card}>
         <div className={styles.sectionTitle}><span>01</span><div><h2>Delivery details</h2><p>An invoice or PO is required when the receipt is posted.</p></div></div>
@@ -318,7 +353,17 @@ export function AdminStockReceiptClient() {
 
       <section className={styles.card}>
         <div className={styles.sectionTitle}><span>03</span><div><h2>Recent receipts</h2><p>Draft receipts do not affect inventory until posted.</p></div></div>
-        <div className={styles.receipts}>{receipts.length === 0 ? <div className={styles.empty}>No receipts yet.</div> : receipts.map((receipt) => <div key={receipt.id} className={styles.receipt}><div><strong>{receipt.receiptNumber}</strong><small>{receipt.supplierName} · {new Date(receipt.receivedAt).toLocaleDateString("en-IN")}</small></div><span>{receipt.lines.length} SKUs</span><span>{receipt.totalAccepted} accepted</span><b data-status={receipt.status}>{receipt.status}</b>{receipt.status === "DRAFT" ? <button type="button" disabled={busy || Boolean(photoBusy)} onClick={() => void postDraft(receipt.id)}>Post</button> : <span />}</div>)}</div>
+        <div className={styles.receipts}>{receipts.length === 0 ? <div className={styles.empty}>No receipts yet.</div> : receipts.map((receipt) => <div key={receipt.id} className={styles.receipt}><div><strong>{receipt.receiptNumber}</strong><small>{receipt.supplierName} · {new Date(receipt.receivedAt).toLocaleDateString("en-IN")}</small></div><span>{receipt.lines.length} SKUs</span><span>{receipt.totalAccepted} accepted</span><b data-status={receipt.status}>{receipt.status}</b>{receipt.status === "DRAFT" ? (
+          <button type="button" disabled={busy || Boolean(photoBusy)} onClick={() => void postDraft(receipt.id)}>Post</button>
+        ) : receipt.status === "POSTED" ? (
+          <Link
+            className={styles.tagLink}
+            href={"/admin/inventory/receipts/" + encodeURIComponent(receipt.id) + "/labels"}
+            target="_blank"
+          >
+            Print tags
+          </Link>
+        ) : <span />}</div>)}</div>
       </section>
     </main>
   );
