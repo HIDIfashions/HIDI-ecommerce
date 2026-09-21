@@ -9,7 +9,7 @@ const ITEMS = [
   { label: "Products", href: "/admin/products" },
   { label: "Imports", href: "/admin/import" },
   { label: "Inventory", href: "/admin/inventory" },
-  { label: "Labels", href: "/admin/labels" },
+  { label: "Product labels", href: "/admin/labels" },
   { label: "Receive stock", href: "/admin/inventory/receive" },
   { label: "Customers", href: "/admin/customers" },
 ] as const;
