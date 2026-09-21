@@ -12,6 +12,8 @@ type ReceiptLine = {
     sku: string;
     size: string;
     color: string;
+    mrpPaise: number;
+    pricePaise: number;
     product: { name: string };
   };
 };
@@ -33,12 +35,11 @@ export function ReceiptPriceTagLabelsClient({ receiptId }: { receiptId: string }
 
   useEffect(() => {
     let active = true;
-    void fetch("/api/admin/inventory/receipts", { cache: "no-store" })
+    void fetch("/api/admin/inventory/receipts/" + encodeURIComponent(receiptId), { cache: "no-store" })
       .then(async (response) => {
-        const body = await response.json().catch(() => []);
+        const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(body?.message ?? "Unable to load stock receipt");
-        const found = (Array.isArray(body) ? body : []).find((item: Receipt) => item.id === receiptId);
-        if (!found) throw new Error("Stock receipt not found");
+        const found = body as Receipt;
         if (found.status !== "POSTED") throw new Error("Price-tag barcodes are available only after the receipt is posted");
         if (active) setReceipt(found);
       })
@@ -63,6 +64,8 @@ export function ReceiptPriceTagLabelsClient({ receiptId }: { receiptId: string }
         productName: line.variant.product.name,
         color: line.variant.color,
         size: line.variant.size,
+        mrpPaise: line.variant.mrpPaise,
+        pricePaise: line.variant.pricePaise,
         value: "HIDI-SKU:" + line.variant.sku,
       })),
     );
@@ -115,6 +118,12 @@ export function ReceiptPriceTagLabelsClient({ receiptId }: { receiptId: string }
             <code>{label.sku}</code>
             <b>{label.productName}</b>
             <small>{label.color} · Size {label.size}</small>
+            <div className={styles.priceLine}>
+              <span>₹{Math.round(label.pricePaise / 100).toLocaleString("en-IN")}</span>
+              {label.mrpPaise > label.pricePaise && (
+                <del>MRP ₹{Math.round(label.mrpPaise / 100).toLocaleString("en-IN")}</del>
+              )}
+            </div>
           </article>
         ))}
       </section>
