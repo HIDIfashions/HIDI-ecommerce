@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
-import { isAdminRequest } from "@/lib/admin-auth";
+import { adminApiHeaders, isAdminRequest } from "@/lib/admin-auth";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const UPLOAD_FUNCTION = "hidi-admin-product-image-upload";
 
-async function saveImageMetadata(apiKey: string, variantId: string, payload: Record<string, unknown>) {
+async function saveImageMetadata(request: NextRequest, variantId: string, payload: Record<string, unknown>) {
   return fetch(`${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-admin-key": apiKey },
+    headers: { "content-type": "application/json", ...adminApiHeaders(request) },
     body: JSON.stringify(payload),
   });
 }
 
-async function createUploadTicket(apiKey: string, variantId: string, file: File) {
+async function createUploadTicket(request: NextRequest, variantId: string, file: File) {
   const response = await fetch(
     `${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images/ticket`,
     {
       method: "POST",
-      headers: { "content-type": "application/json", "x-admin-key": apiKey },
+      headers: { "content-type": "application/json", ...adminApiHeaders(request) },
       body: JSON.stringify({ mimeType: file.type, sizeBytes: file.size }),
       cache: "no-store",
     },
@@ -36,15 +36,13 @@ export async function POST(
   context: { params: Promise<{ variantId: string }> },
 ) {
   if (!isAdminRequest(request)) return NextResponse.json({ message: "Admin session expired" }, { status: 401 });
-  const apiKey = process.env.ADMIN_API_KEY;
-  if (!apiKey) return NextResponse.json({ message: "ADMIN_API_KEY is missing in apps/web/.env.local" }, { status: 500 });
   const { variantId } = await context.params;
 
   try {
     if (!request.headers.get("content-type")?.includes("multipart/form-data")) {
       const payload = await request.json().catch(() => null);
       if (!payload) return NextResponse.json({ message: "Photo or image URL is required" }, { status: 400 });
-      const response = await saveImageMetadata(apiKey, variantId, payload);
+      const response = await saveImageMetadata(request, variantId, payload);
       const body = await response.json().catch(() => ({ message: "Unable to attach SKU photo" }));
       return NextResponse.json(body, { status: response.status });
     }
@@ -67,9 +65,7 @@ export async function POST(
       );
     }
 
-    // The browser never receives a Supabase secret. HIDI's API issues a short-lived,
-    // one-use ticket and the Supabase Edge Function validates that ticket before upload.
-    const token = await createUploadTicket(apiKey, variantId, file);
+    const token = await createUploadTicket(request, variantId, file);
     const uploadForm = new FormData();
     uploadForm.set("token", token);
     uploadForm.set("variantId", variantId);
@@ -88,7 +84,7 @@ export async function POST(
       );
     }
 
-    const response = await saveImageMetadata(apiKey, variantId, {
+    const response = await saveImageMetadata(request, variantId, {
       url: uploaded.url,
       storagePath: uploaded.storagePath,
       alt: String(form.get("alt") ?? ""),
@@ -109,8 +105,6 @@ export async function DELETE(
   context: { params: Promise<{ variantId: string }> },
 ) {
   if (!isAdminRequest(request)) return NextResponse.json({ message: "Admin session expired" }, { status: 401 });
-  const apiKey = process.env.ADMIN_API_KEY;
-  if (!apiKey) return NextResponse.json({ message: "ADMIN_API_KEY is missing in apps/web/.env.local" }, { status: 500 });
 
   const { variantId } = await context.params;
   const imageId = request.nextUrl.searchParams.get("imageId")?.trim() ?? "";
@@ -122,7 +116,7 @@ export async function DELETE(
       `${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images/${encodeURIComponent(imageId)}?applyToColor=${applyToColor}`,
       {
         method: "DELETE",
-        headers: { "x-admin-key": apiKey },
+        headers: adminApiHeaders(request),
         cache: "no-store",
       },
     );
@@ -135,4 +129,3 @@ export async function DELETE(
     );
   }
 }
-

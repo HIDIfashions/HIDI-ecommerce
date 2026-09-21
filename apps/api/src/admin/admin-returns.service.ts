@@ -6,6 +6,7 @@ import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 import { allocateOriginalTenderRefund } from "./return-refund-policy.js";
 import { appendOrderAudit } from "../audit/order-audit.js";
+import type { AdminActor } from "./admin-auth.js";
 
 const ACTIONS = new Set([
   "APPROVE",
@@ -37,12 +38,12 @@ export class AdminReturnsService {
     private readonly razorpay: RazorpayService,
   ) {}
 
-  async update(requestId: string, body: ReturnActionInput) {
+  async update(requestId: string, body: ReturnActionInput, actor: AdminActor) {
     const action = typeof body?.action === "string" ? body.action.trim().toUpperCase() : "";
     if (!ACTIONS.has(action)) throw new BadRequestException("Unsupported return action");
 
-    if (action === "ISSUE_REFUND") return this.issueRefund(requestId, body);
-    if (action === "COMPLETE_EXCHANGE") return this.completeExchange(requestId, body);
+    if (action === "ISSUE_REFUND") return this.issueRefund(requestId, body, actor);
+    if (action === "COMPLETE_EXCHANGE") return this.completeExchange(requestId, body, actor);
 
     return withSerializableRetry(this.prisma, async (tx) => {
       const locked = await tx.$queryRaw<Array<{ id: string }>>`
@@ -100,7 +101,7 @@ export class AdminReturnsService {
           orderId: request.orderId,
           eventType: request.type === "EXCHANGE" ? "EXCHANGE_APPROVED" : "RETURN_APPROVED",
           actorType: "ADMIN",
-          actorId: "HIDI_ADMIN",
+          actorId: actor.id,
           entityType: "RETURN_REQUEST",
           entityId: request.id,
           fromStatus: request.status,
@@ -137,7 +138,7 @@ export class AdminReturnsService {
           orderId: request.orderId,
           eventType: request.type === "EXCHANGE" ? "EXCHANGE_REJECTED" : "RETURN_REJECTED",
           actorType: "ADMIN",
-          actorId: "HIDI_ADMIN",
+          actorId: actor.id,
           entityType: "RETURN_REQUEST",
           entityId: request.id,
           fromStatus: request.status,
@@ -169,7 +170,7 @@ export class AdminReturnsService {
           orderId: request.orderId,
           eventType: request.type === "EXCHANGE" ? "EXCHANGE_PICKUP_SCHEDULED" : "RETURN_PICKUP_SCHEDULED",
           actorType: "ADMIN",
-          actorId: "HIDI_ADMIN",
+          actorId: actor.id,
           entityType: "RETURN_REQUEST",
           entityId: request.id,
           fromStatus: request.status,
@@ -214,7 +215,7 @@ export class AdminReturnsService {
                   reason: "Customer return restocked",
                   note: this.note(body.note),
                   reference: `RETURN:${request.id}`,
-                  actor: "HIDI_ADMIN",
+                  actor: actor.id,
                 },
               },
             },
@@ -234,7 +235,7 @@ export class AdminReturnsService {
           orderId: request.orderId,
           eventType: request.type === "EXCHANGE" ? "EXCHANGE_RECEIVED" : "RETURN_RECEIVED",
           actorType: "ADMIN",
-          actorId: "HIDI_ADMIN",
+          actorId: actor.id,
           entityType: "RETURN_REQUEST",
           entityId: request.id,
           fromStatus: request.status,
@@ -297,7 +298,7 @@ export class AdminReturnsService {
           orderId: request.orderId,
           eventType: "EXCHANGE_SHIPPED",
           actorType: "ADMIN",
-          actorId: "HIDI_ADMIN",
+          actorId: actor.id,
           entityType: "RETURN_REQUEST",
           entityId: request.id,
           fromStatus: request.status,
@@ -324,7 +325,7 @@ export class AdminReturnsService {
     });
   }
 
-  private async issueRefund(requestId: string, body: ReturnActionInput) {
+  private async issueRefund(requestId: string, body: ReturnActionInput, actor: AdminActor) {
     const request = await this.prisma.returnRequest.findUnique({
       where: { id: requestId },
       include: {
@@ -383,7 +384,7 @@ export class AdminReturnsService {
           orderId: request.orderId,
           eventType: "RETURN_REFUNDED",
           actorType: "ADMIN",
-          actorId: "HIDI_ADMIN",
+          actorId: actor.id,
           entityType: "RETURN_REQUEST",
           entityId: request.id,
           fromStatus: current.status,
@@ -454,7 +455,7 @@ export class AdminReturnsService {
           orderId: request.orderId,
           eventType: "RETURN_REFUNDED",
           actorType: "ADMIN",
-          actorId: "HIDI_ADMIN",
+          actorId: actor.id,
           entityType: "RETURN_REQUEST",
           entityId: request.id,
           fromStatus: current.status,
@@ -491,7 +492,7 @@ export class AdminReturnsService {
         orderId: request.orderId,
         eventType: "REFUND_INITIATED",
         actorType: "ADMIN",
-        actorId: "HIDI_ADMIN",
+        actorId: actor.id,
         entityType: "RETURN_REQUEST",
         entityId: request.id,
         fromStatus: current.status,
@@ -610,7 +611,7 @@ export class AdminReturnsService {
     return this.prisma.returnRequest.findUniqueOrThrow({ where: { id: request.id } });
   }
 
-  private async completeExchange(requestId: string, body: ReturnActionInput) {
+  private async completeExchange(requestId: string, body: ReturnActionInput, actor: AdminActor) {
     const updated = await withSerializableRetry(this.prisma, async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WHERE "id" = ${requestId} FOR UPDATE`;
       const request = await tx.returnRequest.findUnique({ where: { id: requestId } });
@@ -631,7 +632,7 @@ export class AdminReturnsService {
         orderId: request.orderId,
         eventType: "EXCHANGE_COMPLETED",
         actorType: "ADMIN",
-        actorId: "HIDI_ADMIN",
+        actorId: actor.id,
         entityType: "RETURN_REQUEST",
         entityId: request.id,
         fromStatus: request.status,

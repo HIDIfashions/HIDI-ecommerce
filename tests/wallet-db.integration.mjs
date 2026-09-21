@@ -10,7 +10,7 @@ import test from "node:test";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const migrationsDir = path.join(repo, "apps/api/prisma/migrations");
-const privateTables = ["WalletAccount", "WalletLedger", "WalletHold", "RewardAccrual", "PaymentRefund", "OrderAuditEvent"];
+const privateTables = ["WalletAccount", "WalletLedger", "WalletHold", "RewardAccrual", "PaymentRefund", "OrderAuditEvent", "AdminStaff"];
 
 function resolvePGlite() {
   const configured = process.env.HIDI_PGLITE_MODULE;
@@ -137,6 +137,27 @@ test("wallet migration and SQL persistence invariants in isolated PGlite", async
       });
     }
   }
+
+  await t.test("all HIDI public tables are locked behind the server API", async () => {
+    const tables = await db.query(`
+      SELECT c.relname, c.relrowsecurity
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relkind = 'r'
+      ORDER BY c.relname
+    `);
+    assert.ok(tables.rows.length > 20, "expected the full HIDI schema");
+    assert.ok(tables.rows.every((row) => row.relrowsecurity === true), "every public HIDI table must have RLS enabled");
+
+    for (const role of ["anon", "authenticated"]) {
+      for (const table of ["Order", "Payment", "ReturnRequest", "Inventory", "AdminStaff"]) {
+        for (const operation of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
+          const grants = await db.query("SELECT has_table_privilege($1, $2, $3) AS allowed", [role, identifier(table), operation]);
+          assert.equal(grants.rows[0].allowed, false, `${role} must not have ${operation} on ${table}`);
+        }
+      }
+    }
+  });
 
   await t.test("wallet identity is unique by verified subject and customer user", async () => {
     const first = await wallet("identity");

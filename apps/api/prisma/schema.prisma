@@ -227,6 +227,20 @@ model ProductVariant {
   @@index([productId, active])
 }
 
+model AdminStaff {
+  id           String   @id @default(cuid())
+  authSubject  String?  @unique
+  email        String   @unique
+  displayName  String
+  role         String
+  active       Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([role, active])
+}
+
 model AdminMediaUploadTicket {
   id         String         @id @default(cuid())
   tokenHash  String         @unique

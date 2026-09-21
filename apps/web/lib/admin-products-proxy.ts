@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
-import { isAdminRequest } from "@/lib/admin-auth";
+import { adminApiHeaders, isAdminRequest } from "@/lib/admin-auth";
 const headers = { "cache-control": "private, no-store" };
 const reply = (message: string, status: number) => NextResponse.json({ message }, { status, headers });
 
 /** Dedicated admin proxy: cookies/secret keys never enter the product payload. */
 export async function proxyProducts(request: NextRequest, suffix = "") {
   if (!isAdminRequest(request)) return reply("Admin session expired. Unlock HIDI Admin before continuing.", 401);
-  const key = process.env.ADMIN_API_KEY;
-  if (!key) return reply("ADMIN_API_KEY is missing from the web server configuration.", 500);
   const write = request.method !== "GET";
   if (write) {
     if (request.headers.get("sec-fetch-site") === "cross-site") return reply("Cross-site product changes are not allowed.", 403);
@@ -46,9 +44,10 @@ export async function proxyProducts(request: NextRequest, suffix = "") {
     }
     const response = await fetch(target, {
       method: request.method, cache: "no-store", signal: AbortSignal.timeout(25000),
-      headers: { "x-admin-key": key, ...(write ? { "content-type": "application/json" } : {}) }, body: payload,
+      headers: { ...adminApiHeaders(request), ...(write ? { "content-type": "application/json" } : {}) }, body: payload,
     });
-    if (response.status === 401) return reply("Web and API admin keys do not match. Check server configuration and restart both servers.", 502);
+    if (response.status === 401) return reply("Admin session expired. Sign in again.", 401);
+    if (response.status === 403) return reply("Your admin role does not allow this action.", 403);
     if (response.status >= 500) return reply("The API could not complete this request. Check the backend log; no success was confirmed.", 502);
     const body = await response.json().catch(() => ({ message: "Invalid response from the product API." }));
     return NextResponse.json(body, { status: response.status, headers });
