@@ -54,7 +54,7 @@
   background: transparent;
   color: var(--ink);
   padding: 0;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: 17px;
   outline: none;
 }
@@ -112,7 +112,7 @@
 }
 
 .name {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: 15px;
   line-height: 1.2;
   display: block;
@@ -145,4 +145,51 @@
   .searchBox { height: 48px; }
   .input { font-size: 16px; }
   .close { font-size: 28px; }
+}
+
+
+@media (max-width: 640px) {
+  .panel {
+    inset: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 230;
+    overflow-y: auto;
+    border-bottom: 0;
+    box-shadow: none;
+  }
+
+  .backdrop {
+    display: none;
+  }
+
+  .inner {
+    width: calc(100% - 28px);
+    padding: max(18px, env(safe-area-inset-top)) 0 28px;
+  }
+
+  .topRow {
+    align-items: center;
+  }
+
+  .searchBox {
+    width: auto;
+    flex: 1;
+    height: 48px;
+  }
+
+  .results,
+  .helper,
+  .empty {
+    width: 100%;
+  }
+
+  .results {
+    margin-top: 18px;
+  }
+
+  .item {
+    min-height: 88px;
+    border-bottom: 1px solid var(--line);
+  }
 }
