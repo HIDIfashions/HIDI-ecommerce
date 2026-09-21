@@ -89,6 +89,7 @@ export function ScanPackClient() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const orderRef = useRef<HTMLInputElement>(null);
   const skuRef = useRef<HTMLInputElement>(null);
+  const queuedOrderRef = useRef<string | null>(null);
 
   const checkSession = useCallback(async () => {
     try {
@@ -164,7 +165,14 @@ export function ScanPackClient() {
 
   useEffect(() => {
     const queuedOrder = searchParams.get("order")?.trim();
-    if (authenticated && !order && queuedOrder && !loadingOrder) {
+    if (
+      authenticated &&
+      !order &&
+      queuedOrder &&
+      !loadingOrder &&
+      queuedOrderRef.current !== queuedOrder
+    ) {
+      queuedOrderRef.current = queuedOrder;
       void openOrder(queuedOrder);
     }
   }, [authenticated, loadingOrder, openOrder, order, searchParams]);
