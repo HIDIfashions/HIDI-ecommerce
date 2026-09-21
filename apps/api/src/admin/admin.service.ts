@@ -385,6 +385,143 @@ export class AdminService {
     }
   }
 
+  async completeScanPack(orderNumber: string, input: { scans?: unknown }) {
+    const rawScans = Array.isArray(input?.scans) ? input.scans : [];
+    const scans = rawScans
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean);
+
+    if (scans.length === 0) {
+      throw new BadRequestException("Scan every item in the order before completing the pack");
+    }
+    if (scans.length > 500) {
+      throw new BadRequestException("Too many scans were submitted for one order");
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber },
+      select: {
+        id: true,
+        status: true,
+        items: {
+          select: {
+            sku: true,
+            quantity: true,
+            size: true,
+            color: true,
+            productName: true,
+          },
+          orderBy: { id: "asc" },
+        },
+      },
+    });
+
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.status !== "CONFIRMED") {
+      throw new BadRequestException(
+        order.status === "PACKED"
+          ? "This order is already packed"
+          : `Only CONFIRMED orders can be completed through Scan & Pack. Current status: ${order.status}`,
+      );
+    }
+
+    const normalizeSku = (value: string) => value.trim().toUpperCase();
+    const expected = new Map<string, number>();
+    const scanned = new Map<string, number>();
+
+    for (const item of order.items) {
+      const sku = normalizeSku(item.sku);
+      expected.set(sku, (expected.get(sku) ?? 0) + item.quantity);
+    }
+
+    for (const value of scans) {
+      const sku = normalizeSku(value);
+      scanned.set(sku, (scanned.get(sku) ?? 0) + 1);
+    }
+
+    const unknown = [...scanned.keys()].filter((sku) => !expected.has(sku));
+    const overScanned = [...scanned.entries()]
+      .filter(([sku, quantity]) => quantity > (expected.get(sku) ?? 0))
+      .map(([sku, quantity]) => ({
+        sku,
+        scanned: quantity,
+        expected: expected.get(sku) ?? 0,
+      }));
+    const missing = [...expected.entries()]
+      .filter(([sku, quantity]) => (scanned.get(sku) ?? 0) < quantity)
+      .map(([sku, quantity]) => ({
+        sku,
+        scanned: scanned.get(sku) ?? 0,
+        expected: quantity,
+      }));
+
+    if (unknown.length || overScanned.length || missing.length) {
+      throw new BadRequestException({
+        message: "Scan verification failed. The packed items do not exactly match this order.",
+        issues: { unknown, overScanned, missing },
+      });
+    }
+
+    const scanSummary = order.items.map((item) => ({
+      sku: item.sku,
+      productName: item.productName,
+      size: item.size,
+      color: item.color,
+      expected: item.quantity,
+      scanned: scanned.get(normalizeSku(item.sku)) ?? 0,
+    }));
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.order.update({
+        where: { orderNumber },
+        data: { status: "PACKED" },
+      });
+
+      await appendOrderAudit(tx, {
+        orderId: order.id,
+        eventType: "PACK_VERIFIED",
+        actorType: "ADMIN",
+        actorId: "HIDI_PACK_STATION",
+        entityType: "ORDER",
+        entityId: order.id,
+        fromStatus: "CONFIRMED",
+        toStatus: "PACKED",
+        eventKey: `order:${order.id}:pack-verified`,
+        source: "SCAN_TO_PACK",
+        metadata: {
+          method: "BARCODE_SCAN",
+          totalScans: scans.length,
+          items: scanSummary,
+        },
+      });
+
+      await appendOrderAudit(tx, {
+        orderId: order.id,
+        eventType: "ORDER_PACKED",
+        actorType: "ADMIN",
+        actorId: "HIDI_PACK_STATION",
+        entityType: "ORDER",
+        entityId: order.id,
+        fromStatus: "CONFIRMED",
+        toStatus: "PACKED",
+        eventKey: `order:${order.id}:status:PACKED`,
+        source: "SCAN_TO_PACK",
+        metadata: {
+          verification: "BARCODE_SCAN",
+          totalScans: scans.length,
+        },
+      });
+
+      return {
+        order: updated,
+        verification: {
+          totalScans: scans.length,
+          items: scanSummary,
+        },
+      };
+    });
+  }
+
   async updateStatus(orderNumber: string, nextStatus: string) {
     if (!ALLOWED_STATUSES.includes(nextStatus as ManagedOrderStatus)) {
       throw new BadRequestException("Unsupported order status");
@@ -410,6 +547,10 @@ export class AdminService {
 
     if (current === requested) {
       return this.prisma.order.findUnique({ where: { orderNumber } });
+    }
+
+    if (requested === "PACKED") {
+      throw new BadRequestException("Use Scan & Pack to verify every SKU before packing this order");
     }
 
     if (NEXT_STATUS[current] !== requested) {
