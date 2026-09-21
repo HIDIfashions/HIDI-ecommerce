@@ -4,7 +4,6 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./order-detail.module.css";
 import { AdminReturnRequests, type AdminReturnRequest } from "./admin-return-requests";
-import { OrderBarcodeLabel } from "@/components/admin/order-barcode-label";
 
 type Address = {
   firstName?: string;
@@ -399,27 +398,6 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
         </div>
 
         <aside className={styles.sideColumn}>
-          <section className={styles.card}>
-            <div className={styles.autoLabelHeader}>
-              <div>
-                <p className={styles.eyebrow}>ORDER BARCODE</p>
-                <h2>Label ready</h2>
-              </div>
-              <span>AUTO</span>
-            </div>
-            <p className={styles.autoLabelNote}>
-              Generated automatically from this confirmed HIDI order. Staff do not need to create it manually.
-            </p>
-            <OrderBarcodeLabel orderNumber={order.orderNumber} className={styles.orderBarcode} />
-            <Link
-              className={styles.printLabelAction}
-              href={"/admin/orders/" + encodeURIComponent(order.orderNumber) + "/label"}
-              target="_blank"
-            >
-              Print order label
-            </Link>
-          </section>
-
           <section className={styles.card}>
             <p className={styles.eyebrow}>PAYMENT</p>
             <h2>{order.payment ? label(order.payment.status) : "No payment"}</h2>
