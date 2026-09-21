@@ -286,6 +286,10 @@
 }
 
 .viewCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
   text-align: right;
 }
 
@@ -293,6 +297,13 @@
   font-size: 11px;
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+.viewCell .labelLink {
+  color: #651f23;
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 @media (max-width: 1100px) {
