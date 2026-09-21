@@ -199,6 +199,16 @@ export class AdminController {
     return this.admin.saveShipment(orderNumber, body ?? {});
   }
 
+  @Post("orders/:orderNumber/scan-pack")
+  completeScanPack(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+    @Body() body: { scans?: unknown },
+  ) {
+    this.requireAdmin(adminKey);
+    return this.admin.completeScanPack(orderNumber, body ?? {});
+  }
+
   @Patch("orders/:orderNumber/status")
   updateStatus(
     @Headers("x-admin-key") adminKey: string | undefined,
