@@ -62,7 +62,7 @@ export default async function Home() {
   const hero = catalogue.find((product) => product.slug === "meher-gold-beige-occasion-set")
     ?? catalogue.find((product) => product.slug === "sana-sand-kurta-set")
     ?? catalogue[0];
-  const heroImage = "/brand/hidi-hero-purple-full.avif";
+  const heroImage = "/brand/hidi-hero-green-garden.png";
   const whatsapp = (process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
   const whatsappHref = whatsapp
     ? "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent("Hi HIDI, I would like help choosing a style.")
