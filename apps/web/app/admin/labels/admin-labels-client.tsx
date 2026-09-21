@@ -144,8 +144,8 @@ export function AdminLabelsClient() {
       <main className={styles.loginPage}>
         <section className={styles.loginCard}>
           <p className={styles.eyebrow}>HIDI OPERATIONS</p>
-          <h1>Product labels</h1>
-          <p>Sign in to generate SKU labels for received inventory.</p>
+          <h1>Reprint product labels</h1>
+          <p>Sign in to reprint a damaged or missing SKU price-tag label.</p>
           {error && <div className={styles.error}>{error}</div>}
           <form className={styles.loginForm} onSubmit={unlock}>
             <input
@@ -175,9 +175,9 @@ export function AdminLabelsClient() {
       <section className={styles.pageHeader}>
         <div>
           <p className={styles.eyebrow}>INVENTORY</p>
-          <h1>Product barcode labels</h1>
+          <h1>Product label reprints</h1>
           <p>
-            SKU labels are for garments and stock. Order labels are generated automatically inside Admin → Orders.
+            Normal price-tag labels are generated from Receive stock when a receipt is posted. Use this screen only for reprints.
           </p>
         </div>
         <div className={styles.printControls}>
