@@ -200,6 +200,8 @@ export class AdminInventoryService {
                 sku: true,
                 size: true,
                 color: true,
+                mrpPaise: true,
+                pricePaise: true,
                 product: { select: { name: true } },
               },
             },
@@ -207,6 +209,10 @@ export class AdminInventoryService {
         },
       },
     });
+  }
+
+  async getReceipt(receiptId: string) {
+    return this.receipt(receiptId);
   }
 
   async createReceipt(input: StockReceiptInput, actor?: string) {
@@ -500,6 +506,8 @@ export class AdminInventoryService {
                 sku: true,
                 size: true,
                 color: true,
+                mrpPaise: true,
+                pricePaise: true,
                 product: { select: { name: true } },
               },
             },
