@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./order-detail.module.css";
 import { AdminReturnRequests, type AdminReturnRequest } from "./admin-return-requests";
+import { OrderBarcodeLabel } from "@/components/admin/order-barcode-label";
 
 type Address = {
   firstName?: string;
@@ -399,6 +400,27 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
 
         <aside className={styles.sideColumn}>
           <section className={styles.card}>
+            <div className={styles.autoLabelHeader}>
+              <div>
+                <p className={styles.eyebrow}>ORDER BARCODE</p>
+                <h2>Label ready</h2>
+              </div>
+              <span>AUTO</span>
+            </div>
+            <p className={styles.autoLabelNote}>
+              Generated automatically from this confirmed HIDI order. Staff do not need to create it manually.
+            </p>
+            <OrderBarcodeLabel orderNumber={order.orderNumber} className={styles.orderBarcode} />
+            <Link
+              className={styles.printLabelAction}
+              href={"/admin/orders/" + encodeURIComponent(order.orderNumber) + "/label"}
+              target="_blank"
+            >
+              Print order label
+            </Link>
+          </section>
+
+          <section className={styles.card}>
             <p className={styles.eyebrow}>PAYMENT</p>
             <h2>{order.payment ? label(order.payment.status) : "No payment"}</h2>
             <dl className={styles.metaList}>
@@ -528,7 +550,13 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
             <p className={styles.eyebrow}>QUICK ACTIONS</p>
             <button className={styles.secondaryAction} type="button" onClick={() => navigator.clipboard.writeText(order.customerPhone)}>Copy phone</button>
             <button className={styles.secondaryAction} type="button" onClick={() => navigator.clipboard.writeText([address.line1, address.line2, address.landmark, address.city, address.state, address.postalCode, address.countryCode].filter(Boolean).join(", "))}>Copy address</button>
-            <Link className={styles.secondaryLink} href={"/admin/labels?order=" + encodeURIComponent(order.orderNumber)}>Print order barcode</Link>
+            <Link
+              className={styles.secondaryLink}
+              href={"/admin/orders/" + encodeURIComponent(order.orderNumber) + "/label"}
+              target="_blank"
+            >
+              Print order label
+            </Link>
             <button className={styles.secondaryAction} type="button" onClick={() => window.print()}>Print order</button>
           </section>
         </aside>
