@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { Code128Barcode } from "@/components/admin/code128-barcode";
 import styles from "./labels.module.css";
@@ -25,16 +24,12 @@ function clampQuantity(value: number) {
 }
 
 export function AdminLabelsClient() {
-  const searchParams = useSearchParams();
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [draftKey, setDraftKey] = useState("");
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [query, setQuery] = useState("");
   const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [orderNumber, setOrderNumber] = useState(searchParams.get("order")?.trim() ?? "");
-  const [orderCopies, setOrderCopies] = useState(1);
   const [labelSize, setLabelSize] = useState<"50x30" | "50x25">("50x30");
-  const [mode, setMode] = useState<"SKU" | "ORDER">(searchParams.get("order") ? "ORDER" : "SKU");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,7 +114,7 @@ export function AdminLabelsClient() {
     setQueue((current) => current.filter((item) => item.variantId !== variantId));
   }
 
-  const printableSkuLabels = useMemo(
+  const printableLabels = useMemo(
     () =>
       queue.flatMap((item) =>
         Array.from({ length: item.quantity }, (_, index) => ({
@@ -133,19 +128,6 @@ export function AdminLabelsClient() {
     [queue],
   );
 
-  const printableOrderLabels = useMemo(() => {
-    const value = orderNumber.trim();
-    if (!value) return [];
-    return Array.from({ length: clampQuantity(orderCopies) }, (_, index) => ({
-      key: "order-" + index,
-      value: "HIDI-ORDER:" + value,
-      humanValue: value,
-      title: "HIDI ORDER",
-      meta: "Scan first at packing station",
-    }));
-  }, [orderNumber, orderCopies]);
-
-  const printableLabels = mode === "SKU" ? printableSkuLabels : printableOrderLabels;
   const totalLabels = printableLabels.length;
 
   function printLabels() {
@@ -162,8 +144,8 @@ export function AdminLabelsClient() {
       <main className={styles.loginPage}>
         <section className={styles.loginCard}>
           <p className={styles.eyebrow}>HIDI OPERATIONS</p>
-          <h1>Barcode labels</h1>
-          <p>Sign in to generate product and order labels.</p>
+          <h1>Product labels</h1>
+          <p>Sign in to generate SKU labels for received inventory.</p>
           {error && <div className={styles.error}>{error}</div>}
           <form className={styles.loginForm} onSubmit={unlock}>
             <input
@@ -174,7 +156,7 @@ export function AdminLabelsClient() {
               autoComplete="current-password"
               autoFocus
             />
-            <button type="submit">Open labels</button>
+            <button type="submit">Open product labels</button>
           </form>
         </section>
       </main>
@@ -192,9 +174,11 @@ export function AdminLabelsClient() {
 
       <section className={styles.pageHeader}>
         <div>
-          <p className={styles.eyebrow}>WAREHOUSE</p>
-          <h1>Barcode labels</h1>
-          <p>Print scanner-ready labels using the SKU and order numbers HIDI already knows.</p>
+          <p className={styles.eyebrow}>INVENTORY</p>
+          <h1>Product barcode labels</h1>
+          <p>
+            SKU labels are for garments and stock. Order labels are generated automatically inside Admin → Orders.
+          </p>
         </div>
         <div className={styles.printControls}>
           <label>
@@ -210,122 +194,85 @@ export function AdminLabelsClient() {
         </div>
       </section>
 
-      <div className={styles.modeTabs}>
-        <button type="button" className={mode === "SKU" ? styles.activeTab : ""} onClick={() => setMode("SKU")}>
-          Product / SKU labels
-        </button>
-        <button type="button" className={mode === "ORDER" ? styles.activeTab : ""} onClick={() => setMode("ORDER")}>
-          Order barcode
-        </button>
-      </div>
-
       {error && <div className={styles.error}>{error}</div>}
 
-      {mode === "SKU" ? (
-        <section className={styles.workspace}>
-          <div className={styles.cataloguePanel}>
-            <form className={styles.searchForm} onSubmit={search}>
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search product, SKU or colour"
-              />
-              <button type="submit">{loading ? "Searching…" : "Search"}</button>
-            </form>
+      <section className={styles.workspace}>
+        <div className={styles.cataloguePanel}>
+          <form className={styles.searchForm} onSubmit={search}>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search product, SKU or colour"
+            />
+            <button type="submit">{loading ? "Searching…" : "Search"}</button>
+          </form>
 
-            <div className={styles.resultList}>
-              {rows.map((row) => (
-                <div className={styles.resultRow} key={row.variantId}>
-                  <div className={styles.thumb}>
-                    {row.imageUrl ? <img src={row.imageUrl} alt="" /> : <span>H</span>}
+          <div className={styles.resultList}>
+            {rows.map((row) => (
+              <div className={styles.resultRow} key={row.variantId}>
+                <div className={styles.thumb}>
+                  {row.imageUrl ? <img src={row.imageUrl} alt="" /> : <span>H</span>}
+                </div>
+                <div className={styles.resultCopy}>
+                  <strong>{row.productName}</strong>
+                  <span>{row.color} · Size {row.size}</span>
+                  <code>{row.sku}</code>
+                </div>
+                <div className={styles.stock}>
+                  <span>{row.available} sellable</span>
+                  <small>{row.onHand} on hand</small>
+                </div>
+                <button type="button" onClick={() => addToQueue(row)}>Add</button>
+              </div>
+            ))}
+            {!loading && rows.length === 0 && <div className={styles.empty}>No SKUs match your search.</div>}
+          </div>
+        </div>
+
+        <aside className={styles.queuePanel}>
+          <div className={styles.queueHeader}>
+            <div>
+              <p className={styles.eyebrow}>PRINT QUEUE</p>
+              <h2>{queue.length} SKU{queue.length === 1 ? "" : "s"}</h2>
+            </div>
+            {queue.length > 0 && <button type="button" onClick={() => setQueue([])}>Clear</button>}
+          </div>
+
+          {queue.length === 0 ? (
+            <p className={styles.queueEmpty}>Add one or more SKUs, then choose how many garment labels to print.</p>
+          ) : (
+            <div className={styles.queueList}>
+              {queue.map((item) => (
+                <div className={styles.queueRow} key={item.variantId}>
+                  <div>
+                    <strong>{item.sku}</strong>
+                    <span>{item.productName} · {item.color} / {item.size}</span>
                   </div>
-                  <div className={styles.resultCopy}>
-                    <strong>{row.productName}</strong>
-                    <span>{row.color} · Size {row.size}</span>
-                    <code>{row.sku}</code>
-                  </div>
-                  <div className={styles.stock}>
-                    <span>{row.available} sellable</span>
-                    <small>{row.onHand} on hand</small>
-                  </div>
-                  <button type="button" onClick={() => addToQueue(row)}>Add</button>
+                  <label>
+                    <span>Labels</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={item.quantity}
+                      onChange={(event) => setQueueQuantity(item.variantId, Number(event.target.value))}
+                    />
+                  </label>
+                  <button type="button" onClick={() => removeFromQueue(item.variantId)} aria-label={"Remove " + item.sku}>×</button>
                 </div>
               ))}
-              {!loading && rows.length === 0 && <div className={styles.empty}>No SKUs match your search.</div>}
             </div>
-          </div>
-
-          <aside className={styles.queuePanel}>
-            <div className={styles.queueHeader}>
-              <div>
-                <p className={styles.eyebrow}>PRINT QUEUE</p>
-                <h2>{queue.length} SKU{queue.length === 1 ? "" : "s"}</h2>
-              </div>
-              {queue.length > 0 && <button type="button" onClick={() => setQueue([])}>Clear</button>}
-            </div>
-
-            {queue.length === 0 ? (
-              <p className={styles.queueEmpty}>Add one or more SKUs, then choose how many labels to print for each.</p>
-            ) : (
-              <div className={styles.queueList}>
-                {queue.map((item) => (
-                  <div className={styles.queueRow} key={item.variantId}>
-                    <div>
-                      <strong>{item.sku}</strong>
-                      <span>{item.productName} · {item.color} / {item.size}</span>
-                    </div>
-                    <label>
-                      <span>Labels</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max="500"
-                        value={item.quantity}
-                        onChange={(event) => setQueueQuantity(item.variantId, Number(event.target.value))}
-                      />
-                    </label>
-                    <button type="button" onClick={() => removeFromQueue(item.variantId)} aria-label={"Remove " + item.sku}>×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </aside>
-        </section>
-      ) : (
-        <section className={styles.orderPanel}>
-          <p className={styles.eyebrow}>ORDER LABEL</p>
-          <h2>Print order barcode</h2>
-          <p>Scan this barcode first at the packing station before scanning the garments.</p>
-          <div className={styles.orderFields}>
-            <label>
-              <span>Order number</span>
-              <input
-                value={orderNumber}
-                onChange={(event) => setOrderNumber(event.target.value)}
-                placeholder="e.g. HIDI2609210048"
-              />
-            </label>
-            <label>
-              <span>Copies</span>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={orderCopies}
-                onChange={(event) => setOrderCopies(clampQuantity(Number(event.target.value)))}
-              />
-            </label>
-          </div>
-        </section>
-      )}
+          )}
+        </aside>
+      </section>
 
       <section className={styles.previewSection}>
         <div className={styles.previewHeader}>
           <div>
             <p className={styles.eyebrow}>PRINT PREVIEW</p>
-            <h2>{totalLabels} label{totalLabels === 1 ? "" : "s"}</h2>
+            <h2>{totalLabels} product label{totalLabels === 1 ? "" : "s"}</h2>
           </div>
-          <small>Use printer scaling at 100%. Disable “fit to page” when printing to a label printer.</small>
+          <small>Use printer scaling at 100%. Disable “fit to page” on a label printer.</small>
         </div>
 
         <div className={styles.labelSheet + " " + styles["size" + labelSize.replace("x", "_")]}>
@@ -333,7 +280,7 @@ export function AdminLabelsClient() {
             <article className={styles.label} key={label.key}>
               <div className={styles.brandRow}>
                 <strong>HIDI</strong>
-                <span>{mode === "SKU" ? "PRODUCT" : "ORDER"}</span>
+                <span>PRODUCT</span>
               </div>
               <Code128Barcode className={styles.barcode} value={label.value} height={46} />
               <div className={styles.humanValue}>{label.humanValue}</div>
