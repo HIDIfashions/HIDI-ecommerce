@@ -47,7 +47,7 @@ export function AdminSignInClient() {
       const normalized = await sendAdminEmailOtp(email);
       setEmail(normalized);
       setStep("otp");
-      setMessage("A HIDI Admin verification code was sent to your verified email.");
+      setMessage("An 8-digit HIDI Admin code was sent to your verified email.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to send admin code");
     } finally {
@@ -112,20 +112,20 @@ export function AdminSignInClient() {
           </form>
         ) : (
           <form className={styles.form} onSubmit={verifyOtp}>
-            <label htmlFor="admin-otp">Verification code</label>
+            <label htmlFor="admin-otp">8-digit code</label>
             <input
               id="admin-otp"
               inputMode="numeric"
               autoComplete="one-time-code"
-              pattern="[0-9]{6,10}"
-              maxLength={10}
+              pattern="[0-9]{8}"
+              maxLength={8}
               value={otp}
-              onChange={(event) => setOtp(event.target.value.replace(/\\D/g, "").slice(0, 10))}
+              onChange={(event) => setOtp(event.target.value.replace(/\\D/g, "").slice(0, 8))}
               placeholder="Enter code"
               required
               autoFocus
             />
-            <button type="submit" disabled={busy || otp.length < 6 || otp.length > 10}>
+            <button type="submit" disabled={busy || otp.length !== 8}>
               {busy ? "Signing in…" : "Open HIDI Admin"}
             </button>
             <button
