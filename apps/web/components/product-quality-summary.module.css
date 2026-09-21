@@ -81,3 +81,21 @@
     min-height: 145px;
   }
 }
+
+
+/* HIDI quality typography phase 2 */
+.heading p,
+.grid span {
+  font-size: 11px;
+  letter-spacing: .08em;
+}
+
+.heading h2,
+.grid strong {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.heading h2 { font-size: 26px; }
+.grid strong { font-size: 17px; }
+.grid p { font-size: 12px; line-height: 1.6; }

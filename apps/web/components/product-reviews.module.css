@@ -36,3 +36,20 @@
   .empty { padding: 22px; }
   .reviewButton { width: 100%; }
 }
+
+
+/* HIDI reviews typography phase 2 */
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: .09em;
+}
+
+.heading h2,
+.summary > strong,
+.card h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.verified { font-size: 11px; letter-spacing: .07em; }
+.card footer { font-size: 12px; }

@@ -70,3 +70,32 @@
   .productSummary { grid-template-columns: 78px minmax(0, 1fr); gap: 13px; }
   .thumb { width: 78px; height: 100px; }
 }
+
+
+/* HIDI PDP contact typography phase 2 */
+.modalHeading h2,
+.productSummary strong {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.modalHeading h2 {
+  font-size: 29px;
+  line-height: 1.13;
+  letter-spacing: -.025em;
+}
+
+.modalHeading p,
+.fieldLabel,
+.quantityRow span {
+  font-size: 12px;
+  letter-spacing: .07em;
+}
+
+.whatsapp small,
+.productSummary small,
+.quantityRow small,
+.stockStatus,
+.handoffNote { font-size: 12px; }
+
+.intro { font-size: 14px; }

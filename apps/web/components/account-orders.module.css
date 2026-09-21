@@ -233,3 +233,28 @@
     align-items: flex-start;
   }
 }
+
+
+/* HIDI account typography phase 2 */
+.authCard h2,
+.header h2,
+.name,
+.empty h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.authCard h2 { font-size: 36px; }
+.header h2 { font-size: 25px; }
+.name { font-size: 18px; }
+.status { font-size: 12px; letter-spacing: .07em; }
+
+.authForm label,
+.secondaryButton,
+.authMessage,
+.accountBar span,
+.meta,
+.item p,
+.footer {
+  font-size: 12px;
+}

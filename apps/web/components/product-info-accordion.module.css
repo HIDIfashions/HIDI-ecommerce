@@ -90,3 +90,21 @@
     font-size: 13px;
   }
 }
+
+
+/* HIDI PDP accordion typography phase 2 */
+.titleWrap {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.content {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .titleWrap { font-size: 18px; }
+  .content { font-size: 14px; }
+}

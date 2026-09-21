@@ -197,3 +197,16 @@
     flex-direction: column;
   }
 }
+
+
+/* HIDI confirmation typography phase 2 */
+.receipt :global(.confirmation-card h2),
+.receipt :global(.confirmation-item-name) {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.receipt :global(.confirmation-card h2) { font-size: 28px; }
+.receipt :global(.confirmation-item-name) { font-size: 19px; }
+.receipt :global(.status-chip) { font-size: 12px; letter-spacing: .07em; }
+.receipt :global(.confirmation-item-copy p) { font-size: 12px; }
