@@ -269,6 +269,71 @@
   letter-spacing: .02em;
 }
 
+.scanResult {
+  margin-top: 12px;
+  min-height: 78px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 12px;
+  align-items: center;
+  border: 2px solid;
+}
+
+.scanResultMark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.scanResult > div:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.scanResult strong {
+  font-size: 13px;
+  letter-spacing: .05em;
+}
+
+.scanResult span {
+  font-size: 12px;
+}
+
+.scanResult code {
+  width: fit-content;
+  margin-top: 2px;
+  padding: 2px 5px;
+  background: rgba(255,255,255,.7);
+  font-size: 10px;
+}
+
+.scanMatch {
+  border-color: #4b6e47;
+  background: #eef7eb;
+  color: #30462d;
+}
+
+.scanMatch .scanResultMark {
+  background: #4b6e47;
+}
+
+.scanMismatch {
+  border-color: #a83f3f;
+  background: #fff0ef;
+  color: #7a2727;
+}
+
+.scanMismatch .scanResultMark {
+  background: #a83f3f;
+}
+
 .scanActions {
   margin: 10px 0 18px;
   display: flex;
