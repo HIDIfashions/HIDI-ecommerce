@@ -64,6 +64,15 @@ export class AdminController {
     return this.inventory.listReceipts();
   }
 
+  @Get("inventory/receipts/:receiptId")
+  inventoryReceipt(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("receiptId") receiptId: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.inventory.getReceipt(receiptId);
+  }
+
   @Post("inventory/receipts")
   createInventoryReceipt(
     @Headers("x-admin-key") adminKey: string | undefined,
