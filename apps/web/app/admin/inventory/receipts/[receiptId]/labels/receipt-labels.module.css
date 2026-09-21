@@ -1,0 +1,176 @@
+.page {
+  min-height: 100vh;
+  padding: 28px;
+  background: #fff;
+  color: #111;
+}
+
+.toolbar {
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.toolbar p {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+
+.toolbar h1 {
+  margin: 0 0 6px;
+  font-size: 30px;
+}
+
+.toolbar span {
+  color: #666;
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.actions a,
+.actions button {
+  min-height: 40px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #541d1f;
+  background: #fff;
+  color: #541d1f;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.actions button {
+  background: #541d1f;
+  color: #fff;
+}
+
+.instructions {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid #a9bda4;
+  background: #f5faf3;
+}
+
+.instructions strong {
+  font-size: 12px;
+}
+
+.instructions span {
+  color: #50604c;
+  font-size: 11px;
+}
+
+.sheet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4mm;
+}
+
+.label {
+  width: 50mm;
+  height: 30mm;
+  padding: 2.6mm 3mm;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  gap: .7mm;
+  overflow: hidden;
+  border: 1px dashed #999;
+  background: #fff;
+  color: #000;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brandRow strong {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: .14em;
+}
+
+.brandRow span {
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.barcode {
+  width: 100%;
+  height: 10mm;
+}
+
+.label code {
+  text-align: center;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.label b,
+.label small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.label b {
+  font-size: 7px;
+}
+
+.label small {
+  font-size: 6px;
+  color: #444;
+}
+
+.state {
+  min-height: 70vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+}
+
+@media print {
+  @page {
+    margin: 3mm;
+  }
+
+  .toolbar,
+  .instructions {
+    display: none !important;
+  }
+
+  .page {
+    padding: 0;
+  }
+
+  .sheet {
+    gap: 0;
+  }
+
+  .label {
+    border: 0;
+    break-inside: avoid;
+  }
+}
