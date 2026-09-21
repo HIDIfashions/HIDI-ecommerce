@@ -1,5 +1,20 @@
+const LOCAL_API_URL = "http://localhost:4000/v1";
+
+function normalizeApiUrl(value: string | undefined) {
+  const url = value?.trim();
+  return url ? url.replace(/\/$/, "") : "";
+}
+
+// Server-rendered storefront pages should talk to the Nest API over the local
+// Codespaces/dev network. NEXT_PUBLIC_API_URL may point at a browser-facing
+// forwarded port, which can be private/authenticated and return an empty
+// catalogue when fetched server-side.
 export const API_URL =
-  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+  typeof window === "undefined"
+    ? normalizeApiUrl(process.env.API_URL) || LOCAL_API_URL
+    : normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) ||
+      normalizeApiUrl(process.env.API_URL) ||
+      LOCAL_API_URL;
 
 export type ApiVariant = {
   id: string;
@@ -48,17 +63,32 @@ export type ApiProduct = {
 };
 
 async function fetchPublicList(url: URL | string): Promise<ApiProduct[]> {
-  try {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) return [];
-    return response.json();
-  } catch (error) {
-    // The API can briefly be unavailable while the Nest watcher restarts in
-    // local/Codespaces development. Public catalogue pages should render an
-    // empty/fallback state instead of turning the entire Next page into a 500.
-    console.error("[HIDI catalogue] API unavailable:", error);
-    return [];
+  const target = String(url);
+  let lastError: unknown;
+
+  // Branch switches restart the Nest watcher in Codespaces. Retry briefly so
+  // the storefront does not look empty during that small restart window.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(target, { cache: "no-store" });
+      if (response.ok) {
+        const body = await response.json();
+        return Array.isArray(body) ? body : [];
+      }
+
+      lastError = new Error(`HIDI API returned ${response.status} for ${target}`);
+      if (response.status < 500) break;
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
   }
+
+  console.error("[HIDI catalogue] Unable to load products:", lastError);
+  return [];
 }
 
 export async function getProducts(category?: string): Promise<ApiProduct[]> {
