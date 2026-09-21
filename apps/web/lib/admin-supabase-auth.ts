@@ -42,7 +42,7 @@ export async function verifyAdminEmailOtp(emailValue: string, tokenValue: string
   if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error("Admin sign-in is not configured");
   const email = normalizeAdminEmail(emailValue);
   const token = tokenValue.trim();
-  if (!/^\d{6,10}$/.test(token)) throw new Error("Enter the verification code from your email");
+  if (!/^\d{8}$/.test(token)) throw new Error("Enter the 8-digit sign-in code");
 
   const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
     method: "POST",
