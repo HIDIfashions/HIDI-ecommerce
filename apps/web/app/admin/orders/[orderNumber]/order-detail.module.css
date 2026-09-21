@@ -376,6 +376,28 @@
 .primaryAction {
   margin-top: 18px;
 }
+.scanPackAction {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #541d1f;
+  background: #541d1f;
+  color: #fff;
+  padding: 0 16px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.scanPackAction:hover,
+.scanPackAction:focus-visible {
+  background: #6b2428;
+}
+
 
 .primaryAction:disabled {
   opacity: .42;
