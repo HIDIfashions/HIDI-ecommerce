@@ -113,6 +113,7 @@ function auditTitle(eventType: string) {
     PAYMENT_CAPTURED: "Payment captured",
     ORDER_CONFIRMED: "Order confirmed",
     PAYMENT_REVIEW_REQUIRED: "Payment review required",
+    PACK_VERIFIED: "Pack verified by barcode scan",
     ORDER_PACKED: "Order packed",
     SHIPMENT_PREPARED: "Shipment prepared",
     ORDER_SHIPPED: "Order shipped",
@@ -480,7 +481,14 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               </div>
             )}
 
-            {next ? (
+            {order.status === "CONFIRMED" ? (
+              <Link
+                className={styles.scanPackAction}
+                href={"/admin/fulfilment?order=" + encodeURIComponent(order.orderNumber)}
+              >
+                Scan & pack this order →
+              </Link>
+            ) : next ? (
               <button
                 className={styles.primaryAction}
                 type="button"
@@ -488,7 +496,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
                 disabled={updating || (next === "SHIPPED" && !shipmentReady)}
                 title={next === "SHIPPED" && !shipmentReady ? "Create or save shipping details first" : undefined}
               >
-                {updating ? "Updating…" : next === "SHIPPED" && !shipmentReady ? "Create shipment first" : `Mark as ${label(next)}`}
+                {updating ? "Updating…" : next === "SHIPPED" && !shipmentReady ? "Create shipment first" : "Mark as " + label(next)}
               </button>
             ) : (
               <div className={styles.complete}>Fulfilment complete</div>
