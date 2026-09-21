@@ -11,7 +11,11 @@ function normalizeApiUrl(value: string | undefined) {
 // catalogue when fetched server-side.
 export const API_URL =
   typeof window === "undefined"
-    ? normalizeApiUrl(process.env.API_URL) || LOCAL_API_URL
+    ? process.env.NODE_ENV === "production"
+      ? normalizeApiUrl(process.env.API_URL) ||
+        normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) ||
+        LOCAL_API_URL
+      : LOCAL_API_URL
     : normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) ||
       normalizeApiUrl(process.env.API_URL) ||
       LOCAL_API_URL;
