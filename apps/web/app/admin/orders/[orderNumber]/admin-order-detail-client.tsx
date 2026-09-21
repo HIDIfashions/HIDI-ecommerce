@@ -528,6 +528,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
             <p className={styles.eyebrow}>QUICK ACTIONS</p>
             <button className={styles.secondaryAction} type="button" onClick={() => navigator.clipboard.writeText(order.customerPhone)}>Copy phone</button>
             <button className={styles.secondaryAction} type="button" onClick={() => navigator.clipboard.writeText([address.line1, address.line2, address.landmark, address.city, address.state, address.postalCode, address.countryCode].filter(Boolean).join(", "))}>Copy address</button>
+            <Link className={styles.secondaryLink} href={"/admin/labels?order=" + encodeURIComponent(order.orderNumber)}>Print order barcode</Link>
             <button className={styles.secondaryAction} type="button" onClick={() => window.print()}>Print order</button>
           </section>
         </aside>
