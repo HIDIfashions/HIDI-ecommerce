@@ -1,0 +1,567 @@
+.page,
+.loginPage {
+  width: min(1380px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 28px 0 80px;
+}
+
+.loginPage {
+  min-height: 75vh;
+  display: grid;
+  place-items: center;
+}
+
+.loginCard {
+  width: min(520px, 100%);
+  padding: 32px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.loginCard h1,
+.pageHeader h1 {
+  margin: 0 0 10px;
+  font-size: clamp(42px, 5vw, 68px);
+  line-height: .95;
+}
+
+.loginCard p,
+.pageHeader p {
+  color: var(--muted);
+}
+
+.loginForm {
+  display: flex;
+  gap: 8px;
+}
+
+.loginForm input,
+.searchForm input,
+.orderFields input,
+.queueRow input,
+.printControls select {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 0 12px;
+  outline: none;
+}
+
+.loginForm input,
+.searchForm input {
+  flex: 1;
+}
+
+.loginForm button,
+.searchForm button,
+.printControls button,
+.resultRow > button {
+  min-height: 44px;
+  border: 1px solid #541d1f;
+  background: #541d1f;
+  color: white;
+  padding: 0 16px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.adminTopbar {
+  min-height: 58px;
+  padding-bottom: 16px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--line);
+}
+
+.adminTopbar > div {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.adminTopbar nav {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.adminTopbar nav a,
+.adminTopbar nav span {
+  color: var(--muted);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.pageHeader {
+  margin-bottom: 22px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.pageHeader > div:first-child {
+  max-width: 760px;
+}
+
+.pageHeader p {
+  margin: 0;
+}
+
+.printControls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+.printControls label {
+  display: grid;
+  gap: 5px;
+}
+
+.printControls label span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.printControls button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.modeTabs {
+  margin-bottom: 18px;
+  display: inline-flex;
+  border: 1px solid var(--line);
+}
+
+.modeTabs button {
+  min-height: 42px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: white;
+  padding: 0 16px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.modeTabs button:last-child {
+  border-right: 0;
+}
+
+.modeTabs .activeTab {
+  background: #541d1f;
+  color: white;
+}
+
+.error {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid #c99797;
+  background: #fff4f3;
+  color: #7d2e2e;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, .7fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.cataloguePanel,
+.queuePanel,
+.orderPanel,
+.previewSection {
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.cataloguePanel {
+  padding: 18px;
+}
+
+.searchForm {
+  margin-bottom: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.resultList {
+  display: grid;
+}
+
+.resultRow {
+  min-height: 86px;
+  padding: 10px 0;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 100px auto;
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+}
+
+.thumb {
+  width: 58px;
+  height: 70px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--ivory);
+  color: var(--muted);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.resultCopy,
+.stock {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.resultCopy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.resultCopy span,
+.stock span,
+.stock small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.resultCopy code {
+  width: fit-content;
+  padding: 2px 5px;
+  background: #f5f1ed;
+  font-size: 10px;
+}
+
+.queuePanel {
+  position: sticky;
+  top: 22px;
+  padding: 18px;
+}
+
+.queueHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 10px;
+}
+
+.queueHeader h2,
+.orderPanel h2,
+.previewHeader h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.queueHeader > button,
+.queueRow > button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #7a5d4f;
+}
+
+.queueEmpty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.queueList {
+  display: grid;
+}
+
+.queueRow {
+  padding: 12px 0;
+  display: grid;
+  grid-template-columns: 1fr 76px 28px;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+}
+
+.queueRow > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.queueRow strong {
+  font-size: 11px;
+}
+
+.queueRow span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.queueRow label {
+  display: grid;
+  gap: 3px;
+}
+
+.queueRow input {
+  width: 76px;
+  min-height: 36px;
+}
+
+.queueRow > button {
+  font-size: 20px;
+}
+
+.orderPanel {
+  max-width: 760px;
+  padding: 24px;
+}
+
+.orderPanel > p:not(.eyebrow) {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.orderFields {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 12px;
+}
+
+.orderFields label {
+  display: grid;
+  gap: 6px;
+}
+
+.orderFields label span {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.previewSection {
+  margin-top: 18px;
+  padding: 18px;
+}
+
+.previewHeader {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: end;
+}
+
+.previewHeader small {
+  max-width: 460px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.labelSheet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.label {
+  width: 50mm;
+  height: 30mm;
+  padding: 3mm;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  gap: 1mm;
+  overflow: hidden;
+  border: 1px dashed #b8aea6;
+  background: white;
+  color: black;
+}
+
+.size50_25 .label {
+  height: 25mm;
+  padding: 2.4mm 3mm;
+  gap: .7mm;
+}
+
+.brandRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brandRow strong {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: .14em;
+}
+
+.brandRow span {
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.barcode {
+  width: 100%;
+  height: 12mm;
+}
+
+.size50_25 .barcode {
+  height: 9mm;
+}
+
+.humanValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+
+.labelTitle,
+.labelMeta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.labelTitle {
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.labelMeta {
+  color: #444;
+  font-size: 6px;
+}
+
+.empty {
+  padding: 22px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .pageHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .queuePanel {
+    position: static;
+  }
+}
+
+@media (max-width: 680px) {
+  .page,
+  .loginPage {
+    width: calc(100% - 24px);
+    padding-top: 18px;
+  }
+
+  .adminTopbar > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .printControls {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .modeTabs {
+    width: 100%;
+  }
+
+  .modeTabs button {
+    flex: 1;
+  }
+
+  .searchForm,
+  .loginForm {
+    flex-direction: column;
+  }
+
+  .resultRow {
+    grid-template-columns: 52px 1fr auto;
+  }
+
+  .stock {
+    display: none;
+  }
+
+  .thumb {
+    width: 52px;
+    height: 64px;
+  }
+
+  .orderFields {
+    grid-template-columns: 1fr;
+  }
+
+  .previewHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media print {
+  @page {
+    margin: 4mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .labelSheet,
+  .labelSheet * {
+    visibility: visible !important;
+  }
+
+  .labelSheet {
+    position: absolute;
+    inset: 0 auto auto 0;
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 0;
+  }
+
+  .label {
+    break-inside: avoid;
+    border: 0;
+  }
+}
