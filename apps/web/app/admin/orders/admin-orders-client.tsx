@@ -237,13 +237,12 @@ export function AdminOrdersClient() {
                 </div>
                 <div className={styles.viewCell}>
                   <Link href={`/admin/orders/${encodeURIComponent(order.orderNumber)}`}>View →</Link>
-                  {["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].includes(order.status) && (
+                  {order.status === "CONFIRMED" && (
                     <Link
                       className={styles.labelLink}
-                      href={`/admin/orders/${encodeURIComponent(order.orderNumber)}/label`}
-                      target="_blank"
+                      href={`/admin/fulfilment?order=${encodeURIComponent(order.orderNumber)}`}
                     >
-                      Print label
+                      Start scan & pack
                     </Link>
                   )}
                 </div>
