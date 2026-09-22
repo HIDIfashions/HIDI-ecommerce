@@ -54,6 +54,18 @@ export class AdminService {
             updatedAt: order.shipments[0].updatedAt,
           }
         : null,
+      customerInvoice: order.customerInvoice
+        ? {
+            invoiceNumber: order.customerInvoice.invoiceNumber,
+            status: order.customerInvoice.status,
+            issuedAt: order.customerInvoice.issuedAt,
+            subtotalPaise: order.customerInvoice.subtotalPaise,
+            discountPaise: order.customerInvoice.discountPaise,
+            shippingPaise: order.customerInvoice.shippingPaise,
+            taxPaise: order.customerInvoice.taxPaise,
+            totalPaise: order.customerInvoice.totalPaise,
+          }
+        : null,
       returnCount: order.returnRequests?.length ?? 0,
       activeReturnCount: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).length,
       activeReturnQuantity: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).reduce((sum: number, request: any) => sum + request.quantity, 0),
@@ -143,6 +155,7 @@ export class AdminService {
       payments: { orderBy: { createdAt: "desc" as const }, take: 1 },
       shipments: { orderBy: { createdAt: "desc" as const }, take: 1 },
       returnRequests: { orderBy: { createdAt: "desc" as const } },
+      customerInvoice: true,
     };
     return includeAudit
       ? {
