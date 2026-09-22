@@ -44,7 +44,7 @@ type PoDraftLine = {
   key: string; vendorStyleCode: string; description: string; hsn: string;
   orderedQuantity: string; unitCostRupees: string;
   vendorProductId: string | null; productId: string | null; selectedProductId: string;
-  sizeQty: Record<string, string>;
+  sizeQty: Record<string, string>; quantityLocked: boolean;
 };
 type IrLine = ExtractedLine & {
   key: string; poLineId: string | null; vendorProductId: string | null; productId: string | null;
@@ -70,7 +70,7 @@ function blankPoLine(index: number): PoDraftLine {
   return {
     key: "po-" + index + "-" + Date.now(),
     vendorStyleCode: "", description: "", hsn: "", orderedQuantity: "", unitCostRupees: "",
-    vendorProductId: null, productId: null, selectedProductId: "", sizeQty: {},
+    vendorProductId: null, productId: null, selectedProductId: "", sizeQty: {}, quantityLocked: false,
   };
 }
 
@@ -290,6 +290,7 @@ export function AdminProcurementClient() {
         hsn: raw.hsn ?? "", orderedQuantity: raw.quantity == null ? "" : String(raw.quantity),
         unitCostRupees: raw.unitCostRupees == null ? "" : String(raw.unitCostRupees),
         vendorProductId, productId, selectedProductId: productId ?? "", sizeQty: {},
+        quantityLocked: raw.quantity != null,
       });
     }
     setPoVendorId(resolvedVendor.id); setPoLines(lines);
@@ -435,6 +436,12 @@ export function AdminProcurementClient() {
           <span>Vendor + HIDI Material</span>
         </div>
 
+        <div className={styles.invoicePrefill}>
+          <strong>Upload vendor invoice / purchase document</strong>
+          <span>PDF/JPEG/PNG is read automatically. HIDI resolves Vendor + Vendor Material, locks the document line quantity, and then asks staff only for the size split.</span>
+          <label className={styles.compactUpload} aria-disabled={extracting}><input ref={fileRef} type="file" accept="application/pdf,image/jpeg,image/png" disabled={extracting} onChange={(e) => { const file=e.currentTarget.files?.[0]; if(file) void uploadInvoice(file); }} />{extracting ? "Reading document…" : "Upload document"}</label>
+        </div>
+
         <div className={styles.poVendorRow}>
           <label><span>Existing vendor</span><select value={poVendorId} onChange={(e) => { setPoVendorId(e.target.value); setPoLines([blankPoLine(1)]); }}>
             <option value="">Select vendor</option>{data.vendors.map((item) => <option key={item.id} value={item.id}>#{item.code} · {item.name}</option>)}
@@ -465,11 +472,32 @@ export function AdminProcurementClient() {
                     }} /></div>
                   </div>
                 )}
-                <label><span>PO quantity *</span><input type="number" min="1" step="1" value={line.orderedQuantity} onChange={(e) => editPoLine(line.key, "orderedQuantity", e.target.value)} /></label>
+                <label><span>{line.quantityLocked ? "Invoice quantity · locked" : "PO quantity *"}</span><input type="number" min="1" step="1" value={line.orderedQuantity} readOnly={line.quantityLocked} onChange={(e) => editPoLine(line.key, "orderedQuantity", e.target.value)} /></label>
                 <label><span>Unit cost ₹</span><input type="number" min="0" step="0.01" value={line.unitCostRupees} onChange={(e) => editPoLine(line.key, "unitCostRupees", e.target.value)} /></label>
                 <label><span>Description</span><input value={line.description} onChange={(e) => editPoLine(line.key, "description", e.target.value)} /></label>
                 <label><span>HSN</span><input value={line.hsn} onChange={(e) => editPoLine(line.key, "hsn", e.target.value)} /></label>
               </div>
+              {product && line.vendorProductId && (() => {
+                const variants = uniqueSizeVariants(product);
+                const total = poSizeTotal(line);
+                const qty = Number(line.orderedQuantity || 0);
+                return <div className={styles.sizeEntry}>
+                  <div className={styles.sizeHeader}>
+                    <div>
+                      <strong>{product.internalCode} · {product.internalName || product.name}</strong>
+                      <span>Enter only size quantities. Total must equal {line.quantityLocked ? "invoice" : "PO"} quantity.</span>
+                    </div>
+                    <b data-match={qty > 0 && total === qty}>{total} / {qty || "?"}</b>
+                  </div>
+                  <div className={styles.sizeGrid}>
+                    {variants.map((variant) => <label key={variant.id}>
+                      <span>SIZE {variant.size}</span>
+                      <input type="number" min="0" step="1" value={line.sizeQty[variant.id] ?? ""} onChange={(e) => setPoSizeQty(line.key, variant.id, e.target.value)} placeholder="0" />
+                    </label>)}
+                  </div>
+                  {qty > 0 && total !== qty && <div className={styles.qtyMismatch}>Size quantity total must equal {qty}. Difference: {qty - total}.</div>}
+                </div>;
+              })()}
             </article>;
           })}
         </div>
@@ -478,11 +506,6 @@ export function AdminProcurementClient() {
           <button type="button" disabled={busy || !poReady} onClick={() => void createPo()}>Create Purchase Order</button>
         </div>
 
-        <div className={styles.invoicePrefill}>
-          <strong>Start from the vendor invoice / purchase document</strong>
-          <span>Upload PDF/JPEG/PNG. HIDI reads vendor, vendor material code, total line quantity and rate; reuses or creates Vendor/Material master data only when required.</span>
-          <label className={styles.compactUpload} aria-disabled={extracting}><input ref={fileRef} type="file" accept="application/pdf,image/jpeg,image/png" disabled={extracting} onChange={(e) => { const file=e.currentTarget.files?.[0]; if(file) void uploadInvoice(file); }} />{extracting ? "Reading invoice…" : "Upload invoice to prefill PO"}</label>
-        </div>
       </section>
 
       <section className={styles.card}>
