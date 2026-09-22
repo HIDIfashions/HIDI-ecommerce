@@ -582,6 +582,10 @@ export class AdminProcurementService {
                     orderedQuantity: true,
                     variants: { select: { variantId: true, orderedQuantity: true } },
                     invoiceLines: { select: { invoiceQuantity: true } },
+                    receiptLines: {
+                      where: { receipt: { status: "POSTED" } },
+                      select: { acceptedQuantity: true },
+                    },
                   },
                 },
               },
@@ -629,10 +633,20 @@ export class AdminProcurementService {
           if (requestedPoLineId && !poLine) throw new BadRequestException("Invoice line does not belong to the selected PO");
           if (poLine) {
             const alreadyInvoiced = poLine.invoiceLines.reduce((sum, row) => sum + row.invoiceQuantity, 0);
-            const remaining = Math.max(0, poLine.orderedQuantity - alreadyInvoiced);
-            if (quantity > remaining) {
+            const poRemaining = Math.max(0, poLine.orderedQuantity - alreadyInvoiced);
+            const grAccepted = poLine.receiptLines.reduce((sum, row) => sum + row.acceptedQuantity, 0);
+            const grRemainingForInvoice = Math.max(0, grAccepted - alreadyInvoiced);
+
+            if (quantity > poRemaining) {
               throw new BadRequestException(
-                "Invoice quantity " + quantity + " exceeds remaining PO quantity " + remaining + " for material " + (styleCode ?? poLine.vendorStyleCode),
+                "Invoice quantity " + quantity + " exceeds remaining PO quantity " + poRemaining +
+                " for material " + (styleCode ?? poLine.vendorStyleCode),
+              );
+            }
+            if (quantity > grRemainingForInvoice) {
+              throw new BadRequestException(
+                "Invoice quantity " + quantity + " exceeds accepted GR quantity available for IR " +
+                grRemainingForInvoice + " for material " + (styleCode ?? poLine.vendorStyleCode),
               );
             }
           }
