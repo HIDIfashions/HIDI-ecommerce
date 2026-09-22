@@ -4,6 +4,7 @@ import { RazorpayService } from "../razorpay/razorpay.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 import { appendOrderAudit } from "../audit/order-audit.js";
+import { ensureCustomerInvoice } from "../invoicing/customer-invoice.js";
 
 const PAID_STATES = ["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED"];
 const FULFILLED_STATES = ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"];
@@ -130,6 +131,9 @@ export class PaymentsService {
       await tx.payment.update({ where: { id: payment.id }, data: { providerPaymentId, status: "CAPTURED", method: method ?? null, rawReference: raw ?? undefined } });
       const status = reviewRequired ? (RETURN_STATES.includes(order.status) || FULFILLED_STATES.includes(order.status) ? order.status : "PAYMENT_REVIEW") : "CONFIRMED";
       await tx.order.update({ where: { id: order.id }, data: { status: status as any } });
+      if (status === "CONFIRMED") {
+        await ensureCustomerInvoice(tx, order);
+      }
 
       await appendOrderAudit(tx, {
         orderId: order.id,
