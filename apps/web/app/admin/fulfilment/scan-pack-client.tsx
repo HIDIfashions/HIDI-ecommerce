@@ -267,8 +267,8 @@ export function ScanPackClient() {
         tone: "WRONG",
         sku,
         lotCode,
-        title: "WRONG ITEM — DO NOT PACK",
-        detail: "This price-tag barcode does not belong to the customer order.",
+        title: "WRONG ITEM / SIZE — DO NOT PACK",
+        detail: "The scanned SKU does not exactly match the product, colour and size required by this customer order.",
       });
       navigator.vibrate?.([100, 60, 100]);
       skuRef.current?.focus();
