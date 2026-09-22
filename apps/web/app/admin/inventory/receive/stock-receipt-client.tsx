@@ -24,6 +24,7 @@ type Variant = {
 
 type ReceiptLine = Variant & {
   vendorInvoiceLineId?: string | null;
+  purchaseOrderLineId?: string | null;
   expectedQuantity?: number | null;
   acceptedQuantity: string;
   rejectedQuantity: string;
@@ -33,12 +34,14 @@ type ReceiptLine = Variant & {
 type ProcurementInvoice = {
   id: string;
   invoiceNumber: string;
+  purchaseOrderId?: string | null;
   invoiceDate: string;
   purchaseReference?: string | null;
   status: string;
   vendor: { id: string; name: string };
   lines: Array<{
     id: string;
+    purchaseOrderLineId?: string | null;
     invoiceQuantity: number;
     unitCostPaise?: number | null;
     vendorProduct?: { id: string; product: { id: string; name: string } } | null;
@@ -79,6 +82,8 @@ export function AdminStockReceiptClient() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [vendorInvoices, setVendorInvoices] = useState<ProcurementInvoice[]>([]);
   const [vendorInvoiceId, setVendorInvoiceId] = useState("");
+  const [purchaseOrderId, setPurchaseOrderId] = useState("");
+  const queuedInvoiceRef = useRef<string | null>(null);
   const [lines, setLines] = useState<ReceiptLine[]>([]);
   const [search, setSearch] = useState("");
   const [supplierName, setSupplierName] = useState("");
@@ -134,6 +139,15 @@ export function AdminStockReceiptClient() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !vendorInvoices.length || vendorInvoiceId) return;
+    const queued = new URLSearchParams(window.location.search).get("invoice")?.trim();
+    if (!queued || queuedInvoiceRef.current === queued) return;
+    if (!vendorInvoices.some((invoice) => invoice.id === queued)) return;
+    queuedInvoiceRef.current = queued;
+    selectVendorInvoice(queued);
+  }, [vendorInvoices, vendorInvoiceId]);
 
   useEffect(() => {
     if (!photoBusy) return;
@@ -196,6 +210,7 @@ export function AdminStockReceiptClient() {
     setReceipts([]);
     setVendorInvoices([]);
     setVendorInvoiceId("");
+    setPurchaseOrderId("");
   }
 
   function selectVendorInvoice(nextId: string) {
@@ -208,6 +223,7 @@ export function AdminStockReceiptClient() {
       setSupplierName("");
       setInvoiceNumber("");
       setPurchaseOrderNumber("");
+      setPurchaseOrderId("");
       setLines([]);
       return;
     }
@@ -218,6 +234,7 @@ export function AdminStockReceiptClient() {
     setSupplierName(invoice.vendor.name);
     setInvoiceNumber(invoice.invoiceNumber);
     setPurchaseOrderNumber(invoice.purchaseReference ?? "");
+    setPurchaseOrderId(invoice.purchaseOrderId ?? "");
 
     const inventoryById = new Map(variants.map((variant) => [variant.variantId, variant]));
     const prepared: ReceiptLine[] = [];
@@ -235,6 +252,7 @@ export function AdminStockReceiptClient() {
         prepared.push({
           ...variant,
           vendorInvoiceLineId: invoiceLine.id,
+          purchaseOrderLineId: invoiceLine.purchaseOrderLineId ?? null,
           expectedQuantity: outstanding,
           acceptedQuantity: String(outstanding),
           rejectedQuantity: "0",
@@ -269,6 +287,7 @@ export function AdminStockReceiptClient() {
       {
         ...variant,
         vendorInvoiceLineId: sourceLine?.id ?? null,
+        purchaseOrderLineId: sourceLine?.purchaseOrderLineId ?? null,
         expectedQuantity: 0,
         acceptedQuantity: "",
         rejectedQuantity: "0",
@@ -328,12 +347,14 @@ export function AdminStockReceiptClient() {
           invoiceNumber,
           purchaseOrderNumber,
           vendorInvoiceId: vendorInvoiceId || null,
+          purchaseOrderId: purchaseOrderId || null,
           receivedAt: new Date(`${receivedAt}T12:00:00`).toISOString(),
           note,
           action,
           lines: lines.map((line) => ({
             variantId: line.variantId,
             vendorInvoiceLineId: line.vendorInvoiceLineId ?? null,
+            purchaseOrderLineId: line.purchaseOrderLineId ?? null,
             acceptedQuantity: Number(line.acceptedQuantity || 0),
             rejectedQuantity: Number(line.rejectedQuantity || 0),
             unitCostPaise: line.unitCostRupees === "" ? null : Math.round(Number(line.unitCostRupees) * 100),
@@ -357,6 +378,7 @@ export function AdminStockReceiptClient() {
       setInvoiceNumber("");
       setPurchaseOrderNumber("");
       setVendorInvoiceId("");
+      setPurchaseOrderId("");
       setNote("");
       await load();
     } catch (caught) {
