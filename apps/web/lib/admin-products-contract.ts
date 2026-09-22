@@ -19,10 +19,10 @@ export type ProductSummary = Pick<ProductRecord, "id" | "name" | "slug" | "statu
   category: string | null; variantCount: number; onHand: number; imageUrl: string | null; minPricePaise: number | null;
 };
 export type ProductList = { items: ProductSummary[]; total: number; page: number; pageSize: number };
-export type ReceiveVariant = { variantId: string; productName: string; sku: string; color: string; size: string; onHand: number; imageUrl: string | null; photoCount: number };
+export type ReceiveVariant = { variantId: string; productId: string; productName: string; sku: string; color: string; size: string; onHand: number; imageUrl: string | null; photoCount: number };
 export function receiveVariants(product: ProductRecord): ReceiveVariant[] {
   return product.variants.filter(v => v.active).map(v => ({
-    variantId: v.id, productName: product.name, sku: v.sku, color: v.color, size: v.size,
+    variantId: v.id, productId: product.id, productName: product.name, sku: v.sku, color: v.color, size: v.size,
     onHand: v.inventory?.onHand ?? 0, imageUrl: v.images[0]?.url ?? product.images[0]?.url ?? null, photoCount: v.images.length,
   }));
 }
