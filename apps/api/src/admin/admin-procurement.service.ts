@@ -19,6 +19,7 @@ type SaveVendorProductInput = {
   vendorId?: string;
   productId?: string;
   vendorStyleCode?: string;
+  hidiStyleCode?: string;
   vendorProductName?: string;
   hsn?: string;
   defaultUnitCostPaise?: number | null;
@@ -216,6 +217,7 @@ export class AdminProcurementService {
             where: { id: existing.id },
             data: {
               productId,
+              hidiStyleCode: text(input.hidiStyleCode, "HIDI dress code", 120),
               vendorProductName: text(input.vendorProductName, "Vendor product name", 160),
               hsn: text(input.hsn, "HSN", 30),
               defaultUnitCostPaise: nonNegativeInt(input.defaultUnitCostPaise, "Default purchase cost", true),
@@ -227,6 +229,7 @@ export class AdminProcurementService {
               vendorId,
               productId,
               vendorStyleCode,
+              hidiStyleCode: text(input.hidiStyleCode, "HIDI dress code", 120),
               vendorProductName: text(input.vendorProductName, "Vendor product name", 160),
               hsn: text(input.hsn, "HSN", 30),
               defaultUnitCostPaise: nonNegativeInt(input.defaultUnitCostPaise, "Default purchase cost", true),
