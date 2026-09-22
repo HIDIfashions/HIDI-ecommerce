@@ -47,6 +47,7 @@ CREATE TABLE "VendorProduct" (
   "vendorId" TEXT NOT NULL,
   "productId" TEXT NOT NULL,
   "vendorStyleCode" TEXT NOT NULL,
+  "hidiStyleCode" TEXT,
   "vendorProductName" TEXT,
   "hsn" TEXT,
   "defaultUnitCostPaise" INTEGER,
@@ -59,6 +60,7 @@ CREATE TABLE "VendorProduct" (
 CREATE UNIQUE INDEX "VendorProduct_vendorId_vendorStyleCode_key"
   ON "VendorProduct"("vendorId", "vendorStyleCode");
 CREATE INDEX "VendorProduct_productId_idx" ON "VendorProduct"("productId");
+CREATE INDEX "VendorProduct_hidiStyleCode_idx" ON "VendorProduct"("hidiStyleCode");
 CREATE INDEX "VendorProduct_vendorId_active_idx" ON "VendorProduct"("vendorId", "active");
 
 CREATE TABLE "VendorPackPattern" (
