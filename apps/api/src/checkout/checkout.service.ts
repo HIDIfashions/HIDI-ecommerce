@@ -6,6 +6,7 @@ import type { VerifiedAuthUser } from "../auth/supabase-auth.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 import { appendOrderAudit } from "../audit/order-audit.js";
+import { ensureCustomerInvoice } from "../invoicing/customer-invoice.js";
 
 const RESERVATION_MINUTES = 15;
 const MAX_PAISE = 2_147_483_647;
@@ -207,6 +208,7 @@ export class CheckoutService {
         await tx.inventoryReservation.updateMany({ where: { orderId: created.id, status: "ACTIVE" }, data: { status: "CONSUMED", consumedAt: new Date() } });
         const walletPayment = await tx.payment.create({ data: { orderId: created.id, provider: "WALLET", amountPaise: 0, status: "CAPTURED", method: "wallet" } });
         const confirmed = await tx.order.update({ where: { id: created.id }, data: { status: "CONFIRMED" } });
+        await ensureCustomerInvoice(tx, created);
         await appendOrderAudit(tx, {
           orderId: created.id,
           eventType: "PAYMENT_CAPTURED",
