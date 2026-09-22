@@ -60,7 +60,12 @@ function vendorStyle(value: unknown, required = false) {
 }
 
 function normalizedVendorName(value: string) {
-  return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 async function nextVendorNumber(tx: Prisma.TransactionClient) {
