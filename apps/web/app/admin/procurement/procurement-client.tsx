@@ -86,6 +86,9 @@ export function AdminProcurementClient() {
   const [extraction, setExtraction] = useState<Extraction | null>(null);
   const [irLines, setIrLines] = useState<IrLine[]>([]);
   const [ir, setIr] = useState<any>(null);
+  const [traceOrder, setTraceOrder] = useState("");
+  const [trace, setTrace] = useState<any>(null);
+  const [traceBusy, setTraceBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -318,6 +321,21 @@ export function AdminProcurementClient() {
     irSizeTotal(line) === line.quantity
   ), [activePo, extraction, irLines]);
 
+  async function runTrace(event: FormEvent) {
+    event.preventDefault();
+    const orderNumber = traceOrder.trim();
+    if (!orderNumber) return;
+    setTraceBusy(true); setError(null); setTrace(null);
+    try {
+      const response = await fetch("/api/admin/procurement/trace/order/" + encodeURIComponent(orderNumber), { cache: "no-store" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.message ?? "Unable to trace order");
+      setTrace(body);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to trace order");
+    } finally { setTraceBusy(false); }
+  }
+
   async function postIr() {
     if (!activePo || !extraction || !irReady) return;
     if (!extraction.invoiceNumber || !extraction.invoiceDate) { setError("Invoice number/date must be readable before IR can be posted."); return; }
@@ -477,6 +495,20 @@ export function AdminProcurementClient() {
         <div className={styles.cardTitle}><div><p className={styles.eyebrow}>STEP 03</p><h2>Goods Receipt (GR)</h2></div><span>Physical warehouse actuals</span></div>
         {!ir ? <div className={styles.empty}>Post IR first. GR will then open against the same PO and invoice lines.</div> :
           <div className={styles.grReady}><div><strong>IR {ir.invoiceNumber} is ready for GR</strong><span>Warehouse verifies actual accepted/rejected size quantities. Posted GR creates stock lots and garment barcodes.</span></div><Link href={"/admin/inventory/receive?invoice="+encodeURIComponent(ir.id)}>Open Goods Receipt →</Link></div>}
+      </section>
+
+      <section className={styles.card}>
+        <div className={styles.cardTitle}><div><p className={styles.eyebrow}>SOURCE-TO-CUSTOMER TRACE</p><h2>PO → IR → GR → Customer Invoice</h2></div><span>Audit trail</span></div>
+        <form className={styles.traceForm} onSubmit={runTrace}>
+          <input value={traceOrder} onChange={(e) => setTraceOrder(e.target.value)} placeholder="Enter HIDI customer order number" />
+          <button type="submit" disabled={traceBusy}>{traceBusy ? "Tracing…" : "Trace order"}</button>
+        </form>
+        {trace && <div className={styles.traceResult}>
+          <header><div><span>CUSTOMER ORDER</span><strong>{trace.orderNumber}</strong></div><div><span>CUSTOMER INVOICE</span><strong>{trace.customerInvoice?.invoiceNumber ?? "Legacy / not issued"}</strong></div><div><span>STATUS</span><strong>{trace.orderStatus}</strong></div></header>
+          {trace.items.map((item:any)=><div className={styles.traceItem} key={item.orderItemId}><strong>{item.productName} · {item.color} · {item.size} · Qty {item.quantity}</strong>
+            {item.sources.length?item.sources.map((source:any,index:number)=><div className={styles.sourceChain} key={source.lotCode+index}><b>{source.purchaseOrderNumber ?? "PO —"}</b><span>IR {source.vendorInvoiceNumber ?? "—"}</span><span>{source.grn}</span><code>{source.lotCode}</code><span>{source.vendorStyleCode ?? "Vendor material —"}</span><b>{source.hidiProductCode ?? "Legacy material"}</b></div>):<small>No lot allocation recorded for this legacy item.</small>}
+          </div>)}
+        </div>}
       </section>
 
       <section className={styles.card}>
