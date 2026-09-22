@@ -338,16 +338,6 @@ export function AdminProcurementClient() {
   }
 
   function productForIr(line: IrLine) { return data.products.find((product) => product.id === line.productId) ?? null; }
-  function uniqueSizeVariants(product: Product) {
-    const bySize = new Map<string, Variant>();
-    for (const variant of product.variants.filter((item) => item.active !== false)) if (!bySize.has(variant.size)) bySize.set(variant.size, variant);
-    return [...bySize.values()];
-  }
-  function irSizeTotal(line: IrLine) { return Object.values(line.sizeQty).reduce((sum, value) => sum + Number(value || 0), 0); }
-  function setIrSizeQty(lineKey: string, variantId: string, value: string) {
-    if (value && !/^\d+$/.test(value)) return;
-    setIrLines((current) => current.map((line) => line.key === lineKey ? { ...line, sizeQty: { ...line.sizeQty, [variantId]: value } } : line));
-  }
 
   const irReady = useMemo(() =>
     Boolean(activePo && extraction && (activePo.receivedQuantity ?? 0) > 0) &&
