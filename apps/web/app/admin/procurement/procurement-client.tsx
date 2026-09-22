@@ -156,6 +156,8 @@ export function AdminProcurementClient() {
     { rawDescription: "", vendorStyleCode: "", quantity: "", unitCost: "", amount: "" },
   ]);
 
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
+  const [breakupDraft, setBreakupDraft] = useState<Record<string, string>>({});
   const [traceOrder, setTraceOrder] = useState("");
   const [trace, setTrace] = useState<any>(null);
   const [traceBusy, setTraceBusy] = useState(false);
@@ -340,6 +342,64 @@ export function AdminProcurementClient() {
     }
   }
 
+  function beginBreakupEdit(line: InvoiceLine) {
+    const draft: Record<string, string> = {};
+    for (const expected of line.expectedVariants) {
+      draft[expected.variant.id] = String(expected.expectedQuantity);
+    }
+    setEditingLineId(line.id);
+    setBreakupDraft(draft);
+    setError(null);
+    setNotice(null);
+  }
+
+  async function saveBreakup(line: InvoiceLine) {
+    if (!line.vendorProduct) {
+      setError("Create the Vendor Product Master mapping first.");
+      return;
+    }
+
+    const mapping = data.vendorProducts.find((item) => item.id === line.vendorProduct?.id);
+    if (!mapping) {
+      setError("Vendor Product Master mapping is unavailable. Refresh Procurement.");
+      return;
+    }
+
+    const variants = mapping.product.variants
+      .map((variant) => ({
+        variantId: variant.id,
+        quantity: Number(breakupDraft[variant.id] ?? 0),
+      }))
+      .filter((row) => Number.isInteger(row.quantity) && row.quantity > 0);
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(
+        "/api/admin/procurement/invoice-lines/" + encodeURIComponent(line.id) + "/breakup",
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            vendorProductId: line.vendorProduct.id,
+            variants,
+          }),
+        },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.message ?? "Unable to save size breakup");
+      setEditingLineId(null);
+      setBreakupDraft({});
+      setNotice("Expected size/colour breakup updated. Warehouse will receive against these quantities.");
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to save size breakup");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function runTrace(event: FormEvent) {
     event.preventDefault();
     const orderNumber = traceOrder.trim();
@@ -515,8 +575,47 @@ export function AdminProcurementClient() {
                   <div><strong>{line.invoiceQuantity} pcs</strong><small>{money(line.unitCostPaise)} / pc</small></div>
                   <div>
                     <strong>{line.vendorProduct?.product.name ?? "Needs Product Master mapping"}</strong>
-                    <small>{line.expectedVariants.map((v) => v.variant.size + " " + v.expectedQuantity).join(" · ") || "Expected size breakup not ready"}</small>
+                    <small>{line.expectedVariants.map((v) => v.variant.color + " / " + v.variant.size + " ×" + v.expectedQuantity).join(" · ") || "Expected size breakup not ready"}</small>
+                    {line.vendorProduct && (
+                      <button className={styles.inlineEdit} type="button" onClick={() => beginBreakupEdit(line)}>
+                        Edit size breakup
+                      </button>
+                    )}
                   </div>
+                  {editingLineId === line.id && line.vendorProduct && (() => {
+                    const mapping = data.vendorProducts.find((item) => item.id === line.vendorProduct?.id);
+                    if (!mapping) return null;
+                    const enteredTotal = Object.values(breakupDraft).reduce((sum, value) => sum + Number(value || 0), 0);
+                    return (
+                      <div className={styles.breakupEditor}>
+                        <header>
+                          <div><strong>Actual expected size/colour split</strong><span>Must total {line.invoiceQuantity} pieces</span></div>
+                          <b data-match={enteredTotal === line.invoiceQuantity}>{enteredTotal} / {line.invoiceQuantity}</b>
+                        </header>
+                        <div className={styles.breakupGrid}>
+                          {mapping.product.variants.map((variant) => (
+                            <label key={variant.id}>
+                              <span>{variant.color} · {variant.size}</span>
+                              <small>{variant.sku}</small>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={breakupDraft[variant.id] ?? ""}
+                                onChange={(event) =>
+                                  setBreakupDraft({ ...breakupDraft, [variant.id]: event.target.value })
+                                }
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <div className={styles.breakupActions}>
+                          <button type="button" className={styles.secondary} onClick={() => { setEditingLineId(null); setBreakupDraft({}); }}>Cancel</button>
+                          <button type="button" disabled={busy || enteredTotal !== line.invoiceQuantity} onClick={() => void saveBreakup(line)}>Save breakup</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
