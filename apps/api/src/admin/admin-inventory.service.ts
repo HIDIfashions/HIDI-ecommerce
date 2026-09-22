@@ -226,13 +226,37 @@ export class AdminInventoryService {
     if (receipt.vendorInvoiceId) {
       const invoice = await this.prisma.vendorInvoice.findUnique({
         where: { id: receipt.vendorInvoiceId },
-        include: { vendor: true, lines: { select: { id: true } } },
+        include: {
+          vendor: true,
+          lines: {
+            select: {
+              id: true,
+              vendorProduct: { select: { productId: true } },
+            },
+          },
+        },
       });
       if (!invoice) throw new NotFoundException("Linked vendor invoice not found");
-      const allowedLines = new Set(invoice.lines.map((line) => line.id));
+
+      const invoiceLineById = new Map(invoice.lines.map((line) => [line.id, line]));
+      const variants = await this.prisma.productVariant.findMany({
+        where: { id: { in: receipt.lines.map((line) => line.variantId) } },
+        select: { id: true, productId: true },
+      });
+      const variantById = new Map(variants.map((variant) => [variant.id, variant]));
+
       for (const line of receipt.lines) {
-        if (line.vendorInvoiceLineId && !allowedLines.has(line.vendorInvoiceLineId)) {
+        if (!line.vendorInvoiceLineId) {
+          throw new BadRequestException("Every line on a linked vendor invoice receipt must reference its invoice line");
+        }
+        const invoiceLine = invoiceLineById.get(line.vendorInvoiceLineId);
+        if (!invoiceLine) {
           throw new BadRequestException("A receipt line is linked to a different vendor invoice");
+        }
+        const variant = variantById.get(line.variantId);
+        if (!variant) throw new BadRequestException("Receipt variant no longer exists");
+        if (invoiceLine.vendorProduct?.productId && invoiceLine.vendorProduct.productId !== variant.productId) {
+          throw new BadRequestException("Received size/colour must belong to the HIDI product mapped to the vendor invoice line");
         }
       }
     }
