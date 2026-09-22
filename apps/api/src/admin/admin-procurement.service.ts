@@ -276,6 +276,7 @@ export class AdminProcurementService {
       throw new BadRequestException("Add at least one vendor invoice line");
     }
     if (input.lines.length > 500) throw new BadRequestException("Vendor invoice can contain at most 500 lines");
+    const invoiceLines = input.lines;
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -300,7 +301,7 @@ export class AdminProcurementService {
         });
 
         let allMapped = true;
-        for (const rawLine of input.lines) {
+        for (const rawLine of invoiceLines) {
           const quantity = positiveInt(rawLine.invoiceQuantity, "Invoice quantity");
           const styleCode = vendorStyle(rawLine.vendorStyleCode);
           const mapping = styleCode
