@@ -1377,38 +1377,39 @@ summary {
 
 
 /* ==========================================================================
-   HIDI SAGE STONE SITE CHROME
-   Header + announcement + footer only. Inspired by the approved Sage Stone
-   direction while keeping HIDI's existing gold mark and typography.
+   HIDI SAND BEIGE SITE CHROME
+   Header + announcement + footer only. Approved Option 3 direction.
+   Keeps HIDI's gold identity with warm brown text on a light sand shell.
    ========================================================================== */
 
 :root {
-  --hidi-sage-stone: #424335;
-  --hidi-sage-stone-deep: #35372c;
-  --hidi-sage-stone-lift: #4b4d3e;
-  --hidi-shell-ivory: #f5efe4;
-  --hidi-shell-muted: #d5cdbf;
-  --hidi-shell-gold: #d4a34e;
-  --hidi-shell-gold-bright: #f0c46f;
+  --hidi-sand-beige: #efe3d2;
+  --hidi-sand-beige-soft: #f6eee3;
+  --hidi-sand-beige-deep: #e4d2bc;
+  --hidi-sand-ink: #4b3a2c;
+  --hidi-sand-ink-soft: #7a6756;
+  --hidi-sand-gold: #c79642;
+  --hidi-sand-gold-bright: #ddb263;
+  --hidi-sand-line: rgba(140, 112, 78, .18);
 }
 
 .announcement {
-  background: var(--hidi-sage-stone-deep);
-  color: #eee7da;
-  border-bottom: 1px solid rgba(240, 196, 111, .30);
+  background: #e8dbc8;
+  color: #5b4736;
+  border-bottom: 1px solid rgba(199, 150, 66, .24);
 }
 
 .site-header {
-  --ink: var(--hidi-shell-ivory);
+  --ink: var(--hidi-sand-ink);
   position: sticky;
   background:
-    radial-gradient(circle at 92% 18%, rgba(239, 220, 181, .08), transparent 23%),
-    radial-gradient(ellipse at 100% 68%, rgba(211, 179, 115, .07), transparent 27%),
-    linear-gradient(100deg, #47493b 0%, var(--hidi-sage-stone) 56%, #393b2f 100%);
-  color: var(--hidi-shell-ivory);
-  border-bottom: 1px solid rgba(225, 187, 113, .48);
-  box-shadow: 0 10px 28px rgba(28, 30, 23, .16);
-  backdrop-filter: blur(16px);
+    radial-gradient(circle at 94% 18%, rgba(199, 150, 66, .06), transparent 24%),
+    radial-gradient(circle at 6% 85%, rgba(255, 255, 255, .34), transparent 28%),
+    linear-gradient(120deg, #f5ecdf 0%, var(--hidi-sand-beige) 52%, #eadac4 100%);
+  color: var(--hidi-sand-ink);
+  border-bottom: 1px solid var(--hidi-sand-line);
+  box-shadow: 0 10px 30px rgba(86, 68, 48, .06);
+  backdrop-filter: blur(14px);
 }
 
 .site-header .header-inner,
@@ -1418,7 +1419,7 @@ summary {
 .site-header .utility-nav a,
 .site-header .utility-nav button,
 .site-header .mobile-menu {
-  color: var(--hidi-shell-ivory);
+  color: var(--hidi-sand-ink);
 }
 
 .site-header .wordmark img {
@@ -1426,32 +1427,32 @@ summary {
 }
 
 .site-header .desktop-nav a::after {
-  background: var(--hidi-shell-gold);
+  background: var(--hidi-sand-gold);
 }
 
 .site-header .desktop-nav a:hover,
 .site-header .utility-nav a:hover,
 .site-header .utility-nav button:hover,
 .site-header .mobile-menu:hover {
-  color: var(--hidi-shell-gold-bright);
+  color: var(--hidi-sand-gold);
   opacity: 1;
 }
 
 .site-header [class*="count"] {
-  background: #efd39b;
-  color: #303226;
-  box-shadow: 0 0 0 1px rgba(66, 67, 53, .55);
+  background: var(--hidi-sand-gold);
+  color: #fffaf3;
+  box-shadow: 0 0 0 1px rgba(199, 150, 66, .14);
 }
 
 .footer {
-  --ink: var(--hidi-shell-ivory);
-  --muted: var(--hidi-shell-muted);
+  --ink: var(--hidi-sand-ink);
+  --muted: var(--hidi-sand-ink-soft);
   background:
-    radial-gradient(circle at 8% 0%, rgba(229, 197, 137, .08), transparent 28%),
-    radial-gradient(circle at 94% 92%, rgba(255, 255, 255, .035), transparent 30%),
-    linear-gradient(120deg, #3e4033 0%, var(--hidi-sage-stone) 58%, #383a2f 100%);
-  color: var(--hidi-shell-ivory);
-  border-top: 1px solid rgba(225, 187, 113, .46);
+    radial-gradient(circle at 100% 92%, rgba(199, 150, 66, .05), transparent 28%),
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, .4), transparent 32%),
+    linear-gradient(120deg, #f8f1e7 0%, var(--hidi-sand-beige-soft) 58%, #efe2cf 100%);
+  color: var(--hidi-sand-ink);
+  border-top: 1px solid var(--hidi-sand-line);
 }
 
 .footer-logo {
@@ -1470,56 +1471,56 @@ summary {
 .footer h3,
 .footer strong,
 .footer .footer-note {
-  color: #dfb762;
+  color: #b27d35;
 }
 
 .footer-grid a {
-  color: #eee7db;
+  color: #4f3d2d;
 }
 
 .footer-grid a:hover {
-  color: var(--hidi-shell-gold-bright);
+  color: var(--hidi-sand-gold);
 }
 
 .footer .muted,
 .footer-small,
 .footer-bottom {
-  color: var(--hidi-shell-muted);
+  color: var(--hidi-sand-ink-soft);
 }
 
 .footer .newsletter {
-  border-bottom-color: rgba(232, 202, 145, .55);
+  border-bottom-color: rgba(138, 109, 75, .22);
 }
 
 .footer .newsletter input {
-  color: var(--hidi-shell-ivory);
+  color: var(--hidi-sand-ink);
 }
 
 .footer .newsletter input::placeholder {
-  color: #bdb6aa;
+  color: #9d8a79;
 }
 
 .footer .newsletter button {
-  color: #dfb762;
+  color: #b27d35;
 }
 
 .footer-bottom {
-  border-top-color: rgba(231, 199, 138, .24);
+  border-top-color: rgba(138, 109, 75, .12);
 }
 
 .footer .social-link {
-  border-color: rgba(223, 183, 98, .36);
-  color: #eee7db;
+  border-color: rgba(178, 125, 53, .22);
+  color: #5b4736;
 }
 
 .footer .social-link:hover {
-  background: rgba(223, 183, 98, .10);
-  border-color: #dfb762;
-  color: var(--hidi-shell-gold-bright);
+  background: rgba(199, 150, 66, .08);
+  border-color: var(--hidi-sand-gold);
+  color: var(--hidi-sand-gold);
 }
 
 .footer .newsletter-status {
-  color: #e2c88f;
+  color: #8b735e;
 }
 
 @media (max-width: 620px) {
