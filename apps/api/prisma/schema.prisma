@@ -356,6 +356,7 @@ model StockReceiptLine {
   receiptId           String
   variantId           String
   vendorInvoiceLineId String?
+  purchaseOrderLineId String?
   acceptedQuantity    Int
   rejectedQuantity Int            @default(0)
   unitCostPaise    Int?
@@ -363,11 +364,13 @@ model StockReceiptLine {
   receipt          StockReceipt       @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   variant          ProductVariant     @relation(fields: [variantId], references: [id], onDelete: Restrict)
   vendorInvoiceLine VendorInvoiceLine? @relation(fields: [vendorInvoiceLineId], references: [id], onDelete: SetNull)
+  purchaseOrderLine PurchaseOrderLine? @relation(fields: [purchaseOrderLineId], references: [id], onDelete: SetNull)
   stockLots        StockLot[]
 
   @@unique([receiptId, variantId])
   @@index([variantId])
   @@index([vendorInvoiceLineId])
+  @@index([purchaseOrderLineId])
 }
 
 model Vendor {
@@ -468,6 +471,8 @@ model PurchaseOrderLine {
   purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   vendorProduct   VendorProduct? @relation(fields: [vendorProductId], references: [id], onDelete: SetNull)
   product         Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  invoiceLines    VendorInvoiceLine[]
+  receiptLines    StockReceiptLine[]
 
   @@unique([purchaseOrderId, lineNumber])
   @@index([vendorProductId])
@@ -506,6 +511,7 @@ model VendorInvoiceLine {
   id                String         @id @default(cuid())
   vendorInvoiceId   String
   vendorProductId   String?
+  purchaseOrderLineId String?
   rawDescription    String
   vendorStyleCode   String?
   hsn               String?
@@ -519,12 +525,14 @@ model VendorInvoiceLine {
   updatedAt         DateTime       @updatedAt
   vendorInvoice     VendorInvoice  @relation(fields: [vendorInvoiceId], references: [id], onDelete: Cascade)
   vendorProduct     VendorProduct? @relation(fields: [vendorProductId], references: [id], onDelete: SetNull)
+  purchaseOrderLine PurchaseOrderLine? @relation(fields: [purchaseOrderLineId], references: [id], onDelete: SetNull)
   expectedVariants  VendorInvoiceExpectedVariant[]
   receiptLines      StockReceiptLine[]
   stockLots         StockLot[]
 
   @@index([vendorInvoiceId])
   @@index([vendorProductId])
+  @@index([purchaseOrderLineId])
   @@index([vendorStyleCode])
 }
 
