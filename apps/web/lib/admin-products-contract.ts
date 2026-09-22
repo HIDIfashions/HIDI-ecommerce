@@ -9,7 +9,7 @@ export type ProductVariant = {
   inventory: { onHand: number; reserved: number; safetyStock: number; reorderLevel: number } | null;
 };
 export type ProductRecord = {
-  id: string; internalCode: string; name: string; slug: string; status: ProductState; categoryId: string | null;
+  id: string; internalCode: string; internalName: string | null; name: string; slug: string; status: ProductState; categoryId: string | null;
   category: Option | null; shortDescription: string | null; description: string | null;
   fabric: string | null; care: string | null; updatedAt: string;
   images: ProductPhoto[]; variants: ProductVariant[];
