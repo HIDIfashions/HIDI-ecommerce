@@ -88,6 +88,14 @@ function normalizedVendorName(value: string) {
     .replace(/\s+/g, " ");
 }
 
+function looseVendorName(value: string) {
+  return normalizedVendorName(value)
+    .split(" ")
+    .filter(Boolean)
+    .map((token) => token.length > 3 && token.endsWith("s") ? token.slice(0, -1) : token)
+    .join(" ");
+}
+
 async function nextVendorNumber(tx: Prisma.TransactionClient) {
   const rows = await tx.$queryRaw<Array<{ value: bigint }>>`
     SELECT nextval('hidi_vendor_number_seq') AS value
@@ -247,8 +255,25 @@ export class AdminProcurementService {
     const name = text(input?.name, "Vendor name", 120, true)!;
     const normalizedName = normalizedVendorName(name);
 
-    const existing = await this.prisma.vendor.findUnique({ where: { normalizedName } });
-    if (existing) return { ...existing, reused: true };
+    const candidates = await this.prisma.vendor.findMany({
+      where: { active: true },
+      include: {
+        _count: { select: { products: true, invoices: true, purchaseOrders: true } },
+      },
+      take: 1000,
+    });
+    const loose = looseVendorName(name);
+    const matching = candidates
+      .filter((candidate) => looseVendorName(candidate.name) === loose)
+      .sort((a, b) => {
+        const scoreA = a._count.products * 100 + a._count.invoices * 10 + a._count.purchaseOrders;
+        const scoreB = b._count.products * 100 + b._count.invoices * 10 + b._count.purchaseOrders;
+        return scoreB - scoreA;
+      });
+    if (matching.length) {
+      const { _count: _ignore, ...existing } = matching[0];
+      return { ...existing, reused: true };
+    }
 
     try {
       return await this.prisma.$transaction(async (tx) => {
