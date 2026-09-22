@@ -33,6 +33,7 @@ type Product = {
 type VendorProduct = {
   id: string;
   vendorStyleCode: string;
+  hidiStyleCode?: string | null;
   vendorProductName?: string | null;
   hsn?: string | null;
   defaultUnitCostPaise?: number | null;
@@ -138,6 +139,7 @@ export function AdminProcurementClient() {
     vendorId: "",
     productId: "",
     vendorStyleCode: "",
+    hidiStyleCode: "",
     vendorProductName: "",
     hsn: "",
     defaultUnitCost: "",
@@ -248,6 +250,7 @@ export function AdminProcurementClient() {
           vendorId: mappingForm.vendorId,
           productId: mappingForm.productId,
           vendorStyleCode: mappingForm.vendorStyleCode.trim(),
+          hidiStyleCode: mappingForm.hidiStyleCode.trim(),
           vendorProductName: mappingForm.vendorProductName.trim(),
           hsn: mappingForm.hsn.trim(),
           defaultUnitCostPaise:
@@ -263,6 +266,7 @@ export function AdminProcurementClient() {
         vendorId: mappingForm.vendorId,
         productId: "",
         vendorStyleCode: "",
+        hidiStyleCode: "",
         vendorProductName: "",
         hsn: "",
         defaultUnitCost: "",
@@ -431,8 +435,9 @@ export function AdminProcurementClient() {
               <label><span>Vendor *</span><select value={mappingForm.vendorId} onChange={(e) => setMappingForm({ ...mappingForm, vendorId: e.target.value })} required><option value="">Select vendor</option>{data.vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
               <label><span>Existing HIDI product *</span><select value={mappingForm.productId} onChange={(e) => { setMappingForm({ ...mappingForm, productId: e.target.value }); setPackQty({}); }} required><option value="">Select product</option>{data.products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
             </div>
-            <div className={styles.three}>
+            <div className={styles.four}>
               <label><span>Vendor dress code *</span><input value={mappingForm.vendorStyleCode} onChange={(e) => setMappingForm({ ...mappingForm, vendorStyleCode: e.target.value })} placeholder="JC4U 2548" required /></label>
+              <label><span>HIDI dress code</span><input value={mappingForm.hidiStyleCode} onChange={(e) => setMappingForm({ ...mappingForm, hidiStyleCode: e.target.value })} placeholder="HIDI-KR-02548" /></label>
               <label><span>Vendor description</span><input value={mappingForm.vendorProductName} onChange={(e) => setMappingForm({ ...mappingForm, vendorProductName: e.target.value })} /></label>
               <label><span>HSN</span><input value={mappingForm.hsn} onChange={(e) => setMappingForm({ ...mappingForm, hsn: e.target.value })} /></label>
             </div>
@@ -461,7 +466,7 @@ export function AdminProcurementClient() {
               <div key={mapping.id}>
                 <div><strong>{mapping.vendor.name}</strong><code>{mapping.vendorStyleCode}</code></div>
                 <span>→</span>
-                <div><strong>{mapping.product.name}</strong><small>{mapping.packPattern.map((p) => p.variant.size + "×" + p.quantity).join(" · ") || "No default pack"}</small></div>
+                <div><strong>{mapping.hidiStyleCode ? mapping.hidiStyleCode + " · " : ""}{mapping.product.name}</strong><small>{mapping.packPattern.map((p) => p.variant.size + "×" + p.quantity).join(" · ") || "No default pack"}</small></div>
               </div>
             ))}
           </div>
