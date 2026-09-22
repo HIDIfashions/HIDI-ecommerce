@@ -20,6 +20,7 @@ type PurchaseOrderLine = {
   id: string; lineNumber: number; vendorProductId?: string | null; productId: string;
   vendorStyleCode: string; orderedQuantity: number; unitCostPaise?: number | null;
   product: Pick<Product, "id" | "internalCode" | "internalName" | "name">;
+  variants?: Array<{ variantId: string; orderedQuantity: number; variant: Variant }>;
 };
 type PurchaseOrder = {
   id: string; poNumber: string; vendorId: string; orderDate: string; status: string;
@@ -43,6 +44,7 @@ type PoDraftLine = {
   key: string; vendorStyleCode: string; description: string; hsn: string;
   orderedQuantity: string; unitCostRupees: string;
   vendorProductId: string | null; productId: string | null; selectedProductId: string;
+  sizeQty: Record<string, string>;
 };
 type IrLine = ExtractedLine & {
   key: string; poLineId: string | null; vendorProductId: string | null; productId: string | null;
@@ -65,7 +67,11 @@ function todayIso() {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 }
 function blankPoLine(index: number): PoDraftLine {
-  return { key: "po-" + index + "-" + Date.now(), vendorStyleCode: "", description: "", hsn: "", orderedQuantity: "", unitCostRupees: "", vendorProductId: null, productId: null, selectedProductId: "" };
+  return {
+    key: "po-" + index + "-" + Date.now(),
+    vendorStyleCode: "", description: "", hsn: "", orderedQuantity: "", unitCostRupees: "",
+    vendorProductId: null, productId: null, selectedProductId: "", sizeQty: {},
+  };
 }
 
 export function AdminProcurementClient() {
@@ -159,8 +165,8 @@ export function AdminProcurementClient() {
       if (!response.ok) throw new Error(body?.message ?? "Unable to resolve vendor material");
       setPoLines((current) => current.map((item) => item.key === line.key
         ? body.mapped
-          ? { ...item, vendorStyleCode: body.vendorStyleCode, vendorProductId: body.mapping.id, productId: body.mapping.productId, selectedProductId: body.mapping.productId }
-          : { ...item, vendorStyleCode: body.vendorStyleCode, vendorProductId: null, productId: null, selectedProductId: "" }
+          ? { ...item, vendorStyleCode: body.vendorStyleCode, vendorProductId: body.mapping.id, productId: body.mapping.productId, selectedProductId: body.mapping.productId, sizeQty: {} }
+          : { ...item, vendorStyleCode: body.vendorStyleCode, vendorProductId: null, productId: null, selectedProductId: "", sizeQty: {} }
         : item));
       if (!body.mapped) setNotice("Vendor material is new. Select or create the HIDI material once, then save the mapping.");
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to resolve vendor material"); }
@@ -183,7 +189,7 @@ export function AdminProcurementClient() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message ?? "Unable to map vendor material");
       setPoLines((current) => current.map((item) => item.key === line.key
-        ? { ...item, vendorProductId: body.id, productId: body.productId, selectedProductId: body.productId }
+        ? { ...item, vendorProductId: body.id, productId: body.productId, selectedProductId: body.productId, sizeQty: {} }
         : item));
       setNotice("Vendor material " + canonical(line.vendorStyleCode) + " → " + body.product.internalCode + " saved.");
       await load();
@@ -196,16 +202,42 @@ export function AdminProcurementClient() {
       ? {
           ...line,
           [field]: value,
-          ...(field === "vendorStyleCode" ? { vendorProductId: null, productId: null, selectedProductId: "" } : {}),
+          ...(field === "vendorStyleCode" ? { vendorProductId: null, productId: null, selectedProductId: "", sizeQty: {} } : {}),
+          ...(field === "selectedProductId" ? { sizeQty: {} } : {}),
         }
       : line));
   }
 
-  const poReady = useMemo(() => Boolean(poVendorId) && poLines.length > 0 && poLines.every((line) =>
-    Boolean(line.vendorProductId && line.productId && line.vendorStyleCode.trim()) &&
-    Number.isInteger(Number(line.orderedQuantity)) && Number(line.orderedQuantity) > 0 &&
-    (!line.unitCostRupees || Number(line.unitCostRupees) >= 0)
-  ), [poVendorId, poLines]);
+  function poProduct(line: PoDraftLine) {
+    return data.products.find((product) => product.id === line.productId) ?? null;
+  }
+
+  function uniqueSizeVariants(product: Product) {
+    const bySize = new Map<string, Variant>();
+    for (const variant of product.variants.filter((item) => item.active !== false)) {
+      if (!bySize.has(variant.size)) bySize.set(variant.size, variant);
+    }
+    return [...bySize.values()];
+  }
+
+  function poSizeTotal(line: PoDraftLine) {
+    return Object.values(line.sizeQty).reduce((sum, value) => sum + Number(value || 0), 0);
+  }
+
+  function setPoSizeQty(lineKey: string, variantId: string, value: string) {
+    if (value && !/^\d+$/.test(value)) return;
+    setPoLines((current) => current.map((line) =>
+      line.key === lineKey ? { ...line, sizeQty: { ...line.sizeQty, [variantId]: value } } : line,
+    ));
+  }
+
+  const poReady = useMemo(() => Boolean(poVendorId) && poLines.length > 0 && poLines.every((line) => {
+    const quantity = Number(line.orderedQuantity);
+    return Boolean(line.vendorProductId && line.productId && line.vendorStyleCode.trim()) &&
+      Number.isInteger(quantity) && quantity > 0 &&
+      poSizeTotal(line) === quantity &&
+      (!line.unitCostRupees || Number(line.unitCostRupees) >= 0);
+  }), [poVendorId, poLines]);
 
   async function createPo() {
     if (!poReady) return;
@@ -221,19 +253,20 @@ export function AdminProcurementClient() {
             orderedQuantity: Number(line.orderedQuantity),
             unitCostPaise: line.unitCostRupees ? Math.round(Number(line.unitCostRupees) * 100) : null,
             hsn: line.hsn,
+            variants: Object.entries(line.sizeQty)
+              .map(([variantId, value]) => ({ variantId, quantity: Number(value || 0) }))
+              .filter((row) => row.quantity > 0),
           })),
         }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message ?? "Unable to create Purchase Order");
       setCreatedPo(body); setSelectedPoId(body.id); setIr(null);
-      if (extraction) {
-        buildIrLines(extraction, body);
-        setNotice("Purchase Order " + body.poNumber + " created. Uploaded invoice retained for IR; enter size quantities next.");
-      } else {
-        setExtraction(null); setIrLines([]);
-        setNotice("Purchase Order " + body.poNumber + " created. Next: upload the vendor invoice for IR.");
-      }
+      if (extraction) buildIrLines(extraction, body);
+      setNotice(
+        "Purchase Order " + body.poNumber +
+        " created with the size quantities. Next: post Goods Receipt against this PO. The uploaded invoice is retained for IR."
+      );
       await load();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to create Purchase Order"); }
     finally { setBusy(false); }
@@ -256,7 +289,7 @@ export function AdminProcurementClient() {
         key: "po-upload-" + index + "-" + Date.now(), vendorStyleCode: style, description: raw.rawDescription,
         hsn: raw.hsn ?? "", orderedQuantity: raw.quantity == null ? "" : String(raw.quantity),
         unitCostRupees: raw.unitCostRupees == null ? "" : String(raw.unitCostRupees),
-        vendorProductId, productId, selectedProductId: productId ?? "",
+        vendorProductId, productId, selectedProductId: productId ?? "", sizeQty: {},
       });
     }
     setPoVendorId(resolvedVendor.id); setPoLines(lines);
@@ -317,8 +350,7 @@ export function AdminProcurementClient() {
 
   const irReady = useMemo(() => Boolean(activePo && extraction) && irLines.length > 0 && irLines.every((line) =>
     Boolean(line.poLineId && line.vendorProductId && line.productId) &&
-    Number.isInteger(line.quantity) && Number(line.quantity) > 0 &&
-    irSizeTotal(line) === line.quantity
+    Number.isInteger(line.quantity) && Number(line.quantity) > 0
   ), [activePo, extraction, irLines]);
 
   async function runTrace(event: FormEvent) {
@@ -353,7 +385,6 @@ export function AdminProcurementClient() {
             rawDescription: line.rawDescription, vendorStyleCode: line.vendorStyleCodeDraft,
             hsn: line.hsn, invoiceQuantity: line.quantity, unitCostPaise: paise(line.unitCostRupees), amountPaise: paise(line.amountRupees),
             purchaseOrderLineId: line.poLineId,
-            manualVariants: Object.entries(line.sizeQty).map(([variantId, value]) => ({ variantId, quantity: Number(value || 0) })).filter((row) => row.quantity > 0),
           })),
         }),
       });
@@ -383,7 +414,7 @@ export function AdminProcurementClient() {
 
       <section className={styles.heading}>
         <p className={styles.eyebrow}>PROCUREMENT · SAP-STYLE DOCUMENT FLOW</p>
-        <h1>Purchase Order → IR → GR</h1>
+        <h1>Purchase Order → GR → IR</h1>
         <p>Vendor and Material are master data. Reuse existing records; create them only when a new vendor or vendor material appears.</p>
       </section>
 
@@ -392,8 +423,8 @@ export function AdminProcurementClient() {
 
       <section className={styles.flow}>
         <div data-active={!activePo}><span>01</span><strong>Purchase Order</strong><small>Vendor + Material + Qty</small></div>
-        <div data-active={Boolean(activePo && !ir)}><span>02</span><strong>Invoice Receipt</strong><small>Upload + fixed invoice qty + sizes</small></div>
-        <div data-active={Boolean(ir)}><span>03</span><strong>Goods Receipt</strong><small>Physical actual + barcode</small></div>
+        <div data-active={Boolean(activePo && activePo.receivedQuantity === 0)}><span>02</span><strong>Goods Receipt</strong><small>Physical actual + barcode</small></div>
+        <div data-active={Boolean(activePo && (activePo.receivedQuantity ?? 0) > 0 && !ir)}><span>03</span><strong>Invoice Receipt</strong><small>Invoice vs PO / GR</small></div>
         <div><span>04</span><strong>Customer fulfilment</strong><small>Exact barcode scan</small></div>
         <div><span>05</span><strong>Trace</strong><small>PO → IR → GR → sale</small></div>
       </section>
@@ -448,8 +479,8 @@ export function AdminProcurementClient() {
         </div>
 
         <div className={styles.invoicePrefill}>
-          <strong>Have the vendor invoice already?</strong>
-          <span>Upload it here to automatically resolve/create the vendor and prefill the PO draft with vendor material codes, quantities and rates.</span>
+          <strong>Start from the vendor invoice / purchase document</strong>
+          <span>Upload PDF/JPEG/PNG. HIDI reads vendor, vendor material code, total line quantity and rate; reuses or creates Vendor/Material master data only when required.</span>
           <label className={styles.compactUpload} aria-disabled={extracting}><input ref={fileRef} type="file" accept="application/pdf,image/jpeg,image/png" disabled={extracting} onChange={(e) => { const file=e.currentTarget.files?.[0]; if(file) void uploadInvoice(file); }} />{extracting ? "Reading invoice…" : "Upload invoice to prefill PO"}</label>
         </div>
       </section>
