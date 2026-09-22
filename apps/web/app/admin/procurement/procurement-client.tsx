@@ -647,7 +647,14 @@ export function AdminProcurementClient() {
                 <div><strong>{item.productName}</strong><span>{item.color} · {item.size} · {item.sku} · Qty {item.quantity}</span></div>
                 {item.sources.length ? item.sources.map((source: any, i: number) => (
                   <div className={styles.sourceChain} key={source.lotCode + i}>
-                    <span>{source.vendor}</span><b>Invoice {source.vendorInvoiceNumber ?? "—"}</b><span>{source.vendorStyleCode ?? "—"}</span><b>{source.grn}</b><code>{source.lotCode}</code><strong>{source.quantity} pc</strong>
+                    <span>{source.vendor}</span>
+                    <b>Invoice {source.vendorInvoiceNumber ?? "—"}</b>
+                    <span>{source.purchaseReference ? "Purchase ref " + source.purchaseReference : "No PO / purchase ref"}</span>
+                    <span>{source.vendorStyleCode ?? "Vendor style —"}</span>
+                    <b>{source.hidiProductCode ?? "Legacy HIDI product"}</b>
+                    <b>{source.grn}</b>
+                    <code>{source.lotCode}</code>
+                    <strong>{source.quantity} pc</strong>
                   </div>
                 )) : <p className={styles.legacy}>No lot allocation recorded for this item (legacy stock/order).</p>}
               </div>
