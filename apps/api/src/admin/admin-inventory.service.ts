@@ -20,11 +20,13 @@ export type StockReceiptInput = {
   supplierName?: string;
   invoiceNumber?: string;
   purchaseOrderNumber?: string;
+  vendorInvoiceId?: string;
   receivedAt?: string;
   note?: string;
   action?: "DRAFT" | "POST";
   lines?: Array<{
     variantId?: string;
+    vendorInvoiceLineId?: string;
     acceptedQuantity?: number;
     rejectedQuantity?: number;
     unitCostPaise?: number | null;
@@ -192,9 +194,12 @@ export class AdminInventoryService {
       orderBy: { createdAt: "desc" },
       take: 30,
       include: {
+        vendorInvoice: { include: { vendor: true } },
         lines: {
           orderBy: { createdAt: "asc" },
           include: {
+            vendorInvoiceLine: true,
+            stockLots: { orderBy: { createdAt: "asc" } },
             variant: {
               select: {
                 sku: true,
@@ -217,12 +222,28 @@ export class AdminInventoryService {
 
   async createReceipt(input: StockReceiptInput, actor?: string) {
     const receipt = this.validateReceipt(input);
+
+    if (receipt.vendorInvoiceId) {
+      const invoice = await this.prisma.vendorInvoice.findUnique({
+        where: { id: receipt.vendorInvoiceId },
+        include: { vendor: true, lines: { select: { id: true } } },
+      });
+      if (!invoice) throw new NotFoundException("Linked vendor invoice not found");
+      const allowedLines = new Set(invoice.lines.map((line) => line.id));
+      for (const line of receipt.lines) {
+        if (line.vendorInvoiceLineId && !allowedLines.has(line.vendorInvoiceLineId)) {
+          throw new BadRequestException("A receipt line is linked to a different vendor invoice");
+        }
+      }
+    }
+
     const created = await this.prisma.stockReceipt.create({
       data: {
         receiptNumber: this.receiptNumber(),
         supplierName: receipt.supplierName,
         invoiceNumber: receipt.invoiceNumber,
         purchaseOrderNumber: receipt.purchaseOrderNumber,
+        vendorInvoiceId: receipt.vendorInvoiceId,
         receivedAt: receipt.receivedAt,
         note: receipt.note,
         createdBy: actor?.trim() || "HIDI Admin",
@@ -252,11 +273,11 @@ export class AdminInventoryService {
 
       const receipt = await tx.stockReceipt.findUnique({
         where: { id: receiptId },
-        include: { lines: { orderBy: { variantId: "asc" } } },
+        include: { lines: { orderBy: { variantId: "asc" }, include: { stockLots: true } } },
       });
       if (!receipt) throw new NotFoundException("Stock receipt not found");
-      if (!receipt.invoiceNumber && !receipt.purchaseOrderNumber) {
-        throw new BadRequestException("Add an invoice number or purchase order before posting");
+      if (!receipt.vendorInvoiceId && !receipt.invoiceNumber && !receipt.purchaseOrderNumber) {
+        throw new BadRequestException("Link a vendor invoice or add an invoice/purchase reference before posting");
       }
       if (!receipt.lines.length) throw new BadRequestException("Add at least one SKU before posting");
 
@@ -286,7 +307,7 @@ export class AdminInventoryService {
                 note: [
                   receipt.supplierName,
                   receipt.invoiceNumber ? `Invoice ${receipt.invoiceNumber}` : null,
-                  receipt.purchaseOrderNumber ? `PO ${receipt.purchaseOrderNumber}` : null,
+                  receipt.purchaseOrderNumber ? `Purchase ref ${receipt.purchaseOrderNumber}` : null,
                   line.rejectedQuantity ? `${line.rejectedQuantity} rejected` : null,
                 ].filter(Boolean).join(" · "),
                 actor: actor?.trim() || receipt.createdBy || "HIDI Admin",
@@ -294,12 +315,29 @@ export class AdminInventoryService {
             },
           },
         });
+
+        if (!line.stockLots.length) {
+          await tx.stockLot.create({
+            data: {
+              lotCode: this.lotCode(receipt.receiptNumber, line.id),
+              receiptLineId: line.id,
+              variantId: line.variantId,
+              vendorInvoiceLineId: line.vendorInvoiceLineId,
+              acceptedQuantity: line.acceptedQuantity,
+            },
+          });
+        }
       }
 
       await tx.stockReceipt.update({
         where: { id: receiptId },
         data: { status: StockReceiptStatus.POSTED, postedAt: new Date() },
       });
+
+      if (receipt.vendorInvoiceId) {
+        await this.refreshVendorInvoiceStatus(tx, receipt.vendorInvoiceId);
+      }
+
       return this.receipt(receiptId, tx);
     }, { timeout: 20_000 });
   }
@@ -548,23 +586,82 @@ export class AdminInventoryService {
       if (unitCostPaise !== null && (!Number.isInteger(unitCostPaise) || unitCostPaise < 0)) {
         throw new BadRequestException("Unit cost must be zero or more");
       }
-      return { variantId, acceptedQuantity, rejectedQuantity, unitCostPaise };
+      const vendorInvoiceLineId = line.vendorInvoiceLineId?.trim() || null;
+      return { variantId, vendorInvoiceLineId, acceptedQuantity, rejectedQuantity, unitCostPaise };
     });
 
     const invoiceNumber = input.invoiceNumber?.trim() || null;
     const purchaseOrderNumber = input.purchaseOrderNumber?.trim() || null;
-    if (input.action === "POST" && !invoiceNumber && !purchaseOrderNumber) {
-      throw new BadRequestException("Add an invoice number or purchase order before posting");
+    const vendorInvoiceId = input.vendorInvoiceId?.trim() || null;
+    if (input.action === "POST" && !vendorInvoiceId && !invoiceNumber && !purchaseOrderNumber) {
+      throw new BadRequestException("Link a vendor invoice or add an invoice/purchase reference before posting");
     }
 
     return {
       supplierName,
       invoiceNumber,
       purchaseOrderNumber,
+      vendorInvoiceId,
       receivedAt,
       note: input.note?.trim() || null,
       lines,
     };
+  }
+
+  private lotCode(receiptNumber: string, receiptLineId: string) {
+    const receipt = receiptNumber
+      .replace(/^HIDI-GRN-/i, "")
+      .replace(/[^A-Za-z0-9]/g, "")
+      .toUpperCase();
+    const line = receiptLineId.replace(/[^A-Za-z0-9]/g, "").slice(-6).toUpperCase();
+    return `HIDI-LOT-${receipt}-${line}`;
+  }
+
+  private async refreshVendorInvoiceStatus(tx: Prisma.TransactionClient, vendorInvoiceId: string) {
+    const invoice = await tx.vendorInvoice.findUnique({
+      where: { id: vendorInvoiceId },
+      include: {
+        lines: {
+          include: {
+            expectedVariants: true,
+            receiptLines: true,
+          },
+        },
+      },
+    });
+    if (!invoice) return;
+
+    const mapped = invoice.lines.every(
+      (line) =>
+        line.mappingConfirmed &&
+        line.expectedVariants.reduce((sum, row) => sum + row.expectedQuantity, 0) === line.invoiceQuantity,
+    );
+    if (!mapped) {
+      await tx.vendorInvoice.update({ where: { id: vendorInvoiceId }, data: { status: "MAPPING" } });
+      return;
+    }
+
+    const invoiced = invoice.lines.reduce((sum, line) => sum + line.invoiceQuantity, 0);
+    const physical = invoice.lines.reduce(
+      (sum, line) =>
+        sum + line.receiptLines.reduce((n, row) => n + row.acceptedQuantity + row.rejectedQuantity, 0),
+      0,
+    );
+    const accepted = invoice.lines.reduce(
+      (sum, line) => sum + line.receiptLines.reduce((n, row) => n + row.acceptedQuantity, 0),
+      0,
+    );
+
+    const status =
+      physical === 0
+        ? "AWAITING_STOCK"
+        : physical < invoiced
+          ? "PARTIALLY_RECEIVED"
+          : accepted === invoiced
+            ? "RECONCILED"
+            : "RECEIVED";
+
+    await tx.vendorInvoice.update({ where: { id: vendorInvoiceId }, data: { status } });
   }
 
   private receiptNumber() {
