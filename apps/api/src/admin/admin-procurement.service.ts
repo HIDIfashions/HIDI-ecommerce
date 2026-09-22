@@ -5,7 +5,6 @@ import { PrismaService } from "../prisma/prisma.service.js";
 type VariantBreakupInput = { variantId?: string; quantity?: number };
 
 type CreateVendorInput = {
-  code?: string;
   name?: string;
   gstin?: string;
   city?: string;
@@ -19,7 +18,6 @@ type SaveVendorProductInput = {
   vendorId?: string;
   productId?: string;
   vendorStyleCode?: string;
-  hidiStyleCode?: string;
   vendorProductName?: string;
   hsn?: string;
   defaultUnitCostPaise?: number | null;
@@ -61,6 +59,19 @@ function vendorStyle(value: unknown, required = false) {
   return result ? result.replace(/\s+/g, " ").toUpperCase() : null;
 }
 
+function normalizedVendorName(value: string) {
+  return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+async function nextVendorNumber(tx: Prisma.TransactionClient) {
+  const rows = await tx.$queryRaw<Array<{ value: bigint }>>`
+    SELECT nextval('hidi_vendor_number_seq') AS value
+  `;
+  const value = Number(rows[0]?.value ?? 0);
+  if (!Number.isSafeInteger(value) || value < 10001) throw new Error("Unable to allocate vendor number");
+  return String(value);
+}
+
 function nonNegativeInt(value: unknown, label: string, nullable = false) {
   if ((value === null || value === undefined || value === "") && nullable) return null;
   const number = Number(value);
@@ -90,6 +101,7 @@ export class AdminProcurementService {
           product: {
             select: {
               id: true,
+              internalCode: true,
               name: true,
               slug: true,
               status: true,
@@ -138,6 +150,7 @@ export class AdminProcurementService {
         orderBy: { name: "asc" },
         select: {
           id: true,
+          internalCode: true,
           name: true,
           slug: true,
           status: true,
@@ -170,23 +183,38 @@ export class AdminProcurementService {
   }
 
   async createVendor(input: CreateVendorInput) {
-    const code = text(input?.code, "Vendor code", 40, true)!;
     const name = text(input?.name, "Vendor name", 120, true)!;
+    const normalizedName = normalizedVendorName(name);
+
+    const existing = await this.prisma.vendor.findUnique({ where: { normalizedName } });
+    if (existing) return { ...existing, reused: true };
+
     try {
-      return await this.prisma.vendor.create({
-        data: {
-          code: code.toUpperCase(),
-          name,
-          gstin: text(input.gstin, "GSTIN", 30),
-          city: text(input.city, "City", 80),
-          state: text(input.state, "State", 80),
-          contactName: text(input.contactName, "Contact name", 100),
-          phone: text(input.phone, "Phone", 30),
-          email: text(input.email, "Email", 160),
-        },
-      });
+      return await this.prisma.$transaction(async (tx) => {
+        const replay = await tx.vendor.findUnique({ where: { normalizedName } });
+        if (replay) return { ...replay, reused: true };
+
+        const code = await nextVendorNumber(tx);
+        const vendor = await tx.vendor.create({
+          data: {
+            code,
+            name,
+            normalizedName,
+            gstin: text(input.gstin, "GSTIN", 30),
+            city: text(input.city, "City", 80),
+            state: text(input.state, "State", 80),
+            contactName: text(input.contactName, "Contact name", 100),
+            phone: text(input.phone, "Phone", 30),
+            email: text(input.email, "Email", 160),
+          },
+        });
+        return { ...vendor, reused: false };
+      }, { isolationLevel: "Serializable" });
     } catch (error: any) {
-      if (error?.code === "P2002") throw new ConflictException("Vendor code already exists");
+      if (error?.code === "P2002") {
+        const replay = await this.prisma.vendor.findUnique({ where: { normalizedName } });
+        if (replay) return { ...replay, reused: true };
+      }
       throw error;
     }
   }
@@ -202,7 +230,7 @@ export class AdminProcurementService {
         tx.vendor.findUnique({ where: { id: vendorId }, select: { id: true } }),
         tx.product.findUnique({
           where: { id: productId },
-          select: { id: true, variants: { select: { id: true } } },
+          select: { id: true, internalCode: true, name: true, variants: { select: { id: true } } },
         }),
       ]);
       if (!vendor) throw new NotFoundException("Vendor not found");
@@ -215,14 +243,26 @@ export class AdminProcurementService {
 
       const existing = await tx.vendorProduct.findUnique({
         where: { vendorId_vendorStyleCode: { vendorId, vendorStyleCode } },
+        include: { product: { select: { internalCode: true, name: true } } },
       });
+
+      if (existing && existing.productId !== productId) {
+        throw new ConflictException(
+          "Vendor style " +
+            vendorStyleCode +
+            " is already mapped to " +
+            existing.product.internalCode +
+            " · " +
+            existing.product.name +
+            ". Reuse the existing HIDI product instead of creating duplicate inventory.",
+        );
+      }
 
       const vendorProduct = existing
         ? await tx.vendorProduct.update({
             where: { id: existing.id },
             data: {
-              productId,
-              hidiStyleCode: text(input.hidiStyleCode, "HIDI dress code", 120),
+              hidiStyleCode: product.internalCode,
               vendorProductName: text(input.vendorProductName, "Vendor product name", 160),
               hsn: text(input.hsn, "HSN", 30),
               defaultUnitCostPaise: nonNegativeInt(input.defaultUnitCostPaise, "Default purchase cost", true),
@@ -234,7 +274,7 @@ export class AdminProcurementService {
               vendorId,
               productId,
               vendorStyleCode,
-              hidiStyleCode: text(input.hidiStyleCode, "HIDI dress code", 120),
+              hidiStyleCode: product.internalCode,
               vendorProductName: text(input.vendorProductName, "Vendor product name", 160),
               hsn: text(input.hsn, "HSN", 30),
               defaultUnitCostPaise: nonNegativeInt(input.defaultUnitCostPaise, "Default purchase cost", true),
@@ -505,6 +545,7 @@ export class AdminProcurementService {
             vendorInvoiceDate: vendorInvoice?.invoiceDate ?? null,
             purchaseReference: vendorInvoice?.purchaseReference ?? receipt.purchaseOrderNumber,
             vendorStyleCode: invoiceLine?.vendorStyleCode ?? invoiceLine?.vendorProduct?.vendorStyleCode ?? null,
+            hidiProductCode: invoiceLine?.vendorProduct?.product?.internalCode ?? null,
             hidiProduct: invoiceLine?.vendorProduct?.product?.name ?? item.productName,
           };
         }),
