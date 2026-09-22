@@ -223,8 +223,14 @@ export function AdminProcurementClient() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message ?? "Unable to create Purchase Order");
-      setCreatedPo(body); setSelectedPoId(body.id); setIr(null); setExtraction(null); setIrLines([]);
-      setNotice("Purchase Order " + body.poNumber + " created. Next: upload the vendor invoice for IR.");
+      setCreatedPo(body); setSelectedPoId(body.id); setIr(null);
+      if (extraction) {
+        buildIrLines(extraction, body);
+        setNotice("Purchase Order " + body.poNumber + " created. Uploaded invoice retained for IR; enter size quantities next.");
+      } else {
+        setExtraction(null); setIrLines([]);
+        setNotice("Purchase Order " + body.poNumber + " created. Next: upload the vendor invoice for IR.");
+      }
       await load();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to create Purchase Order"); }
     finally { setBusy(false); }
