@@ -419,14 +419,17 @@ export class AdminProcurementService {
           where: { vendorId_vendorStyleCode: { vendorId, vendorStyleCode: style } },
           select: { id: true, productId: true },
         });
-        if (mapping && mapping.productId !== productId) {
+        if (!mapping) {
+          throw new BadRequestException("Resolve vendor material " + style + " to a HIDI material before creating the PO");
+        }
+        if (mapping.productId !== productId) {
           throw new ConflictException("Vendor material " + style + " is already mapped to another HIDI material");
         }
         const product = await tx.product.findUnique({ where: { id: productId }, select: { id: true } });
         if (!product) throw new NotFoundException("HIDI material not found");
         normalizedLines.push({
           lineNumber: index + 10,
-          vendorProductId: mapping?.id ?? text(raw.vendorProductId, "Vendor material mapping", 80),
+          vendorProductId: mapping.id,
           productId,
           vendorStyleCode: style,
           description: text(raw.description, "PO line description", 500),
@@ -483,7 +486,17 @@ export class AdminProcurementService {
         const purchaseOrder = purchaseOrderId
           ? await tx.purchaseOrder.findFirst({
               where: { id: purchaseOrderId, vendorId, status: { not: "CANCELLED" } },
-              include: { lines: { select: { id: true, vendorStyleCode: true, productId: true } } },
+              include: {
+                lines: {
+                  select: {
+                    id: true,
+                    vendorStyleCode: true,
+                    productId: true,
+                    orderedQuantity: true,
+                    invoiceLines: { select: { invoiceQuantity: true } },
+                  },
+                },
+              },
             })
           : null;
         if (purchaseOrderId && !purchaseOrder) {
@@ -526,6 +539,15 @@ export class AdminProcurementService {
               ? purchaseOrder.lines.find((candidate) => vendorStyle(candidate.vendorStyleCode) === styleCode)
               : null;
           if (requestedPoLineId && !poLine) throw new BadRequestException("Invoice line does not belong to the selected PO");
+          if (poLine) {
+            const alreadyInvoiced = poLine.invoiceLines.reduce((sum, row) => sum + row.invoiceQuantity, 0);
+            const remaining = Math.max(0, poLine.orderedQuantity - alreadyInvoiced);
+            if (quantity > remaining) {
+              throw new BadRequestException(
+                "Invoice quantity " + quantity + " exceeds remaining PO quantity " + remaining + " for material " + (styleCode ?? poLine.vendorStyleCode),
+              );
+            }
+          }
 
           const line = await tx.vendorInvoiceLine.create({
             data: {
