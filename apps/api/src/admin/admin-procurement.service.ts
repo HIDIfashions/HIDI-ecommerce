@@ -38,6 +38,7 @@ type CreatePurchaseOrderInput = {
     orderedQuantity?: number;
     unitCostPaise?: number | null;
     hsn?: string;
+    variants?: VariantBreakupInput[];
   }>;
 };
 
@@ -170,6 +171,10 @@ export class AdminProcurementService {
               product: { select: { id: true, internalCode: true, internalName: true, name: true } },
               invoiceLines: { select: { invoiceQuantity: true } },
               receiptLines: { select: { acceptedQuantity: true, rejectedQuantity: true } },
+              variants: {
+                orderBy: { variant: { size: "asc" } },
+                include: { variant: { select: { id: true, sku: true, color: true, size: true } } },
+              },
             },
           },
         },
@@ -429,14 +434,15 @@ export class AdminProcurementService {
     if (expectedAt && Number.isNaN(expectedAt.getTime())) throw new BadRequestException("Expected delivery date is invalid");
     if (!Array.isArray(input?.lines) || input.lines.length === 0) throw new BadRequestException("Add at least one PO material");
     if (input.lines.length > 500) throw new BadRequestException("Purchase order can contain at most 500 lines");
+    const inputLines = input.lines;
 
     return this.prisma.$transaction(async (tx) => {
       const vendor = await tx.vendor.findUnique({ where: { id: vendorId }, select: { id: true } });
       if (!vendor) throw new NotFoundException("Vendor not found");
 
-      const normalizedLines = [];
-      for (let index = 0; index < input.lines!.length; index += 1) {
-        const raw = input.lines![index];
+      const prepared = [];
+      for (let index = 0; index < inputLines.length; index += 1) {
+        const raw = inputLines[index];
         const productId = text(raw.productId, "HIDI material", 80, true)!;
         const style = vendorStyle(raw.vendorStyleCode, true)!;
         const orderedQuantity = positiveInt(raw.orderedQuantity, "PO quantity");
@@ -450,9 +456,21 @@ export class AdminProcurementService {
         if (mapping.productId !== productId) {
           throw new ConflictException("Vendor material " + style + " is already mapped to another HIDI material");
         }
-        const product = await tx.product.findUnique({ where: { id: productId }, select: { id: true } });
+
+        const product = await tx.product.findUnique({
+          where: { id: productId },
+          select: { id: true, variants: { where: { active: true }, select: { id: true } } },
+        });
         if (!product) throw new NotFoundException("HIDI material not found");
-        normalizedLines.push({
+
+        const variants = this.validateBreakup(raw.variants ?? [], "PO size quantities", true);
+        this.assertBreakupTotal(variants, orderedQuantity, "PO size quantities");
+        const allowed = new Set(product.variants.map((variant) => variant.id));
+        if (variants.some((entry) => !allowed.has(entry.variantId))) {
+          throw new BadRequestException("PO size quantities contain a size that does not belong to the selected HIDI material");
+        }
+
+        prepared.push({
           lineNumber: index + 10,
           vendorProductId: mapping.id,
           productId,
@@ -461,12 +479,14 @@ export class AdminProcurementService {
           orderedQuantity,
           unitCostPaise: nonNegativeInt(raw.unitCostPaise, "PO unit cost", true),
           hsn: text(raw.hsn, "HSN", 30),
+          variants,
         });
       }
 
       const day = orderDate.toISOString().slice(0, 10).replaceAll("-", "");
       const poNumber = "HIDI-PO-" + day + "-" + randomUUID().slice(0, 6).toUpperCase();
-      return tx.purchaseOrder.create({
+
+      const po = await tx.purchaseOrder.create({
         data: {
           poNumber,
           vendorId,
@@ -475,15 +495,57 @@ export class AdminProcurementService {
           status: "OPEN",
           note: text(input.note, "PO note", 2000),
           createdBy: actor?.trim() || "HIDI Admin",
-          lines: { createMany: { data: normalizedLines } },
         },
+      });
+
+      for (const row of prepared) {
+        const line = await tx.purchaseOrderLine.create({
+          data: {
+            purchaseOrderId: po.id,
+            lineNumber: row.lineNumber,
+            vendorProductId: row.vendorProductId,
+            productId: row.productId,
+            vendorStyleCode: row.vendorStyleCode,
+            description: row.description,
+            orderedQuantity: row.orderedQuantity,
+            unitCostPaise: row.unitCostPaise,
+            hsn: row.hsn,
+          },
+        });
+        await tx.purchaseOrderVariant.createMany({
+          data: row.variants.map((entry) => ({
+            purchaseOrderLineId: line.id,
+            variantId: entry.variantId,
+            orderedQuantity: entry.quantity,
+          })),
+        });
+      }
+
+      return tx.purchaseOrder.findUnique({
+        where: { id: po.id },
         include: {
           vendor: true,
           lines: {
             orderBy: { lineNumber: "asc" },
             include: {
-              product: { select: { id: true, internalCode: true, internalName: true, name: true } },
+              product: {
+                select: {
+                  id: true,
+                  internalCode: true,
+                  internalName: true,
+                  name: true,
+                  variants: {
+                    where: { active: true },
+                    orderBy: [{ color: "asc" }, { size: "asc" }],
+                    select: { id: true, sku: true, color: true, size: true },
+                  },
+                },
+              },
               vendorProduct: true,
+              variants: {
+                orderBy: { variant: { size: "asc" } },
+                include: { variant: true },
+              },
             },
           },
         },
@@ -518,6 +580,7 @@ export class AdminProcurementService {
                     vendorStyleCode: true,
                     productId: true,
                     orderedQuantity: true,
+                    variants: { select: { variantId: true, orderedQuantity: true } },
                     invoiceLines: { select: { invoiceQuantity: true } },
                   },
                 },
@@ -619,6 +682,19 @@ export class AdminProcurementService {
             await tx.vendorInvoiceLine.update({
               where: { id: line.id },
               data: { breakupSource, mappingConfirmed: Boolean(mapping) },
+            });
+          } else if (poLine?.variants?.length && quantity === poLine.orderedQuantity) {
+            await tx.vendorInvoiceExpectedVariant.createMany({
+              data: poLine.variants.map((entry) => ({
+                invoiceLineId: line.id,
+                variantId: entry.variantId,
+                expectedQuantity: entry.orderedQuantity,
+                source: "MANUAL",
+              })),
+            });
+            await tx.vendorInvoiceLine.update({
+              where: { id: line.id },
+              data: { breakupSource: "MANUAL", mappingConfirmed: Boolean(mapping) },
             });
           } else if (mapping?.packPattern.length) {
             const packTotal = mapping.packPattern.reduce((sum, entry) => sum + entry.quantity, 0);
