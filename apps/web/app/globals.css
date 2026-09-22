@@ -1377,38 +1377,39 @@ summary {
 
 
 /* ==========================================================================
-   HIDI SAND BEIGE SITE CHROME
-   Header + announcement + footer only. Approved Option 3 direction.
-   Keeps HIDI's gold identity with warm brown text on a light sand shell.
+   HIDI CHAMPAGNE GOLD SITE CHROME
+   Header + announcement + footer only. Approved Option 4 direction.
+   Soft, luxurious champagne shell with warm brown UI and HIDI gold accents.
    ========================================================================== */
 
 :root {
-  --hidi-sand-beige: #efe3d2;
-  --hidi-sand-beige-soft: #f6eee3;
-  --hidi-sand-beige-deep: #e4d2bc;
-  --hidi-sand-ink: #4b3a2c;
-  --hidi-sand-ink-soft: #7a6756;
-  --hidi-sand-gold: #c79642;
-  --hidi-sand-gold-bright: #ddb263;
-  --hidi-sand-line: rgba(140, 112, 78, .18);
+  --hidi-champagne: #ead8b8;
+  --hidi-champagne-light: #f6ead5;
+  --hidi-champagne-deep: #d8bd91;
+  --hidi-champagne-ink: #4a3828;
+  --hidi-champagne-muted: #786552;
+  --hidi-champagne-gold: #b88332;
+  --hidi-champagne-gold-bright: #c99845;
+  --hidi-champagne-line: rgba(129, 94, 50, .20);
 }
 
 .announcement {
-  background: #e8dbc8;
-  color: #5b4736;
-  border-bottom: 1px solid rgba(199, 150, 66, .24);
+  background:
+    linear-gradient(90deg, #ddc79f 0%, #ead8b8 48%, #d9c092 100%);
+  color: #513d2b;
+  border-bottom: 1px solid rgba(137, 99, 47, .24);
 }
 
 .site-header {
-  --ink: var(--hidi-sand-ink);
+  --ink: var(--hidi-champagne-ink);
   position: sticky;
   background:
-    radial-gradient(circle at 94% 18%, rgba(199, 150, 66, .06), transparent 24%),
-    radial-gradient(circle at 6% 85%, rgba(255, 255, 255, .34), transparent 28%),
-    linear-gradient(120deg, #f5ecdf 0%, var(--hidi-sand-beige) 52%, #eadac4 100%);
-  color: var(--hidi-sand-ink);
-  border-bottom: 1px solid var(--hidi-sand-line);
-  box-shadow: 0 10px 30px rgba(86, 68, 48, .06);
+    radial-gradient(ellipse at 78% 22%, rgba(255,255,255,.52), transparent 20%),
+    radial-gradient(ellipse at 16% 75%, rgba(255,255,255,.30), transparent 27%),
+    linear-gradient(108deg, #f4e5cc 0%, #ead4ad 38%, #f7ead2 63%, #ddc397 100%);
+  color: var(--hidi-champagne-ink);
+  border-bottom: 1px solid var(--hidi-champagne-line);
+  box-shadow: 0 10px 30px rgba(94, 67, 35, .08);
   backdrop-filter: blur(14px);
 }
 
@@ -1419,7 +1420,7 @@ summary {
 .site-header .utility-nav a,
 .site-header .utility-nav button,
 .site-header .mobile-menu {
-  color: var(--hidi-sand-ink);
+  color: var(--hidi-champagne-ink);
 }
 
 .site-header .wordmark img {
@@ -1427,32 +1428,32 @@ summary {
 }
 
 .site-header .desktop-nav a::after {
-  background: var(--hidi-sand-gold);
+  background: var(--hidi-champagne-gold);
 }
 
 .site-header .desktop-nav a:hover,
 .site-header .utility-nav a:hover,
 .site-header .utility-nav button:hover,
 .site-header .mobile-menu:hover {
-  color: var(--hidi-sand-gold);
+  color: var(--hidi-champagne-gold);
   opacity: 1;
 }
 
 .site-header [class*="count"] {
-  background: var(--hidi-sand-gold);
-  color: #fffaf3;
-  box-shadow: 0 0 0 1px rgba(199, 150, 66, .14);
+  background: #a8732b;
+  color: #fff9ef;
+  box-shadow: 0 0 0 1px rgba(108, 75, 35, .16);
 }
 
 .footer {
-  --ink: var(--hidi-sand-ink);
-  --muted: var(--hidi-sand-ink-soft);
+  --ink: var(--hidi-champagne-ink);
+  --muted: var(--hidi-champagne-muted);
   background:
-    radial-gradient(circle at 100% 92%, rgba(199, 150, 66, .05), transparent 28%),
-    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, .4), transparent 32%),
-    linear-gradient(120deg, #f8f1e7 0%, var(--hidi-sand-beige-soft) 58%, #efe2cf 100%);
-  color: var(--hidi-sand-ink);
-  border-top: 1px solid var(--hidi-sand-line);
+    radial-gradient(ellipse at 18% 0%, rgba(255,255,255,.45), transparent 27%),
+    radial-gradient(ellipse at 92% 88%, rgba(183,131,50,.08), transparent 30%),
+    linear-gradient(118deg, #f5e8d1 0%, #ead5b1 50%, #e2c89e 100%);
+  color: var(--hidi-champagne-ink);
+  border-top: 1px solid var(--hidi-champagne-line);
 }
 
 .footer-logo {
@@ -1471,56 +1472,56 @@ summary {
 .footer h3,
 .footer strong,
 .footer .footer-note {
-  color: #b27d35;
+  color: #9b6928;
 }
 
 .footer-grid a {
-  color: #4f3d2d;
+  color: #4c3928;
 }
 
 .footer-grid a:hover {
-  color: var(--hidi-sand-gold);
+  color: var(--hidi-champagne-gold);
 }
 
 .footer .muted,
 .footer-small,
 .footer-bottom {
-  color: var(--hidi-sand-ink-soft);
+  color: var(--hidi-champagne-muted);
 }
 
 .footer .newsletter {
-  border-bottom-color: rgba(138, 109, 75, .22);
+  border-bottom-color: rgba(121, 86, 44, .28);
 }
 
 .footer .newsletter input {
-  color: var(--hidi-sand-ink);
+  color: var(--hidi-champagne-ink);
 }
 
 .footer .newsletter input::placeholder {
-  color: #9d8a79;
+  color: #99836c;
 }
 
 .footer .newsletter button {
-  color: #b27d35;
+  color: #996925;
 }
 
 .footer-bottom {
-  border-top-color: rgba(138, 109, 75, .12);
+  border-top-color: rgba(121, 86, 44, .16);
 }
 
 .footer .social-link {
-  border-color: rgba(178, 125, 53, .22);
-  color: #5b4736;
+  border-color: rgba(155, 105, 40, .26);
+  color: #59422d;
 }
 
 .footer .social-link:hover {
-  background: rgba(199, 150, 66, .08);
-  border-color: var(--hidi-sand-gold);
-  color: var(--hidi-sand-gold);
+  background: rgba(184, 131, 50, .10);
+  border-color: var(--hidi-champagne-gold);
+  color: var(--hidi-champagne-gold);
 }
 
 .footer .newsletter-status {
-  color: #8b735e;
+  color: #83694e;
 }
 
 @media (max-width: 620px) {
