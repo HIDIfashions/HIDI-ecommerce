@@ -21,12 +21,14 @@ export type StockReceiptInput = {
   invoiceNumber?: string;
   purchaseOrderNumber?: string;
   vendorInvoiceId?: string;
+  purchaseOrderId?: string;
   receivedAt?: string;
   note?: string;
   action?: "DRAFT" | "POST";
   lines?: Array<{
     variantId?: string;
     vendorInvoiceLineId?: string;
+    purchaseOrderLineId?: string;
     acceptedQuantity?: number;
     rejectedQuantity?: number;
     unitCostPaise?: number | null;
@@ -231,6 +233,7 @@ export class AdminInventoryService {
           lines: {
             select: {
               id: true,
+              purchaseOrderLineId: true,
               vendorProduct: { select: { productId: true } },
             },
           },
@@ -258,6 +261,9 @@ export class AdminInventoryService {
         if (invoiceLine.vendorProduct?.productId && invoiceLine.vendorProduct.productId !== variant.productId) {
           throw new BadRequestException("Received size/colour must belong to the HIDI product mapped to the vendor invoice line");
         }
+        if (invoiceLine.purchaseOrderLineId && line.purchaseOrderLineId !== invoiceLine.purchaseOrderLineId) {
+          throw new BadRequestException("Goods Receipt line must reference the same PO line as its Invoice Receipt line");
+        }
       }
     }
 
@@ -268,6 +274,7 @@ export class AdminInventoryService {
         invoiceNumber: receipt.invoiceNumber,
         purchaseOrderNumber: receipt.purchaseOrderNumber,
         vendorInvoiceId: receipt.vendorInvoiceId,
+        purchaseOrderId: receipt.purchaseOrderId,
         receivedAt: receipt.receivedAt,
         note: receipt.note,
         createdBy: actor?.trim() || "HIDI Admin",
@@ -360,6 +367,9 @@ export class AdminInventoryService {
 
       if (receipt.vendorInvoiceId) {
         await this.refreshVendorInvoiceStatus(tx, receipt.vendorInvoiceId);
+      }
+      if (receipt.purchaseOrderId) {
+        await this.refreshPurchaseOrderStatus(tx, receipt.purchaseOrderId);
       }
 
       return this.receipt(receiptId, tx);
@@ -611,13 +621,15 @@ export class AdminInventoryService {
         throw new BadRequestException("Unit cost must be zero or more");
       }
       const vendorInvoiceLineId = line.vendorInvoiceLineId?.trim() || null;
-      return { variantId, vendorInvoiceLineId, acceptedQuantity, rejectedQuantity, unitCostPaise };
+      const purchaseOrderLineId = line.purchaseOrderLineId?.trim() || null;
+      return { variantId, vendorInvoiceLineId, purchaseOrderLineId, acceptedQuantity, rejectedQuantity, unitCostPaise };
     });
 
     const invoiceNumber = input.invoiceNumber?.trim() || null;
     const purchaseOrderNumber = input.purchaseOrderNumber?.trim() || null;
     const vendorInvoiceId = input.vendorInvoiceId?.trim() || null;
-    if (input.action === "POST" && !vendorInvoiceId && !invoiceNumber && !purchaseOrderNumber) {
+    const purchaseOrderId = input.purchaseOrderId?.trim() || null;
+    if (input.action === "POST" && !vendorInvoiceId && !purchaseOrderId && !invoiceNumber && !purchaseOrderNumber) {
       throw new BadRequestException("Link a vendor invoice or add an invoice/purchase reference before posting");
     }
 
@@ -626,6 +638,7 @@ export class AdminInventoryService {
       invoiceNumber,
       purchaseOrderNumber,
       vendorInvoiceId,
+      purchaseOrderId,
       receivedAt,
       note: input.note?.trim() || null,
       lines,
@@ -686,6 +699,32 @@ export class AdminInventoryService {
             : "RECEIVED";
 
     await tx.vendorInvoice.update({ where: { id: vendorInvoiceId }, data: { status } });
+  }
+
+  private async refreshPurchaseOrderStatus(tx: Prisma.TransactionClient, purchaseOrderId: string) {
+    const po = await tx.purchaseOrder.findUnique({
+      where: { id: purchaseOrderId },
+      include: {
+        lines: {
+          include: {
+            receiptLines: {
+              where: { receipt: { status: StockReceiptStatus.POSTED } },
+              select: { acceptedQuantity: true },
+            },
+          },
+        },
+      },
+    });
+    if (!po || po.status === "CANCELLED" || po.status === "CLOSED") return;
+
+    const totals = po.lines.map((line) => ({
+      ordered: line.orderedQuantity,
+      received: line.receiptLines.reduce((sum, row) => sum + row.acceptedQuantity, 0),
+    }));
+    const anyReceived = totals.some((row) => row.received > 0);
+    const fullyReceived = totals.length > 0 && totals.every((row) => row.received >= row.ordered);
+    const status = fullyReceived ? "RECEIVED" : anyReceived ? "PARTIALLY_RECEIVED" : "OPEN";
+    await tx.purchaseOrder.update({ where: { id: purchaseOrderId }, data: { status } });
   }
 
   private receiptNumber() {
