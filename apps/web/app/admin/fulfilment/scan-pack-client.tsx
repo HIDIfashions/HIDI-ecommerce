@@ -31,9 +31,16 @@ type PackOrder = {
   } | null;
 };
 
+type ScanEntry = {
+  sku: string;
+  lotCode: string | null;
+  payload: string;
+};
+
 type ScanResult = {
   tone: "MATCH" | "WRONG" | "EXTRA";
   sku: string;
+  lotCode?: string | null;
   title: string;
   detail: string;
   item?: PackItem;
@@ -56,13 +63,21 @@ function normalizeOrderScan(raw: string) {
   return value;
 }
 
-function normalizeSkuScan(raw: string) {
-  return raw
-    .trim()
+function parseSkuScan(raw: string): ScanEntry | null {
+  const payload = raw.trim();
+  if (!payload) return null;
+
+  const withoutPrefix = payload
     .replace(/^HIDI-SKU:/i, "")
     .replace(/^SKU:/i, "")
-    .trim()
-    .toUpperCase();
+    .trim();
+
+  const match = withoutPrefix.match(/^(.*?)\|LOT:(.+)$/i);
+  const sku = (match ? match[1] : withoutPrefix).trim().toUpperCase();
+  const lotCode = match ? match[2].trim().toUpperCase() : null;
+
+  if (!sku) return null;
+  return { sku, lotCode: lotCode || null, payload };
 }
 
 function quantityBySku(items: PackItem[]) {
@@ -81,7 +96,7 @@ export function ScanPackClient() {
   const [orderInput, setOrderInput] = useState("");
   const [skuInput, setSkuInput] = useState("");
   const [order, setOrder] = useState<PackOrder | null>(null);
-  const [scans, setScans] = useState<string[]>([]);
+  const [scans, setScans] = useState<ScanEntry[]>([]);
   const [loadingOrder, setLoadingOrder] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +200,7 @@ export function ScanPackClient() {
 
   const scannedCounts = useMemo(() => {
     const map = new Map<string, number>();
-    for (const sku of scans) map.set(sku, (map.get(sku) ?? 0) + 1);
+    for (const scan of scans) map.set(scan.sku, (map.get(scan.sku) ?? 0) + 1);
     return map;
   }, [scans]);
 
@@ -231,17 +246,18 @@ export function ScanPackClient() {
     event.preventDefault();
     if (!order || order.status !== "CONFIRMED") return;
 
-    const sku = normalizeSkuScan(skuInput);
+    const parsedScan = parseSkuScan(skuInput);
     setSkuInput("");
     setError(null);
     setNotice(null);
     setScanResult(null);
 
-    if (!sku) {
+    if (!parsedScan) {
       skuRef.current?.focus();
       return;
     }
 
+    const { sku, lotCode } = parsedScan;
     const expectedQty = expected.get(sku);
     const matchedItem = order.items.find((item) => item.sku.trim().toUpperCase() === sku);
     if (!expectedQty || !matchedItem) {
@@ -250,8 +266,9 @@ export function ScanPackClient() {
       setScanResult({
         tone: "WRONG",
         sku,
-        title: "WRONG ITEM — DO NOT PACK",
-        detail: "This price-tag barcode does not belong to the customer order.",
+        lotCode,
+        title: "WRONG ITEM / SIZE — DO NOT PACK",
+        detail: "The scanned SKU does not exactly match the product, colour and size required by this customer order.",
       });
       navigator.vibrate?.([100, 60, 100]);
       skuRef.current?.focus();
@@ -272,6 +289,7 @@ export function ScanPackClient() {
       setScanResult({
         tone: "EXTRA",
         sku,
+        lotCode,
         title: "EXTRA PIECE — DO NOT PACK",
         detail: matchedItem.productName + " · " + matchedItem.color + " · Size " + matchedItem.size,
         item: matchedItem,
@@ -281,11 +299,12 @@ export function ScanPackClient() {
       return;
     }
 
-    setScans((current) => [...current, sku]);
+    setScans((current) => [...current, parsedScan]);
     setNotice("Verified " + matchedItem.productName + " · " + (scannedTotal + 1) + " of " + expectedTotal);
     setScanResult({
       tone: "MATCH",
       sku,
+      lotCode,
       title: "MATCHED — SAFE TO PACK",
       detail:
         matchedItem.productName +
@@ -309,7 +328,7 @@ export function ScanPackClient() {
     setScans((current) => current.slice(0, -1));
     setError(null);
     setScanResult(null);
-    setNotice(removed ? "Removed last scan: " + removed : null);
+    setNotice(removed ? "Removed last scan: " + removed.sku : null);
     window.setTimeout(() => skuRef.current?.focus(), 10);
   }
 
@@ -337,7 +356,7 @@ export function ScanPackClient() {
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ scans }),
+          body: JSON.stringify({ scans: scans.map((scan) => scan.payload) }),
         },
       );
       const body = await response.json().catch(() => ({}));
@@ -437,7 +456,7 @@ export function ScanPackClient() {
           <h1>Scan & Pack</h1>
           <p>
             Open a confirmed customer order, then scan the barcode already attached to each garment price tag.
-            HIDI verifies SKU, colour, size and required quantity before packing can complete.
+            HIDI verifies SKU, colour, size, required quantity and the receiving lot before packing can complete.
           </p>
         </div>
         <div className={styles.scannerTip}>
@@ -533,7 +552,10 @@ export function ScanPackClient() {
                     <div>
                       <strong>{scanResult.title}</strong>
                       <span>{scanResult.detail}</span>
-                      <code>{scanResult.sku}</code>
+                      <code>
+                        {scanResult.sku}
+                        {scanResult.lotCode ? " · " + scanResult.lotCode : " · LEGACY TAG"}
+                      </code>
                     </div>
                   </div>
                 )}

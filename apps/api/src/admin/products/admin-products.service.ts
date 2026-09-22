@@ -24,10 +24,18 @@ function input<T>(parse: (data: unknown) => T, data: unknown): T {
 }
 function id(value: unknown) { return input(identifier, value); }
 function fields(data: ProductFields) {
-  const { name, categoryId, shortDescription, description, fabric, care } = data;
-  return { name, categoryId, shortDescription, description, fabric, care };
+  const { name, internalName, categoryId, shortDescription, description, fabric, care } = data;
+  return { name, internalName, categoryId, shortDescription, description, fabric, care };
 }
 function versionTime(previous: Date) { return new Date(Math.max(Date.now(), previous.getTime() + 1)); }
+async function nextInternalCode(tx: DB) {
+  const rows = await tx.$queryRaw<Array<{ value: bigint }>>`
+    SELECT nextval('hidi_product_code_seq') AS value
+  `;
+  const value = Number(rows[0]?.value ?? 0);
+  if (!Number.isSafeInteger(value) || value < 1) throw new Error("Unable to allocate HIDI product number");
+  return "HIDI-" + String(value).padStart(6, "0");
+}
 
 @Injectable()
 export class AdminProductsService {
@@ -62,6 +70,7 @@ export class AdminProductsService {
       ...(status && status !== "ALL" ? { status: status as "DRAFT" | "ACTIVE" | "ARCHIVED" } : {}),
       ...(query ? { OR: [
         { name: { contains: query, mode: "insensitive" } },
+        { internalCode: { contains: query, mode: "insensitive" } },
         { slug: { contains: query, mode: "insensitive" } },
         { variants: { some: { sku: { contains: query, mode: "insensitive" } } } },
       ] } : {}),
@@ -73,7 +82,7 @@ export class AdminProductsService {
     return {
       page, pageSize: 20, total,
       items: products.map(p => ({
-        id: p.id, name: p.name, slug: p.slug, status: p.status, category: p.category?.name ?? null,
+        id: p.id, internalCode: p.internalCode, internalName: p.internalName, name: p.name, slug: p.slug, status: p.status, category: p.category?.name ?? null,
         updatedAt: p.updatedAt, variantCount: p.variants.length,
         onHand: p.variants.reduce((n, v) => n + (v.inventory?.onHand ?? 0), 0),
         imageUrl: p.images[0]?.url ?? p.variants.find(v => v.images.length)?.images[0]?.url ?? null,
@@ -153,8 +162,9 @@ export class AdminProductsService {
     try {
       return await this.write(async tx => {
         await this.references(tx, data);
+        const internalCode = await nextInternalCode(tx);
         return tx.product.create({ data: {
-          id: productId, ...fields(data), slug: data.slug, status: "DRAFT",
+          id: productId, internalCode, ...fields(data), slug: data.slug, status: "DRAFT",
           collections: { create: data.collectionIds.map(collectionId => ({ collectionId })) },
           variants: { create: this.newVariants(productId, data.slug, data) },
         }, include: detailInclude });
@@ -240,4 +250,4 @@ export class AdminProductsService {
   }
 }
 // Shape for the narrow metadata comparison used by idempotent create.
-const fieldsResult = { name: "", categoryId: null as string | null, shortDescription: null as string | null, description: null as string | null, fabric: null as string | null, care: null as string | null };
+const fieldsResult = { name: "", internalName: null as string | null, categoryId: null as string | null, shortDescription: null as string | null, description: null as string | null, fabric: null as string | null, care: null as string | null };

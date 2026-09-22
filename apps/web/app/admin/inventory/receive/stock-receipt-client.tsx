@@ -12,6 +12,7 @@ import { AdminNav } from "@/components/admin/admin-nav";
 
 type Variant = {
   variantId: string;
+  productId: string;
   productName: string;
   sku: string;
   color: string;
@@ -22,9 +23,62 @@ type Variant = {
 };
 
 type ReceiptLine = Variant & {
+  vendorInvoiceLineId?: string | null;
+  purchaseOrderLineId?: string | null;
+  expectedQuantity?: number | null;
   acceptedQuantity: string;
   rejectedQuantity: string;
   unitCostRupees: string;
+};
+
+type ProcurementInvoice = {
+  id: string;
+  invoiceNumber: string;
+  purchaseOrderId?: string | null;
+  invoiceDate: string;
+  purchaseReference?: string | null;
+  status: string;
+  vendor: { id: string; name: string };
+  lines: Array<{
+    id: string;
+    purchaseOrderLineId?: string | null;
+    invoiceQuantity: number;
+    unitCostPaise?: number | null;
+    vendorProduct?: { id: string; product: { id: string; name: string } } | null;
+    expectedVariants: Array<{
+      expectedQuantity: number;
+      variant: { id: string; sku: string; color: string; size: string };
+    }>;
+    receiptLines: Array<{
+      variantId: string;
+      acceptedQuantity: number;
+      rejectedQuantity: number;
+    }>;
+  }>;
+};
+
+type ProcurementPo = {
+  id: string;
+  poNumber: string;
+  status: string;
+  vendor: { id: string; name: string };
+  lines: Array<{
+    id: string;
+    productId: string;
+    vendorStyleCode: string;
+    orderedQuantity: number;
+    unitCostPaise?: number | null;
+    variants?: Array<{
+      variantId: string;
+      orderedQuantity: number;
+      variant: { id: string; sku: string; color: string; size: string };
+    }>;
+    receiptLines?: Array<{
+      variantId: string;
+      acceptedQuantity: number;
+      rejectedQuantity: number;
+    }>;
+  }>;
 };
 
 type Receipt = {
@@ -50,6 +104,12 @@ export function AdminStockReceiptClient() {
   const [draftKey, setDraftKey] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [vendorInvoices, setVendorInvoices] = useState<ProcurementInvoice[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<ProcurementPo[]>([]);
+  const [vendorInvoiceId, setVendorInvoiceId] = useState("");
+  const [purchaseOrderId, setPurchaseOrderId] = useState("");
+  const queuedInvoiceRef = useRef<string | null>(null);
+  const queuedPoRef = useRef<string | null>(null);
   const [lines, setLines] = useState<ReceiptLine[]>([]);
   const [search, setSearch] = useState("");
   const [supplierName, setSupplierName] = useState("");
@@ -69,18 +129,21 @@ export function AdminStockReceiptClient() {
     setBusy(true);
     setError(null);
     try {
-      const [inventoryResponse, receiptsResponse] = await Promise.all([
+      const [inventoryResponse, receiptsResponse, procurementResponse] = await Promise.all([
         fetch("/api/admin/inventory", { cache: "no-store" }),
         fetch("/api/admin/inventory/receipts", { cache: "no-store" }),
+        fetch("/api/admin/procurement", { cache: "no-store" }),
       ]);
-      if (inventoryResponse.status === 401 || receiptsResponse.status === 401) {
+      if (inventoryResponse.status === 401 || receiptsResponse.status === 401 || procurementResponse.status === 401) {
         setAuthenticated(false);
         return;
       }
       const inventoryBody = await inventoryResponse.json().catch(() => ({}));
       const receiptsBody = await receiptsResponse.json().catch(() => ([]));
+      const procurementBody = await procurementResponse.json().catch(() => ({}));
       if (!inventoryResponse.ok) throw new Error(inventoryBody?.message ?? "Unable to load SKUs");
       if (!receiptsResponse.ok) throw new Error(receiptsBody?.message ?? "Unable to load receipts");
+      if (!procurementResponse.ok) throw new Error(procurementBody?.message ?? "Unable to load vendor invoices");
       setAuthenticated(true);
       setVariants(inventoryBody.rows ?? []);
       // Refresh photo metadata, not the operator's quantities or purchase costs.
@@ -89,6 +152,16 @@ export function AdminStockReceiptClient() {
         return latest ? { ...line, onHand: latest.onHand, imageUrl: latest.imageUrl, photoCount: latest.photoCount } : line;
       }));
       setReceipts(Array.isArray(receiptsBody) ? receiptsBody : []);
+      setVendorInvoices(
+        (procurementBody.invoices ?? []).filter((invoice: ProcurementInvoice) =>
+          ["AWAITING_STOCK", "PARTIALLY_RECEIVED", "RECEIVED"].includes(invoice.status),
+        ),
+      );
+      setPurchaseOrders(
+        (procurementBody.purchaseOrders ?? []).filter((po: ProcurementPo) =>
+          !["CANCELLED", "CLOSED"].includes(po.status),
+        ),
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load stock receiving");
     } finally {
@@ -97,6 +170,24 @@ export function AdminStockReceiptClient() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !purchaseOrders.length || purchaseOrderId) return;
+    const queued = new URLSearchParams(window.location.search).get("po")?.trim();
+    if (!queued || queuedPoRef.current === queued) return;
+    if (!purchaseOrders.some((po) => po.id === queued)) return;
+    queuedPoRef.current = queued;
+    selectPurchaseOrder(queued);
+  }, [purchaseOrders, purchaseOrderId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !vendorInvoices.length || vendorInvoiceId) return;
+    const queued = new URLSearchParams(window.location.search).get("invoice")?.trim();
+    if (!queued || queuedInvoiceRef.current === queued) return;
+    if (!vendorInvoices.some((invoice) => invoice.id === queued)) return;
+    queuedInvoiceRef.current = queued;
+    selectVendorInvoice(queued);
+  }, [vendorInvoices, vendorInvoiceId]);
 
   useEffect(() => {
     if (!photoBusy) return;
@@ -109,9 +200,23 @@ export function AdminStockReceiptClient() {
     const needle = search.trim().toLowerCase();
     if (!needle) return [];
     const selected = new Set(lines.map((line) => line.variantId));
-    return variants.filter((variant) => !selected.has(variant.variantId) && [variant.productName, variant.sku, variant.color, variant.size]
-      .some((value) => value.toLowerCase().includes(needle))).slice(0, 12);
-  }, [lines, search, variants]);
+    const linkedInvoice = vendorInvoices.find((invoice) => invoice.id === vendorInvoiceId);
+    const linkedPo = purchaseOrders.find((po) => po.id === purchaseOrderId);
+    const allowedProducts = linkedInvoice
+      ? new Set(linkedInvoice.lines.map((line) => line.vendorProduct?.product.id).filter(Boolean) as string[])
+      : linkedPo
+        ? new Set(linkedPo.lines.map((line) => line.productId))
+        : null;
+
+    return variants
+      .filter((variant) => !selected.has(variant.variantId))
+      .filter((variant) => !allowedProducts || allowedProducts.has(variant.productId))
+      .filter((variant) =>
+        [variant.productName, variant.sku, variant.color, variant.size]
+          .some((value) => value.toLowerCase().includes(needle)),
+      )
+      .slice(0, 12);
+  }, [lines, search, variants, vendorInvoiceId, vendorInvoices, purchaseOrderId, purchaseOrders]);
 
   const totals = useMemo(() => lines.reduce((result, line) => ({
     accepted: result.accepted + Number(line.acceptedQuantity || 0),
@@ -146,10 +251,163 @@ export function AdminStockReceiptClient() {
     setAuthenticated(false);
     setVariants([]);
     setReceipts([]);
+    setVendorInvoices([]);
+    setPurchaseOrders([]);
+    setVendorInvoiceId("");
+    setPurchaseOrderId("");
+  }
+
+  function selectPurchaseOrder(nextId: string) {
+    setPurchaseOrderId(nextId);
+    setVendorInvoiceId("");
+    setError(null);
+    setMessage(null);
+    setPostedReceipt(null);
+
+    if (!nextId) {
+      setSupplierName("");
+      setInvoiceNumber("");
+      setPurchaseOrderNumber("");
+      setLines([]);
+      return;
+    }
+
+    const po = purchaseOrders.find((candidate) => candidate.id === nextId);
+    if (!po) return;
+
+    setSupplierName(po.vendor.name);
+    setInvoiceNumber("");
+    setPurchaseOrderNumber(po.poNumber);
+
+    const inventoryById = new Map(variants.map((variant) => [variant.variantId, variant]));
+    const prepared: ReceiptLine[] = [];
+
+    for (const poLine of po.lines) {
+      for (const expected of poLine.variants ?? []) {
+        const variant = inventoryById.get(expected.variantId);
+        if (!variant) continue;
+        const previouslyHandled = (poLine.receiptLines ?? [])
+          .filter((row) => row.variantId === expected.variantId)
+          .reduce((sum, row) => sum + row.acceptedQuantity + row.rejectedQuantity, 0);
+        const outstanding = Math.max(0, expected.orderedQuantity - previouslyHandled);
+        if (outstanding === 0) continue;
+
+        prepared.push({
+          ...variant,
+          vendorInvoiceLineId: null,
+          purchaseOrderLineId: poLine.id,
+          expectedQuantity: outstanding,
+          acceptedQuantity: String(outstanding),
+          rejectedQuantity: "0",
+          unitCostRupees:
+            poLine.unitCostPaise === null || poLine.unitCostPaise === undefined
+              ? ""
+              : String(poLine.unitCostPaise / 100),
+        });
+      }
+    }
+
+    if (!prepared.length) {
+      setError("This PO has no outstanding size quantities to receive.");
+      setLines([]);
+      return;
+    }
+
+    setLines(prepared);
+    setMessage(
+      "PO " + po.poNumber +
+      " loaded. Expected size quantities are shown; edit Accepted/Rejected to the physical warehouse actuals before posting GR.",
+    );
+  }
+
+  function selectVendorInvoice(nextId: string) {
+    setVendorInvoiceId(nextId);
+    setPurchaseOrderId("");
+    setError(null);
+    setMessage(null);
+    setPostedReceipt(null);
+
+    if (!nextId) {
+      setSupplierName("");
+      setInvoiceNumber("");
+      setPurchaseOrderNumber("");
+      setPurchaseOrderId("");
+      setLines([]);
+      return;
+    }
+
+    const invoice = vendorInvoices.find((candidate) => candidate.id === nextId);
+    if (!invoice) return;
+
+    setSupplierName(invoice.vendor.name);
+    setInvoiceNumber(invoice.invoiceNumber);
+    setPurchaseOrderNumber(invoice.purchaseReference ?? "");
+    setPurchaseOrderId(invoice.purchaseOrderId ?? "");
+
+    const inventoryById = new Map(variants.map((variant) => [variant.variantId, variant]));
+    const prepared: ReceiptLine[] = [];
+
+    for (const invoiceLine of invoice.lines) {
+      for (const expected of invoiceLine.expectedVariants) {
+        const variant = inventoryById.get(expected.variant.id);
+        if (!variant) continue;
+        const previouslyAccepted = invoiceLine.receiptLines
+          .filter((row) => row.variantId === variant.variantId)
+          .reduce((sum, row) => sum + row.acceptedQuantity, 0);
+        const outstanding = Math.max(0, expected.expectedQuantity - previouslyAccepted);
+        if (outstanding === 0) continue;
+
+        prepared.push({
+          ...variant,
+          vendorInvoiceLineId: invoiceLine.id,
+          purchaseOrderLineId: invoiceLine.purchaseOrderLineId ?? null,
+          expectedQuantity: outstanding,
+          acceptedQuantity: String(outstanding),
+          rejectedQuantity: "0",
+          unitCostRupees:
+            invoiceLine.unitCostPaise === null || invoiceLine.unitCostPaise === undefined
+              ? ""
+              : String(invoiceLine.unitCostPaise / 100),
+        });
+      }
+    }
+
+    if (!prepared.length) {
+      setError("This invoice has no outstanding mapped variants. Review it in Procurement before receiving.");
+      setLines([]);
+      return;
+    }
+
+    setLines(prepared);
+    setMessage(
+      "Expected variants loaded from vendor invoice " +
+        invoice.invoiceNumber +
+        ". Edit Accepted/Rejected to the physical warehouse actuals before posting.",
+    );
   }
 
   function addLine(variant: Variant) {
-    setLines((current) => [...current, { ...variant, acceptedQuantity: "", rejectedQuantity: "0", unitCostRupees: "" }]);
+    const invoice = vendorInvoices.find((candidate) => candidate.id === vendorInvoiceId);
+    const sourceLine = invoice?.lines.find((line) => line.vendorProduct?.product.id === variant.productId) ?? null;
+    const po = purchaseOrders.find((candidate) => candidate.id === purchaseOrderId);
+    const poLine = po?.lines.find((line) => line.productId === variant.productId) ?? null;
+    const sourceCost = sourceLine?.unitCostPaise ?? poLine?.unitCostPaise ?? null;
+
+    setLines((current) => [
+      ...current,
+      {
+        ...variant,
+        vendorInvoiceLineId: sourceLine?.id ?? null,
+        purchaseOrderLineId: sourceLine?.purchaseOrderLineId ?? poLine?.id ?? null,
+        expectedQuantity: 0,
+        acceptedQuantity: "",
+        rejectedQuantity: "0",
+        unitCostRupees:
+          sourceCost === null || sourceCost === undefined
+            ? ""
+            : String(sourceCost / 100),
+      },
+    ]);
     setSearch("");
   }
 
@@ -199,11 +457,15 @@ export function AdminStockReceiptClient() {
           supplierName,
           invoiceNumber,
           purchaseOrderNumber,
+          vendorInvoiceId: vendorInvoiceId || null,
+          purchaseOrderId: purchaseOrderId || null,
           receivedAt: new Date(`${receivedAt}T12:00:00`).toISOString(),
           note,
           action,
           lines: lines.map((line) => ({
             variantId: line.variantId,
+            vendorInvoiceLineId: line.vendorInvoiceLineId ?? null,
+            purchaseOrderLineId: line.purchaseOrderLineId ?? null,
             acceptedQuantity: Number(line.acceptedQuantity || 0),
             rejectedQuantity: Number(line.rejectedQuantity || 0),
             unitCostPaise: line.unitCostRupees === "" ? null : Math.round(Number(line.unitCostRupees) * 100),
@@ -226,6 +488,8 @@ export function AdminStockReceiptClient() {
       setSupplierName("");
       setInvoiceNumber("");
       setPurchaseOrderNumber("");
+      setVendorInvoiceId("");
+      setPurchaseOrderId("");
       setNote("");
       await load();
     } catch (caught) {
@@ -274,7 +538,7 @@ export function AdminStockReceiptClient() {
       </header>
 
       <section className={styles.heading}>
-        <div><Link href="/admin/inventory">← Back to inventory</Link><h1>Receive stock</h1><p>Record a manufacturer delivery, attach SKU photography, then post accepted pieces into inventory.</p></div>
+        <div><Link href="/admin/inventory">← Back to inventory</Link><h1>Receive stock</h1><p>Select the uploaded vendor invoice, verify physical size/colour actuals, then post accepted pieces into inventory.</p></div>
         <div className={styles.totals}><span><b>{totals.accepted}</b> accepted</span><span><b>{totals.rejected}</b> rejected</span><span><b>₹{totals.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</b> cost</span></div>
       </section>
 
@@ -300,19 +564,46 @@ export function AdminStockReceiptClient() {
       )}
 
       <section className={styles.card}>
-        <div className={styles.sectionTitle}><span>01</span><div><h2>Delivery details</h2><p>An invoice or PO is required when the receipt is posted.</p></div></div>
+        <div className={styles.sectionTitle}><span>01</span><div><h2>Goods Receipt reference</h2><p>Normal GR is posted directly against a Purchase Order. Invoice-linked receiving remains available only for legacy/exception flows.</p></div></div>
+        <div className={styles.invoiceSelector}>
+          <label>
+            <span>Purchase Order</span>
+            <select value={purchaseOrderId} onChange={(event) => selectPurchaseOrder(event.target.value)}>
+              <option value="">Select PO</option>
+              {purchaseOrders.map((po) => (
+                <option key={po.id} value={po.id}>
+                  {po.poNumber} · {po.vendor.name} · {po.status.replaceAll("_", " ")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <small>
+            PO size quantities are expected quantities. Warehouse edits Accepted/Rejected to the physical actuals.
+          </small>
+          <label>
+            <span>Vendor invoice · legacy/exception only</span>
+            <select value={vendorInvoiceId} onChange={(event) => selectVendorInvoice(event.target.value)} disabled={Boolean(purchaseOrderId)}>
+              <option value="">Not required for PO GR</option>
+              {vendorInvoices.map((invoice) => (
+                <option key={invoice.id} value={invoice.id}>
+                  {invoice.vendor.name} · {invoice.invoiceNumber}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className={styles.detailsGrid}>
-          <label><span>Supplier / manufacturer *</span><input value={supplierName} onChange={(event) => setSupplierName(event.target.value)} placeholder="Manufacturer name" /></label>
-          <label><span>Invoice number</span><input value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} placeholder="INV-2026-0042" /></label>
-          <label><span>Purchase order</span><input value={purchaseOrderNumber} onChange={(event) => setPurchaseOrderNumber(event.target.value)} placeholder="PO-HIDI-0042" /></label>
+          <label><span>Supplier / manufacturer *</span><input value={supplierName} onChange={(event) => setSupplierName(event.target.value)} placeholder="Manufacturer name" readOnly={Boolean(vendorInvoiceId || purchaseOrderId)} /></label>
+          <label><span>Invoice number</span><input value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} placeholder="INV-2026-0042" readOnly={Boolean(vendorInvoiceId)} /></label>
+          <label><span>PO / purchase ref. (optional)</span><input value={purchaseOrderNumber} onChange={(event) => setPurchaseOrderNumber(event.target.value)} placeholder="Optional reference" readOnly={Boolean(vendorInvoiceId)} /></label>
           <label><span>Received date *</span><input type="date" value={receivedAt} onChange={(event) => setReceivedAt(event.target.value)} /></label>
           <label className={styles.full}><span>Delivery note</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional courier, carton or quality notes" /></label>
         </div>
       </section>
 
       <section className={styles.card}>
-        <div className={styles.sectionTitle}><span>02</span><div><h2>Add SKUs</h2><p>Search existing product variants. Accepted pieces affect stock; rejected pieces are recorded only.</p></div></div>
-        <BulkReceiptCsvImport disabled={busy || Boolean(photoBusy)} variants={variants} onRows={(incoming) => {
+        <div className={styles.sectionTitle}><span>02</span><div><h2>Verify PO vs warehouse actuals</h2><p>Expected size quantities come from the PO. Change Accepted/Rejected to the physical garments received.</p></div></div>
+        {!purchaseOrderId && !vendorInvoiceId && <BulkReceiptCsvImport disabled={busy || Boolean(photoBusy)} variants={variants} onRows={(incoming) => {
           const importedBySku = new Map(incoming.map((row) => [row.sku.trim().toUpperCase(), row]));
           setLines((current) => {
             const byId = new Map(current.map((line) => [line.variantId, line]));
@@ -325,8 +616,8 @@ export function AdminStockReceiptClient() {
           });
           setSearch("");
           setMessage(`${incoming.length} spreadsheet line${incoming.length === 1 ? "" : "s"} added to this receipt. Review supplier, quantities and costs before posting.`);
-        }} />
-        <CreateProductInReceipt disabled={busy || Boolean(photoBusy)} onVariants={(incoming) => {
+        }} />}
+        {!purchaseOrderId && !vendorInvoiceId && <CreateProductInReceipt disabled={busy || Boolean(photoBusy)} onVariants={(incoming) => {
           setVariants((current) => {
             const byId = new Map(current.map((variant) => [variant.variantId, variant]));
             incoming.forEach((variant) => byId.set(variant.variantId, variant));
@@ -335,7 +626,7 @@ export function AdminStockReceiptClient() {
           setLines((current) => appendNewReceiptLines(current, incoming));
           setSearch("");
           setMessage("Product SKUs added to this receipt. Enter accepted quantities and purchase costs; stock changes only when you post.");
-        }} />
+        }} />}
         <div className={styles.searchBox}>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product, SKU, colour or size" />
           {matches.length > 0 && <div className={styles.results}>{matches.map((variant) => <button type="button" key={variant.variantId} onClick={() => addLine(variant)}><span><b>{variant.productName}</b><small>{variant.sku}</small></span><em>{variant.color} · {variant.size}</em><i>{variant.onHand} on hand</i></button>)}</div>}
@@ -381,7 +672,8 @@ function ReceiptLineRow({ line, busy, uploading, progress, onChange, onRemove, o
   const [applyToColor, setApplyToColor] = useState(true);
   return <article className={styles.line}>
     <div className={styles.lineIdentity}>{line.imageUrl ? <img src={line.imageUrl} alt="" /> : <div className={styles.placeholder}>H</div>}<div><strong>{line.productName}</strong><small>{line.sku}</small><span>{line.color} · {line.size} · {line.onHand} currently on hand</span></div></div>
-    <label><span>Accepted</span><input type="number" min="0" step="1" value={line.acceptedQuantity} onChange={(event) => onChange(line.variantId, "acceptedQuantity", event.target.value)} /></label>
+    <div className={styles.expectedQty}><span>Expected</span><strong>{line.expectedQuantity ?? "—"}</strong></div>
+    <label><span>Accepted actual</span><input type="number" min="0" step="1" value={line.acceptedQuantity} onChange={(event) => onChange(line.variantId, "acceptedQuantity", event.target.value)} /></label>
     <label><span>Rejected</span><input type="number" min="0" step="1" value={line.rejectedQuantity} onChange={(event) => onChange(line.variantId, "rejectedQuantity", event.target.value)} /></label>
     <label><span>Unit cost ₹</span><input type="number" min="0" step="0.01" value={line.unitCostRupees} onChange={(event) => onChange(line.variantId, "unitCostRupees", event.target.value)} /></label>
     <div className={styles.photoControl}>

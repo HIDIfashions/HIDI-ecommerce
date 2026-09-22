@@ -3,6 +3,7 @@ import { AdminProductsModule } from "./products/admin-products.module.js";
 import { DelhiveryModule } from "../delhivery/delhivery.module.js";
 import { AdminController } from "./admin.controller.js";
 import { AdminInventoryService } from "./admin-inventory.service.js";
+import { AdminProcurementService } from "./admin-procurement.service.js";
 import { AdminService } from "./admin.service.js";
 import { ReviewFollowUpService } from "./review-followup.service.js";
 import { AdminReturnsService } from "./admin-returns.service.js";
@@ -12,6 +13,6 @@ import { RazorpayModule } from "../razorpay/razorpay.module.js";
 @Module({
   imports: [AdminProductsModule, DelhiveryModule, WalletModule, RazorpayModule],
   controllers: [AdminController],
-  providers: [AdminService, AdminInventoryService, ReviewFollowUpService, AdminReturnsService],
+  providers: [AdminService, AdminInventoryService, AdminProcurementService, ReviewFollowUpService, AdminReturnsService],
 })
 export class AdminModule {}

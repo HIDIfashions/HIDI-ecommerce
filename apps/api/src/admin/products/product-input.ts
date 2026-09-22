@@ -5,7 +5,7 @@ export type ProductState = "DRAFT" | "ACTIVE" | "ARCHIVED";
 export type Colour = { name: string; hex: string | null };
 export type MatrixInput = { colors: Colour[]; sizes: string[]; pricePaise: number; mrpPaise: number; weightGrams: number | null };
 export type ProductFields = {
-  name: string; categoryId: string | null; collectionIds: string[];
+  name: string; internalName: string | null; categoryId: string | null; collectionIds: string[];
   shortDescription: string | null; description: string | null; fabric: string | null; care: string | null;
 };
 type RecordInput = Record<string, unknown>;
@@ -42,13 +42,14 @@ export function canonical(value: string): string { return value.normalize("NFKC"
 export function slugify(value: string): string {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
-const fieldKeys = ["name", "categoryId", "collectionIds", "shortDescription", "description", "fabric", "care"];
+const fieldKeys = ["name", "internalName", "categoryId", "collectionIds", "shortDescription", "description", "fabric", "care"];
 const matrixKeys = ["colors", "sizes", "pricePaise", "mrpPaise", "weightGrams"];
 function fields(input: RecordInput): ProductFields {
   const raw = input.collectionIds ?? [];
   if (!Array.isArray(raw) || raw.length > 20) throw new ProductInputError("Choose up to 20 collections.");
   return {
     name: text(input.name, "Product name", 160, true)!,
+    internalName: text(input.internalName, "Internal material name", 160),
     categoryId: input.categoryId ? identifier(input.categoryId, "Category") : null,
     collectionIds: [...new Set(raw.map(value => identifier(value, "Collection")))],
     shortDescription: text(input.shortDescription, "Short description", 400),

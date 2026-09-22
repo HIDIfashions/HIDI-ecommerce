@@ -7,6 +7,7 @@ import {
   type VariantImageUploadTicketInput,
 } from "./admin-inventory.service.js";
 import { AdminService } from "./admin.service.js";
+import { AdminProcurementService } from "./admin-procurement.service.js";
 import { ReviewFollowUpService } from "./review-followup.service.js";
 import { AdminReturnsService } from "./admin-returns.service.js";
 
@@ -15,6 +16,7 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly inventory: AdminInventoryService,
+    private readonly procurement: AdminProcurementService,
     private readonly reviewFollowUps: ReviewFollowUpService,
     private readonly returns: AdminReturnsService,
   ) {}
@@ -46,6 +48,78 @@ export class AdminController {
   reviewFollowUpRun(@Headers("x-admin-key") adminKey?: string) {
     this.requireAdmin(adminKey);
     return this.reviewFollowUps.runOnce();
+  }
+
+  @Get("procurement")
+  procurementDashboard(@Headers("x-admin-key") adminKey?: string) {
+    this.requireAdmin(adminKey);
+    return this.procurement.dashboard();
+  }
+
+  @Post("procurement/vendors")
+  createVendor(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Body() body: any,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.procurement.createVendor(body ?? {});
+  }
+
+  @Post("procurement/vendor-products")
+  saveVendorProduct(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Body() body: any,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.procurement.saveVendorProduct(body ?? {});
+  }
+
+  @Get("procurement/material")
+  resolveProcurementMaterial(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Query("vendorId") vendorId: string,
+    @Query("vendorStyleCode") vendorStyleCode: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.procurement.resolveMaterial(vendorId, vendorStyleCode);
+  }
+
+  @Post("procurement/purchase-orders")
+  createPurchaseOrder(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Headers("x-admin-name") adminName: string | undefined,
+    @Body() body: any,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.procurement.createPurchaseOrder(body ?? {}, adminName);
+  }
+
+  @Post("procurement/invoices")
+  createVendorInvoice(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Body() body: any,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.procurement.createInvoice(body ?? {});
+  }
+
+  @Put("procurement/invoice-lines/:invoiceLineId/breakup")
+  setVendorInvoiceLineBreakup(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("invoiceLineId") invoiceLineId: string,
+    @Body() body: any,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.procurement.setInvoiceLineBreakup(invoiceLineId, body ?? {});
+  }
+
+  @Get("procurement/trace/order/:orderNumber")
+  traceOrder(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.procurement.traceOrder(orderNumber);
   }
 
   @Get("inventory")

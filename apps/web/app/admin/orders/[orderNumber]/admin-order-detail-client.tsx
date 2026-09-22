@@ -38,6 +38,16 @@ type AdminOrder = {
     provider: string;
     providerPaymentId?: string | null;
   };
+  customerInvoice: null | {
+    invoiceNumber: string;
+    status: string;
+    issuedAt: string;
+    subtotalPaise: number;
+    discountPaise: number;
+    shippingPaise: number;
+    taxPaise: number;
+    totalPaise: number;
+  };
   shipment: null | {
     status: string;
     provider?: string | null;
@@ -398,6 +408,23 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
         </div>
 
         <aside className={styles.sideColumn}>
+          <section className={styles.card}>
+            <p className={styles.eyebrow}>CUSTOMER INVOICE</p>
+            <h2>{order.customerInvoice?.invoiceNumber ?? "Not issued"}</h2>
+            {order.customerInvoice ? (
+              <dl className={styles.metaList}>
+                <div><dt>Status</dt><dd>{label(order.customerInvoice.status)}</dd></div>
+                <div><dt>Issued</dt><dd>{dateTime(order.customerInvoice.issuedAt)}</dd></div>
+                <div><dt>Total</dt><dd>{money(order.customerInvoice.totalPaise)}</dd></div>
+              </dl>
+            ) : (
+              <p className={styles.auditEmpty}>Legacy or unconfirmed order.</p>
+            )}
+            <Link className={styles.secondaryLink} href="/admin/procurement">
+              Trace vendor source →
+            </Link>
+          </section>
+
           <section className={styles.card}>
             <p className={styles.eyebrow}>PAYMENT</p>
             <h2>{order.payment ? label(order.payment.status) : "No payment"}</h2>

@@ -8,6 +8,10 @@ import styles from "./receipt-labels.module.css";
 type ReceiptLine = {
   id: string;
   acceptedQuantity: number;
+  stockLots: Array<{
+    lotCode: string;
+    acceptedQuantity: number;
+  }>;
   variant: {
     sku: string;
     size: string;
@@ -57,18 +61,21 @@ export function ReceiptPriceTagLabelsClient({ receiptId }: { receiptId: string }
 
   const labels = useMemo(() => {
     if (!receipt) return [];
-    return receipt.lines.flatMap((line) =>
-      Array.from({ length: Math.max(0, line.acceptedQuantity ?? 0) }, (_, index) => ({
+    return receipt.lines.flatMap((line) => {
+      const lot = line.stockLots?.[0];
+      if (!lot) return [];
+      return Array.from({ length: Math.max(0, lot.acceptedQuantity ?? 0) }, (_, index) => ({
         key: line.id + "-" + index,
         sku: line.variant.sku,
+        lotCode: lot.lotCode,
         productName: line.variant.product.name,
         color: line.variant.color,
         size: line.variant.size,
         mrpPaise: line.variant.mrpPaise,
         pricePaise: line.variant.pricePaise,
-        value: "HIDI-SKU:" + line.variant.sku,
-      })),
-    );
+        value: "HIDI-SKU:" + line.variant.sku + "|LOT:" + lot.lotCode,
+      }));
+    });
   }, [receipt]);
 
   if (loading) {
@@ -103,7 +110,7 @@ export function ReceiptPriceTagLabelsClient({ receiptId }: { receiptId: string }
       <section className={styles.instructions}>
         <strong>Attach one label to the price tag of each accepted garment.</strong>
         <span>
-          The same exact SKU uses the same barcode. HIDI counts each physical scan during packing, so quantity is still verified.
+          Repeat purchases reuse the same HIDI SKU but receive a new lot code. The lot on this tag links the packed garment back to this GRN and vendor invoice.
         </span>
       </section>
 
@@ -116,6 +123,7 @@ export function ReceiptPriceTagLabelsClient({ receiptId }: { receiptId: string }
             </div>
             <Code128Barcode className={styles.barcode} value={label.value} height={46} />
             <code>{label.sku}</code>
+            <small className={styles.lotCode}>{label.lotCode}</small>
             <b>{label.productName}</b>
             <small>{label.color} · Size {label.size}</small>
             <div className={styles.priceLine}>

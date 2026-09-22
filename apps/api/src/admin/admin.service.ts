@@ -54,6 +54,18 @@ export class AdminService {
             updatedAt: order.shipments[0].updatedAt,
           }
         : null,
+      customerInvoice: order.customerInvoice
+        ? {
+            invoiceNumber: order.customerInvoice.invoiceNumber,
+            status: order.customerInvoice.status,
+            issuedAt: order.customerInvoice.issuedAt,
+            subtotalPaise: order.customerInvoice.subtotalPaise,
+            discountPaise: order.customerInvoice.discountPaise,
+            shippingPaise: order.customerInvoice.shippingPaise,
+            taxPaise: order.customerInvoice.taxPaise,
+            totalPaise: order.customerInvoice.totalPaise,
+          }
+        : null,
       returnCount: order.returnRequests?.length ?? 0,
       activeReturnCount: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).length,
       activeReturnQuantity: (order.returnRequests ?? []).filter((request: any) => ACTIVE_RETURN_STATUSES.includes(request.status)).reduce((sum: number, request: any) => sum + request.quantity, 0),
@@ -143,6 +155,7 @@ export class AdminService {
       payments: { orderBy: { createdAt: "desc" as const }, take: 1 },
       shipments: { orderBy: { createdAt: "desc" as const }, take: 1 },
       returnRequests: { orderBy: { createdAt: "desc" as const } },
+      customerInvoice: true,
     };
     return includeAudit
       ? {
@@ -387,9 +400,21 @@ export class AdminService {
 
   async completeScanPack(orderNumber: string, input: { scans?: unknown }) {
     const rawScans = Array.isArray(input?.scans) ? input.scans : [];
-    const scans = rawScans
-      .map((value) => String(value ?? "").trim())
-      .filter(Boolean);
+
+    const parseScan = (value: unknown) => {
+      const payload = String(value ?? "").trim();
+      if (!payload) return null;
+      const withoutPrefix = payload
+        .replace(/^HIDI-SKU:/i, "")
+        .replace(/^SKU:/i, "")
+        .trim();
+      const match = withoutPrefix.match(/^(.*?)\|LOT:(.+)$/i);
+      const sku = (match ? match[1] : withoutPrefix).trim().toUpperCase();
+      const lotCode = match ? match[2].trim().toUpperCase() : null;
+      return sku ? { payload, sku, lotCode: lotCode || null } : null;
+    };
+
+    const scans = rawScans.map(parseScan).filter((value): value is NonNullable<ReturnType<typeof parseScan>> => Boolean(value));
 
     if (scans.length === 0) {
       throw new BadRequestException("Scan every item in the order before completing the pack");
@@ -405,6 +430,8 @@ export class AdminService {
         status: true,
         items: {
           select: {
+            id: true,
+            variantId: true,
             sku: true,
             quantity: true,
             size: true,
@@ -425,35 +452,27 @@ export class AdminService {
       );
     }
 
-    const normalizeSku = (value: string) => value.trim().toUpperCase();
     const expected = new Map<string, number>();
     const scanned = new Map<string, number>();
+    const itemBySku = new Map<string, (typeof order.items)[number]>();
 
     for (const item of order.items) {
-      const sku = normalizeSku(item.sku);
+      const sku = item.sku.trim().toUpperCase();
       expected.set(sku, (expected.get(sku) ?? 0) + item.quantity);
+      if (!itemBySku.has(sku)) itemBySku.set(sku, item);
     }
 
-    for (const value of scans) {
-      const sku = normalizeSku(value);
-      scanned.set(sku, (scanned.get(sku) ?? 0) + 1);
+    for (const scan of scans) {
+      scanned.set(scan.sku, (scanned.get(scan.sku) ?? 0) + 1);
     }
 
     const unknown = [...scanned.keys()].filter((sku) => !expected.has(sku));
     const overScanned = [...scanned.entries()]
       .filter(([sku, quantity]) => quantity > (expected.get(sku) ?? 0))
-      .map(([sku, quantity]) => ({
-        sku,
-        scanned: quantity,
-        expected: expected.get(sku) ?? 0,
-      }));
+      .map(([sku, quantity]) => ({ sku, scanned: quantity, expected: expected.get(sku) ?? 0 }));
     const missing = [...expected.entries()]
       .filter(([sku, quantity]) => (scanned.get(sku) ?? 0) < quantity)
-      .map(([sku, quantity]) => ({
-        sku,
-        scanned: scanned.get(sku) ?? 0,
-        expected: quantity,
-      }));
+      .map(([sku, quantity]) => ({ sku, scanned: scanned.get(sku) ?? 0, expected: quantity }));
 
     if (unknown.length || overScanned.length || missing.length) {
       throw new BadRequestException({
@@ -462,16 +481,177 @@ export class AdminService {
       });
     }
 
-    const scanSummary = order.items.map((item) => ({
-      sku: item.sku,
-      productName: item.productName,
-      size: item.size,
-      color: item.color,
-      expected: item.quantity,
-      scanned: scanned.get(normalizeSku(item.sku)) ?? 0,
-    }));
+    const lotCodes = [...new Set(scans.map((scan) => scan.lotCode).filter((value): value is string => Boolean(value)))];
+    const lots = lotCodes.length
+      ? await this.prisma.stockLot.findMany({
+          where: { lotCode: { in: lotCodes } },
+          include: {
+            variant: { select: { id: true, sku: true } },
+            receiptLine: {
+              select: {
+                receipt: { select: { receiptNumber: true, vendorInvoiceId: true } },
+              },
+            },
+          },
+        })
+      : [];
+
+    const lotByCode = new Map(lots.map((lot) => [lot.lotCode.toUpperCase(), lot]));
+    const variantIds = [...new Set(order.items.map((item) => item.variantId))];
+    const existingLots = variantIds.length
+      ? await this.prisma.stockLot.findMany({
+          where: { variantId: { in: variantIds } },
+          select: { variantId: true },
+          distinct: ["variantId"],
+        })
+      : [];
+    const variantsWithLots = new Set(existingLots.map((lot) => lot.variantId));
+
+    const lotIssues: Array<Record<string, unknown>> = [];
+    const requestedByLot = new Map<string, number>();
+
+    for (const scan of scans) {
+      const item = itemBySku.get(scan.sku);
+      if (!item) continue;
+
+      if (!scan.lotCode) {
+        if (variantsWithLots.has(item.variantId)) {
+          lotIssues.push({
+            sku: scan.sku,
+            issue: "MISSING_LOT",
+            message: "This SKU has traceable stock lots. Reprint the price tag from its GRN and scan the lot-aware barcode.",
+          });
+        }
+        continue;
+      }
+
+      const lot = lotByCode.get(scan.lotCode);
+      if (!lot) {
+        lotIssues.push({ sku: scan.sku, lotCode: scan.lotCode, issue: "UNKNOWN_LOT" });
+        continue;
+      }
+      if (lot.variant.sku.trim().toUpperCase() !== scan.sku || lot.variantId !== item.variantId) {
+        lotIssues.push({
+          sku: scan.sku,
+          lotCode: scan.lotCode,
+          issue: "LOT_SKU_MISMATCH",
+          actualLotSku: lot.variant.sku,
+        });
+        continue;
+      }
+
+      requestedByLot.set(lot.id, (requestedByLot.get(lot.id) ?? 0) + 1);
+    }
+
+    for (const [lotId, quantity] of requestedByLot) {
+      const lot = lots.find((row) => row.id === lotId);
+      if (!lot) continue;
+      const available = lot.acceptedQuantity - lot.allocatedQuantity;
+      if (quantity > available) {
+        lotIssues.push({
+          lotCode: lot.lotCode,
+          issue: "LOT_EXHAUSTED",
+          requested: quantity,
+          available,
+        });
+      }
+    }
+
+    if (lotIssues.length) {
+      throw new BadRequestException({
+        message: "Lot trace verification failed. One or more garment tags cannot be allocated to this order.",
+        issues: lotIssues,
+      });
+    }
+
+    const scanSummary = order.items.map((item) => {
+      const sku = item.sku.trim().toUpperCase();
+      const itemScans = scans.filter((scan) => scan.sku === sku);
+      return {
+        sku: item.sku,
+        productName: item.productName,
+        size: item.size,
+        color: item.color,
+        expected: item.quantity,
+        scanned: itemScans.length,
+        lots: itemScans.map((scan) => scan.lotCode).filter(Boolean),
+      };
+    });
 
     return this.prisma.$transaction(async (tx) => {
+      const lockedOrder = await tx.$queryRaw<Array<{ status: string }>>`
+        SELECT "status" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE
+      `;
+      if (!lockedOrder[0] || lockedOrder[0].status !== "CONFIRMED") {
+        throw new BadRequestException("This order changed while packing. Reload the order before completing the pack.");
+      }
+
+      const grouped = new Map<string, {
+        orderItemId: string;
+        variantId: string;
+        stockLotId: string;
+        quantity: number;
+        payloads: string[];
+      }>();
+
+      for (const scan of scans) {
+        if (!scan.lotCode) continue;
+        const item = itemBySku.get(scan.sku);
+        const lot = lotByCode.get(scan.lotCode);
+        if (!item || !lot) continue;
+        const key = item.id + ":" + lot.id;
+        const current = grouped.get(key);
+        if (current) {
+          current.quantity += 1;
+          current.payloads.push(scan.payload);
+        } else {
+          grouped.set(key, {
+            orderItemId: item.id,
+            variantId: item.variantId,
+            stockLotId: lot.id,
+            quantity: 1,
+            payloads: [scan.payload],
+          });
+        }
+      }
+
+      for (const allocation of grouped.values()) {
+        const lockedLot = await tx.$queryRaw<Array<{
+          id: string;
+          variantId: string;
+          acceptedQuantity: number;
+          allocatedQuantity: number;
+        }>>`
+          SELECT "id", "variantId", "acceptedQuantity", "allocatedQuantity"
+          FROM "StockLot"
+          WHERE "id" = ${allocation.stockLotId}
+          FOR UPDATE
+        `;
+        const lot = lockedLot[0];
+        if (!lot || lot.variantId !== allocation.variantId) {
+          throw new BadRequestException("Stock lot changed during pack verification");
+        }
+        const available = lot.acceptedQuantity - lot.allocatedQuantity;
+        if (available < allocation.quantity) {
+          throw new BadRequestException("A scanned stock lot no longer has enough unallocated pieces");
+        }
+
+        await tx.orderStockAllocation.create({
+          data: {
+            orderId: order.id,
+            orderItemId: allocation.orderItemId,
+            variantId: allocation.variantId,
+            stockLotId: allocation.stockLotId,
+            quantity: allocation.quantity,
+            scanPayload: allocation.payloads[0] ?? null,
+          },
+        });
+        await tx.stockLot.update({
+          where: { id: allocation.stockLotId },
+          data: { allocatedQuantity: { increment: allocation.quantity } },
+        });
+      }
+
       const updated = await tx.order.update({
         where: { orderNumber },
         data: { status: "PACKED" },
@@ -491,6 +671,7 @@ export class AdminService {
         metadata: {
           method: "BARCODE_SCAN",
           totalScans: scans.length,
+          traceComplete: scans.every((scan) => Boolean(scan.lotCode)),
           items: scanSummary,
         },
       });
@@ -509,6 +690,7 @@ export class AdminService {
         metadata: {
           verification: "BARCODE_SCAN",
           totalScans: scans.length,
+          lotAllocations: grouped.size,
         },
       });
 
@@ -516,6 +698,7 @@ export class AdminService {
         order: updated,
         verification: {
           totalScans: scans.length,
+          traceComplete: scans.every((scan) => Boolean(scan.lotCode)),
           items: scanSummary,
         },
       };

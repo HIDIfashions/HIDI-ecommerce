@@ -10,13 +10,13 @@ import type { ProductOptions, ProductRecord, ProductState, ProductVariant, Recei
 import styles from "./products.module.css";
 import { uploadSkuPhotoBatch } from "@/lib/sku-photo-batch";
 
-type Fields = { name: string; slug: string; categoryId: string; shortDescription: string; description: string; fabric: string; care: string; collectionIds: string[] };
+type Fields = { name: string; internalName: string; slug: string; categoryId: string; shortDescription: string; description: string; fabric: string; care: string; collectionIds: string[] };
 type Matrix = { colors: Array<{ name: string; hex: string }>; sizes: string[]; price: string; mrp: string; weight: string };
 type VariantDraft = { variant: ProductVariant; price: string; mrp: string; weight: string; active: boolean };
-const blankFields = (): Fields => ({ name: "", slug: "", categoryId: "", shortDescription: "", description: "", fabric: "", care: "", collectionIds: [] });
+const blankFields = (): Fields => ({ name: "", internalName: "", slug: "", categoryId: "", shortDescription: "", description: "", fabric: "", care: "", collectionIds: [] });
 const blankMatrix = (): Matrix => ({ colors: [{ name: "", hex: "" }], sizes: ["M", "L", "XL", "XXL"], price: "", mrp: "", weight: "" });
 function toFields(p: ProductRecord): Fields {
-  return { name: p.name, slug: p.slug, categoryId: p.categoryId ?? "", shortDescription: p.shortDescription ?? "", description: p.description ?? "", fabric: p.fabric ?? "", care: p.care ?? "", collectionIds: p.collections.map(c => c.collectionId) };
+  return { name: p.name, internalName: p.internalName ?? "", slug: p.slug, categoryId: p.categoryId ?? "", shortDescription: p.shortDescription ?? "", description: p.description ?? "", fabric: p.fabric ?? "", care: p.care ?? "", collectionIds: p.collections.map(c => c.collectionId) };
 }
 function weights(value: string): number | null {
   if (!value.trim()) return null;
@@ -246,7 +246,7 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
   if (productId && !product) return <div><p className={styles.error} role="alert">{error ?? "Product could not be loaded."}</p><Link href="/admin/products">Back to products</Link></div>;
 
   return <div className={styles.editor}>
-    <div className={styles.editorHeading}><div><p className={styles.eyebrow}>HIDI PRODUCT WORKSPACE</p><h1>{product ? product.name : "Create new product"}</h1><p>{product ? "Edit catalogue details without changing your warehouse quantities." : "Add a design once. Generate its colour-and-size SKUs automatically."}</p></div><span className={styles.badge} data-status={product?.status ?? "DRAFT"}>{product?.status ?? "NEW DRAFT"}</span></div>
+    <div className={styles.editorHeading}><div><p className={styles.eyebrow}>HIDI PRODUCT WORKSPACE</p><h1>{product ? product.name : "Create new product"}</h1>{product && <code className={styles.internalCode}>{product.internalCode}</code>}<p>{product ? "Internal HIDI number stays permanent. Customer-facing name and catalogue details can change without changing stock identity." : "Add a design once. HIDI assigns a permanent internal product number and generates its colour-and-size SKUs."}</p></div><span className={styles.badge} data-status={product?.status ?? "DRAFT"}>{product?.status ?? "NEW DRAFT"}</span></div>
     {error && <div className={styles.error} role="alert">{error}<br /><small>Nothing here requires resetting or seeding the database.</small></div>}
     {message && <div className={styles.success} role="status">{message}</div>}
 
@@ -254,7 +254,8 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
       <div className={styles.sectionTitle}><span>01</span><div><h2>Product details</h2><p>Customer-facing information. Purchase costs stay in stock receipts.</p></div></div>
       <fieldset disabled={busy || editing !== null || addDirty} className={styles.fieldset}>
         <div className={styles.grid}>
-          <label className={styles.wide}>Product name *<input required maxLength={160} value={form.name} onChange={e => change("name", e.target.value)} placeholder="HIDI Meera Cotton Kurta" /></label>
+          <label className={styles.wide}>Customer-facing product name *<input required maxLength={160} value={form.name} onChange={e => change("name", e.target.value)} placeholder="HIDI Meera Cotton Kurta" /><small>This is the name customers see on the storefront.</small></label>
+          <label className={styles.wide}>Internal material name<input maxLength={160} value={form.internalName} onChange={e => change("internalName", e.target.value)} placeholder="JC4U 2548 · office kurta · internal description" /><small>Admin/warehouse only. Not returned by the storefront product API.</small></label>
           <label>Product URL<input disabled={Boolean(product)} maxLength={100} value={form.slug} onChange={e => change("slug", e.target.value)} placeholder={productSlug(form.name) || "hidi-meera-cotton-kurta"} /><small>{product ? "The URL and existing SKUs remain stable when a product is renamed." : "Leave blank to generate from the name. English lowercase words and hyphens."}</small></label>
           <label>Category<select value={form.categoryId} onChange={e => change("categoryId", e.target.value)}><option value="">Uncategorised</option>{product?.category && !options.categories.some(c => c.id === product.categoryId) && <option value={product.category.id}>{product.category.name} (inactive)</option>}{options.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button type="button" className={styles.textButton} onClick={addCategory}>+ Add category</button></label>
           <label className={styles.wide}>Short description<textarea rows={2} maxLength={400} value={form.shortDescription} onChange={e => change("shortDescription", e.target.value)} placeholder="A comfortable cotton kurta for everyday workwear." /></label>

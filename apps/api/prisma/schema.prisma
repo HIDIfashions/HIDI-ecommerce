@@ -73,6 +73,37 @@ enum StockReceiptStatus {
   CANCELLED
 }
 
+enum PurchaseOrderStatus {
+  DRAFT
+  OPEN
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum VendorInvoiceStatus {
+  UPLOADED
+  MAPPING
+  AWAITING_STOCK
+  PARTIALLY_RECEIVED
+  RECEIVED
+  RECONCILED
+  CANCELLED
+}
+
+enum InvoiceBreakupSource {
+  EXPLICIT_INVOICE
+  PACK_PATTERN
+  MANUAL
+}
+
+enum CustomerInvoiceStatus {
+  ISSUED
+  VOIDED
+  CREDITED
+}
+
 enum ReviewFollowUpStatus {
   PENDING
   SENT
@@ -143,6 +174,8 @@ model Product {
   id             String        @id @default(cuid())
   categoryId     String?
   name           String
+  internalName   String?
+  internalCode   String        @unique
   slug           String        @unique
   shortDescription String?
   description    String?
@@ -161,6 +194,8 @@ model Product {
   reviews        ProductReview[]
   cartItems      CartItem[]
   collections    ProductCollection[]
+  vendorMappings VendorProduct[]
+  purchaseOrderLines PurchaseOrderLine[]
 
   @@index([status, featuredRank])
   @@index([categoryId, status])
@@ -221,6 +256,10 @@ model ProductVariant {
   orderItems  OrderItem[]
   reservations InventoryReservation[]
   stockReceiptLines StockReceiptLine[]
+  vendorPackEntries VendorPackPattern[]
+  invoiceExpectations VendorInvoiceExpectedVariant[]
+  stockLots StockLot[]
+  stockAllocations OrderStockAllocation[]
   adminMediaUploadTickets AdminMediaUploadTicket[]
 
   @@unique([productId, size, color])
@@ -292,6 +331,8 @@ model StockReceipt {
   supplierName        String
   invoiceNumber       String?
   purchaseOrderNumber String?
+  vendorInvoiceId     String?
+  purchaseOrderId     String?
   receivedAt          DateTime
   status              StockReceiptStatus @default(DRAFT)
   note                String?
@@ -302,24 +343,285 @@ model StockReceipt {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   lines               StockReceiptLine[]
+  vendorInvoice       VendorInvoice?      @relation(fields: [vendorInvoiceId], references: [id], onDelete: SetNull)
+  purchaseOrder       PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
   @@index([receivedAt])
+  @@index([vendorInvoiceId, receivedAt])
+  @@index([purchaseOrderId, receivedAt])
 }
 
 model StockReceiptLine {
   id               String         @id @default(cuid())
-  receiptId        String
-  variantId        String
-  acceptedQuantity Int
+  receiptId           String
+  variantId           String
+  vendorInvoiceLineId String?
+  purchaseOrderLineId String?
+  acceptedQuantity    Int
   rejectedQuantity Int            @default(0)
   unitCostPaise    Int?
   createdAt        DateTime       @default(now())
-  receipt          StockReceipt   @relation(fields: [receiptId], references: [id], onDelete: Cascade)
-  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  receipt          StockReceipt       @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  variant          ProductVariant     @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  vendorInvoiceLine VendorInvoiceLine? @relation(fields: [vendorInvoiceLineId], references: [id], onDelete: SetNull)
+  purchaseOrderLine PurchaseOrderLine? @relation(fields: [purchaseOrderLineId], references: [id], onDelete: SetNull)
+  stockLots        StockLot[]
 
   @@unique([receiptId, variantId])
   @@index([variantId])
+  @@index([vendorInvoiceLineId])
+  @@index([purchaseOrderLineId])
+}
+
+model Vendor {
+  id              String          @id @default(cuid())
+  code            String          @unique
+  name            String
+  normalizedName  String          @unique
+  gstin           String?
+  city            String?
+  state           String?
+  contactName     String?
+  phone           String?
+  email           String?
+  active          Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  products        VendorProduct[]
+  invoices        VendorInvoice[]
+  purchaseOrders  PurchaseOrder[]
+
+  @@index([name])
+  @@index([active, name])
+}
+
+model VendorProduct {
+  id                String              @id @default(cuid())
+  vendorId          String
+  productId         String
+  vendorStyleCode   String
+  hidiStyleCode     String?
+  vendorProductName String?
+  hsn               String?
+  defaultUnitCostPaise Int?
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  vendor            Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  product           Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  packPattern       VendorPackPattern[]
+  invoiceLines      VendorInvoiceLine[]
+  purchaseOrderLines PurchaseOrderLine[]
+
+  @@unique([vendorId, vendorStyleCode])
+  @@index([productId])
+  @@index([hidiStyleCode])
+  @@index([vendorId, active])
+}
+
+model VendorPackPattern {
+  id              String         @id @default(cuid())
+  vendorProductId String
+  variantId       String
+  quantity        Int
+  position        Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  vendorProduct   VendorProduct  @relation(fields: [vendorProductId], references: [id], onDelete: Cascade)
+  variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([vendorProductId, variantId])
+  @@index([variantId])
+}
+
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  poNumber       String              @unique
+  vendorId       String
+  orderDate      DateTime
+  expectedAt     DateTime?
+  status         PurchaseOrderStatus @default(DRAFT)
+  currency       String              @default("INR")
+  note           String?
+  createdBy      String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  vendor         Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  lines          PurchaseOrderLine[]
+  receipts       StockReceipt[]
+  invoices       VendorInvoice[]
+
+  @@index([vendorId, orderDate])
+  @@index([status, orderDate])
+}
+
+model PurchaseOrderLine {
+  id              String         @id @default(cuid())
+  purchaseOrderId String
+  lineNumber      Int
+  vendorProductId String?
+  productId       String
+  vendorStyleCode String
+  description     String?
+  orderedQuantity Int
+  unitCostPaise   Int?
+  hsn             String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  vendorProduct   VendorProduct? @relation(fields: [vendorProductId], references: [id], onDelete: SetNull)
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  invoiceLines    VendorInvoiceLine[]
+  receiptLines    StockReceiptLine[]
+  variants        PurchaseOrderVariant[]
+
+  @@unique([purchaseOrderId, lineNumber])
+  @@index([vendorProductId])
+  @@index([productId])
+}
+
+model PurchaseOrderVariant {
+  id                  String            @id @default(cuid())
+  purchaseOrderLineId String
+  variantId           String
+  orderedQuantity     Int
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  purchaseOrderLine   PurchaseOrderLine @relation(fields: [purchaseOrderLineId], references: [id], onDelete: Cascade)
+  variant             ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([purchaseOrderLineId, variantId])
+  @@index([variantId])
+}
+
+model VendorInvoice {
+  id                String              @id @default(cuid())
+  vendorId          String
+  invoiceNumber     String
+  invoiceDate       DateTime
+  purchaseReference String?
+  purchaseOrderId   String?
+  originalFilename  String?
+  documentUrl       String?
+  rawText           String?
+  status            VendorInvoiceStatus @default(UPLOADED)
+  subtotalPaise     Int?
+  taxPaise          Int?
+  totalPaise        Int?
+  note              String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  vendor            Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  lines             VendorInvoiceLine[]
+  receipts          StockReceipt[]
+  purchaseOrder     PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+
+  @@unique([vendorId, invoiceNumber])
+  @@index([status, invoiceDate])
+  @@index([vendorId, invoiceDate])
+  @@index([purchaseOrderId, invoiceDate])
+}
+
+model VendorInvoiceLine {
+  id                String         @id @default(cuid())
+  vendorInvoiceId   String
+  vendorProductId   String?
+  purchaseOrderLineId String?
+  rawDescription    String
+  vendorStyleCode   String?
+  hsn               String?
+  invoiceQuantity   Int
+  unitCostPaise     Int?
+  amountPaise       Int?
+  breakupSource     InvoiceBreakupSource?
+  mappingConfirmed  Boolean        @default(false)
+  note              String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  vendorInvoice     VendorInvoice  @relation(fields: [vendorInvoiceId], references: [id], onDelete: Cascade)
+  vendorProduct     VendorProduct? @relation(fields: [vendorProductId], references: [id], onDelete: SetNull)
+  purchaseOrderLine PurchaseOrderLine? @relation(fields: [purchaseOrderLineId], references: [id], onDelete: SetNull)
+  expectedVariants  VendorInvoiceExpectedVariant[]
+  receiptLines      StockReceiptLine[]
+  stockLots         StockLot[]
+
+  @@index([vendorInvoiceId])
+  @@index([vendorProductId])
+  @@index([purchaseOrderLineId])
+  @@index([vendorStyleCode])
+}
+
+model VendorInvoiceExpectedVariant {
+  id             String                @id @default(cuid())
+  invoiceLineId  String
+  variantId      String
+  expectedQuantity Int
+  source         InvoiceBreakupSource
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  invoiceLine    VendorInvoiceLine     @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
+  variant        ProductVariant        @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([invoiceLineId, variantId])
+  @@index([variantId])
+}
+
+model StockLot {
+  id                  String             @id @default(cuid())
+  lotCode             String             @unique
+  receiptLineId       String
+  variantId           String
+  vendorInvoiceLineId String?
+  acceptedQuantity    Int
+  allocatedQuantity   Int                @default(0)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  receiptLine         StockReceiptLine   @relation(fields: [receiptLineId], references: [id], onDelete: Restrict)
+  variant             ProductVariant     @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  vendorInvoiceLine   VendorInvoiceLine? @relation(fields: [vendorInvoiceLineId], references: [id], onDelete: SetNull)
+  allocations         OrderStockAllocation[]
+
+  @@index([variantId, createdAt])
+  @@index([vendorInvoiceLineId])
+}
+
+model CustomerInvoice {
+  id             String                @id @default(cuid())
+  orderId        String                @unique
+  invoiceNumber  String                @unique
+  status         CustomerInvoiceStatus @default(ISSUED)
+  issuedAt       DateTime              @default(now())
+  subtotalPaise  Int
+  discountPaise  Int
+  shippingPaise  Int
+  taxPaise       Int
+  totalPaise     Int
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  order          Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([issuedAt])
+}
+
+model OrderStockAllocation {
+  id          String         @id @default(cuid())
+  orderId     String
+  orderItemId String
+  variantId   String
+  stockLotId  String
+  quantity    Int
+  scanPayload String?
+  createdAt   DateTime       @default(now())
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  orderItem   OrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  stockLot    StockLot       @relation(fields: [stockLotId], references: [id], onDelete: Restrict)
+
+  @@unique([orderItemId, stockLotId])
+  @@index([orderId])
+  @@index([variantId])
+  @@index([stockLotId])
 }
 
 model Cart {
@@ -388,6 +690,8 @@ model Order {
   walletEntries   WalletLedger[]
   returnRequests  ReturnRequest[]
   auditEvents     OrderAuditEvent[]
+  customerInvoice CustomerInvoice?
+  stockAllocations OrderStockAllocation[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -478,6 +782,7 @@ model OrderItem {
   variant        ProductVariant @relation(fields: [variantId], references: [id])
   review         ProductReview?
   returnRequests ReturnRequest[]
+  stockAllocations OrderStockAllocation[]
 
   @@index([orderId])
   @@index([variantId])
