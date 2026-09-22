@@ -24,6 +24,7 @@ type Variant = {
 
 type Product = {
   id: string;
+  internalCode: string;
   name: string;
   slug: string;
   status: string;
@@ -65,7 +66,7 @@ type InvoiceLine = {
   vendorProduct?: {
     id: string;
     vendorStyleCode: string;
-    product: { id: string; name: string };
+    product: { id: string; internalCode?: string; name: string };
   } | null;
   expectedVariants: ExpectedVariant[];
 };
@@ -128,7 +129,6 @@ export function AdminProcurementClient() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const [vendorForm, setVendorForm] = useState({
-    code: "",
     name: "",
     gstin: "",
     city: "",
@@ -139,7 +139,6 @@ export function AdminProcurementClient() {
     vendorId: "",
     productId: "",
     vendorStyleCode: "",
-    hidiStyleCode: "",
     vendorProductName: "",
     hsn: "",
     defaultUnitCost: "",
@@ -225,8 +224,12 @@ export function AdminProcurementClient() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message ?? "Unable to save vendor");
-      setVendorForm({ code: "", name: "", gstin: "", city: "", state: "" });
-      setNotice("Vendor added to HIDI Vendor Master.");
+      setVendorForm({ name: "", gstin: "", city: "", state: "" });
+      setNotice(
+        body?.reused
+          ? "Existing vendor reused. Vendor number " + body.code + " remains unchanged."
+          : "Vendor created with HIDI vendor number " + body.code + ".",
+      );
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save vendor");
@@ -252,7 +255,6 @@ export function AdminProcurementClient() {
           vendorId: mappingForm.vendorId,
           productId: mappingForm.productId,
           vendorStyleCode: mappingForm.vendorStyleCode.trim(),
-          hidiStyleCode: mappingForm.hidiStyleCode.trim(),
           vendorProductName: mappingForm.vendorProductName.trim(),
           hsn: mappingForm.hsn.trim(),
           defaultUnitCostPaise:
@@ -268,7 +270,6 @@ export function AdminProcurementClient() {
         vendorId: mappingForm.vendorId,
         productId: "",
         vendorStyleCode: "",
-        hidiStyleCode: "",
         vendorProductName: "",
         hsn: "",
         defaultUnitCost: "",
@@ -472,9 +473,13 @@ export function AdminProcurementClient() {
         <article className={styles.card}>
           <div className={styles.cardHeader}><div><p className={styles.eyebrow}>01</p><h2>Vendor Master</h2></div><span>{data.vendors.length} vendors</span></div>
           <form className={styles.form} onSubmit={saveVendor}>
+            <div className={styles.vendorIdentityHint}>
+              <strong>Vendor number is automatic</strong>
+              <span>HIDI checks the normalized vendor name first. Existing vendor → same number. New vendor → next number from 10001.</span>
+            </div>
             <div className={styles.two}>
-              <label><span>Vendor code *</span><input value={vendorForm.code} onChange={(e) => setVendorForm({ ...vendorForm, code: e.target.value })} placeholder="e.g. JYOTI" required /></label>
               <label><span>Vendor name *</span><input value={vendorForm.name} onChange={(e) => setVendorForm({ ...vendorForm, name: e.target.value })} placeholder="Jyoti Creation" required /></label>
+              <label><span>Vendor number</span><input value="Assigned automatically" readOnly /></label>
             </div>
             <div className={styles.three}>
               <label><span>GSTIN</span><input value={vendorForm.gstin} onChange={(e) => setVendorForm({ ...vendorForm, gstin: e.target.value })} /></label>
@@ -484,7 +489,7 @@ export function AdminProcurementClient() {
             <button type="submit" disabled={busy}>Add vendor</button>
           </form>
           <div className={styles.compactList}>
-            {data.vendors.map((vendor) => <div key={vendor.id}><strong>{vendor.name}</strong><code>{vendor.code}</code><span>{vendor.city ?? "—"}</span></div>)}
+            {data.vendors.map((vendor) => <div key={vendor.id}><strong>{vendor.name}</strong><code>Vendor #{vendor.code}</code><span>{vendor.city ?? "—"}</span></div>)}
           </div>
         </article>
 
@@ -493,11 +498,11 @@ export function AdminProcurementClient() {
           <form className={styles.form} onSubmit={saveMapping}>
             <div className={styles.two}>
               <label><span>Vendor *</span><select value={mappingForm.vendorId} onChange={(e) => setMappingForm({ ...mappingForm, vendorId: e.target.value })} required><option value="">Select vendor</option>{data.vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
-              <label><span>Existing HIDI product *</span><select value={mappingForm.productId} onChange={(e) => { setMappingForm({ ...mappingForm, productId: e.target.value }); setPackQty({}); }} required><option value="">Select product</option>{data.products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+              <label><span>Existing HIDI product *</span><select value={mappingForm.productId} onChange={(e) => { setMappingForm({ ...mappingForm, productId: e.target.value }); setPackQty({}); }} required><option value="">Select product</option>{data.products.map((p) => <option key={p.id} value={p.id}>{p.internalCode} · {p.name}</option>)}</select></label>
             </div>
             <div className={styles.four}>
               <label><span>Vendor dress code *</span><input value={mappingForm.vendorStyleCode} onChange={(e) => setMappingForm({ ...mappingForm, vendorStyleCode: e.target.value })} placeholder="JC4U 2548" required /></label>
-              <label><span>HIDI dress code</span><input value={mappingForm.hidiStyleCode} onChange={(e) => setMappingForm({ ...mappingForm, hidiStyleCode: e.target.value })} placeholder="HIDI-KR-02548" /></label>
+              <label><span>HIDI product number</span><input value={selectedProduct?.internalCode ?? "Select HIDI product"} readOnly /></label>
               <label><span>Vendor description</span><input value={mappingForm.vendorProductName} onChange={(e) => setMappingForm({ ...mappingForm, vendorProductName: e.target.value })} /></label>
               <label><span>HSN</span><input value={mappingForm.hsn} onChange={(e) => setMappingForm({ ...mappingForm, hsn: e.target.value })} /></label>
             </div>
@@ -526,7 +531,7 @@ export function AdminProcurementClient() {
               <div key={mapping.id}>
                 <div><strong>{mapping.vendor.name}</strong><code>{mapping.vendorStyleCode}</code></div>
                 <span>→</span>
-                <div><strong>{mapping.hidiStyleCode ? mapping.hidiStyleCode + " · " : ""}{mapping.product.name}</strong><small>{mapping.packPattern.map((p) => p.variant.size + "×" + p.quantity).join(" · ") || "No default pack"}</small></div>
+                <div><strong>{mapping.product.internalCode} · {mapping.product.name}</strong><small>{mapping.packPattern.map((p) => p.variant.size + "×" + p.quantity).join(" · ") || "No default pack"}</small></div>
               </div>
             ))}
           </div>
@@ -572,7 +577,7 @@ export function AdminProcurementClient() {
               {invoice.lines.map((line) => (
                 <div className={styles.invoiceMappedLine} key={line.id}>
                   <div><code>{line.vendorStyleCode || "UNMAPPED"}</code><span>{line.rawDescription}</span></div>
-                  <div><strong>{line.invoiceQuantity} pcs</strong><small>{money(line.unitCostPaise)} / pc</small></div>
+                  <div><strong>{line.invoiceQuantity} pcs</strong><small>Invoice qty locked · {money(line.unitCostPaise)} / pc</small></div>
                   <div>
                     <strong>{line.vendorProduct?.product.name ?? "Needs Product Master mapping"}</strong>
                     <small>{line.expectedVariants.map((v) => v.variant.color + " / " + v.variant.size + " ×" + v.expectedQuantity).join(" · ") || "Expected size breakup not ready"}</small>
