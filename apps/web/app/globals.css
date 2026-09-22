@@ -1377,38 +1377,38 @@ summary {
 
 
 /* ==========================================================================
-   HIDI TAUPE BROWN SITE CHROME
-   Header + announcement + footer only. Approved Option 5 direction.
-   Earthy, sophisticated taupe brown with warm ivory and HIDI gold.
+   HIDI MIDNIGHT TEAL SITE CHROME
+   Header + announcement + footer only. Approved Option 9 direction.
+   Deep premium teal with warm ivory UI and HIDI gold accents.
    ========================================================================== */
 
 :root {
-  --hidi-taupe-brown: #574435;
-  --hidi-taupe-brown-deep: #453429;
-  --hidi-taupe-brown-lift: #624d3c;
-  --hidi-taupe-ivory: #f4ecdf;
-  --hidi-taupe-muted: #d7cabc;
-  --hidi-taupe-gold: #d3a14d;
-  --hidi-taupe-gold-bright: #efc36c;
-  --hidi-taupe-line: rgba(229, 193, 126, .28);
+  --hidi-midnight-teal: #064f52;
+  --hidi-midnight-teal-deep: #033d40;
+  --hidi-midnight-teal-lift: #0a5c5f;
+  --hidi-midnight-ivory: #f3ecdf;
+  --hidi-midnight-muted: #d2c8ba;
+  --hidi-midnight-gold: #d6a44e;
+  --hidi-midnight-gold-bright: #efc16b;
+  --hidi-midnight-line: rgba(225, 188, 119, .28);
 }
 
 .announcement {
-  background: var(--hidi-taupe-brown-deep);
-  color: #eee5d8;
-  border-bottom: 1px solid rgba(226, 185, 109, .28);
+  background: var(--hidi-midnight-teal-deep);
+  color: #eee6d9;
+  border-bottom: 1px solid rgba(224, 183, 107, .28);
 }
 
 .site-header {
-  --ink: var(--hidi-taupe-ivory);
+  --ink: var(--hidi-midnight-ivory);
   position: sticky;
   background:
-    radial-gradient(circle at 94% 18%, rgba(231, 205, 160, .07), transparent 24%),
-    radial-gradient(ellipse at 12% 82%, rgba(255, 255, 255, .035), transparent 27%),
-    linear-gradient(105deg, #5b4839 0%, var(--hidi-taupe-brown) 54%, #504033 100%);
-  color: var(--hidi-taupe-ivory);
-  border-bottom: 1px solid var(--hidi-taupe-line);
-  box-shadow: 0 10px 30px rgba(37, 27, 21, .16);
+    radial-gradient(circle at 94% 18%, rgba(225, 194, 135, .08), transparent 24%),
+    radial-gradient(ellipse at 10% 82%, rgba(255, 255, 255, .028), transparent 28%),
+    linear-gradient(104deg, #07575a 0%, var(--hidi-midnight-teal) 54%, #043f42 100%);
+  color: var(--hidi-midnight-ivory);
+  border-bottom: 1px solid var(--hidi-midnight-line);
+  box-shadow: 0 10px 30px rgba(0, 31, 33, .18);
   backdrop-filter: blur(16px);
 }
 
@@ -1419,7 +1419,7 @@ summary {
 .site-header .utility-nav a,
 .site-header .utility-nav button,
 .site-header .mobile-menu {
-  color: var(--hidi-taupe-ivory);
+  color: var(--hidi-midnight-ivory);
 }
 
 .site-header .wordmark img {
@@ -1427,32 +1427,32 @@ summary {
 }
 
 .site-header .desktop-nav a::after {
-  background: var(--hidi-taupe-gold);
+  background: var(--hidi-midnight-gold);
 }
 
 .site-header .desktop-nav a:hover,
 .site-header .utility-nav a:hover,
 .site-header .utility-nav button:hover,
 .site-header .mobile-menu:hover {
-  color: var(--hidi-taupe-gold-bright);
+  color: var(--hidi-midnight-gold-bright);
   opacity: 1;
 }
 
 .site-header [class*="count"] {
-  background: #e5c78c;
-  color: #46352a;
-  box-shadow: 0 0 0 1px rgba(87, 68, 53, .52);
+  background: #e2c68d;
+  color: #033d40;
+  box-shadow: 0 0 0 1px rgba(3, 61, 64, .55);
 }
 
 .footer {
-  --ink: var(--hidi-taupe-ivory);
-  --muted: var(--hidi-taupe-muted);
+  --ink: var(--hidi-midnight-ivory);
+  --muted: var(--hidi-midnight-muted);
   background:
-    radial-gradient(circle at 8% 0%, rgba(220, 178, 104, .07), transparent 29%),
-    radial-gradient(circle at 94% 92%, rgba(255, 255, 255, .025), transparent 30%),
-    linear-gradient(120deg, #4d3b2f 0%, var(--hidi-taupe-brown) 58%, #49392e 100%);
-  color: var(--hidi-taupe-ivory);
-  border-top: 1px solid var(--hidi-taupe-line);
+    radial-gradient(circle at 8% 0%, rgba(214, 164, 78, .07), transparent 29%),
+    radial-gradient(circle at 94% 92%, rgba(255, 255, 255, .022), transparent 30%),
+    linear-gradient(120deg, #043f42 0%, var(--hidi-midnight-teal) 58%, #03383b 100%);
+  color: var(--hidi-midnight-ivory);
+  border-top: 1px solid var(--hidi-midnight-line);
 }
 
 .footer-logo {
@@ -1475,29 +1475,29 @@ summary {
 }
 
 .footer-grid a {
-  color: #efe5d8;
+  color: #eee6d9;
 }
 
 .footer-grid a:hover {
-  color: var(--hidi-taupe-gold-bright);
+  color: var(--hidi-midnight-gold-bright);
 }
 
 .footer .muted,
 .footer-small,
 .footer-bottom {
-  color: var(--hidi-taupe-muted);
+  color: var(--hidi-midnight-muted);
 }
 
 .footer .newsletter {
-  border-bottom-color: rgba(233, 202, 146, .48);
+  border-bottom-color: rgba(232, 201, 143, .48);
 }
 
 .footer .newsletter input {
-  color: var(--hidi-taupe-ivory);
+  color: var(--hidi-midnight-ivory);
 }
 
 .footer .newsletter input::placeholder {
-  color: #bbaea1;
+  color: #b8b0a5;
 }
 
 .footer .newsletter button {
@@ -1510,13 +1510,13 @@ summary {
 
 .footer .social-link {
   border-color: rgba(223, 180, 95, .32);
-  color: #efe5d8;
+  color: #eee6d9;
 }
 
 .footer .social-link:hover {
   background: rgba(223, 180, 95, .10);
   border-color: #dfb45f;
-  color: var(--hidi-taupe-gold-bright);
+  color: var(--hidi-midnight-gold-bright);
 }
 
 .footer .newsletter-status {
