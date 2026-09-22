@@ -381,6 +381,7 @@ model VendorProduct {
   vendorId          String
   productId         String
   vendorStyleCode   String
+  hidiStyleCode     String?
   vendorProductName String?
   hsn               String?
   defaultUnitCostPaise Int?
@@ -394,6 +395,7 @@ model VendorProduct {
 
   @@unique([vendorId, vendorStyleCode])
   @@index([productId])
+  @@index([hidiStyleCode])
   @@index([vendorId, active])
 }
 
