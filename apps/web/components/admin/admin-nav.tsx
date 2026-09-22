@@ -7,6 +7,7 @@ const ITEMS = [
   { label: "Orders", href: "/admin/orders" },
   { label: "Fulfilment", href: "/admin/fulfilment" },
   { label: "Products", href: "/admin/products" },
+  { label: "Procurement", href: "/admin/procurement" },
   { label: "Imports", href: "/admin/import" },
   { label: "Inventory", href: "/admin/inventory" },
   { label: "Label reprints", href: "/admin/labels" },
@@ -27,8 +28,10 @@ export function AdminNav() {
               ? pathname.startsWith("/admin/fulfilment")
               : item.href === "/admin/products"
               ? pathname.startsWith("/admin/products")
-              : item.href === "/admin/labels"
-                ? pathname.startsWith("/admin/labels")
+              : item.href === "/admin/procurement"
+                ? pathname.startsWith("/admin/procurement")
+                : item.href === "/admin/labels"
+                  ? pathname.startsWith("/admin/labels")
                 : item.href === "/admin/customers"
                   ? pathname.startsWith("/admin/customers")
                   : pathname === item.href;
