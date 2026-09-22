@@ -146,9 +146,20 @@ export function AdminStockReceiptClient() {
     const needle = search.trim().toLowerCase();
     if (!needle) return [];
     const selected = new Set(lines.map((line) => line.variantId));
-    return variants.filter((variant) => !selected.has(variant.variantId) && [variant.productName, variant.sku, variant.color, variant.size]
-      .some((value) => value.toLowerCase().includes(needle))).slice(0, 12);
-  }, [lines, search, variants]);
+    const linkedInvoice = vendorInvoices.find((invoice) => invoice.id === vendorInvoiceId);
+    const allowedProducts = linkedInvoice
+      ? new Set(linkedInvoice.lines.map((line) => line.vendorProduct?.product.id).filter(Boolean) as string[])
+      : null;
+
+    return variants
+      .filter((variant) => !selected.has(variant.variantId))
+      .filter((variant) => !allowedProducts || allowedProducts.has(variant.productId))
+      .filter((variant) =>
+        [variant.productName, variant.sku, variant.color, variant.size]
+          .some((value) => value.toLowerCase().includes(needle)),
+      )
+      .slice(0, 12);
+  }, [lines, search, variants, vendorInvoiceId, vendorInvoices]);
 
   const totals = useMemo(() => lines.reduce((result, line) => ({
     accepted: result.accepted + Number(line.acceptedQuantity || 0),
