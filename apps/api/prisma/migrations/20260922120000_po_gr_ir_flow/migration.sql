@@ -1,3 +1,6 @@
+ALTER TABLE "Product" ADD COLUMN "internalName" TEXT;
+UPDATE "Product" SET "internalName" = "name" WHERE "internalName" IS NULL;
+
 CREATE TYPE "PurchaseOrderStatus" AS ENUM (
   'DRAFT',
   'OPEN',
