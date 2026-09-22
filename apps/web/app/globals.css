@@ -1374,3 +1374,156 @@ summary {
   .collection-header h1 { font-size: clamp(2.6rem, 12vw, 3.5rem); }
   .pdp-info h1 { font-size: clamp(2.15rem, 10vw, 2.75rem); }
 }
+
+
+/* ==========================================================================
+   HIDI SAGE STONE SITE CHROME
+   Header + announcement + footer only. Inspired by the approved Sage Stone
+   direction while keeping HIDI's existing gold mark and typography.
+   ========================================================================== */
+
+:root {
+  --hidi-sage-stone: #424335;
+  --hidi-sage-stone-deep: #35372c;
+  --hidi-sage-stone-lift: #4b4d3e;
+  --hidi-shell-ivory: #f5efe4;
+  --hidi-shell-muted: #d5cdbf;
+  --hidi-shell-gold: #d4a34e;
+  --hidi-shell-gold-bright: #f0c46f;
+}
+
+.announcement {
+  background: var(--hidi-sage-stone-deep);
+  color: #eee7da;
+  border-bottom: 1px solid rgba(240, 196, 111, .30);
+}
+
+.site-header {
+  --ink: var(--hidi-shell-ivory);
+  position: sticky;
+  background:
+    radial-gradient(circle at 92% 18%, rgba(239, 220, 181, .08), transparent 23%),
+    radial-gradient(ellipse at 100% 68%, rgba(211, 179, 115, .07), transparent 27%),
+    linear-gradient(100deg, #47493b 0%, var(--hidi-sage-stone) 56%, #393b2f 100%);
+  color: var(--hidi-shell-ivory);
+  border-bottom: 1px solid rgba(225, 187, 113, .48);
+  box-shadow: 0 10px 28px rgba(28, 30, 23, .16);
+  backdrop-filter: blur(16px);
+}
+
+.site-header .header-inner,
+.site-header .desktop-nav,
+.site-header .utility-nav,
+.site-header .desktop-nav a,
+.site-header .utility-nav a,
+.site-header .utility-nav button,
+.site-header .mobile-menu {
+  color: var(--hidi-shell-ivory);
+}
+
+.site-header .wordmark img {
+  filter: none;
+}
+
+.site-header .desktop-nav a::after {
+  background: var(--hidi-shell-gold);
+}
+
+.site-header .desktop-nav a:hover,
+.site-header .utility-nav a:hover,
+.site-header .utility-nav button:hover,
+.site-header .mobile-menu:hover {
+  color: var(--hidi-shell-gold-bright);
+  opacity: 1;
+}
+
+.site-header [class*="count"] {
+  background: #efd39b;
+  color: #303226;
+  box-shadow: 0 0 0 1px rgba(66, 67, 53, .55);
+}
+
+.footer {
+  --ink: var(--hidi-shell-ivory);
+  --muted: var(--hidi-shell-muted);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(229, 197, 137, .08), transparent 28%),
+    radial-gradient(circle at 94% 92%, rgba(255, 255, 255, .035), transparent 30%),
+    linear-gradient(120deg, #3e4033 0%, var(--hidi-sage-stone) 58%, #383a2f 100%);
+  color: var(--hidi-shell-ivory);
+  border-top: 1px solid rgba(225, 187, 113, .46);
+}
+
+.footer-logo {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.footer-logo img {
+  display: block;
+  width: clamp(138px, 11vw, 184px);
+  height: auto;
+}
+
+.footer h3,
+.footer strong,
+.footer .footer-note {
+  color: #dfb762;
+}
+
+.footer-grid a {
+  color: #eee7db;
+}
+
+.footer-grid a:hover {
+  color: var(--hidi-shell-gold-bright);
+}
+
+.footer .muted,
+.footer-small,
+.footer-bottom {
+  color: var(--hidi-shell-muted);
+}
+
+.footer .newsletter {
+  border-bottom-color: rgba(232, 202, 145, .55);
+}
+
+.footer .newsletter input {
+  color: var(--hidi-shell-ivory);
+}
+
+.footer .newsletter input::placeholder {
+  color: #bdb6aa;
+}
+
+.footer .newsletter button {
+  color: #dfb762;
+}
+
+.footer-bottom {
+  border-top-color: rgba(231, 199, 138, .24);
+}
+
+.footer .social-link {
+  border-color: rgba(223, 183, 98, .36);
+  color: #eee7db;
+}
+
+.footer .social-link:hover {
+  background: rgba(223, 183, 98, .10);
+  border-color: #dfb762;
+  color: var(--hidi-shell-gold-bright);
+}
+
+.footer .newsletter-status {
+  color: #e2c88f;
+}
+
+@media (max-width: 620px) {
+  .footer-logo img {
+    width: 146px;
+  }
+}
