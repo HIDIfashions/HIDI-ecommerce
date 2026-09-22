@@ -165,6 +165,7 @@ model Product {
   id             String        @id @default(cuid())
   categoryId     String?
   name           String
+  internalCode   String        @unique
   slug           String        @unique
   shortDescription String?
   description    String?
@@ -360,6 +361,7 @@ model Vendor {
   id              String          @id @default(cuid())
   code            String          @unique
   name            String
+  normalizedName  String          @unique
   gstin           String?
   city            String?
   state           String?
