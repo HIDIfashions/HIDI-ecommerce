@@ -1377,40 +1377,39 @@ summary {
 
 
 /* ==========================================================================
-   HIDI CHAMPAGNE GOLD SITE CHROME
-   Header + announcement + footer only. Approved Option 4 direction.
-   Soft, luxurious champagne shell with warm brown UI and HIDI gold accents.
+   HIDI TAUPE BROWN SITE CHROME
+   Header + announcement + footer only. Approved Option 5 direction.
+   Earthy, sophisticated taupe brown with warm ivory and HIDI gold.
    ========================================================================== */
 
 :root {
-  --hidi-champagne: #ead8b8;
-  --hidi-champagne-light: #f6ead5;
-  --hidi-champagne-deep: #d8bd91;
-  --hidi-champagne-ink: #4a3828;
-  --hidi-champagne-muted: #786552;
-  --hidi-champagne-gold: #b88332;
-  --hidi-champagne-gold-bright: #c99845;
-  --hidi-champagne-line: rgba(129, 94, 50, .20);
+  --hidi-taupe-brown: #574435;
+  --hidi-taupe-brown-deep: #453429;
+  --hidi-taupe-brown-lift: #624d3c;
+  --hidi-taupe-ivory: #f4ecdf;
+  --hidi-taupe-muted: #d7cabc;
+  --hidi-taupe-gold: #d3a14d;
+  --hidi-taupe-gold-bright: #efc36c;
+  --hidi-taupe-line: rgba(229, 193, 126, .28);
 }
 
 .announcement {
-  background:
-    linear-gradient(90deg, #ddc79f 0%, #ead8b8 48%, #d9c092 100%);
-  color: #513d2b;
-  border-bottom: 1px solid rgba(137, 99, 47, .24);
+  background: var(--hidi-taupe-brown-deep);
+  color: #eee5d8;
+  border-bottom: 1px solid rgba(226, 185, 109, .28);
 }
 
 .site-header {
-  --ink: var(--hidi-champagne-ink);
+  --ink: var(--hidi-taupe-ivory);
   position: sticky;
   background:
-    radial-gradient(ellipse at 78% 22%, rgba(255,255,255,.52), transparent 20%),
-    radial-gradient(ellipse at 16% 75%, rgba(255,255,255,.30), transparent 27%),
-    linear-gradient(108deg, #f4e5cc 0%, #ead4ad 38%, #f7ead2 63%, #ddc397 100%);
-  color: var(--hidi-champagne-ink);
-  border-bottom: 1px solid var(--hidi-champagne-line);
-  box-shadow: 0 10px 30px rgba(94, 67, 35, .08);
-  backdrop-filter: blur(14px);
+    radial-gradient(circle at 94% 18%, rgba(231, 205, 160, .07), transparent 24%),
+    radial-gradient(ellipse at 12% 82%, rgba(255, 255, 255, .035), transparent 27%),
+    linear-gradient(105deg, #5b4839 0%, var(--hidi-taupe-brown) 54%, #504033 100%);
+  color: var(--hidi-taupe-ivory);
+  border-bottom: 1px solid var(--hidi-taupe-line);
+  box-shadow: 0 10px 30px rgba(37, 27, 21, .16);
+  backdrop-filter: blur(16px);
 }
 
 .site-header .header-inner,
@@ -1420,7 +1419,7 @@ summary {
 .site-header .utility-nav a,
 .site-header .utility-nav button,
 .site-header .mobile-menu {
-  color: var(--hidi-champagne-ink);
+  color: var(--hidi-taupe-ivory);
 }
 
 .site-header .wordmark img {
@@ -1428,32 +1427,32 @@ summary {
 }
 
 .site-header .desktop-nav a::after {
-  background: var(--hidi-champagne-gold);
+  background: var(--hidi-taupe-gold);
 }
 
 .site-header .desktop-nav a:hover,
 .site-header .utility-nav a:hover,
 .site-header .utility-nav button:hover,
 .site-header .mobile-menu:hover {
-  color: var(--hidi-champagne-gold);
+  color: var(--hidi-taupe-gold-bright);
   opacity: 1;
 }
 
 .site-header [class*="count"] {
-  background: #a8732b;
-  color: #fff9ef;
-  box-shadow: 0 0 0 1px rgba(108, 75, 35, .16);
+  background: #e5c78c;
+  color: #46352a;
+  box-shadow: 0 0 0 1px rgba(87, 68, 53, .52);
 }
 
 .footer {
-  --ink: var(--hidi-champagne-ink);
-  --muted: var(--hidi-champagne-muted);
+  --ink: var(--hidi-taupe-ivory);
+  --muted: var(--hidi-taupe-muted);
   background:
-    radial-gradient(ellipse at 18% 0%, rgba(255,255,255,.45), transparent 27%),
-    radial-gradient(ellipse at 92% 88%, rgba(183,131,50,.08), transparent 30%),
-    linear-gradient(118deg, #f5e8d1 0%, #ead5b1 50%, #e2c89e 100%);
-  color: var(--hidi-champagne-ink);
-  border-top: 1px solid var(--hidi-champagne-line);
+    radial-gradient(circle at 8% 0%, rgba(220, 178, 104, .07), transparent 29%),
+    radial-gradient(circle at 94% 92%, rgba(255, 255, 255, .025), transparent 30%),
+    linear-gradient(120deg, #4d3b2f 0%, var(--hidi-taupe-brown) 58%, #49392e 100%);
+  color: var(--hidi-taupe-ivory);
+  border-top: 1px solid var(--hidi-taupe-line);
 }
 
 .footer-logo {
@@ -1472,56 +1471,56 @@ summary {
 .footer h3,
 .footer strong,
 .footer .footer-note {
-  color: #9b6928;
+  color: #dfb45f;
 }
 
 .footer-grid a {
-  color: #4c3928;
+  color: #efe5d8;
 }
 
 .footer-grid a:hover {
-  color: var(--hidi-champagne-gold);
+  color: var(--hidi-taupe-gold-bright);
 }
 
 .footer .muted,
 .footer-small,
 .footer-bottom {
-  color: var(--hidi-champagne-muted);
+  color: var(--hidi-taupe-muted);
 }
 
 .footer .newsletter {
-  border-bottom-color: rgba(121, 86, 44, .28);
+  border-bottom-color: rgba(233, 202, 146, .48);
 }
 
 .footer .newsletter input {
-  color: var(--hidi-champagne-ink);
+  color: var(--hidi-taupe-ivory);
 }
 
 .footer .newsletter input::placeholder {
-  color: #99836c;
+  color: #bbaea1;
 }
 
 .footer .newsletter button {
-  color: #996925;
+  color: #dfb45f;
 }
 
 .footer-bottom {
-  border-top-color: rgba(121, 86, 44, .16);
+  border-top-color: rgba(230, 194, 132, .20);
 }
 
 .footer .social-link {
-  border-color: rgba(155, 105, 40, .26);
-  color: #59422d;
+  border-color: rgba(223, 180, 95, .32);
+  color: #efe5d8;
 }
 
 .footer .social-link:hover {
-  background: rgba(184, 131, 50, .10);
-  border-color: var(--hidi-champagne-gold);
-  color: var(--hidi-champagne-gold);
+  background: rgba(223, 180, 95, .10);
+  border-color: #dfb45f;
+  color: var(--hidi-taupe-gold-bright);
 }
 
 .footer .newsletter-status {
-  color: #83694e;
+  color: #e2c78f;
 }
 
 @media (max-width: 620px) {
