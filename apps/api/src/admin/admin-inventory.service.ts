@@ -225,6 +225,74 @@ export class AdminInventoryService {
   async createReceipt(input: StockReceiptInput, actor?: string) {
     const receipt = this.validateReceipt(input);
 
+    if (receipt.purchaseOrderId) {
+      const po = await this.prisma.purchaseOrder.findUnique({
+        where: { id: receipt.purchaseOrderId },
+        include: {
+          vendor: true,
+          lines: {
+            include: {
+              product: { select: { id: true } },
+              receiptLines: {
+                where: { receipt: { status: StockReceiptStatus.POSTED } },
+                select: { acceptedQuantity: true, rejectedQuantity: true },
+              },
+            },
+          },
+        },
+      });
+      if (!po) throw new NotFoundException("Linked purchase order not found");
+      if (["CANCELLED", "CLOSED"].includes(po.status)) {
+        throw new BadRequestException("Goods Receipt cannot be posted against a cancelled/closed PO");
+      }
+
+      const poLineById = new Map(po.lines.map((line) => [line.id, line]));
+      const variants = await this.prisma.productVariant.findMany({
+        where: { id: { in: receipt.lines.map((line) => line.variantId) } },
+        select: { id: true, productId: true },
+      });
+      const variantById = new Map(variants.map((variant) => [variant.id, variant]));
+      const incomingByPoLine = new Map<string, number>();
+
+      for (const line of receipt.lines) {
+        if (!line.purchaseOrderLineId) {
+          throw new BadRequestException("Every GR line linked to a PO must reference its PO item");
+        }
+        const poLine = poLineById.get(line.purchaseOrderLineId);
+        if (!poLine) throw new BadRequestException("A GR line belongs to a different purchase order");
+
+        const variant = variantById.get(line.variantId);
+        if (!variant) throw new BadRequestException("GR variant no longer exists");
+        if (variant.productId !== poLine.productId) {
+          throw new BadRequestException("GR size must belong to the HIDI material on the referenced PO item");
+        }
+
+        incomingByPoLine.set(
+          poLine.id,
+          (incomingByPoLine.get(poLine.id) ?? 0) + line.acceptedQuantity + line.rejectedQuantity,
+        );
+      }
+
+      for (const [poLineId, incoming] of incomingByPoLine) {
+        const poLine = poLineById.get(poLineId)!;
+        const alreadyReceived = poLine.receiptLines.reduce(
+          (sum, row) => sum + row.acceptedQuantity + row.rejectedQuantity,
+          0,
+        );
+        const remaining = Math.max(0, poLine.orderedQuantity - alreadyReceived);
+        if (incoming > remaining) {
+          throw new BadRequestException(
+            "GR quantity " + incoming + " exceeds remaining PO quantity " + remaining +
+            " for PO item " + poLine.vendorStyleCode,
+          );
+        }
+      }
+
+      if (receipt.supplierName.toLowerCase() !== po.vendor.name.toLowerCase()) {
+        throw new BadRequestException("GR supplier must match the PO vendor");
+      }
+    }
+
     if (receipt.vendorInvoiceId) {
       const invoice = await this.prisma.vendorInvoice.findUnique({
         where: { id: receipt.vendorInvoiceId },
@@ -307,8 +375,8 @@ export class AdminInventoryService {
         include: { lines: { orderBy: { variantId: "asc" }, include: { stockLots: true } } },
       });
       if (!receipt) throw new NotFoundException("Stock receipt not found");
-      if (!receipt.vendorInvoiceId && !receipt.invoiceNumber && !receipt.purchaseOrderNumber) {
-        throw new BadRequestException("Link a vendor invoice or add an invoice/purchase reference before posting");
+      if (!receipt.vendorInvoiceId && !receipt.purchaseOrderId && !receipt.invoiceNumber && !receipt.purchaseOrderNumber) {
+        throw new BadRequestException("Link a purchase order/vendor invoice or add a purchase reference before posting");
       }
       if (!receipt.lines.length) throw new BadRequestException("Add at least one SKU before posting");
 
