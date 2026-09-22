@@ -89,7 +89,7 @@
   height: 30mm;
   padding: 2.2mm 3mm;
   display: grid;
-  grid-template-rows: auto 1fr auto auto auto auto;
+  grid-template-rows: auto 1fr auto auto auto auto auto;
   gap: .45mm;
   overflow: hidden;
   border: 1px dashed #999;
@@ -176,3 +176,5 @@
 }
 
 .priceLine{display:flex;align-items:baseline;justify-content:center;gap:4px;white-space:nowrap}.priceLine span{font-size:8px;font-weight:800}.priceLine del{color:#555;font-size:5.5px}
+
+.lotCode{font-size:5px!important;color:#666!important;letter-spacing:.02em;}
