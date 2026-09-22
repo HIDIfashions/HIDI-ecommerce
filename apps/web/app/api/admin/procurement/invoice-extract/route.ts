@@ -17,6 +17,7 @@ function extractionSchema() {
       subtotalRupees: { anyOf: [{ type: "number" }, { type: "null" }] },
       taxRupees: { anyOf: [{ type: "number" }, { type: "null" }] },
       totalRupees: { anyOf: [{ type: "number" }, { type: "null" }] },
+      totalGarmentQuantity: { anyOf: [{ type: "integer" }, { type: "null" }] },
       lines: {
         type: "array",
         items: {
@@ -43,6 +44,7 @@ function extractionSchema() {
       "subtotalRupees",
       "taxRupees",
       "totalRupees",
+      "totalGarmentQuantity",
       "lines",
       "warnings",
     ],
@@ -86,8 +88,10 @@ export async function POST(request: NextRequest) {
     "Do not invent data. If a field is absent or ambiguous, return null and explain it in warnings.",
     "For each merchandise line extract the vendor's dress/material/style code exactly when identifiable.",
     "Extract the line TOTAL garment quantity printed on the invoice.",
+    "Also extract totalGarmentQuantity for the whole invoice when printed or safely derivable by summing clear merchandise-line quantities.",
     "Do NOT return or infer a size split. HIDI staff enters M/L/XL/XXL/etc quantities manually later.",
-    "If no total quantity is printed but explicit size-column quantities are clearly present, you may sum them to obtain the line total and add a warning saying the total was derived.",
+    "If no line total is printed but explicit size-column quantities are clearly present, you may sum them to obtain that line quantity and add a warning saying the line total was derived.",
+    "If totalGarmentQuantity is derived by summing line quantities, add a warning saying so.",
     "Ignore GST summary rows, freight, round-off and payment rows as merchandise lines.",
     "invoiceDate should be YYYY-MM-DD when confidently readable, otherwise null.",
     "All monetary values must be rupees, not paise.",
