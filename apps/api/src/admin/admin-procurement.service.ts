@@ -170,7 +170,7 @@ export class AdminProcurementService {
               },
               product: { select: { id: true, internalCode: true, internalName: true, name: true } },
               invoiceLines: { select: { invoiceQuantity: true } },
-              receiptLines: { select: { acceptedQuantity: true, rejectedQuantity: true } },
+              receiptLines: { select: { variantId: true, acceptedQuantity: true, rejectedQuantity: true } },
               variants: {
                 orderBy: { variant: { size: "asc" } },
                 include: { variant: { select: { id: true, sku: true, color: true, size: true } } },
