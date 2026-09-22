@@ -273,3 +273,35 @@ ALTER TABLE "OrderStockAllocation"
 ALTER TABLE "OrderStockAllocation"
   ADD CONSTRAINT "OrderStockAllocation_stockLotId_fkey"
   FOREIGN KEY ("stockLotId") REFERENCES "StockLot"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+-- Keep new procurement/traceability tables aligned with HIDI's server-only
+-- database access model. Browser/PostgREST roles must not access these tables.
+DO $$
+DECLARE
+  tbl text;
+BEGIN
+  FOREACH tbl IN ARRAY ARRAY[
+    'Vendor',
+    'VendorProduct',
+    'VendorPackPattern',
+    'VendorInvoice',
+    'VendorInvoiceLine',
+    'VendorInvoiceExpectedVariant',
+    'StockLot',
+    'CustomerInvoice',
+    'OrderStockAllocation'
+  ]
+  LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', tbl);
+    EXECUTE format('REVOKE ALL ON TABLE public.%I FROM PUBLIC', tbl);
+
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+      EXECUTE format('REVOKE ALL ON TABLE public.%I FROM anon', tbl);
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+      EXECUTE format('REVOKE ALL ON TABLE public.%I FROM authenticated', tbl);
+    END IF;
+  END LOOP;
+END $$;
