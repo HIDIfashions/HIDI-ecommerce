@@ -724,7 +724,8 @@ export class AdminProcurementService {
                       include: {
                         receipt: {
                           include: {
-                            vendorInvoice: { include: { vendor: true } },
+                            vendorInvoice: { include: { vendor: true, purchaseOrder: { select: { poNumber: true } } } },
+                            purchaseOrder: { select: { poNumber: true } },
                           },
                         },
                       },
@@ -771,6 +772,7 @@ export class AdminProcurementService {
             vendorCode: vendorInvoice?.vendor?.code ?? invoiceLine?.vendorProduct?.vendor?.code ?? null,
             vendorInvoiceNumber: vendorInvoice?.invoiceNumber ?? receipt.invoiceNumber,
             vendorInvoiceDate: vendorInvoice?.invoiceDate ?? null,
+            purchaseOrderNumber: vendorInvoice?.purchaseOrder?.poNumber ?? receipt.purchaseOrder?.poNumber ?? receipt.purchaseOrderNumber,
             purchaseReference: vendorInvoice?.purchaseReference ?? receipt.purchaseOrderNumber,
             vendorStyleCode: invoiceLine?.vendorStyleCode ?? invoiceLine?.vendorProduct?.vendorStyleCode ?? null,
             hidiProductCode: invoiceLine?.vendorProduct?.product?.internalCode ?? null,
