@@ -73,6 +73,15 @@ enum StockReceiptStatus {
   CANCELLED
 }
 
+enum PurchaseOrderStatus {
+  DRAFT
+  OPEN
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
 enum VendorInvoiceStatus {
   UPLOADED
   MAPPING
@@ -185,6 +194,7 @@ model Product {
   cartItems      CartItem[]
   collections    ProductCollection[]
   vendorMappings VendorProduct[]
+  purchaseOrderLines PurchaseOrderLine[]
 
   @@index([status, featuredRank])
   @@index([categoryId, status])
@@ -321,6 +331,7 @@ model StockReceipt {
   invoiceNumber       String?
   purchaseOrderNumber String?
   vendorInvoiceId     String?
+  purchaseOrderId     String?
   receivedAt          DateTime
   status              StockReceiptStatus @default(DRAFT)
   note                String?
@@ -332,10 +343,12 @@ model StockReceipt {
   updatedAt           DateTime           @updatedAt
   lines               StockReceiptLine[]
   vendorInvoice       VendorInvoice?      @relation(fields: [vendorInvoiceId], references: [id], onDelete: SetNull)
+  purchaseOrder       PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
   @@index([receivedAt])
   @@index([vendorInvoiceId, receivedAt])
+  @@index([purchaseOrderId, receivedAt])
 }
 
 model StockReceiptLine {
@@ -373,6 +386,7 @@ model Vendor {
   updatedAt       DateTime        @updatedAt
   products        VendorProduct[]
   invoices        VendorInvoice[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([name])
   @@index([active, name])
@@ -394,6 +408,7 @@ model VendorProduct {
   product           Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
   packPattern       VendorPackPattern[]
   invoiceLines      VendorInvoiceLine[]
+  purchaseOrderLines PurchaseOrderLine[]
 
   @@unique([vendorId, vendorStyleCode])
   @@index([productId])
@@ -416,12 +431,56 @@ model VendorPackPattern {
   @@index([variantId])
 }
 
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  poNumber       String              @unique
+  vendorId       String
+  orderDate      DateTime
+  expectedAt     DateTime?
+  status         PurchaseOrderStatus @default(DRAFT)
+  currency       String              @default("INR")
+  note           String?
+  createdBy      String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  vendor         Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  lines          PurchaseOrderLine[]
+  receipts       StockReceipt[]
+  invoices       VendorInvoice[]
+
+  @@index([vendorId, orderDate])
+  @@index([status, orderDate])
+}
+
+model PurchaseOrderLine {
+  id              String         @id @default(cuid())
+  purchaseOrderId String
+  lineNumber      Int
+  vendorProductId String?
+  productId       String
+  vendorStyleCode String
+  description     String?
+  orderedQuantity Int
+  unitCostPaise   Int?
+  hsn             String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  vendorProduct   VendorProduct? @relation(fields: [vendorProductId], references: [id], onDelete: SetNull)
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([purchaseOrderId, lineNumber])
+  @@index([vendorProductId])
+  @@index([productId])
+}
+
 model VendorInvoice {
   id                String              @id @default(cuid())
   vendorId          String
   invoiceNumber     String
   invoiceDate       DateTime
   purchaseReference String?
+  purchaseOrderId   String?
   originalFilename  String?
   documentUrl       String?
   rawText           String?
@@ -435,10 +494,12 @@ model VendorInvoice {
   vendor            Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   lines             VendorInvoiceLine[]
   receipts          StockReceipt[]
+  purchaseOrder     PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
 
   @@unique([vendorId, invoiceNumber])
   @@index([status, invoiceDate])
   @@index([vendorId, invoiceDate])
+  @@index([purchaseOrderId, invoiceDate])
 }
 
 model VendorInvoiceLine {
