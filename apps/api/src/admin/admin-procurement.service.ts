@@ -120,7 +120,7 @@ export class AdminProcurementService {
                 include: { variant: { select: { id: true, sku: true, color: true, size: true } } },
               },
               receiptLines: {
-                select: { acceptedQuantity: true, rejectedQuantity: true },
+                select: { variantId: true, acceptedQuantity: true, rejectedQuantity: true },
               },
             },
           },
@@ -318,6 +318,18 @@ export class AdminProcurementService {
 
           const explicit = this.validateBreakup(rawLine.explicitVariants ?? [], "Invoice size breakup", false);
           if (explicit.length) {
+            if (!mapping) {
+              allMapped = false;
+              continue;
+            }
+            const mappedProduct = await tx.vendorProduct.findUnique({
+              where: { id: mapping.id },
+              include: { product: { select: { variants: { select: { id: true } } } } },
+            });
+            const allowed = new Set(mappedProduct?.product.variants.map((variant) => variant.id) ?? []);
+            if (explicit.some((entry) => !allowed.has(entry.variantId))) {
+              throw new BadRequestException("Explicit invoice size breakup contains a variant outside the mapped HIDI product");
+            }
             this.assertBreakupTotal(explicit, quantity, "Invoice size breakup");
             await tx.vendorInvoiceExpectedVariant.createMany({
               data: explicit.map((entry) => ({
