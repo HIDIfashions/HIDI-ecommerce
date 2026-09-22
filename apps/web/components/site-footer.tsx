@@ -64,7 +64,9 @@ export function Footer() {
     <footer className="footer">
       <div className="footer-grid container">
         <div className="footer-brand">
-          <div className="wordmark footer-wordmark">HIDI</div>
+          <Link className="footer-logo" href="/" aria-label="HIDI — Wear the Feeling">
+            <img src="/brand/hidi-logo-gold-inline.svg" alt="HIDI — Wear the Feeling" />
+          </Link>
           <p className="muted">Indian wear with a calm point of view — made for work, everyday life and the moments in between.</p>
           <p className="footer-note">Wear the feeling.</p>
         </div>
