@@ -737,10 +737,14 @@ export class AdminProcurementService {
           }
         }
 
-        await tx.vendorInvoice.update({
-          where: { id: invoice.id },
-          data: { status: allMapped ? "AWAITING_STOCK" : "MAPPING" },
-        });
+        if (!allMapped) {
+          await tx.vendorInvoice.update({
+            where: { id: invoice.id },
+            data: { status: "MAPPING" },
+          });
+        } else {
+          await this.refreshInvoiceStatus(tx, invoice.id);
+        }
 
         return this.invoice(tx, invoice.id);
       });
@@ -920,6 +924,14 @@ export class AdminProcurementService {
           include: {
             expectedVariants: true,
             receiptLines: true,
+            purchaseOrderLine: {
+              include: {
+                receiptLines: {
+                  where: { receipt: { status: "POSTED" } },
+                  select: { acceptedQuantity: true, rejectedQuantity: true },
+                },
+              },
+            },
           },
         },
       },
@@ -937,14 +949,17 @@ export class AdminProcurementService {
     }
 
     const invoiced = invoice.lines.reduce((sum, line) => sum + line.invoiceQuantity, 0);
-    const received = invoice.lines.reduce(
-      (sum, line) => sum + line.receiptLines.reduce((n, row) => n + row.acceptedQuantity + row.rejectedQuantity, 0),
-      0,
-    );
-    const accepted = invoice.lines.reduce(
-      (sum, line) => sum + line.receiptLines.reduce((n, row) => n + row.acceptedQuantity, 0),
-      0,
-    );
+    const physicalForLine = (line: (typeof invoice.lines)[number]) => {
+      const direct = line.receiptLines;
+      const poReceipts = line.purchaseOrderLine?.receiptLines ?? [];
+      const source = direct.length ? direct : poReceipts;
+      return {
+        physical: source.reduce((n, row) => n + row.acceptedQuantity + row.rejectedQuantity, 0),
+        accepted: source.reduce((n, row) => n + row.acceptedQuantity, 0),
+      };
+    };
+    const received = invoice.lines.reduce((sum, line) => sum + physicalForLine(line).physical, 0);
+    const accepted = invoice.lines.reduce((sum, line) => sum + physicalForLine(line).accepted, 0);
 
     const status =
       received === 0
