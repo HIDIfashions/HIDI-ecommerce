@@ -56,6 +56,11 @@ function text(value: unknown, label: string, max = 160, required = false) {
   return result || null;
 }
 
+function vendorStyle(value: unknown, required = false) {
+  const result = text(value, "Vendor dress code", 120, required);
+  return result ? result.replace(/\s+/g, " ").toUpperCase() : null;
+}
+
 function nonNegativeInt(value: unknown, label: string, nullable = false) {
   if ((value === null || value === undefined || value === "") && nullable) return null;
   const number = Number(value);
@@ -189,7 +194,7 @@ export class AdminProcurementService {
   async saveVendorProduct(input: SaveVendorProductInput) {
     const vendorId = text(input?.vendorId, "Vendor", 80, true)!;
     const productId = text(input?.productId, "HIDI product", 80, true)!;
-    const vendorStyleCode = text(input?.vendorStyleCode, "Vendor dress code", 120, true)!;
+    const vendorStyleCode = vendorStyle(input?.vendorStyleCode, true)!;
     const pattern = this.validateBreakup(input.packPattern ?? [], "Pack pattern", false);
 
     return this.prisma.$transaction(async (tx) => {
@@ -297,7 +302,7 @@ export class AdminProcurementService {
         let allMapped = true;
         for (const rawLine of input.lines) {
           const quantity = positiveInt(rawLine.invoiceQuantity, "Invoice quantity");
-          const styleCode = text(rawLine.vendorStyleCode, "Vendor style code", 120);
+          const styleCode = vendorStyle(rawLine.vendorStyleCode);
           const mapping = styleCode
             ? await tx.vendorProduct.findUnique({
                 where: { vendorId_vendorStyleCode: { vendorId, vendorStyleCode: styleCode } },
