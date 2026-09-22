@@ -564,25 +564,36 @@ export function AdminStockReceiptClient() {
       )}
 
       <section className={styles.card}>
-        <div className={styles.sectionTitle}><span>01</span><div><h2>Delivery details</h2><p>Link the vendor invoice whenever possible. A PO / purchase reference is optional.</p></div></div>
+        <div className={styles.sectionTitle}><span>01</span><div><h2>Goods Receipt reference</h2><p>Normal GR is posted directly against a Purchase Order. Invoice-linked receiving remains available only for legacy/exception flows.</p></div></div>
         <div className={styles.invoiceSelector}>
           <label>
-            <span>Vendor invoice</span>
-            <select value={vendorInvoiceId} onChange={(event) => selectVendorInvoice(event.target.value)}>
-              <option value="">Manual receipt / legacy stock</option>
-              {vendorInvoices.map((invoice) => (
-                <option key={invoice.id} value={invoice.id}>
-                  {invoice.vendor.name} · {invoice.invoiceNumber} · {invoice.status.replaceAll("_", " ")}
+            <span>Purchase Order</span>
+            <select value={purchaseOrderId} onChange={(event) => selectPurchaseOrder(event.target.value)}>
+              <option value="">Select PO</option>
+              {purchaseOrders.map((po) => (
+                <option key={po.id} value={po.id}>
+                  {po.poNumber} · {po.vendor.name} · {po.status.replaceAll("_", " ")}
                 </option>
               ))}
             </select>
           </label>
           <small>
-            Expected variants come from explicit invoice sizes or the saved Vendor Product Master pack pattern.
+            PO size quantities are expected quantities. Warehouse edits Accepted/Rejected to the physical actuals.
           </small>
+          <label>
+            <span>Vendor invoice · legacy/exception only</span>
+            <select value={vendorInvoiceId} onChange={(event) => selectVendorInvoice(event.target.value)} disabled={Boolean(purchaseOrderId)}>
+              <option value="">Not required for PO GR</option>
+              {vendorInvoices.map((invoice) => (
+                <option key={invoice.id} value={invoice.id}>
+                  {invoice.vendor.name} · {invoice.invoiceNumber}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         <div className={styles.detailsGrid}>
-          <label><span>Supplier / manufacturer *</span><input value={supplierName} onChange={(event) => setSupplierName(event.target.value)} placeholder="Manufacturer name" readOnly={Boolean(vendorInvoiceId)} /></label>
+          <label><span>Supplier / manufacturer *</span><input value={supplierName} onChange={(event) => setSupplierName(event.target.value)} placeholder="Manufacturer name" readOnly={Boolean(vendorInvoiceId || purchaseOrderId)} /></label>
           <label><span>Invoice number</span><input value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} placeholder="INV-2026-0042" readOnly={Boolean(vendorInvoiceId)} /></label>
           <label><span>PO / purchase ref. (optional)</span><input value={purchaseOrderNumber} onChange={(event) => setPurchaseOrderNumber(event.target.value)} placeholder="Optional reference" readOnly={Boolean(vendorInvoiceId)} /></label>
           <label><span>Received date *</span><input type="date" value={receivedAt} onChange={(event) => setReceivedAt(event.target.value)} /></label>
@@ -591,8 +602,8 @@ export function AdminStockReceiptClient() {
       </section>
 
       <section className={styles.card}>
-        <div className={styles.sectionTitle}><span>02</span><div><h2>Verify invoice vs warehouse actuals</h2><p>Expected quantities are prefilled. Change Accepted/Rejected to what warehouse physically verifies.</p></div></div>
-        <BulkReceiptCsvImport disabled={busy || Boolean(photoBusy)} variants={variants} onRows={(incoming) => {
+        <div className={styles.sectionTitle}><span>02</span><div><h2>Verify PO vs warehouse actuals</h2><p>Expected size quantities come from the PO. Change Accepted/Rejected to the physical garments received.</p></div></div>
+        {!purchaseOrderId && !vendorInvoiceId && <BulkReceiptCsvImport disabled={busy || Boolean(photoBusy)} variants={variants} onRows={(incoming) => {
           const importedBySku = new Map(incoming.map((row) => [row.sku.trim().toUpperCase(), row]));
           setLines((current) => {
             const byId = new Map(current.map((line) => [line.variantId, line]));
@@ -605,8 +616,8 @@ export function AdminStockReceiptClient() {
           });
           setSearch("");
           setMessage(`${incoming.length} spreadsheet line${incoming.length === 1 ? "" : "s"} added to this receipt. Review supplier, quantities and costs before posting.`);
-        }} />
-        <CreateProductInReceipt disabled={busy || Boolean(photoBusy)} onVariants={(incoming) => {
+        }} />}
+        {!purchaseOrderId && !vendorInvoiceId && <CreateProductInReceipt disabled={busy || Boolean(photoBusy)} onVariants={(incoming) => {
           setVariants((current) => {
             const byId = new Map(current.map((variant) => [variant.variantId, variant]));
             incoming.forEach((variant) => byId.set(variant.variantId, variant));
@@ -615,7 +626,7 @@ export function AdminStockReceiptClient() {
           setLines((current) => appendNewReceiptLines(current, incoming));
           setSearch("");
           setMessage("Product SKUs added to this receipt. Enter accepted quantities and purchase costs; stock changes only when you post.");
-        }} />
+        }} />}
         <div className={styles.searchBox}>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product, SKU, colour or size" />
           {matches.length > 0 && <div className={styles.results}>{matches.map((variant) => <button type="button" key={variant.variantId} onClick={() => addLine(variant)}><span><b>{variant.productName}</b><small>{variant.sku}</small></span><em>{variant.color} · {variant.size}</em><i>{variant.onHand} on hand</i></button>)}</div>}
