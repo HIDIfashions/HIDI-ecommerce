@@ -38,6 +38,7 @@ type ExtractedLine = {
 type Extraction = {
   vendorName: string | null; vendorGstin: string | null; invoiceNumber: string | null; invoiceDate: string | null;
   subtotalRupees: number | null; taxRupees: number | null; totalRupees: number | null;
+  totalGarmentQuantity: number | null;
   lines: ExtractedLine[]; warnings: string[]; originalFilename: string;
 };
 type PoDraftLine = {
@@ -231,13 +232,27 @@ export function AdminProcurementClient() {
     ));
   }
 
-  const poReady = useMemo(() => Boolean(poVendorId) && poLines.length > 0 && poLines.every((line) => {
-    const quantity = Number(line.orderedQuantity);
-    return Boolean(line.vendorProductId && line.productId && line.vendorStyleCode.trim()) &&
-      Number.isInteger(quantity) && quantity > 0 &&
-      poSizeTotal(line) === quantity &&
-      (!line.unitCostRupees || Number(line.unitCostRupees) >= 0);
-  }), [poVendorId, poLines]);
+  const poReady = useMemo(() => {
+    if (!poVendorId || !poLines.length) return false;
+    const linesReady = poLines.every((line) => {
+      const sizeTotal = poSizeTotal(line);
+      const quantity = line.quantityLocked
+        ? Number(line.orderedQuantity)
+        : extraction
+          ? sizeTotal
+          : Number(line.orderedQuantity);
+      return Boolean(line.vendorProductId && line.productId && line.vendorStyleCode.trim()) &&
+        Number.isInteger(quantity) && quantity > 0 &&
+        sizeTotal === quantity &&
+        (!line.unitCostRupees || Number(line.unitCostRupees) >= 0);
+    });
+    if (!linesReady) return false;
+    if (extraction?.totalGarmentQuantity != null) {
+      const allSizes = poLines.reduce((sum, line) => sum + poSizeTotal(line), 0);
+      if (allSizes !== extraction.totalGarmentQuantity) return false;
+    }
+    return true;
+  }, [poVendorId, poLines, extraction]);
 
   async function createPo() {
     if (!poReady) return;
@@ -250,7 +265,11 @@ export function AdminProcurementClient() {
           lines: poLines.map((line) => ({
             vendorProductId: line.vendorProductId, productId: line.productId,
             vendorStyleCode: canonical(line.vendorStyleCode), description: line.description,
-            orderedQuantity: Number(line.orderedQuantity),
+            orderedQuantity: line.quantityLocked
+              ? Number(line.orderedQuantity)
+              : extraction
+                ? poSizeTotal(line)
+                : Number(line.orderedQuantity),
             unitCostPaise: line.unitCostRupees ? Math.round(Number(line.unitCostRupees) * 100) : null,
             hsn: line.hsn,
             variants: Object.entries(line.sizeQty)
@@ -285,12 +304,13 @@ export function AdminProcurementClient() {
         const body = await response.json().catch(() => ({}));
         if (response.ok && body.mapped) { vendorProductId = body.mapping.id; productId = body.mapping.productId; }
       }
+      const extractedQty = raw.quantity ?? (extracted.lines.length === 1 ? extracted.totalGarmentQuantity : null);
       lines.push({
         key: "po-upload-" + index + "-" + Date.now(), vendorStyleCode: style, description: raw.rawDescription,
-        hsn: raw.hsn ?? "", orderedQuantity: raw.quantity == null ? "" : String(raw.quantity),
+        hsn: raw.hsn ?? "", orderedQuantity: extractedQty == null ? "" : String(extractedQty),
         unitCostRupees: raw.unitCostRupees == null ? "" : String(raw.unitCostRupees),
         vendorProductId, productId, selectedProductId: productId ?? "", sizeQty: {},
-        quantityLocked: raw.quantity != null,
+        quantityLocked: extractedQty != null,
       });
     }
     setPoVendorId(resolvedVendor.id); setPoLines(lines);
@@ -435,6 +455,11 @@ export function AdminProcurementClient() {
           <span>PDF/JPEG/PNG is read automatically. HIDI resolves Vendor + Vendor Material, locks the document line quantity, and then asks staff only for the size split.</span>
           <label className={styles.compactUpload} aria-disabled={extracting}><input ref={fileRef} type="file" accept="application/pdf,image/jpeg,image/png" disabled={extracting} onChange={(e) => { const file=e.currentTarget.files?.[0]; if(file) void uploadInvoice(file); }} />{extracting ? "Reading document…" : "Upload document"}</label>
         </div>
+        {extraction && <div className={styles.documentQtyBanner}>
+          <span>DOCUMENT GARMENT QTY</span>
+          <strong>{extraction.totalGarmentQuantity ?? "Not readable"}</strong>
+          <small>Sum of all size quantities must match this document quantity when available.</small>
+        </div>}
 
         <div className={styles.poVendorRow}>
           <label><span>Existing vendor</span><select value={poVendorId} onChange={(e) => { setPoVendorId(e.target.value); setPoLines([blankPoLine(1)]); }}>
@@ -466,7 +491,7 @@ export function AdminProcurementClient() {
                     }} /></div>
                   </div>
                 )}
-                <label><span>{line.quantityLocked ? "Invoice quantity · locked" : "PO quantity *"}</span><input type="number" min="1" step="1" value={line.orderedQuantity} readOnly={line.quantityLocked} onChange={(e) => editPoLine(line.key, "orderedQuantity", e.target.value)} /></label>
+                <label><span>{line.quantityLocked ? "Invoice quantity · locked" : extraction ? "Quantity · derived from sizes" : "PO quantity *"}</span><input type="number" min="1" step="1" value={line.quantityLocked ? line.orderedQuantity : extraction ? String(poSizeTotal(line) || "") : line.orderedQuantity} readOnly={Boolean(line.quantityLocked || extraction)} onChange={(e) => editPoLine(line.key, "orderedQuantity", e.target.value)} /></label>
                 <label><span>Unit cost ₹</span><input type="number" min="0" step="0.01" value={line.unitCostRupees} onChange={(e) => editPoLine(line.key, "unitCostRupees", e.target.value)} /></label>
                 <label><span>Description</span><input value={line.description} onChange={(e) => editPoLine(line.key, "description", e.target.value)} /></label>
                 <label><span>HSN</span><input value={line.hsn} onChange={(e) => editPoLine(line.key, "hsn", e.target.value)} /></label>
@@ -540,7 +565,7 @@ export function AdminProcurementClient() {
               <div><span>VENDOR</span><strong>{extraction.vendorName ?? "Unreadable"}</strong></div>
               <div><span>INVOICE</span><strong>{extraction.invoiceNumber ?? "Unreadable"}</strong></div>
               <div><span>DATE</span><strong>{extraction.invoiceDate ?? "Unreadable"}</strong></div>
-              <div><span>TOTAL</span><strong>{moneyRupees(extraction.totalRupees)}</strong></div>
+              <div><span>INVOICE TOTAL</span><strong>{moneyRupees(extraction.totalRupees)}</strong></div>
             </div>
             {extraction.warnings?.length ? <div className={styles.warnings}><strong>Document review</strong>{extraction.warnings.map((warning,index)=><span key={index}>{warning}</span>)}</div> : null}
 
