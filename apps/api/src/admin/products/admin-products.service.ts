@@ -24,8 +24,8 @@ function input<T>(parse: (data: unknown) => T, data: unknown): T {
 }
 function id(value: unknown) { return input(identifier, value); }
 function fields(data: ProductFields) {
-  const { name, categoryId, shortDescription, description, fabric, care } = data;
-  return { name, categoryId, shortDescription, description, fabric, care };
+  const { name, internalName, categoryId, shortDescription, description, fabric, care } = data;
+  return { name, internalName, categoryId, shortDescription, description, fabric, care };
 }
 function versionTime(previous: Date) { return new Date(Math.max(Date.now(), previous.getTime() + 1)); }
 async function nextInternalCode(tx: DB) {
@@ -82,7 +82,7 @@ export class AdminProductsService {
     return {
       page, pageSize: 20, total,
       items: products.map(p => ({
-        id: p.id, internalCode: p.internalCode, name: p.name, slug: p.slug, status: p.status, category: p.category?.name ?? null,
+        id: p.id, internalCode: p.internalCode, internalName: p.internalName, name: p.name, slug: p.slug, status: p.status, category: p.category?.name ?? null,
         updatedAt: p.updatedAt, variantCount: p.variants.length,
         onHand: p.variants.reduce((n, v) => n + (v.inventory?.onHand ?? 0), 0),
         imageUrl: p.images[0]?.url ?? p.variants.find(v => v.images.length)?.images[0]?.url ?? null,
@@ -250,4 +250,4 @@ export class AdminProductsService {
   }
 }
 // Shape for the narrow metadata comparison used by idempotent create.
-const fieldsResult = { name: "", categoryId: null as string | null, shortDescription: null as string | null, description: null as string | null, fabric: null as string | null, care: null as string | null };
+const fieldsResult = { name: "", internalName: null as string | null, categoryId: null as string | null, shortDescription: null as string | null, description: null as string | null, fabric: null as string | null, care: null as string | null };
