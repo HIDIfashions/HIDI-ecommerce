@@ -804,6 +804,18 @@ export class AdminProcurementService {
                             purchaseOrder: { select: { poNumber: true } },
                           },
                         },
+                        purchaseOrderLine: {
+                          include: {
+                            invoiceLines: {
+                              orderBy: { createdAt: "desc" },
+                              take: 1,
+                              include: {
+                                vendorInvoice: { include: { vendor: true } },
+                                vendorProduct: { include: { vendor: true, product: true } },
+                              },
+                            },
+                          },
+                        },
                       },
                     },
                     vendorInvoiceLine: {
@@ -837,8 +849,9 @@ export class AdminProcurementService {
         sources: item.stockAllocations.map((allocation) => {
           const lot = allocation.stockLot;
           const receipt = lot.receiptLine.receipt;
-          const invoiceLine = lot.vendorInvoiceLine;
-          const vendorInvoice = receipt.vendorInvoice;
+          const poInvoiceLine = lot.receiptLine.purchaseOrderLine?.invoiceLines?.[0] ?? null;
+          const invoiceLine = lot.vendorInvoiceLine ?? poInvoiceLine;
+          const vendorInvoice = receipt.vendorInvoice ?? poInvoiceLine?.vendorInvoice ?? null;
           return {
             quantity: allocation.quantity,
             lotCode: lot.lotCode,
