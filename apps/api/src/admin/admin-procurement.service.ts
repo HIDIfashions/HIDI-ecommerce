@@ -130,7 +130,7 @@ export class AdminProcurementService {
                 select: {
                   id: true,
                   vendorStyleCode: true,
-                  product: { select: { id: true, name: true } },
+                  product: { select: { id: true, internalCode: true, name: true } },
                 },
               },
               expectedVariants: {
