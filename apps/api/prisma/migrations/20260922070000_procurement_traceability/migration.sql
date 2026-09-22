@@ -1,3 +1,32 @@
+-- Permanent internal HIDI product numbers and automatic vendor numbering.
+CREATE SEQUENCE "hidi_product_code_seq" START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE "hidi_vendor_number_seq" START WITH 10001 INCREMENT BY 1;
+
+ALTER TABLE "Product" ADD COLUMN "internalCode" TEXT;
+
+WITH numbered AS (
+  SELECT "id", row_number() OVER (ORDER BY "createdAt", "id") AS n
+  FROM "Product"
+)
+UPDATE "Product" p
+SET "internalCode" = 'HIDI-' || lpad(numbered.n::text, 6, '0')
+FROM numbered
+WHERE p."id" = numbered."id";
+
+DO $$
+DECLARE
+  max_code bigint;
+BEGIN
+  SELECT COALESCE(MAX(substring("internalCode" from '[0-9]+$')::bigint), 0)
+  INTO max_code
+  FROM "Product";
+
+  PERFORM setval('hidi_product_code_seq', GREATEST(max_code, 1), max_code > 0);
+END $$;
+
+ALTER TABLE "Product" ALTER COLUMN "internalCode" SET NOT NULL;
+CREATE UNIQUE INDEX "Product_internalCode_key" ON "Product"("internalCode");
+
 -- Procurement, repeat-order product mapping, lot traceability, and customer invoice lineage
 
 CREATE TYPE "VendorInvoiceStatus" AS ENUM (
@@ -26,6 +55,7 @@ CREATE TABLE "Vendor" (
   "id" TEXT NOT NULL,
   "code" TEXT NOT NULL,
   "name" TEXT NOT NULL,
+  "normalizedName" TEXT NOT NULL,
   "gstin" TEXT,
   "city" TEXT,
   "state" TEXT,
@@ -39,6 +69,7 @@ CREATE TABLE "Vendor" (
 );
 
 CREATE UNIQUE INDEX "Vendor_code_key" ON "Vendor"("code");
+CREATE UNIQUE INDEX "Vendor_normalizedName_key" ON "Vendor"("normalizedName");
 CREATE INDEX "Vendor_name_idx" ON "Vendor"("name");
 CREATE INDEX "Vendor_active_name_idx" ON "Vendor"("active", "name");
 
