@@ -167,6 +167,15 @@ function skuPart(value: string) {
   return value.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+async function nextInternalCode() {
+  const rows = await prisma.$queryRaw<Array<{ value: bigint }>>`
+    SELECT nextval('hidi_product_code_seq') AS value
+  `;
+  const value = Number(rows[0]?.value ?? 0);
+  if (!Number.isSafeInteger(value) || value < 1) throw new Error("Unable to allocate HIDI product number");
+  return "HIDI-" + String(value).padStart(6, "0");
+}
+
 async function main() {
   const category = await prisma.category.upsert({
     where: { slug: "ethnic-wear" },
@@ -206,6 +215,12 @@ async function main() {
   for (let index = 0; index < products.length; index++) {
     const item = products[index];
 
+    const existingProduct = await prisma.product.findUnique({
+      where: { slug: item.slug },
+      select: { internalCode: true },
+    });
+    const internalCode = existingProduct?.internalCode ?? await nextInternalCode();
+
     const product = await prisma.product.upsert({
       where: { slug: item.slug },
       update: {
@@ -221,6 +236,7 @@ async function main() {
         seoDescription: item.shortDescription,
       },
       create: {
+        internalCode,
         name: item.name,
         slug: item.slug,
         categoryId: category.id,
