@@ -349,10 +349,14 @@ export function AdminProcurementClient() {
     setIrLines((current) => current.map((line) => line.key === lineKey ? { ...line, sizeQty: { ...line.sizeQty, [variantId]: value } } : line));
   }
 
-  const irReady = useMemo(() => Boolean(activePo && extraction) && irLines.length > 0 && irLines.every((line) =>
-    Boolean(line.poLineId && line.vendorProductId && line.productId) &&
-    Number.isInteger(line.quantity) && Number(line.quantity) > 0
-  ), [activePo, extraction, irLines]);
+  const irReady = useMemo(() =>
+    Boolean(activePo && extraction && (activePo.receivedQuantity ?? 0) > 0) &&
+    irLines.length > 0 &&
+    irLines.every((line) =>
+      Boolean(line.poLineId && line.vendorProductId && line.productId) &&
+      Number.isInteger(line.quantity) && Number(line.quantity) > 0
+    ),
+  [activePo, extraction, irLines]);
 
   async function runTrace(event: FormEvent) {
     event.preventDefault();
@@ -509,50 +513,77 @@ export function AdminProcurementClient() {
       </section>
 
       <section className={styles.card}>
-        <div className={styles.cardTitle}><div><p className={styles.eyebrow}>STEP 02</p><h2>Invoice Receipt (IR)</h2></div><span>Invoice quantity is read-only</span></div>
+        <div className={styles.cardTitle}><div><p className={styles.eyebrow}>STEP 02</p><h2>Goods Receipt (GR)</h2></div><span>Receive directly against PO</span></div>
         <div className={styles.irPoSelect}>
           <label><span>Purchase Order *</span><select value={selectedPoId} onChange={(e) => { setSelectedPoId(e.target.value); setCreatedPo(null); setExtraction(null); setIrLines([]); setIr(null); }}>
             <option value="">Select open PO</option>
             {data.purchaseOrders.filter((item) => !["CANCELLED","CLOSED"].includes(item.status)).map((item) => <option key={item.id} value={item.id}>{item.poNumber} · #{item.vendor.code} {item.vendor.name}</option>)}
           </select></label>
-          {activePo && <div className={styles.poSummary}><strong>{activePo.poNumber}</strong><span>Vendor #{activePo.vendor.code} · {activePo.vendor.name}</span></div>}
+          {activePo && <div className={styles.poSummary}><strong>{activePo.poNumber}</strong><span>Vendor #{activePo.vendor.code} · {activePo.vendor.name} · Ordered {activePo.orderedQuantity ?? activePo.lines.reduce((s,l)=>s+l.orderedQuantity,0)} · GR {activePo.receivedQuantity ?? 0}</span></div>}
         </div>
 
-        {activePo && !extraction && <label className={styles.uploadZone} aria-disabled={extracting}><strong>{extracting ? "Reading invoice…" : "Upload invoice for IR"}</strong><span>PDF · JPEG · PNG. HIDI cross-checks vendor/material and locks the invoice line quantity.</span><small>Staff enters only size quantities after extraction.</small><input ref={fileRef} type="file" accept="application/pdf,image/jpeg,image/png" disabled={extracting} onChange={(e) => { const file=e.currentTarget.files?.[0]; if(file) void uploadInvoice(file); }} /></label>}
+        {!activePo ? <div className={styles.empty}>Select or create a Purchase Order first.</div> :
+          <div className={styles.grReady}>
+            <div>
+              <strong>{activePo.poNumber} is ready for Goods Receipt</strong>
+              <span>Warehouse receives physical size quantities directly against the PO. Accepted stock creates GR lots and garment barcodes; no IR is required before GR.</span>
+            </div>
+            <Link href={"/admin/inventory/receive?po="+encodeURIComponent(activePo.id)}>Open Goods Receipt →</Link>
+          </div>}
+      </section>
 
-        {activePo && extraction && <>
-          <div className={styles.documentSummary}>
-            <div><span>FILE</span><strong>{extraction.originalFilename}</strong></div><div><span>VENDOR</span><strong>{extraction.vendorName ?? "Unreadable"}</strong></div>
-            <div><span>INVOICE</span><strong>{extraction.invoiceNumber ?? "Unreadable"}</strong></div><div><span>DATE</span><strong>{extraction.invoiceDate ?? "Unreadable"}</strong></div>
-            <div><span>TOTAL</span><strong>{moneyRupees(extraction.totalRupees)}</strong></div>
-          </div>
-          {extraction.warnings?.length ? <div className={styles.warnings}><strong>Document review</strong>{extraction.warnings.map((warning,index)=><span key={index}>{warning}</span>)}</div> : null}
-          <div className={styles.materialLines}>
-            {irLines.map((line,index)=>{
-              const product=productForIr(line); const total=irSizeTotal(line); const qty=line.quantity; const variants=product?uniqueSizeVariants(product):[];
-              const poMatch=Boolean(line.poLineId && product);
-              return <article className={styles.materialLine} key={line.key}>
-                <header><div><span>IR ITEM {String(index+1).padStart(2,"0")}</span><strong>{line.rawDescription}</strong></div><div className={styles.fixedQty}><span>INVOICE QTY · LOCKED</span><strong>{qty ?? "?"}</strong></div></header>
-                {!poMatch ? <div className={styles.blockedLine}><strong>Not found in selected PO</strong><span>Vendor material {line.vendorStyleCodeDraft || "unreadable"} must exist on the PO before IR can be posted.</span></div> :
-                <div className={styles.sizeEntry}><div className={styles.sizeHeader}><div><strong>{product!.internalCode} · {product!.internalName || product!.name}</strong><span>Enter only the size quantities.</span></div><b data-match={qty!=null&&total===qty}>{total} / {qty ?? "?"}</b></div>
-                  <div className={styles.sizeGrid}>{variants.map((variant)=><label key={variant.id}><span>SIZE {variant.size}</span><input type="number" min="0" step="1" value={line.sizeQty[variant.id]??""} onChange={(e)=>setIrSizeQty(line.key,variant.id,e.target.value)} placeholder="0" /></label>)}</div>
-                  {qty!=null&&total!==qty&&<div className={styles.qtyMismatch}>Size total must equal invoice quantity {qty}. Difference: {qty-total}.</div>}
-                </div>}
-              </article>;
-            })}
-          </div>
-          <div className={styles.irAction}><button type="button" disabled={busy||!irReady} onClick={()=>void postIr()}>{busy?"Posting…":"Post Invoice Receipt"}</button></div>
+      <section className={styles.card}>
+        <div className={styles.cardTitle}><div><p className={styles.eyebrow}>STEP 03</p><h2>Invoice Receipt (IR)</h2></div><span>Three-way match · PO ↔ GR ↔ Invoice</span></div>
+
+        {!activePo ? <div className={styles.empty}>Select the PO in Goods Receipt first.</div> :
+        (activePo.receivedQuantity ?? 0) <= 0 ? <div className={styles.empty}>Post Goods Receipt first. IR becomes available after GR has received quantity.</div> : <>
+          {!extraction && <label className={styles.uploadZone} aria-disabled={extracting}>
+            <strong>{extracting ? "Reading invoice…" : "Upload vendor invoice for IR"}</strong>
+            <span>PDF · JPEG · PNG. HIDI reads vendor, vendor material code, invoice quantity and value, then matches them against this PO and posted GR.</span>
+            <small>No size quantities are re-entered at IR; the PO/GR size schedule is reused.</small>
+            <input ref={fileRef} type="file" accept="application/pdf,image/jpeg,image/png" disabled={extracting} onChange={(e) => { const file=e.currentTarget.files?.[0]; if(file) void uploadInvoice(file); }} />
+          </label>}
+
+          {extraction && <>
+            <div className={styles.documentSummary}>
+              <div><span>FILE</span><strong>{extraction.originalFilename}</strong></div>
+              <div><span>VENDOR</span><strong>{extraction.vendorName ?? "Unreadable"}</strong></div>
+              <div><span>INVOICE</span><strong>{extraction.invoiceNumber ?? "Unreadable"}</strong></div>
+              <div><span>DATE</span><strong>{extraction.invoiceDate ?? "Unreadable"}</strong></div>
+              <div><span>TOTAL</span><strong>{moneyRupees(extraction.totalRupees)}</strong></div>
+            </div>
+            {extraction.warnings?.length ? <div className={styles.warnings}><strong>Document review</strong>{extraction.warnings.map((warning,index)=><span key={index}>{warning}</span>)}</div> : null}
+
+            <div className={styles.materialLines}>
+              {irLines.map((line,index)=>{
+                const product=productForIr(line);
+                const poLine=activePo.lines.find((row)=>row.id===line.poLineId) ?? null;
+                const qty=line.quantity;
+                const poQty=poLine?.orderedQuantity ?? null;
+                const matches=Boolean(poLine && qty != null && qty <= poLine.orderedQuantity);
+                return <article className={styles.materialLine} key={line.key}>
+                  <header>
+                    <div><span>IR ITEM {String(index+1).padStart(2,"0")}</span><strong>{line.rawDescription}</strong></div>
+                    <div className={styles.fixedQty}><span>INVOICE QTY · LOCKED</span><strong>{qty ?? "?"}</strong></div>
+                  </header>
+                  {!poLine || !product ? <div className={styles.blockedLine}><strong>Not found in selected PO</strong><span>Vendor material {line.vendorStyleCodeDraft || "unreadable"} must exist on the PO before IR can be posted.</span></div> :
+                  <div className={styles.irMatch}>
+                    <div><span>HIDI MATERIAL</span><strong>{product.internalCode} · {product.internalName || product.name}</strong></div>
+                    <div><span>PO QTY</span><strong>{poQty}</strong></div>
+                    <div><span>GR QTY</span><strong>{activePo.receivedQuantity ?? 0}</strong></div>
+                    <div><span>INVOICE QTY</span><strong>{qty ?? "?"}</strong></div>
+                    <b data-match={matches}>{matches ? "MATCH / WITHIN PO" : "REVIEW REQUIRED"}</b>
+                  </div>}
+                </article>;
+              })}
+            </div>
+            <div className={styles.irAction}><button type="button" disabled={busy||!irReady} onClick={()=>void postIr()}>{busy?"Posting…":"Post Invoice Receipt"}</button></div>
+          </>}
         </>}
       </section>
 
       <section className={styles.card}>
-        <div className={styles.cardTitle}><div><p className={styles.eyebrow}>STEP 03</p><h2>Goods Receipt (GR)</h2></div><span>Physical warehouse actuals</span></div>
-        {!ir ? <div className={styles.empty}>Post IR first. GR will then open against the same PO and invoice lines.</div> :
-          <div className={styles.grReady}><div><strong>IR {ir.invoiceNumber} is ready for GR</strong><span>Warehouse verifies actual accepted/rejected size quantities. Posted GR creates stock lots and garment barcodes.</span></div><Link href={"/admin/inventory/receive?invoice="+encodeURIComponent(ir.id)}>Open Goods Receipt →</Link></div>}
-      </section>
-
-      <section className={styles.card}>
-        <div className={styles.cardTitle}><div><p className={styles.eyebrow}>SOURCE-TO-CUSTOMER TRACE</p><h2>PO → IR → GR → Customer Invoice</h2></div><span>Audit trail</span></div>
+        <div className={styles.cardTitle}><div><p className={styles.eyebrow}>SOURCE-TO-CUSTOMER TRACE</p><h2>PO → GR → IR → Customer Invoice</h2></div><span>Audit trail</span></div>
         <form className={styles.traceForm} onSubmit={runTrace}>
           <input value={traceOrder} onChange={(e) => setTraceOrder(e.target.value)} placeholder="Enter HIDI customer order number" />
           <button type="submit" disabled={traceBusy}>{traceBusy ? "Tracing…" : "Trace order"}</button>
