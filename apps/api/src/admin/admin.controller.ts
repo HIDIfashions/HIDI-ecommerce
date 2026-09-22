@@ -74,6 +74,26 @@ export class AdminController {
     return this.procurement.saveVendorProduct(body ?? {});
   }
 
+  @Get("procurement/material")
+  resolveProcurementMaterial(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Query("vendorId") vendorId: string,
+    @Query("vendorStyleCode") vendorStyleCode: string,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.procurement.resolveMaterial(vendorId, vendorStyleCode);
+  }
+
+  @Post("procurement/purchase-orders")
+  createPurchaseOrder(
+    @Headers("x-admin-key") adminKey: string | undefined,
+    @Headers("x-admin-name") adminName: string | undefined,
+    @Body() body: any,
+  ) {
+    this.requireAdmin(adminKey);
+    return this.procurement.createPurchaseOrder(body ?? {}, adminName);
+  }
+
   @Post("procurement/invoices")
   createVendorInvoice(
     @Headers("x-admin-key") adminKey: string | undefined,
