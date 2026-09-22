@@ -57,6 +57,30 @@ type ProcurementInvoice = {
   }>;
 };
 
+type ProcurementPo = {
+  id: string;
+  poNumber: string;
+  status: string;
+  vendor: { id: string; name: string };
+  lines: Array<{
+    id: string;
+    productId: string;
+    vendorStyleCode: string;
+    orderedQuantity: number;
+    unitCostPaise?: number | null;
+    variants?: Array<{
+      variantId: string;
+      orderedQuantity: number;
+      variant: { id: string; sku: string; color: string; size: string };
+    }>;
+    receiptLines?: Array<{
+      variantId: string;
+      acceptedQuantity: number;
+      rejectedQuantity: number;
+    }>;
+  }>;
+};
+
 type Receipt = {
   id: string;
   receiptNumber: string;
@@ -81,9 +105,11 @@ export function AdminStockReceiptClient() {
   const [variants, setVariants] = useState<Variant[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [vendorInvoices, setVendorInvoices] = useState<ProcurementInvoice[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<ProcurementPo[]>([]);
   const [vendorInvoiceId, setVendorInvoiceId] = useState("");
   const [purchaseOrderId, setPurchaseOrderId] = useState("");
   const queuedInvoiceRef = useRef<string | null>(null);
+  const queuedPoRef = useRef<string | null>(null);
   const [lines, setLines] = useState<ReceiptLine[]>([]);
   const [search, setSearch] = useState("");
   const [supplierName, setSupplierName] = useState("");
@@ -131,6 +157,11 @@ export function AdminStockReceiptClient() {
           ["AWAITING_STOCK", "PARTIALLY_RECEIVED", "RECEIVED"].includes(invoice.status),
         ),
       );
+      setPurchaseOrders(
+        (procurementBody.purchaseOrders ?? []).filter((po: ProcurementPo) =>
+          !["CANCELLED", "CLOSED"].includes(po.status),
+        ),
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load stock receiving");
     } finally {
@@ -139,6 +170,15 @@ export function AdminStockReceiptClient() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !purchaseOrders.length || purchaseOrderId) return;
+    const queued = new URLSearchParams(window.location.search).get("po")?.trim();
+    if (!queued || queuedPoRef.current === queued) return;
+    if (!purchaseOrders.some((po) => po.id === queued)) return;
+    queuedPoRef.current = queued;
+    selectPurchaseOrder(queued);
+  }, [purchaseOrders, purchaseOrderId]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !vendorInvoices.length || vendorInvoiceId) return;
@@ -161,9 +201,12 @@ export function AdminStockReceiptClient() {
     if (!needle) return [];
     const selected = new Set(lines.map((line) => line.variantId));
     const linkedInvoice = vendorInvoices.find((invoice) => invoice.id === vendorInvoiceId);
+    const linkedPo = purchaseOrders.find((po) => po.id === purchaseOrderId);
     const allowedProducts = linkedInvoice
       ? new Set(linkedInvoice.lines.map((line) => line.vendorProduct?.product.id).filter(Boolean) as string[])
-      : null;
+      : linkedPo
+        ? new Set(linkedPo.lines.map((line) => line.productId))
+        : null;
 
     return variants
       .filter((variant) => !selected.has(variant.variantId))
@@ -173,7 +216,7 @@ export function AdminStockReceiptClient() {
           .some((value) => value.toLowerCase().includes(needle)),
       )
       .slice(0, 12);
-  }, [lines, search, variants, vendorInvoiceId, vendorInvoices]);
+  }, [lines, search, variants, vendorInvoiceId, vendorInvoices, purchaseOrderId, purchaseOrders]);
 
   const totals = useMemo(() => lines.reduce((result, line) => ({
     accepted: result.accepted + Number(line.acceptedQuantity || 0),
@@ -209,12 +252,77 @@ export function AdminStockReceiptClient() {
     setVariants([]);
     setReceipts([]);
     setVendorInvoices([]);
+    setPurchaseOrders([]);
     setVendorInvoiceId("");
     setPurchaseOrderId("");
   }
 
+  function selectPurchaseOrder(nextId: string) {
+    setPurchaseOrderId(nextId);
+    setVendorInvoiceId("");
+    setError(null);
+    setMessage(null);
+    setPostedReceipt(null);
+
+    if (!nextId) {
+      setSupplierName("");
+      setInvoiceNumber("");
+      setPurchaseOrderNumber("");
+      setLines([]);
+      return;
+    }
+
+    const po = purchaseOrders.find((candidate) => candidate.id === nextId);
+    if (!po) return;
+
+    setSupplierName(po.vendor.name);
+    setInvoiceNumber("");
+    setPurchaseOrderNumber(po.poNumber);
+
+    const inventoryById = new Map(variants.map((variant) => [variant.variantId, variant]));
+    const prepared: ReceiptLine[] = [];
+
+    for (const poLine of po.lines) {
+      for (const expected of poLine.variants ?? []) {
+        const variant = inventoryById.get(expected.variantId);
+        if (!variant) continue;
+        const previouslyHandled = (poLine.receiptLines ?? [])
+          .filter((row) => row.variantId === expected.variantId)
+          .reduce((sum, row) => sum + row.acceptedQuantity + row.rejectedQuantity, 0);
+        const outstanding = Math.max(0, expected.orderedQuantity - previouslyHandled);
+        if (outstanding === 0) continue;
+
+        prepared.push({
+          ...variant,
+          vendorInvoiceLineId: null,
+          purchaseOrderLineId: poLine.id,
+          expectedQuantity: outstanding,
+          acceptedQuantity: String(outstanding),
+          rejectedQuantity: "0",
+          unitCostRupees:
+            poLine.unitCostPaise === null || poLine.unitCostPaise === undefined
+              ? ""
+              : String(poLine.unitCostPaise / 100),
+        });
+      }
+    }
+
+    if (!prepared.length) {
+      setError("This PO has no outstanding size quantities to receive.");
+      setLines([]);
+      return;
+    }
+
+    setLines(prepared);
+    setMessage(
+      "PO " + po.poNumber +
+      " loaded. Expected size quantities are shown; edit Accepted/Rejected to the physical warehouse actuals before posting GR.",
+    );
+  }
+
   function selectVendorInvoice(nextId: string) {
     setVendorInvoiceId(nextId);
+    setPurchaseOrderId("");
     setError(null);
     setMessage(null);
     setPostedReceipt(null);
@@ -281,20 +389,23 @@ export function AdminStockReceiptClient() {
   function addLine(variant: Variant) {
     const invoice = vendorInvoices.find((candidate) => candidate.id === vendorInvoiceId);
     const sourceLine = invoice?.lines.find((line) => line.vendorProduct?.product.id === variant.productId) ?? null;
+    const po = purchaseOrders.find((candidate) => candidate.id === purchaseOrderId);
+    const poLine = po?.lines.find((line) => line.productId === variant.productId) ?? null;
+    const sourceCost = sourceLine?.unitCostPaise ?? poLine?.unitCostPaise ?? null;
 
     setLines((current) => [
       ...current,
       {
         ...variant,
         vendorInvoiceLineId: sourceLine?.id ?? null,
-        purchaseOrderLineId: sourceLine?.purchaseOrderLineId ?? null,
+        purchaseOrderLineId: sourceLine?.purchaseOrderLineId ?? poLine?.id ?? null,
         expectedQuantity: 0,
         acceptedQuantity: "",
         rejectedQuantity: "0",
         unitCostRupees:
-          sourceLine?.unitCostPaise === null || sourceLine?.unitCostPaise === undefined
+          sourceCost === null || sourceCost === undefined
             ? ""
-            : String(sourceLine.unitCostPaise / 100),
+            : String(sourceCost / 100),
       },
     ]);
     setSearch("");
