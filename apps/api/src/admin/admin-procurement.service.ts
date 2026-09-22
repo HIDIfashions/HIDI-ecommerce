@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import type { Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -24,11 +25,28 @@ type SaveVendorProductInput = {
   packPattern?: VariantBreakupInput[];
 };
 
+type CreatePurchaseOrderInput = {
+  vendorId?: string;
+  orderDate?: string;
+  expectedAt?: string;
+  note?: string;
+  lines?: Array<{
+    vendorProductId?: string;
+    productId?: string;
+    vendorStyleCode?: string;
+    description?: string;
+    orderedQuantity?: number;
+    unitCostPaise?: number | null;
+    hsn?: string;
+  }>;
+};
+
 type CreateInvoiceInput = {
   vendorId?: string;
   invoiceNumber?: string;
   invoiceDate?: string;
   purchaseReference?: string;
+  purchaseOrderId?: string;
   originalFilename?: string;
   documentUrl?: string;
   rawText?: string;
@@ -43,7 +61,9 @@ type CreateInvoiceInput = {
     invoiceQuantity?: number;
     unitCostPaise?: number | null;
     amountPaise?: number | null;
+    purchaseOrderLineId?: string;
     explicitVariants?: VariantBreakupInput[];
+    manualVariants?: VariantBreakupInput[];
   }>;
 };
 
@@ -95,7 +115,7 @@ export class AdminProcurementService {
   constructor(private readonly prisma: PrismaService) {}
 
   async dashboard() {
-    const [vendors, vendorProducts, invoices, products] = await Promise.all([
+    const [vendors, vendorProducts, purchaseOrders, invoices, products] = await Promise.all([
       this.prisma.vendor.findMany({
         orderBy: [{ active: "desc" }, { name: "asc" }],
       }),
@@ -122,6 +142,28 @@ export class AdminProcurementService {
           },
         },
         orderBy: [{ vendor: { name: "asc" } }, { vendorStyleCode: "asc" }],
+      }),
+      this.prisma.purchaseOrder.findMany({
+        take: 100,
+        orderBy: [{ orderDate: "desc" }, { createdAt: "desc" }],
+        include: {
+          vendor: { select: { id: true, code: true, name: true } },
+          lines: {
+            orderBy: { lineNumber: "asc" },
+            include: {
+              vendorProduct: {
+                select: {
+                  id: true,
+                  vendorStyleCode: true,
+                  product: { select: { id: true, internalCode: true, name: true } },
+                },
+              },
+              product: { select: { id: true, internalCode: true, name: true } },
+              invoiceLines: { select: { invoiceQuantity: true } },
+              receiptLines: { select: { acceptedQuantity: true, rejectedQuantity: true } },
+            },
+          },
+        },
       }),
       this.prisma.vendorInvoice.findMany({
         take: 100,
@@ -171,6 +213,18 @@ export class AdminProcurementService {
     return {
       vendors,
       vendorProducts,
+      purchaseOrders: purchaseOrders.map((po) => ({
+        ...po,
+        orderedQuantity: po.lines.reduce((sum, line) => sum + line.orderedQuantity, 0),
+        invoicedQuantity: po.lines.reduce(
+          (sum, line) => sum + line.invoiceLines.reduce((n, row) => n + row.invoiceQuantity, 0),
+          0,
+        ),
+        receivedQuantity: po.lines.reduce(
+          (sum, line) => sum + line.receiptLines.reduce((n, row) => n + row.acceptedQuantity, 0),
+          0,
+        ),
+      })),
       products,
       invoices: invoices.map((invoice) => ({
         ...invoice,
@@ -312,6 +366,101 @@ export class AdminProcurementService {
     });
   }
 
+  async resolveMaterial(vendorIdValue: string, vendorStyleValue: string) {
+    const vendorId = text(vendorIdValue, "Vendor", 80, true)!;
+    const vendorStyleCode = vendorStyle(vendorStyleValue, true)!;
+    const vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId }, select: { id: true, code: true, name: true } });
+    if (!vendor) throw new NotFoundException("Vendor not found");
+
+    const mapping = await this.prisma.vendorProduct.findUnique({
+      where: { vendorId_vendorStyleCode: { vendorId, vendorStyleCode } },
+      include: {
+        product: {
+          select: {
+            id: true,
+            internalCode: true,
+            name: true,
+            slug: true,
+            variants: {
+              where: { active: true },
+              orderBy: [{ color: "asc" }, { size: "asc" }],
+              select: { id: true, sku: true, color: true, size: true, active: true },
+            },
+          },
+        },
+      },
+    });
+
+    return { vendor, vendorStyleCode, mapped: Boolean(mapping), mapping };
+  }
+
+  async createPurchaseOrder(input: CreatePurchaseOrderInput, actor?: string) {
+    const vendorId = text(input?.vendorId, "Vendor", 80, true)!;
+    const orderDate = new Date(String(input?.orderDate ?? ""));
+    if (Number.isNaN(orderDate.getTime())) throw new BadRequestException("PO date is invalid");
+    const expectedAt = input?.expectedAt ? new Date(String(input.expectedAt)) : null;
+    if (expectedAt && Number.isNaN(expectedAt.getTime())) throw new BadRequestException("Expected delivery date is invalid");
+    if (!Array.isArray(input?.lines) || input.lines.length === 0) throw new BadRequestException("Add at least one PO material");
+    if (input.lines.length > 500) throw new BadRequestException("Purchase order can contain at most 500 lines");
+
+    return this.prisma.$transaction(async (tx) => {
+      const vendor = await tx.vendor.findUnique({ where: { id: vendorId }, select: { id: true } });
+      if (!vendor) throw new NotFoundException("Vendor not found");
+
+      const normalizedLines = [];
+      for (let index = 0; index < input.lines!.length; index += 1) {
+        const raw = input.lines![index];
+        const productId = text(raw.productId, "HIDI material", 80, true)!;
+        const style = vendorStyle(raw.vendorStyleCode, true)!;
+        const orderedQuantity = positiveInt(raw.orderedQuantity, "PO quantity");
+        const mapping = await tx.vendorProduct.findUnique({
+          where: { vendorId_vendorStyleCode: { vendorId, vendorStyleCode: style } },
+          select: { id: true, productId: true },
+        });
+        if (mapping && mapping.productId !== productId) {
+          throw new ConflictException("Vendor material " + style + " is already mapped to another HIDI material");
+        }
+        const product = await tx.product.findUnique({ where: { id: productId }, select: { id: true } });
+        if (!product) throw new NotFoundException("HIDI material not found");
+        normalizedLines.push({
+          lineNumber: index + 10,
+          vendorProductId: mapping?.id ?? text(raw.vendorProductId, "Vendor material mapping", 80),
+          productId,
+          vendorStyleCode: style,
+          description: text(raw.description, "PO line description", 500),
+          orderedQuantity,
+          unitCostPaise: nonNegativeInt(raw.unitCostPaise, "PO unit cost", true),
+          hsn: text(raw.hsn, "HSN", 30),
+        });
+      }
+
+      const day = orderDate.toISOString().slice(0, 10).replaceAll("-", "");
+      const poNumber = "HIDI-PO-" + day + "-" + randomUUID().slice(0, 6).toUpperCase();
+      return tx.purchaseOrder.create({
+        data: {
+          poNumber,
+          vendorId,
+          orderDate,
+          expectedAt,
+          status: "OPEN",
+          note: text(input.note, "PO note", 2000),
+          createdBy: actor?.trim() || "HIDI Admin",
+          lines: { createMany: { data: normalizedLines } },
+        },
+        include: {
+          vendor: true,
+          lines: {
+            orderBy: { lineNumber: "asc" },
+            include: {
+              product: { select: { id: true, internalCode: true, name: true } },
+              vendorProduct: true,
+            },
+          },
+        },
+      });
+    });
+  }
+
   async createInvoice(input: CreateInvoiceInput) {
     const vendorId = text(input?.vendorId, "Vendor", 80, true)!;
     const invoiceNumber = text(input?.invoiceNumber, "Invoice number", 120, true)!;
@@ -328,12 +477,24 @@ export class AdminProcurementService {
         const vendor = await tx.vendor.findUnique({ where: { id: vendorId }, select: { id: true } });
         if (!vendor) throw new NotFoundException("Vendor not found");
 
+        const purchaseOrderId = text(input.purchaseOrderId, "Purchase order", 80);
+        const purchaseOrder = purchaseOrderId
+          ? await tx.purchaseOrder.findFirst({
+              where: { id: purchaseOrderId, vendorId, status: { not: "CANCELLED" } },
+              include: { lines: { select: { id: true, vendorStyleCode: true, productId: true } } },
+            })
+          : null;
+        if (purchaseOrderId && !purchaseOrder) {
+          throw new BadRequestException("Purchase order does not belong to this vendor or is cancelled");
+        }
+
         const invoice = await tx.vendorInvoice.create({
           data: {
             vendorId,
             invoiceNumber,
             invoiceDate,
             purchaseReference: text(input.purchaseReference, "Purchase reference", 120),
+            purchaseOrderId: purchaseOrder?.id ?? null,
             originalFilename: text(input.originalFilename, "Original filename", 255),
             documentUrl: text(input.documentUrl, "Document URL", 1000),
             rawText: text(input.rawText, "Raw invoice text", 200000),
@@ -356,10 +517,19 @@ export class AdminProcurementService {
               })
             : null;
 
+          const requestedPoLineId = text(rawLine.purchaseOrderLineId, "PO line", 80);
+          const poLine = requestedPoLineId && purchaseOrder
+            ? purchaseOrder.lines.find((candidate) => candidate.id === requestedPoLineId)
+            : purchaseOrder && styleCode
+              ? purchaseOrder.lines.find((candidate) => vendorStyle(candidate.vendorStyleCode) === styleCode)
+              : null;
+          if (requestedPoLineId && !poLine) throw new BadRequestException("Invoice line does not belong to the selected PO");
+
           const line = await tx.vendorInvoiceLine.create({
             data: {
               vendorInvoiceId: invoice.id,
               vendorProductId: mapping?.id ?? null,
+              purchaseOrderLineId: poLine?.id ?? null,
               rawDescription: text(rawLine.rawDescription, "Invoice description", 500, true)!,
               vendorStyleCode: styleCode,
               hsn: text(rawLine.hsn, "HSN", 30) ?? mapping?.hsn ?? null,
@@ -371,7 +541,11 @@ export class AdminProcurementService {
           });
 
           const explicit = this.validateBreakup(rawLine.explicitVariants ?? [], "Invoice size breakup", false);
-          if (explicit.length) {
+          const manual = this.validateBreakup(rawLine.manualVariants ?? [], "Staff size breakup", false);
+          if (explicit.length && manual.length) throw new BadRequestException("Use either invoice sizes or staff size breakup, not both");
+          const breakup = explicit.length ? explicit : manual;
+          const breakupSource = explicit.length ? "EXPLICIT_INVOICE" : "MANUAL";
+          if (breakup.length) {
             if (!mapping) {
               allMapped = false;
               continue;
@@ -381,21 +555,21 @@ export class AdminProcurementService {
               include: { product: { select: { variants: { select: { id: true } } } } },
             });
             const allowed = new Set(mappedProduct?.product.variants.map((variant) => variant.id) ?? []);
-            if (explicit.some((entry) => !allowed.has(entry.variantId))) {
+            if (breakup.some((entry) => !allowed.has(entry.variantId))) {
               throw new BadRequestException("Explicit invoice size breakup contains a variant outside the mapped HIDI product");
             }
-            this.assertBreakupTotal(explicit, quantity, "Invoice size breakup");
+            this.assertBreakupTotal(breakup, quantity, explicit.length ? "Invoice size breakup" : "Staff size breakup");
             await tx.vendorInvoiceExpectedVariant.createMany({
-              data: explicit.map((entry) => ({
+              data: breakup.map((entry) => ({
                 invoiceLineId: line.id,
                 variantId: entry.variantId,
                 expectedQuantity: entry.quantity,
-                source: "EXPLICIT_INVOICE",
+                source: breakupSource,
               })),
             });
             await tx.vendorInvoiceLine.update({
               where: { id: line.id },
-              data: { breakupSource: "EXPLICIT_INVOICE", mappingConfirmed: Boolean(mapping) },
+              data: { breakupSource, mappingConfirmed: Boolean(mapping) },
             });
           } else if (mapping?.packPattern.length) {
             const packTotal = mapping.packPattern.reduce((sum, entry) => sum + entry.quantity, 0);
