@@ -127,6 +127,7 @@ export class AdminProcurementService {
             select: {
               id: true,
               internalCode: true,
+              internalName: true,
               name: true,
               slug: true,
               status: true,
@@ -155,10 +156,10 @@ export class AdminProcurementService {
                 select: {
                   id: true,
                   vendorStyleCode: true,
-                  product: { select: { id: true, internalCode: true, name: true } },
+                  product: { select: { id: true, internalCode: true, internalName: true, name: true } },
                 },
               },
-              product: { select: { id: true, internalCode: true, name: true } },
+              product: { select: { id: true, internalCode: true, internalName: true, name: true } },
               invoiceLines: { select: { invoiceQuantity: true } },
               receiptLines: { select: { acceptedQuantity: true, rejectedQuantity: true } },
             },
@@ -198,6 +199,7 @@ export class AdminProcurementService {
         select: {
           id: true,
           internalCode: true,
+          internalName: true,
           name: true,
           slug: true,
           status: true,
@@ -452,7 +454,7 @@ export class AdminProcurementService {
           lines: {
             orderBy: { lineNumber: "asc" },
             include: {
-              product: { select: { id: true, internalCode: true, name: true } },
+              product: { select: { id: true, internalCode: true, internalName: true, name: true } },
               vendorProduct: true,
             },
           },
