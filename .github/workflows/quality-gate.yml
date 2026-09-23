@@ -164,7 +164,7 @@ jobs:
             const response = await fetch(base + path, {
               ...init,
               headers: {
-                "content-type": "application/json",
+                ...(init.body ? { "content-type": "application/json" } : {}),
                 ...(init.headers ?? {}),
               },
             });
