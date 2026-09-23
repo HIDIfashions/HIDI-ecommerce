@@ -23,7 +23,7 @@ clearPort(port);
 
 const child = spawn(
   "pnpm",
-  ["exec", "next", "dev", "-H", "0.0.0.0", "-p", String(port)],
+  ["exec", "next", "dev", "--webpack", "-H", "0.0.0.0", "-p", String(port)],
   { cwd, stdio: "inherit" },
 );
 
