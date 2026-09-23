@@ -12,15 +12,20 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const apiDist = path.join(repoRoot, "apps/api/dist");
+const skippedDirs = new Set(["node_modules", ".git", ".next", "coverage"]);
 
-async function findBuiltFile(fileName, directory = apiDist) {
+async function findBuiltFile(fileName, directory = repoRoot) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.isDirectory() && skippedDirs.has(entry.name)) continue;
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       const nested = await findBuiltFile(fileName, fullPath);
       if (nested) return nested;
-    } else if (entry.isFile() && entry.name === fileName) {
+    } else if (
+      entry.isFile() &&
+      entry.name === fileName &&
+      fullPath.split(path.sep).includes("dist")
+    ) {
       return fullPath;
     }
   }
@@ -29,7 +34,8 @@ async function findBuiltFile(fileName, directory = apiDist) {
 
 async function importBuilt(fileName) {
   const found = await findBuiltFile(fileName);
-  if (!found) throw new Error(`Built API module not found under ${apiDist}: ${fileName}`);
+  if (!found) throw new Error(`Built API module not found anywhere under ${repoRoot}: ${fileName}`);
+  console.log(`Resolved built module ${fileName}: ${path.relative(repoRoot, found)}`);
   return import(pathToFileURL(found).href);
 }
 
