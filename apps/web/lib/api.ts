@@ -70,9 +70,14 @@ async function fetchPublicList(url: URL | string): Promise<ApiProduct[]> {
   const target = String(url);
   let lastError: unknown;
 
-  // Branch switches restart the Nest watcher in Codespaces. Retry briefly so
-  // the storefront does not look empty during that small restart window.
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  // The root dev command starts Next and Nest in parallel. Nest performs a
+  // full TypeScript build before opening port 4000, so the first storefront
+  // request can arrive several seconds earlier. Do not turn that startup race
+  // into an empty catalogue. Development gets a longer readiness window;
+  // production keeps retries short so genuine upstream failures fail quickly.
+  const maxAttempts = process.env.NODE_ENV === "production" ? 3 : 15;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const response = await fetch(target, { cache: "no-store" });
       if (response.ok) {
@@ -81,13 +86,18 @@ async function fetchPublicList(url: URL | string): Promise<ApiProduct[]> {
       }
 
       lastError = new Error(`HIDI API returned ${response.status} for ${target}`);
-      if (response.status < 500) break;
+
+      // A client error will not be fixed by waiting for API readiness.
+      if (response.status >= 400 && response.status < 500) break;
     } catch (error) {
       lastError = error;
     }
 
-    if (attempt < 2) {
-      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    if (attempt < maxAttempts - 1) {
+      const delayMs = process.env.NODE_ENV === "production"
+        ? 300 * (attempt + 1)
+        : Math.min(350 * (attempt + 1), 1500);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
