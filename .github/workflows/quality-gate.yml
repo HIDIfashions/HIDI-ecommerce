@@ -151,6 +151,120 @@ jobs:
           if (!product.images?.length) throw new Error("PDP API returned no product images");
           if (!product.variants?.some((variant) => variant.available > 0)) throw new Error("PDP API returned no buyable variant");
           console.log("API PDP: Aara Sage Work Kurta OK");
+
+          const base = "http://127.0.0.1:4000/v1";
+          const sessionId = "qa-cart-session-20260923";
+          const checkoutToken = "qa-checkout-token-20260923";
+          const buyable = product.variants.find((variant) => variant.available >= 2)
+            ?? product.variants.find((variant) => variant.available >= 1);
+          if (!buyable) throw new Error("Transactional smoke could not find a buyable Aara variant");
+          const originalAvailable = buyable.available;
+
+          async function jsonRequest(path, init = {}, expectedStatus = 200) {
+            const response = await fetch(base + path, {
+              ...init,
+              headers: {
+                "content-type": "application/json",
+                ...(init.headers ?? {}),
+              },
+            });
+            const text = await response.text();
+            let body = null;
+            try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+            if (response.status !== expectedStatus) {
+              throw new Error(`${init.method ?? "GET"} ${path}: expected HTTP ${expectedStatus}, received ${response.status}: ${text}`);
+            }
+            return body;
+          }
+
+          const emptyCart = await jsonRequest(`/carts/${sessionId}`);
+          if (emptyCart.itemCount !== 0 || emptyCart.items.length !== 0) {
+            throw new Error("Fresh QA cart is not empty");
+          }
+
+          let cart = await jsonRequest(`/carts/${sessionId}/items`, {
+            method: "POST",
+            body: JSON.stringify({ variantId: buyable.id, quantity: 1 }),
+          });
+          if (cart.itemCount !== 1 || cart.items.length !== 1) throw new Error("Cart add did not create one line item");
+          if (!cart.items[0].product?.image) throw new Error("Cart item did not expose a product image");
+          const cartItemId = cart.items[0].id;
+
+          if (originalAvailable >= 2) {
+            cart = await jsonRequest(`/carts/${sessionId}/items/${cartItemId}`, {
+              method: "PATCH",
+              body: JSON.stringify({ quantity: 2 }),
+            });
+            if (cart.itemCount !== 2 || cart.items[0].quantity !== 2) throw new Error("Cart quantity update failed");
+          }
+
+          const invalidQuantity = await fetch(base + `/carts/${sessionId}/items/${cartItemId}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ quantity: 11 }),
+          });
+          if (invalidQuantity.status !== 400) {
+            throw new Error(`Cart quantity guard expected HTTP 400, received ${invalidQuantity.status}`);
+          }
+
+          const quantityBeforeCheckout = cart.items[0].quantity;
+          const subtotalBeforeCheckout = cart.subtotalPaise;
+          const checkoutResponse = await fetch(base + "/checkout/prepare", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              sessionId,
+              checkoutToken,
+              customerEmail: "qa-launch@invalid.example",
+              customerPhone: "9000000000",
+              expectedTotalPaise: subtotalBeforeCheckout,
+              shippingAddress: {
+                firstName: "HIDI",
+                lastName: "QA",
+                phone: "9000000000",
+                line1: "QA Test Address",
+                city: "Hyderabad",
+                state: "Telangana",
+                postalCode: "500001",
+                countryCode: "IN",
+              },
+            }),
+          });
+          const checkoutText = await checkoutResponse.text();
+          if (checkoutResponse.status !== 503 || !checkoutText.includes("Razorpay")) {
+            throw new Error(`Safe payment-provider failure expected HTTP 503 Razorpay error, received ${checkoutResponse.status}: ${checkoutText}`);
+          }
+
+          const visibleOrders = await jsonRequest(`/checkout/orders?sessionId=${encodeURIComponent(sessionId)}`);
+          if (!Array.isArray(visibleOrders) || visibleOrders.length !== 0) {
+            throw new Error("Cancelled provider-failure checkout leaked into customer order history");
+          }
+
+          const afterFailureResponse = await fetch(base + "/products/aara-sage-work-kurta");
+          if (!afterFailureResponse.ok) throw new Error("Unable to reload product after checkout rollback");
+          const afterFailure = await afterFailureResponse.json();
+          const variantAfterFailure = afterFailure.variants.find((variant) => variant.id === buyable.id);
+          if (!variantAfterFailure) throw new Error("Buyable variant disappeared after checkout rollback");
+          if (variantAfterFailure.available !== originalAvailable) {
+            throw new Error(`Inventory reservation was not rolled back: expected available ${originalAvailable}, received ${variantAfterFailure.available}`);
+          }
+
+          const accountNoAuth = await fetch(base + "/account/orders");
+          if (accountNoAuth.status !== 401) {
+            throw new Error(`Account auth guard expected HTTP 401, received ${accountNoAuth.status}`);
+          }
+
+          const adminNoAuth = await fetch(base + "/admin/orders");
+          if (![401, 403].includes(adminNoAuth.status)) {
+            throw new Error(`Admin auth guard expected HTTP 401/403, received ${adminNoAuth.status}`);
+          }
+
+          cart = await jsonRequest(`/carts/${sessionId}/items/${cartItemId}`, { method: "DELETE" });
+          if (cart.itemCount !== 0 || cart.items.length !== 0) throw new Error("Cart remove did not empty the QA cart");
+
+          console.log(`TRANSACTION cart add/update/remove: OK (checkout quantity ${quantityBeforeCheckout})`);
+          console.log("TRANSACTION Razorpay unavailable rollback + inventory restoration: OK");
+          console.log("AUTH account/admin unauthenticated guards: OK");
           NODE
 
           pnpm --filter @hidi/web exec next start -H 127.0.0.1 -p 3000 > /tmp/hidi-web.log 2>&1 &
