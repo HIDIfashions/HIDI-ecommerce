@@ -185,7 +185,7 @@ jobs:
           let cart = await jsonRequest(`/carts/${sessionId}/items`, {
             method: "POST",
             body: JSON.stringify({ variantId: buyable.id, quantity: 1 }),
-          });
+          }, 201);
           if (cart.itemCount !== 1 || cart.items.length !== 1) throw new Error("Cart add did not create one line item");
           if (!cart.items[0].product?.image) throw new Error("Cart item did not expose a product image");
           const cartItemId = cart.items[0].id;
