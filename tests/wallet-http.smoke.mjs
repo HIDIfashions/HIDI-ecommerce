@@ -7,10 +7,36 @@ requireApi("reflect-metadata");
 const { Module, Global } = requireApi("@nestjs/common");
 const { NestFactory } = requireApi("@nestjs/core");
 const { FastifyAdapter } = requireApi("@nestjs/platform-fastify");
-const { PrismaService } = await import("../apps/api/dist/prisma/prisma.service.js");
-const { WalletModule } = await import("../apps/api/dist/wallet/wallet.module.js");
-const { CheckoutModule } = await import("../apps/api/dist/checkout/checkout.module.js");
-const { PaymentsModule } = await import("../apps/api/dist/payments/payments.module.js");
+import { readdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const apiDist = path.join(repoRoot, "apps/api/dist");
+
+async function findBuiltFile(fileName, directory = apiDist) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      const nested = await findBuiltFile(fileName, fullPath);
+      if (nested) return nested;
+    } else if (entry.isFile() && entry.name === fileName) {
+      return fullPath;
+    }
+  }
+  return null;
+}
+
+async function importBuilt(fileName) {
+  const found = await findBuiltFile(fileName);
+  if (!found) throw new Error(`Built API module not found under ${apiDist}: ${fileName}`);
+  return import(pathToFileURL(found).href);
+}
+
+const { PrismaService } = await importBuilt("prisma.service.js");
+const { WalletModule } = await importBuilt("wallet.module.js");
+const { CheckoutModule } = await importBuilt("checkout.module.js");
+const { PaymentsModule } = await importBuilt("payments.module.js");
 
 test("compiled Nest modules wire wallet and checkout HTTP guards without live services", async (t) => {
   const previous = { wallet: process.env.HIDI_WALLET_ENABLED, worker: process.env.HIDI_WALLET_WORKER_ENABLED, key: process.env.ADMIN_API_KEY };
