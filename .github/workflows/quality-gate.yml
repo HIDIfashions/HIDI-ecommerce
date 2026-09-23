@@ -16,9 +16,36 @@ permissions:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hidi_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hidi_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/hidi_ci
+      API_PORT: "4000"
+      WEB_ORIGIN: http://127.0.0.1:3000
+      API_URL: http://127.0.0.1:4000/v1
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/v1
+      HIDI_WALLET_ENABLED: "false"
+      HIDI_WALLET_WORKER_ENABLED: "false"
+      NEXT_PUBLIC_WALLET_ENABLED: "false"
+      RETENTION_ENABLED: "false"
+      NEXT_PUBLIC_RETENTION_ENABLED: "false"
+      REVIEW_FOLLOWUP_ENABLED: "false"
+      WHATSAPP_CHATBOT_ENABLED: "false"
+      NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER: ""
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,5 +73,131 @@ jobs:
       - name: Run wallet database migration tests
         run: pnpm test:wallet-db
 
+      - name: Deploy migrations to disposable PostgreSQL
+        run: pnpm db:deploy
+
+      - name: Seed launch catalogue
+        run: pnpm db:seed
+
       - name: Build all apps
         run: pnpm build
+
+      - name: Run compiled wallet HTTP guard smoke tests
+        run: pnpm test:wallet-http
+
+      - name: Production API + storefront launch smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pnpm --filter @hidi/api start:prod > /tmp/hidi-api.log 2>&1 &
+          API_PID=$!
+
+          cleanup() {
+            kill "$API_PID" 2>/dev/null || true
+            if [[ -n "${WEB_PID:-}" ]]; then kill "$WEB_PID" 2>/dev/null || true; fi
+          }
+          trap cleanup EXIT
+
+          for attempt in {1..40}; do
+            if curl --silent --fail http://127.0.0.1:4000/v1/products >/tmp/hidi-products.json; then
+              break
+            fi
+            if ! kill -0 "$API_PID" 2>/dev/null; then
+              echo "::error::HIDI API exited before becoming ready"
+              cat /tmp/hidi-api.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl --silent --fail http://127.0.0.1:4000/v1/products >/tmp/hidi-products.json || {
+            echo "::error::HIDI API did not become ready"
+            cat /tmp/hidi-api.log
+            exit 1
+          }
+
+          node <<'NODE'
+          const checks = {
+            "all": 12,
+            "new-arrivals": 3,
+            "work-edit": 5,
+            "everyday": 4,
+            "occasion": 3,
+          };
+
+          for (const [collection, expected] of Object.entries(checks)) {
+            const suffix = collection === "all" ? "" : "?category=" + encodeURIComponent(collection);
+            const response = await fetch("http://127.0.0.1:4000/v1/products" + suffix);
+            if (!response.ok) throw new Error(`Products API ${collection} returned ${response.status}`);
+            const products = await response.json();
+            if (!Array.isArray(products)) throw new Error(`Products API ${collection} did not return an array`);
+            if (products.length !== expected) {
+              throw new Error(`Products API ${collection}: expected ${expected}, received ${products.length}`);
+            }
+            for (const product of products) {
+              if (!product.slug || !product.name || !Array.isArray(product.variants)) {
+                throw new Error(`Products API ${collection} returned an incomplete product payload`);
+              }
+              if (!product.variants.length) throw new Error(`Product ${product.slug} has no active variants`);
+            }
+            console.log(`API ${collection}: ${products.length} products OK`);
+          }
+
+          const detail = await fetch("http://127.0.0.1:4000/v1/products/aara-sage-work-kurta");
+          if (!detail.ok) throw new Error(`PDP API returned ${detail.status}`);
+          const product = await detail.json();
+          if (product.name !== "Aara Sage Work Kurta") throw new Error("PDP API returned the wrong product");
+          if (!product.images?.length) throw new Error("PDP API returned no product images");
+          if (!product.variants?.some((variant) => variant.available > 0)) throw new Error("PDP API returned no buyable variant");
+          console.log("API PDP: Aara Sage Work Kurta OK");
+          NODE
+
+          pnpm --filter @hidi/web exec next start -H 127.0.0.1 -p 3000 > /tmp/hidi-web.log 2>&1 &
+          WEB_PID=$!
+
+          for attempt in {1..40}; do
+            if curl --silent --fail http://127.0.0.1:3000/ >/tmp/hidi-home.html; then
+              break
+            fi
+            if ! kill -0 "$WEB_PID" 2>/dev/null; then
+              echo "::error::HIDI web exited before becoming ready"
+              cat /tmp/hidi-web.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl --silent --fail http://127.0.0.1:3000/ >/tmp/hidi-home.html || {
+            echo "::error::HIDI web did not become ready"
+            cat /tmp/hidi-web.log
+            exit 1
+          }
+
+          node <<'NODE'
+          const pages = [
+            ["/", ["Aara Sage Work Kurta", "Shop new arrivals"]],
+            ["/collections/all", ["Shop All", "Aara Sage Work Kurta", "Meher Gold Beige Occasion Set"]],
+            ["/collections/new-arrivals", ["New Arrivals", "Aara Sage Work Kurta", "Sana Sand Kurta Set", "Mahira Indigo Kurta Set"]],
+            ["/collections/work-edit", ["Work Edit", "Aara Sage Work Kurta", "Tara Dusty Rose Straight Kurta"]],
+            ["/collections/everyday", ["Everyday", "Sana Sand Kurta Set", "Rhea Mint Daily Kurta"]],
+            ["/collections/occasion", ["Occasion", "Anika Ivory Embroidered Set", "Meher Gold Beige Occasion Set"]],
+            ["/products/aara-sage-work-kurta", ["Aara Sage Work Kurta", "Add to Bag"]],
+            ["/cart", ["Bag"]],
+          ];
+
+          for (const [path, expectedTexts] of pages) {
+            const response = await fetch("http://127.0.0.1:3000" + path, { redirect: "manual" });
+            if (response.status !== 200) throw new Error(`${path} returned HTTP ${response.status}`);
+            const html = await response.text();
+            for (const text of expectedTexts) {
+              if (!html.includes(text)) throw new Error(`${path} is missing expected text: ${text}`);
+            }
+            console.log(`WEB ${path}: 200 + expected content OK`);
+          }
+          NODE
+
+          echo "HIDI production-mode catalogue and storefront smoke passed."
+
+      - name: Lint all apps
+        run: pnpm lint
