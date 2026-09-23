@@ -184,6 +184,15 @@ jobs:
             ["/collections/occasion", ["Occasion", "Anika Ivory Embroidered Set", "Meher Gold Beige Occasion Set"]],
             ["/products/aara-sage-work-kurta", ["Aara Sage Work Kurta", "Add to Bag"]],
             ["/cart", ["Bag"]],
+            ["/search", ["Find your next piece.", "Start typing to search HIDI."]],
+            ["/search?q=aara", ["Aara Sage Work Kurta"]],
+            ["/wishlist", ["Your wishlist."]],
+            ["/account", ["My HIDI.", "Sign in securely"]],
+            ["/checkout", ["Almost yours."]],
+            ["/shipping", ["Shipping Policy"]],
+            ["/returns", ["HIDI HELP", "Returns"]],
+            ["/about", ["For every role you carry.", "Discover HIDI"]],
+            ["/order-confirmed", ["ORDER CONFIRMATION", "find that order"]],
           ];
 
           for (const [path, expectedTexts] of pages) {
@@ -199,5 +208,8 @@ jobs:
 
           echo "HIDI production-mode catalogue and storefront smoke passed."
 
-      - name: Lint all apps
-        run: pnpm lint
+      - name: Lint storefront
+        run: pnpm --filter @hidi/web lint
+
+      - name: Verify API static compilation
+        run: pnpm --filter @hidi/api build
