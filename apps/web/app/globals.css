@@ -685,111 +685,6 @@ body {
 }
 
 
-/* Mulberry Clay site chrome — header/footer only */
-.announcement {
-  background: #4a1719;
-  color: #f7eadf;
-  border-bottom: 1px solid rgba(214, 170, 103, .42);
-}
-
-.site-header {
-  --ink: #f8ede2;
-  background:
-    radial-gradient(circle at 94% 10%, rgba(165, 91, 78, .10), transparent 28%),
-    rgba(84, 29, 31, .985);
-  color: #f8ede2;
-  border-bottom: 1px solid rgba(218, 174, 104, .58);
-  box-shadow: 0 10px 30px rgba(54, 15, 17, .14);
-  backdrop-filter: blur(16px);
-}
-
-.site-header .header-inner {
-  color: #f8ede2;
-}
-
-.site-header .wordmark img {
-  filter: none;
-}
-
-.site-header .desktop-nav {
-  color: #f8ede2;
-}
-
-.site-header .desktop-nav a,
-.site-header .utility-nav a,
-.site-header .utility-nav button,
-.site-header .mobile-menu {
-  color: #f8ede2;
-}
-
-.site-header .desktop-nav a::after {
-  background: #d6a34f;
-}
-
-.site-header .desktop-nav a:hover,
-.site-header .utility-nav a:hover,
-.site-header .utility-nav button:hover {
-  color: #f3c875;
-  opacity: 1;
-}
-
-.site-header [class*="count"] {
-  background: #d09a43;
-  color: #4a1719;
-}
-
-.footer {
-  --ink: #f8ede2;
-  --muted: #d9c6b9;
-  background:
-    radial-gradient(circle at 10% 0%, rgba(209, 154, 91, .08), transparent 30%),
-    #561f22;
-  color: #f8ede2;
-  border-top: 1px solid rgba(218, 174, 104, .58);
-}
-
-.footer h3,
-.footer strong,
-.footer .footer-wordmark,
-.footer .footer-note {
-  color: #e0b66d;
-}
-
-.footer-grid a {
-  color: #f2e3d7;
-}
-
-.footer-grid a:hover {
-  color: #f3c875;
-}
-
-.footer .muted,
-.footer-small,
-.footer-bottom {
-  color: #d3c0b2;
-}
-
-.footer .newsletter {
-  border-bottom-color: rgba(236, 207, 166, .62);
-}
-
-.footer .newsletter input {
-  color: #f8ede2;
-}
-
-.footer .newsletter input::placeholder {
-  color: #baa79a;
-}
-
-.footer .newsletter button {
-  color: #e0b66d;
-}
-
-.footer-bottom {
-  border-top-color: rgba(222, 181, 123, .24);
-}
-
-
 /* HIDI Mulberry interaction system */
 :root {
   --hidi-mulberry: #651f23;
@@ -1377,38 +1272,38 @@ summary {
 
 
 /* ==========================================================================
-   HIDI MIDNIGHT TEAL SITE CHROME
-   Header + announcement + footer only. Approved Option 9 direction.
-   Deep premium teal with warm ivory UI and HIDI gold accents.
+   HIDI MULBERRY CLAY SITE CHROME
+   Header + announcement + footer only. Final approved Option 2 direction.
+   Warm, distinctive mulberry with ivory UI and HIDI gold accents.
    ========================================================================== */
 
 :root {
-  --hidi-midnight-teal: #064f52;
-  --hidi-midnight-teal-deep: #033d40;
-  --hidi-midnight-teal-lift: #0a5c5f;
-  --hidi-midnight-ivory: #f3ecdf;
-  --hidi-midnight-muted: #d2c8ba;
-  --hidi-midnight-gold: #d6a44e;
-  --hidi-midnight-gold-bright: #efc16b;
-  --hidi-midnight-line: rgba(225, 188, 119, .28);
+  --hidi-mulberry-clay: #591d20;
+  --hidi-mulberry-clay-deep: #461416;
+  --hidi-mulberry-clay-lift: #69282a;
+  --hidi-mulberry-ivory: #f8eee4;
+  --hidi-mulberry-muted: #d8c4b6;
+  --hidi-mulberry-gold: #d5a24d;
+  --hidi-mulberry-gold-bright: #f1c36e;
+  --hidi-mulberry-line: rgba(226, 181, 108, .34);
 }
 
 .announcement {
-  background: var(--hidi-midnight-teal-deep);
-  color: #eee6d9;
-  border-bottom: 1px solid rgba(224, 183, 107, .28);
+  background: var(--hidi-mulberry-clay-deep);
+  color: #f2e7dc;
+  border-bottom: 1px solid rgba(220, 172, 101, .32);
 }
 
 .site-header {
-  --ink: var(--hidi-midnight-ivory);
+  --ink: var(--hidi-mulberry-ivory);
   position: sticky;
   background:
-    radial-gradient(circle at 94% 18%, rgba(225, 194, 135, .08), transparent 24%),
-    radial-gradient(ellipse at 10% 82%, rgba(255, 255, 255, .028), transparent 28%),
-    linear-gradient(104deg, #07575a 0%, var(--hidi-midnight-teal) 54%, #043f42 100%);
-  color: var(--hidi-midnight-ivory);
-  border-bottom: 1px solid var(--hidi-midnight-line);
-  box-shadow: 0 10px 30px rgba(0, 31, 33, .18);
+    radial-gradient(circle at 93% 18%, rgba(176, 89, 76, .12), transparent 25%),
+    radial-gradient(ellipse at 10% 82%, rgba(255, 255, 255, .025), transparent 28%),
+    linear-gradient(104deg, #642326 0%, var(--hidi-mulberry-clay) 54%, #4b1719 100%);
+  color: var(--hidi-mulberry-ivory);
+  border-bottom: 1px solid var(--hidi-mulberry-line);
+  box-shadow: 0 10px 30px rgba(48, 11, 13, .17);
   backdrop-filter: blur(16px);
 }
 
@@ -1419,7 +1314,7 @@ summary {
 .site-header .utility-nav a,
 .site-header .utility-nav button,
 .site-header .mobile-menu {
-  color: var(--hidi-midnight-ivory);
+  color: var(--hidi-mulberry-ivory);
 }
 
 .site-header .wordmark img {
@@ -1427,32 +1322,32 @@ summary {
 }
 
 .site-header .desktop-nav a::after {
-  background: var(--hidi-midnight-gold);
+  background: var(--hidi-mulberry-gold);
 }
 
 .site-header .desktop-nav a:hover,
 .site-header .utility-nav a:hover,
 .site-header .utility-nav button:hover,
 .site-header .mobile-menu:hover {
-  color: var(--hidi-midnight-gold-bright);
+  color: var(--hidi-mulberry-gold-bright);
   opacity: 1;
 }
 
 .site-header [class*="count"] {
-  background: #e2c68d;
-  color: #033d40;
-  box-shadow: 0 0 0 1px rgba(3, 61, 64, .55);
+  background: #e4c589;
+  color: #481619;
+  box-shadow: 0 0 0 1px rgba(70, 20, 22, .56);
 }
 
 .footer {
-  --ink: var(--hidi-midnight-ivory);
-  --muted: var(--hidi-midnight-muted);
+  --ink: var(--hidi-mulberry-ivory);
+  --muted: var(--hidi-mulberry-muted);
   background:
-    radial-gradient(circle at 8% 0%, rgba(214, 164, 78, .07), transparent 29%),
+    radial-gradient(circle at 8% 0%, rgba(214, 162, 77, .07), transparent 29%),
     radial-gradient(circle at 94% 92%, rgba(255, 255, 255, .022), transparent 30%),
-    linear-gradient(120deg, #043f42 0%, var(--hidi-midnight-teal) 58%, #03383b 100%);
-  color: var(--hidi-midnight-ivory);
-  border-top: 1px solid var(--hidi-midnight-line);
+    linear-gradient(120deg, #4b1719 0%, var(--hidi-mulberry-clay) 58%, #441416 100%);
+  color: var(--hidi-mulberry-ivory);
+  border-top: 1px solid var(--hidi-mulberry-line);
 }
 
 .footer-logo {
@@ -1475,29 +1370,29 @@ summary {
 }
 
 .footer-grid a {
-  color: #eee6d9;
+  color: #f0e4d9;
 }
 
 .footer-grid a:hover {
-  color: var(--hidi-midnight-gold-bright);
+  color: var(--hidi-mulberry-gold-bright);
 }
 
 .footer .muted,
 .footer-small,
 .footer-bottom {
-  color: var(--hidi-midnight-muted);
+  color: var(--hidi-mulberry-muted);
 }
 
 .footer .newsletter {
-  border-bottom-color: rgba(232, 201, 143, .48);
+  border-bottom-color: rgba(234, 203, 148, .50);
 }
 
 .footer .newsletter input {
-  color: var(--hidi-midnight-ivory);
+  color: var(--hidi-mulberry-ivory);
 }
 
 .footer .newsletter input::placeholder {
-  color: #b8b0a5;
+  color: #baa79a;
 }
 
 .footer .newsletter button {
@@ -1505,18 +1400,18 @@ summary {
 }
 
 .footer-bottom {
-  border-top-color: rgba(230, 194, 132, .20);
+  border-top-color: rgba(229, 190, 127, .21);
 }
 
 .footer .social-link {
-  border-color: rgba(223, 180, 95, .32);
-  color: #eee6d9;
+  border-color: rgba(223, 180, 95, .34);
+  color: #f0e4d9;
 }
 
 .footer .social-link:hover {
   background: rgba(223, 180, 95, .10);
   border-color: #dfb45f;
-  color: var(--hidi-midnight-gold-bright);
+  color: var(--hidi-mulberry-gold-bright);
 }
 
 .footer .newsletter-status {
