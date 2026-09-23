@@ -149,7 +149,7 @@ test("homepage launch fallback is bounded, premium and navigable", async () => {
   assert.match(root.text, /Best Sellers will appear here automatically once confirmed customer orders create real sales data/);
   assert.equal(root.querySelector(".primaryButton").getAttribute("href"), "/collections/new-arrivals");
   assert.equal(root.querySelector(".secondaryButton").getAttribute("href"), "/collections/all");
-  assert.equal(root.querySelector(".heroImage").getAttribute("src"), "/brand/hidi-hero-purple-full.avif");
+  assert.equal(root.querySelector(".heroImage").getAttribute("src"), "/brand/hidi-hero-green-garden.png");
   assert.match(root.querySelector(".heroImage").getAttribute("alt"), /HIDI signature purple saree editorial look/);
   assertReferencesResolve(root);
 });
