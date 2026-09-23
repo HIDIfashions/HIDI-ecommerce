@@ -83,7 +83,7 @@ jobs:
         run: pnpm build
 
       - name: Run compiled wallet HTTP guard smoke tests
-        run: pnpm test:wallet-http
+        run: node --test tests/wallet-http.smoke.mjs
 
       - name: Production API + storefront launch smoke
         shell: bash
