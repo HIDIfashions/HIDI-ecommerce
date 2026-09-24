@@ -2534,3 +2534,79 @@ body {
     color: var(--hidi-mulberry-clay, #591d20);
   }
 }
+
+
+/* ==========================================================================
+   HIDI MOBILE MENU — beige drawer below the visible HIDI header
+   ========================================================================== */
+@media (max-width: 620px) {
+  .mobile-nav-backdrop {
+    top: calc(var(--hidi-mobile-announcement, 26px) + var(--hidi-mobile-header, 58px));
+    background: rgba(55, 37, 31, .28);
+    backdrop-filter: blur(3px);
+  }
+
+  .mobile-nav-panel {
+    top: calc(var(--hidi-mobile-announcement, 26px) + var(--hidi-mobile-header, 58px));
+    left: 0;
+    width: 100vw;
+    height: calc(100dvh - var(--hidi-mobile-announcement, 26px) - var(--hidi-mobile-header, 58px));
+    padding: 8px 18px max(18px, env(safe-area-inset-bottom));
+    gap: 0;
+    justify-content: flex-start;
+    background: #f3ecdf;
+    color: var(--hidi-mulberry-clay, #591d20);
+    box-shadow: 0 16px 34px rgba(74, 23, 25, .12);
+  }
+
+  .mobile-nav-intro {
+    display: none;
+  }
+
+  .mobile-nav-links {
+    display: grid;
+    width: 100%;
+    border-top: 1px solid #d7c7b5;
+  }
+
+  .mobile-nav-links a {
+    min-height: 60px;
+    padding: 0 2px;
+    border-bottom: 1px solid #d7c7b5;
+    color: var(--hidi-mulberry-clay, #591d20);
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .mobile-nav-links a span {
+    color: var(--hidi-mulberry-clay, #591d20);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+  }
+
+  .mobile-nav-account {
+    width: 100%;
+    margin-top: auto;
+    padding-top: 16px;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    border-top: 1px solid #d7c7b5;
+  }
+
+  .mobile-nav-account a {
+    min-height: 50px;
+    justify-content: center;
+    border: 1px solid #cdbda9;
+    background: #eadfcf;
+    color: var(--hidi-mulberry-clay, #591d20);
+    font-family: var(--font-product);
+    font-size: .78rem;
+    font-weight: 500;
+  }
+
+  .mobile-nav-account a svg {
+    color: var(--hidi-mulberry-clay, #591d20);
+  }
+}
