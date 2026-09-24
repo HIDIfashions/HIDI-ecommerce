@@ -248,3 +248,114 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Compact account-header wallet: summary only. */
+.compactPanel {
+  margin: 0;
+  padding: 14px;
+  align-self: start;
+}
+
+.compactTop {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.compactTop .eyebrow {
+  font-size: 9px;
+  letter-spacing: .12em;
+}
+
+.compactLink {
+  flex: 0 0 auto;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #591d20;
+  font-size: 9px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.compactBalances {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.compactBalances > div {
+  min-width: 0;
+  padding: 9px 10px;
+  gap: 3px;
+}
+
+.compactBalances span {
+  font-size: 8px;
+  letter-spacing: .03em;
+}
+
+.compactBalances strong {
+  font-size: clamp(15px, 1.45vw, 19px);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.compactNote {
+  margin-top: 8px;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.compactLoading,
+.compactError {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.compactError {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compactError .textButton {
+  min-height: 30px;
+  padding: 0;
+  font-size: 10px;
+}
+
+@media (max-width: 620px) {
+  .compactPanel {
+    padding: 12px;
+  }
+
+  .compactBalances {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .compactBalances > div {
+    padding: 8px 7px;
+  }
+
+  .compactBalances strong {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 360px) {
+  .compactTop {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .compactBalances {
+    grid-template-columns: 1fr;
+  }
+}
