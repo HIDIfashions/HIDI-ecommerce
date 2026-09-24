@@ -35,11 +35,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <div className="pdp-grid">
       <ProductGallery productName={product.name} images={gallery} />
       <aside className="pdp-info">
-        <p className="eyebrow">{product.category?.name ?? "HIDI EDIT"}</p><h1>{product.name}</h1><p className="pdp-subtitle">{product.shortDescription}</p>
+        <p className="eyebrow">{product.category?.name ?? "HIDI EDIT"}</p>
+        <div className="pdp-title-row">
+          <h1>{product.name}</h1>
+          <WishlistButton slug={product.slug} compact />
+        </div>
+        <p className="pdp-subtitle">{product.shortDescription}</p>
         <div className="pdp-price">{formatPaise(product.minPricePaise)} <span>inclusive of taxes</span></div>
         <p className="pdp-description">{product.description}</p>
         <AddToCart product={product} />
-        <WishlistButton slug={product.slug} />
         <ProductContactActions product={product} />
         <ProductQualitySummary product={product} />
         <div className="delivery-box"><strong>Delivery</strong><div><input placeholder="Enter PIN code" inputMode="numeric" /><button>Check</button></div></div>
