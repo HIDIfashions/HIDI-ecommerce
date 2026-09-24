@@ -24,6 +24,17 @@ export class AccountController {
     return this.account.order(user, orderNumber);
   }
 
+  @Post("orders/:orderNumber/items/:orderItemId/review")
+  async submitReview(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+    @Param("orderItemId") orderItemId: string,
+    @Body() body: { rating?: unknown; title?: unknown; body?: unknown },
+  ) {
+    const user = await this.auth.requireUser(authorization);
+    return this.account.submitReview(user, orderNumber, orderItemId, body ?? {});
+  }
+
   @Patch("orders/:orderNumber/returns/:requestId/cancel")
   async cancelReturnRequest(
     @Headers("authorization") authorization: string | undefined,

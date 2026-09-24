@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { ArrowRight, Star } from "lucide-react";
 import { CatalogImage } from "@/components/catalog-image";
 import { RetentionPreferences } from "@/components/retention-preferences";
 import { ReturnExchangeRequest } from "@/components/return-exchange-request";
+import { AccountReviewPrompt } from "@/components/account/account-review-prompt";
 import { formatPaise } from "@/lib/api";
 import { formatWalletPaise } from "@/lib/wallet-client";
 import { BROWSER_API_URL } from "@/lib/browser-api";
@@ -46,6 +46,13 @@ type OrderSummary = {
     returnableQuantity: number;
     totalPaise: number;
     exchangeSizes: string[];
+    review?: {
+      id: string;
+      rating: number;
+      title?: string | null;
+      body: string;
+      createdAt: string;
+    } | null;
     returnRequests: Array<{
       id: string;
       type: string;
@@ -357,15 +364,13 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
                     onCreated={loadAccount}
                   />
 
-                  {order.status === "DELIVERED" && !latestRequest && <div className={styles.reviewPrompt}>
-                    <div>
-                      <span>HOW DID THIS PIECE FEEL?</span>
-                      <div className={styles.stars} aria-hidden="true">
-                        {[1,2,3,4,5].map((star) => <Star key={star} size={17} strokeWidth={1.5} />)}
-                      </div>
-                    </div>
-                    <Link href={`/products/${item.slug}#reviews`}>Rate this piece <ArrowRight size={13} aria-hidden="true" /></Link>
-                  </div>}
+                  {order.status === "DELIVERED" && (
+                    <AccountReviewPrompt
+                      orderNumber={order.orderNumber}
+                      item={item}
+                      onSubmitted={loadAccount}
+                    />
+                  )}
 
                   <div className={styles.itemActions}>
                     <Link href={`/products/${item.slug}`}>View piece</Link>

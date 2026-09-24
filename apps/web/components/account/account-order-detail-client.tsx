@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, MapPin, PackageCheck, Truck, WalletCards } from "lucide-react";
 import { CatalogImage } from "@/components/catalog-image";
 import { ReturnExchangeRequest } from "@/components/return-exchange-request";
+import { AccountReviewPrompt } from "@/components/account/account-review-prompt";
 import { formatPaise } from "@/lib/api";
 import { accountTitleCase, fetchAccountOrder, type AccountOrder } from "@/lib/account-data";
 import { formatWalletPaise } from "@/lib/wallet-client";
@@ -135,9 +136,16 @@ export function AccountOrderDetailClient({ orderNumber }: { orderNumber: string 
                     onCreated={load}
                   />
 
+                  {order.status === "DELIVERED" && (
+                    <AccountReviewPrompt
+                      orderNumber={order.orderNumber}
+                      item={item}
+                      onSubmitted={load}
+                    />
+                  )}
+
                   <div className={styles.itemActions}>
                     <Link href={`/products/${item.slug}`}>View piece <ArrowRight size={13} /></Link>
-                    {order.status === "DELIVERED" && !latest && <Link href={`/products/${item.slug}#reviews`}>Rate this piece <ArrowRight size={13} /></Link>}
                   </div>
                 </div>
               </article>
