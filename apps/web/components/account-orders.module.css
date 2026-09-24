@@ -517,3 +517,141 @@
     box-shadow: none;
   }
 }
+
+
+/* HIDI Account Studio order-piece treatment */
+.items {
+  gap: 12px;
+  padding: 18px 0;
+}
+
+.item {
+  min-width: 0;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  border: 1px solid #e3d7cc;
+  background: #fff;
+}
+
+.thumb {
+  position: relative;
+  width: 108px;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--ivory);
+}
+
+.itemBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.itemTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.itemStatus {
+  display: block;
+  margin-bottom: 7px;
+  color: #9b7442;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.itemPrice {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.reviewPrompt {
+  margin-top: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #fcf8f5;
+  border: 1px solid #eee2d7;
+}
+
+.reviewPrompt > div {
+  display: grid;
+  gap: 6px;
+}
+
+.reviewPrompt span {
+  color: #80684f;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.stars {
+  display: flex;
+  gap: 3px;
+  color: #b08348;
+}
+
+.reviewPrompt a,
+.itemActions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #591d20;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.itemActions {
+  margin-top: auto;
+  padding-top: 14px;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.itemActions a {
+  min-height: 34px;
+  border-bottom: 1px solid rgba(89,29,32,.28);
+}
+
+@media (max-width: 620px) {
+  .item {
+    padding: 12px;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .thumb {
+    width: 82px;
+  }
+
+  .itemTop {
+    gap: 8px;
+  }
+
+  .itemPrice {
+    font-size: 12px;
+  }
+
+  .reviewPrompt {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 11px;
+  }
+
+  .itemActions {
+    gap: 12px;
+  }
+}
