@@ -1432,3 +1432,26 @@
     height: 36px;
   }
 }
+
+
+/* Restore desktop quick-shop reveal animation after the Futura card update. */
+@media (min-width: 621px) and (hover: hover) and (pointer: fine) {
+  .desktopQuickShop {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    transform: translateY(-6px) !important;
+    transition:
+      max-height .3s ease,
+      opacity .2s ease,
+      transform .22s ease !important;
+  }
+
+  .card:hover .desktopQuickShop,
+  .card:focus-within .desktopQuickShop {
+    max-height: 340px !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    transform: translateY(0) !important;
+  }
+}
