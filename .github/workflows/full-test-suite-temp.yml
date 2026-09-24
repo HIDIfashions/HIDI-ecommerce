@@ -1,0 +1,54 @@
+name: Full Test Suite
+
+on:
+  push:
+    branches:
+      - feature/typography-integration
+
+permissions:
+  contents: read
+
+jobs:
+  full-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Customer experience tests
+        if: always()
+        run: pnpm test:customer-experience
+
+      - name: Wallet database tests
+        if: always()
+        run: pnpm test:wallet-db
+
+      - name: Wallet HTTP smoke tests
+        if: always()
+        run: pnpm test:wallet-http
+
+      - name: Web type-check
+        if: always()
+        run: pnpm --filter @hidi/web exec tsc --noEmit
+
+      - name: Build all apps
+        if: always()
+        run: pnpm build
