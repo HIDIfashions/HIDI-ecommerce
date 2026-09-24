@@ -419,3 +419,24 @@
 @media (max-width: 560px) {
   .mobileFilterButton { font-size: 11px; }
 }
+
+
+@media (max-width: 620px) {
+  .sidebar {
+    width: min(360px, 94vw);
+    padding: 22px 18px max(28px, env(safe-area-inset-bottom));
+  }
+  .filterHeading {
+    top: -22px;
+    margin: -22px -18px 8px;
+    padding: 0 18px;
+  }
+  .filterSummary { min-height: 54px; }
+  .option, .colorOption { min-height: 42px; }
+  .option input, .colorOption input { width: 18px; height: 18px; }
+  .drawerClose { width: 42px; height: 42px; }
+  .toolbar { min-width: 0; }
+  .toolbarRight { min-width: 0; }
+  .sortSelect { min-height: 44px; font-size: 16px; }
+  .mobileFilterButton { min-height: 44px; }
+}
