@@ -223,3 +223,19 @@
   .receipt :global(.confirmation-actions) { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 24px; }
   .receipt :global(.confirmation-action-link) { width: 100%; min-height: 50px; }
 }
+
+
+.receipt :global(.confirmation-item-name) {
+  font-family: var(--font-product);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -.012em;
+}
+
+@media (max-width: 560px) {
+  .receipt :global(.confirmation-item-name) {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+}

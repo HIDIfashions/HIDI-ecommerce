@@ -15,6 +15,7 @@
   /* HIDI typography tokens */
   --font-sans: var(--font-manrope), "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-cormorant), Georgia, "Times New Roman", serif;
+  --font-product: var(--font-manrope), "Helvetica Neue", Arial, sans-serif;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-base: 1rem;
@@ -2385,5 +2386,55 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .pdp-related-grid > * {
     min-width: 0;
     align-self: start;
+  }
+}
+
+
+/* ==========================================================================
+   HIDI PRODUCT TYPOGRAPHY
+   Editorial headings remain Cormorant; commerce/product naming uses Manrope.
+   ========================================================================== */
+.product-name,
+.pdp-info h1,
+.cart-item-info h2,
+.checkout-summary-copy b,
+.checkout-mobile-summary-item b {
+  font-family: var(--font-product);
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+
+.pdp-info h1 {
+  font-size: clamp(2rem, 3.2vw, 2.55rem);
+  line-height: 1.08;
+}
+
+.cart-item-info h2 {
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.checkout-summary-copy b,
+.checkout-mobile-summary-item b {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+@media (max-width: 620px) {
+  .pdp-info h1 {
+    font-size: clamp(1.55rem, 7vw, 1.9rem);
+    line-height: 1.12;
+    letter-spacing: -.018em;
+  }
+
+  .cart-item-info h2 {
+    font-size: 15px;
+    line-height: 1.28;
+  }
+
+  .checkout-summary-copy b,
+  .checkout-mobile-summary-item b {
+    font-size: 12px;
+    line-height: 1.35;
   }
 }

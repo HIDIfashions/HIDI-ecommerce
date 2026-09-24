@@ -336,3 +336,19 @@
     font-size: 18px;
   }
 }
+
+
+.productName {
+  font-family: var(--font-product);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: -.012em;
+}
+
+@media (max-width: 520px) {
+  .productName {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+}
