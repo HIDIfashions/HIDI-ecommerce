@@ -1520,3 +1520,20 @@
     line-height: 10px;
   }
 }
+
+
+/* Product-image wishlist must stay legible over every photograph. */
+.mobileImageHeart {
+  border: 1px solid rgba(89,29,32,.14);
+  border-radius: 50%;
+  background: rgba(255,248,239,.94);
+  color: var(--hidi-mulberry-clay, #591d20);
+  box-shadow: 0 4px 14px rgba(52,31,25,.10);
+  backdrop-filter: blur(6px);
+}
+
+.mobileImageHeart[aria-pressed="true"] {
+  background: rgba(255,248,239,.98);
+  border-color: rgba(89,29,32,.28);
+  color: var(--hidi-mulberry-clay, #591d20);
+}
