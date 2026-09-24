@@ -1,5 +1,5 @@
 import { AccountOrdersClient } from "@/components/account-orders-client";
-import { WalletBalance } from "@/components/wallet-balance";
+import { AccountWalletGate } from "@/components/account/account-wallet-gate";
 import styles from "./account.module.css";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export default function AccountPage() {
         </header>
 
         <div className={styles.walletSlot}>
-          <WalletBalance compact />
+          <AccountWalletGate />
         </div>
       </section>
 
