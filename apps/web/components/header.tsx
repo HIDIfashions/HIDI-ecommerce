@@ -56,7 +56,7 @@ export function Header() {
 
         <nav className="utility-nav" aria-label="Utilities">
           <HeaderSearch />
-          <Link href="/account" className={iconStyles.iconLink} aria-label="Account" title="Account">
+          <Link href="/account" className={`${iconStyles.iconLink} desktop-only`} aria-label="Account" title="Account">
             <UserRound className={iconStyles.icon} aria-hidden="true" />
           </Link>
           <Link href="/wishlist" className={`${iconStyles.iconLink} desktop-only`} aria-label="Wishlist" title="Wishlist">
@@ -70,6 +70,11 @@ export function Header() {
         <>
           <button className="mobile-nav-backdrop" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
           <nav id="mobile-navigation" className="mobile-nav-panel" aria-label="Mobile navigation">
+            <div className="mobile-nav-intro">
+              <span>HIDI</span>
+              <strong>Wear the feeling.</strong>
+              <p>Indian wear for work, everyday life and the moments in between.</p>
+            </div>
             <div className="mobile-nav-links">
               {mobileLinks.map(([label, href]) => (
                 <Link key={href} href={href} onClick={() => setMenuOpen(false)}>{label}<span aria-hidden="true">→</span></Link>
