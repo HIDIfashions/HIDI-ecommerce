@@ -1716,3 +1716,30 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
     justify-content: center;
   }
 }
+
+
+@media (max-width: 620px) {
+  .collection-page .collection-header {
+    margin: 18px 0 24px;
+  }
+
+  .collection-page .collection-header.compact {
+    margin-bottom: 20px;
+  }
+
+  .collection-page .collection-header h1 {
+    margin-bottom: 10px;
+    font-size: clamp(2.35rem, 10.5vw, 3rem);
+    line-height: .98;
+  }
+
+  .collection-page .collection-header > p:last-child {
+    max-width: 34rem;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .collection-page .breadcrumbs {
+    margin-bottom: 14px;
+  }
+}
