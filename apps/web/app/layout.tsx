@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Cormorant_Garamond, Dancing_Script, Manrope } from "next/font/google";
 import "./globals.css";
 import { SiteShell } from "@/components/site-shell";
 
 const hidiSans = Manrope({
   subsets: ["latin"],
   variable: "--font-manrope",
+  display: "swap",
+});
+
+const hidiHandwritten = Dancing_Script({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-dancing-script",
   display: "swap",
 });
 
@@ -26,7 +33,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${hidiSans.variable} ${hidiDisplay.variable}`}>
+    <html lang="en" className={`${hidiSans.variable} ${hidiDisplay.variable} ${hidiHandwritten.variable}`}>
       <body>
         <SiteShell>{children}</SiteShell>
       </body>

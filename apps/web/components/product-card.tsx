@@ -36,6 +36,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
   const adding = useRef(false);
   const sizesRef = useRef<HTMLDivElement>(null);
+  const mobileSizesRef = useRef<HTMLDivElement>(null);
   const activeColour = colours.includes(colour) ? colour : colours[0] ?? "";
   const variants = variantsForColour(product.variants, activeColour);
   const selected = variants.find((entry) => entry.id === variantId);
@@ -161,7 +162,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
     setError(""); setMessage(""); setBagLink(false);
     if (!selected) {
       setChooseSize(true); setError("Choose your size above to add this piece.");
-      sizesRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+      (mobileSizesRef.current ?? sizesRef.current)?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
       return;
     }
     if (selected.available < 1) {
@@ -207,25 +208,58 @@ export function ProductCard({ product, initialVariantId }: Props) {
           </button>;
         })}
       </div> : <p className={styles.singleColour}>{activeColour || "Standard colour"}</p>}
-      <div className={styles.mobileCardActions}>
+      <div className={styles.mobileInlineShop}>
+        <div className={styles.mobileSizeHeader}>
+          <span>{selected ? `Size ${selected.size}` : "Select size"}</span>
+          <button
+            type="button"
+            className={styles.mobileWishButton}
+            aria-pressed={saved}
+            disabled={!wishlistReady || busy}
+            aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`}
+            onClick={toggleWishlist}
+          >
+            <Heart size={18} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div
+          ref={mobileSizesRef}
+          className={styles.mobileSizes}
+          role="group"
+          aria-label={`Choose size for ${product.name}`}
+        >
+          {variants.map((variant) => {
+            const unavailable = !product.inStock || variant.available < 1;
+            return <button
+              key={variant.id}
+              type="button"
+              disabled={busy || unavailable}
+              aria-pressed={selected?.id === variant.id}
+              className={`${styles.mobileSizeButton} ${selected?.id === variant.id ? styles.mobileSizeActive : ""} ${unavailable ? styles.unavailable : ""}`}
+              onClick={() => selectSize(variant)}
+            >
+              {variant.size}
+            </button>;
+          })}
+        </div>
+
         <button
           type="button"
-          className={styles.mobileQuickButton}
-          disabled={!canBuy}
-          onClick={() => { clearFeedback(); setMobileQuickOpen(true); }}
+          className={`${styles.mobileAddButton} ${phase === "added" ? styles.added : ""}`}
+          disabled={busy || !canBuy || !selected || phase === "added"}
+          aria-busy={busy}
+          onClick={() => void add()}
         >
-          {canBuy ? "Quick add" : "Sold out"}
+          {busy ? <LoaderCircle className={styles.spinner} size={16} aria-hidden="true" />
+            : phase === "added" ? <Check size={16} aria-hidden="true" />
+            : <ShoppingBag size={16} aria-hidden="true" />}
+          <span>{busy ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to cart"}</span>
         </button>
-        <button
-          type="button"
-          className={styles.mobileWishButton}
-          aria-pressed={saved}
-          disabled={!wishlistReady || busy}
-          aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`}
-          onClick={toggleWishlist}
-        >
-          <Heart size={18} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
-        </button>
+
+        <p className={styles.mobileInlineFeedback} role={error ? "alert" : "status"}>
+          {error || message || (!selected ? "Choose a size to add this piece." : "")}
+        </p>
       </div>
 
       <div className={`${styles.quickShop} ${styles.desktopQuickShop}`}>

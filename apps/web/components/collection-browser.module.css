@@ -529,3 +529,49 @@
     align-self: start;
   }
 }
+
+
+/* HIDI mobile catalogue controls stay attached below announcement + header. */
+@media (max-width: 620px) {
+  .toolbar {
+    position: fixed;
+    top: calc(var(--hidi-mobile-announcement, 26px) + var(--hidi-mobile-header, 58px));
+    left: 0;
+    right: 0;
+    z-index: 58;
+    width: 100%;
+    min-height: 50px;
+    margin: 0;
+    padding: 0 12px;
+    background: rgba(243,236,223,.98);
+    border-top: 1px solid #d9ccbc;
+    border-bottom: 1px solid #d9ccbc;
+    box-shadow: 0 5px 14px rgba(64,42,28,.06);
+    backdrop-filter: blur(12px);
+  }
+
+  .toolbarLeft {
+    flex: 1 1 auto;
+  }
+
+  .toolbarRight {
+    flex: 0 0 auto;
+  }
+
+  .mobileFilterButton {
+    min-height: 48px;
+    color: #591d20;
+  }
+
+  .sortSelect {
+    min-height: 48px;
+    background: transparent;
+    color: #3b3029;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .productGrid {
+    padding-top: 2px;
+  }
+}
