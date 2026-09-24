@@ -1614,3 +1614,13 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .cart-item { grid-template-columns: 82px minmax(0, 1fr); }
   .product-grid, .pdp-related-grid { gap-inline: 8px; }
 }
+
+
+@media (max-width: 620px) {
+  .pdp-gallery .pdp-image,
+  .pdp-gallery .pdp-image:not(:first-child) {
+    width: 88% !important;
+    min-width: 88%;
+    scroll-snap-stop: always;
+  }
+}
