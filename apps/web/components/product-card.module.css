@@ -1188,3 +1188,247 @@
     height: 36px;
   }
 }
+
+
+/* ==========================================================================
+   FINAL HIDI PRODUCT CARD SPEC
+   Futura-style Jost + one-line name + image love + sizes + Add to Cart.
+   ========================================================================== */
+.name {
+  min-width: 0;
+  min-height: 24px;
+  margin: 0;
+  display: block;
+  overflow: hidden;
+  color: var(--hidi-mulberry-clay, #591d20);
+  font-family: var(--font-product);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.priceRow,
+.priceRow strong,
+.priceRow s,
+.from,
+.saving {
+  font-family: var(--font-product);
+}
+
+.priceRow {
+  color: #332824;
+  font-weight: 500;
+}
+
+.mediaWrap {
+  position: relative;
+}
+
+.mobileImageHeart {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 8;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--hidi-mulberry-clay, #591d20);
+}
+
+.mobileImageHeart svg {
+  stroke: currentColor;
+}
+
+.mobileImageHeart[aria-pressed="true"] {
+  color: var(--hidi-mulberry-clay, #591d20);
+}
+
+.mobileImageHeart:disabled {
+  opacity: .45;
+}
+
+.mobileImagePlus {
+  display: none !important;
+}
+
+/* The image heart replaces the old wishlist button below the card. */
+.wishButton {
+  display: none;
+}
+
+/* Desktop/web catalogue: sizes + Add to Cart stay visible below the product. */
+.desktopQuickShop {
+  max-height: none !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  transform: none !important;
+}
+
+.desktopQuickShop .actions {
+  display: block;
+}
+
+.desktopQuickShop .addButton {
+  width: 100%;
+  min-height: 44px;
+  font-family: var(--font-product);
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+@media (max-width: 620px) {
+  .body {
+    min-height: 176px;
+    display: grid;
+    grid-template-rows: 24px 28px 116px;
+    gap: 4px;
+    align-content: start;
+    padding: 9px 0 0;
+  }
+
+  .eyebrow,
+  .body > .colours,
+  .body > .singleColour,
+  .mobileCardActions,
+  .desktopQuickShop {
+    display: none !important;
+  }
+
+  .name {
+    min-height: 24px;
+    font-size: 14px;
+    line-height: 24px;
+  }
+
+  .priceRow {
+    min-height: 28px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    line-height: 28px;
+  }
+
+  .priceRow strong {
+    font: inherit;
+    font-weight: 500;
+  }
+
+  .priceRow s,
+  .from,
+  .saving {
+    font-size: 10px !important;
+  }
+
+  .saving {
+    display: none;
+  }
+
+  .mobileInlineShop {
+    min-width: 0;
+    min-height: 116px;
+    display: grid !important;
+    grid-template-rows: 22px 36px 42px 12px;
+    gap: 2px;
+    align-content: start;
+    padding-top: 2px;
+    border-top: 0;
+  }
+
+  .mobileSizeHeader {
+    min-height: 22px;
+    display: flex;
+    align-items: center;
+  }
+
+  .mobileSizeHeader > span {
+    color: #6f6257;
+    font-family: var(--font-product);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .mobileSizes {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-inline: contain;
+  }
+
+  .mobileSizes::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobileSizeButton {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 7px;
+    flex: 0 0 auto;
+    border: 1px solid #cbbdb1;
+    background: rgba(255,255,255,.72);
+    color: #4a3833;
+    font-family: var(--font-product);
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .mobileSizeActive {
+    border-color: var(--hidi-mulberry-clay, #591d20);
+    background: var(--hidi-mulberry-clay, #591d20);
+    color: #fff8ef;
+  }
+
+  .mobileAddButton {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid var(--hidi-mulberry-clay, #591d20);
+    background: var(--hidi-mulberry-clay, #591d20);
+    color: #fff8ef;
+    font-family: var(--font-product);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    text-transform: none;
+  }
+
+  .mobileAddButton:disabled:not(.added) {
+    opacity: .46;
+  }
+
+  .mobileInlineFeedback {
+    min-height: 12px;
+    margin: 0;
+    overflow: hidden;
+    color: #7b6e64;
+    font-family: var(--font-product);
+    font-size: 8px;
+    line-height: 12px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .mobileImageHeart {
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+  }
+}
