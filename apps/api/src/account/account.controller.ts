@@ -15,6 +15,15 @@ export class AccountController {
     return this.account.orders(user);
   }
 
+  @Get("orders/:orderNumber")
+  async order(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("orderNumber") orderNumber: string,
+  ) {
+    const user = await this.auth.requireUser(authorization);
+    return this.account.order(user, orderNumber);
+  }
+
   @Patch("orders/:orderNumber/returns/:requestId/cancel")
   async cancelReturnRequest(
     @Headers("authorization") authorization: string | undefined,
