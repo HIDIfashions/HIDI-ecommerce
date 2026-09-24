@@ -87,6 +87,10 @@ export class AccountService {
             product: {
               include: {
                 images: { orderBy: { position: "asc" }, take: 1 },
+                reviews: {
+                  where: { published: true },
+                  select: { rating: true },
+                },
                 variants: {
                   where: { active: true },
                   include: { inventory: true },
@@ -98,6 +102,7 @@ export class AccountService {
               include: { images: { orderBy: { position: "asc" }, take: 1 } },
             },
             returnRequests: { orderBy: { createdAt: "desc" } },
+            review: true,
           },
           orderBy: { id: "asc" },
         },
@@ -157,6 +162,10 @@ export class AccountService {
                 })
                 .map((variant) => variant.size),
             ));
+            const reviewRatings = item.product.reviews.map((review) => review.rating);
+            const averageRating = reviewRatings.length
+              ? reviewRatings.reduce((sum, rating) => sum + rating, 0) / reviewRatings.length
+              : 0;
             return {
               id: item.id,
               productName: item.productName,
@@ -169,6 +178,11 @@ export class AccountService {
                 .filter((request) => !["REJECTED", "CANCELLED"].includes(request.status))
                 .reduce((sum, request) => sum + request.quantity, 0)),
               totalPaise: item.totalPaise,
+              rating: {
+                average: averageRating,
+                count: reviewRatings.length,
+                customerRating: item.review?.rating ?? null,
+              },
               exchangeSizes,
               returnRequests: item.returnRequests.map((request) => ({
                 id: request.id,
