@@ -15,7 +15,8 @@
   /* HIDI typography tokens */
   --font-sans: var(--font-manrope), "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-cormorant), Georgia, "Times New Roman", serif;
-  --font-product: var(--font-manrope), "Helvetica Neue", Arial, sans-serif;
+  --font-handwritten: var(--font-dancing-script), "Segoe Print", "Bradley Hand", cursive;
+  --font-product: var(--font-handwritten);
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-base: 1rem;
@@ -2436,5 +2437,61 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .checkout-mobile-summary-item b {
     font-size: 12px;
     line-height: 1.35;
+  }
+}
+
+
+/* ==========================================================================
+   HIDI WARM BEIGE CANVAS + HANDWRITTEN PRODUCT VOICE
+   Functional UI stays Manrope for readability.
+   ========================================================================== */
+body {
+  background: #f3ecdf;
+}
+
+.collection-header h1,
+.pdp-info h1,
+.product-name,
+.cart-item-info h2,
+.checkout-summary-copy b,
+.checkout-mobile-summary-item b {
+  font-family: var(--font-product);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.collection-header h1 {
+  line-height: .94;
+}
+
+@media (max-width: 620px) {
+  :root {
+    --hidi-mobile-announcement: 26px;
+    --hidi-mobile-header: 58px;
+  }
+
+  .announcement {
+    position: sticky;
+    top: 0;
+    z-index: 61;
+    background: #461416;
+  }
+
+  .site-header {
+    top: var(--hidi-mobile-announcement);
+    z-index: 60;
+  }
+
+  .collection-page {
+    padding-top: 74px !important;
+  }
+
+  .collection-page .collection-header {
+    margin-top: 0;
+  }
+
+  .collection-page .collection-header h1 {
+    font-size: clamp(2.8rem, 13vw, 3.7rem);
+    line-height: .9;
   }
 }
