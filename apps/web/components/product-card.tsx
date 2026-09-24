@@ -35,6 +35,8 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const [bagLink, setBagLink] = useState(false);
   const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
   const adding = useRef(false);
+  const mobileSizeSelectRef = useRef<HTMLSelectElement>(null);
+  const desktopSizeSelectRef = useRef<HTMLSelectElement>(null);
   const activeColour = colours.includes(colour) ? colour : colours[0] ?? "";
   const variants = variantsForColour(product.variants, activeColour);
   const selected = variants.find((entry) => entry.id === variantId);
@@ -160,7 +162,8 @@ export function ProductCard({ product, initialVariantId }: Props) {
     setError(""); setMessage(""); setBagLink(false);
     if (!selected) {
       setChooseSize(true); setError("Choose your size above to add this piece.");
-      document.querySelector<HTMLSelectElement>(`[aria-label="Choose size for ${CSS.escape(product.name)}"]`)?.focus();
+      const mobileVisible = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
+      (mobileVisible ? mobileSizeSelectRef.current : desktopSizeSelectRef.current)?.focus();
       return;
     }
     if (selected.available < 1) {
@@ -215,6 +218,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
         </div>
 
         <select
+          ref={mobileSizeSelectRef}
           className={styles.mobileSizeSelect}
           value={variantId}
           disabled={busy || !canBuy}
@@ -254,6 +258,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
       <div className={`${styles.quickShop} ${styles.desktopQuickShop}`}>
         <div className={styles.desktopSelectRow}>
           <select
+            ref={desktopSizeSelectRef}
             className={`${styles.desktopSizeSelect} ${chooseSize ? styles.needsSize : ""}`}
             value={variantId}
             disabled={busy || !canBuy}
