@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PRODUCT_VARIANT_EVENT } from "./add-to-cart";
+import { Heart } from "lucide-react";
+import { PRODUCT_VARIANT_EVENT } from "@/lib/product-sharing";
 import {
   getWishlistItems,
   removeWishlistSlug,
@@ -10,7 +11,7 @@ import {
   WishlistItem,
 } from "@/lib/wishlist";
 
-export function WishlistButton({ slug }: { slug: string }) {
+export function WishlistButton({ slug, compact = false }: { slug: string; compact?: boolean }) {
   const [saved, setSaved] = useState(false);
   const [selected, setSelected] = useState<WishlistItem | null>(null);
 
@@ -49,11 +50,12 @@ export function WishlistButton({ slug }: { slug: string }) {
   return (
     <button
       type="button"
-      className="wishlist-button"
+      className={compact ? "wishlist-button wishlist-button-compact" : "wishlist-button"}
       aria-pressed={saved}
+      aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
       onClick={toggle}
     >
-      {saved ? "♥ Saved to wishlist" : "♡ Add to wishlist"}
+      {compact ? <Heart size={20} fill={saved ? "currentColor" : "none"} aria-hidden="true" /> : (saved ? "♥ Saved to wishlist" : "♡ Add to wishlist")}
     </button>
   );
 }
