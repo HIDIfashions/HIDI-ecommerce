@@ -784,3 +784,48 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* HIDI mobile catalogue rhythm: every SKU reserves the same metadata height. */
+@media (max-width: 620px) {
+  .card {
+    align-self: start;
+    width: 100%;
+  }
+
+  .body {
+    min-height: 126px;
+    display: grid;
+    grid-template-rows: 14px 40px 32px 40px;
+    align-content: start;
+    padding-top: 10px;
+  }
+
+  .eyebrow {
+    min-height: 14px;
+    margin: 0;
+    align-self: start;
+  }
+
+  .name {
+    min-height: 40px;
+    margin: 0;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    align-self: start;
+  }
+
+  .priceRow {
+    min-height: 32px;
+    margin: 0;
+    align-content: start;
+  }
+
+  .mobileCardActions {
+    min-height: 40px;
+    margin-top: 0;
+    align-self: end;
+  }
+}
