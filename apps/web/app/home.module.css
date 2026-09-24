@@ -1122,3 +1122,15 @@
   .phoneMockup { width: min(100%, 270px); }
   .promise { padding-top: 60px; padding-bottom: 66px; }
 }
+
+
+@media (hover: none) {
+  .collectionCard:hover,
+  .collectionCard:focus-visible { transform: none; box-shadow: none; }
+  .collectionCard:hover .collectionCopy { background: transparent; color: inherit; }
+  .collectionCard:hover .collectionCopy p { color: #786a5e; }
+  .collectionCard:hover .collectionCopy b { color: #8c6434; }
+  .primaryButton:hover,
+  .secondaryButton:hover,
+  .whatsappButton:hover { transform: none; }
+}
