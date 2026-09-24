@@ -415,3 +415,372 @@
   .secondaryActions { grid-template-columns: 1fr; }
   .secondaryActions button { min-height: 42px; }
 }
+
+
+/* ==========================================================================
+   HIDI MOBILE V2 — catalogue cards + Quick Add bottom sheet
+   Desktop catalogue behavior above remains unchanged.
+   ========================================================================== */
+.mobileCardActions {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .card {
+    position: relative;
+    height: auto;
+  }
+
+  .body {
+    padding: 10px 0 0;
+  }
+
+  .eyebrow {
+    margin-bottom: 4px;
+    font-size: 9px;
+    letter-spacing: .08em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .name {
+    margin-bottom: 5px;
+    font-size: 16px;
+    line-height: 1.18;
+    min-height: 0;
+  }
+
+  .priceRow {
+    min-height: 20px;
+    gap: 3px 6px;
+    font-size: 13px;
+  }
+
+  .priceRow s,
+  .from,
+  .saving {
+    font-size: 10px !important;
+  }
+
+  .body > .colours,
+  .body > .singleColour,
+  .desktopQuickShop {
+    display: none;
+  }
+
+  .mobileCardActions {
+    margin-top: 8px;
+    min-height: 38px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 38px;
+    align-items: center;
+    gap: 5px;
+    border-top: 1px solid #eee6de;
+  }
+
+  .mobileColour {
+    min-width: 0;
+    color: #81756b;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobileQuickButton {
+    min-height: 38px;
+    padding: 0 7px;
+    border: 0;
+    background: transparent;
+    color: #591d20;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .025em;
+    white-space: nowrap;
+  }
+
+  .mobileQuickButton:disabled {
+    color: #9b928b;
+  }
+
+  .mobileWishButton {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: #591d20;
+  }
+}
+
+.mobileSheetBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 16000;
+  padding: 0;
+  display: grid;
+  place-items: end stretch;
+  background: rgba(30, 14, 14, .46);
+  backdrop-filter: blur(3px);
+}
+
+.mobileSheet {
+  position: relative;
+  width: 100%;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 13px 16px max(18px, env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: #fff;
+  box-shadow: 0 -18px 60px rgba(35, 15, 15, .20);
+}
+
+.mobileSheetHandle {
+  width: 38px;
+  height: 4px;
+  margin: 0 auto 10px;
+  border-radius: 999px;
+  background: #d6cec8;
+}
+
+.mobileSheetClose {
+  position: absolute;
+  top: 15px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #faf7f4;
+  color: #591d20;
+}
+
+.mobileSheetHeader {
+  padding: 6px 48px 15px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 12px;
+  border-bottom: 1px solid #eee5dd;
+}
+
+.mobileSheetHeader > div {
+  min-width: 0;
+}
+
+.mobileSheetHeader p {
+  margin: 0 0 5px;
+  color: #9b7442;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .10em;
+}
+
+.mobileSheetHeader h3 {
+  margin: 0 0 5px;
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+.mobileSheetHeader span {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.mobileSheetHeader > a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #591d20;
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.mobileSheetSection {
+  padding: 15px 0;
+  border-bottom: 1px solid #eee5dd;
+}
+
+.mobileSheetLabel {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobileSheetLabel span {
+  color: #75695f;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.mobileSheetLabel strong {
+  color: #591d20;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.mobileSheetColours {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.mobileSheetColours::-webkit-scrollbar {
+  display: none;
+}
+
+.mobileSheetColour,
+.mobileSheetColourActive {
+  min-height: 42px;
+  padding: 0 12px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #ded4cc;
+  background: #fff;
+  color: #50443c;
+  font-size: 11px;
+}
+
+.mobileSheetColourActive {
+  border-color: #591d20;
+  color: #591d20;
+  background: #fcf7f6;
+}
+
+.mobileSheetSizes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.mobileSheetSize {
+  min-height: 46px;
+  border: 1px solid #dcd2ca;
+  background: #fff;
+  color: #40362f;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.mobileSheetSizeActive {
+  border-color: #591d20;
+  background: #591d20;
+  color: #fff8ef;
+}
+
+.mobileSheetAvailability {
+  min-height: 16px;
+  margin: 9px 0 0;
+  color: #81756b;
+  font-size: 10px;
+}
+
+.mobileSheetError,
+.mobileSheetMessage {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.mobileSheetError {
+  background: #fff1ef;
+  color: #8b3931;
+}
+
+.mobileSheetMessage {
+  background: #f4f7f2;
+  color: #4d654f;
+}
+
+.mobileSheetAdd {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #591d20;
+  background: #591d20;
+  color: #fff8ef;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.mobileSheetAdd:disabled:not(.added) {
+  opacity: .48;
+}
+
+.mobileSheetSecondary {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mobileSheetSecondary button {
+  min-height: 44px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid #dfd5cc;
+  background: #fff;
+  color: #554940;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.mobileSheetSecondary button:disabled {
+  opacity: .45;
+}
+
+.mobileViewBag {
+  min-height: 42px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #591d20 !important;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (min-width: 621px) {
+  .mobileSheetBackdrop {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .mobileSheetSizes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mobileSheetSecondary {
+    grid-template-columns: 1fr;
+  }
+}
