@@ -251,7 +251,7 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
         <Link href="/account/orders" className={styles.summaryCard}>
           <span>ORDERS</span><strong>{orders.length}</strong><small>{totalItems} piece{totalItems === 1 ? "" : "s"} across your HIDI history</small>
         </Link>
-        <Link href="/account/orders" className={styles.summaryCard}>
+        <Link href="/account/returns" className={styles.summaryCard}>
           <span>AFTERCARE</span><strong>{activeReturnCount}</strong><small>{activeReturnCount ? "Return or exchange in progress" : "No active return requests"}</small>
         </Link>
         <Link href="/account/orders" className={styles.summaryCard}>
@@ -276,7 +276,7 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
           {recentOrders.map((order) => {
             const placedAt = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(order.createdAt));
             const heroItem = order.items[0];
-            return <Link href="/account/orders" className={styles.recentOrderCard} key={order.orderNumber}>
+            return <Link href={`/account/orders/${encodeURIComponent(order.orderNumber)}`} className={styles.recentOrderCard} key={order.orderNumber}>
               <div className={styles.recentThumb}>
                 <CatalogImage src={heroItem?.image} alt={heroItem?.productName ?? "HIDI order"} sizes="120px" fallbackLabel="HIDI order" />
               </div>
@@ -378,7 +378,7 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
 
           <div className={styles.footer}>
             <span>Payment: {order.paymentStatus === "CAPTURED" ? "Paid" : titleCase(order.paymentStatus)}</span>
-            <Link className="text-link" href={`/order-confirmed?order=${encodeURIComponent(order.orderNumber)}&status=${encodeURIComponent(order.status)}`}>View order →</Link>
+            <Link className="text-link" href={`/account/orders/${encodeURIComponent(order.orderNumber)}`}>View order →</Link>
           </div>
         </article>;
       })}
