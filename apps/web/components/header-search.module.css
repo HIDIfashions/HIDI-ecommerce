@@ -165,3 +165,17 @@
 .meta,
 .helper,
 .empty { font-size: 12px; }
+
+
+@media (max-width: 640px) {
+  .panel { top: 30px; max-height: calc(100dvh - 30px); overflow-y: auto; overscroll-behavior: contain; }
+  .inner { width: calc(100% - 24px); padding: 18px 0 28px; }
+  .topRow { align-items: center; }
+  .searchBox { width: min(100%, calc(100vw - 66px)); min-width: 0; height: 50px; padding-inline: 14px; }
+  .results, .helper, .empty { width: min(100%, calc(100vw - 24px)); }
+  .results { gap: 14px; margin-top: 18px; }
+  .item { grid-template-columns: 64px minmax(0, 1fr); min-height: 82px; }
+  .thumb { width: 64px; }
+  .close { width: 42px; height: 42px; padding: 0; flex: 0 0 42px; }
+  .backdrop { inset: 30px 0 0; }
+}

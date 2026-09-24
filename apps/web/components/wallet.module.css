@@ -90,3 +90,33 @@
   .balances > div:hover,
   .checkoutWallet:hover { transform: none; }
 }
+
+
+@media (max-width: 520px) {
+  .panel { margin: 22px 0; padding: 18px 14px; }
+  .balances { grid-template-columns: 1fr; gap: 8px; }
+  .balances > .primary { grid-column: auto; }
+  .balances > div { padding: 15px 14px; }
+  .history li { align-items: flex-start; }
+  .checkoutWallet { padding: 15px 13px; }
+  .amount input { max-width: none; width: 100%; font-size: 16px; }
+  .summaryRows > div { align-items: flex-start; }
+}
+
+
+@media (hover: none) {
+  .balances > div:hover,
+  .checkoutWallet:hover {
+    background: #ffffff;
+    color: var(--ink);
+    border-color: var(--line);
+    transform: none;
+  }
+  .balances > div:hover span,
+  .balances > div:hover small,
+  .checkoutWallet:hover .note,
+  .checkoutWallet:hover .amount,
+  .checkoutWallet:hover .warning,
+  .checkoutWallet:hover .textButton,
+  .checkoutWallet:hover a { color: inherit; }
+}

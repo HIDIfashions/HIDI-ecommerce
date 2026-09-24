@@ -1081,3 +1081,56 @@
 @media (max-width: 780px) {
   .heroCopy h1 { font-size: clamp(48px, 13vw, 64px); }
 }
+
+
+/* Mobile homepage refinement */
+@media (max-width: 620px) {
+  .heroCopy { padding: 44px 18px 38px; }
+  .heroCopy h1 { font-size: clamp(46px, 13vw, 62px); line-height: .96; }
+  .heroIntro { margin-top: 20px; font-size: 15px; line-height: 1.65; }
+  .heroActions { margin-top: 26px; gap: 9px; }
+  .heroActions a { width: 100%; min-height: 50px; }
+  .heroNote { margin-top: 34px; padding-top: 16px; }
+  .heroVisual { min-height: 500px; }
+  .heroImage { object-position: 60% top; }
+  .heroBadge { padding: 14px 16px; }
+
+  .collectionStrip {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    padding: 10px;
+  }
+  .collectionCard { min-height: 132px; grid-template-columns: 40% 60%; }
+  .collectionImage { min-height: 132px; }
+  .collectionCopy { padding: 16px 14px; }
+  .collectionCopy > span { font-size: 22px; }
+  .collectionCopy p { margin: 6px 0 9px; font-size: 12px; }
+
+  .launchBenefits { padding: 54px 18px; gap: 28px; }
+  .launchIntro h2 { font-size: clamp(36px, 11vw, 48px); }
+  .launchOfferCard { min-height: 0; padding: 22px 18px; }
+  .launchOfferIcon { margin-bottom: 18px; }
+
+  .standardItem { min-height: 84px; padding: 18px; }
+  .featured { padding-top: 64px; padding-bottom: 72px; }
+  .sectionHeading h2, .brandStory h2, .promiseLead h2 { font-size: clamp(36px, 11vw, 48px); }
+  .productGrid { gap: 26px 9px; }
+  .brandBandInner { padding-top: 54px; padding-bottom: 54px; }
+  .whatsappCard { padding: 22px 18px 26px; }
+  .whatsappBrandRow { margin-bottom: 18px; }
+  .whatsappCard h3 { font-size: clamp(31px, 10vw, 42px); }
+  .phoneMockup { width: min(100%, 270px); }
+  .promise { padding-top: 60px; padding-bottom: 66px; }
+}
+
+
+@media (hover: none) {
+  .collectionCard:hover,
+  .collectionCard:focus-visible { transform: none; box-shadow: none; }
+  .collectionCard:hover .collectionCopy { background: transparent; color: inherit; }
+  .collectionCard:hover .collectionCopy p { color: #786a5e; }
+  .collectionCard:hover .collectionCopy b { color: #8c6434; }
+  .primaryButton:hover,
+  .secondaryButton:hover,
+  .whatsappButton:hover { transform: none; }
+}

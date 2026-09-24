@@ -89,3 +89,11 @@
 @media (max-width: 520px) {
   .grid { grid-template-columns: 1fr; }
 }
+
+
+@media (max-width: 620px) {
+  .controls { margin-top: 11px; gap: 8px; }
+  .select { min-height: 46px; font-size: 16px; }
+  .addButton, .removeButton { min-height: 46px; font-size: 10px; }
+  .message { min-height: 18px; }
+}

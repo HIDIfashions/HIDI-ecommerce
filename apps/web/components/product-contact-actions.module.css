@@ -99,3 +99,16 @@
 .handoffNote { font-size: 12px; }
 
 .intro { font-size: 14px; }
+
+
+@media (max-width: 540px) {
+  .optionGrid { grid-template-columns: 1fr; gap: 11px; }
+  .quantityRow { margin-top: 17px; }
+  .continueButton { min-height: 56px; }
+  .actions button { min-height: 52px; }
+}
+
+@media (max-width: 360px) {
+  .quantityRow { align-items: flex-start; flex-direction: column; }
+  .quantityControl { width: 100%; grid-template-columns: 1fr 48px 1fr; }
+}

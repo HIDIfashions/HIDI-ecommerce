@@ -392,3 +392,21 @@
   .addButton { font-size: 11px !important; }
   .priceRow { font-size: 13px; }
 }
+
+
+/* Mobile product cards: preserve the two-column catalogue without microscopic controls. */
+@media (max-width: 620px) {
+  .body { padding-top: 9px; }
+  .name { font-size: 17px; }
+  .eyebrow { font-size: 10px; }
+  .priceRow { font-size: 13px; }
+  .quickShop { padding-top: 8px; }
+  .sizes { flex-wrap: nowrap; overflow-x: auto; padding: 7px 1px 2px; scrollbar-width: none; }
+  .sizes::-webkit-scrollbar { display: none; }
+  .sizeButton { min-width: 40px; height: 40px; flex: 0 0 auto; }
+  .actions { gap: 5px; }
+  .addButton { min-height: 44px; padding-inline: 5px; font-size: 10px !important; }
+  .wishButton { width: 44px; min-width: 44px; min-height: 44px; }
+  .secondaryActions { grid-template-columns: 1fr; }
+  .secondaryActions button { min-height: 42px; }
+}

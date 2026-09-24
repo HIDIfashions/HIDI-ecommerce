@@ -28,6 +28,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const swipe = useRef<{ pointerId: number; x: number; y: number } | null>(null);
 
   const selected = selectedIndex === null ? null : images[selectedIndex];
   const zoom = ZOOM_LEVELS[zoomIndex];
@@ -37,6 +38,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
     setPan({ x: 0, y: 0 });
     setDragging(false);
     drag.current = null;
+    swipe.current = null;
   }
 
   function open(index: number) {
@@ -89,9 +91,13 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
   }
 
   function pointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (zoom <= 1 || !event.isPrimary) return;
-    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    if (!event.isPrimary) return;
     event.currentTarget.setPointerCapture(event.pointerId);
+    if (zoom <= 1) {
+      swipe.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      return;
+    }
+    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
     setDragging(true);
   }
 
@@ -105,6 +111,23 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
   }
 
   function pointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    const swipeStart = swipe.current;
+    if (zoom <= 1 && swipeStart?.pointerId === event.pointerId) {
+      const dx = event.clientX - swipeStart.x;
+      const dy = event.clientY - swipeStart.y;
+      swipe.current = null;
+      if (Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        if (dx < 0) next();
+        else previous();
+      }
+      return;
+    }
+    if (drag.current?.pointerId === event.pointerId) drag.current = null;
+    setDragging(false);
+  }
+
+  function pointerCancel(event: React.PointerEvent<HTMLDivElement>) {
+    if (swipe.current?.pointerId === event.pointerId) swipe.current = null;
     if (drag.current?.pointerId === event.pointerId) drag.current = null;
     setDragging(false);
   }
@@ -235,7 +258,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
             onPointerDown={pointerDown}
             onPointerMove={pointerMove}
             onPointerUp={pointerUp}
-            onPointerCancel={pointerUp}
+            onPointerCancel={pointerCancel}
             onWheel={wheel}
             onDoubleClick={() => {
               if (zoomIndex === 0) setZoomIndex(2);
