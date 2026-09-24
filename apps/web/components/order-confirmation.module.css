@@ -210,3 +210,16 @@
 .receipt :global(.confirmation-item-name) { font-size: 19px; }
 .receipt :global(.status-chip) { font-size: 12px; letter-spacing: .07em; }
 .receipt :global(.confirmation-item-copy p) { font-size: 12px; }
+
+
+@media (max-width: 560px) {
+  .receipt :global(.confirmation-card) { padding: 17px 14px; }
+  .receipt :global(.confirmation-card h2) { font-size: 25px; }
+  .receipt :global(.confirmation-item) { grid-template-columns: 68px minmax(0, 1fr); gap: 11px; }
+  .receipt :global(.confirmation-thumb) { width: 68px; }
+  .receipt :global(.confirmation-item-name) { font-size: 17px; overflow-wrap: anywhere; }
+  .receipt :global(.confirmation-totals > div),
+  .receipt :global(.confirmation-mini-row) { gap: 10px; }
+  .receipt :global(.confirmation-actions) { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 24px; }
+  .receipt :global(.confirmation-action-link) { width: 100%; min-height: 50px; }
+}
