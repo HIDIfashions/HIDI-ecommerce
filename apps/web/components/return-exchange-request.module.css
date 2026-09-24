@@ -315,3 +315,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+@media (max-width: 620px) {
+  .backdrop { padding: 0; place-items: end stretch; }
+  .dialog {
+    width: 100%;
+    max-height: 92dvh;
+    padding: 28px 16px max(20px, env(safe-area-inset-bottom));
+    border-radius: 18px 18px 0 0;
+  }
+  .close { top: 10px; right: 10px; width: 42px; height: 42px; }
+  .dialog h2 { padding-right: 38px; font-size: clamp(30px, 10vw, 40px); }
+  .form { gap: 16px; }
+  .choice, .choiceActive { min-height: 92px; padding: 15px; }
+  .form select, .form textarea { font-size: 16px; }
+  .refund, .refundActive { grid-template-columns: auto 1fr; padding: 13px 12px; }
+  .refund svg, .refundActive svg { display: none; }
+  .submit { min-height: 50px; }
+  .trigger, .cancelRequest { min-height: 40px; }
+}
