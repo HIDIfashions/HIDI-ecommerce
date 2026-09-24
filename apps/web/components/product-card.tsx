@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight, Share2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight, Share2, X } from "lucide-react";
 import type { ApiProduct, ApiVariant } from "@/lib/api";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
 import { cardPrice, money, validColourHex, variantsForColour } from "@/lib/product-card-utils";
@@ -32,6 +33,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const [error, setError] = useState("");
   const [chooseSize, setChooseSize] = useState(false);
   const [bagLink, setBagLink] = useState(false);
+  const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
   const adding = useRef(false);
   const sizesRef = useRef<HTMLDivElement>(null);
   const activeColour = colours.includes(colour) ? colour : colours[0] ?? "";
@@ -78,6 +80,20 @@ export function ProductCard({ product, initialVariantId }: Props) {
     const timer = window.setTimeout(() => setPhase("idle"), 1800);
     return () => window.clearTimeout(timer);
   }, [phase]);
+
+  useEffect(() => {
+    if (!mobileQuickOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) setMobileQuickOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileQuickOpen, busy]);
 
   function clearFeedback() {
     setError(""); setMessage(""); setChooseSize(false); setBagLink(false); setPhase("idle");
@@ -191,7 +207,29 @@ export function ProductCard({ product, initialVariantId }: Props) {
           </button>;
         })}
       </div> : <p className={styles.singleColour}>{activeColour || "Standard colour"}</p>}
-      <div className={styles.quickShop}>
+      <div className={styles.mobileCardActions}>
+        <span className={styles.mobileColour}>{activeColour || "Standard"}</span>
+        <button
+          type="button"
+          className={styles.mobileQuickButton}
+          disabled={!canBuy}
+          onClick={() => { clearFeedback(); setMobileQuickOpen(true); }}
+        >
+          {canBuy ? "Quick add" : "Sold out"}
+        </button>
+        <button
+          type="button"
+          className={styles.mobileWishButton}
+          aria-pressed={saved}
+          disabled={!wishlistReady || busy}
+          aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`}
+          onClick={toggleWishlist}
+        >
+          <Heart size={18} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className={`${styles.quickShop} ${styles.desktopQuickShop}`}>
         <div className={styles.sizeHeading}>
           <span id={`${uid}-size`}>{selected ? `Your size: ${selected.size}` : "Choose your size"}</span>
           <Link href={href} className={styles.details}>Details <ArrowUpRight size={12} aria-hidden="true" /></Link>
@@ -259,5 +297,120 @@ export function ProductCard({ product, initialVariantId }: Props) {
         </div>
       </div>
     </div>
+
+    {mobileQuickOpen && typeof document !== "undefined" && createPortal(
+      <div
+        className={styles.mobileSheetBackdrop}
+        role="presentation"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !busy) setMobileQuickOpen(false);
+        }}
+      >
+        <section className={styles.mobileSheet} role="dialog" aria-modal="true" aria-labelledby={`${uid}-quick-title`}>
+          <div className={styles.mobileSheetHandle} aria-hidden="true" />
+          <button
+            type="button"
+            className={styles.mobileSheetClose}
+            onClick={() => setMobileQuickOpen(false)}
+            disabled={busy}
+            aria-label="Close quick add"
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
+
+          <div className={styles.mobileSheetHeader}>
+            <div>
+              <p>QUICK ADD</p>
+              <h3 id={`${uid}-quick-title`}>{product.name}</h3>
+              <span>{price.from ? "From " : ""}{money(price.pricePaise)}</span>
+            </div>
+            <Link href={href} onClick={() => setMobileQuickOpen(false)}>View details <ArrowUpRight size={12} aria-hidden="true" /></Link>
+          </div>
+
+          {colours.length > 1 ? (
+            <div className={styles.mobileSheetSection}>
+              <div className={styles.mobileSheetLabel}><span>Colour</span><strong>{activeColour}</strong></div>
+              <div className={styles.mobileSheetColours} role="group" aria-label={`Colour for ${product.name}`}>
+                {colours.map((value) => {
+                  const hex = validColourHex(product.variants.find((entry) => entry.color === value)?.colorHex);
+                  return <button
+                    type="button"
+                    key={value}
+                    aria-pressed={activeColour === value}
+                    className={activeColour === value ? styles.mobileSheetColourActive : styles.mobileSheetColour}
+                    disabled={busy}
+                    onClick={() => selectColour(value)}
+                  >
+                    {hex && <span className={styles.swatch} style={{ backgroundColor: hex }} aria-hidden="true" />}
+                    {value || "Standard"}
+                  </button>;
+                })}
+              </div>
+            </div>
+          ) : <div className={styles.mobileSheetSection}>
+            <div className={styles.mobileSheetLabel}><span>Colour</span><strong>{activeColour || "Standard"}</strong></div>
+          </div>}
+
+          <div className={styles.mobileSheetSection}>
+            <div className={styles.mobileSheetLabel}>
+              <span>Choose your size</span>
+              {selected && <strong>{selected.size}</strong>}
+            </div>
+            <div ref={sizesRef} className={`${styles.mobileSheetSizes} ${chooseSize ? styles.needsSize : ""}`} role="group" aria-label={`Size for ${product.name}`}>
+              {variants.map((variant) => {
+                const unavailable = !product.inStock || variant.available < 1;
+                return <button
+                  key={variant.id}
+                  type="button"
+                  disabled={busy || unavailable}
+                  aria-pressed={selected?.id === variant.id}
+                  className={`${styles.mobileSheetSize} ${selected?.id === variant.id ? styles.mobileSheetSizeActive : ""} ${unavailable ? styles.unavailable : ""}`}
+                  onClick={() => selectSize(variant)}
+                >
+                  {variant.size}
+                </button>;
+              })}
+            </div>
+            <p className={styles.mobileSheetAvailability}>
+              {selected && selected.available > 0 && selected.available <= 3
+                ? `Only ${selected.available} left in ${selected.size}`
+                : selected ? `${selected.size} · ${selected.color}` : "Select a size to continue."}
+            </p>
+          </div>
+
+          {error && <p className={styles.mobileSheetError} role="alert">{error}</p>}
+          {message && <p className={styles.mobileSheetMessage} role="status">{message}</p>}
+
+          <button
+            type="button"
+            className={`${styles.mobileSheetAdd} ${phase === "added" ? styles.added : ""}`}
+            disabled={busy || !canBuy || phase === "added"}
+            aria-busy={busy}
+            onClick={() => void add()}
+          >
+            {busy ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" />
+              : phase === "added" ? <Check size={17} aria-hidden="true" />
+              : <ShoppingBag size={17} aria-hidden="true" />}
+            {busy ? "Adding…" : phase === "added" ? "Added to bag" : "Add to bag"}
+          </button>
+
+          <div className={styles.mobileSheetSecondary}>
+            <button type="button" onClick={toggleWishlist} disabled={!wishlistReady || busy}>
+              <Heart size={17} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
+              {saved ? "Saved" : "Save"}
+            </button>
+            <button type="button" onClick={orderOnWhatsapp} disabled={!whatsappConfigured || busy}>
+              <WhatsAppIcon size={17} /> WhatsApp
+            </button>
+            <button type="button" onClick={() => void share()} disabled={busy}>
+              <Share2 size={16} aria-hidden="true" /> Share
+            </button>
+          </div>
+
+          {bagLink && <Link href="/cart" className={styles.mobileViewBag} onClick={() => setMobileQuickOpen(false)}>View bag <ArrowUpRight size={13} aria-hidden="true" /></Link>}
+        </section>
+      </div>,
+      document.body,
+    )}
   </article>;
 }
