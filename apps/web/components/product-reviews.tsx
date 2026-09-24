@@ -16,9 +16,9 @@ function ReviewInvitationGuidance() {
       </summary>
       <div className={styles.guidanceContent}>
         <strong>Your purchase. Your honest experience.</strong>
-        <p>Reviews are linked to delivered orders. If you received a HIDI review email, open the private link in that message to review the pieces you bought.</p>
-        <p>Check the email address used at checkout, including your spam folder. The invitation is personal, so please don’t share its link.</p>
-        <Link href="/account">View my orders <span aria-hidden="true">→</span></Link>
+        <p>Reviews are linked to delivered orders. Sign in to My HIDI and open Orders to review any eligible piece directly.</p>
+        <p>If you received a HIDI review email, its private review link will continue to work as well.</p>
+        <Link href="/account/orders">Review my HIDI pieces <span aria-hidden="true">→</span></Link>
       </div>
     </details>
   );
