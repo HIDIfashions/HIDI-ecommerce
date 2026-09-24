@@ -208,7 +208,6 @@ export function ProductCard({ product, initialVariantId }: Props) {
         })}
       </div> : <p className={styles.singleColour}>{activeColour || "Standard colour"}</p>}
       <div className={styles.mobileCardActions}>
-        <span className={styles.mobileColour}>{activeColour || "Standard"}</span>
         <button
           type="button"
           className={styles.mobileQuickButton}

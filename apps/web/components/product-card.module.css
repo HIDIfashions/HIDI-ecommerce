@@ -876,3 +876,29 @@
     font-size: 18px;
   }
 }
+
+
+/* Mobile product action row: Quick add + love icon together on the left. */
+@media (max-width: 620px) {
+  .mobileCardActions {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 2px;
+    min-height: 40px;
+    margin-top: 0;
+  }
+
+  .mobileQuickButton {
+    min-width: 0;
+    min-height: 40px;
+    padding: 0 8px 0 0;
+    text-align: left;
+  }
+
+  .mobileWishButton {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+  }
+}
