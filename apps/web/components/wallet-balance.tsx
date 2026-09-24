@@ -84,9 +84,35 @@ const historyLabels: Record<string, string> = {
   RETURN_REFUND: "Return refund credited",
 };
 
-export function WalletBalance() {
+export function WalletBalance({ compact = false }: { compact?: boolean }) {
   const { userId, summary, loading, error, unavailable, refresh } = useWalletSummary();
   if (!walletEnabled || !userId || (unavailable && !summary)) return null;
+
+  if (compact) {
+    return <section className={`${styles.panel} ${styles.compactPanel}`} aria-labelledby="wallet-title" aria-busy={loading}>
+      <div className={`${styles.heading} ${styles.compactHeading}`}>
+        <span className={styles.eyebrow}><WalletCards size={17} strokeWidth={1.8} aria-hidden="true" /> YOUR HIDI WALLET</span>
+        <h2 id="wallet-title">Good choices. A little back.</h2>
+      </div>
+      {loading && !summary ? <p role="status">Loading your wallet…</p> : error ? <div role="alert"><p>{error}</p><button className={styles.textButton} type="button" onClick={() => { void refresh().catch(() => undefined); }}>Try again</button></div> : summary ? <>
+        <div className={`${styles.balances} ${styles.compactBalances}`}>
+          <div className={styles.primary}>
+            <span>{summary.enabled ? "Available" : "Recorded"}</span>
+            <strong>{formatWalletPaise(summary.enabled ? summary.availablePaise : summary.balancePaise)}</strong>
+          </div>
+          <div><span>Pending</span><strong>{formatWalletPaise(summary.pendingPaise)}</strong></div>
+          <div><span>Reserved</span><strong>{formatWalletPaise(summary.reservedPaise)}</strong></div>
+        </div>
+        {summary.heldPaise > 0 && <p className={`${styles.note} ${styles.compactNote}`}>{formatWalletPaise(summary.heldPaise)} is on hold while a return is resolved.</p>}
+        <p className={`${styles.rule} ${styles.compactRule}`}>2 points per ₹100 eligible spend · 1 point = ₹1</p>
+        {summary.history.length > 0 && <details className={styles.compactHistory}>
+          <summary>Recent activity <ArrowUpRight size={14} aria-hidden="true" /></summary>
+          <ul>{summary.history.slice(0, 4).map((entry) => <li key={entry.id}><div><strong>{historyLabels[entry.kind] ?? "Wallet adjustment"}</strong><span>{new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(entry.createdAt))}</span></div><b className={entry.deltaPaise > 0 ? styles.credit : undefined}>{entry.deltaPaise > 0 ? "+" : ""}{formatWalletPaise(entry.deltaPaise)}</b></li>)}</ul>
+        </details>}
+      </> : null}
+    </section>;
+  }
+
   return <section className={styles.panel} aria-labelledby="wallet-title" aria-busy={loading}>
     <div className={styles.heading}><span className={styles.eyebrow}><WalletCards size={18} strokeWidth={1.8} aria-hidden="true" /> YOUR HIDI WALLET</span><h2 id="wallet-title">Good choices. A little back.</h2></div>
     {loading && !summary ? <p role="status">Loading your wallet…</p> : error ? <div role="alert"><p>{error}</p><button className={styles.textButton} type="button" onClick={() => { void refresh().catch(() => undefined); }}>Try again</button></div> : summary ? <>

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { CatalogImage } from "@/components/catalog-image";
 import { RetentionPreferences } from "@/components/retention-preferences";
-import { WalletBalance } from "@/components/wallet-balance";
 import { ReturnExchangeRequest } from "@/components/return-exchange-request";
 import { formatPaise } from "@/lib/api";
 import { formatWalletPaise } from "@/lib/wallet-client";
@@ -186,11 +185,11 @@ export function AccountOrdersClient() {
             <span style={{ display: "flex", alignItems: "center", padding: "0 12px", border: "1px solid #d8d3cb", borderRadius: 8 }}>+91</span>
             <input id="account-phone" type="tel" value={phone.replace(/^\+91/, "")} onChange={(event) => setPhone(event.target.value ?? "")} placeholder="98765 43210" inputMode="numeric" autoComplete="tel" maxLength={10} required />
           </div>
-          <button className="button button-dark" disabled={busy}>{busy ? "Sending OTP…" : "Continue"}</button>
+          <button className={`button ${styles.authPrimaryButton}`} disabled={busy}>{busy ? "Sending OTP…" : "Continue"}</button>
         </form> : <form className={styles.authForm} onSubmit={verifyOtp}>
           <label htmlFor="account-otp">6-digit OTP</label>
           <input id="account-otp" name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="000000" required autoComplete="one-time-code" />
-          <button className="button button-dark" disabled={busy}>{busy ? "Signing in…" : "Verify & sign in"}</button>
+          <button className={`button ${styles.authPrimaryButton}`} disabled={busy}>{busy ? "Signing in…" : "Verify & sign in"}</button>
           <button className={styles.secondaryButton} type="button" onClick={() => { setStep("phone"); setMessage(""); setError(""); }} disabled={busy}>Use a different mobile number</button>
         </form>}
 
@@ -211,10 +210,18 @@ export function AccountOrdersClient() {
   }
 
   const orders = account?.orders ?? [];
+  const customerName = [account?.customer.firstName, account?.customer.lastName]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map((value) => value.trim())
+    .join(" ");
+  const customerIdentity = customerName
+    || (account?.customer.phone ? maskedPhone(account.customer.phone) : "")
+    || account?.customer.email
+    || "HIDI customer";
 
   return <>
     <div className={styles.accountBar}>
-      <div><span>Signed in as</span><strong>{account?.customer.phone ? maskedPhone(account.customer.phone) : account?.customer.email}</strong></div>
+      <div className={styles.customerIdentity}><strong>{customerIdentity}</strong></div>
       <button type="button" onClick={logout} disabled={busy}>Sign out</button>
     </div>
 
@@ -271,7 +278,6 @@ export function AccountOrdersClient() {
       })}
     </div>}
 
-    <WalletBalance />
     <RetentionPreferences />
   </>;
 }

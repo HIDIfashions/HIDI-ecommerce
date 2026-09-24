@@ -1,0 +1,35 @@
+.accountTop {
+  margin: 26px 0 24px;
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(460px, 1.05fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: start;
+}
+
+.header {
+  max-width: 620px;
+  margin: 0 !important;
+}
+
+.walletSlot {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .accountTop {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .walletSlot {
+    order: 2;
+  }
+}
+
+@media (max-width: 620px) {
+  .accountTop {
+    margin-top: 18px;
+    margin-bottom: 20px;
+    gap: 18px;
+  }
+}
