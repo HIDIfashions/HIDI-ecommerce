@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { ArrowRight, Star } from "lucide-react";
 import { CatalogImage } from "@/components/catalog-image";
 import { RetentionPreferences } from "@/components/retention-preferences";
 import { ReturnExchangeRequest } from "@/components/return-exchange-request";
@@ -325,22 +326,54 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
           </div>
 
           <div className={styles.items}>
-            {order.items.map((item) => <div className={styles.item} key={item.id}>
-              <Link href={`/products/${item.slug}`} className={styles.thumb} style={{ position: "relative" }}>
-                <CatalogImage src={item.image} alt={item.productName} sizes="86px" fallbackLabel={`HIDI / ${item.productName}`} />
-              </Link>
-              <div>
-                <Link className={styles.name} href={`/products/${item.slug}`}>{item.productName}</Link>
-                <p>{item.color} · Size {item.size} · Qty {item.quantity}</p>
-                <ReturnExchangeRequest
-                  orderNumber={order.orderNumber}
-                  item={item}
-                  eligible={Boolean(order.canReturnOrExchange)}
-                  returnWindowEndsAt={order.returnWindowEndsAt}
-                  onCreated={loadAccount}
-                />
-              </div>
-            </div>)}
+            {order.items.map((item) => {
+              const latestRequest = item.returnRequests[0] ?? null;
+              const aftercareLabel = latestRequest
+                ? latestRequest.type === "EXCHANGE"
+                  ? `Exchange · ${titleCase(latestRequest.status)}`
+                  : `Return · ${titleCase(latestRequest.status)}`
+                : order.status === "DELIVERED" ? "Delivered" : titleCase(order.status);
+
+              return <article className={styles.item} key={item.id}>
+                <Link href={`/products/${item.slug}`} className={styles.thumb}>
+                  <CatalogImage src={item.image} alt={item.productName} sizes="110px" fallbackLabel={`HIDI / ${item.productName}`} />
+                </Link>
+
+                <div className={styles.itemBody}>
+                  <div className={styles.itemTop}>
+                    <div>
+                      <span className={styles.itemStatus}>{aftercareLabel}</span>
+                      <Link className={styles.name} href={`/products/${item.slug}`}>{item.productName}</Link>
+                      <p>{item.color} · Size {item.size} · Qty {item.quantity}</p>
+                    </div>
+                    <strong className={styles.itemPrice}>{formatPaise(item.totalPaise)}</strong>
+                  </div>
+
+                  <ReturnExchangeRequest
+                    orderNumber={order.orderNumber}
+                    item={item}
+                    eligible={Boolean(order.canReturnOrExchange)}
+                    returnWindowEndsAt={order.returnWindowEndsAt}
+                    onCreated={loadAccount}
+                  />
+
+                  {order.status === "DELIVERED" && !latestRequest && <div className={styles.reviewPrompt}>
+                    <div>
+                      <span>HOW DID THIS PIECE FEEL?</span>
+                      <div className={styles.stars} aria-hidden="true">
+                        {[1,2,3,4,5].map((star) => <Star key={star} size={17} strokeWidth={1.5} />)}
+                      </div>
+                    </div>
+                    <Link href={`/products/${item.slug}#reviews`}>Rate this piece <ArrowRight size={13} aria-hidden="true" /></Link>
+                  </div>}
+
+                  <div className={styles.itemActions}>
+                    <Link href={`/products/${item.slug}`}>View piece</Link>
+                    <Link href={`/products/${item.slug}`}>Buy again</Link>
+                  </div>
+                </div>
+              </article>;
+            })}
           </div>
 
           <div className={styles.footer}>
