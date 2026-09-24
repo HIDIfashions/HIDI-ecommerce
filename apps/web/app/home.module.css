@@ -1441,3 +1441,23 @@
     padding: 18px 0;
   }
 }
+
+
+/* HIDI mobile featured grid uses the same catalogue rhythm as collection pages. */
+@media (max-width: 620px) {
+  .featured {
+    width: calc(100% - 24px);
+    margin-inline: auto;
+  }
+
+  .productGrid {
+    column-gap: 12px;
+    row-gap: 12px;
+    align-items: start;
+  }
+
+  .productGrid > * {
+    min-width: 0;
+    align-self: start;
+  }
+}
