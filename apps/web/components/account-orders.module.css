@@ -258,3 +258,24 @@
 .footer {
   font-size: 12px;
 }
+
+
+@media (max-width: 620px) {
+  .authWrap { gap: 28px; }
+  .authCard { padding: 20px 16px; }
+  .authCard h2 { font-size: 31px; }
+  .authForm input { min-height: 50px; font-size: 16px; }
+  .authForm .button { width: 100%; min-height: 50px; }
+  .secondaryButton { min-height: 44px; }
+
+  .accountBar > div { width: 100%; flex-wrap: wrap; }
+  .accountBar button { min-height: 42px; padding: 0; }
+  .card { padding: 17px 14px; }
+  .header { gap: 12px; padding-bottom: 14px; }
+  .header h2 { font-size: 23px; }
+  .item { grid-template-columns: 64px minmax(0, 1fr); gap: 11px; }
+  .thumb { width: 64px; }
+  .name { font-size: 17px; overflow-wrap: anywhere; }
+  .footer { gap: 10px; }
+  .footer :global(.button) { width: 100%; min-height: 48px; }
+}
