@@ -7,10 +7,10 @@ import styles from "./account-shell.module.css";
 
 const sections = [
   { href: "/account", label: "Overview", icon: House, exact: true },
-  { href: "/account/orders", label: "Orders", icon: Package },
-  { href: "/account/rewards", label: "Rewards", icon: WalletCards },
-  { href: "/wishlist", label: "Wishlist", icon: Heart },
-  { href: "/account/preferences", label: "Preferences", icon: Sparkles },
+  { href: "/account/orders", label: "Orders", icon: Package, exact: false },
+  { href: "/account/rewards", label: "Rewards", icon: WalletCards, exact: false },
+  { href: "/wishlist", label: "Wishlist", icon: Heart, exact: false },
+  { href: "/account/preferences", label: "Preferences", icon: Sparkles, exact: false },
 ] as const;
 
 export function AccountShell({ children }: { children: React.ReactNode }) {
