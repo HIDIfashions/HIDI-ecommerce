@@ -575,3 +575,138 @@
     padding-top: 2px;
   }
 }
+
+
+/* ==========================================================================
+   MOBILE REFERENCE CATALOGUE — Filter & Sort / Product count / Grid switcher
+   ========================================================================== */
+.mobileCatalogueBar {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .toolbar {
+    display: none;
+  }
+
+  .mobileCatalogueBar {
+    position: fixed;
+    top: calc(var(--hidi-mobile-announcement, 26px) + var(--hidi-mobile-header, 58px));
+    left: 0;
+    right: 0;
+    z-index: 58;
+    min-height: 58px;
+    padding: 0 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,.985);
+    border-top: 1px solid #ece6df;
+    border-bottom: 1px solid #ddd7d0;
+    box-shadow: 0 6px 14px rgba(40,30,24,.07);
+    backdrop-filter: blur(12px);
+  }
+
+  .mobileFilterSort {
+    min-width: 0;
+    min-height: 56px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 0;
+    background: transparent;
+    color: #29231f;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .mobileFilterSort span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobileProductCount {
+    color: #29231f;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .mobileGridSwitcher {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .mobileGridSwitcher button {
+    width: 32px;
+    height: 38px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: #c5c1bc;
+  }
+
+  .mobileGridSwitcher .gridActive {
+    color: #25211e;
+  }
+
+  .twoGridIcon,
+  .oneGridIcon {
+    display: flex;
+    align-items: stretch;
+    gap: 3px;
+    width: 20px;
+    height: 26px;
+  }
+
+  .twoGridIcon i,
+  .oneGridIcon i {
+    display: block;
+    height: 100%;
+    background: currentColor;
+  }
+
+  .twoGridIcon i {
+    flex: 1 1 0;
+  }
+
+  .oneGridIcon i {
+    width: 100%;
+  }
+
+  .productGrid {
+    padding-top: 0;
+    align-items: start;
+  }
+
+  .gridTwo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gridOne {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gridOne,
+  .gridTwo {
+    column-gap: 8px;
+    row-gap: 26px;
+  }
+
+  .sidebar {
+    z-index: 120;
+  }
+
+  .drawerBackdrop {
+    z-index: 110;
+  }
+}
