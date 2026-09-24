@@ -35,3 +35,67 @@
   .controls { border-top: 1px solid var(--line); }
   .actions button { width: 100%; }
 }
+
+
+.disabledPanel {
+  min-height: 320px;
+}
+
+.disabledChoice {
+  padding: 18px 0;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  color: #6f655d;
+}
+
+.disabledChoice:first-child {
+  padding-top: 2px;
+}
+
+.disabledChoice svg {
+  color: #9a7546;
+  margin-top: 2px;
+}
+
+.disabledChoice > div {
+  display: grid;
+  gap: 5px;
+}
+
+.disabledChoice strong {
+  color: #3f342e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.disabledChoice span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.signInLink {
+  margin-top: 10px;
+  min-height: 46px;
+  padding: 0 18px;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #591d20;
+  background: #591d20;
+  color: #fff8ef;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .disabledPanel {
+    min-height: 0;
+  }
+}
