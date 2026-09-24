@@ -4,6 +4,7 @@ import type { VerifiedAuthUser } from "../auth/supabase-auth.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 import { appendOrderAudit } from "../audit/order-audit.js";
+import { ReviewsService } from "../reviews/reviews.service.js";
 
 const RETURN_WINDOW_DAYS = 7;
 const RETURN_REASONS = new Set([
@@ -19,7 +20,11 @@ const ACTIVE_RETURN_STATUSES = ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RE
 
 @Injectable()
 export class AccountService {
-  constructor(private readonly prisma: PrismaService, private readonly wallet: WalletService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly wallet: WalletService,
+    private readonly reviews: ReviewsService,
+  ) {}
 
   private async customer(authUser: VerifiedAuthUser) {
     const firstName = typeof authUser.metadata.first_name === "string" ? authUser.metadata.first_name : null;
@@ -98,6 +103,7 @@ export class AccountService {
               include: { images: { orderBy: { position: "asc" }, take: 1 } },
             },
             returnRequests: { orderBy: { createdAt: "desc" } },
+            review: true,
           },
           orderBy: { id: "asc" },
         },
@@ -185,6 +191,13 @@ export class AccountService {
               discountPaise: item.discountPaise,
               totalPaise: item.totalPaise,
               exchangeSizes,
+              review: item.review ? {
+                id: item.review.id,
+                rating: item.review.rating,
+                title: item.review.title,
+                body: item.review.body,
+                createdAt: item.review.createdAt,
+              } : null,
               returnRequests: item.returnRequests.map((request) => ({
                 id: request.id,
                 type: request.type,
@@ -219,6 +232,16 @@ export class AccountService {
     const order = payload.orders.find((entry) => entry.orderNumber === orderNumber);
     if (!order) throw new NotFoundException("Order not found");
     return { customer: payload.customer, order };
+  }
+
+  async submitReview(
+    authUser: VerifiedAuthUser,
+    orderNumber: string,
+    orderItemId: string,
+    body: { rating?: unknown; title?: unknown; body?: unknown },
+  ) {
+    const user = await this.customer(authUser);
+    return this.reviews.submitAccountReview(user.id, orderNumber, orderItemId, body);
   }
 
   async createReturnRequest(
