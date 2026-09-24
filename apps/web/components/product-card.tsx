@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight, Share2, X } from "lucide-react";
 import type { ApiProduct, ApiVariant } from "@/lib/api";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
-import { cardPrice, money, validColourHex, variantsForColour } from "@/lib/product-card-utils";
+import { cardPrice, money, variantsForColour } from "@/lib/product-card-utils";
 import { getWishlistItems, removeWishlistSlug, saveWishlistItem, WISHLIST_EVENT } from "@/lib/wishlist";
 import { ProductCardMedia } from "./product-card-media";
 import { getProductCardVideos } from "@/lib/product-card-videos";
@@ -35,8 +35,6 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const [bagLink, setBagLink] = useState(false);
   const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
   const adding = useRef(false);
-  const sizesRef = useRef<HTMLDivElement>(null);
-  const mobileSizesRef = useRef<HTMLDivElement>(null);
   const activeColour = colours.includes(colour) ? colour : colours[0] ?? "";
   const variants = variantsForColour(product.variants, activeColour);
   const selected = variants.find((entry) => entry.id === variantId);
@@ -162,7 +160,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
     setError(""); setMessage(""); setBagLink(false);
     if (!selected) {
       setChooseSize(true); setError("Choose your size above to add this piece.");
-      (mobileSizesRef.current ?? sizesRef.current)?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+      document.querySelector<HTMLSelectElement>(`[aria-label="Choose size for ${CSS.escape(product.name)}"]`)?.focus();
       return;
     }
     if (selected.available < 1) {
@@ -205,48 +203,35 @@ export function ProductCard({ product, initialVariantId }: Props) {
 
     </div>
     <div className={styles.body}>
-      <p className={styles.eyebrow}>{product.fabric || product.category?.name || "THE HIDI EDIT"}</p>
       <h3 id={`${uid}-name`} className={styles.name}><Link href={href}>{product.name}</Link></h3>
       <div className={styles.priceRow} aria-live="polite" aria-atomic="true">
         <strong>{price.from && <span className={styles.from}>From </span>}{money(price.pricePaise)}</strong>
         {price.mrpPaise !== null && <><s aria-label={`MRP ${money(price.mrpPaise)}`}>{money(price.mrpPaise)}</s>
           <span className={styles.saving}>Save {money(price.savingPaise)}</span></>}
       </div>
-      {colours.length > 1 ? <div className={styles.colours} role="group" aria-label={`Colour for ${product.name}`}>
-        {colours.map((value) => {
-          const hex = validColourHex(product.variants.find((entry) => entry.color === value)?.colorHex);
-          return <button type="button" key={value} aria-pressed={activeColour === value}
-            className={`${styles.colourButton} ${activeColour === value ? styles.colourActive : ""}`}
-            disabled={busy} onClick={() => selectColour(value)}>
-            {hex && <span className={styles.swatch} style={{ backgroundColor: hex }} aria-hidden="true" />}{value || "Standard"}
-          </button>;
-        })}
-      </div> : <p className={styles.singleColour}>{activeColour || "Standard colour"}</p>}
       <div className={styles.mobileInlineShop}>
         <div className={styles.mobileSizeHeader}>
           <span>{selected ? `Size ${selected.size}` : "Select size"}</span>
         </div>
 
-        <div
-          ref={mobileSizesRef}
-          className={styles.mobileSizes}
-          role="group"
+        <select
+          className={styles.mobileSizeSelect}
+          value={variantId}
+          disabled={busy || !canBuy}
           aria-label={`Choose size for ${product.name}`}
+          onChange={(event) => {
+            const next = variants.find((variant) => variant.id === event.target.value);
+            if (next) selectSize(next);
+            else { clearFeedback(); setVariantId(""); }
+          }}
         >
-          {variants.map((variant) => {
-            const unavailable = !product.inStock || variant.available < 1;
-            return <button
-              key={variant.id}
-              type="button"
-              disabled={busy || unavailable}
-              aria-pressed={selected?.id === variant.id}
-              className={`${styles.mobileSizeButton} ${selected?.id === variant.id ? styles.mobileSizeActive : ""} ${unavailable ? styles.unavailable : ""}`}
-              onClick={() => selectSize(variant)}
-            >
-              {variant.size}
-            </button>;
-          })}
-        </div>
+          <option value="">Select size</option>
+          {variants.map((variant) => (
+            <option key={variant.id} value={variant.id} disabled={!product.inStock || variant.available < 1}>
+              {variant.size}{variant.available < 1 ? " — Sold out" : ""}
+            </option>
+          ))}
+        </select>
 
         <button
           type="button"
@@ -267,30 +252,26 @@ export function ProductCard({ product, initialVariantId }: Props) {
       </div>
 
       <div className={`${styles.quickShop} ${styles.desktopQuickShop}`}>
-        <div className={styles.sizeHeading}>
-          <span id={`${uid}-size`}>{selected ? `Your size: ${selected.size}` : "Choose your size"}</span>
-          <Link href={href} className={styles.details}>Details <ArrowUpRight size={12} aria-hidden="true" /></Link>
+        <div className={styles.desktopSelectRow}>
+          <select
+            className={`${styles.desktopSizeSelect} ${chooseSize ? styles.needsSize : ""}`}
+            value={variantId}
+            disabled={busy || !canBuy}
+            aria-label={`Choose size for ${product.name}`}
+            onChange={(event) => {
+              const next = variants.find((variant) => variant.id === event.target.value);
+              if (next) selectSize(next);
+              else { clearFeedback(); setVariantId(""); }
+            }}
+          >
+            <option value="">Select size</option>
+            {variants.map((variant) => (
+              <option key={variant.id} value={variant.id} disabled={!product.inStock || variant.available < 1}>
+                {variant.size}{variant.available < 1 ? " — Sold out" : ""}
+              </option>
+            ))}
+          </select>
         </div>
-        <div ref={sizesRef} role="group" aria-labelledby={`${uid}-size`}
-          aria-describedby={error ? `${uid}-error` : undefined}
-          className={`${styles.sizes} ${chooseSize ? styles.needsSize : ""}`}>
-          {variants.map((variant) => {
-            const unavailable = !product.inStock || variant.available < 1;
-            return <button key={variant.id} type="button" disabled={busy || unavailable}
-              aria-pressed={selected?.id === variant.id}
-              aria-label={`${variant.size}${unavailable ? " — sold out" : ""}`}
-              title={unavailable ? `${variant.size} is sold out` : `Choose size ${variant.size}`}
-              className={`${styles.sizeButton} ${selected?.id === variant.id ? styles.sizeActive : ""} ${unavailable ? styles.unavailable : ""}`}
-              onClick={() => selectSize(variant)}>{variant.size}</button>;
-          })}
-        </div>
-        <p className={styles.availability} aria-live="polite">
-          {soldOut ? "Save this piece to revisit later."
-            : !canBuy ? "This colour is sold out. Try another colour."
-            : selected?.available === 0 ? "This size is currently unavailable."
-            : selected && selected.available > 0 && selected.available <= 3 ? `Only ${selected.available} left in ${selected.size}`
-            : selected ? `${selected.size} · ${selected.color}` : "Find your fit. Make it yours."}
-        </p>
         <div className={styles.actions}>
           <button type="button" className={`${styles.addButton} ${phase === "added" ? styles.added : ""}`}
             disabled={busy || !canBuy || phase === "added"} aria-busy={busy}
