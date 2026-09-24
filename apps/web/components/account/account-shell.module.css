@@ -129,3 +129,59 @@
     top: 90px;
   }
 }
+
+
+.signOut {
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: #786b63;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.signOut:hover:not(:disabled),
+.signOut:focus-visible {
+  background: #fcf8f5;
+  color: #591d20;
+  border-left-color: #d2a453;
+}
+
+.signOut:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.mobileSignOut {
+  min-height: 48px;
+  padding: 0 12px;
+  flex: 0 0 auto;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #756a61;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mobileSignOut:hover:not(:disabled),
+.mobileSignOut:focus-visible {
+  color: #591d20;
+  border-bottom-color: #d2a453;
+}
+
+.mobileSignOut:disabled {
+  opacity: .55;
+  cursor: wait;
+}

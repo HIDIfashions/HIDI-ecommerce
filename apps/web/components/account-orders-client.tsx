@@ -243,7 +243,6 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
           <span>WELCOME BACK</span>
           <strong>{customerIdentity}</strong>
         </div>
-        <button type="button" onClick={logout} disabled={busy}>Sign out</button>
       </div>
 
       <section className={styles.overviewIntro}>
@@ -304,7 +303,6 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
   return <>
     <div className={styles.accountBar}>
       <div className={styles.customerIdentity}><strong>{customerIdentity}</strong></div>
-      <button type="button" onClick={logout} disabled={busy}>Sign out</button>
     </div>
 
     {orders.length === 0 ? <div className={styles.empty}>
