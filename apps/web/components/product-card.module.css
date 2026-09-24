@@ -1455,3 +1455,68 @@
     transform: translateY(0) !important;
   }
 }
+
+
+/* ==========================================================================
+   FINAL SIZE SELECTOR TREATMENT — dropdown on desktop + mobile
+   ========================================================================== */
+.desktopSelectRow {
+  margin-top: 10px;
+}
+
+.desktopSizeSelect,
+.mobileSizeSelect {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cdbfb3;
+  background: #fff;
+  color: #3f322d;
+  font-family: var(--font-product);
+  font-weight: 500;
+  outline: none;
+}
+
+.desktopSizeSelect {
+  min-height: 42px;
+  padding: 0 34px 0 11px;
+  font-size: 12px;
+}
+
+.desktopSizeSelect:focus,
+.mobileSizeSelect:focus {
+  border-color: var(--hidi-mulberry-clay, #591d20);
+  box-shadow: 0 0 0 1px var(--hidi-mulberry-clay, #591d20);
+}
+
+.desktopSizeSelect:disabled,
+.mobileSizeSelect:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+@media (max-width: 620px) {
+  .body {
+    grid-template-rows: 24px 28px 114px;
+  }
+
+  .mobileInlineShop {
+    min-height: 114px;
+    grid-template-rows: 22px 38px 42px 10px;
+    gap: 2px;
+  }
+
+  .mobileSizeSelect {
+    min-height: 38px;
+    padding: 0 28px 0 9px;
+    font-size: 16px;
+    background: rgba(255,255,255,.78);
+  }
+
+  .mobileSizes {
+    display: none !important;
+  }
+
+  .mobileInlineFeedback {
+    line-height: 10px;
+  }
+}
