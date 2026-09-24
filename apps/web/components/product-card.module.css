@@ -297,7 +297,7 @@
 
 .secondaryActions {
   display: grid;
-  grid-template-columns: 1fr 1.3fr;
+  grid-template-columns: 1.3fr 1fr;
   gap: 6px;
   margin-top: 7px;
 }
@@ -330,24 +330,29 @@
 
 
 /* WhatsApp brand treatment */
-.secondaryActions button:last-child {
-  background: #25D366;
-  border-color: #25D366;
-  color: #ffffff;
+.whatsappAction {
+  background: #25D366 !important;
+  border-color: #25D366 !important;
+  color: #ffffff !important;
   box-shadow: 0 8px 18px rgba(37, 211, 102, .16);
 }
 
-.secondaryActions button:last-child:hover:not(:disabled) {
-  background: #1ebe5d;
-  border-color: #1ebe5d;
-  color: #ffffff;
+.whatsappAction:hover:not(:disabled) {
+  background: #1ebe5d !important;
+  border-color: #1ebe5d !important;
+  color: #ffffff !important;
 }
 
-.secondaryActions button:last-child:disabled {
-  background: #25D366;
-  border-color: #25D366;
-  color: #ffffff;
+.whatsappAction:disabled {
+  background: #25D366 !important;
+  border-color: #25D366 !important;
+  color: #ffffff !important;
   opacity: .45;
+}
+
+.shareAction {
+  white-space: normal;
+  text-align: center;
 }
 
 
