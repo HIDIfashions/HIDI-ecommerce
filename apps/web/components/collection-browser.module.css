@@ -440,3 +440,76 @@
   .sortSelect { min-height: 44px; font-size: 16px; }
   .mobileFilterButton { min-height: 44px; }
 }
+
+
+/* ==========================================================================
+   HIDI MOBILE V2 — PASS 1 / COLLECTION BROWSING
+   Compact sticky controls and denser product discovery.
+   ========================================================================== */
+@media (max-width: 620px) {
+  .toolbar {
+    position: sticky;
+    top: 84px;
+    z-index: 12;
+    min-height: 48px;
+    margin: 0 -12px 18px;
+    padding: 0 12px;
+    gap: 8px;
+    background: rgba(255,255,255,.97);
+    border-top: 1px solid #e8ddd3;
+    border-bottom: 1px solid #e8ddd3;
+    backdrop-filter: blur(10px);
+  }
+
+  .toolbarLeft,
+  .toolbarRight {
+    min-width: 0;
+  }
+
+  .mobileFilterButton {
+    min-height: 42px;
+    padding: 0 8px 0 0;
+    font-size: 10px;
+    letter-spacing: .05em;
+  }
+
+  .sortSelect {
+    max-width: 132px;
+    min-height: 42px;
+    padding-left: 4px;
+    padding-right: 18px;
+    font-size: 13px;
+  }
+
+  .productGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 9px;
+    row-gap: 28px;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-width: 420px;
+    padding: 18px 16px max(24px, env(safe-area-inset-bottom));
+  }
+
+  .filterHeading {
+    top: -18px;
+    min-height: 58px;
+    margin: -18px -16px 6px;
+    padding: 0 16px;
+  }
+
+  .filterSection {
+    border-bottom-color: #eee4da;
+  }
+
+  .filterSummary {
+    min-height: 52px;
+  }
+
+  .option,
+  .colorOption {
+    min-height: 40px;
+  }
+}
