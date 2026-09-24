@@ -1156,3 +1156,288 @@
     padding-top: 34px;
   }
 }
+
+
+/* ==========================================================================
+   HIDI MOBILE V2 — PASS 1 / HOMEPAGE
+   Photography first, tighter editorial copy and swipeable discovery.
+   ========================================================================== */
+@media (max-width: 620px) {
+  .hero {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-bottom: 0;
+  }
+
+  .heroVisual {
+    order: -1;
+    min-height: clamp(520px, 70dvh, 610px);
+    border-bottom: 1px solid #e4d8cb;
+  }
+
+  .heroImage {
+    object-position: 60% top;
+    transform: none;
+  }
+
+  .heroVeil {
+    background:
+      linear-gradient(0deg, rgba(43,25,15,.30), transparent 42%),
+      linear-gradient(90deg, rgba(255,246,233,.04), transparent 28%);
+  }
+
+  .heroBadge {
+    left: 14px;
+    right: auto;
+    bottom: 14px;
+    width: min(72%, 260px);
+    padding: 11px 13px;
+    gap: 3px;
+    background: rgba(255,255,255,.90);
+  }
+
+  .heroBadge span {
+    font-size: 8px;
+  }
+
+  .heroBadge strong {
+    font-size: 16px;
+  }
+
+  .heroCopy {
+    min-height: 0;
+    padding: 28px 16px 32px;
+    background: #fff;
+  }
+
+  .heroCopy .eyebrow {
+    margin-bottom: 10px;
+    font-size: 9px;
+  }
+
+  .heroCopy h1 {
+    max-width: 520px;
+    font-size: clamp(39px, 11.5vw, 52px);
+    line-height: .97;
+    letter-spacing: -.032em;
+  }
+
+  .heroIntro {
+    max-width: 500px;
+    margin-top: 14px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .heroActions {
+    margin-top: 20px;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .heroActions .primaryButton {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .heroActions .secondaryButton {
+    width: auto;
+    min-height: 34px;
+    padding: 0 0 3px;
+    align-self: flex-start;
+    justify-content: flex-start;
+    border: 0;
+    border-bottom: 1px solid rgba(84,29,31,.42);
+    background: transparent;
+    font-size: 10px;
+  }
+
+  .heroNote {
+    display: none;
+  }
+
+  .collectionStrip {
+    display: flex;
+    gap: 10px;
+    padding: 14px 12px 18px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    background: #fff;
+  }
+
+  .collectionStrip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .collectionCard {
+    flex: 0 0 min(76vw, 300px);
+    min-height: 158px;
+    grid-template-columns: 45% 55%;
+    scroll-snap-align: start;
+    border-color: #e6dbcf;
+  }
+
+  .collectionImage {
+    min-height: 158px;
+  }
+
+  .collectionCopy {
+    padding: 16px 13px;
+  }
+
+  .collectionCopy > span {
+    font-size: 21px;
+  }
+
+  .collectionCopy p {
+    margin: 6px 0 10px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .collectionCopy b {
+    font-size: 9px;
+  }
+
+  .standardBar {
+    display: flex;
+    gap: 0;
+    padding: 0 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    background: #fcfaf8;
+  }
+
+  .standardBar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .standardItem,
+  .standardItem + .standardItem,
+  .standardItem:nth-child(3),
+  .standardItem:nth-child(4) {
+    flex: 0 0 min(72vw, 280px);
+    min-height: 82px;
+    padding: 16px 14px;
+    scroll-snap-align: start;
+    border-top: 0;
+    border-left: 1px solid #e2d7cc;
+  }
+
+  .standardItem:first-child {
+    border-left: 0;
+  }
+
+  .standardItem strong {
+    font-size: 12px;
+  }
+
+  .standardItem span {
+    font-size: 10px;
+    line-height: 1.45;
+  }
+
+  .featured {
+    padding-top: 54px;
+    padding-bottom: 64px;
+  }
+
+  .sectionHeading {
+    margin-bottom: 24px;
+    gap: 12px;
+  }
+
+  .sectionHeading h2 {
+    max-width: 520px;
+    font-size: clamp(34px, 10vw, 44px);
+    line-height: 1;
+  }
+
+  .sectionAside {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .sectionAside p {
+    display: none;
+  }
+
+  .sectionAside a {
+    min-height: 34px;
+    margin-left: auto;
+  }
+
+  .productGrid {
+    gap: 28px 9px;
+  }
+
+  .brandBandInner {
+    padding-top: 50px;
+    padding-bottom: 54px;
+  }
+
+  .brandStory h2,
+  .promiseLead h2 {
+    font-size: clamp(34px, 10vw, 44px);
+  }
+
+  .brandStory > p:not(.eyebrow) {
+    margin: 18px 0 20px;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .whatsappCard {
+    padding: 18px 16px 22px;
+    gap: 18px;
+    box-shadow: 0 16px 38px rgba(88,60,30,.09);
+  }
+
+  .whatsappVisual {
+    display: none;
+  }
+
+  .whatsappBrandRow {
+    margin-bottom: 14px;
+  }
+
+  .whatsappIconBadge {
+    width: 46px;
+    height: 46px;
+  }
+
+  .whatsappCard h3 {
+    font-size: 32px;
+  }
+
+  .whatsappCard p {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .whatsappBenefits {
+    margin-top: 14px;
+  }
+
+  .whatsappButton {
+    width: 100%;
+    margin-top: 18px;
+    min-height: 48px;
+  }
+
+  .promise {
+    padding-top: 54px;
+    padding-bottom: 62px;
+    gap: 20px;
+  }
+
+  .promiseGrid > div {
+    padding: 18px 0;
+  }
+}

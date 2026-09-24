@@ -1624,3 +1624,122 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
     scroll-snap-stop: always;
   }
 }
+
+
+/* ==========================================================================
+   HIDI MOBILE V2 — PASS 1 / SITE CHROME
+   Mobile-only visual hierarchy. Desktop remains unchanged.
+   ========================================================================== */
+@media (max-width: 620px) {
+  .announcement {
+    min-height: 26px;
+    padding-block: 5px;
+    font-size: 9px;
+    letter-spacing: .055em;
+  }
+
+  .header-inner {
+    width: calc(100% - 20px);
+    height: 58px;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 4px;
+  }
+
+  .mobile-menu {
+    width: 40px;
+    height: 40px;
+    margin-left: -5px;
+  }
+
+  .wordmark {
+    width: min(112px, 34vw);
+  }
+
+  .utility-nav {
+    gap: 1px;
+  }
+
+  .utility-nav a,
+  .utility-nav button {
+    min-width: 38px;
+    min-height: 40px;
+  }
+
+  .mobile-nav-panel {
+    width: min(90vw, 380px);
+    padding: 82px 20px max(20px, env(safe-area-inset-bottom));
+    justify-content: flex-start;
+    gap: 26px;
+  }
+
+  .mobile-nav-intro {
+    display: grid;
+    gap: 5px;
+    padding: 0 2px 20px;
+    border-bottom: 1px solid rgba(226,181,108,.26);
+  }
+
+  .mobile-nav-intro > span {
+    color: var(--hidi-mulberry-gold-bright);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .18em;
+  }
+
+  .mobile-nav-intro strong {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .mobile-nav-intro p {
+    max-width: 290px;
+    margin: 3px 0 0;
+    color: var(--hidi-mulberry-muted);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+
+  .mobile-nav-links a {
+    min-height: 52px;
+    font-size: 1.4rem;
+  }
+
+  .mobile-nav-account {
+    margin-top: auto;
+    padding-top: 18px;
+  }
+
+  .mobile-nav-account a {
+    min-height: 46px;
+    justify-content: center;
+  }
+}
+
+
+@media (max-width: 620px) {
+  .collection-page .collection-header {
+    margin: 18px 0 24px;
+  }
+
+  .collection-page .collection-header.compact {
+    margin-bottom: 20px;
+  }
+
+  .collection-page .collection-header h1 {
+    margin-bottom: 10px;
+    font-size: clamp(2.35rem, 10.5vw, 3rem);
+    line-height: .98;
+  }
+
+  .collection-page .collection-header > p:last-child {
+    max-width: 34rem;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .collection-page .breadcrumbs {
+    margin-bottom: 14px;
+  }
+}
