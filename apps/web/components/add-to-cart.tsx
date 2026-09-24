@@ -101,18 +101,18 @@ export function AddToCart({ product }: { product: ApiProduct }) {
         <button
           className="button pdp-desktop-add"
           type="button"
-          disabled={busyAction !== null || !product.inStock}
+          disabled={busyAction !== null || !product.inStock || !variantId}
           onClick={() => void add("bag")}
         >
-          {busyAction === "add" ? "Adding…" : product.inStock ? "Add to cart" : "Sold out"}
+          {busyAction === "add" ? "Adding…" : !product.inStock ? "Sold out" : variantId ? "Add to cart" : "Select size"}
         </button>
         <button
           className="button pdp-desktop-buy"
           type="button"
-          disabled={busyAction !== null || !product.inStock}
+          disabled={busyAction !== null || !product.inStock || !variantId}
           onClick={() => void add("checkout")}
         >
-          {busyAction === "buy" ? "Opening checkout…" : product.inStock ? "Buy now" : "Sold out"}
+          {busyAction === "buy" ? "Opening checkout…" : !product.inStock ? "Sold out" : variantId ? "Buy now" : "Select size"}
         </button>
       </div>
       {message && <p className="inline-message pdp-add-message" role="status">{message}</p>}
@@ -126,7 +126,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
         <button
           className="pdp-mobile-add-button"
           type="button"
-          disabled={busyAction !== null || !product.inStock}
+          disabled={busyAction !== null || !product.inStock || !variantId}
           onClick={() => void add("bag")}
         >
           {busyAction === "add" ? "Adding…" : !product.inStock ? "Sold out" : variantId ? "Add to cart" : "Choose size"}
@@ -134,7 +134,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
         <button
           className="pdp-mobile-buy-button"
           type="button"
-          disabled={busyAction !== null || !product.inStock}
+          disabled={busyAction !== null || !product.inStock || !variantId}
           onClick={() => void add("checkout")}
         >
           {busyAction === "buy" ? "Opening…" : !product.inStock ? "Sold out" : variantId ? "Buy now" : "Choose size"}
