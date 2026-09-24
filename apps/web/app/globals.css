@@ -2610,3 +2610,169 @@ body {
     color: var(--hidi-mulberry-clay, #591d20);
   }
 }
+
+
+/* ==========================================================================
+   PDP BUY NOW + ALWAYS-VISIBLE WISHLIST
+   ========================================================================== */
+.pdp-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  gap: 12px;
+  align-items: start;
+}
+
+.pdp-title-row h1 {
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+.pdp-title-row .wishlist-button-compact {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(89,29,32,.14);
+  border-radius: 50%;
+  background: rgba(255,248,239,.96);
+  color: var(--hidi-mulberry-clay, #591d20);
+  box-shadow: 0 5px 16px rgba(65,38,29,.10);
+}
+
+.pdp-title-row .wishlist-button-compact[aria-pressed="true"] {
+  background: rgba(255,248,239,.98);
+  border-color: rgba(89,29,32,.28);
+  color: var(--hidi-mulberry-clay, #591d20);
+}
+
+.pdp-desktop-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.pdp-desktop-actions .pdp-desktop-add,
+.pdp-desktop-actions .pdp-desktop-buy {
+  width: 100%;
+  min-height: 50px;
+  font-family: var(--font-product);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+.pdp-desktop-actions .pdp-desktop-add {
+  border: 1px solid var(--hidi-mulberry-clay, #591d20);
+  background: transparent;
+  color: var(--hidi-mulberry-clay, #591d20);
+}
+
+.pdp-desktop-actions .pdp-desktop-buy {
+  border: 1px solid var(--hidi-mulberry-clay, #591d20);
+  background: var(--hidi-mulberry-clay, #591d20);
+  color: #fff8ef;
+}
+
+.pdp-desktop-actions button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pdp-desktop-actions .pdp-desktop-add:hover:not(:disabled) {
+    background: #f7eeea;
+  }
+
+  .pdp-desktop-actions .pdp-desktop-buy:hover:not(:disabled) {
+    background: var(--hidi-mulberry-clay-lift, #69282a);
+    border-color: var(--hidi-mulberry-clay-lift, #69282a);
+  }
+}
+
+@media (max-width: 620px) {
+  .pdp-title-row {
+    grid-template-columns: minmax(0, 1fr) 42px;
+    gap: 9px;
+  }
+
+  .pdp-title-row .wishlist-button-compact {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+  }
+
+  .pdp-desktop-actions {
+    display: none;
+  }
+
+  .pdp-mobile-buybar {
+    grid-template-columns: minmax(62px, auto) 46px minmax(92px, 1fr) minmax(86px, .95fr);
+    gap: 6px;
+  }
+
+  .pdp-mobile-buybar .wishlist-button-compact {
+    width: 46px;
+    height: 48px;
+    min-height: 48px;
+    border-radius: 50%;
+    border: 1px solid rgba(89,29,32,.14);
+    background: rgba(255,248,239,.96);
+    color: var(--hidi-mulberry-clay, #591d20);
+    box-shadow: 0 3px 12px rgba(65,38,29,.08);
+  }
+
+  .pdp-mobile-buybar .wishlist-button-compact[aria-pressed="true"] {
+    background: rgba(255,248,239,.98);
+    border-color: rgba(89,29,32,.28);
+    color: var(--hidi-mulberry-clay, #591d20);
+  }
+
+  .pdp-mobile-add-button,
+  .pdp-mobile-buy-button {
+    min-width: 0;
+    min-height: 50px;
+    padding: 0 8px;
+    font-family: var(--font-product);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    text-transform: none;
+  }
+
+  .pdp-mobile-add-button {
+    border: 1px solid var(--hidi-mulberry-clay, #591d20);
+    background: #fffaf5;
+    color: var(--hidi-mulberry-clay, #591d20);
+  }
+
+  .pdp-mobile-buy-button {
+    border: 1px solid var(--hidi-mulberry-clay, #591d20);
+    background: var(--hidi-mulberry-clay, #591d20);
+    color: #fff8ef;
+  }
+
+  .pdp-mobile-add-button:disabled,
+  .pdp-mobile-buy-button:disabled {
+    opacity: .48;
+  }
+}
+
+@media (max-width: 360px) {
+  .pdp-mobile-buybar {
+    grid-template-columns: 54px 42px minmax(84px, 1fr) minmax(78px, .9fr);
+    padding-inline: 8px;
+    gap: 5px;
+  }
+
+  .pdp-mobile-buybar-price strong {
+    font-size: 13px;
+  }
+
+  .pdp-mobile-add-button,
+  .pdp-mobile-buy-button {
+    padding-inline: 5px;
+    font-size: 9px;
+  }
+}
