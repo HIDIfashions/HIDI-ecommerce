@@ -239,6 +239,34 @@ export function CheckoutClient() {
 
   return <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
+
+    <details className="checkout-mobile-summary">
+      <summary>
+        <span><b>Order summary</b><small>{cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}</small></span>
+        <strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong>
+      </summary>
+      <div className="checkout-mobile-summary-body">
+        {cart.items.map((item) => (
+          <Link key={item.id} href={`/products/${item.product.slug}`} className="checkout-mobile-summary-item">
+            <span className="checkout-mobile-summary-thumb">
+              <CatalogImage
+                src={item.product.image}
+                alt={item.product.name}
+                sizes="56px"
+                fallbackLabel={`HIDI / ${item.product.name}`}
+              />
+            </span>
+            <span>
+              <b>{item.product.name}</b>
+              <small>{item.variant.color} · {item.variant.size} · Qty {item.quantity}</small>
+            </span>
+            <strong>{formatWalletPaise(item.lineTotalPaise)}</strong>
+          </Link>
+        ))}
+        <div className="checkout-mobile-total-row"><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div>
+      </div>
+    </details>
+
     <div className="checkout-grid">
       <form className="checkout-form" onSubmit={submit} onChange={() => { if (!lock.current) { invalidate(false); setError(""); } }}>
         <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
@@ -294,7 +322,10 @@ export function CheckoutClient() {
         </fieldset>
         {error && <p className="form-error" role="alert">{error}</p>}
         {error === "This bag belongs to another account" && <div><p className={walletStyles.note}>Sign in to the account that owns this bag, or start a new bag. The original bag will not be deleted.</p><button className={walletStyles.textButton} type="button" onClick={() => { invalidate(true); startNewCartSession(); router.push("/collections/new-arrivals"); }}>Start a new bag</button></div>}
-        <button className="button checkout-pay-button" type="submit" disabled={busy || (useWallet && (wallet.loading || !wallet.summary?.enabled || !!wallet.error))}>{busy ? "Preparing your order…" : payable === 0 ? "Place order with rewards" : "Pay securely"}</button>
+        <button className="button checkout-pay-button" type="submit" disabled={busy || (useWallet && (wallet.loading || !wallet.summary?.enabled || !!wallet.error))}>
+          <span>{busy ? "Preparing your order…" : payable === 0 ? "Place order with rewards" : "Pay securely"}</span>
+          <strong className="checkout-mobile-pay-amount">{formatWalletPaise(payable)}</strong>
+        </button>
       </form>
       <aside className="checkout-summary">
         <p>Order summary</p>
