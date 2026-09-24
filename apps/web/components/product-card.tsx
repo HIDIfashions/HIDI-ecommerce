@@ -183,13 +183,36 @@ export function ProductCard({ product, initialVariantId }: Props) {
   }
 
   return <article className={styles.card} aria-labelledby={`${uid}-name`}>
-    <ProductCardMedia
-      name={product.name}
-      images={cardImages ?? []}
-      videos={getProductCardVideos(product.slug)}
-      soldOut={soldOut}
-      href={href}
-    />
+    <div className={styles.mediaWrap}>
+      <ProductCardMedia
+        name={product.name}
+        images={cardImages ?? []}
+        videos={getProductCardVideos(product.slug)}
+        soldOut={soldOut}
+        href={href}
+      />
+
+      <button
+        type="button"
+        className={styles.mobileImageHeart}
+        aria-pressed={saved}
+        disabled={!wishlistReady || busy}
+        aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`}
+        onClick={toggleWishlist}
+      >
+        <Heart size={21} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
+      </button>
+
+      <button
+        type="button"
+        className={styles.mobileImagePlus}
+        disabled={!canBuy}
+        aria-label={`Quick add ${product.name}`}
+        onClick={() => { clearFeedback(); setMobileQuickOpen(true); }}
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+    </div>
     <div className={styles.body}>
       <p className={styles.eyebrow}>{product.fabric || product.category?.name || "THE HIDI EDIT"}</p>
       <h3 id={`${uid}-name`} className={styles.name}><Link href={href}>{product.name}</Link></h3>
@@ -208,7 +231,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
           </button>;
         })}
       </div> : <p className={styles.singleColour}>{activeColour || "Standard colour"}</p>}
-      <div className={styles.mobileInlineShop}>
+      <div className={styles.mobileInlineShop} aria-hidden="true">
         <div className={styles.mobileSizeHeader}>
           <span>{selected ? `Size ${selected.size}` : "Select size"}</span>
           <button

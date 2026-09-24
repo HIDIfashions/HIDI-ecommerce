@@ -2495,3 +2495,16 @@ body {
     line-height: .9;
   }
 }
+
+
+/* Mobile collection reference layout: catalogue begins directly below controls. */
+@media (max-width: 620px) {
+  .container.collection-page {
+    width: calc(100% - 16px);
+    padding-top: 66px !important;
+  }
+
+  .collection-page > .collection-header {
+    display: none;
+  }
+}

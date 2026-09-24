@@ -423,3 +423,20 @@
     object-position: center top;
   }
 }
+
+
+/* Mobile reference card uses the parent + control instead of the expand icon. */
+@media (max-width: 620px) {
+  .expandIcon {
+    display: none;
+  }
+
+  .stage {
+    aspect-ratio: 3 / 4.15;
+  }
+
+  .photo,
+  .nextPhotoLayer {
+    object-position: center top;
+  }
+}

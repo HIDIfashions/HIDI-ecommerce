@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Filter, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Filter, SlidersHorizontal, X } from "lucide-react";
 import { ApiProduct } from "@/lib/api";
 import { ProductCard } from "./product-card";
 import styles from "./collection-browser.module.css";
@@ -78,6 +78,7 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   const [price, setPrice] = useState("");
   const [sort, setSort] = useState("featured");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileColumns, setMobileColumns] = useState<1 | 2>(2);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -122,6 +123,7 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   }, [products, selectedSizes, selectedColors, selectedFabrics, price, sort]);
 
   const hasFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedFabrics.length > 0 || Boolean(price);
+  const activeControlCount = selectedSizes.length + selectedColors.length + selectedFabrics.length + (price ? 1 : 0) + (sort !== "featured" ? 1 : 0);
 
   function clearFilters() {
     setSelectedSizes([]);
@@ -139,7 +141,7 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
       aria-modal={mobileOpen ? "true" : undefined}
     >
       <div className={styles.filterHeading}>
-        <span className={styles.filterHeadingLabel}><SlidersHorizontal size={16} strokeWidth={1.6} /> Filter</span>
+        <span className={styles.filterHeadingLabel}><SlidersHorizontal size={16} strokeWidth={1.6} /> Filter &amp; Sort</span>
         <span>
           {hasFilters && <button className={styles.clearButton} type="button" onClick={clearFilters}>Clear all</button>}
           <button className={styles.drawerClose} type="button" aria-label="Close filters" onClick={() => setMobileOpen(false)}><X size={22} strokeWidth={1.5} /></button>
@@ -182,6 +184,21 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
         </div>
       </details>}
 
+      <details className={styles.filterSection} open>
+        <summary className={styles.filterSummary}><span>Sort</span><ChevronDown className={styles.chevron} size={16} strokeWidth={1.5} /></summary>
+        <div className={styles.options}>
+          {[
+            ["featured", "Featured"],
+            ["price-low", "Price: Low to high"],
+            ["price-high", "Price: High to low"],
+            ["name", "Name: A–Z"],
+          ].map(([value, label]) => <label className={styles.option} key={value}>
+            <input type="radio" name="catalog-sort" checked={sort === value} onChange={() => setSort(value)} />
+            <span>{label}</span>
+          </label>)}
+        </div>
+      </details>
+
       <details className={styles.filterSection}>
         <summary className={styles.filterSummary}><span>Price</span><ChevronDown className={styles.chevron} size={16} strokeWidth={1.5} /></summary>
         <div className={styles.options}>
@@ -205,6 +222,42 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
 
     <div className={styles.layout}>
       <section className={styles.content}>
+        <div className={styles.mobileCatalogueBar}>
+          <button
+            className={styles.mobileFilterSort}
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen(true)}
+          >
+            <span>Filter &amp; Sort{activeControlCount ? ` (${activeControlCount})` : ""}</span>
+            <ChevronRight size={17} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+
+          <span className={styles.mobileProductCount}>{filtered.length} Products</span>
+
+          <div className={styles.mobileGridSwitcher} aria-label="Product grid layout">
+            <button
+              type="button"
+              className={mobileColumns === 2 ? styles.gridActive : undefined}
+              aria-pressed={mobileColumns === 2}
+              aria-label="Show two products per row"
+              onClick={() => setMobileColumns(2)}
+            >
+              <span className={styles.twoGridIcon} aria-hidden="true"><i /><i /></span>
+            </button>
+            <button
+              type="button"
+              className={mobileColumns === 1 ? styles.gridActive : undefined}
+              aria-pressed={mobileColumns === 1}
+              aria-label="Show one product per row"
+              onClick={() => setMobileColumns(1)}
+            >
+              <span className={styles.oneGridIcon} aria-hidden="true"><i /></span>
+            </button>
+          </div>
+        </div>
+
         <div className={styles.toolbar}>
           <div className={styles.toolbarLeft}>
             <button
@@ -233,7 +286,7 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
         </div>
 
         {filtered.length
-          ? <div className={styles.productGrid}>{filtered.map((product) => (
+          ? <div className={`${styles.productGrid} ${mobileColumns === 1 ? styles.gridOne : styles.gridTwo}`}>{filtered.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}</div>
           : <div className={styles.empty}><h2>No styles match those filters.</h2><p>Try clearing one or more filters.</p><button className="button button-light" type="button" onClick={clearFilters}>Clear filters</button></div>}
