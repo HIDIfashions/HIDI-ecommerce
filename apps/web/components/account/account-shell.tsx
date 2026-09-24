@@ -2,17 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, House, MapPin, Package, RefreshCcw, Sparkles, UserRound, WalletCards } from "lucide-react";
+import { Heart, House, Package, Sparkles, WalletCards } from "lucide-react";
 import styles from "./account-shell.module.css";
 
 const sections = [
   { href: "/account", label: "Overview", icon: House, exact: true },
   { href: "/account/orders", label: "Orders", icon: Package },
-  { href: "/account/returns", label: "Aftercare", icon: RefreshCcw },
   { href: "/account/rewards", label: "Rewards", icon: WalletCards },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
-  { href: "/account/profile", label: "Profile", icon: UserRound },
-  { href: "/account/addresses", label: "Addresses", icon: MapPin },
   { href: "/account/preferences", label: "Preferences", icon: Sparkles },
 ] as const;
 
@@ -47,7 +44,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
 
       <div className={styles.content}>
         <nav className={styles.mobileNav} aria-label="My HIDI sections">
-          {sections.slice(0, 6).map(({ href, label, exact }) => (
+          {sections.map(({ href, label, exact }) => (
             <Link
               key={href}
               href={href}
