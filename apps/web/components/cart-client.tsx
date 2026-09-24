@@ -54,7 +54,7 @@ export function CartClient() {
   return <>
     {error && <p className="form-error">{error}</p>}
     <div className="cart-layout">
-      <section>
+      <section className="cart-items">
         {cart.items.map((item: any) => <article className="cart-item" key={item.id}>
           <Link
             href={`/products/${item.product.slug}`}
@@ -96,6 +96,14 @@ export function CartClient() {
         <Link className="button button-dark cart-checkout-button" href="/checkout">Continue to checkout</Link>
         <p className="fine-print">Secure checkout · UPI · Cards · Net banking</p>
       </aside>
+    </div>
+
+    <div className="mobile-cart-checkout" aria-label="Bag checkout summary">
+      <div>
+        <span>Subtotal · {cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}</span>
+        <strong>{formatPaise(cart.subtotalPaise)}</strong>
+      </div>
+      <Link href="/checkout">Checkout</Link>
     </div>
   </>;
 }
