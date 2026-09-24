@@ -2369,3 +2369,21 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
     grid-column: 2;
   }
 }
+
+
+@media (max-width: 620px) {
+  .container.collection-page {
+    width: calc(100% - 24px);
+  }
+
+  .pdp-related-grid {
+    column-gap: 12px;
+    row-gap: 12px;
+    align-items: start;
+  }
+
+  .pdp-related-grid > * {
+    min-width: 0;
+    align-self: start;
+  }
+}
