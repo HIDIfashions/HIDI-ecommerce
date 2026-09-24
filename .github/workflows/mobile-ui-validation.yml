@@ -30,8 +30,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint web app
-        run: pnpm --filter @hidi/web lint
+      - name: Type-check web app
+        run: pnpm --filter @hidi/web exec tsc --noEmit
 
       - name: Build web app
         run: pnpm --filter @hidi/web build
