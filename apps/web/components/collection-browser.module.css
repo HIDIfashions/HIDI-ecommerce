@@ -513,3 +513,19 @@
     min-height: 40px;
   }
 }
+
+
+/* HIDI mobile catalogue grid: same gutter on all sides and between SKUs. */
+@media (max-width: 620px) {
+  .productGrid {
+    --mobile-product-gap: 12px;
+    column-gap: var(--mobile-product-gap);
+    row-gap: var(--mobile-product-gap);
+    align-items: start;
+  }
+
+  .productGrid > * {
+    min-width: 0;
+    align-self: start;
+  }
+}
