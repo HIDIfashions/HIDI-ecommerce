@@ -829,3 +829,50 @@
     align-self: end;
   }
 }
+
+
+/* HIDI product-name typography: clean commerce sans, editorial serif stays elsewhere. */
+.name {
+  font-family: var(--font-product);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: -.015em;
+}
+
+.mobileSheetHeader h3 {
+  font-family: var(--font-product);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -.015em;
+}
+
+@media (max-width: 620px) {
+  .body {
+    min-height: 122px;
+    grid-template-rows: 14px 36px 32px 40px;
+  }
+
+  .name {
+    min-height: 36px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.28;
+    letter-spacing: -.012em;
+  }
+
+  .priceRow {
+    font-family: var(--font-product);
+    font-size: 12.5px;
+  }
+
+  .mobileColour,
+  .mobileQuickButton {
+    font-family: var(--font-product);
+  }
+
+  .mobileSheetHeader h3 {
+    font-size: 18px;
+  }
+}
