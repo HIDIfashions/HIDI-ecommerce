@@ -142,10 +142,23 @@ export class AccountService {
           deliveredAt,
           returnWindowEndsAt,
           canReturnOrExchange,
+          subtotalPaise: order.subtotalPaise,
+          discountPaise: order.discountPaise,
+          shippingPaise: order.shippingPaise,
+          taxPaise: order.taxPaise,
           totalPaise: order.totalPaise,
           walletAppliedPaise: order.walletAppliedPaise,
           cashPayablePaise: order.totalPaise - order.walletAppliedPaise,
           paymentStatus: order.payments[0]?.status ?? null,
+          shippingAddress: order.shippingAddress,
+          shipment: order.shipments[0] ? {
+            provider: order.shipments[0].provider,
+            awb: order.shipments[0].awb,
+            trackingUrl: order.shipments[0].trackingUrl,
+            status: order.shipments[0].status,
+            shippedAt: order.shipments[0].shippedAt,
+            deliveredAt: order.shipments[0].deliveredAt,
+          } : null,
           itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
           items: order.items.map((item) => {
             const exchangeSizes = Array.from(new Set(
@@ -168,6 +181,8 @@ export class AccountService {
               returnableQuantity: Math.max(0, item.quantity - item.returnRequests
                 .filter((request) => !["REJECTED", "CANCELLED"].includes(request.status))
                 .reduce((sum, request) => sum + request.quantity, 0)),
+              unitPricePaise: item.unitPricePaise,
+              discountPaise: item.discountPaise,
               totalPaise: item.totalPaise,
               exchangeSizes,
               returnRequests: item.returnRequests.map((request) => ({
@@ -197,6 +212,13 @@ export class AccountService {
         };
       }),
     };
+  }
+
+  async order(authUser: VerifiedAuthUser, orderNumber: string) {
+    const payload = await this.orders(authUser);
+    const order = payload.orders.find((entry) => entry.orderNumber === orderNumber);
+    if (!order) throw new NotFoundException("Order not found");
+    return { customer: payload.customer, order };
   }
 
   async createReturnRequest(
