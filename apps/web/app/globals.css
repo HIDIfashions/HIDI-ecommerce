@@ -1423,3 +1423,194 @@ summary {
     width: 146px;
   }
 }
+
+
+/* ==========================================================================
+   MOBILE STOREFRONT HARDENING
+   Touch-first layout, safe overflow and readable commerce controls.
+   ========================================================================== */
+html, body { max-width: 100%; overflow-x: clip; }
+img, video { max-width: 100%; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+.mobile-nav-panel, .mobile-nav-backdrop { display: none; }
+
+@media (max-width: 1000px) {
+  .site-header { isolation: isolate; }
+  .header-inner {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 0;
+  }
+  .mobile-menu {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    margin-left: -8px;
+    border-radius: 50%;
+    z-index: 72;
+  }
+  .wordmark {
+    width: min(138px, 34vw);
+    justify-self: center;
+    min-width: 0;
+  }
+  .wordmark img { width: 100%; height: auto; display: block; }
+  .utility-nav { gap: 2px; min-width: 0; }
+  .utility-nav a, .utility-nav button { min-width: 40px; min-height: 40px; }
+  .mobile-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    border: 0;
+    background: rgba(27, 12, 12, .48);
+    backdrop-filter: blur(2px);
+  }
+  .mobile-nav-panel {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 70;
+    width: min(86vw, 380px);
+    height: 100dvh;
+    padding: 104px 24px max(28px, env(safe-area-inset-bottom));
+    flex-direction: column;
+    justify-content: space-between;
+    overflow-y: auto;
+    background: linear-gradient(145deg, #642326, #4b1719);
+    color: var(--hidi-mulberry-ivory);
+    box-shadow: 20px 0 50px rgba(35, 8, 10, .28);
+  }
+  .mobile-nav-links { display: grid; }
+  .mobile-nav-links a {
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(226,181,108,.25);
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    line-height: 1.1;
+  }
+  .mobile-nav-links a span { color: var(--hidi-mulberry-gold-bright); font-family: var(--font-sans); font-size: 1rem; }
+  .mobile-nav-account {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding-top: 24px;
+  }
+  .mobile-nav-account a {
+    min-height: 48px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(226,181,108,.28);
+    font-size: .78rem;
+  }
+
+  .pdp-grid, .cart-layout, .checkout-grid { min-width: 0; }
+  .pdp-info, .order-summary, .checkout-summary { min-width: 0; }
+  .checkout-summary { position: static; }
+}
+
+@media (max-width: 620px) {
+  .announcement {
+    min-height: 30px;
+    padding: 7px 12px;
+    gap: 0;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .announcement span:not(:first-child) { display: none; }
+
+  .header-inner {
+    width: calc(100% - 24px);
+    height: 60px;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+  }
+  .mobile-menu { width: 40px; height: 40px; margin-left: -6px; }
+  .wordmark { width: min(126px, 36vw); }
+  .utility-nav { gap: 0; }
+  .utility-nav a, .utility-nav button { min-width: 38px; min-height: 40px; }
+
+  .container { width: calc(100% - 28px); }
+  .container.collection-page { width: calc(100% - 24px); }
+  .collection-page, .product-page, .cart-page, .checkout-page { padding-bottom: 72px; }
+
+  .hero-text { padding: 48px 18px; }
+  .hero h1 { font-size: clamp(2.75rem, 13vw, 3.6rem); }
+  .button-row { width: 100%; }
+  .button-row .button { flex: 1 1 150px; min-height: 50px; padding-inline: 14px; }
+
+  .filter-bar { gap: 8px; }
+  .filter-bar div {
+    gap: 4px;
+    padding-bottom: 3px;
+    scrollbar-width: none;
+    overscroll-behavior-inline: contain;
+  }
+  .filter-bar div::-webkit-scrollbar { display: none; }
+  .filter-bar button { min-height: 44px; padding: 8px 13px; white-space: nowrap; }
+
+  .pdp-gallery {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin-inline: -14px;
+    padding-inline: 14px;
+  }
+  .pdp-gallery::-webkit-scrollbar { display: none; }
+  .pdp-gallery .pdp-image,
+  .pdp-gallery .pdp-image:not(:first-child) {
+    display: block;
+    flex: 0 0 88%;
+    scroll-snap-align: center;
+  }
+  .pdp-info { padding-top: 26px; }
+  .pdp-info h1 { font-size: clamp(2rem, 10vw, 2.6rem); }
+  .sizes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sizes button, .colour-options button { min-height: 46px; }
+  .add-to-bag, .wishlist-button { min-height: 50px; }
+  .delivery-box > div { min-width: 0; }
+  .delivery-box input { min-width: 0; width: 100%; }
+
+  .product-grid, .pdp-related-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .product-meta { min-width: 0; }
+  .product-name { overflow-wrap: anywhere; }
+
+  .cart-item {
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 14px;
+  }
+  .cart-item-info { min-width: 0; gap: 8px; }
+  .cart-item-info h2 { font-size: 1.3rem; overflow-wrap: anywhere; }
+  .cart-actions { gap: 8px; flex-wrap: wrap; }
+  .cart-actions button:not(.remove) { width: 40px; height: 40px; }
+  .order-summary, .checkout-summary { padding: 20px 16px; }
+  .checkout-summary-item { grid-template-columns: 62px minmax(0, 1fr); }
+  .checkout-summary-thumb { width: 62px; }
+  .checkout-form input { min-height: 50px; font-size: 16px; }
+  .payment-placeholder { gap: 8px; }
+
+  .confirmation-number { flex-direction: column; gap: 6px; }
+  .confirmation-page { padding-top: 60px; padding-bottom: 72px; }
+  .confirmation-page h1 { font-size: clamp(2.7rem, 14vw, 4rem); }
+
+  .footer { padding-top: 52px; }
+  .footer-grid { gap: 34px; }
+  .footer-grid a { min-height: 36px; display: flex; align-items: center; }
+  .footer-bottom { margin-top: 38px; }
+}
+
+@media (max-width: 390px) {
+  .header-inner { width: calc(100% - 18px); }
+  .wordmark { width: 108px; }
+  .utility-nav a, .utility-nav button { min-width: 36px; }
+  .container { width: calc(100% - 24px); }
+  .cart-item { grid-template-columns: 82px minmax(0, 1fr); }
+  .product-grid, .pdp-related-grid { gap-inline: 8px; }
+}
