@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
-import type { ApiProduct } from "@/lib/api";
+import { formatPaise, type ApiProduct } from "@/lib/api";
+import { WishlistButton } from "@/components/wishlist-button";
 import { getCartSession } from "@/lib/cart-session";
 import { PRODUCT_VARIANT_EVENT, publishProductSelection, type ProductVariantSelection } from "@/lib/product-sharing";
 
@@ -87,10 +88,26 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           >{variant.size}</button>
         ))}
       </div>
-      <button className="button button-dark add-to-bag" type="button" disabled={busy || !product.inStock} onClick={add}>
+      <button className="button button-dark add-to-bag pdp-desktop-add" type="button" disabled={busy || !product.inStock} onClick={add}>
         {busy ? "Adding…" : product.inStock ? "Add to bag" : "Sold out"}
       </button>
-      {message && <p className="inline-message" role="status">{message}</p>}
+      {message && <p className="inline-message pdp-add-message" role="status">{message}</p>}
+
+      <div className="pdp-mobile-buybar" aria-label="Mobile purchase actions">
+        <div className="pdp-mobile-buybar-price">
+          <span>{variantId ? "Selected" : "From"}</span>
+          <strong>{formatPaise(product.variants.find((variant) => variant.id === variantId)?.pricePaise ?? product.minPricePaise)}</strong>
+        </div>
+        <WishlistButton slug={product.slug} compact />
+        <button
+          className="pdp-mobile-add-button"
+          type="button"
+          disabled={busy || !product.inStock}
+          onClick={add}
+        >
+          {busy ? "Adding…" : !product.inStock ? "Sold out" : variantId ? "Add to bag" : "Choose size"}
+        </button>
+      </div>
     </div>
   );
 }
