@@ -394,3 +394,19 @@
     padding: 17px 14px;
   }
 }
+
+
+.itemName {
+  font-family: var(--font-product);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: -.012em;
+}
+
+@media (max-width: 620px) {
+  .itemName {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+}
