@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
 import {
@@ -95,7 +96,41 @@ export function RetentionPreferences() {
     } finally { if (current()) setSaving(false); }
   }
 
-  if (!retentionEnabled || !userId) return null;
+  if (!retentionEnabled) {
+    return <section className={`${styles.panel} ${styles.disabledPanel}`} aria-labelledby="retention-heading">
+      <div className={styles.intro}>
+        <span className={styles.eyebrow}><ShieldCheck size={16} aria-hidden="true" /> YOUR CHOICES</span>
+        <h2 id="retention-heading">A little more personal.<br />Always on your terms.</h2>
+        <p>HIDI preference controls are ready, but this environment has the retention feature switched off.</p>
+        <span className={styles.status}>Preferences are not active in this environment</span>
+      </div>
+      <div className={styles.controls}>
+        <div className={styles.disabledChoice}>
+          <Sparkles size={19} aria-hidden="true" />
+          <div><strong>Remember my product interests</strong><span>Personalised product-interest memory is currently paused.</span></div>
+        </div>
+        <div className={styles.disabledChoice}>
+          <MessageCircle size={19} aria-hidden="true" />
+          <div><strong>WhatsApp shopping updates</strong><span>Marketing WhatsApp preferences are currently paused.</span></div>
+        </div>
+        <p className={styles.note}>Order and transaction messages are separate from these optional marketing preferences.</p>
+      </div>
+    </section>;
+  }
+
+  if (!userId) {
+    return <section className={`${styles.panel} ${styles.disabledPanel}`} aria-labelledby="retention-heading">
+      <div className={styles.intro}>
+        <span className={styles.eyebrow}><ShieldCheck size={16} aria-hidden="true" /> YOUR CHOICES</span>
+        <h2 id="retention-heading">Sign in to manage your preferences.</h2>
+        <p>Your HIDI communication and personalisation choices are tied to your verified customer account.</p>
+      </div>
+      <div className={styles.controls}>
+        <p className={styles.note}>Sign in with your HIDI mobile number, then return here to change your choices.</p>
+        <Link className={styles.signInLink} href="/account">Go to My HIDI</Link>
+      </div>
+    </section>;
+  }
   const changed = preferences && (preferences.whatsappOptIn !== whatsappOptIn || preferences.personalizationOptIn !== personalizationOptIn);
   // Existing consent can always be withdrawn, even when new opt-ins are paused.
   const whatsappDisabled = saving || !preferences || (!preferences.whatsappOptIn && (!preferences.enabled || !preferences.phoneVerified));
