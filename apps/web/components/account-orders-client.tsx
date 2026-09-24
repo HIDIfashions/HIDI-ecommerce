@@ -72,7 +72,7 @@ function titleCase(value?: string | null) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function AccountOrdersClient() {
+export function AccountOrdersClient({ view = "overview" }: { view?: "overview" | "orders" }) {
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -219,6 +219,80 @@ export function AccountOrdersClient() {
     || account?.customer.email
     || "HIDI customer";
 
+  const activeStatuses = new Set(["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"]);
+  const activeReturnCount = orders.reduce((sum, order) => sum + order.items.reduce(
+    (itemSum, item) => itemSum + item.returnRequests.filter((request) => activeStatuses.has(request.status)).length,
+    0,
+  ), 0);
+  const deliveredCount = orders.filter((order) => order.status === "DELIVERED").length;
+  const totalItems = orders.reduce((sum, order) => sum + order.itemCount, 0);
+  const recentOrders = orders.slice(0, 2);
+
+  if (view === "overview") {
+    return <>
+      <div className={styles.accountBar}>
+        <div className={styles.customerIdentity}>
+          <span>WELCOME BACK</span>
+          <strong>{customerIdentity}</strong>
+        </div>
+        <button type="button" onClick={logout} disabled={busy}>Sign out</button>
+      </div>
+
+      <section className={styles.overviewIntro}>
+        <div>
+          <p className="eyebrow">YOUR HIDI SPACE</p>
+          <h2>Your wardrobe, aftercare and rewards — together.</h2>
+        </div>
+        <p>Everything you need after choosing HIDI, without the marketplace clutter.</p>
+      </section>
+
+      <div className={styles.summaryGrid}>
+        <Link href="/account/orders" className={styles.summaryCard}>
+          <span>ORDERS</span><strong>{orders.length}</strong><small>{totalItems} piece{totalItems === 1 ? "" : "s"} across your HIDI history</small>
+        </Link>
+        <Link href="/account/returns" className={styles.summaryCard}>
+          <span>AFTERCARE</span><strong>{activeReturnCount}</strong><small>{activeReturnCount ? "Return or exchange in progress" : "No active return requests"}</small>
+        </Link>
+        <Link href="/account/orders" className={styles.summaryCard}>
+          <span>DELIVERED</span><strong>{deliveredCount}</strong><small>Pieces already in your wardrobe</small>
+        </Link>
+        <Link href="/wishlist" className={styles.summaryCard}>
+          <span>SAVED</span><strong>♡</strong><small>Revisit the pieces you loved</small>
+        </Link>
+      </div>
+
+      <section className={styles.recentSection}>
+        <div className={styles.sectionTitle}>
+          <div><p className="eyebrow">RECENT ORDERS</p><h2>Your latest HIDI moments.</h2></div>
+          <Link href="/account/orders" className="text-link">View all orders →</Link>
+        </div>
+
+        {recentOrders.length === 0 ? <div className={styles.empty}>
+          <h2>Your wardrobe story starts here.</h2>
+          <p>Orders placed with this verified account will appear automatically.</p>
+          <Link className="button button-dark" href="/collections/new-arrivals">Explore new arrivals</Link>
+        </div> : <div className={styles.recentOrderGrid}>
+          {recentOrders.map((order) => {
+            const placedAt = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(order.createdAt));
+            const heroItem = order.items[0];
+            return <Link href="/account/orders" className={styles.recentOrderCard} key={order.orderNumber}>
+              <div className={styles.recentThumb}>
+                <CatalogImage src={heroItem?.image} alt={heroItem?.productName ?? "HIDI order"} sizes="120px" fallbackLabel="HIDI order" />
+              </div>
+              <div>
+                <span>{titleCase(order.status)}</span>
+                <strong>{heroItem?.productName ?? order.orderNumber}</strong>
+                <small>{placedAt} · {order.itemCount} item{order.itemCount === 1 ? "" : "s"} · {formatPaise(order.totalPaise)}</small>
+              </div>
+            </Link>;
+          })}
+        </div>}
+      </section>
+
+      <RetentionPreferences />
+    </>;
+  }
+
   return <>
     <div className={styles.accountBar}>
       <div className={styles.customerIdentity}><strong>{customerIdentity}</strong></div>
@@ -232,7 +306,6 @@ export function AccountOrdersClient() {
     </div> : <div className={styles.list}>
       {orders.map((order) => {
         const placedAt = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(order.createdAt));
-        const activeStatuses = new Set(["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"]);
         const activeReturnQuantity = order.items.reduce((sum, item) => sum + item.returnRequests.filter((request) => activeStatuses.has(request.status)).reduce((itemSum, request) => itemSum + request.quantity, 0), 0);
         return <article className={styles.card} key={order.orderNumber}>
           <div className={styles.header}>
@@ -277,7 +350,5 @@ export function AccountOrdersClient() {
         </article>;
       })}
     </div>}
-
-    <RetentionPreferences />
   </>;
 }
