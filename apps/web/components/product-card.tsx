@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight, Share2, X } from "lucide-react";
 import type { ApiProduct, ApiVariant } from "@/lib/api";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
-import { cardPrice, money, variantsForColour } from "@/lib/product-card-utils";
+import { cardPrice, money, validColourHex, variantsForColour } from "@/lib/product-card-utils";
 import { getWishlistItems, removeWishlistSlug, saveWishlistItem, WISHLIST_EVENT } from "@/lib/wishlist";
 import { ProductCardMedia } from "./product-card-media";
 import { getProductCardVideos } from "@/lib/product-card-videos";
@@ -35,6 +35,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const [bagLink, setBagLink] = useState(false);
   const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
   const adding = useRef(false);
+  const sizesRef = useRef<HTMLDivElement>(null);
   const mobileSizeSelectRef = useRef<HTMLSelectElement>(null);
   const desktopSizeSelectRef = useRef<HTMLSelectElement>(null);
   const activeColour = colours.includes(colour) ? colour : colours[0] ?? "";
