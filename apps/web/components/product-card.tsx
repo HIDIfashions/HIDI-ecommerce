@@ -203,15 +203,6 @@ export function ProductCard({ product, initialVariantId }: Props) {
         <Heart size={21} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
       </button>
 
-      <button
-        type="button"
-        className={styles.mobileImagePlus}
-        disabled={!canBuy}
-        aria-label={`Quick add ${product.name}`}
-        onClick={() => { clearFeedback(); setMobileQuickOpen(true); }}
-      >
-        <span aria-hidden="true">+</span>
-      </button>
     </div>
     <div className={styles.body}>
       <p className={styles.eyebrow}>{product.fabric || product.category?.name || "THE HIDI EDIT"}</p>
@@ -231,19 +222,9 @@ export function ProductCard({ product, initialVariantId }: Props) {
           </button>;
         })}
       </div> : <p className={styles.singleColour}>{activeColour || "Standard colour"}</p>}
-      <div className={styles.mobileInlineShop} aria-hidden="true">
+      <div className={styles.mobileInlineShop}>
         <div className={styles.mobileSizeHeader}>
           <span>{selected ? `Size ${selected.size}` : "Select size"}</span>
-          <button
-            type="button"
-            className={styles.mobileWishButton}
-            aria-pressed={saved}
-            disabled={!wishlistReady || busy}
-            aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`}
-            onClick={toggleWishlist}
-          >
-            <Heart size={18} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
-          </button>
         </div>
 
         <div

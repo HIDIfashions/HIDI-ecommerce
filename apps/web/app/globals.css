@@ -15,8 +15,7 @@
   /* HIDI typography tokens */
   --font-sans: var(--font-manrope), "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-cormorant), Georgia, "Times New Roman", serif;
-  --font-handwritten: var(--font-dancing-script), "Segoe Print", "Bradley Hand", cursive;
-  --font-product: var(--font-handwritten);
+  --font-product: var(--font-jost), "Futura", "Century Gothic", Arial, sans-serif;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-base: 1rem;
@@ -2506,5 +2505,32 @@ body {
 
   .collection-page > .collection-header {
     display: none;
+  }
+}
+
+
+/* HIDI Futura-style product typography */
+.product-name,
+.pdp-info h1,
+.cart-item-info h2,
+.checkout-summary-copy b,
+.checkout-mobile-summary-item b {
+  font-family: var(--font-product);
+  color: var(--hidi-mulberry-clay, #591d20);
+  font-weight: 500;
+  letter-spacing: -.01em;
+}
+
+.pdp-price,
+.cart-item-info > strong,
+.checkout-summary strong,
+.checkout-mobile-pay-amount {
+  font-family: var(--font-product);
+}
+
+@media (max-width: 620px) {
+  .pdp-info h1 {
+    font-family: var(--font-product);
+    color: var(--hidi-mulberry-clay, #591d20);
   }
 }
