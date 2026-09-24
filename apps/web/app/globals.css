@@ -1435,7 +1435,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .mobile-nav-panel, .mobile-nav-backdrop { display: none; }
 
 @media (max-width: 1000px) {
-  .site-header { isolation: isolate; }
+  .site-header { isolation: isolate; backdrop-filter: none; }
   .header-inner {
     grid-template-columns: 44px minmax(0, 1fr) auto;
     gap: 8px;
