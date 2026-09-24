@@ -341,3 +341,143 @@
     transition: none;
   }
 }
+
+
+.desktopTitle {
+  display: block;
+}
+
+.mobileTitle {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .section {
+    padding: 44px 12px 48px;
+    gap: 26px;
+  }
+
+  .intro {
+    padding-inline: 4px;
+  }
+
+  .intro h2 {
+    font-size: clamp(34px, 10.5vw, 44px);
+    line-height: 1;
+  }
+
+  .intro > p:not(.eyebrow) {
+    margin-top: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .shopLink {
+    margin-top: 20px;
+    min-height: 38px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .card {
+    min-width: 0;
+    min-height: 184px;
+    padding: 14px 7px 12px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .icon {
+    width: 34px;
+    height: 34px;
+    margin-bottom: 11px;
+  }
+
+  .icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .cardEyebrow {
+    min-height: 22px;
+    margin-bottom: 6px;
+    font-size: 7px;
+    line-height: 1.25;
+    letter-spacing: .08em;
+  }
+
+  .desktopTitle {
+    display: none;
+  }
+
+  .mobileTitle {
+    display: block;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(13px, 3.6vw, 15px);
+    font-weight: 500;
+    line-height: 1.16;
+    letter-spacing: -.015em;
+  }
+
+  .short {
+    display: none;
+  }
+
+  .knowMore {
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 8px;
+    letter-spacing: .05em;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 360px) {
+  .section {
+    padding-inline: 8px;
+  }
+
+  .grid {
+    gap: 5px;
+  }
+
+  .card {
+    padding-inline: 5px;
+  }
+
+  .mobileTitle {
+    font-size: 12.5px;
+  }
+}
+
+@media (hover: none) {
+  .card:hover {
+    background: rgba(255,255,255,.72);
+    border-color: #d8c6b4;
+    color: #3d3028;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .card:hover .icon {
+    color: #a87837;
+    border-color: #cda15d;
+    background: transparent;
+  }
+
+  .card:hover .cardEyebrow {
+    color: #9a6c32;
+  }
+
+  .card:hover .short {
+    color: #74665c;
+  }
+
+  .card:hover .knowMore {
+    color: #651f23;
+  }
+}

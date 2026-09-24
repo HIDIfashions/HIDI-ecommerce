@@ -13,6 +13,7 @@ const offers = [
     icon: Coins,
     eyebrow: "HIDI REWARDS",
     title: "₹2 back for every ₹100 you spend.",
+    mobileTitle: "₹2 back / ₹100",
     short: "Rewards become eligible after the applicable return window closes.",
     terms: [
       "Earn ₹2 in HIDI Rewards for every complete ₹100 of eligible merchandise spend.",
@@ -26,6 +27,7 @@ const offers = [
     icon: Gift,
     eyebrow: "₹1 EXTRA DRESS",
     title: "Shop ₹3,500+ and unlock another eligible dress for ₹1.",
+    mobileTitle: "₹1 dress on ₹3,500+",
     short: "A launch benefit on qualifying orders and selected styles.",
     terms: [
       "The qualifying purchase value shown at checkout must be ₹3,500 or more.",
@@ -39,6 +41,7 @@ const offers = [
     icon: BadgePercent,
     eyebrow: "INAUGURAL OFFER",
     title: "Flat 15% off eligible launch purchases.",
+    mobileTitle: "Flat 15% off",
     short: "A limited-period welcome benefit for the HIDI launch.",
     terms: [
       "Flat 15% applies only to eligible launch merchandise and qualifying orders.",
@@ -84,11 +87,12 @@ export function LaunchBenefits() {
         </div>
 
         <div className={styles.grid}>
-          {offers.map(({ key, icon: Icon, eyebrow, title, short }) => (
+          {offers.map(({ key, icon: Icon, eyebrow, title, mobileTitle, short }) => (
             <article className={styles.card} key={key}>
               <span className={styles.icon}><Icon size={23} strokeWidth={1.5} /></span>
               <p className={styles.cardEyebrow}>{eyebrow}</p>
-              <strong>{title}</strong>
+              <strong className={styles.desktopTitle}>{title}</strong>
+              <strong className={styles.mobileTitle}>{mobileTitle}</strong>
               <span className={styles.short}>{short}</span>
               <button type="button" className={styles.knowMore} onClick={() => setActive(key)}>
                 Know more <ArrowRight size={13} aria-hidden="true" />

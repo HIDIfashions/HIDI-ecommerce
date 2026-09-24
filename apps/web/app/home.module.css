@@ -1134,3 +1134,25 @@
   .secondaryButton:hover,
   .whatsappButton:hover { transform: none; }
 }
+
+
+/* Mobile homepage hierarchy: product image first, copy second. */
+@media (max-width: 780px) {
+  .heroVisual {
+    order: -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .hero {
+    min-height: 0;
+  }
+
+  .heroVisual {
+    min-height: clamp(430px, 122vw, 520px);
+  }
+
+  .heroCopy {
+    padding-top: 34px;
+  }
+}
