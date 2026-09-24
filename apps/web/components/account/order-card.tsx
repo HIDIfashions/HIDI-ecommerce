@@ -23,7 +23,7 @@ function titleCase(value?: string | null) {
   return value
     .replaceAll("_", " ")
     .toLowerCase()
-    .replace(/\\b\\w/g, (letter) => letter.toUpperCase());
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function itemState(order: AccountOrderSummary, item: AccountOrderSummary["items"][number]) {
