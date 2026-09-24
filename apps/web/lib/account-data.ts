@@ -44,6 +44,13 @@ export type AccountOrderItem = {
   discountPaise?: number;
   totalPaise: number;
   exchangeSizes: string[];
+  review?: {
+    id: string;
+    rating: number;
+    title?: string | null;
+    body: string;
+    createdAt: string;
+  } | null;
   returnRequests: AccountReturnRequest[];
 };
 
