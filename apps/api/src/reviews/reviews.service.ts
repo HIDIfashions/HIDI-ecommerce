@@ -156,6 +156,92 @@ export class ReviewsService {
     };
   }
 
+  async submitAccountReview(
+    userId: string,
+    orderNumber: string,
+    orderItemId: string,
+    input: {
+      rating?: unknown;
+      title?: unknown;
+      body?: unknown;
+    },
+  ) {
+    const item = await this.prisma.orderItem.findFirst({
+      where: {
+        id: orderItemId,
+        order: { orderNumber, userId },
+      },
+      include: {
+        review: true,
+        order: {
+          select: {
+            id: true,
+            status: true,
+            user: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+
+    if (!item) throw new NotFoundException("Order item not found");
+    if (item.order.status !== "DELIVERED") {
+      throw new BadRequestException("Reviews are available after delivery");
+    }
+    if (item.review) throw new BadRequestException("This product has already been reviewed");
+
+    const rating = Number(input.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw new BadRequestException("Rating must be between 1 and 5");
+    }
+
+    const body = String(input.body ?? "").trim();
+    if (body.length < 10 || body.length > 2000) {
+      throw new BadRequestException("Review must be between 10 and 2000 characters");
+    }
+
+    const title = String(input.title ?? "").trim().slice(0, 120) || null;
+    const reviewerName = [
+      item.order.user?.firstName,
+      item.order.user?.lastName,
+    ].filter((value): value is string => Boolean(value?.trim())).join(" ").trim() || "HIDI Customer";
+
+    const review = await this.prisma.productReview.create({
+      data: {
+        productId: item.productId,
+        orderId: item.order.id,
+        orderItemId: item.id,
+        rating,
+        title,
+        body,
+        reviewerName,
+        verifiedPurchase: true,
+        published: true,
+      },
+    });
+
+    const [reviewedCount, orderItemCount] = await Promise.all([
+      this.prisma.productReview.count({ where: { orderId: item.order.id } }),
+      this.prisma.orderItem.count({ where: { orderId: item.order.id } }),
+    ]);
+
+    if (reviewedCount >= orderItemCount) {
+      await this.prisma.reviewFollowUp.updateMany({
+        where: { orderId: item.order.id },
+        data: { completedAt: new Date() },
+      });
+    }
+
+    return {
+      id: review.id,
+      rating: review.rating,
+      title: review.title,
+      body: review.body,
+      reviewerName: review.reviewerName,
+      verifiedPurchase: review.verifiedPurchase,
+      createdAt: review.createdAt,
+    };
+  }
+
   async productReviews(productId: string) {
     const [reviews, aggregate] = await Promise.all([
       this.prisma.productReview.findMany({
