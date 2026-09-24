@@ -251,7 +251,7 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
         <Link href="/account/orders" className={styles.summaryCard}>
           <span>ORDERS</span><strong>{orders.length}</strong><small>{totalItems} piece{totalItems === 1 ? "" : "s"} across your HIDI history</small>
         </Link>
-        <Link href="/account/returns" className={styles.summaryCard}>
+        <Link href="/account/orders" className={styles.summaryCard}>
           <span>AFTERCARE</span><strong>{activeReturnCount}</strong><small>{activeReturnCount ? "Return or exchange in progress" : "No active return requests"}</small>
         </Link>
         <Link href="/account/orders" className={styles.summaryCard}>
