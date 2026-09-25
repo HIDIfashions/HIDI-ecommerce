@@ -6,6 +6,7 @@ import { formatPaise, type ApiProduct } from "@/lib/api";
 import { WishlistButton } from "@/components/wishlist-button";
 import { getCartSession } from "@/lib/cart-session";
 import { PRODUCT_VARIANT_EVENT, publishProductSelection, type ProductVariantSelection } from "@/lib/product-sharing";
+import styles from "./add-to-cart.module.css";
 
 import { BROWSER_API_URL } from "@/lib/browser-api";
 const API = BROWSER_API_URL;
@@ -97,48 +98,55 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           >{variant.size}</button>
         ))}
       </div>
-      <div className="pdp-desktop-actions">
+      <div className={styles.purchaseActions} aria-label="Purchase actions">
         <button
-          className="button pdp-desktop-add"
+          className={styles.addButton}
           type="button"
           disabled={busyAction !== null || !product.inStock || !variantId}
           onClick={() => void add("bag")}
         >
-          {busyAction === "add" ? "Adding…" : !product.inStock ? "Sold out" : variantId ? "Add to cart" : "Select size"}
+          {busyAction === "add" ? "Adding…" : "Add to Cart"}
         </button>
         <button
-          className="button pdp-desktop-buy"
+          className={styles.buyButton}
           type="button"
           disabled={busyAction !== null || !product.inStock || !variantId}
           onClick={() => void add("checkout")}
         >
-          {busyAction === "buy" ? "Opening checkout…" : !product.inStock ? "Sold out" : variantId ? "Buy now" : "Select size"}
+          {busyAction === "buy" ? "Opening checkout…" : "Buy Now"}
         </button>
       </div>
+      <p className={styles.helper}>
+        {!product.inStock ? "This piece is currently sold out." : !variantId ? "Select a size to continue." : ""}
+      </p>
       {message && <p className="inline-message pdp-add-message" role="status">{message}</p>}
 
-      <div className="pdp-mobile-buybar" aria-label="Mobile purchase actions">
-        <div className="pdp-mobile-buybar-price">
+      <div className={styles.mobileBar} aria-label="Mobile purchase actions">
+        <div className={styles.mobilePrice}>
           <span>{variantId ? "Selected" : "From"}</span>
           <strong>{formatPaise(product.variants.find((variant) => variant.id === variantId)?.pricePaise ?? product.minPricePaise)}</strong>
         </div>
-        <WishlistButton slug={product.slug} compact />
-        <button
-          className="pdp-mobile-add-button"
-          type="button"
-          disabled={busyAction !== null || !product.inStock || !variantId}
-          onClick={() => void add("bag")}
-        >
-          {busyAction === "add" ? "Adding…" : !product.inStock ? "Sold out" : variantId ? "Add to cart" : "Choose size"}
-        </button>
-        <button
-          className="pdp-mobile-buy-button"
-          type="button"
-          disabled={busyAction !== null || !product.inStock || !variantId}
-          onClick={() => void add("checkout")}
-        >
-          {busyAction === "buy" ? "Opening…" : !product.inStock ? "Sold out" : variantId ? "Buy now" : "Choose size"}
-        </button>
+        <div className={styles.mobileWishlist}>
+          <WishlistButton slug={product.slug} compact />
+        </div>
+        <div className={styles.mobileActions}>
+          <button
+            className={styles.mobileAdd}
+            type="button"
+            disabled={busyAction !== null || !product.inStock || !variantId}
+            onClick={() => void add("bag")}
+          >
+            {busyAction === "add" ? "Adding…" : "Add to Cart"}
+          </button>
+          <button
+            className={styles.mobileBuy}
+            type="button"
+            disabled={busyAction !== null || !product.inStock || !variantId}
+            onClick={() => void add("checkout")}
+          >
+            {busyAction === "buy" ? "Opening…" : "Buy Now"}
+          </button>
+        </div>
       </div>
     </div>
   );
