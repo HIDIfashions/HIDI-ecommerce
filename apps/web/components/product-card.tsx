@@ -37,8 +37,8 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
   const adding = useRef(false);
   const sizesRef = useRef<HTMLDivElement>(null);
-  const mobileSizeSelectRef = useRef<HTMLSelectElement>(null);
-  const desktopSizeSelectRef = useRef<HTMLSelectElement>(null);
+  const mobileRibbonRef = useRef<HTMLDivElement>(null);
+  const desktopRibbonRef = useRef<HTMLDivElement>(null);
   const activeColour = colours.includes(colour) ? colour : colours[0] ?? "";
   const variants = variantsForColour(product.variants, activeColour);
   const selected = variants.find((entry) => entry.id === variantId);
@@ -165,7 +165,9 @@ export function ProductCard({ product, initialVariantId }: Props) {
     if (!selected) {
       setChooseSize(true); setError("Choose your size above to continue.");
       const mobileVisible = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
-      (mobileVisible ? mobileSizeSelectRef.current : desktopSizeSelectRef.current)?.focus();
+      (mobileVisible ? mobileRibbonRef.current : desktopRibbonRef.current)
+        ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
+        ?.focus();
       return;
     }
     if (selected.available < 1) {
@@ -232,25 +234,35 @@ export function ProductCard({ product, initialVariantId }: Props) {
           <span>{selected ? `Size ${selected.size}` : "Select size"}</span>
         </div>
 
-        <select
-          ref={mobileSizeSelectRef}
-          className={styles.mobileSizeSelect}
-          value={variantId}
-          disabled={busy || !canBuy}
-          aria-label={`Choose size for ${product.name}`}
-          onChange={(event) => {
-            const next = variants.find((variant) => variant.id === event.target.value);
-            if (next) selectSize(next);
-            else { clearFeedback(); setVariantId(""); }
-          }}
-        >
-          <option value="">Select size</option>
-          {variants.map((variant) => (
-            <option key={variant.id} value={variant.id} disabled={!product.inStock || variant.available < 1}>
-              {variant.size}{variant.available < 1 ? " — Sold out" : ""}
-            </option>
-          ))}
-        </select>
+        <div className={styles.fitRibbonWrap}>
+          <div className={styles.fitRibbonLabel}>
+            <span>HIDI FIT</span>
+            <strong>{selected ? `Size ${selected.size}` : "Choose size"}</strong>
+          </div>
+          <div
+            ref={mobileRibbonRef}
+            className={`${styles.fitRibbon} ${chooseSize ? styles.fitRibbonNeedsChoice : ""}`}
+            role="group"
+            aria-label={`Choose size for ${product.name}`}
+          >
+            {variants.map((variant) => {
+              const unavailable = !product.inStock || variant.available < 1;
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  disabled={busy || unavailable}
+                  aria-pressed={selected?.id === variant.id}
+                  className={`${styles.fitRibbonSize} ${selected?.id === variant.id ? styles.fitRibbonSizeActive : ""} ${unavailable ? styles.fitRibbonSizeSoldOut : ""}`}
+                  onClick={() => selectSize(variant)}
+                  title={unavailable ? `${variant.size} sold out` : `Choose size ${variant.size}`}
+                >
+                  <span>{variant.size}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div className={styles.mobilePurchaseActions}>
           <button
@@ -283,26 +295,34 @@ export function ProductCard({ product, initialVariantId }: Props) {
       </div>
 
       <div className={`${styles.quickShop} ${styles.desktopQuickShop}`}>
-        <div className={styles.desktopSelectRow}>
-          <select
-            ref={desktopSizeSelectRef}
-            className={`${styles.desktopSizeSelect} ${chooseSize ? styles.needsSize : ""}`}
-            value={variantId}
-            disabled={busy || !canBuy}
+        <div className={styles.fitRibbonWrap}>
+          <div className={styles.fitRibbonLabel}>
+            <span>HIDI FIT</span>
+            <strong>{selected ? `Size ${selected.size}` : "Choose size"}</strong>
+          </div>
+          <div
+            ref={desktopRibbonRef}
+            className={`${styles.fitRibbon} ${chooseSize ? styles.fitRibbonNeedsChoice : ""}`}
+            role="group"
             aria-label={`Choose size for ${product.name}`}
-            onChange={(event) => {
-              const next = variants.find((variant) => variant.id === event.target.value);
-              if (next) selectSize(next);
-              else { clearFeedback(); setVariantId(""); }
-            }}
           >
-            <option value="">Select size</option>
-            {variants.map((variant) => (
-              <option key={variant.id} value={variant.id} disabled={!product.inStock || variant.available < 1}>
-                {variant.size}{variant.available < 1 ? " — Sold out" : ""}
-              </option>
-            ))}
-          </select>
+            {variants.map((variant) => {
+              const unavailable = !product.inStock || variant.available < 1;
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  disabled={busy || unavailable}
+                  aria-pressed={selected?.id === variant.id}
+                  className={`${styles.fitRibbonSize} ${selected?.id === variant.id ? styles.fitRibbonSizeActive : ""} ${unavailable ? styles.fitRibbonSizeSoldOut : ""}`}
+                  onClick={() => selectSize(variant)}
+                  title={unavailable ? `${variant.size} sold out` : `Choose size ${variant.size}`}
+                >
+                  <span>{variant.size}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className={styles.actions}>
           <button type="button" className={`${styles.addButton} ${phase === "added" ? styles.added : ""}`}
