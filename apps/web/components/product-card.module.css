@@ -1646,3 +1646,177 @@
     opacity: .46;
   }
 }
+
+
+/* ==========================================================================
+   HIDI FIT RIBBON — branded size selector for catalogue cards
+   ========================================================================== */
+.fitRibbonWrap {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.fitRibbonLabel {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fitRibbonLabel span {
+  color: #b07a35;
+  font-family: var(--font-product);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.fitRibbonLabel strong {
+  min-width: 0;
+  color: #6a584d;
+  font-family: var(--font-product);
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fitRibbon {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
+}
+
+.fitRibbon::-webkit-scrollbar {
+  display: none;
+}
+
+.fitRibbon::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(183,124,49,.35) 0 7px,
+      transparent 7px 12px
+    );
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.fitRibbonSize {
+  position: relative;
+  z-index: 1;
+  min-width: 38px;
+  height: 34px;
+  padding: 0 9px;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #ccbcae;
+  border-radius: 999px;
+  background: #fffaf5;
+  color: #4a3731;
+  font-family: var(--font-product);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: 0 0 0 3px #f3ecdf;
+  transition:
+    background .16s ease,
+    border-color .16s ease,
+    color .16s ease,
+    transform .16s ease,
+    box-shadow .16s ease;
+}
+
+.fitRibbonSize:not(:disabled):hover,
+.fitRibbonSize:not(:disabled):focus-visible {
+  border-color: #591d20;
+  color: #591d20;
+  transform: translateY(-1px);
+}
+
+.fitRibbonSizeActive {
+  border-color: #591d20;
+  background: #591d20;
+  color: #fff8ef;
+  box-shadow:
+    0 0 0 3px #f3ecdf,
+    0 5px 12px rgba(89,29,32,.16);
+}
+
+.fitRibbonSizeActive::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c99646;
+  transform: translateX(-50%);
+}
+
+.fitRibbonSizeSoldOut {
+  border-color: #ddd2c8;
+  background: #f3eee8;
+  color: #a59b92;
+  opacity: .7;
+  text-decoration: line-through;
+  box-shadow: 0 0 0 3px #f3ecdf;
+}
+
+.fitRibbonNeedsChoice {
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px rgba(89,29,32,.12);
+}
+
+@media (max-width: 620px) {
+  .body {
+    min-height: 198px;
+    grid-template-rows: 24px 28px 140px;
+  }
+
+  .mobileInlineShop {
+    min-height: 140px;
+    grid-template-rows: 80px 42px 12px;
+    gap: 3px;
+  }
+
+  .fitRibbonWrap {
+    margin-top: 0;
+    gap: 4px;
+  }
+
+  .fitRibbon {
+    padding-block: 6px 8px;
+  }
+
+  .fitRibbonSize {
+    min-width: 36px;
+    height: 34px;
+    padding-inline: 8px;
+    font-size: 10px;
+  }
+
+  .fitRibbonLabel span {
+    font-size: 7.5px;
+  }
+
+  .fitRibbonLabel strong {
+    font-size: 8.5px;
+  }
+}
