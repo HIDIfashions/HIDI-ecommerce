@@ -29,6 +29,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const [saved, setSaved] = useState(false);
   const [wishlistReady, setWishlistReady] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
+  const [buying, setBuying] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [chooseSize, setChooseSize] = useState(false);
@@ -55,7 +56,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const cardImages = colourImages.length ? colourImages : product.images;
   const canBuy = product.inStock && variants.some((entry) => entry.available > 0);
   const soldOut = !product.inStock || !product.variants.some((entry) => entry.available > 0);
-  const busy = phase === "adding";
+  const busy = phase === "adding" || buying;
   const price = cardPrice(variants, selected?.id ?? "", product.minPricePaise);
   const href = `/products/${encodeURIComponent(product.slug)}`;
   const whatsappConfigured = Boolean(configuredWhatsAppNumber());
@@ -98,7 +99,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
   }, [mobileQuickOpen, busy]);
 
   function clearFeedback() {
-    setError(""); setMessage(""); setChooseSize(false); setBagLink(false); setPhase("idle");
+    setError(""); setMessage(""); setChooseSize(false); setBagLink(false); setPhase("idle"); setBuying(false);
   }
 
   function rememberSelection(variant?: ApiVariant, nextColour = activeColour) {
@@ -158,11 +159,11 @@ export function ProductCard({ product, initialVariantId }: Props) {
     router.push(href + "?" + query.toString());
   }
 
-  async function add() {
+  async function add(destination: "bag" | "checkout" = "bag") {
     if (adding.current || !canBuy || phase === "added") return;
     setError(""); setMessage(""); setBagLink(false);
     if (!selected) {
-      setChooseSize(true); setError("Choose your size above to add this piece.");
+      setChooseSize(true); setError("Choose your size above to continue.");
       const mobileVisible = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
       (mobileVisible ? mobileSizeSelectRef.current : desktopSizeSelectRef.current)?.focus();
       return;
@@ -171,17 +172,30 @@ export function ProductCard({ product, initialVariantId }: Props) {
       setError("That size is no longer available. Please choose another.");
       setVariantId(""); router.refresh(); return;
     }
-    adding.current = true; setPhase("adding"); setChooseSize(false);
+    adding.current = true;
+    setChooseSize(false);
+    if (destination === "checkout") setBuying(true);
+    else setPhase("adding");
+
     try {
       await addCatalogueVariant(selected.id);
-      setPhase("added"); setMessage(`${selected.size} · ${selected.color} added to your bag.`); setBagLink(true);
+      if (destination === "checkout") {
+        router.push("/checkout");
+        return;
+      }
+      setPhase("added");
+      setMessage(`${selected.size} · ${selected.color} added to your bag.`);
+      setBagLink(true);
     } catch (cause: unknown) {
-      setPhase("idle"); setBagLink(true);
+      setPhase("idle"); setBuying(false); setBagLink(true);
       setError(cause instanceof Error ? cause.message : "We couldn’t add this item. Please check your bag.");
       if (cause instanceof CatalogCartError && cause.refreshCatalogue) {
         setVariantId(""); router.refresh();
       }
-    } finally { adding.current = false; }
+    } finally {
+      adding.current = false;
+      setBuying(false);
+    }
   }
 
   return <article className={styles.card} aria-labelledby={`${uid}-name`}>
@@ -238,18 +252,30 @@ export function ProductCard({ product, initialVariantId }: Props) {
           ))}
         </select>
 
-        <button
-          type="button"
-          className={`${styles.mobileAddButton} ${phase === "added" ? styles.added : ""}`}
-          disabled={busy || !canBuy || !selected || phase === "added"}
-          aria-busy={busy}
-          onClick={() => void add()}
-        >
-          {busy ? <LoaderCircle className={styles.spinner} size={16} aria-hidden="true" />
-            : phase === "added" ? <Check size={16} aria-hidden="true" />
-            : <ShoppingBag size={16} aria-hidden="true" />}
-          <span>{busy ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to cart"}</span>
-        </button>
+        <div className={styles.mobilePurchaseActions}>
+          <button
+            type="button"
+            className={`${styles.mobileAddButton} ${phase === "added" ? styles.added : ""}`}
+            disabled={busy || !canBuy || !selected || phase === "added"}
+            aria-busy={phase === "adding"}
+            onClick={() => void add("bag")}
+          >
+            {phase === "adding" ? <LoaderCircle className={styles.spinner} size={16} aria-hidden="true" />
+              : phase === "added" ? <Check size={16} aria-hidden="true" />
+              : <ShoppingBag size={16} aria-hidden="true" />}
+            <span>{phase === "adding" ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to cart"}</span>
+          </button>
+          <button
+            type="button"
+            className={styles.mobileBuyButton}
+            disabled={busy || !canBuy || !selected || phase === "added"}
+            aria-busy={buying}
+            onClick={() => void add("checkout")}
+          >
+            {buying ? <LoaderCircle className={styles.spinner} size={16} aria-hidden="true" /> : null}
+            <span>{buying ? "Opening…" : "Buy now"}</span>
+          </button>
+        </div>
 
         <p className={styles.mobileInlineFeedback} role={error ? "alert" : "status"}>
           {error || message || (!selected ? "Choose a size to add this piece." : "")}
@@ -280,11 +306,22 @@ export function ProductCard({ product, initialVariantId }: Props) {
         </div>
         <div className={styles.actions}>
           <button type="button" className={`${styles.addButton} ${phase === "added" ? styles.added : ""}`}
-            disabled={busy || !canBuy || phase === "added"} aria-busy={busy}
-            onClick={add} aria-label={`${!canBuy ? "Sold out" : "Add to Bag"} — ${product.name}`}>
-            {busy ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" />
+            disabled={busy || !canBuy || !selected || phase === "added"} aria-busy={phase === "adding"}
+            onClick={() => void add("bag")} aria-label={`${!canBuy ? "Sold out" : "Add to Bag"} — ${product.name}`}>
+            {phase === "adding" ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" />
               : phase === "added" ? <Check size={17} aria-hidden="true" /> : <ShoppingBag size={17} aria-hidden="true" />}
-            <span>{busy ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to Bag"}</span>
+            <span>{phase === "adding" ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to Bag"}</span>
+          </button>
+          <button
+            type="button"
+            className={styles.buyButton}
+            disabled={busy || !canBuy || !selected || phase === "added"}
+            aria-busy={buying}
+            onClick={() => void add("checkout")}
+            aria-label={`Buy now — ${product.name}`}
+          >
+            {buying ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" /> : null}
+            <span>{buying ? "Opening…" : "Buy Now"}</span>
           </button>
           <button type="button" aria-pressed={saved} disabled={!wishlistReady || busy}
             aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`}
