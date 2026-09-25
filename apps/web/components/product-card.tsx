@@ -230,10 +230,6 @@ export function ProductCard({ product, initialVariantId }: Props) {
           <span className={styles.saving}>Save {money(price.savingPaise)}</span></>}
       </div>
       <div className={styles.mobileInlineShop}>
-        <div className={styles.mobileSizeHeader}>
-          <span>{selected ? `Size ${selected.size}` : "Select size"}</span>
-        </div>
-
         <div className={styles.fitRibbonWrap}>
           <div className={styles.fitRibbonLabel}>
             <span>HIDI FIT</span>
