@@ -2776,3 +2776,43 @@ body {
     font-size: 9px;
   }
 }
+
+
+/* ==========================================================================
+   AUTHORITATIVE PDP PURCHASE VISIBILITY
+   Keep the primary purchase actions visible after all legacy responsive rules.
+   ========================================================================== */
+@media (min-width: 621px) {
+  .pdp-desktop-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .pdp-desktop-actions .pdp-desktop-add,
+  .pdp-desktop-actions .pdp-desktop-buy {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1;
+  }
+}
+
+@media (max-width: 620px) {
+  .pdp-desktop-actions {
+    display: none !important;
+  }
+
+  .pdp-mobile-buybar {
+    display: grid !important;
+    grid-template-columns: minmax(58px, auto) 46px minmax(86px, 1fr) minmax(82px, .95fr) !important;
+    gap: 6px !important;
+  }
+
+  .pdp-mobile-add-button,
+  .pdp-mobile-buy-button {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    visibility: visible !important;
+  }
+}
