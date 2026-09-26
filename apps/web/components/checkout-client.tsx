@@ -175,10 +175,18 @@ export function CheckoutClient() {
         stateCode: typeof payload.stateCode === "string" ? payload.stateCode : null,
       };
 
-      if (form && next.city) {
-        const cityField = form.elements.namedItem("city");
-        if (cityField instanceof HTMLInputElement && !cityField.value.trim()) {
-          cityField.value = next.city;
+      if (form) {
+        if (next.city) {
+          const cityField = form.elements.namedItem("city");
+          if (cityField instanceof HTMLInputElement && !cityField.value.trim()) {
+            cityField.value = next.city;
+          }
+        }
+        if (next.stateCode && next.stateCode.length > 2) {
+          const stateField = form.elements.namedItem("state");
+          if (stateField instanceof HTMLInputElement && !stateField.value.trim()) {
+            stateField.value = next.stateCode;
+          }
         }
       }
 
@@ -295,6 +303,7 @@ export function CheckoutClient() {
   const previewWallet = useWallet ? (walletAmountPaise(walletInput, gross, gross) ?? 0) : 0;
   const applied = prepared?.walletAppliedPaise ?? previewWallet;
   const payable = prepared?.amountPaise ?? Math.max(0, gross - previewWallet);
+  const complimentaryShipping = gross > 149900;
 
   return <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
@@ -322,6 +331,7 @@ export function CheckoutClient() {
             <strong>{formatWalletPaise(item.lineTotalPaise)}</strong>
           </Link>
         ))}
+        {complimentaryShipping && <div className="checkout-mobile-shipping-row"><span>Shipping</span><strong>Complimentary</strong></div>}
         <div className="checkout-mobile-total-row"><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div>
         <Link href="/cart" className="checkout-edit-bag">Edit bag</Link>
       </div>
@@ -539,7 +549,7 @@ export function CheckoutClient() {
           ))}
         </div>
 
-        <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Order total</span><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong></div>{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
+        <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Order total</span><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong></div>{complimentaryShipping && <div><span>Shipping</span><strong>Complimentary</strong></div>}{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
         {useWallet && !prepared && <p className={walletStyles.note}>Rewards are applied only after server confirmation.</p>}
         {!!prepared?.walletAppliedPaise && prepared.provider === "RAZORPAY" && <p className={walletStyles.note}>{formatWalletPaise(prepared.walletAppliedPaise)} is reserved for this checkout while the remaining payment is completed.</p>}
       </aside>
