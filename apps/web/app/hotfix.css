@@ -1,0 +1,134 @@
+/* Production polish for the HIDI chrome reported from mobile and desktop QA. */
+.site-header .header-inner {
+  height: 86px;
+  grid-template-columns: minmax(190px, .8fr) minmax(0, 1fr) auto;
+}
+
+.site-header .wordmark {
+  width: clamp(176px, 13vw, 226px);
+  height: 74px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: visible;
+  line-height: 0;
+}
+
+.site-header .wordmark img,
+.footer-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.site-header .desktop-nav {
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .075em;
+}
+
+.site-header .utility-nav {
+  font-size: .875rem;
+}
+
+.mobile-nav-panel {
+  position: fixed;
+}
+
+.mobile-nav-close {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(226, 181, 108, .38);
+  border-radius: 999px;
+  background: rgba(70, 20, 22, .82);
+  color: var(--hidi-mulberry-ivory);
+}
+
+.mobile-nav-links a {
+  gap: 24px;
+  padding-right: 4px;
+}
+
+.mobile-nav-links a span {
+  flex: 0 0 auto;
+  margin-left: 24px;
+}
+
+.footer-logo {
+  width: clamp(236px, 19vw, 340px);
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  overflow: visible;
+  line-height: 0;
+  margin-bottom: 18px;
+}
+
+.footer-brand .muted {
+  margin-top: 4px;
+}
+
+@media (max-width: 1000px) {
+  .site-header .header-inner {
+    height: 70px;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+
+  .site-header .wordmark {
+    width: min(154px, 36vw);
+    height: 64px;
+    justify-content: center;
+  }
+
+  .site-header .desktop-nav {
+    font-size: .8125rem;
+  }
+}
+
+@media (max-width: 620px) {
+  .site-header .header-inner {
+    height: 60px;
+  }
+
+  .site-header .wordmark {
+    width: min(128px, 38vw);
+    height: 56px;
+  }
+
+  .mobile-nav-panel {
+    padding-top: 96px;
+  }
+
+  .mobile-nav-close {
+    top: 18px;
+    right: 18px;
+  }
+
+  .mobile-nav-intro {
+    padding-right: 52px;
+  }
+
+  .footer-logo {
+    width: min(250px, 72vw);
+  }
+}
+
+@media (max-width: 390px) {
+  .site-header .wordmark {
+    width: min(118px, 36vw);
+  }
+
+  .mobile-nav-panel {
+    padding-top: 92px;
+  }
+}
