@@ -73,6 +73,7 @@ export class CheckoutService {
     if (
       !a ||
       !requiredText(a.firstName, 80) ||
+      !requiredText(a.phone, 20) ||
       !optionalText(a.lastName, 80) ||
       !requiredText(a.line1, 250) ||
       !optionalText(a.line2, 250) ||
