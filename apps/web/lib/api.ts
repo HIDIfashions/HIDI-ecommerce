@@ -117,6 +117,13 @@ export async function getProducts(category?: string): Promise<ApiProduct[]> {
   return fetchPublicList(url);
 }
 
+export async function getFeaturedProducts(limit = 4): Promise<ApiProduct[]> {
+  const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 8) : 4;
+  const url = new URL(`${API_URL}/products/featured`);
+  url.searchParams.set("limit", String(safeLimit));
+  return fetchPublicList(url);
+}
+
 export async function getBestSellers(limit = 8): Promise<ApiProduct[]> {
   const url = new URL(`${API_URL}/products/best-sellers`);
   url.searchParams.set("limit", String(limit));
