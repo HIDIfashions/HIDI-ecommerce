@@ -46,19 +46,61 @@ export class CheckoutService {
     if (typeof input.checkoutToken !== "string" || input.checkoutToken.length < 8 || input.checkoutToken.length > 128) {
       throw new BadRequestException("checkoutToken is required");
     }
-    if (typeof input.customerPhone !== "string" || !/^[0-9+ -]{8,16}$/.test(input.customerPhone)) {
+
+    if (input.customerEmail !== undefined && input.customerEmail !== null && input.customerEmail !== "") {
+      const email = String(input.customerEmail).trim();
+      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new BadRequestException("Enter a valid email address");
+      }
+    }
+
+    if (typeof input.customerPhone !== "string") throw new BadRequestException("A valid mobile number is required");
+    const phone = input.customerPhone.trim();
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (!/^[0-9+() -]{8,20}$/.test(phone) || phoneDigits.length < 8 || phoneDigits.length > 15) {
       throw new BadRequestException("A valid mobile number is required");
     }
+
     if (input.walletPaise !== undefined && (!Number.isSafeInteger(input.walletPaise) || input.walletPaise < 0 || input.walletPaise > MAX_PAISE)) throw new BadRequestException("Wallet amount must be nonnegative integer paise within the supported range");
     if (input.expectedTotalPaise !== undefined && (!Number.isSafeInteger(input.expectedTotalPaise) || input.expectedTotalPaise < 0 || input.expectedTotalPaise > MAX_PAISE)) throw new BadRequestException("Expected total must be nonnegative integer paise within the supported range");
+
     const a = input.shippingAddress;
-    if (!a?.firstName || !a.line1 || !a.city || !a.state || !/^\d{6}$/.test(a.postalCode ?? "")) {
+    const requiredText = (value: unknown, max: number) =>
+      typeof value === "string" && value.trim().length > 0 && value.trim().length <= max;
+    const optionalText = (value: unknown, max: number) =>
+      value === undefined || value === null || value === "" || (typeof value === "string" && value.trim().length <= max);
+
+    if (
+      !a ||
+      !requiredText(a.firstName, 80) ||
+      !optionalText(a.lastName, 80) ||
+      !requiredText(a.line1, 250) ||
+      !optionalText(a.line2, 250) ||
+      !requiredText(a.city, 100) ||
+      !requiredText(a.state, 100) ||
+      !/^\d{6}$/.test(String(a.postalCode ?? "").trim())
+    ) {
       throw new BadRequestException("Complete delivery address with a 6-digit PIN code is required");
     }
+    if (a.countryCode && a.countryCode !== "IN") throw new BadRequestException("HIDI checkout currently supports delivery addresses in India");
   }
 
   async prepare(input: PrepareInput, auth: VerifiedAuthUser | null = null) {
     this.validate(input);
+    const shippingAddress = {
+      ...input.shippingAddress!,
+      firstName: input.shippingAddress!.firstName.trim(),
+      lastName: input.shippingAddress!.lastName?.trim() || "",
+      phone: input.shippingAddress!.phone.trim(),
+      line1: input.shippingAddress!.line1.trim(),
+      line2: input.shippingAddress!.line2?.trim() || "",
+      city: input.shippingAddress!.city.trim(),
+      state: input.shippingAddress!.state.trim(),
+      postalCode: input.shippingAddress!.postalCode.trim(),
+      countryCode: input.shippingAddress!.countryCode ?? "IN",
+    };
+    const customerEmail = input.customerEmail?.trim() || null;
+    const customerPhone = input.customerPhone!.trim();
     const walletPaise = input.walletPaise ?? 0;
     if (walletPaise > 0 && !auth) throw new UnauthorizedException("Sign in before using your wallet");
     if (walletPaise > 0 && !this.wallet.enabled()) throw new BadRequestException("Wallet redemption is not enabled");
@@ -136,9 +178,9 @@ export class CheckoutService {
           subtotalPaise,
           totalPaise: subtotalPaise,
           walletAppliedPaise: walletPaise,
-          customerEmail: auth?.email ?? input.customerEmail ?? null,
-          customerPhone: auth?.phoneVerified && auth.phone ? auth.phone : input.customerPhone!,
-          shippingAddress: { ...input.shippingAddress!, countryCode: input.shippingAddress?.countryCode ?? "IN" },
+          customerEmail: auth?.email ?? customerEmail,
+          customerPhone: auth?.phoneVerified && auth.phone ? auth.phone : customerPhone,
+          shippingAddress,
           items: {
             create: cart.items.map((item) => ({
               productId: item.productId,
