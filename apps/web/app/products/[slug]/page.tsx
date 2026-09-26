@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
@@ -16,6 +17,8 @@ import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
+const getProductPageData = cache(getProduct);
+
 function productDescription(product: NonNullable<Awaited<ReturnType<typeof getProduct>>>) {
   const value =
     product.shortDescription?.trim() ||
@@ -30,7 +33,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const product = await getProductPageData(slug);
 
   if (!product) {
     return {
@@ -68,7 +71,7 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const product = await getProductPageData(slug);
   if (!product) notFound();
   const [reviews, related] = await Promise.all([
     getProductReviews(product.id),
@@ -100,13 +103,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       priceCurrency: "INR",
       lowPrice: (product.minPricePaise / 100).toFixed(2),
       highPrice: (product.maxPricePaise / 100).toFixed(2),
-      offerCount: product.variants.filter((variant) => variant.available > 0).length,
+      offerCount: product.variants.length,
       url: canonicalUrl,
     },
     ...(reviews.reviewCount > 0 && reviews.averageRating > 0 ? {
       aggregateRating: {
         "@type": "AggregateRating",
-        ratingValue: reviews.averageRating.toFixed(1),
+        ratingValue: Number(reviews.averageRating.toFixed(1)),
         reviewCount: reviews.reviewCount,
       },
     } : {}),
