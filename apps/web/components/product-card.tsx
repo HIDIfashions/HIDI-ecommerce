@@ -112,7 +112,10 @@ export function ProductCard({ product, initialVariantId }: Props) {
 
   function selectSize(variant: ApiVariant) {
     if (adding.current || variant.available < 1 || !product.inStock) return;
-    clearFeedback(); setVariantId(variant.id); rememberSelection(variant);
+    const deselecting = variantId === variant.id;
+    clearFeedback();
+    setVariantId(deselecting ? "" : variant.id);
+    rememberSelection(deselecting ? undefined : variant);
   }
 
   function selectColour(value: string) {
@@ -262,7 +265,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
                   aria-pressed={selected?.id === variant.id}
                   className={`${styles.fitRibbonSize} ${selected?.id === variant.id ? styles.fitRibbonSizeActive : ""} ${unavailable ? styles.fitRibbonSizeSoldOut : ""}`}
                   onClick={() => selectSize(variant)}
-                  title={unavailable ? `${variant.size} sold out` : `Choose size ${variant.size}`}
+                  title={unavailable ? `${variant.size} sold out` : selected?.id === variant.id ? `Unselect size ${variant.size}` : `Choose size ${variant.size}`}
                 >
                   <span>{variant.size}</span>
                 </button>
@@ -323,7 +326,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
                   aria-pressed={selected?.id === variant.id}
                   className={`${styles.fitRibbonSize} ${selected?.id === variant.id ? styles.fitRibbonSizeActive : ""} ${unavailable ? styles.fitRibbonSizeSoldOut : ""}`}
                   onClick={() => selectSize(variant)}
-                  title={unavailable ? `${variant.size} sold out` : `Choose size ${variant.size}`}
+                  title={unavailable ? `${variant.size} sold out` : selected?.id === variant.id ? `Unselect size ${variant.size}` : `Choose size ${variant.size}`}
                 >
                   <span>{variant.size}</span>
                 </button>
@@ -367,7 +370,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
             onClick={orderOnWhatsapp}
             aria-label={`Order ${product.name} on WhatsApp${whatsappConfigured ? "" : " — not available yet"}`}
           >
-            <WhatsAppIcon size={16} /> Order on WhatsApp
+            <WhatsAppIcon size={16} className={styles.whatsappIcon} /> Order on WhatsApp
           </button>
           <button
             type="button"
@@ -499,7 +502,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
               {saved ? "Saved" : "Save"}
             </button>
             <button type="button" onClick={orderOnWhatsapp} disabled={!whatsappConfigured || busy}>
-              <WhatsAppIcon size={17} /> WhatsApp
+              <WhatsAppIcon size={17} className={styles.whatsappIcon} /> WhatsApp
             </button>
             <button type="button" onClick={() => void share()} disabled={busy}>
               <Share2 size={16} aria-hidden="true" /> Share
