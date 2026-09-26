@@ -167,6 +167,14 @@ test("homepage premium edit keeps real best sellers first when sales data exists
   assert.match(root.text, /A rotating edit led by what customers are choosing now/);
 });
 
+test("Shop by Edit stays concise and lets the three editorials lead", async () => {
+  const root = await harness({ products: catalogue }).homepage();
+  assert.match(root.text, /SHOP BY EDIT/);
+  assert.match(root.text, /Work\. Everyday\. Occasion\./);
+  assert.doesNotMatch(root.text, /Three moods\. One HIDI point of view\./);
+  assert.doesNotMatch(root.text, /Move from work to everyday plans/);
+});
+
 test("homepage exposes the four core collection destinations without a marketplace strip", async () => {
   const root = await harness({ products: catalogue }).homepage();
   const hrefs = new Set(root.querySelectorAll("a").map((link) => link.getAttribute("href")));
