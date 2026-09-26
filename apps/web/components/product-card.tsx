@@ -262,6 +262,19 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false }
         {price.mrpPaise !== null && <><s aria-label={`MRP ${money(price.mrpPaise)}`}>{money(price.mrpPaise)}</s>
           <span className={styles.saving}>Save {money(price.savingPaise)}</span></>}
       </div>
+      <div className={styles.ratingSlot}>
+        {!!product.reviewCount && product.reviewCount > 0 && typeof product.averageRating === "number" && (
+          <Link
+            href={`${href}#reviews`}
+            className={styles.ratingSummary}
+            aria-label={`${product.averageRating.toFixed(1)} out of 5 from ${product.reviewCount} customer review${product.reviewCount === 1 ? "" : "s"}`}
+          >
+            <span aria-hidden="true">★</span>
+            <strong>{product.averageRating.toFixed(1)}</strong>
+            <span>({product.reviewCount})</span>
+          </Link>
+        )}
+      </div>
       <div className={styles.mobileInlineShop}>
         <div className={styles.fitRibbonWrap}>
           <div className={styles.fitRibbonLabel}>
