@@ -49,6 +49,7 @@ export function CheckoutClient() {
   const [walletInput, setWalletInput] = useState("");
   const [prepared, setPrepared] = useState<PreparedCheckout | null>(null);
   const [reloadCart, setReloadCart] = useState(0);
+  const [showAddressDetail, setShowAddressDetail] = useState(false);
   const attempt = useRef<Attempt | null>(null);
   const lock = useRef(false);
   const lifecycle = useRef({ active: false, revision: 0, userId: null as string | null, cartSignature: "" });
@@ -271,39 +272,138 @@ export function CheckoutClient() {
       <form className="checkout-form" onSubmit={submit} onChange={() => { if (!lock.current) { invalidate(false); setError(""); } }}>
         <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <section>
-            <h2>Contact</h2>
-            <input
-              key={`${accountId ?? "guest"}:${signedInEmail}`}
-              name="email"
-              aria-label="Email address"
-              placeholder="Email address"
-              type="email"
-              defaultValue={signedInEmail}
-              required
-            />
+            <div className="checkout-section-heading">
+              <span className="checkout-step">01</span>
+              <div>
+                <h2>Contact</h2>
+                <p>{accountId ? "We’ll use these details for your order." : "Checkout as guest — no account required."}</p>
+              </div>
+            </div>
+
+            <label className="checkout-field">
+              <span>Email address</span>
+              <input
+                key={`${accountId ?? "guest"}:${signedInEmail}`}
+                name="email"
+                aria-label="Email address"
+                placeholder="you@example.com"
+                type="email"
+                autoComplete="email"
+                defaultValue={signedInEmail}
+                required
+              />
+            </label>
+
             {accountId && signedInPhone ? <>
               <input type="hidden" name="phone" value={signedInPhone} />
-              <div
-                aria-label="Verified mobile number"
-                title="Verified mobile number used to sign in"
-                style={{
-                  border: "1px solid #d8d3cb",
-                  minHeight: 52,
-                  padding: "0 14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  background: "#fcf9f9",
-                }}
-              >
-                <span>{signedInPhone.replace(/^\+91/, "+91 ")}</span>
-                <small style={{ opacity: 0.65, whiteSpace: "nowrap" }}>Verified</small>
+              <div className="checkout-verified-phone" aria-label="Verified mobile number" title="Verified mobile number used to sign in">
+                <span>
+                  <small>Mobile number</small>
+                  <strong>{signedInPhone.replace(/^\+91/, "+91 ")}</strong>
+                </span>
+                <b>Verified</b>
               </div>
-            </> : <input name="phone" aria-label="Mobile number" placeholder="Mobile number" inputMode="tel" required />}
+            </> : (
+              <label className="checkout-field">
+                <span>Mobile number</span>
+                <input
+                  name="phone"
+                  aria-label="Mobile number"
+                  placeholder="+91"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={18}
+                  required
+                />
+                <small>Required for delivery and order updates.</small>
+              </label>
+            )}
           </section>
-          <section><h2>Delivery address</h2><div className="two-col"><input name="firstName" aria-label="First name" placeholder="First name" required /><input name="lastName" aria-label="Last name" placeholder="Last name" /></div><input name="line1" aria-label="Address" placeholder="Address" required /><input name="line2" aria-label="Apartment, suite or landmark" placeholder="Apartment, suite, landmark (optional)" /><div className="two-col"><input name="postalCode" aria-label="PIN code" placeholder="PIN code" inputMode="numeric" pattern="[0-9]{6}" required /><input name="city" aria-label="City" placeholder="City" required /></div><div className="two-col"><input name="state" aria-label="State" placeholder="State" required /><input aria-label="Country" value="India" disabled readOnly /></div></section>
-          <section><h2>Payment</h2>
+
+          <section>
+            <div className="checkout-section-heading">
+              <span className="checkout-step">02</span>
+              <div>
+                <h2>Delivery address</h2>
+                <p>Where should we send your HIDI order?</p>
+              </div>
+            </div>
+
+            <div className="two-col">
+              <label className="checkout-field">
+                <span>First name</span>
+                <input name="firstName" aria-label="First name" autoComplete="shipping given-name" autoCapitalize="words" required />
+              </label>
+              <label className="checkout-field">
+                <span>Last name <small>Optional</small></span>
+                <input name="lastName" aria-label="Last name" autoComplete="shipping family-name" autoCapitalize="words" />
+              </label>
+            </div>
+
+            <label className="checkout-field">
+              <span>House / building / street</span>
+              <input name="line1" aria-label="House, building and street address" autoComplete="shipping address-line1" autoCapitalize="words" required />
+            </label>
+
+            <button
+              type="button"
+              className="checkout-optional-toggle"
+              aria-expanded={showAddressDetail}
+              aria-controls="checkout-address-detail"
+              onClick={() => setShowAddressDetail((value) => !value)}
+            >
+              {showAddressDetail ? "Remove apartment / landmark" : "+ Add apartment / landmark"}
+              <span>Optional</span>
+            </button>
+
+            {showAddressDetail && (
+              <label className="checkout-field" id="checkout-address-detail">
+                <span>Apartment, floor or landmark <small>Optional</small></span>
+                <input name="line2" aria-label="Apartment, floor or landmark" autoComplete="shipping address-line2" autoCapitalize="words" />
+              </label>
+            )}
+
+            <div className="two-col">
+              <label className="checkout-field">
+                <span>PIN code</span>
+                <input
+                  name="postalCode"
+                  aria-label="PIN code"
+                  inputMode="numeric"
+                  autoComplete="shipping postal-code"
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  title="Enter a 6-digit PIN code"
+                  required
+                />
+              </label>
+              <label className="checkout-field">
+                <span>City</span>
+                <input name="city" aria-label="City" autoComplete="shipping address-level2" autoCapitalize="words" required />
+              </label>
+            </div>
+
+            <div className="two-col">
+              <label className="checkout-field">
+                <span>State</span>
+                <input name="state" aria-label="State" autoComplete="shipping address-level1" autoCapitalize="words" required />
+              </label>
+              <label className="checkout-field">
+                <span>Country</span>
+                <input aria-label="Country" autoComplete="shipping country-name" value="India" disabled readOnly />
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <div className="checkout-section-heading">
+              <span className="checkout-step">03</span>
+              <div>
+                <h2>Payment</h2>
+                <p>Review rewards, then continue to secure payment.</p>
+              </div>
+            </div>
             {walletEnabled && <div className={walletStyles.checkoutWallet}>
               {!accountId ? <p className={walletStyles.note}><Link href="/account">Sign in</Link> to view and use your HIDI rewards. You can also continue as a guest.</p>
                 : wallet.loading && !wallet.summary ? <p role="status">Loading your rewards…</p>
