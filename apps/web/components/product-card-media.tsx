@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { ChevronLeft, ChevronRight, Expand, Minus, Plus, Play, X } from "lucide-react";
@@ -13,6 +13,110 @@ const VIDEO_PLAY_EVENT = "hidi-card-video-play";
 const CARD_ZOOM_LEVELS = [1, 1.8, 2.6, 3.4, 4.2] as const;
 const EMPTY_VIDEOS: readonly CardVideo[] = [];
 const DEFAULT_INTERVAL = 1400;
+
+type MediaEnvironment = {
+  reduceMotion: boolean;
+  saveData: boolean;
+  pageVisible: boolean;
+};
+
+const SERVER_MEDIA_ENVIRONMENT: MediaEnvironment = {
+  reduceMotion: true,
+  saveData: false,
+  pageVisible: true,
+};
+
+let mediaEnvironment: MediaEnvironment = SERVER_MEDIA_ENVIRONMENT;
+const mediaEnvironmentSubscribers = new Set<() => void>();
+let stopMediaEnvironment: (() => void) | null = null;
+
+function startMediaEnvironment() {
+  if (typeof window === "undefined" || stopMediaEnvironment) return;
+
+  const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const connection = (navigator as Navigator & {
+    connection?: EventTarget & { saveData?: boolean };
+  }).connection;
+
+  const sync = () => {
+    const next: MediaEnvironment = {
+      reduceMotion: motion.matches,
+      saveData: Boolean(connection?.saveData),
+      pageVisible: !document.hidden,
+    };
+
+    if (
+      next.reduceMotion === mediaEnvironment.reduceMotion
+      && next.saveData === mediaEnvironment.saveData
+      && next.pageVisible === mediaEnvironment.pageVisible
+    ) return;
+
+    mediaEnvironment = next;
+    for (const notify of mediaEnvironmentSubscribers) notify();
+  };
+
+  motion.addEventListener("change", sync);
+  connection?.addEventListener("change", sync);
+  document.addEventListener("visibilitychange", sync);
+  sync();
+
+  stopMediaEnvironment = () => {
+    motion.removeEventListener("change", sync);
+    connection?.removeEventListener("change", sync);
+    document.removeEventListener("visibilitychange", sync);
+    stopMediaEnvironment = null;
+  };
+}
+
+function subscribeMediaEnvironment(notify: () => void) {
+  mediaEnvironmentSubscribers.add(notify);
+  startMediaEnvironment();
+
+  return () => {
+    mediaEnvironmentSubscribers.delete(notify);
+    if (!mediaEnvironmentSubscribers.size) stopMediaEnvironment?.();
+  };
+}
+
+function useMediaEnvironment() {
+  return useSyncExternalStore(
+    subscribeMediaEnvironment,
+    () => mediaEnvironment,
+    () => SERVER_MEDIA_ENVIRONMENT,
+  );
+}
+
+const cardVisibilityCallbacks = new Map<Element, (visible: boolean) => void>();
+let cardVisibilityObserver: IntersectionObserver | null = null;
+
+function observeCardVisibility(node: Element, update: (visible: boolean) => void) {
+  if (typeof IntersectionObserver === "undefined") {
+    update(true);
+    return () => undefined;
+  }
+
+  if (!cardVisibilityObserver) {
+    cardVisibilityObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        cardVisibilityCallbacks.get(entry.target)?.(
+          entry.isIntersecting && entry.intersectionRatio >= 0.15,
+        );
+      }
+    }, { threshold: [0, 0.15] });
+  }
+
+  cardVisibilityCallbacks.set(node, update);
+  cardVisibilityObserver.observe(node);
+
+  return () => {
+    cardVisibilityCallbacks.delete(node);
+    cardVisibilityObserver?.unobserve(node);
+    if (!cardVisibilityCallbacks.size) {
+      cardVisibilityObserver?.disconnect();
+      cardVisibilityObserver = null;
+    }
+  };
+}
 
 type Props = {
   name: string;
@@ -245,9 +349,7 @@ function Gallery({
   const [index, setIndex] = useState(0);
   const [hover, setHover] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [pageVisible, setPageVisible] = useState(true);
-  const [reduceMotion, setReduceMotion] = useState(true);
-  const [saveData, setSaveData] = useState(false);
+  const { reduceMotion, saveData, pageVisible } = useMediaEnvironment();
   const [expanded, setExpanded] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [preloadIndex, setPreloadIndex] = useState<number | null>(null);
@@ -278,40 +380,9 @@ function Gallery({
     && hover;
 
   useEffect(() => {
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const connection = (navigator as Navigator & {
-      connection?: EventTarget & { saveData?: boolean };
-    }).connection;
-
-    const syncPreferences = () => {
-      setReduceMotion(motion.matches);
-      setSaveData(Boolean(connection?.saveData));
-    };
-
-    const syncPage = () => setPageVisible(!document.hidden);
-
-    syncPreferences();
-    syncPage();
-
-    motion.addEventListener("change", syncPreferences);
-    connection?.addEventListener("change", syncPreferences);
-    document.addEventListener("visibilitychange", syncPage);
-
-    const observer = typeof IntersectionObserver !== "undefined"
-      ? new IntersectionObserver(([entry]) => {
-          setVisible(entry.isIntersecting && entry.intersectionRatio >= 0.15);
-        }, { threshold: [0, 0.15] })
-      : null;
-
-    if (root.current) observer?.observe(root.current);
-    if (!observer) setVisible(true);
-
-    return () => {
-      observer?.disconnect();
-      motion.removeEventListener("change", syncPreferences);
-      connection?.removeEventListener("change", syncPreferences);
-      document.removeEventListener("visibilitychange", syncPage);
-    };
+    const node = root.current;
+    if (!node) return;
+    return observeCardVisibility(node, setVisible);
   }, []);
 
   useEffect(() => {
