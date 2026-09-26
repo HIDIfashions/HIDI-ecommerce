@@ -133,11 +133,15 @@ export class ProductsService {
     const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 8) : 4;
     const source = await this.prisma.product.findUnique({
       where: { slug },
-      include: {
-        category: true,
-        collections: { include: { collection: true } },
-        images: { orderBy: { position: "asc" } },
-        variants: { where: { active: true }, include: { inventory: true, images: { orderBy: { position: "asc" } } } },
+      select: {
+        id: true,
+        status: true,
+        categoryId: true,
+        collections: { select: { collectionId: true } },
+        variants: {
+          where: { active: true },
+          select: { pricePaise: true },
+        },
       },
     });
     if (!source || source.status !== "ACTIVE") throw new NotFoundException("Product not found");
@@ -160,14 +164,17 @@ export class ProductsService {
       select: cardSelect,
     });
 
-    const sourceView = this.toView(source);
-    const sourceCollections = new Set(sourceView.collections.map((item: any) => item.id));
+    const sourceCollections = new Set(collectionIds);
+    const sourceMinPrice = source.variants.length
+      ? Math.min(...source.variants.map((variant) => variant.pricePaise))
+      : 0;
+
     return candidates
       .map((product) => this.toCardView(product))
       .map((product) => {
         const sharedCollections = product.collections.filter((item: any) => sourceCollections.has(item.id)).length;
-        const categoryMatch = sourceView.category?.id && product.category?.id === sourceView.category.id ? 1 : 0;
-        const priceGap = Math.abs(product.minPricePaise - sourceView.minPricePaise);
+        const categoryMatch = source.categoryId && product.category?.id === source.categoryId ? 1 : 0;
+        const priceGap = Math.abs(product.minPricePaise - sourceMinPrice);
         return {
           product,
           score: sharedCollections * 10 + categoryMatch * 5 - Math.min(priceGap / 100000, 4),
