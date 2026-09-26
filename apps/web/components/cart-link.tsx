@@ -7,7 +7,8 @@ import { ShoppingBag } from "lucide-react";
 import { getCartSession } from "@/lib/cart-session";
 import iconStyles from "./header-icons.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+import { BROWSER_API_URL } from "@/lib/browser-api";
+const API = BROWSER_API_URL;
 
 export function CartLink() {
   const pathname = usePathname();

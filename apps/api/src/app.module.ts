@@ -8,9 +8,15 @@ import { CartsModule } from "./carts/carts.module.js";
 import { CheckoutModule } from "./checkout/checkout.module.js";
 import { PaymentsModule } from "./payments/payments.module.js";
 import { AdminModule } from "./admin/admin.module.js";
+import { ReviewsModule } from "./reviews/reviews.module.js";
+import { RetentionModule } from "./retention/retention.module.js";
+import { RewardsModule } from "./rewards/rewards.module.js";
+import { WalletModule } from "./wallet/wallet.module.js";
+import { WhatsAppModule } from "./whatsapp/whatsapp.module.js";
+import { MarketingModule } from "./marketing/marketing.module.js";
 
 @Module({
-  imports: [PrismaModule, AuthModule, AccountModule, ProductsModule, CartsModule, CheckoutModule, PaymentsModule, AdminModule],
+  imports: [PrismaModule, AuthModule, AccountModule, ProductsModule, CartsModule, CheckoutModule, PaymentsModule, AdminModule, ReviewsModule, RetentionModule, RewardsModule, WalletModule, WhatsAppModule, MarketingModule],
   controllers: [HealthController],
 })
 export class AppModule {}

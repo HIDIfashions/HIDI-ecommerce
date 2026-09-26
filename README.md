@@ -25,6 +25,8 @@ Production-minded HIDI storefront focused on one conversion path:
 - Paid-cart cleanup
 - Automatic expired-reservation cleanup
 - `PAYMENT_REVIEW` safety state instead of overselling after a late payment
+- Admin orders and inventory workspaces protected by one admin session
+- Variant-level stock adjustments, reorder alerts and stock-movement history
 
 ## Local requirements
 
@@ -47,6 +49,10 @@ Production-minded HIDI storefront focused on one conversion path:
 10. Open `http://localhost:3000`.
 
 The API runs at `http://localhost:4000/v1`.
+
+## Admin inventory
+
+Use the same `ADMIN_API_KEY` in the web and API environments, apply the Prisma migrations and open `/admin/inventory`. See [`docs/admin-inventory.md`](./docs/admin-inventory.md) for the stock rules and warehouse workflow.
 
 ## Razorpay test setup
 

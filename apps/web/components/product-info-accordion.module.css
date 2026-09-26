@@ -90,3 +90,50 @@
     font-size: 13px;
   }
 }
+
+
+/* HIDI PDP accordion typography phase 2 */
+.titleWrap {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.content {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .titleWrap { font-size: 18px; }
+  .content { font-size: 14px; }
+}
+
+
+/* HIDI Mobile V2 — tighter product details. */
+@media (max-width: 640px) {
+  .wrap {
+    margin-top: 14px;
+  }
+
+  .summary {
+    min-height: 52px;
+    padding: 14px 0;
+  }
+
+  .titleWrap {
+    gap: 9px;
+    font-size: 16px;
+  }
+
+  .titleWrap svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .content {
+    padding: 0 0 16px;
+    font-size: 12px;
+    line-height: 1.65;
+  }
+}

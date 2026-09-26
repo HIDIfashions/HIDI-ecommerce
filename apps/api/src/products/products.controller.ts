@@ -10,6 +10,18 @@ export class ProductsController {
     return this.products.listPublished(category);
   }
 
+  @Get("best-sellers")
+  bestSellers(@Query("limit") rawLimit?: string) {
+    const limit = rawLimit ? Number(rawLimit) : 8;
+    return this.products.bestSellers(Number.isInteger(limit) ? limit : 8);
+  }
+
+  @Get(":slug/related")
+  related(@Param("slug") slug: string, @Query("limit") rawLimit?: string) {
+    const limit = rawLimit ? Number(rawLimit) : 4;
+    return this.products.related(slug, Number.isInteger(limit) ? limit : 4);
+  }
+
   @Get(":slug")
   bySlug(@Param("slug") slug: string) {
     return this.products.bySlug(slug);

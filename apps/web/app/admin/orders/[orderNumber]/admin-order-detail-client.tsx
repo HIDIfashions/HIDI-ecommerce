@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./order-detail.module.css";
+import { AdminReturnRequests, type AdminReturnRequest } from "./admin-return-requests";
 
 type Address = {
   firstName?: string;
@@ -44,6 +45,25 @@ type AdminOrder = {
     trackingUrl?: string | null;
   };
   itemCount: number;
+  returnCount?: number;
+  activeReturnCount?: number;
+  afterSalesStatus?: string | null;
+  returns?: AdminReturnRequest[];
+  auditEvents?: Array<{
+    id: string;
+    eventType: string;
+    actorType: string;
+    actorId?: string | null;
+    entityType?: string | null;
+    entityId?: string | null;
+    fromStatus?: string | null;
+    toStatus?: string | null;
+    amountPaise?: number | null;
+    correlationId?: string | null;
+    source?: string | null;
+    metadata?: Record<string, unknown> | null;
+    createdAt: string;
+  }>;
   items: Array<{
     id: string;
     productName: string;
@@ -84,6 +104,57 @@ function dateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function auditTitle(eventType: string) {
+  const labels: Record<string, string> = {
+    ORDER_CREATED: "Order created",
+    CURRENT_STATE_BASELINE: "Existing order state recorded",
+    PAYMENT_CAPTURED: "Payment captured",
+    ORDER_CONFIRMED: "Order confirmed",
+    PAYMENT_REVIEW_REQUIRED: "Payment review required",
+    ORDER_PACKED: "Order packed",
+    SHIPMENT_PREPARED: "Shipment prepared",
+    ORDER_SHIPPED: "Order shipped",
+    ORDER_DELIVERED: "Order delivered",
+    RETURN_REQUESTED: "Return requested",
+    EXCHANGE_REQUESTED: "Exchange requested",
+    RETURN_APPROVED: "Return approved",
+    EXCHANGE_APPROVED: "Exchange approved",
+    RETURN_REJECTED: "Return rejected",
+    EXCHANGE_REJECTED: "Exchange rejected",
+    RETURN_CANCELLED: "Return cancelled",
+    EXCHANGE_CANCELLED: "Exchange cancelled",
+    RETURN_PICKUP_SCHEDULED: "Return pickup scheduled",
+    EXCHANGE_PICKUP_SCHEDULED: "Exchange pickup scheduled",
+    RETURN_RECEIVED: "Returned item received",
+    EXCHANGE_RECEIVED: "Exchange item received",
+    REFUND_INITIATED: "Refund initiated",
+    REFUND_PROVIDER_ACCEPTED: "Refund accepted by Razorpay",
+    REFUND_PROVIDER_FAILED: "Refund provider attempt failed",
+    REFUND_REVIEW_REQUIRED: "Refund requires review",
+    RETURN_REFUNDED: "Return refunded",
+    EXCHANGE_SHIPPED: "Replacement shipped",
+    EXCHANGE_COMPLETED: "Exchange completed",
+    PAYMENT_REFUNDED: "Payment refunded",
+    PAYMENT_PARTIALLY_REFUNDED: "Payment partially refunded",
+  };
+  return labels[eventType] ?? label(eventType).toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function auditDetail(event: NonNullable<AdminOrder["auditEvents"]>[number]) {
+  const parts: string[] = [];
+  if (event.fromStatus && event.toStatus && event.fromStatus !== event.toStatus) {
+    parts.push(`${label(event.fromStatus)} → ${label(event.toStatus)}`);
+  } else if (event.toStatus) {
+    parts.push(label(event.toStatus));
+  }
+  if (event.amountPaise) parts.push(money(event.amountPaise));
+  if (event.actorType === "CUSTOMER") parts.push("Customer");
+  if (event.actorType === "ADMIN") parts.push("HIDI Admin");
+  if (event.actorType === "PROVIDER") parts.push(event.actorId ?? "Provider");
+  if (event.actorType === "SYSTEM") parts.push("System");
+  return parts.join(" · ");
 }
 
 export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string }) {
@@ -237,6 +308,10 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
   const name = [address.firstName, address.lastName].filter(Boolean).join(" ") || "Customer";
   const currentIndex = FLOW.indexOf(order.status);
   const next = NEXT_STATUS[order.status];
+  const activeReturnStatuses = ["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "REFUND_PROCESSING", "EXCHANGE_SHIPPED"];
+  const activeReturns = (order.returns ?? []).filter((request) => activeReturnStatuses.includes(request.status));
+  const activeReturn = activeReturns[0];
+  const activeReturnQuantity = activeReturns.reduce((sum, request) => sum + request.quantity, 0);
 
   return (
     <main className={styles.page}>
@@ -253,7 +328,14 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
         </div>
         <div className={styles.headerRight}>
           <strong>{money(order.totalPaise)}</strong>
-          <span className={`${styles.status} ${styles[`status${order.status}`] ?? ""}`}>{label(order.status)}</span>
+          {activeReturn ? (
+            <div className={styles.afterSalesHeader}>
+              <span className={`${styles.status} ${styles.afterSalesStatus}`}>{activeReturnQuantity} of {order.itemCount} item{order.itemCount === 1 ? "" : "s"} · {activeReturn.type === "EXCHANGE" ? "Exchange" : "Return"} in progress</span>
+              <small>{label(activeReturn.status)} · Fulfilment: {label(order.status)}</small>
+            </div>
+          ) : (
+            <span className={`${styles.status} ${styles[`status${order.status}`] ?? ""}`}>{label(order.status)}</span>
+          )}
         </div>
       </header>
 
@@ -286,6 +368,13 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               <span className={styles.total}>Total <strong>{money(order.totalPaise)}</strong></span>
             </div>
           </section>
+
+          <AdminReturnRequests
+            orderNumber={order.orderNumber}
+            requests={order.returns ?? []}
+            items={order.items}
+            onUpdated={load}
+          />
 
           <section className={styles.card}>
             <p className={styles.eyebrow}>DELIVERY</p>
@@ -403,6 +492,27 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               </button>
             ) : (
               <div className={styles.complete}>Fulfilment complete</div>
+            )}
+          </section>
+
+          <section className={styles.card}>
+            <p className={styles.eyebrow}>OPERATIONS TIMELINE</p>
+            <h2>Order history</h2>
+            {(order.auditEvents ?? []).length === 0 ? (
+              <p className={styles.auditEmpty}>No audit events recorded yet.</p>
+            ) : (
+              <div className={styles.auditTimeline}>
+                {[...(order.auditEvents ?? [])].reverse().map((event) => (
+                  <div className={styles.auditEvent} key={event.id}>
+                    <span className={styles.auditDot} aria-hidden="true" />
+                    <div className={styles.auditContent}>
+                      <strong>{auditTitle(event.eventType)}</strong>
+                      {auditDetail(event) && <small>{auditDetail(event)}</small>}
+                      <time dateTime={event.createdAt}>{dateTime(event.createdAt)}</time>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
 

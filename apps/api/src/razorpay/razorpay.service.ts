@@ -40,6 +40,36 @@ export class RazorpayService {
     return data as { id: string; amount: number; currency: string; status: string };
   }
 
+  async createRefund(paymentId: string, input: { amountPaise: number; returnRequestId: string; orderNumber: string }) {
+    if (!this.keyId || !this.keySecret) {
+      throw new ServiceUnavailableException("Razorpay credentials are not configured");
+    }
+    if (!Number.isSafeInteger(input.amountPaise) || input.amountPaise <= 0) {
+      throw new ServiceUnavailableException("Invalid Razorpay refund amount");
+    }
+    const auth = Buffer.from(`${this.keyId}:${this.keySecret}`).toString("base64");
+    const response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}/refund`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: input.amountPaise,
+        speed: "normal",
+        notes: {
+          hidi_return_request_id: input.returnRequestId,
+          hidi_order_number: input.orderNumber,
+        },
+      }),
+    });
+    const data = await response.json() as any;
+    if (!response.ok || !data?.id) {
+      throw new ServiceUnavailableException(data?.error?.description ?? "Unable to create Razorpay refund");
+    }
+    return data as { id: string; payment_id: string; amount: number; currency: string; status: string; notes?: Record<string, string> };
+  }
+
   async fetchPayment(paymentId: string) {
     if (!this.keyId || !this.keySecret) {
       throw new ServiceUnavailableException("Razorpay credentials are not configured");

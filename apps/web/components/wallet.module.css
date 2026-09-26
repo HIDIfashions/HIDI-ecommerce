@@ -1,0 +1,406 @@
+.panel { margin: 30px 0; padding: 30px; border: 1px solid var(--line); background: #ffffff; }
+.heading { margin-bottom: 23px; }
+.eyebrow { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: .15em; color: #40533c; }
+.heading h2 { margin: 10px 0 0; font-size: clamp(25px, 3vw, 34px); letter-spacing: -.02em; line-height: 1.18; }
+.balances { display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: 20px; }
+.balances > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  background: #ffffff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease;
+}
+.balances > .primary {
+  background: #ffffff;
+  color: var(--ink);
+  border-color: var(--line);
+}
+.balances > div:hover {
+  background: #541d1f;
+  color: #fff8ef;
+  border-color: #541d1f;
+  transform: translateY(-2px);
+}
+.balances > div:hover span,
+.balances > div:hover small {
+  color: inherit;
+}
+.balances span { font-size: 11px; }
+.balances strong { font-size: clamp(24px, 3vw, 36px); font-weight: 500; line-height: 1.1; }
+.balances small { font-size: 10px; line-height: 1.6; opacity: .8; }
+.rule, .note { font-size: 11px; color: var(--muted); line-height: 1.75; margin: 16px 0 0; }
+.empty { font-size: 12px; margin: 20px 0 0; }
+.history { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 18px; }
+.history h3 { display: flex; align-items: center; gap: 8px; font-family: inherit; font-size: 13px; }
+.history ul { list-style: none; padding: 0; margin: 0; }
+.history li { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.history li > div { display: flex; flex-direction: column; gap: 3px; }
+.history strong, .history b { font-size: 12px; font-weight: 600; }
+.history span { font-size: 10px; color: #64705e; }
+.credit { color: #541d1f; }
+.textButton { background: transparent; border: 0; padding: 10px 0; min-height: 44px; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.checkoutWallet {
+  border: 1px solid var(--line);
+  padding: 19px;
+  margin-bottom: 20px;
+  background: #ffffff;
+  color: var(--ink);
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease;
+}
+.checkoutWallet:hover {
+  background: #541d1f;
+  color: #fff8ef;
+  border-color: #541d1f;
+  transform: translateY(-2px);
+}
+.checkoutWallet:hover .note,
+.checkoutWallet:hover .amount,
+.checkoutWallet:hover .warning,
+.checkoutWallet:hover .textButton,
+.checkoutWallet:hover a {
+  color: inherit;
+}
+.toggle { display: flex; gap: 11px; align-items: center; cursor: pointer; font-size: 13px; font-weight: 600; }
+.toggle input { width: 20px !important; min-height: 20px !important; height: 20px; margin: 0; padding: 0; accent-color: #541d1f; flex-shrink: 0; }
+.amount { margin-top: 16px; display: grid; gap: 7px; font-size: 12px; }
+.amount input { max-width: 220px; }
+.summaryRows { margin-top: 20px; padding-top: 18px; border-top: 1px solid #d6d6ce; display: grid; gap: 12px; width: 100%; }
+.summaryRows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 15px; }
+.summaryRows > div > strong { font-family: inherit; font-size: 16px; }
+.summaryRows span { font-size: 12px; }
+.summaryRows .payable { border-top: 1px solid #d6d6ce; padding-top: 14px; }
+.summaryRows .payable strong { font-size: 23px; }
+.warning { color: #91362a; font-size: 12px; }
+.textButton:focus-visible, .toggle input:focus-visible { outline: 2px solid #541d1f; outline-offset: 4px; }
+
+@media (max-width: 720px) {
+  .panel { padding: 23px; }
+  .balances { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .balances > .primary { grid-column: 1 / -1; }
+  .balances > div { padding: 15px; }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .balances > div,
+  .checkoutWallet { transition: none; }
+  .balances > div:hover,
+  .checkoutWallet:hover { transform: none; }
+}
+
+
+@media (max-width: 520px) {
+  .panel { margin: 22px 0; padding: 18px 14px; }
+  .balances { grid-template-columns: 1fr; gap: 8px; }
+  .balances > .primary { grid-column: auto; }
+  .balances > div { padding: 15px 14px; }
+  .history li { align-items: flex-start; }
+  .checkoutWallet { padding: 15px 13px; }
+  .amount input { max-width: none; width: 100%; font-size: 16px; }
+  .summaryRows > div { align-items: flex-start; }
+}
+
+
+@media (hover: none) {
+  .balances > div:hover,
+  .checkoutWallet:hover {
+    background: #ffffff;
+    color: var(--ink);
+    border-color: var(--line);
+    transform: none;
+  }
+  .balances > div:hover span,
+  .balances > div:hover small,
+  .checkoutWallet:hover .note,
+  .checkoutWallet:hover .amount,
+  .checkoutWallet:hover .warning,
+  .checkoutWallet:hover .textButton,
+  .checkoutWallet:hover a { color: inherit; }
+}
+
+
+.compactPanel {
+  margin: 0;
+  padding: 22px;
+  align-self: stretch;
+}
+
+.compactHeading {
+  margin-bottom: 16px;
+}
+
+.compactHeading h2 {
+  font-size: clamp(22px, 2.2vw, 30px);
+}
+
+.compactBalances {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.compactBalances > div {
+  min-width: 0;
+  padding: 12px;
+  gap: 5px;
+}
+
+.compactBalances span {
+  font-size: 10px;
+}
+
+.compactBalances strong {
+  font-size: clamp(18px, 2vw, 25px);
+  overflow-wrap: anywhere;
+}
+
+.compactNote,
+.compactRule {
+  margin-top: 10px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.compactHistory {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+  padding: 0;
+}
+
+.compactHistory summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.compactHistory summary::-webkit-details-marker {
+  display: none;
+}
+
+.compactHistory ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.compactHistory li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+}
+
+.compactHistory li > div {
+  display: grid;
+  gap: 2px;
+}
+
+.compactHistory li strong,
+.compactHistory li b {
+  font-size: 11px;
+}
+
+.compactHistory li span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+@media (max-width: 1100px) {
+  .compactPanel {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .compactPanel {
+    padding: 17px 14px;
+  }
+
+  .compactBalances {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .compactBalances > div {
+    padding: 10px 8px;
+  }
+
+  .compactBalances span {
+    font-size: 9px;
+  }
+
+  .compactBalances strong {
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 380px) {
+  .compactBalances {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Compact account-header wallet: summary only. */
+.compactPanel {
+  margin: 0;
+  padding: 14px;
+  align-self: start;
+}
+
+.compactTop {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.compactTop .eyebrow {
+  font-size: 9px;
+  letter-spacing: .12em;
+}
+
+.compactLink {
+  flex: 0 0 auto;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #591d20;
+  font-size: 9px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.compactBalances {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.compactBalances > div {
+  min-width: 0;
+  padding: 9px 10px;
+  gap: 3px;
+}
+
+.compactBalances span {
+  font-size: 8px;
+  letter-spacing: .03em;
+}
+
+.compactBalances strong {
+  font-size: clamp(15px, 1.45vw, 19px);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.compactNote {
+  margin-top: 8px;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.compactLoading,
+.compactError {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.compactError {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compactError .textButton {
+  min-height: 30px;
+  padding: 0;
+  font-size: 10px;
+}
+
+@media (max-width: 620px) {
+  .compactPanel {
+    padding: 12px;
+  }
+
+  .compactBalances {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .compactBalances > div {
+    padding: 8px 7px;
+  }
+
+  .compactBalances strong {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 360px) {
+  .compactTop {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .compactBalances {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* HIDI Mobile V2 — compact wallet inside checkout. */
+@media (max-width: 620px) {
+  .checkoutWallet {
+    margin-bottom: 8px;
+    padding: 13px 12px;
+    border-color: #e2d8cf;
+    background: #fcfaf8;
+  }
+
+  .toggle {
+    gap: 9px;
+    font-size: 11px;
+  }
+
+  .toggle input {
+    width: 18px !important;
+    min-height: 18px !important;
+    height: 18px;
+  }
+
+  .checkoutWallet .note {
+    margin-top: 8px;
+    font-size: 9px;
+    line-height: 1.5;
+  }
+
+  .amount {
+    margin-top: 11px;
+    gap: 5px;
+    font-size: 10px;
+  }
+
+  .amount input {
+    min-height: 48px;
+  }
+
+  .checkoutWallet:hover {
+    background: #fcfaf8;
+    color: var(--ink);
+    border-color: #e2d8cf;
+    transform: none;
+  }
+}

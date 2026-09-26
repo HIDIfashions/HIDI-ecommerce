@@ -79,6 +79,26 @@
 .statusSHIPPED { background: #e8edf1; }
 .statusDELIVERED { background: #e6eee6; }
 
+.afterSalesHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.afterSalesHeader small {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.afterSalesStatus {
+  border-color: #b4836d;
+  background: #fff3ec;
+  color: #6d3527;
+}
+
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(320px, .75fr);
@@ -236,7 +256,7 @@
   margin-top: 20px;
   padding: 18px;
   border: 1px solid var(--line);
-  background: #f8f5ef;
+  background: #fcf9f9;
   display: grid;
   gap: 13px;
 }
@@ -375,6 +395,74 @@
   font-size: 11px;
 }
 
+.auditTimeline {
+  display: grid;
+  gap: 0;
+  margin-top: 8px;
+}
+
+.auditEvent {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 10px;
+  padding: 0 0 18px;
+}
+
+.auditEvent:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 12px;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.auditDot {
+  position: relative;
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  margin-top: 3px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.auditContent {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.auditContent strong {
+  font-family: Georgia, serif;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.auditContent small,
+.auditContent time,
+.auditEmpty {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.auditContent time {
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.auditEmpty {
+  margin: 0 !important;
+}
+
+
 .error,
 .notice,
 .state {
@@ -406,6 +494,7 @@
   .page { width: min(100% - 24px, 1280px); padding-top: 22px; }
   .header { align-items: flex-start; flex-direction: column; }
   .headerRight { width: 100%; justify-content: space-between; }
+  .afterSalesHeader { align-items: flex-end; }
   .sideColumn { grid-template-columns: 1fr; }
   .sideColumn .card:last-child { grid-column: auto; }
   .addressGrid { grid-template-columns: 1fr; gap: 0; }

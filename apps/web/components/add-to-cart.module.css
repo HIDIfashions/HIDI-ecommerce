@@ -1,0 +1,166 @@
+.purchaseActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.addButton,
+.buyButton {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #591d20;
+  font-family: var(--font-product);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  cursor: pointer;
+}
+
+.addButton {
+  background: #fffaf5;
+  color: #591d20;
+}
+
+.buyButton {
+  background: #591d20;
+  color: #fff8ef;
+}
+
+.addButton:disabled,
+.buyButton:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+.helper {
+  min-height: 18px;
+  margin: 7px 0 0;
+  color: #75695f;
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.mobileBar {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .addButton:hover:not(:disabled) {
+    background: #f7eeea;
+  }
+
+  .buyButton:hover:not(:disabled) {
+    background: #69282a;
+    border-color: #69282a;
+  }
+}
+
+@media (max-width: 620px) {
+  .purchaseActions,
+  .helper {
+    display: none;
+  }
+
+  .mobileBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9000;
+    padding: 8px 10px max(9px, env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-areas:
+      "price wishlist"
+      "actions actions";
+    gap: 7px 8px;
+    background: rgba(255,255,255,.985);
+    border-top: 1px solid #dfd4cb;
+    box-shadow: 0 -12px 32px rgba(48,20,20,.14);
+    backdrop-filter: blur(12px);
+  }
+
+  .mobilePrice {
+    grid-area: price;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .mobilePrice span {
+    color: #84786e;
+    font-size: 9px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .mobilePrice strong {
+    font-family: var(--font-product);
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .mobileWishlist {
+    grid-area: wishlist;
+    display: grid;
+    place-items: center;
+  }
+
+  .mobileWishlist :global(.wishlist-button-compact) {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(89,29,32,.14);
+    border-radius: 50%;
+    background: rgba(255,248,239,.96);
+    color: #591d20;
+    box-shadow: 0 3px 12px rgba(65,38,29,.08);
+  }
+
+  .mobileActions {
+    grid-area: actions;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .mobileAdd,
+  .mobileBuy {
+    min-height: 48px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #591d20;
+    font-family: var(--font-product);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .015em;
+  }
+
+  .mobileAdd {
+    background: #fffaf5;
+    color: #591d20;
+  }
+
+  .mobileBuy {
+    background: #591d20;
+    color: #fff8ef;
+  }
+
+  .mobileAdd:disabled,
+  .mobileBuy:disabled {
+    opacity: .48;
+  }
+}

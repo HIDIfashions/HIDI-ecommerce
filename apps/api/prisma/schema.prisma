@@ -59,6 +59,31 @@ enum ShipmentStatus {
   CANCELLED
 }
 
+enum InventoryMovementType {
+  RECEIPT
+  CORRECTION
+  DAMAGE
+  RETURN_RESTOCK
+  OTHER
+}
+
+enum StockReceiptStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum ReviewFollowUpStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum ReviewFollowUpChannel {
+  EMAIL
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String?  @unique
@@ -73,6 +98,8 @@ model User {
   carts         Cart[]
   orders        Order[]
   couponUses    CouponRedemption[]
+  retentionProfile RetentionProfile?
+  wallet        WalletAccount?
 
   @@index([createdAt])
 }
@@ -131,6 +158,7 @@ model Product {
   images         ProductImage[]
   variants       ProductVariant[]
   orderItems     OrderItem[]
+  reviews        ProductReview[]
   cartItems      CartItem[]
   collections    ProductCollection[]
 
@@ -187,23 +215,125 @@ model ProductVariant {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images      ProductVariantImage[]
   inventory   Inventory?
   cartItems   CartItem[]
   orderItems  OrderItem[]
   reservations InventoryReservation[]
+  stockReceiptLines StockReceiptLine[]
+  adminMediaUploadTickets AdminMediaUploadTicket[]
 
   @@unique([productId, size, color])
   @@index([productId, active])
 }
 
+model AdminStaff {
+  id           String   @id @default(cuid())
+  authSubject  String?  @unique
+  email        String   @unique
+  displayName  String
+  role         String
+  active       Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([role, active])
+}
+
+model AdminMediaUploadTicket {
+  id         String         @id @default(cuid())
+  tokenHash  String         @unique
+  variantId  String
+  mimeType   String
+  maxBytes   Int
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime       @default(now())
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId, expiresAt])
+  @@index([expiresAt, usedAt])
+}
+
+model ProductVariantImage {
+  id          String         @id @default(cuid())
+  variantId   String
+  url         String
+  storagePath String?
+  alt         String
+  position    Int            @default(0)
+  createdAt   DateTime       @default(now())
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, url])
+  @@index([variantId, position])
+}
+
 model Inventory {
-  id        String         @id @default(cuid())
-  variantId String         @unique
-  onHand    Int            @default(0)
-  reserved  Int            @default(0)
-  safetyStock Int          @default(0)
-  updatedAt DateTime       @updatedAt
-  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  id           String              @id @default(cuid())
+  variantId    String              @unique
+  onHand       Int                 @default(0)
+  reserved     Int                 @default(0)
+  safetyStock  Int                 @default(0)
+  reorderLevel Int                 @default(5)
+  updatedAt    DateTime            @updatedAt
+  variant      ProductVariant      @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  movements    InventoryMovement[]
+}
+
+model InventoryMovement {
+  id           String                @id @default(cuid())
+  inventoryId  String
+  type         InventoryMovementType
+  delta        Int
+  onHandBefore Int
+  onHandAfter  Int
+  reason       String
+  note         String?
+  reference    String?
+  actor        String?
+  createdAt    DateTime              @default(now())
+  inventory    Inventory             @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryId, createdAt])
+  @@index([createdAt])
+}
+
+model StockReceipt {
+  id                  String             @id @default(cuid())
+  receiptNumber       String             @unique
+  supplierName        String
+  invoiceNumber       String?
+  purchaseOrderNumber String?
+  receivedAt          DateTime
+  status              StockReceiptStatus @default(DRAFT)
+  note                String?
+  totalAccepted       Int                @default(0)
+  totalRejected       Int                @default(0)
+  createdBy           String?
+  postedAt            DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  lines               StockReceiptLine[]
+
+  @@index([status, createdAt])
+  @@index([receivedAt])
+}
+
+model StockReceiptLine {
+  id               String         @id @default(cuid())
+  receiptId        String
+  variantId        String
+  acceptedQuantity Int
+  rejectedQuantity Int            @default(0)
+  unitCostPaise    Int?
+  createdAt        DateTime       @default(now())
+  receipt          StockReceipt   @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([receiptId, variantId])
+  @@index([variantId])
 }
 
 model Cart {
@@ -235,6 +365,8 @@ model CartItem {
 
   @@unique([cartId, variantId])
   @@index([cartId])
+  @@index([productId])
+  @@index([variantId])
 }
 
 model Order {
@@ -248,6 +380,7 @@ model Order {
   shippingPaise Int         @default(0)
   taxPaise      Int         @default(0)
   totalPaise    Int
+  walletAppliedPaise Int    @default(0)
   customerEmail String?
   customerPhone String
   shippingAddress Json
@@ -262,6 +395,13 @@ model Order {
   payments      Payment[]
   shipments     Shipment[]
   reservations  InventoryReservation[]
+  reviewFollowUps ReviewFollowUp[]
+  reviews         ProductReview[]
+  walletHold      WalletHold?
+  rewardAccrual   RewardAccrual?
+  walletEntries   WalletLedger[]
+  returnRequests  ReturnRequest[]
+  auditEvents     OrderAuditEvent[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -269,6 +409,71 @@ model Order {
   @@index([cartSessionId])
 }
 
+model OrderAuditEvent {
+  id            String   @id @default(cuid())
+  orderId       String
+  eventType     String
+  actorType     String
+  actorId       String?
+  entityType    String?
+  entityId      String?
+  fromStatus    String?
+  toStatus      String?
+  amountPaise   Int?
+  eventKey      String?  @unique
+  correlationId String?
+  source        String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt, id])
+  @@index([eventType, createdAt])
+  @@index([correlationId])
+}
+
+model ReviewFollowUp {
+  id                String                @id @default(cuid())
+  orderId           String
+  channel           ReviewFollowUpChannel @default(EMAIL)
+  status            ReviewFollowUpStatus  @default(PENDING)
+  dueAt             DateTime
+  sentAt            DateTime?
+  attempts          Int                   @default(0)
+  lastAttemptAt     DateTime?
+  lastError         String?
+  providerMessageId String?
+  reviewToken       String?               @unique
+  completedAt       DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  order             Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, channel])
+  @@index([status, dueAt])
+  @@index([orderId])
+}
+
+model ProductReview {
+  id               String    @id @default(cuid())
+  productId        String
+  orderId          String
+  orderItemId      String    @unique
+  rating           Int
+  title            String?
+  body             String
+  reviewerName     String
+  verifiedPurchase Boolean   @default(true)
+  published        Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem        OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([productId, published, createdAt])
+  @@index([orderId])
+}
 model OrderItem {
   id             String         @id @default(cuid())
   orderId        String
@@ -285,9 +490,12 @@ model OrderItem {
   order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product        Product        @relation(fields: [productId], references: [id])
   variant        ProductVariant @relation(fields: [variantId], references: [id])
+  review         ProductReview?
+  returnRequests ReturnRequest[]
 
   @@index([orderId])
   @@index([variantId])
+  @@index([productId])
 }
 
 
@@ -319,6 +527,7 @@ model Payment {
   amountPaise       Int
   method            String?
   rawReference      Json?
+  refunds           PaymentRefund[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -372,4 +581,236 @@ model CouponRedemption {
 
   @@unique([couponId, userId, orderId])
   @@index([couponId, userId])
+  @@index([userId])
+}
+
+// Backend-only retention data. Browser/Data API access is denied by the migration.
+model RetentionProfile {
+  id                    String   @id @default(cuid())
+  authSubject           String   @unique
+  userId                String   @unique
+  whatsappOptIn         Boolean  @default(false)
+  personalizationOptIn  Boolean  @default(false)
+  consentVersion        String   @default("hidi-retention-v1")
+  verifiedPhone         String?
+  phoneVerifiedAt       DateTime?
+  consentUpdatedAt      DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audits                RetentionConsentAudit[]
+  events                RetentionEvent[]
+  deliveries            RetentionDelivery[]
+}
+
+model RetentionConsentAudit {
+  id                    String   @id @default(cuid())
+  profileId             String
+  whatsappOptIn         Boolean
+  personalizationOptIn  Boolean
+  consentVersion        String
+  source                String
+  verifiedPhone         String?
+  createdAt             DateTime @default(now())
+  profile               RetentionProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+}
+
+model RetentionEvent {
+  id         String   @id @default(cuid())
+  profileId  String
+  productId  String
+  variantId  String?
+  kind       String
+  episodeKey String
+  createdAt  DateTime @default(now())
+  profile    RetentionProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, productId, createdAt])
+  @@index([createdAt])
+}
+
+model RetentionDelivery {
+  id         String   @id @default(cuid())
+  profileId  String
+  episodeKey String   @unique
+  kind       String
+  category   String   @default("MARKETING")
+  status     String
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+  profile    RetentionProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, category, sentAt])
+}
+
+// Server-only store credit. No client/Data API writes or transferable balances.
+model WalletAccount {
+  id            String   @id @default(cuid())
+  authSubject   String   @unique
+  userId        String   @unique
+  currency      String   @default("INR")
+  balancePaise  Int      @default(0)
+  reservedPaise Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  entries       WalletLedger[]
+  holds         WalletHold[]
+  accruals      RewardAccrual[]
+}
+
+model WalletLedger {
+  id         String   @id @default(cuid())
+  walletId   String
+  orderId    String?
+  kind       String
+  deltaPaise Int
+  eventKey   String   @unique
+  createdAt  DateTime @default(now())
+  wallet     WalletAccount @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  order      Order?        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([walletId, createdAt, id])
+  @@index([orderId])
+}
+
+model WalletHold {
+  id           String   @id @default(cuid())
+  walletId     String
+  orderId      String   @unique
+  amountPaise  Int
+  status       String   @default("ACTIVE")
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  releasedAt   DateTime?
+  refundedAt   DateTime?
+  createdAt    DateTime @default(now())
+  wallet       WalletAccount @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([walletId, status])
+  @@index([status, expiresAt])
+}
+
+model RewardAccrual {
+  id               String   @id @default(cuid())
+  walletId         String
+  orderId          String   @unique
+  basisPaise       Int
+  rewardPaise      Int
+  returnWindowDays Int
+  policyVersion   String
+  status          String   @default("PENDING")
+  eligibleAt      DateTime?
+  creditedAt      DateTime?
+  reversedAt      DateTime?
+  reason          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  wallet          WalletAccount @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([walletId, status])
+  @@index([status, eligibleAt, id])
+  @@index([createdAt, id])
+}
+
+model PaymentRefund {
+  id               String   @id @default(cuid())
+  paymentId        String
+  providerRefundId String   @unique
+  amountPaise      Int
+  status          String   @default("PROCESSED")
+  processedAt     DateTime
+  createdAt       DateTime @default(now())
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId, status])
+}
+
+
+model WhatsAppConversation {
+  id            String            @id @default(cuid())
+  phone         String            @unique
+  state         String            @default("IDLE")
+  context       Json?
+  lastInboundAt DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  messages      WhatsAppMessage[]
+
+  @@index([state, updatedAt])
+}
+
+model WhatsAppMessage {
+  id                 String               @id @default(cuid())
+  conversationId     String
+  providerMessageSid String               @unique
+  direction          String
+  body               String
+  status             String               @default("RECEIVED")
+  createdAt          DateTime             @default(now())
+  conversation       WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+
+model NewsletterSubscriber {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  status         String   @default("ACTIVE")
+  source         String   @default("FOOTER")
+  consentVersion String   @default("hidi-newsletter-v1")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+
+model ReturnRequest {
+  id                       String    @id @default(cuid())
+  orderId                  String
+  orderItemId              String
+  type                     String
+  reason                   String
+  detail                   String?
+  quantity                 Int       @default(1)
+  refundDestination        String?
+  requestedVariantId       String?
+  requestedSize            String?
+  refundPaise              Int       @default(0)
+  status                   String    @default("REQUESTED")
+  adminNote                String?
+  rejectionReason          String?
+  pickupProvider           String?
+  pickupAwb                String?
+  pickupTrackingUrl        String?
+  pickupScheduledAt        DateTime?
+  receivedAt               DateTime?
+  inventoryDisposition     String?
+  refundWalletPaise        Int       @default(0)
+  refundCashPaise          Int       @default(0)
+  refundStatus             String?
+  refundProviderId         String?   @unique
+  replacementProvider      String?
+  replacementAwb           String?
+  replacementTrackingUrl   String?
+  replacementShippedAt     DateTime?
+  exchangeReservationStatus String?
+  exchangeReservedAt       DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  approvedAt               DateTime?
+  processedAt              DateTime?
+  completedAt              DateTime?
+  order                    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem                OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, status, createdAt])
+  @@index([orderItemId, status])
+  @@index([status, updatedAt])
 }

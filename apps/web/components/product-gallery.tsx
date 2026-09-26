@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
 import { CatalogImage } from "./catalog-image";
+import styles from "./product-gallery.module.css";
 
 type GalleryImage = {
   id?: string;
@@ -16,37 +18,124 @@ type ProductGalleryProps = {
   images: GalleryImage[];
 };
 
+type Point = { x: number; y: number };
+
+const ZOOM_LEVELS = [1, 1.8, 2.6, 3.4, 4.2] as const;
+
 export function ProductGallery({ productName, images }: ProductGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [zoomed, setZoomed] = useState(false);
+  const [zoomIndex, setZoomIndex] = useState(0);
+  const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const swipe = useRef<{ pointerId: number; x: number; y: number } | null>(null);
 
   const selected = selectedIndex === null ? null : images[selectedIndex];
+  const zoom = ZOOM_LEVELS[zoomIndex];
+
+  function resetView() {
+    setZoomIndex(0);
+    setPan({ x: 0, y: 0 });
+    setDragging(false);
+    drag.current = null;
+    swipe.current = null;
+  }
 
   function open(index: number) {
     if (!images[index]?.url) return;
     setSelectedIndex(index);
-    setZoomed(false);
+    resetView();
   }
 
   function close() {
     setSelectedIndex(null);
-    setZoomed(false);
+    resetView();
   }
 
   function previous() {
     setSelectedIndex((current) => {
       if (current === null) return null;
-      return (current - 1 + images.length) % images.length;
+      let candidate = current;
+      for (let step = 0; step < images.length; step += 1) {
+        candidate = (candidate - 1 + images.length) % images.length;
+        if (images[candidate]?.url) return candidate;
+      }
+      return current;
     });
-    setZoomed(false);
+    resetView();
   }
 
   function next() {
     setSelectedIndex((current) => {
       if (current === null) return null;
-      return (current + 1) % images.length;
+      let candidate = current;
+      for (let step = 0; step < images.length; step += 1) {
+        candidate = (candidate + 1) % images.length;
+        if (images[candidate]?.url) return candidate;
+      }
+      return current;
     });
-    setZoomed(false);
+    resetView();
+  }
+
+  function zoomIn() {
+    setZoomIndex((current) => Math.min(current + 1, ZOOM_LEVELS.length - 1));
+  }
+
+  function zoomOut() {
+    setZoomIndex((current) => {
+      const target = Math.max(0, current - 1);
+      if (target === 0) setPan({ x: 0, y: 0 });
+      return target;
+    });
+  }
+
+  function pointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (!event.isPrimary) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    if (zoom <= 1) {
+      swipe.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      return;
+    }
+    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    setDragging(true);
+  }
+
+  function pointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const start = drag.current;
+    if (!start || start.pointerId !== event.pointerId || zoom <= 1) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    setPan((current) => ({ x: current.x + dx, y: current.y + dy }));
+  }
+
+  function pointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    const swipeStart = swipe.current;
+    if (zoom <= 1 && swipeStart?.pointerId === event.pointerId) {
+      const dx = event.clientX - swipeStart.x;
+      const dy = event.clientY - swipeStart.y;
+      swipe.current = null;
+      if (Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        if (dx < 0) next();
+        else previous();
+      }
+      return;
+    }
+    if (drag.current?.pointerId === event.pointerId) drag.current = null;
+    setDragging(false);
+  }
+
+  function pointerCancel(event: React.PointerEvent<HTMLDivElement>) {
+    if (swipe.current?.pointerId === event.pointerId) swipe.current = null;
+    if (drag.current?.pointerId === event.pointerId) drag.current = null;
+    setDragging(false);
+  }
+
+  function wheel(event: React.WheelEvent<HTMLDivElement>) {
+    event.preventDefault();
+    if (event.deltaY < 0) zoomIn();
+    else zoomOut();
   }
 
   useEffect(() => {
@@ -59,6 +148,8 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
       if (event.key === "Escape") close();
       if (event.key === "ArrowLeft") previous();
       if (event.key === "ArrowRight") next();
+      if (event.key === "+" || event.key === "=") zoomIn();
+      if (event.key === "-") zoomOut();
     }
 
     window.addEventListener("keydown", onKeyDown);
@@ -77,12 +168,11 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
             type="button"
             className="pdp-image product-art"
             onClick={() => open(index)}
-            onDoubleClick={() => open(index)}
-            aria-label={`Expand ${image.alt || `${productName} image ${index + 1}`}`}
-            title="Click to expand"
+            aria-label={`Inspect ${image.alt || `${productName} image ${index + 1}`}`}
+            title="Click to inspect stitching and details"
             style={{
               position: "relative",
-              background: "#eee8df",
+              background: "#ffffff",
               border: 0,
               padding: 0,
               margin: 0,
@@ -100,6 +190,23 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
               priority={index === 0}
               fallbackLabel={`Image ${index + 1} · HIDI product photography`}
             />
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 14,
+                top: 14,
+                zIndex: 3,
+                padding: "6px 8px",
+                background: "rgba(255,255,255,.9)",
+                color: "#42352c",
+                fontSize: 9,
+                letterSpacing: ".12em",
+                textTransform: "uppercase",
+              }}
+            >
+              {String(index + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
+            </span>
             {image.url ? (
               <span
                 aria-hidden="true"
@@ -108,18 +215,18 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
                   right: 14,
                   bottom: 14,
                   zIndex: 3,
-                  width: 36,
-                  height: 36,
+                  width: 38,
+                  height: 38,
                   borderRadius: "50%",
                   display: "grid",
                   placeItems: "center",
-                  background: "rgba(255,255,255,.88)",
-                  color: "#171714",
-                  fontSize: 18,
+                  background: "rgba(255,255,255,.92)",
+                  color: "#4a1719",
+                  fontSize: 17,
                   boxShadow: "0 2px 12px rgba(0,0,0,.12)",
                 }}
               >
-                ⤢
+                <Plus size={18} />
               </span>
             ) : null}
           </button>
@@ -130,110 +237,38 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`${productName} enlarged image`}
+          aria-label={`${productName} detailed image viewer`}
+          className={styles.dialog}
           onClick={(event) => {
             if (event.target === event.currentTarget) close();
           }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 10000,
-            background: "rgba(12,12,11,.94)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "28px 72px",
-          }}
         >
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Close enlarged image"
-            style={{
-              position: "fixed",
-              top: 20,
-              right: 24,
-              zIndex: 10003,
-              width: 44,
-              height: 44,
-              border: "1px solid rgba(255,255,255,.35)",
-              borderRadius: "50%",
-              background: "rgba(0,0,0,.28)",
-              color: "white",
-              cursor: "pointer",
-              fontSize: 25,
-              lineHeight: 1,
-            }}
-          >
-            ×
-          </button>
-
-          {images.length > 1 ? (
-            <>
-              <button
-                type="button"
-                onClick={previous}
-                aria-label="Previous product image"
-                style={{
-                  position: "fixed",
-                  left: 18,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 10003,
-                  width: 48,
-                  height: 60,
-                  border: 0,
-                  background: "rgba(0,0,0,.25)",
-                  color: "white",
-                  cursor: "pointer",
-                  fontSize: 36,
-                }}
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                onClick={next}
-                aria-label="Next product image"
-                style={{
-                  position: "fixed",
-                  right: 18,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 10003,
-                  width: 48,
-                  height: 60,
-                  border: 0,
-                  background: "rgba(0,0,0,.25)",
-                  color: "white",
-                  cursor: "pointer",
-                  fontSize: 36,
-                }}
-              >
-                ›
-              </button>
-            </>
-          ) : null}
+          <div className={styles.topBar}>
+            <button type="button" className={styles.zoomButton} onClick={zoomOut} disabled={zoomIndex === 0} aria-label="Zoom out">
+              <Minus size={18} />
+            </button>
+            <span className={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
+            <button type="button" className={styles.zoomButton} onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1} aria-label="Zoom in">
+              <Plus size={18} />
+            </button>
+          </div>
 
           <div
-            onDoubleClick={() => setZoomed((value) => !value)}
-            title={zoomed ? "Double-click to zoom out" : "Double-click to zoom in"}
-            style={{
-              position: "relative",
-              width: "min(88vw, 1050px)",
-              height: "88vh",
-              overflow: "hidden",
-              cursor: zoomed ? "zoom-out" : "zoom-in",
+            className={`${styles.viewport} ${dragging ? styles.viewportDragging : ""}`}
+            onPointerDown={pointerDown}
+            onPointerMove={pointerMove}
+            onPointerUp={pointerUp}
+            onPointerCancel={pointerCancel}
+            onWheel={wheel}
+            onDoubleClick={() => {
+              if (zoomIndex === 0) setZoomIndex(2);
+              else resetView();
             }}
+            title={zoom > 1 ? "Drag to inspect stitching details" : "Double-click or use + to zoom"}
           >
             <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                transform: zoomed ? "scale(1.75)" : "scale(1)",
-                transformOrigin: "center center",
-                transition: "transform .2s ease",
-              }}
+              className={styles.zoomLayer}
+              style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})` }}
             >
               <Image
                 src={selected.url}
@@ -241,24 +276,28 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
                 fill
                 priority
                 sizes="100vw"
-                style={{ objectFit: "contain" }}
+                className={styles.image}
               />
             </div>
           </div>
 
-          <div
-            style={{
-              position: "fixed",
-              left: "50%",
-              bottom: 16,
-              transform: "translateX(-50%)",
-              color: "rgba(255,255,255,.82)",
-              fontSize: 12,
-              letterSpacing: ".06em",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {selectedIndex + 1} / {images.length} · Double-click image to zoom
+          <div className={styles.controls} aria-label="Image controls">
+            <button type="button" className={styles.navButton} onClick={previous} aria-label="Previous product image">
+              <ChevronLeft size={23} />
+            </button>
+            <button type="button" className={styles.closeButton} onClick={close} aria-label="Close image viewer">
+              <X size={24} />
+            </button>
+            <button type="button" className={styles.navButton} onClick={next} aria-label="Next product image">
+              <ChevronRight size={23} />
+            </button>
+          </div>
+
+          <div className={styles.counter}>
+            {selectedIndex + 1} / {images.length}
+          </div>
+          <div className={styles.hint}>
+            Scroll / + to zoom · Drag to inspect · Double-click to reset
           </div>
         </div>
       ) : null}

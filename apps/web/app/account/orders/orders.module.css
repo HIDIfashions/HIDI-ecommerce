@@ -1,0 +1,33 @@
+.page {
+  padding-top: 28px;
+}
+
+.header {
+  max-width: 780px;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.header h1 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: clamp(42px, 5vw, 64px);
+  font-weight: 500;
+  line-height: .98;
+  letter-spacing: -.035em;
+}
+
+.header > p:last-child {
+  max-width: 650px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+@media (max-width: 620px) {
+  .page { padding-top: 18px; }
+  .header { margin-bottom: 20px; padding-bottom: 18px; }
+  .header h1 { font-size: clamp(38px, 12vw, 50px); }
+}

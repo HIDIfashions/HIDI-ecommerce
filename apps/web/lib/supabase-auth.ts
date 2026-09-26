@@ -6,7 +6,7 @@ type StoredSession = {
   access_token: string;
   refresh_token: string;
   expires_at: number;
-  user: { id: string; email?: string | null };
+  user: { id: string; email?: string | null; phone?: string | null };
 };
 
 function configured() {
@@ -26,6 +26,20 @@ export function authConfigured() {
   return configured();
 }
 
+export function normalizeIndianPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const local = digits.startsWith("91") && digits.length === 12 ? digits.slice(2) : digits;
+  if (!/^[6-9]\d{9}$/.test(local)) throw new Error("Enter a valid 10-digit Indian mobile number");
+  return `+91${local}`;
+}
+
+export function maskedPhone(value?: string | null) {
+  if (!value) return "";
+  const digits = value.replace(/\D/g, "");
+  const local = digits.slice(-10);
+  return local.length === 10 ? `+91 ••••••${local.slice(-4)}` : value;
+}
+
 export function getStoredSession(): StoredSession | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -43,6 +57,32 @@ function saveSession(payload: any): StoredSession {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   window.dispatchEvent(new CustomEvent("hidi-auth-updated"));
   return session;
+}
+
+export async function sendPhoneOtp(phone: string) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error("Customer sign-in is not configured");
+  const normalizedPhone = normalizeIndianPhone(phone);
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ phone: normalizedPhone, create_user: true, channel: "sms" }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.msg ?? data?.message ?? "Unable to send the mobile verification code");
+  return normalizedPhone;
+}
+
+export async function verifyPhoneOtp(phone: string, token: string) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error("Customer sign-in is not configured");
+  const normalizedPhone = normalizeIndianPhone(phone);
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ type: "sms", phone: normalizedPhone, token: token.trim() }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.msg ?? data?.message ?? "That code is invalid or has expired");
+  return saveSession(data);
 }
 
 export async function sendEmailOtp(email: string) {
@@ -70,16 +110,22 @@ export async function verifyEmailOtp(email: string, token: string) {
 
 async function refreshSession(session: StoredSession) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  function isCurrentSession() {
+    const current = getStoredSession();
+    return current?.user?.id === session.user.id && current?.refresh_token === session.refresh_token;
+  }
   const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({ refresh_token: session.refresh_token }),
   });
   if (!response.ok) {
-    clearStoredSession();
+    if (isCurrentSession()) clearStoredSession();
     return null;
   }
-  return saveSession(await response.json());
+  const payload = await response.json();
+  if (!isCurrentSession() || payload?.user?.id !== session.user.id) return null;
+  return saveSession(payload);
 }
 
 export async function getAccessToken() {

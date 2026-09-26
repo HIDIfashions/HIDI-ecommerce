@@ -1,0 +1,160 @@
+.actions { display: grid; grid-template-columns: .75fr 1.5fr; gap: 10px; margin: 14px 0 4px; }
+.actions button { min-height: 56px; padding: 11px 14px; border: 1px solid #d9d0c6; border-radius: 5px; background: #ffffff; color: #342a24; display: inline-flex; align-items: center; justify-content: center; gap: 9px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .18s ease, border-color .18s ease; }
+.actions button:hover:not(:disabled) { border-color: #534239; background: #f9f5f5; }
+.actions .whatsapp { min-height: 58px; background: #25D366; border-color: #25D366; color: white; text-align: left; }
+.actions .whatsapp:hover:not(:disabled) { background: #1ebe5d; border-color: #1ebe5d; }
+.actions button:disabled { opacity: .55; cursor: not-allowed; }
+.whatsapp > svg { flex-shrink: 0; }
+.whatsapp span { display: grid; gap: 3px; }
+.whatsapp strong { font-size: 13px; font-weight: 650; }
+.whatsapp small { color: #f5fff8; font-size: 10px; font-weight: 400; line-height: 1.4; }
+.availabilityNote, .shareNotice { margin: 6px 0; color: #675c51; font-size: 12px; line-height: 1.5; }
+.shareNotice:empty { display: none; }
+.shareLink { width: 100%; padding: 10px; border: 1px solid #cfc4b8; border-radius: 4px; color: #342a24; background: #fff; font: inherit; font-size: 13px; }
+.modal { position: fixed; inset: 0; width: min(560px, calc(100% - 48px)); max-height: calc(100dvh - 48px); box-sizing: border-box; overflow: auto; overscroll-behavior: contain; margin: auto; padding: 32px; background: #ffffff; color: #342a24; border: 1px solid #e0d7cc; border-radius: 12px; box-shadow: 0 28px 80px #1c140f47; }
+.modal::backdrop { background: #18120ea8; backdrop-filter: blur(5px); }
+.close { position: absolute; top: 15px; right: 15px; width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #fcf9f9; color: #322821; cursor: pointer; }
+.close:hover { background: #f9f5f5; }
+.modalHeading { display: flex; align-items: center; gap: 13px; padding-right: 26px; margin-top: 10px; }
+.whatsappMark { width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; background: #e4efe7; color: #25D366; }
+.modalHeading p { margin: 0 0 7px; color: #5e7165; font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.modalHeading h2 { margin: 0; max-width: 320px; color: #342a24; font: 400 29px/1.13 Georgia, serif; letter-spacing: -.025em; }
+.intro { margin: 14px 0 0; color: #71665b; font-size: 13px; line-height: 1.6; }
+.productSummary { margin: 20px 0 22px; padding: 14px; display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 16px; align-items: center; border-radius: 6px; background: #fcf9f9; }
+.thumb { position: relative; width: 88px; height: 110px; overflow: hidden; border-radius: 3px; background: #ffffff; }
+.thumb img { object-fit: cover; }
+.productSummary > div:last-child { display: grid; gap: 8px; overflow-wrap: anywhere; }
+.productSummary strong { font-family: Georgia, serif; font-size: 19px; font-weight: 400; line-height: 1.25; }
+.productSummary span { font-size: 15px; font-weight: 650; }
+.productSummary small { color: #766c62; font-size: 11px; font-weight: 400; line-height: 1.45; }
+.selectionFields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.optionGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.optionGrid > div { min-width: 0; }
+.fieldLabel { display: block; margin-bottom: 8px; color: #5c5046; font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+.modal select { width: 100%; min-height: 50px; padding: 0 12px; border: 1px solid #cfc4b8; border-radius: 4px; background: #fff; color: #342a24; font: inherit; font-size: 14px; }
+.quantityRow { margin: 21px 0 18px; display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.quantityRow > div:first-child { display: grid; gap: 5px; }
+.quantityRow span { font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; }
+.quantityRow small { color: #796e63; font-size: 11px; line-height: 1.4; }
+.quantityControl { display: grid; grid-template-columns: 44px 38px 44px; align-items: center; flex-shrink: 0; border: 1px solid #cfc4b8; border-radius: 4px; overflow: hidden; }
+.quantityControl button { min-width: 44px; height: 44px; padding: 0; border: 0; color: #342a24; background: transparent; display: grid; place-items: center; cursor: pointer; }
+.quantityControl button:hover:not(:disabled) { background: #f9f5f5; }
+.quantityControl button:disabled { opacity: .35; cursor: not-allowed; }
+.quantityControl output { font-size: 14px; font-weight: 650; text-align: center; }
+.totalRow { padding: 14px 0; border-top: 1px solid #e7ded3; display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.totalRow strong { font-size: 17px; font-weight: 650; }
+.stockStatus { display: flex; gap: 7px; align-items: flex-start; margin: 0 0 13px; color: #3c6c4f; font-size: 11px; line-height: 1.5; }
+.stockStatus:empty { display: none; }
+.stockStatus svg { flex-shrink: 0; margin-top: 1px; }
+.error { margin: 0 0 12px; padding: 10px 12px; border-radius: 4px; background: #faeeec; color: #922f32; font-size: 12px; line-height: 1.5; }
+.retryButton { margin: 0 0 12px; min-height: 44px; padding: 8px 14px; border: 1px solid #cfc4b8; border-radius: 4px; background: #fff; color: #342a24; font: inherit; font-size: 12px; cursor: pointer; }
+.continueButton { width: 100%; min-height: 54px; padding: 12px; border: 0; border-radius: 5px; background: #25D366; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; transition: background .18s ease; }
+.continueButton:hover:not(:disabled) { background: #1ebe5d; }
+.continueButton:disabled { opacity: .5; cursor: not-allowed; }
+.handoffNote { margin: 14px auto 0; max-width: 440px; color: #776c60; font-size: 11px; line-height: 1.65; text-align: center; }
+.actions button:focus-visible, .modal button:focus-visible, .modal select:focus-visible, .shareLink:focus-visible { outline: 3px solid #b78652; outline-offset: 3px; }
+.modal select:disabled { opacity: .6; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.spinner { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } .actions button, .continueButton { transition: none; } }
+@media (max-width: 540px) {
+  .actions { grid-template-columns: 1fr; }
+  .modal { width: 100%; max-height: 92dvh; inset: auto 0 0; margin: 0; padding: 26px 20px max(22px, env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; }
+  .modalHeading { gap: 11px; margin-top: 8px; padding-right: 20px; }
+  .modalHeading h2 { font-size: 26px; }
+  .modalHeading p { font-size: 9px; letter-spacing: .09em; }
+  .whatsappMark { width: 42px; height: 42px; }
+  .close { top: 9px; right: 9px; width: 40px; height: 40px; }
+  .modal select { font-size: 16px; }
+  .productSummary { grid-template-columns: 78px minmax(0, 1fr); gap: 13px; }
+  .thumb { width: 78px; height: 100px; }
+}
+
+
+/* HIDI PDP contact typography phase 2 */
+.modalHeading h2,
+.productSummary strong {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.modalHeading h2 {
+  font-size: 29px;
+  line-height: 1.13;
+  letter-spacing: -.025em;
+}
+
+.modalHeading p,
+.fieldLabel,
+.quantityRow span {
+  font-size: 12px;
+  letter-spacing: .07em;
+}
+
+.whatsapp small,
+.productSummary small,
+.quantityRow small,
+.stockStatus,
+.handoffNote { font-size: 12px; }
+
+.intro { font-size: 14px; }
+
+
+@media (max-width: 540px) {
+  .optionGrid { grid-template-columns: 1fr; gap: 11px; }
+  .quantityRow { margin-top: 17px; }
+  .continueButton { min-height: 56px; }
+  .actions button { min-height: 52px; }
+}
+
+@media (max-width: 360px) {
+  .quantityRow { align-items: flex-start; flex-direction: column; }
+  .quantityControl { width: 100%; grid-template-columns: 1fr 48px 1fr; }
+}
+
+
+/* HIDI Mobile V2 — keep PDP secondary actions secondary. */
+@media (max-width: 540px) {
+  .actions {
+    grid-template-columns: .78fr 1.22fr;
+    gap: 7px;
+    margin: 10px 0 2px;
+  }
+
+  .actions button,
+  .actions .whatsapp {
+    min-height: 46px;
+    padding: 8px 9px;
+    border-radius: 0;
+    font-size: 10px;
+  }
+
+  .actions .whatsapp {
+    text-align: center;
+  }
+
+  .whatsapp span {
+    display: block;
+  }
+
+  .whatsapp strong {
+    font-size: 10px;
+  }
+
+  .whatsapp small {
+    display: none;
+  }
+
+  .availabilityNote,
+  .shareNotice {
+    font-size: 10px;
+  }
+}
+
+
+.productSummary strong {
+  font-family: var(--font-product);
+  font-weight: 600;
+  letter-spacing: -.012em;
+}

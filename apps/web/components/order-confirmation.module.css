@@ -140,6 +140,30 @@
   flex-wrap: wrap;
 }
 
+.receipt :global(.confirmation-action-link) {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  border: 1px solid #d8cbc2;
+  background: #ffffff;
+  color: #4a1719;
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: .06em;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.receipt :global(.confirmation-action-link:hover),
+.receipt :global(.confirmation-action-link:focus-visible) {
+  background: var(--hidi-mulberry, #541d1f);
+  border-color: var(--hidi-mulberry, #541d1f);
+  color: var(--hidi-ivory-text, #fff8ef);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(84, 29, 31, .14);
+}
+
 @media (max-width: 850px) {
   .receipt :global(.confirmation-grid) {
     grid-template-columns: 1fr;
@@ -171,5 +195,47 @@
 
   .receipt :global(.confirmation-card-header) {
     flex-direction: column;
+  }
+}
+
+
+/* HIDI confirmation typography phase 2 */
+.receipt :global(.confirmation-card h2),
+.receipt :global(.confirmation-item-name) {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.receipt :global(.confirmation-card h2) { font-size: 28px; }
+.receipt :global(.confirmation-item-name) { font-size: 19px; }
+.receipt :global(.status-chip) { font-size: 12px; letter-spacing: .07em; }
+.receipt :global(.confirmation-item-copy p) { font-size: 12px; }
+
+
+@media (max-width: 560px) {
+  .receipt :global(.confirmation-card) { padding: 17px 14px; }
+  .receipt :global(.confirmation-card h2) { font-size: 25px; }
+  .receipt :global(.confirmation-item) { grid-template-columns: 68px minmax(0, 1fr); gap: 11px; }
+  .receipt :global(.confirmation-thumb) { width: 68px; }
+  .receipt :global(.confirmation-item-name) { font-size: 17px; overflow-wrap: anywhere; }
+  .receipt :global(.confirmation-totals > div),
+  .receipt :global(.confirmation-mini-row) { gap: 10px; }
+  .receipt :global(.confirmation-actions) { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 24px; }
+  .receipt :global(.confirmation-action-link) { width: 100%; min-height: 50px; }
+}
+
+
+.receipt :global(.confirmation-item-name) {
+  font-family: var(--font-product);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -.012em;
+}
+
+@media (max-width: 560px) {
+  .receipt :global(.confirmation-item-name) {
+    font-size: 14px;
+    line-height: 1.3;
   }
 }

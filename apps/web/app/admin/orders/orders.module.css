@@ -98,8 +98,13 @@
   font-size: 12px;
 }
 
-.adminTopbar nav span {
+.adminTopbar nav span,
+.adminTopbar nav a {
   color: var(--muted);
+}
+
+.adminTopbar nav a:hover {
+  color: var(--ink);
 }
 
 .lockButton {
@@ -216,7 +221,7 @@
 }
 
 .orderRow:last-child { border-bottom: 0; }
-.orderRow:hover { background: #fbfaf7; }
+.orderRow:hover { background: #f9f5f5; }
 
 .orderRow > div:first-child,
 .orderRow > div:nth-child(2) {
@@ -264,6 +269,21 @@
 .statusPACKED { background: #eee9df; }
 .statusSHIPPED { background: #e8edf1; }
 .statusDELIVERED { background: #e6eee6; }
+.afterSalesPill {
+  border-color: #b4836d;
+  background: #fff3ec;
+  color: #6d3527;
+}
+.statusCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+.statusCell small {
+  color: var(--muted);
+  font-size: 9px;
+}
 
 .viewCell {
   text-align: right;
