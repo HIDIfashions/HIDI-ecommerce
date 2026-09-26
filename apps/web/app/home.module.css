@@ -358,6 +358,121 @@
   gap: clamp(34px, 3vw, 52px) 18px;
 }
 
+.privileges {
+  padding: clamp(54px, 5vw, 72px) 0 clamp(50px, 4.6vw, 66px);
+  background:
+    radial-gradient(circle at 92% 8%, rgba(213,162,77,.06), transparent 25%),
+    linear-gradient(180deg, #fbf7f2 0%, #f8f0e9 100%);
+  border-top: 1px solid #eadfd4;
+  border-bottom: 1px solid #eadfd4;
+}
+
+.privilegesHeader {
+  margin-bottom: 28px;
+}
+
+.privilegesHeader .eyebrow {
+  margin-bottom: 10px;
+}
+
+.privilegesHeader h2 {
+  max-width: 760px;
+  margin: 0;
+  color: var(--home-brand);
+  font-family: var(--font-display);
+  font-size: clamp(38px, 4.3vw, 58px);
+  font-weight: 400;
+  line-height: .98;
+  letter-spacing: -.038em;
+}
+
+.privilegeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid #ddcfc4;
+  border-bottom: 1px solid #ddcfc4;
+}
+
+.privilegeCard {
+  min-width: 0;
+  min-height: 220px;
+  padding: 28px clamp(22px, 3vw, 38px);
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 14px;
+  color: inherit;
+  transition: background .2s ease, transform .2s ease;
+}
+
+.privilegeCard + .privilegeCard {
+  border-left: 1px solid #ddcfc4;
+}
+
+.privilegeCard:hover {
+  background: rgba(255,255,255,.52);
+  transform: translateY(-2px);
+}
+
+.privilegeIndex {
+  padding-top: 4px;
+  color: var(--home-gold);
+  font-family: var(--font-product);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.privilegeCopy {
+  display: grid;
+  align-content: start;
+}
+
+.privilegeCopy h3 {
+  margin: 0;
+  color: var(--home-brand);
+  font-family: var(--font-display);
+  font-size: clamp(25px, 2.25vw, 34px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -.025em;
+}
+
+.privilegeCopy p {
+  max-width: 340px;
+  margin: 14px 0 0;
+  color: #76665d;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.privilegeCta {
+  width: fit-content;
+  margin-top: 22px;
+  padding-bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid rgba(89,29,32,.42);
+  color: var(--home-brand);
+  font-family: var(--font-sans);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.privilegeCard:hover .privilegeCta {
+  border-bottom-color: var(--home-gold);
+  color: #7f5425;
+}
+
+.privilegesFinePrint {
+  margin: 14px 0 0;
+  color: #95847a;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
 .serviceStrip {
   background:
     linear-gradient(180deg, #fffdfb 0%, var(--home-soft) 100%);
@@ -451,6 +566,20 @@
   .productGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     row-gap: 62px;
+  }
+
+  .privilegeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .privilegeCard {
+    min-height: 0;
+    padding-block: 24px;
+  }
+
+  .privilegeCard + .privilegeCard {
+    border-left: 0;
+    border-top: 1px solid #ddcfc4;
   }
 
   .serviceGrid {
@@ -611,6 +740,37 @@
     gap: 42px 10px;
   }
 
+  .privileges {
+    padding-top: 42px;
+    padding-bottom: 40px;
+  }
+
+  .privilegesHeader {
+    margin-bottom: 22px;
+  }
+
+  .privilegesHeader h2 {
+    font-size: clamp(36px, 10.5vw, 48px);
+  }
+
+  .privilegeCard {
+    grid-template-columns: 26px minmax(0, 1fr);
+    padding: 22px 0;
+  }
+
+  .privilegeCopy h3 {
+    font-size: 27px;
+  }
+
+  .privilegeCopy p {
+    margin-top: 10px;
+    font-size: 10.5px;
+  }
+
+  .privilegeCta {
+    margin-top: 17px;
+  }
+
   .serviceGrid {
     grid-template-columns: 1fr 1fr;
   }
@@ -645,7 +805,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .editCard img,
-  .serviceLink {
+  .serviceLink,
+  .privilegeCard {
     transition: none;
   }
 }
