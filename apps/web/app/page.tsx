@@ -95,8 +95,8 @@ export default async function Home() {
     <div className={styles.home}>
       <section className={styles.hero}>
         <Image
-          src="/brand/hidi-hero-green-garden.png"
-          alt="HIDI editorial collection"
+          src="/brand/hidi-hero-green-garden-fullbody.webp"
+          alt="HIDI full-length garden editorial"
           fill
           priority
           sizes="100vw"
