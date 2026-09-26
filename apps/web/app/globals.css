@@ -3925,3 +3925,20 @@ body {
     font-size: 8.5px;
   }
 }
+
+
+.checkout-mobile-shipping-row {
+  padding: 10px 0 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: #74685f;
+  font-size: 10px;
+}
+
+.checkout-mobile-shipping-row strong {
+  color: #4f5f45;
+  font-size: 10px;
+  font-weight: 700;
+}
