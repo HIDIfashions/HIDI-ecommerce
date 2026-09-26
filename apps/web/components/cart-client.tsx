@@ -99,6 +99,7 @@ export function CartClient() {
   if (cart.items.length === 0) return <div className="empty-state"><h2>Your bag is waiting.</h2><p>Find something you love from the latest HIDI edit.</p><Link className="button button-dark" href="/collections/new-arrivals">Browse new arrivals</Link></div>;
 
   const groups = groupCartItems(cart.items);
+  const complimentaryShipping = cart.subtotalPaise > 149900;
 
   return <>
     {error && <p className="form-error">{error}</p>}
@@ -163,7 +164,7 @@ export function CartClient() {
       <aside className="order-summary">
         <h2>Order summary</h2>
         <div><span>Subtotal</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
-        <div><span>Shipping</span><span>Calculated at checkout</span></div>
+        <div><span>Shipping</span><span>{complimentaryShipping ? "Complimentary" : "Calculated at checkout"}</span></div>
         <div className="summary-total"><span>Total</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
         <Link className="button button-dark cart-checkout-button" href="/checkout">Continue to checkout</Link>
         <p className="fine-print">Secure checkout · UPI · Cards · Net banking</p>
