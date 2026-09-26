@@ -189,6 +189,37 @@ test("homepage exposes the four core collection destinations without a marketpla
   assert.equal(root.querySelector('[aria-label="Shop HIDI edits"]').querySelectorAll("a").length, 3);
 });
 
+test("homepage showcases HIDI Privileges without turning into a discount banner", async () => {
+  const root = await harness({ products: catalogue }).homepage();
+  const section = root.querySelector('[aria-labelledby="hidi-privileges-title"]');
+  assert.ok(section);
+  assert.match(section.text, /The ₹1 HIDI Privilege/);
+  assert.match(section.text, /A Little Silver/);
+  assert.match(section.text, /HIDI Rewards/);
+  assert.match(section.text, /₹3,999\+/);
+  assert.match(section.text, /2 g silver launch keepsake/);
+  assert.equal(section.querySelectorAll("a").length, 3);
+
+  const hrefs = section.querySelectorAll("a").map((link) => link.getAttribute("href"));
+  assert.deepEqual(hrefs, ["/collections/all", "/collections/new-arrivals", "/account"]);
+});
+
+test("HIDI Privileges keeps an editorial three-column desktop layout and stacked mobile layout", () => {
+  const file = "app/home.module.css";
+  assert.equal(
+    cssRule(file, ".privilegeGrid")["grid-template-columns"],
+    "repeat(3, minmax(0, 1fr))",
+  );
+  assert.equal(
+    cssRule(file, ".privilegeGrid", "(max-width: 1100px)")["grid-template-columns"],
+    "1fr",
+  );
+  assert.equal(
+    cssRule(file, ".privilegeCard", "(prefers-reduced-motion: reduce)").transition,
+    "none",
+  );
+});
+
 test("homepage service strip communicates four practical shopping promises", async () => {
   const root = await harness({ products: catalogue }).homepage();
   const bar = root.querySelector('[aria-label="HIDI shopping services"]');
