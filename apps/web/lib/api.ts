@@ -51,6 +51,8 @@ export type ApiProductReview = {
 export type ApiProductReviews = {
   averageRating: number;
   reviewCount: number;
+  verifiedReviewCount: number;
+  ratingDistribution: Record<1 | 2 | 3 | 4 | 5, number>;
   reviews: ApiProductReview[];
 };
 
@@ -70,6 +72,8 @@ export type ApiProduct = {
   maxPricePaise: number;
   inStock: boolean;
   soldQuantity?: number;
+  averageRating?: number;
+  reviewCount?: number;
 };
 
 async function fetchPublicList(url: URL | string): Promise<ApiProduct[]> {
@@ -156,7 +160,13 @@ export async function getProduct(slug: string): Promise<ApiProduct | null> {
 
 export async function getProductReviews(productId: string): Promise<ApiProductReviews> {
   const response = await fetch(`${API_URL}/reviews/products/${encodeURIComponent(productId)}`, { cache: "no-store" });
-  if (!response.ok) return { averageRating: 0, reviewCount: 0, reviews: [] };
+  if (!response.ok) return {
+    averageRating: 0,
+    reviewCount: 0,
+    verifiedReviewCount: 0,
+    ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    reviews: [],
+  };
   return response.json();
 }
 
