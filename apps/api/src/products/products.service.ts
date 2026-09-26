@@ -152,6 +152,12 @@ export class ProductsService {
       colorHex: variant.colorHex,
       mrpPaise: variant.mrpPaise,
       pricePaise: variant.pricePaise,
+      bustMm: variant.bustMm,
+      waistMm: variant.waistMm,
+      hipMm: variant.hipMm,
+      shoulderMm: variant.shoulderMm,
+      sleeveLengthMm: variant.sleeveLengthMm,
+      garmentLengthMm: variant.garmentLengthMm,
       available: variant.inventory
         ? Math.max(0, variant.inventory.onHand - variant.inventory.reserved - variant.inventory.safetyStock)
         : 0,
