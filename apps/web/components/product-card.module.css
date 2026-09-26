@@ -1,10 +1,10 @@
 .card {
-  --card-ink: #2f312d;
-  --card-muted: #777a74;
-  --card-line: #dedfd9;
-  --card-sage: #6f7569;
-  --card-sage-deep: #565e52;
-  --card-gold: #a98752;
+  --card-ink: #34271f;
+  --card-muted: #786b62;
+  --card-line: #eadfd4;
+  --card-brand: var(--hidi-mulberry-clay, #591d20);
+  --card-brand-deep: var(--hidi-mulberry-clay-deep, #461416);
+  --card-gold: var(--hidi-mulberry-gold, #d5a24d);
   position: relative;
   min-width: 0;
   height: 100%;
@@ -29,7 +29,7 @@
 }
 
 .card :is(a, button):focus-visible {
-  outline: 2px solid var(--card-sage);
+  outline: 2px solid var(--card-brand);
   outline-offset: 3px;
 }
 
@@ -48,25 +48,25 @@
   padding: 0;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(45,49,45,.12);
+  border: 1px solid rgba(89,29,32,.14);
   border-radius: 50%;
-  background: rgba(255,255,255,.90);
-  color: #4f554c;
-  box-shadow: 0 5px 18px rgba(31,34,30,.08);
+  background: rgba(255,248,239,.94);
+  color: var(--card-brand);
+  box-shadow: 0 5px 18px rgba(65,38,29,.09);
   backdrop-filter: blur(8px);
   cursor: pointer;
   transition: background .18s ease, color .18s ease, transform .18s ease;
 }
 
 .mobileImageHeart:hover {
-  background: #fff;
-  color: var(--card-sage-deep);
+  background: #fffdfb;
+  color: var(--card-brand-deep);
   transform: translateY(-1px);
 }
 
 .mobileImageHeart[aria-pressed="true"] {
-  background: var(--card-sage);
-  border-color: var(--card-sage);
+  background: var(--card-brand);
+  border-color: var(--card-brand);
   color: #fff;
 }
 
@@ -134,7 +134,7 @@
 }
 
 .saving {
-  color: #66725f;
+  color: #8b673c;
   font-size: 10px;
 }
 
@@ -213,19 +213,22 @@
 }
 
 .fitRibbonSize:not(:disabled):hover {
-  border-color: var(--card-sage);
-  color: var(--card-sage-deep);
+  border-color: var(--card-brand);
+  color: var(--card-brand-deep);
 }
 
 .fitRibbonSizeActive {
-  border-color: var(--card-sage);
-  background: var(--card-sage);
-  color: #fff;
+  border-color: var(--card-brand);
+  background: var(--card-brand);
+  color: #fff8ef;
+  box-shadow:
+    0 0 0 2px #fff8ef,
+    0 0 0 3px rgba(213,162,77,.78);
 }
 
 .fitRibbonSizeSoldOut {
-  color: #aaa9a4;
-  background: #f4f4f1;
+  color: #a99b91;
+  background: #f6f0eb;
   text-decoration: line-through;
   cursor: not-allowed;
 }
@@ -234,7 +237,7 @@
   padding: 5px;
   margin: -5px;
   border-radius: 9px;
-  box-shadow: 0 0 0 1px rgba(111,117,105,.34);
+  box-shadow: 0 0 0 1px rgba(89,29,32,.18);
 }
 
 .actions {
@@ -253,7 +256,7 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px solid var(--card-sage);
+  border: 1px solid var(--card-brand);
   font-family: var(--font-product);
   font-size: 10px;
   font-weight: 600;
@@ -263,22 +266,23 @@
 }
 
 .addButton {
-  background: var(--card-sage);
-  color: #fff;
+  background: var(--card-brand);
+  color: #fff8ef;
+  box-shadow: inset 0 0 0 1px rgba(213,162,77,.14);
 }
 
 .addButton:hover:not(:disabled) {
-  background: var(--card-sage-deep);
-  border-color: var(--card-sage-deep);
+  background: var(--card-brand-deep);
+  border-color: var(--card-brand-deep);
 }
 
 .buyButton {
   background: #fff;
-  color: var(--card-sage-deep);
+  color: var(--card-brand-deep);
 }
 
 .buyButton:hover:not(:disabled) {
-  background: #f4f5f1;
+  background: #f8eee4;
 }
 
 .addButton:disabled,
@@ -288,9 +292,9 @@
 }
 
 .added {
-  background: #7d856f !important;
-  border-color: #7d856f !important;
-  color: #fff !important;
+  background: #8f6531 !important;
+  border-color: #8f6531 !important;
+  color: #fff8ef !important;
 }
 
 .wishButton {
@@ -309,7 +313,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #777a74;
+  color: #806e63;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -499,7 +503,7 @@
 }
 
 .mobileSheetLabel strong {
-  color: var(--card-sage-deep);
+  color: var(--card-brand-deep);
   font-family: var(--font-product);
   font-size: 11px;
   font-weight: 600;
@@ -534,9 +538,9 @@
 }
 
 .mobileSheetColourActive {
-  border-color: var(--card-sage);
+  border-color: var(--card-brand);
   background: #f2f3ef;
-  color: var(--card-sage-deep);
+  color: var(--card-brand-deep);
 }
 
 .swatch {
@@ -564,9 +568,10 @@
 }
 
 .mobileSheetSizeActive {
-  border-color: var(--card-sage);
-  background: var(--card-sage);
-  color: #fff;
+  border-color: var(--card-brand);
+  background: var(--card-brand);
+  color: #fff8ef;
+  box-shadow: inset 0 0 0 1px rgba(213,162,77,.30);
 }
 
 .unavailable {
@@ -580,7 +585,7 @@
   padding: 5px;
   margin: -5px;
   border-radius: 8px;
-  box-shadow: 0 0 0 1px rgba(111,117,105,.36);
+  box-shadow: 0 0 0 1px rgba(89,29,32,.18);
 }
 
 .mobileSheetAvailability {
@@ -604,8 +609,8 @@
 }
 
 .mobileSheetMessage {
-  background: #f1f4ef;
-  color: #596655;
+  background: #fbf3ed;
+  color: #7a542b;
 }
 
 .mobileSheetAdd,
@@ -618,7 +623,7 @@
   justify-content: center;
   gap: 7px;
   vertical-align: top;
-  border: 1px solid var(--card-sage);
+  border: 1px solid var(--card-brand);
   font-family: var(--font-product);
   font-size: 10px;
   font-weight: 600;
@@ -630,12 +635,12 @@
 .mobileSheetAdd {
   margin-right: 6px;
   background: #fff;
-  color: var(--card-sage-deep);
+  color: var(--card-brand-deep);
 }
 
 .mobileSheetBuy {
-  background: var(--card-sage);
-  color: #fff;
+  background: var(--card-brand);
+  color: #fff8ef;
 }
 
 .mobileSheetAdd:disabled,
@@ -676,7 +681,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  color: var(--card-sage-deep) !important;
+  color: var(--card-brand-deep) !important;
   font-size: 10px;
   font-weight: 600;
 }
@@ -744,10 +749,10 @@
     align-items: center;
     justify-content: center;
     transform: translateX(-50%);
-    border: 1px solid rgba(43,47,42,.12);
-    background: rgba(255,255,255,.92);
-    color: #3f443d;
-    box-shadow: 0 5px 16px rgba(25,28,24,.08);
+    border: 1px solid rgba(89,29,32,.18);
+    background: rgba(255,248,239,.94);
+    color: var(--card-brand);
+    box-shadow: 0 5px 16px rgba(65,38,29,.09);
     backdrop-filter: blur(8px);
     font-family: var(--font-product);
     font-size: 9px;
