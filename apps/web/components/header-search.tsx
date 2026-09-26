@@ -122,8 +122,6 @@ export function HeaderSearch() {
                   }}
                   placeholder="Search products, colours, collections…"
                   aria-label="Search HIDI products"
-                  aria-controls="hidi-search-results"
-                  aria-expanded={results.length > 0}
                 />
                 <Search className={styles.searchGlyph} aria-hidden="true" />
               </div>
