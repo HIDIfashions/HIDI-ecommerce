@@ -116,7 +116,7 @@
 }
 
 .intro {
-  padding: clamp(64px, 6vw, 82px) 0 clamp(58px, 5.5vw, 76px);
+  padding: clamp(46px, 4.5vw, 64px) 0 clamp(44px, 4vw, 60px);
   background: var(--home-soft);
   border-bottom: 1px solid #ebe8e1;
 }
@@ -314,10 +314,10 @@
 }
 
 .sectionHeader {
-  margin-bottom: 36px;
+  margin-bottom: 32px;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(250px, .5fr);
-  gap: 64px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px;
   align-items: end;
 }
 
@@ -500,11 +500,11 @@
 }
 
 .serviceItem {
-  min-height: 116px;
-  padding: 25px clamp(16px, 2vw, 28px);
+  min-height: 88px;
+  padding: 18px clamp(14px, 1.8vw, 24px);
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .serviceItem + .serviceItem {
@@ -659,7 +659,7 @@
   }
 
   .intro {
-    padding: 54px 0 50px;
+    padding: 42px 0 40px;
   }
 
   .introLead h2 {
@@ -750,7 +750,7 @@
   }
 
   .textLink {
-    display: none;
+    display: inline-flex;
   }
 
   .productGrid {
@@ -794,8 +794,8 @@
   }
 
   .serviceItem {
-    min-height: 108px;
-    padding: 20px 14px;
+    min-height: 86px;
+    padding: 17px 14px;
     align-items: flex-start;
   }
 
