@@ -52,6 +52,30 @@ const edits = [
   },
 ] as const;
 
+const privileges = [
+  {
+    index: "01",
+    title: "The ₹1 HIDI Privilege",
+    copy: "Spend ₹3,999+ and unlock one eligible HIDI style for ₹1.",
+    cta: "Explore eligible styles",
+    href: "/collections/all",
+  },
+  {
+    index: "02",
+    title: "A Little Silver",
+    copy: "A 2 g silver launch keepsake on qualifying orders, while allocation lasts.",
+    cta: "Shop new arrivals",
+    href: "/collections/new-arrivals",
+  },
+  {
+    index: "03",
+    title: "HIDI Rewards",
+    copy: "Earn HIDI rewards when you shop and use them toward a future order.",
+    cta: "View rewards",
+    href: "/account",
+  },
+] as const;
+
 const services = [
   {
     icon: Truck,
@@ -206,6 +230,39 @@ export default async function Home() {
           {featured.map((product) => (
             <ProductCard key={product.slug} product={product} />
           ))}
+        </div>
+      </section>
+
+      <section className={styles.privileges} aria-labelledby="hidi-privileges-title">
+        <div className="container">
+          <header className={styles.privilegesHeader}>
+            <p className={styles.eyebrow}>HIDI PRIVILEGES</p>
+            <h2 id="hidi-privileges-title">A little more, when you shop HIDI.</h2>
+          </header>
+
+          <div className={styles.privilegeGrid}>
+            {privileges.map((privilege) => (
+              <Link
+                href={privilege.href}
+                className={styles.privilegeCard}
+                key={privilege.index}
+              >
+                <span className={styles.privilegeIndex}>{privilege.index}</span>
+                <div className={styles.privilegeCopy}>
+                  <h3>{privilege.title}</h3>
+                  <p>{privilege.copy}</p>
+                  <span className={styles.privilegeCta}>
+                    {privilege.cta}
+                    <ArrowRight size={13} strokeWidth={1.5} aria-hidden="true" />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <p className={styles.privilegesFinePrint}>
+            Eligibility, product exclusions and launch allocation apply.
+          </p>
         </div>
       </section>
 
