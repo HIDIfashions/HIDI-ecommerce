@@ -122,6 +122,8 @@ export function HeaderSearch() {
                   }}
                   placeholder="Search products, colours, collections…"
                   aria-label="Search HIDI products"
+                  aria-controls="hidi-search-results"
+                  aria-expanded={results.length > 0}
                 />
                 <Search className={styles.searchGlyph} aria-hidden="true" />
               </div>
@@ -130,10 +132,10 @@ export function HeaderSearch() {
               </button>
             </div>
 
-            {loading && !!query.trim() && <p className={styles.helper}>Searching HIDI…</p>}
-            {!!query.trim() && !loading && results.length === 0 && <p className={styles.empty}>No HIDI pieces matched “{query.trim()}”.</p>}
+            {loading && !!query.trim() && <p className={styles.helper} role="status">Searching HIDI…</p>}
+            {!!query.trim() && !loading && results.length === 0 && <p className={styles.empty} role="status">No HIDI pieces matched “{query.trim()}”.</p>}
 
-            {results.length > 0 && <div className={styles.results}>
+            {results.length > 0 && <div id="hidi-search-results" className={styles.results} aria-label="Search results">
               {results.map((product) => {
                 const image = product.images?.[0];
                 return <Link key={product.id} href={`/products/${product.slug}`} className={styles.item} onClick={() => closeSearch(false)}>
