@@ -2,12 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
-  MessageCircle,
   RefreshCcw,
   ShieldCheck,
   Truck,
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
+import { WhatsAppIcon } from "@/components/whatsapp-icon";
 import { getBestSellers, getProducts } from "@/lib/api";
 import styles from "./home.module.css";
 
@@ -233,6 +233,43 @@ export default async function Home() {
         </div>
       </section>
 
+      <section className={styles.serviceStrip} aria-label="HIDI shopping services">
+        <div className={styles.serviceGrid + " container"}>
+          {services.map(({ icon: Icon, title, copy }) => (
+            <div className={styles.serviceItem} key={title}>
+              <Icon size={18} strokeWidth={1.45} aria-hidden="true" />
+              <div>
+                <strong>{title}</strong>
+                <span>{copy}</span>
+              </div>
+            </div>
+          ))}
+          <Link
+            href={whatsappHref}
+            className={styles.serviceItem + " " + styles.serviceLink}
+            target={whatsapp ? "_blank" : undefined}
+            rel={whatsapp ? "noreferrer" : undefined}
+          >
+            <WhatsAppIcon size={18} className={styles.serviceWhatsappIcon} />
+            <div>
+              <strong>Human shopping help</strong>
+              <span>Fit and product support on WhatsApp.</span>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      <section className={styles.manifesto} aria-label="HIDI occasion editorial">
+        <Image
+          src="/brand/hidi-manifesto-ananya.webp"
+          alt="Ananya in a royal purple HIDI occasion dress"
+          width={1672}
+          height={941}
+          sizes="100vw"
+          className={styles.manifestoFullImage}
+        />
+      </section>
+
       <section className={styles.privileges} aria-labelledby="hidi-privileges-title">
         <div className="container">
           <header className={styles.privilegesHeader}>
@@ -266,42 +303,6 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className={styles.serviceStrip} aria-label="HIDI shopping services">
-        <div className={styles.serviceGrid + " container"}>
-          {services.map(({ icon: Icon, title, copy }) => (
-            <div className={styles.serviceItem} key={title}>
-              <Icon size={18} strokeWidth={1.45} aria-hidden="true" />
-              <div>
-                <strong>{title}</strong>
-                <span>{copy}</span>
-              </div>
-            </div>
-          ))}
-          <Link
-            href={whatsappHref}
-            className={styles.serviceItem + " " + styles.serviceLink}
-            target={whatsapp ? "_blank" : undefined}
-            rel={whatsapp ? "noreferrer" : undefined}
-          >
-            <MessageCircle size={18} strokeWidth={1.45} aria-hidden="true" />
-            <div>
-              <strong>Human shopping help</strong>
-              <span>Fit and product support on WhatsApp.</span>
-            </div>
-          </Link>
-        </div>
-      </section>
-
-      <section className={styles.manifesto} aria-label="HIDI occasion editorial">
-        <Image
-          src="/brand/hidi-manifesto-ananya.webp"
-          alt="Ananya in a royal purple HIDI occasion dress"
-          width={1672}
-          height={941}
-          sizes="100vw"
-          className={styles.manifestoFullImage}
-        />
-      </section>
     </div>
   );
 }
