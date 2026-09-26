@@ -164,3 +164,162 @@
     opacity: .48;
   }
 }
+
+
+/* ==========================================================================
+   HIDI FIT — verified garment measurement guide
+   ========================================================================== */
+.fitGuide {
+  margin: 10px 0 16px;
+  padding: 18px;
+  border: 1px solid #e3d7ce;
+  background: #fffdfb;
+}
+
+.fitGuideHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fitGuideHeader > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.fitGuideHeader span {
+  color: #d5a24d;
+  font-family: var(--font-product);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+
+.fitGuideHeader strong {
+  color: #591d20;
+  font-family: var(--font-product);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fitUnits {
+  display: inline-flex;
+  border: 1px solid #dfd2c8;
+}
+
+.fitUnits button {
+  min-width: 38px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: #75675e;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.fitUnits button + button {
+  border-left: 1px solid #dfd2c8;
+}
+
+.fitUnits button[aria-pressed="true"] {
+  background: #591d20;
+  color: #fff8ef;
+}
+
+.fitTableWrap {
+  margin-top: 14px;
+  overflow-x: auto;
+  border-top: 1px solid #eadfd7;
+  border-bottom: 1px solid #eadfd7;
+}
+
+.fitTable {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-family: var(--font-product);
+  font-size: 10px;
+}
+
+.fitTable th,
+.fitTable td {
+  padding: 10px 9px;
+  border-bottom: 1px solid #eee5df;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.fitTable thead th {
+  color: #7b6c63;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.fitTable tbody th {
+  color: #591d20;
+  font-weight: 600;
+  text-align: left;
+}
+
+.fitTable tr:last-child th,
+.fitTable tr:last-child td {
+  border-bottom: 0;
+}
+
+.fitSelectedRow {
+  background: #fbf3ed;
+}
+
+.fitNote {
+  margin: 12px 0 0;
+  color: #74685f;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.fitPending {
+  margin-top: 14px;
+  padding: 14px 15px;
+  background: #fbf7f3;
+  border-left: 2px solid #d5a24d;
+}
+
+.fitPending strong {
+  color: #591d20;
+  font-family: var(--font-product);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.fitPending p {
+  margin: 6px 0 0;
+  color: #74685f;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+@media (max-width: 620px) {
+  .fitGuide {
+    margin-bottom: 12px;
+    padding: 14px 12px;
+  }
+
+  .fitGuideHeader {
+    align-items: center;
+  }
+
+  .fitTable {
+    min-width: 500px;
+  }
+
+  .fitTable th,
+  .fitTable td {
+    padding: 9px 8px;
+  }
+}
