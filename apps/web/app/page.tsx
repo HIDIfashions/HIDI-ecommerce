@@ -13,24 +13,6 @@ import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
 
-const principles = [
-  {
-    index: "01",
-    title: "Considered silhouettes",
-    copy: "Clean proportions that feel polished without becoming formal or overworked.",
-  },
-  {
-    index: "02",
-    title: "Comfort in the details",
-    copy: "Fabric, movement and finish are considered for the hours you actually wear them.",
-  },
-  {
-    index: "03",
-    title: "Quietly expressive",
-    copy: "Colour and craft bring character while the overall look stays calm and easy.",
-  },
-] as const;
-
 const edits = [
   {
     eyebrow: "THE WORK EDIT",
@@ -144,40 +126,6 @@ export default async function Home() {
         <span className={styles.heroIndex}>HIDI · 01</span>
       </section>
 
-      <section className={styles.intro}>
-        <div className="container">
-          <div className={styles.introLead}>
-            <div>
-              <p className={styles.eyebrow}>THE HIDI POINT OF VIEW</p>
-              <h2>Indian wear, made to feel effortless.</h2>
-            </div>
-
-            <div className={styles.introCopy}>
-              <p>
-                A modern wardrobe built around proportion, fabric and comfort —
-                designed for workdays, slow days and everything in between.
-              </p>
-              <Link href="/about" className={styles.inlineLink}>
-                About HIDI
-                <ArrowRight size={13} strokeWidth={1.5} aria-hidden="true" />
-              </Link>
-            </div>
-          </div>
-
-          <div className={styles.principleGrid}>
-            {principles.map((principle) => (
-              <article className={styles.principle} key={principle.index}>
-                <span>{principle.index}</span>
-                <div>
-                  <strong>{principle.title}</strong>
-                  <p>{principle.copy}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className={styles.editSection}>
         <header className={styles.editHeader + " container"}>
           <p className={styles.eyebrow}>SHOP BY EDIT</p>
@@ -204,58 +152,6 @@ export default async function Home() {
               </span>
             </Link>
           ))}
-        </div>
-      </section>
-
-      <section className={styles.featured + " container"}>
-        <header className={styles.sectionHeader}>
-          <div>
-            <p className={styles.eyebrow}>THE HIDI EDIT</p>
-            <h2>Pieces to live in now.</h2>
-          </div>
-          <div className={styles.sectionAside}>
-            <p>
-              {hasSales
-                ? "A rotating edit led by what customers are choosing now."
-                : "A considered first look at the styles defining HIDI."}
-            </p>
-            <Link href="/collections/all" className={styles.textLink}>
-              Shop all
-              <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
-            </Link>
-          </div>
-        </header>
-
-        <div className={styles.productGrid}>
-          {featured.map((product) => (
-            <ProductCard key={product.slug} product={product} />
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.serviceStrip} aria-label="HIDI shopping services">
-        <div className={styles.serviceGrid + " container"}>
-          {services.map(({ icon: Icon, title, copy }) => (
-            <div className={styles.serviceItem} key={title}>
-              <Icon size={18} strokeWidth={1.45} aria-hidden="true" />
-              <div>
-                <strong>{title}</strong>
-                <span>{copy}</span>
-              </div>
-            </div>
-          ))}
-          <Link
-            href={whatsappHref}
-            className={styles.serviceItem + " " + styles.serviceLink}
-            target={whatsapp ? "_blank" : undefined}
-            rel={whatsapp ? "noreferrer" : undefined}
-          >
-            <WhatsAppIcon size={18} className={styles.serviceWhatsappIcon} />
-            <div>
-              <strong>Human shopping help</strong>
-              <span>Fit and product support on WhatsApp.</span>
-            </div>
-          </Link>
         </div>
       </section>
 
@@ -303,6 +199,72 @@ export default async function Home() {
         </div>
       </section>
 
+      <section className={styles.featured + " container"}>
+        <header className={styles.sectionHeader}>
+          <div>
+            <p className={styles.eyebrow}>THE HIDI EDIT</p>
+            <h2>Pieces to live in now.</h2>
+          </div>
+          <Link href="/collections/all" className={styles.textLink}>
+            Shop all
+            <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
+          </Link>
+        </header>
+
+        <div className={styles.productGrid}>
+          {featured.map((product) => (
+            <ProductCard key={product.slug} product={product} />
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.serviceStrip} aria-label="HIDI shopping services">
+        <div className={styles.serviceGrid + " container"}>
+          {services.map(({ icon: Icon, title, copy }) => (
+            <div className={styles.serviceItem} key={title}>
+              <Icon size={18} strokeWidth={1.45} aria-hidden="true" />
+              <div>
+                <strong>{title}</strong>
+                <span>{copy}</span>
+              </div>
+            </div>
+          ))}
+          <Link
+            href={whatsappHref}
+            className={styles.serviceItem + " " + styles.serviceLink}
+            target={whatsapp ? "_blank" : undefined}
+            rel={whatsapp ? "noreferrer" : undefined}
+          >
+            <WhatsAppIcon size={18} className={styles.serviceWhatsappIcon} />
+            <div>
+              <strong>Human shopping help</strong>
+              <span>Fit and product support on WhatsApp.</span>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      <section className={styles.intro}>
+        <div className="container">
+          <div className={styles.introLead}>
+            <div>
+              <p className={styles.eyebrow}>THE HIDI POINT OF VIEW</p>
+              <h2>Indian wear, made to feel effortless.</h2>
+            </div>
+
+            <div className={styles.introCopy}>
+              <p>
+                A modern wardrobe built around proportion, fabric and comfort —
+                designed for workdays, slow days and everything in between.
+              </p>
+              <Link href="/about" className={styles.inlineLink}>
+                About HIDI
+                <ArrowRight size={13} strokeWidth={1.5} aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
