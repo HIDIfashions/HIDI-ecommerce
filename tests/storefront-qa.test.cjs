@@ -519,6 +519,27 @@ test("HIDI Privileges use the header Mulberry colour on hover and focus", () => 
   );
 });
 
+test("checkout keeps guest purchase prominent and minimizes typing friction", () => {
+  const checkout = source("components/checkout-client.tsx");
+
+  assert.match(checkout, /Checkout as guest — no account required/);
+  assert.match(checkout, /autoComplete="email"/);
+  assert.match(checkout, /autoComplete="tel"/);
+  assert.match(checkout, /autoComplete="shipping given-name"/);
+  assert.match(checkout, /autoComplete="shipping address-line1"/);
+  assert.match(checkout, /autoComplete="shipping postal-code"/);
+  assert.match(checkout, /autoComplete="shipping address-level2"/);
+  assert.match(checkout, /autoComplete="shipping address-level1"/);
+  assert.match(checkout, /Required for delivery and order updates/);
+  assert.match(checkout, /\+ Add apartment \/ landmark/);
+  assert.match(checkout, /showAddressDetail &&/);
+  assert.match(checkout, /Pay securely/);
+
+  const field = cssRule("app/globals.css", ".checkout-field");
+  assert.equal(field.display, "grid");
+  assert.equal(cssRule("app/globals.css", ".checkout-optional-toggle").background, "transparent");
+});
+
 test("HIDI Fit only presents verified garment measurements", () => {
   const addToCart = source("components/add-to-cart.tsx");
   assert.match(addToCart, /Garment measurements/);
