@@ -3942,3 +3942,53 @@ body {
   font-size: 10px;
   font-weight: 700;
 }
+
+
+.checkout-payment-trust {
+  align-items: flex-start;
+}
+
+.checkout-payment-trust > div {
+  display: grid;
+  gap: 4px;
+}
+
+.checkout-payment-trust ul {
+  margin: 0;
+  padding-left: 17px;
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.checkout-delivery-status {
+  min-height: 20px;
+  margin-top: -2px;
+  color: #7b6f66;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.checkout-delivery-serviceable strong {
+  color: #4f6a48;
+}
+
+.checkout-delivery-alternate strong {
+  color: #7c5a28;
+}
+
+.checkout-delivery-unavailable {
+  color: #8b6f63;
+}
+
+@media (max-width: 620px) {
+  .checkout-payment-trust {
+    gap: 8px;
+  }
+
+  .checkout-payment-trust ul {
+    font-size: 8.5px;
+  }
+}
