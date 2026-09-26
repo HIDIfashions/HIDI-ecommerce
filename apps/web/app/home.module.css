@@ -13,16 +13,17 @@
 
 .hero {
   position: relative;
-  height: clamp(620px, calc(100svh - 108px), 860px);
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1672 / 941;
   overflow: hidden;
-  background: #6f7569;
+  background: #43523b;
   color: #fff;
 }
 
 .heroImage {
   object-fit: cover;
-  object-position: center top;
-  transform: scale(1.002);
+  object-position: center center;
 }
 
 .heroShade {
@@ -478,10 +479,12 @@
 @media (max-width: 760px) {
   .hero {
     height: clamp(560px, 74svh, 720px);
+    aspect-ratio: auto;
   }
 
   .heroImage {
-    object-position: 61% top;
+    object-fit: cover;
+    object-position: 56% center;
   }
 
   .heroShade {
