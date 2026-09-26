@@ -6,8 +6,8 @@ function withProtocol(value: string) {
 
 export function getSiteUrl(): URL {
   const configured =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
     process.env.SITE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
     process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() ||
     process.env.VERCEL_URL?.trim() ||
     LOCAL_SITE_URL;
