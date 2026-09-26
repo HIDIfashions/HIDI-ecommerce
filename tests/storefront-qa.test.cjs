@@ -354,6 +354,41 @@ test("HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and war
   assert.equal(filterCount.background, "var(--hidi-mulberry-clay, #591d20)");
 });
 
+test("Option 2 footer keeps the HIDI ending warm, editorial and responsive", () => {
+  const file = "app/globals.css";
+  const footer = cssRule(file, ".footer");
+  assert.equal(footer.background, "var(--footer-ivory)");
+  assert.equal(footer.color, "var(--footer-ink)");
+
+  const main = cssRule(file, ".footer-main");
+  assert.match(main.background, /#f5eadf/);
+  assert.match(main.background, /#efe1d5/);
+
+  const heading = cssRule(file, ".footer h3");
+  assert.equal(heading.color, "var(--footer-gold)");
+
+  const link = cssRule(file, ".footer-grid a");
+  assert.equal(link.color, "#553a36");
+  assert.equal(cssRule(file, ".footer-grid a:hover").color, "#591d20");
+
+  const bottom = cssRule(file, ".footer-bottom-shell");
+  assert.match(bottom.background, /var\(--footer-bottom\)/);
+
+  assert.equal(
+    cssRule(file, ".footer .footer-grid", "(max-width: 620px)")["grid-template-columns"],
+    "1fr 1fr",
+  );
+  assert.equal(
+    cssRule(file, ".footer .footer-bottom", "(max-width: 620px)")["flex-direction"],
+    "column",
+  );
+
+  const footerSource = source("components/site-footer.tsx");
+  assert.match(footerSource, /footer-bottom-shell/);
+  assert.match(footerSource, /Good clothes\. Brighter days\./);
+  assert.match(footerSource, /\/collections\/all/);
+});
+
 test("modal CSS bounds desktop size and allows content scrolling", () => {
   const modal = cssRule("components/product-contact-actions.module.css", ".modal");
   assert.equal(modal.width, "min(560px, calc(100% - 48px))");
