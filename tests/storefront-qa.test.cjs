@@ -144,61 +144,64 @@ function cssRule(relative, selector, media = null) {
 
 test("homepage launch fallback is bounded, premium and navigable", async () => {
   const root = await harness({ products: catalogue }).homepage();
-  assert.equal(root.querySelectorAll("[data-qa-product]").length, 8, "launch catalogue remains bounded");
-  assert.match(root.text, /FEATURED FOR LAUNCH/);
-  assert.match(root.text, /Best Sellers will appear here automatically once confirmed customer orders create real sales data/);
-  assert.equal(root.querySelector(".primaryButton").getAttribute("href"), "/collections/new-arrivals");
-  assert.equal(root.querySelector(".secondaryButton").getAttribute("href"), "/collections/all");
+  assert.equal(root.querySelectorAll("[data-qa-product]").length, 4, "premium homepage edit remains intentionally bounded");
+  assert.match(root.text, /THE HIDI EDIT/);
+  assert.match(root.text, /A considered first look at the styles defining HIDI/);
+  assert.equal(root.querySelector(".heroCta").getAttribute("href"), "/collections/new-arrivals");
   assert.equal(root.querySelector(".heroImage").getAttribute("src"), "/brand/hidi-hero-green-garden.png");
-  assert.match(root.querySelector(".heroImage").getAttribute("alt"), /HIDI signature purple saree editorial look/);
+  assert.match(root.querySelector(".heroImage").getAttribute("alt"), /HIDI editorial collection/);
+  assert.equal(root.querySelector(".inlineLink").getAttribute("href"), "/about");
   assertReferencesResolve(root);
 });
 
-test("homepage uses real best sellers when sales data exists", async () => {
+test("homepage premium edit keeps real best sellers first when sales data exists", async () => {
   const bestSellers = [product(6), product(2), product(9)];
   const root = await harness({ products: catalogue, bestSellers }).homepage();
   const cards = root.querySelectorAll("[data-qa-product]");
-  assert.deepEqual(cards.map((card) => card.getAttribute("data-qa-product")), bestSellers.map((item) => item.slug));
-  assert.match(root.text, /BEST SELLERS/);
-  assert.match(root.text, /Ranked by sold quantity from confirmed and fulfilled HIDI orders/);
+  assert.equal(cards.length, 4);
+  assert.deepEqual(
+    cards.slice(0, bestSellers.length).map((card) => card.getAttribute("data-qa-product")),
+    bestSellers.map((item) => item.slug),
+  );
+  assert.equal(cards[3].getAttribute("data-qa-product"), "style-0", "catalogue fallback only fills the remaining premium slot");
+  assert.match(root.text, /A rotating edit led by what customers are choosing now/);
 });
 
-test("homepage exposes the four core collection destinations", async () => {
+test("homepage exposes the four core collection destinations without a marketplace strip", async () => {
   const root = await harness({ products: catalogue }).homepage();
-  const strip = root.querySelector('[aria-label="Shop HIDI collections"]');
-  assert.ok(strip);
-  const links = strip.querySelectorAll("a");
-  assert.deepEqual(links.map((link) => link.getAttribute("href")), [
+  const hrefs = new Set(root.querySelectorAll("a").map((link) => link.getAttribute("href")));
+  for (const href of [
     "/collections/new-arrivals",
     "/collections/work-edit",
     "/collections/everyday",
     "/collections/occasion",
-  ]);
-  assert.equal(new Set(links.map((link) => link.text.trim())).size, 4);
+  ]) {
+    assert.equal(hrefs.has(href), true, `missing core collection destination ${href}`);
+  }
+  assert.equal(root.querySelector('[aria-label="Shop HIDI edits"]').querySelectorAll("a").length, 3);
 });
 
-test("homepage standard bar communicates four brand-wide promises", async () => {
+test("homepage service strip communicates four practical shopping promises", async () => {
   const root = await harness({ products: catalogue }).homepage();
-  const bar = root.querySelector('[aria-label="The HIDI standard"]');
+  const bar = root.querySelector('[aria-label="HIDI shopping services"]');
   assert.ok(bar);
-  const items = bar.querySelectorAll(".standardItem");
-  assert.equal(items.length, 4);
-  assert.match(bar.text, /Premium fabrics/);
-  assert.match(bar.text, /Quality checked/);
-  assert.match(bar.text, /Timeless design/);
-  assert.match(bar.text, /Human support/);
+  assert.equal(bar.querySelectorAll(".serviceItem").length, 4);
+  assert.match(bar.text, /Complimentary shipping/);
+  assert.match(bar.text, /Easy exchange/);
+  assert.match(bar.text, /Secure checkout/);
+  assert.match(bar.text, /Human shopping help/);
 });
 
-test("homepage WhatsApp support falls back safely when no business number is configured", async () => {
+test("homepage WhatsApp service falls back safely when no business number is configured", async () => {
   const root = await harness({ products: catalogue }).homepage();
-  const link = root.querySelector(".whatsappButton");
+  const link = root.querySelector(".serviceLink");
   assert.equal(link.getAttribute("href"), "/account");
   assert.equal(link.hasAttribute("target"), false);
 });
 
-test("homepage WhatsApp support creates a clean external handoff when configured", async () => {
+test("homepage WhatsApp service creates a clean external handoff when configured", async () => {
   const root = await harness({ products: catalogue, whatsappNumber: "+91 99999 99999" }).homepage();
-  const link = root.querySelector(".whatsappButton");
+  const link = root.querySelector(".serviceLink");
   assert.match(link.getAttribute("href"), /^https:\/\/wa\.me\/919999999999\?text=/);
   assert.equal(link.getAttribute("target"), "_blank");
   assert.equal(link.getAttribute("rel"), "noreferrer");
@@ -300,13 +303,16 @@ test("review CTA and review submission have at least 48px minimum height", () =>
   assert.ok(parseFloat(cssRule("app/review/[token]/review.module.css", ".submit")["min-height"]) >= 48);
 });
 
-test("homepage premium interactions preserve layout and reduced-motion behavior", () => {
+test("homepage premium interactions preserve desktop rhythm, mobile stacking and reduced motion", () => {
   const file = "app/home.module.css";
-  assert.equal(cssRule(file, ".collectionStrip")["grid-template-columns"], "repeat(4, 1fr)");
-  assert.equal(cssRule(file, ".productGrid")["grid-template-columns"], "repeat(4, 1fr)");
-  assert.equal(cssRule(file, ".collectionCard:hover .collectionCopy").background, "#541d1f");
-  assert.equal(cssRule(file, ".collectionCard", "(prefers-reduced-motion: reduce)").transition, "none");
-  assert.equal(cssRule(file, ".primaryButton", "(prefers-reduced-motion: reduce)").transition, "none");
+  assert.equal(cssRule(file, ".principleGrid")["grid-template-columns"], "repeat(3, minmax(0, 1fr))");
+  assert.equal(cssRule(file, ".edits")["grid-template-columns"], "repeat(3, minmax(0, 1fr))");
+  assert.equal(cssRule(file, ".productGrid")["grid-template-columns"], "repeat(4, minmax(0, 1fr))");
+  assert.equal(cssRule(file, ".serviceGrid")["grid-template-columns"], "repeat(4, minmax(0, 1fr))");
+  assert.equal(cssRule(file, ".principleGrid", "(max-width: 760px)")["grid-template-columns"], "1fr");
+  assert.equal(cssRule(file, ".edits", "(max-width: 760px)")["grid-template-columns"], "1fr");
+  assert.equal(cssRule(file, ".editCard img", "(prefers-reduced-motion: reduce)").transition, "none");
+  assert.equal(cssRule(file, ".serviceLink", "(prefers-reduced-motion: reduce)").transition, "none");
 });
 
 test("modal CSS bounds desktop size and allows content scrolling", () => {
