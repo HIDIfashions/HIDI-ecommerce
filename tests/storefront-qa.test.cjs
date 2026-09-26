@@ -315,6 +315,24 @@ test("homepage premium interactions preserve desktop rhythm, mobile stacking and
   assert.equal(cssRule(file, ".serviceLink", "(prefers-reduced-motion: reduce)").transition, "none");
 });
 
+test("manifesto uses the Ananya editorial image and responsive image-led layout", () => {
+  const page = source("app/page.tsx");
+  assert.match(page, /\/brand\/hidi-manifesto-ananya\.webp/);
+  assert.match(page, /Ananya in a royal purple HIDI occasion dress/);
+
+  const file = "app/home.module.css";
+  assert.equal(
+    cssRule(file, ".manifestoGrid")["grid-template-columns"],
+    "minmax(0, 1.04fr) minmax(420px, .96fr)",
+  );
+  assert.match(cssRule(file, ".manifestoVisual")["min-height"], /clamp\(500px/);
+  assert.equal(cssRule(file, ".manifestoImage")["object-position"], "68% center");
+  assert.equal(
+    cssRule(file, ".manifestoGrid", "(max-width: 760px)")["grid-template-columns"],
+    "1fr",
+  );
+});
+
 test("storefront typography is build-safe and does not depend on Google font fetching", () => {
   const layout = source("app/layout.tsx");
   assert.doesNotMatch(layout, /next\/font\/google/);
