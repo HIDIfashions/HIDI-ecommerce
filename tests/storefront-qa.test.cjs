@@ -148,6 +148,16 @@ function cssRule(relative, selector, media = null) {
   return declarations;
 }
 
+test("catalogue cards share media observers instead of creating one per card", () => {
+  const media = source("components/product-card-media.tsx");
+
+  assert.match(media, /useSyncExternalStore/);
+  assert.match(media, /mediaEnvironmentSubscribers/);
+  assert.match(media, /cardVisibilityObserver/);
+  assert.match(media, /observeCardVisibility\(node, setVisible\)/);
+  assert.doesNotMatch(media, /const observer = typeof IntersectionObserver/);
+});
+
 test("collection LCP prioritizes only the leading product media", () => {
   const browser = source("components/collection-browser.tsx");
   const card = source("components/product-card.tsx");
