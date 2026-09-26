@@ -411,6 +411,15 @@
   line-height: 1.5;
 }
 
+.serviceLink {
+  color: inherit;
+  transition: background .18s ease;
+}
+
+.serviceLink:hover {
+  background: #f1eee7;
+}
+
 .manifesto {
   background:
     radial-gradient(circle at 88% 10%, rgba(255,255,255,.045), transparent 28%),
@@ -687,7 +696,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .editCard img {
+  .editCard img,
+  .serviceLink {
     transition: none;
   }
 }
