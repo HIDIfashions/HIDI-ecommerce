@@ -156,14 +156,8 @@ export default async function Home() {
 
       <section className={styles.editSection}>
         <header className={styles.editHeader + " container"}>
-          <div>
-            <p className={styles.eyebrow}>SHOP BY EDIT</p>
-            <h2>Three moods. One HIDI point of view.</h2>
-          </div>
-          <p>
-            Move from work to everyday plans and occasion dressing without
-            losing the ease that defines the collection.
-          </p>
+          <p className={styles.eyebrow}>SHOP BY EDIT</p>
+          <h2>Work. Everyday. Occasion.</h2>
         </header>
 
         <div className={styles.edits} aria-label="Shop HIDI edits">
