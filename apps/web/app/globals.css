@@ -3770,3 +3770,107 @@ body {
     align-items: center;
   }
 }
+
+
+/* ==========================================================================
+   BAG PRODUCT GROUPING — one product card with per-size quantity controls
+   ========================================================================== */
+.cart-item-group .cart-group-info {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.cart-group-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.cart-group-heading > div {
+  min-width: 0;
+}
+
+.cart-group-heading h2 {
+  margin-bottom: 4px;
+}
+
+.cart-group-heading p {
+  margin: 2px 0 0;
+  color: var(--muted);
+}
+
+.cart-group-heading > strong {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cart-variant-list {
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.cart-variant-row {
+  min-height: 52px;
+  padding: 10px 0;
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.cart-variant-row:last-child {
+  border-bottom: 0;
+}
+
+.cart-variant-label {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cart-variant-label strong {
+  font-family: var(--font-product);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cart-variant-label span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.cart-item-group .cart-actions {
+  grid-column: auto;
+  align-self: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 620px) {
+  .cart-group-heading {
+    gap: 10px;
+  }
+
+  .cart-group-heading > strong {
+    font-size: 12px;
+  }
+
+  .cart-variant-row {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding: 11px 0;
+  }
+
+  .cart-item-group .cart-actions {
+    justify-content: flex-start;
+  }
+
+  .cart-variant-label {
+    justify-content: space-between;
+  }
+}
