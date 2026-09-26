@@ -315,6 +315,37 @@ test("homepage premium interactions preserve desktop rhythm, mobile stacking and
   assert.equal(cssRule(file, ".serviceLink", "(prefers-reduced-motion: reduce)").transition, "none");
 });
 
+test("HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and warm ivory", () => {
+  const globalCss = source("app/globals.css");
+  assert.match(
+    globalCss,
+    /HIDI AUTHORITATIVE BRAND TOKENS[\s\S]*--hidi-mulberry-clay:\s*#591d20;[\s\S]*--hidi-mulberry-gold:\s*#d5a24d;/,
+  );
+
+  const manifesto = cssRule("app/home.module.css", ".manifesto");
+  assert.match(manifesto.background, /#461416/);
+  assert.match(manifesto.background, /#591d20/);
+
+  const serviceStrip = cssRule("app/home.module.css", ".serviceStrip");
+  assert.match(serviceStrip.background, /var\(--home-soft\)/);
+
+  const selectedSize = cssRule("components/product-card.module.css", ".fitRibbonSizeActive");
+  assert.equal(selectedSize.background, "var(--card-brand)");
+  assert.equal(selectedSize.color, "#fff8ef");
+  assert.match(selectedSize["box-shadow"], /rgba\(213,162,77/);
+
+  const add = cssRule("components/product-card.module.css", ".addButton");
+  assert.equal(add.background, "var(--card-brand)");
+  assert.equal(add.color, "#fff8ef");
+
+  const buy = cssRule("components/product-card.module.css", ".buyButton");
+  assert.equal(buy.background, "#fffaf5");
+  assert.equal(buy.color, "var(--card-brand)");
+
+  const filterCount = cssRule("components/collection-browser.module.css", ".filterCount");
+  assert.equal(filterCount.background, "var(--hidi-mulberry-clay, #591d20)");
+});
+
 test("modal CSS bounds desktop size and allows content scrolling", () => {
   const modal = cssRule("components/product-contact-actions.module.css", ".modal");
   assert.equal(modal.width, "min(560px, calc(100% - 48px))");
