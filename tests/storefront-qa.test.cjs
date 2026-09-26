@@ -148,8 +148,8 @@ test("homepage launch fallback is bounded, premium and navigable", async () => {
   assert.match(root.text, /THE HIDI EDIT/);
   assert.match(root.text, /A considered first look at the styles defining HIDI/);
   assert.equal(root.querySelector(".heroCta").getAttribute("href"), "/collections/new-arrivals");
-  assert.equal(root.querySelector(".heroImage").getAttribute("src"), "/brand/hidi-hero-green-garden.png");
-  assert.match(root.querySelector(".heroImage").getAttribute("alt"), /HIDI editorial collection/);
+  assert.equal(root.querySelector(".heroImage").getAttribute("src"), "/brand/hidi-hero-green-garden-fullbody.webp");
+  assert.match(root.querySelector(".heroImage").getAttribute("alt"), /full-length garden editorial/);
   assert.equal(root.querySelector(".inlineLink").getAttribute("href"), "/about");
   assertReferencesResolve(root);
 });
@@ -301,6 +301,22 @@ test("review CTA and review submission have at least 48px minimum height", () =>
   assert.ok(parseFloat(cssRule("components/product-reviews.module.css", ".reviewButton")["min-height"]) >= 48);
   assert.equal(cssRule("components/product-reviews.module.css", ".reviewButton", "(max-width: 620px)").width, "100%");
   assert.ok(parseFloat(cssRule("app/review/[token]/review.module.css", ".submit")["min-height"]) >= 48);
+});
+
+test("homepage hero preserves the full-body garden composition on desktop", () => {
+  const file = "app/home.module.css";
+  const hero = cssRule(file, ".hero");
+  assert.equal(hero.width, "100%");
+  assert.equal(hero.height, "auto");
+  assert.equal(hero["aspect-ratio"], "1672 / 941");
+
+  const image = cssRule(file, ".heroImage");
+  assert.equal(image["object-fit"], "cover");
+  assert.equal(image["object-position"], "center center");
+
+  const mobileHero = cssRule(file, ".hero", "(max-width: 760px)");
+  assert.equal(mobileHero["aspect-ratio"], "auto");
+  assert.match(mobileHero.height, /clamp\(560px/);
 });
 
 test("homepage premium interactions preserve desktop rhythm, mobile stacking and reduced motion", () => {
