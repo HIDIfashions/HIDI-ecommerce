@@ -1,12 +1,12 @@
 .home {
   --home-ink: #2d302d;
   --home-muted: #6f716c;
-  --home-soft: #f8f6f1;
+  --home-soft: #fbf7f2;
   --home-paper: #ffffff;
-  --home-line: #dedfd9;
-  --home-gold: #a6814b;
-  --home-sage: #70786c;
-  --home-sage-deep: #555d52;
+  --home-line: #eadfd4;
+  --home-gold: var(--hidi-mulberry-gold, #d5a24d);
+  --home-brand: var(--hidi-mulberry-clay, #591d20);
+  --home-brand-deep: var(--hidi-mulberry-clay-deep, #461416);
   color: var(--home-ink);
   background: var(--home-paper);
 }
@@ -160,7 +160,7 @@
 .inlineLink {
   padding-bottom: 4px;
   border-bottom: 1px solid currentColor;
-  color: var(--home-sage-deep);
+  color: var(--home-brand-deep);
 }
 
 .inlineLink:hover {
@@ -365,9 +365,10 @@
 }
 
 .serviceStrip {
-  background: var(--home-soft);
-  border-top: 1px solid #e6e3dc;
-  border-bottom: 1px solid #e6e3dc;
+  background:
+    linear-gradient(180deg, #fffdfb 0%, var(--home-soft) 100%);
+  border-top: 1px solid #eadfd4;
+  border-bottom: 1px solid #eadfd4;
 }
 
 .serviceGrid {
@@ -384,7 +385,7 @@
 }
 
 .serviceItem + .serviceItem {
-  border-left: 1px solid #dedbd3;
+  border-left: 1px solid #eadfd4;
 }
 
 .serviceItem svg {
@@ -399,6 +400,7 @@
 }
 
 .serviceItem strong {
+  color: var(--home-brand);
   font-family: var(--font-product);
   font-size: 11px;
   font-weight: 600;
@@ -406,7 +408,7 @@
 }
 
 .serviceItem span {
-  color: #7a7b76;
+  color: #7b6a61;
   font-size: 9px;
   line-height: 1.5;
 }
@@ -417,14 +419,15 @@
 }
 
 .serviceLink:hover {
-  background: #f1eee7;
+  background: #f7eee8;
 }
 
 .manifesto {
   background:
-    radial-gradient(circle at 88% 10%, rgba(255,255,255,.045), transparent 28%),
-    linear-gradient(132deg, #697166 0%, #747c70 100%);
-  color: #f7f4ec;
+    radial-gradient(circle at 88% 10%, rgba(213,162,77,.10), transparent 28%),
+    radial-gradient(circle at 8% 92%, rgba(255,255,255,.035), transparent 32%),
+    linear-gradient(132deg, #461416 0%, #591d20 55%, #642326 100%);
+  color: #fff8ef;
 }
 
 .manifestoInner {
@@ -433,7 +436,7 @@
 }
 
 .manifesto .eyebrow {
-  color: #dcc58f;
+  color: var(--hidi-mulberry-gold-bright, #f1c36e);
 }
 
 .manifesto h2 {
@@ -449,13 +452,13 @@
   align-items: end;
   justify-content: space-between;
   gap: 48px;
-  border-top: 1px solid rgba(255,255,255,.23);
+  border-top: 1px solid rgba(226,181,108,.32);
 }
 
 .manifestoBottom p {
   max-width: 520px;
   margin: 0;
-  color: rgba(255,255,255,.76);
+  color: #dcc7b9;
   font-size: 12px;
   line-height: 1.75;
 }
@@ -494,11 +497,11 @@
 
   .serviceItem:nth-child(3) {
     border-left: 0;
-    border-top: 1px solid #dedbd3;
+    border-top: 1px solid #eadfd4;
   }
 
   .serviceItem:nth-child(4) {
-    border-top: 1px solid #dedbd3;
+    border-top: 1px solid #eadfd4;
   }
 }
 
@@ -687,7 +690,7 @@
   .serviceItem {
     min-height: 88px;
     border-left: 0 !important;
-    border-top: 1px solid #dedbd3;
+    border-top: 1px solid #eadfd4;
   }
 
   .serviceItem:first-child {
