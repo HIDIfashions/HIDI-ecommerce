@@ -253,7 +253,6 @@ function Gallery({
   const [pageVisible, setPageVisible] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(true);
   const [saveData, setSaveData] = useState(false);
-  const [loaded, setLoaded] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [preloadIndex, setPreloadIndex] = useState<number | null>(null);
@@ -561,7 +560,6 @@ function Gallery({
                   alt={active?.label ?? name}
                   sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
                   priority={priority && index === 0}
-                  ready={() => setLoaded(active?.id ?? "")}
                 />
 
                 {hover && preload?.kind === "image" && (
