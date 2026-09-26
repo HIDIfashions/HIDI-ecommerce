@@ -13,9 +13,9 @@
   --max: 1440px;
 
   /* HIDI typography tokens */
-  --font-sans: var(--font-manrope), "Helvetica Neue", Arial, sans-serif;
-  --font-display: var(--font-cormorant), Georgia, "Times New Roman", serif;
-  --font-product: var(--font-jost), "Futura", "Century Gothic", Arial, sans-serif;
+  --font-sans: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  --font-display: Georgia, "Times New Roman", Times, serif;
+  --font-product: "Futura", "Avenir Next", "Century Gothic", "Trebuchet MS", Arial, sans-serif;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-base: 1rem;
