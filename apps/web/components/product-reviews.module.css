@@ -53,3 +53,75 @@
 
 .verified { font-size: 11px; letter-spacing: .07em; }
 .card footer { font-size: 12px; }
+
+
+.overview {
+  margin-bottom: 28px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: minmax(180px, .7fr) minmax(260px, 1fr);
+  gap: 28px 42px;
+  border: 1px solid #ded7cd;
+  background: #fff;
+}
+
+.verifiedSummary {
+  color: #547052;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.distribution {
+  display: grid;
+  gap: 8px;
+}
+
+.distributionRow {
+  display: grid;
+  grid-template-columns: 34px minmax(120px, 1fr) 26px;
+  align-items: center;
+  gap: 10px;
+  color: #71665d;
+  font-size: 10px;
+}
+
+.distributionRow > span:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.distributionTrack {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eee6de;
+}
+
+.distributionFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #8e6e38;
+}
+
+.trustNote {
+  grid-column: 1 / -1;
+  margin: -8px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid #eee6de;
+  color: #766c62;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+@media (max-width: 620px) {
+  .overview {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px 16px;
+  }
+
+  .trustNote {
+    margin-top: -2px;
+  }
+}
