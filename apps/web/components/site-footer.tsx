@@ -45,7 +45,7 @@ function SocialLink({
   children: React.ReactNode;
 }) {
   if (!href) {
-    return <span className="social-link social-link-disabled" aria-label={label} title={label + " coming soon"}>{children}</span>;
+    return <span className="social-link social-link-disabled" aria-label={label + " coming soon"} aria-disabled="true" title={label + " coming soon"}>{children}</span>;
   }
   return (
     <a className="social-link" href={href} target="_blank" rel="noreferrer" aria-label={label} title={label}>
@@ -66,7 +66,7 @@ export function Footer() {
         <div className="footer-grid container">
         <div className="footer-brand">
           <Link className="footer-logo" href="/" aria-label="HIDI — Wear the Feeling">
-            <img src="/brand/hidi-logo-gold-inline.svg" alt="HIDI — Wear the Feeling" />
+            <img src="/brand/hidi-logo-gold-inline.svg" alt="" />
           </Link>
           <p className="muted">Indian wear with a calm point of view — made for work, everyday life and the moments in between.</p>
           <p className="footer-note">Wear the feeling.</p>
