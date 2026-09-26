@@ -8,7 +8,7 @@
 
 .heroImage {
   object-fit: cover;
-  object-position: center 24%;
+  object-position: center top;
   transform: scale(1.005);
 }
 
