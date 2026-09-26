@@ -39,21 +39,30 @@ export class ProductsService {
 
   async featured(limit = 4) {
     const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 8) : 4;
-    const best = await this.bestSellers(safeLimit);
+
+    // Before launch there may be no completed sales yet. Run the small fallback
+    // edit in parallel with ranking so the homepage never waits on an empty
+    // best-seller query before it can render its four cards.
+    const [best, fallback] = await Promise.all([
+      this.bestSellers(safeLimit),
+      this.prisma.product.findMany({
+        where: { status: "ACTIVE" },
+        orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
+        take: safeLimit,
+        include: cardInclude,
+      }),
+    ]);
+
+    if (!best.length) return fallback.map((product) => this.toCardView(product));
     if (best.length >= safeLimit) return best.slice(0, safeLimit);
 
-    const excluded = best.map((product: any) => product.id);
-    const fill = await this.prisma.product.findMany({
-      where: {
-        status: "ACTIVE",
-        ...(excluded.length ? { id: { notIn: excluded } } : {}),
-      },
-      orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
-      take: safeLimit - best.length,
-      include: cardInclude,
-    });
+    const rankedIds = new Set(best.map((product: any) => product.id));
+    const fill = fallback
+      .filter((product) => !rankedIds.has(product.id))
+      .slice(0, safeLimit - best.length)
+      .map((product) => this.toCardView(product));
 
-    return [...best, ...fill.map((product) => this.toCardView(product))];
+    return [...best, ...fill].slice(0, safeLimit);
   }
 
   async bestSellers(limit = 8) {
