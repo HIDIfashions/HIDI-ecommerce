@@ -3992,3 +3992,83 @@ body {
     font-size: 8.5px;
   }
 }
+
+
+/* ==========================================================================
+   ACCESSIBILITY / WCAG 2.2 — keyboard focus, skip navigation, reduced motion
+   ========================================================================== */
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: 12px;
+  z-index: 30000;
+  padding: 11px 15px;
+  transform: translateY(-180%);
+  border: 2px solid #fff8ef;
+  border-radius: 4px;
+  background: #591d20;
+  color: #fff8ef;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform .16s ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid #651f23;
+  outline-offset: 3px;
+}
+
+.footer :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible,
+.mobile-nav-panel :where(a, button):focus-visible {
+  outline-color: #f3c875;
+}
+
+#main-content:focus {
+  outline: none;
+}
+
+.mobile-nav-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,248,239,.28);
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.desktop-nav a[aria-current="page"],
+.mobile-nav-links a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+
+  .skip-link {
+    transition: none;
+  }
+}
