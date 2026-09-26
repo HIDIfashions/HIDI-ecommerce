@@ -1,11 +1,35 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import {
+  ArrowRight,
+  MessageCircle,
+  RefreshCcw,
+  ShieldCheck,
+  Truck,
+} from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { getBestSellers, getProducts } from "@/lib/api";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
+
+const principles = [
+  {
+    index: "01",
+    title: "Considered silhouettes",
+    copy: "Clean proportions that feel polished without becoming formal or overworked.",
+  },
+  {
+    index: "02",
+    title: "Comfort in the details",
+    copy: "Fabric, movement and finish are considered for the hours you actually wear them.",
+  },
+  {
+    index: "03",
+    title: "Quietly expressive",
+    copy: "Colour and craft bring character while the overall look stays calm and easy.",
+  },
+] as const;
 
 const edits = [
   {
@@ -28,6 +52,29 @@ const edits = [
   },
 ] as const;
 
+const services = [
+  {
+    icon: Truck,
+    title: "Complimentary shipping",
+    copy: "On orders above ₹1,499.",
+  },
+  {
+    icon: RefreshCcw,
+    title: "Easy exchange",
+    copy: "Simple exchange within 7 days.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure checkout",
+    copy: "Protected payment experience.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Human shopping help",
+    copy: "Fit and product support on WhatsApp.",
+  },
+] as const;
+
 export default async function Home() {
   const [catalogue, bestSellers] = await Promise.all([
     getProducts(),
@@ -36,11 +83,16 @@ export default async function Home() {
 
   const hasSales = bestSellers.length > 0;
   const featured = hasSales
-    ? [...bestSellers, ...catalogue.filter((product) => !bestSellers.some((best) => best.id === product.id))].slice(0, 4)
+    ? [
+        ...bestSellers,
+        ...catalogue.filter(
+          (product) => !bestSellers.some((best) => best.id === product.id),
+        ),
+      ].slice(0, 4)
     : catalogue.slice(0, 4);
 
   return (
-    <>
+    <div className={styles.home}>
       <section className={styles.hero}>
         <Image
           src="/brand/hidi-hero-green-garden.png"
@@ -61,47 +113,100 @@ export default async function Home() {
             for the life you actually live.
           </p>
           <Link href="/collections/new-arrivals" className={styles.heroCta}>
-            Shop new arrivals <ArrowRight size={15} strokeWidth={1.5} aria-hidden="true" />
+            Shop new arrivals
+            <ArrowRight size={15} strokeWidth={1.5} aria-hidden="true" />
           </Link>
         </div>
 
         <span className={styles.heroIndex}>HIDI · 01</span>
       </section>
 
-      <section className={styles.intro + " container"}>
-        <p className={styles.eyebrow}>THE HIDI POINT OF VIEW</p>
-        <div className={styles.introGrid}>
-          <h2>Indian wear,<br />edited with restraint.</h2>
-          <p>
-            We focus on proportion, fabric, colour and the way a piece feels when
-            you live in it. Nothing added just to make the page louder.
-          </p>
+      <section className={styles.intro}>
+        <div className="container">
+          <div className={styles.introLead}>
+            <div>
+              <p className={styles.eyebrow}>THE HIDI POINT OF VIEW</p>
+              <h2>Indian wear, made to feel effortless.</h2>
+            </div>
+
+            <div className={styles.introCopy}>
+              <p>
+                A modern wardrobe built around proportion, fabric and comfort —
+                designed for workdays, slow days and everything in between.
+              </p>
+              <Link href="/about" className={styles.inlineLink}>
+                About HIDI
+                <ArrowRight size={13} strokeWidth={1.5} aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+
+          <div className={styles.principleGrid}>
+            {principles.map((principle) => (
+              <article className={styles.principle} key={principle.index}>
+                <span>{principle.index}</span>
+                <div>
+                  <strong>{principle.title}</strong>
+                  <p>{principle.copy}</p>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className={styles.edits} aria-label="Shop HIDI edits">
-        {edits.map((edit) => (
-          <Link className={styles.editCard} href={edit.href} key={edit.href}>
-            <Image src={edit.image} alt="" fill sizes="(max-width: 760px) 100vw, 33vw" />
-            <span className={styles.editShade} aria-hidden="true" />
-            <span className={styles.editCopy}>
-              <small>{edit.eyebrow}</small>
-              <strong>{edit.title}</strong>
-              <span>Discover <ArrowRight size={13} strokeWidth={1.5} aria-hidden="true" /></span>
-            </span>
-          </Link>
-        ))}
+      <section className={styles.editSection}>
+        <header className={styles.editHeader + " container"}>
+          <div>
+            <p className={styles.eyebrow}>SHOP BY EDIT</p>
+            <h2>Three moods. One HIDI point of view.</h2>
+          </div>
+          <p>
+            Move from work to everyday plans and occasion dressing without
+            losing the ease that defines the collection.
+          </p>
+        </header>
+
+        <div className={styles.edits} aria-label="Shop HIDI edits">
+          {edits.map((edit) => (
+            <Link className={styles.editCard} href={edit.href} key={edit.href}>
+              <Image
+                src={edit.image}
+                alt=""
+                fill
+                sizes="(max-width: 760px) 100vw, 33vw"
+              />
+              <span className={styles.editShade} aria-hidden="true" />
+              <span className={styles.editCopy}>
+                <small>{edit.eyebrow}</small>
+                <strong>{edit.title}</strong>
+                <span>
+                  Discover
+                  <ArrowRight size={13} strokeWidth={1.5} aria-hidden="true" />
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className={styles.featured + " container"}>
         <header className={styles.sectionHeader}>
           <div>
-            <p className={styles.eyebrow}>{hasSales ? "MOST CHOSEN" : "NEW TO HIDI"}</p>
-            <h2>{hasSales ? "Pieces customers return to." : "A first look at HIDI."}</h2>
+            <p className={styles.eyebrow}>THE HIDI EDIT</p>
+            <h2>Pieces to live in now.</h2>
           </div>
-          <Link href="/collections/all" className={styles.textLink}>
-            Shop all <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
-          </Link>
+          <div className={styles.sectionAside}>
+            <p>
+              {hasSales
+                ? "A rotating edit led by what customers are choosing now."
+                : "A considered first look at the styles defining HIDI."}
+            </p>
+            <Link href="/collections/all" className={styles.textLink}>
+              Shop all
+              <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
+            </Link>
+          </div>
         </header>
 
         <div className={styles.productGrid}>
@@ -111,21 +216,36 @@ export default async function Home() {
         </div>
       </section>
 
+      <section className={styles.serviceStrip} aria-label="HIDI shopping services">
+        <div className={styles.serviceGrid + " container"}>
+          {services.map(({ icon: Icon, title, copy }) => (
+            <div className={styles.serviceItem} key={title}>
+              <Icon size={18} strokeWidth={1.45} aria-hidden="true" />
+              <div>
+                <strong>{title}</strong>
+                <span>{copy}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className={styles.manifesto}>
         <div className={styles.manifestoInner + " container"}>
-          <p className={styles.eyebrow}>HIDI</p>
-          <h2>Designed to feel considered.<br />Never complicated.</h2>
+          <p className={styles.eyebrow}>WEAR THE FEELING</p>
+          <h2>Designed to feel considered. Never complicated.</h2>
           <div className={styles.manifestoBottom}>
             <p>
-              Modern Indian silhouettes, thoughtful details and an experience
-              that gives the clothes room to speak.
+              Modern Indian silhouettes, thoughtful details and a shopping
+              experience that gives the clothes room to speak.
             </p>
             <Link href="/about" className={styles.lightLink}>
-              Discover our story <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
+              Discover our story
+              <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
             </Link>
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }
