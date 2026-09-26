@@ -1649,13 +1649,13 @@
 
 
 /* ==========================================================================
-   HIDI FIT RIBBON — branded size selector for catalogue cards
+   HIDI PREMIUM SIZE SELECTOR — quiet, clean and purchase-led
    ========================================================================== */
 .fitRibbonWrap {
   min-width: 0;
   display: grid;
-  gap: 5px;
-  margin-top: 8px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .fitRibbonLabel {
@@ -1663,20 +1663,20 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
 }
 
 .fitRibbonLabel span {
-  color: #b07a35;
+  color: #5a4540;
   font-family: var(--font-product);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: .12em;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .11em;
 }
 
 .fitRibbonLabel strong {
   min-width: 0;
-  color: #6a584d;
+  color: #887870;
   font-family: var(--font-product);
   font-size: 9px;
   font-weight: 500;
@@ -1684,12 +1684,11 @@
 }
 
 .fitRibbon {
-  position: relative;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 0;
+  gap: 7px;
+  padding: 0;
   overflow-x: auto;
   scrollbar-width: none;
   overscroll-behavior-inline: contain;
@@ -1699,89 +1698,135 @@
   display: none;
 }
 
+/* No decorative rule behind the sizes — whitespace is the separator. */
 .fitRibbon::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 1px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(183,124,49,.35) 0 7px,
-      transparent 7px 12px
-    );
-  transform: translateY(-50%);
-  pointer-events: none;
+  content: none;
 }
 
 .fitRibbonSize {
   position: relative;
   z-index: 1;
-  min-width: 38px;
-  height: 34px;
-  padding: 0 9px;
+  min-width: 40px;
+  height: 38px;
+  padding: 0 10px;
   flex: 0 0 auto;
   display: inline-grid;
   place-items: center;
-  border: 1px solid #ccbcae;
-  border-radius: 999px;
-  background: #fffaf5;
-  color: #4a3731;
+  border: 1px solid #d9cfc8;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #473834;
   font-family: var(--font-product);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 550;
   line-height: 1;
-  box-shadow: 0 0 0 3px #f3ecdf;
+  box-shadow: none;
   transition:
     background .16s ease,
     border-color .16s ease,
-    color .16s ease,
-    transform .16s ease,
-    box-shadow .16s ease;
+    color .16s ease;
 }
 
 .fitRibbonSize:not(:disabled):hover,
 .fitRibbonSize:not(:disabled):focus-visible {
-  border-color: #591d20;
-  color: #591d20;
-  transform: translateY(-1px);
+  border-color: var(--hidi-mulberry-clay, #591d20);
+  background: #fcf8f7;
+  color: var(--hidi-mulberry-clay, #591d20);
 }
 
 .fitRibbonSizeActive {
-  border-color: #591d20;
-  background: #591d20;
-  color: #fff8ef;
-  box-shadow:
-    0 0 0 3px #f3ecdf,
-    0 5px 12px rgba(89,29,32,.16);
+  border-color: var(--hidi-mulberry-clay, #591d20);
+  background: var(--hidi-mulberry-clay, #591d20);
+  color: #ffffff;
+  box-shadow: none;
 }
 
 .fitRibbonSizeActive::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -6px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #c99646;
-  transform: translateX(-50%);
+  content: none;
 }
 
 .fitRibbonSizeSoldOut {
-  border-color: #ddd2c8;
-  background: #f3eee8;
-  color: #a59b92;
-  opacity: .7;
+  border-color: #e3dcd6;
+  background: #ffffff;
+  color: #aaa09a;
+  opacity: .58;
   text-decoration: line-through;
-  box-shadow: 0 0 0 3px #f3ecdf;
+  box-shadow: none;
 }
 
 .fitRibbonNeedsChoice {
-  border-radius: 8px;
-  box-shadow: 0 0 0 2px rgba(89,29,32,.12);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(89,29,32,.12);
+}
+
+/* Desktop: one clear primary CTA, then the secondary purchase action. */
+@media (min-width: 621px) {
+  .desktopQuickShop .actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .desktopQuickShop .addButton,
+  .desktopQuickShop .buyButton {
+    min-height: 46px;
+  }
+
+  .desktopQuickShop .addButton {
+    background: var(--hidi-mulberry-clay, #591d20);
+    border-color: var(--hidi-mulberry-clay, #591d20);
+    color: #ffffff;
+  }
+
+  .desktopQuickShop .buyButton {
+    background: #ffffff;
+    border-color: var(--hidi-mulberry-clay, #591d20);
+    color: var(--hidi-mulberry-clay, #591d20);
+  }
+}
+
+/* Keep WhatsApp and sharing useful without competing with Add to Bag. */
+.secondaryActions {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.secondaryActions button {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-color: #ded5cf;
+  background: #ffffff;
+  color: #4f423d;
+  font-size: 10px !important;
+  font-weight: 550;
+  letter-spacing: .01em;
+  box-shadow: none;
+}
+
+.secondaryActions button:hover:not(:disabled) {
+  border-color: #8f6964;
+  background: #fcf8f7;
+  color: var(--hidi-mulberry-clay, #591d20);
+}
+
+.whatsappAction,
+.whatsappAction:disabled {
+  background: #ffffff !important;
+  border-color: #ded5cf !important;
+  color: #4f423d !important;
+  box-shadow: none !important;
+}
+
+.whatsappAction:hover:not(:disabled) {
+  background: #fcf8f7 !important;
+  border-color: #8f6964 !important;
+  color: var(--hidi-mulberry-clay, #591d20) !important;
+}
+
+.whatsappAction > svg {
+  color: #25D366;
 }
 
 @media (max-width: 620px) {
@@ -1798,11 +1843,12 @@
 
   .fitRibbonWrap {
     margin-top: 0;
-    gap: 4px;
+    gap: 5px;
   }
 
   .fitRibbon {
-    padding-block: 6px 8px;
+    gap: 6px;
+    padding-block: 4px 6px;
   }
 
   .fitRibbonSize {
@@ -1813,7 +1859,7 @@
   }
 
   .fitRibbonLabel span {
-    font-size: 7.5px;
+    font-size: 8px;
   }
 
   .fitRibbonLabel strong {
