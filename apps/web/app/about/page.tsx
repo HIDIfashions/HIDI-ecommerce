@@ -1,3 +1,23 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About HIDI",
+  description: "Discover HIDI's point of view: modern Indian wear designed for ease, confidence and everyday elegance.",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    type: "website",
+    url: "/about",
+    title: "About HIDI",
+    description: "Modern Indian wear designed for ease, confidence and everyday elegance.",
+    images: ["/brand/hidi-hero-green-garden-fullbody.webp"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About HIDI",
+    description: "Modern Indian wear designed for ease, confidence and everyday elegance.",
+    images: ["/brand/hidi-hero-green-garden-fullbody.webp"],
+  },
+};
 import Link from "next/link";
 import styles from "./about.module.css";
 

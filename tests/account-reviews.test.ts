@@ -90,3 +90,54 @@ test("account review prevents a second review for the same order item", async ()
     /already been reviewed/,
   );
 });
+
+
+test("public product reviews return verified count and full rating distribution", async () => {
+  const db = {
+    productReview: {
+      findMany: async () => [
+        {
+          id: "review-1",
+          rating: 5,
+          title: "Lovely",
+          body: "A genuinely comfortable piece.",
+          reviewerName: "Customer One",
+          verifiedPurchase: true,
+          createdAt: new Date("2026-09-25T00:00:00Z"),
+        },
+        {
+          id: "review-2",
+          rating: 3,
+          title: "Good",
+          body: "The fit was good for me overall.",
+          reviewerName: "Customer Two",
+          verifiedPurchase: true,
+          createdAt: new Date("2026-09-24T00:00:00Z"),
+        },
+      ],
+      aggregate: async () => ({
+        _avg: { rating: 4 },
+        _count: { rating: 2 },
+      }),
+      count: async () => 2,
+      groupBy: async () => [
+        { rating: 5, _count: { rating: 1 } },
+        { rating: 3, _count: { rating: 1 } },
+      ],
+    },
+  };
+
+  const service = new ReviewsService(db as never);
+  const result = await service.productReviews("product-1");
+
+  assert.equal(result.averageRating, 4);
+  assert.equal(result.reviewCount, 2);
+  assert.equal(result.verifiedReviewCount, 2);
+  assert.deepEqual(result.ratingDistribution, {
+    1: 0,
+    2: 0,
+    3: 1,
+    4: 0,
+    5: 1,
+  });
+});

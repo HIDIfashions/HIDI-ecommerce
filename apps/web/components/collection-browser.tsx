@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Filter, SlidersHorizontal, X } from "lucide-react";
 import { ApiProduct } from "@/lib/api";
 import { ProductCard } from "./product-card";
 import styles from "./collection-browser.module.css";
+import { focusFirst, trapFocus } from "@/lib/focus-management";
 
 const COLOR_SWATCHES: Record<string, string> = {
   Sage: "#9fa88d",
@@ -79,16 +80,32 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   const [sort, setSort] = useState("featured");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileColumns, setMobileColumns] = useState<1 | 2>(2);
+  const filterDialogRef = useRef<HTMLElement>(null);
+  const filterTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  function closeFilters(restoreFocus = true) {
+    setMobileOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => filterTriggerRef.current?.focus({ preventScroll: true }));
+    }
+  }
 
   useEffect(() => {
     if (!mobileOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => focusFirst(filterDialogRef.current), 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeFilters(true);
+        return;
+      }
+      trapFocus(event, filterDialogRef.current);
     };
     document.addEventListener("keydown", onKeyDown);
     return () => {
+      window.clearTimeout(timer);
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
     };
@@ -134,17 +151,17 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
 
   const sidebar = (
     <aside
-      className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ""}`}
+      ref={filterDialogRef}
+      className={`${styles.sidebar} ${styles.sidebarOpen}`}
       aria-label="Product filters"
-      aria-hidden={!mobileOpen}
       role="dialog"
-      aria-modal={mobileOpen ? "true" : undefined}
+      aria-modal="true"
     >
       <div className={styles.filterHeading}>
         <span className={styles.filterHeadingLabel}><SlidersHorizontal size={16} strokeWidth={1.6} /> Filter &amp; Sort</span>
         <span>
           {hasFilters && <button className={styles.clearButton} type="button" onClick={clearFilters}>Clear all</button>}
-          <button className={styles.drawerClose} type="button" aria-label="Close filters" onClick={() => setMobileOpen(false)}><X size={22} strokeWidth={1.5} /></button>
+          <button className={styles.drawerClose} type="button" aria-label="Close filters" onClick={() => closeFilters(true)}><X size={22} strokeWidth={1.5} /></button>
         </span>
       </div>
 
@@ -217,8 +234,8 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   );
 
   return <>
-    {mobileOpen && <button className={styles.drawerBackdrop} type="button" aria-label="Close filters" onClick={() => setMobileOpen(false)} />}
-    {sidebar}
+    {mobileOpen && <button className={styles.drawerBackdrop} type="button" tabIndex={-1} aria-hidden="true" onClick={() => closeFilters(true)} />}
+    {mobileOpen && sidebar}
 
     <div className={styles.layout}>
       <section className={styles.content}>
@@ -228,13 +245,13 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
             type="button"
             aria-haspopup="dialog"
             aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen(true)}
+            onClick={(event) => { filterTriggerRef.current = event.currentTarget; setMobileOpen(true); }}
           >
             <span>Filter &amp; Sort{activeControlCount ? ` (${activeControlCount})` : ""}</span>
             <ChevronRight size={17} strokeWidth={1.5} aria-hidden="true" />
           </button>
 
-          <span className={styles.mobileProductCount}>{filtered.length} Products</span>
+          <span className={styles.mobileProductCount} aria-live="polite" aria-atomic="true">{filtered.length} Products</span>
 
           <div className={styles.mobileGridSwitcher} aria-label="Product grid layout">
             <button
@@ -265,13 +282,13 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
               type="button"
               aria-haspopup="dialog"
               aria-expanded={mobileOpen}
-              onClick={() => setMobileOpen(true)}
+              onClick={(event) => { filterTriggerRef.current = event.currentTarget; setMobileOpen(true); }}
             >
               <Filter size={16} strokeWidth={1.6} />
               Filter
               {hasFilters && <span className={styles.filterCount}>{selectedSizes.length + selectedColors.length + selectedFabrics.length + (price ? 1 : 0)}</span>}
             </button>
-            <span className={styles.styleCount}>{filtered.length} styles</span>
+            <span className={styles.styleCount} aria-live="polite" aria-atomic="true">{filtered.length} styles</span>
           </div>
 
           <div className={styles.toolbarRight}>
@@ -286,8 +303,8 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
         </div>
 
         {filtered.length
-          ? <div className={`${styles.productGrid} ${mobileColumns === 1 ? styles.gridOne : styles.gridTwo}`}>{filtered.map((product) => (
-              <ProductCard key={product.id} product={product} />
+          ? <div className={`${styles.productGrid} ${mobileColumns === 1 ? styles.gridOne : styles.gridTwo}`}>{filtered.map((product, index) => (
+              <ProductCard key={product.id} product={product} priorityMedia={index < 2} />
             ))}</div>
           : <div className={styles.empty}><h2>No styles match those filters.</h2><p>Try clearing one or more filters.</p><button className="button button-light" type="button" onClick={clearFilters}>Clear filters</button></div>}
       </section>

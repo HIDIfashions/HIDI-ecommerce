@@ -12,15 +12,16 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <div className="announcement">
-        <span>Complimentary shipping above ₹1,499</span>
+        <span>Complimentary shipping on ₹1,499 and above</span>
         <span aria-hidden="true">•</span>
         <span>Easy exchange within 7 days</span>
         <span aria-hidden="true">•</span>
         <span>100% secure payments</span>
       </div>
       <Header />
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1}>{children}</main>
       <Footer />
     </>
   );

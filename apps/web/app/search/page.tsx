@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { ProductCard } from "@/components/product-card";
 import { getProducts } from "@/lib/api";
+
+export const metadata: Metadata = {
+  title: "Search",
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 

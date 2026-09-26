@@ -12,6 +12,24 @@ import { BROWSER_API_URL } from "@/lib/browser-api";
 const API = BROWSER_API_URL;
 export { PRODUCT_VARIANT_EVENT } from "@/lib/product-sharing";
 
+const FIT_MEASUREMENTS = [
+  { key: "bustMm", label: "Bust" },
+  { key: "waistMm", label: "Waist" },
+  { key: "hipMm", label: "Hip" },
+  { key: "shoulderMm", label: "Shoulder" },
+  { key: "sleeveLengthMm", label: "Sleeve" },
+  { key: "garmentLengthMm", label: "Length" },
+] as const;
+
+type FitMeasurementKey = typeof FIT_MEASUREMENTS[number]["key"];
+
+function formatFitMeasurement(mm: number | null | undefined, unit: "cm" | "in") {
+  if (mm == null) return "—";
+  if (unit === "in") return (mm / 25.4).toFixed(1);
+  const cm = mm / 10;
+  return Number.isInteger(cm) ? String(cm) : cm.toFixed(1);
+}
+
 export function AddToCart({ product }: { product: ApiProduct }) {
   const router = useRouter();
   const fitHelpId = useId();
@@ -25,6 +43,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   const [message, setMessage] = useState("");
   const [busyAction, setBusyAction] = useState<"add" | "buy" | null>(null);
   const [fitHelp, setFitHelp] = useState(false);
+  const [fitUnit, setFitUnit] = useState<"cm" | "in">("cm");
 
   useEffect(() => {
     function syncSelection(event: Event) {
@@ -40,10 +59,21 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   }, [product, colors]);
 
   function selectVariant(variant: ApiProduct["variants"][number]) {
-    setVariantId(variant.id);
+    const deselecting = variant.id === variantId;
+    setVariantId(deselecting ? "" : variant.id);
     setMessage("");
-    publishProductSelection({ slug: product.slug, variantId: variant.id, size: variant.size, color: variant.color });
+    publishProductSelection({
+      slug: product.slug,
+      variantId: deselecting ? "" : variant.id,
+      size: deselecting ? undefined : variant.size,
+      color: variant.color,
+    });
   }
+
+  const visibleFitMeasurements = FIT_MEASUREMENTS.filter(({ key }) =>
+    sizes.some((variant) => variant[key as FitMeasurementKey] != null),
+  );
+  const hasVerifiedFit = visibleFitMeasurements.length > 0;
 
   async function add(destination: "bag" | "checkout" = "bag") {
     if (!variantId) { setMessage("Please select a size."); return; }
@@ -83,8 +113,61 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           }}>{value}</button>)}
         </div>
       </>}
-      <div className="size-row-title"><strong>Select size</strong><button type="button" aria-expanded={fitHelp} aria-controls={fitHelpId} onClick={() => setFitHelp((value) => !value)}>Fit help</button></div>
-      {fitHelp && <p id={fitHelpId} className="inline-message">Fit can vary by style. Check the product details before choosing a size. If measurements are not listed, ask HIDI for this garment’s measurements before ordering.</p>}
+      <div className="size-row-title">
+        <strong>HIDI Fit</strong>
+        <button type="button" aria-expanded={fitHelp} aria-controls={fitHelpId} onClick={() => setFitHelp((value) => !value)}>
+          Size &amp; fit guide
+        </button>
+      </div>
+      {fitHelp && (
+        <section id={fitHelpId} className={styles.fitGuide} aria-label="HIDI size and fit guide">
+          <div className={styles.fitGuideHeader}>
+            <div>
+              <span>HIDI FIT</span>
+              <strong>Garment measurements</strong>
+            </div>
+            {hasVerifiedFit && (
+              <div className={styles.fitUnits} aria-label="Measurement unit">
+                <button type="button" aria-pressed={fitUnit === "cm"} onClick={() => setFitUnit("cm")}>cm</button>
+                <button type="button" aria-pressed={fitUnit === "in"} onClick={() => setFitUnit("in")}>in</button>
+              </div>
+            )}
+          </div>
+
+          {hasVerifiedFit ? (
+            <>
+              <div className={styles.fitTableWrap}>
+                <table className={styles.fitTable}>
+                  <thead>
+                    <tr>
+                      <th>Size</th>
+                      {visibleFitMeasurements.map(({ key, label }) => <th key={key}>{label}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sizes.map((variant) => (
+                      <tr key={variant.id} className={variant.id === variantId ? styles.fitSelectedRow : undefined}>
+                        <th>{variant.size}</th>
+                        {visibleFitMeasurements.map(({ key }) => (
+                          <td key={key}>{formatFitMeasurement(variant[key], fitUnit)}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className={styles.fitNote}>
+                These are finished-garment measurements, not body measurements. Bust, waist and hip are full garment circumferences. For the best comparison, measure a similar garment you already own.
+              </p>
+            </>
+          ) : (
+            <div className={styles.fitPending}>
+              <strong>Verified measurements are not published for this style yet.</strong>
+              <p>HIDI will not estimate garment measurements. Choose your usual size or use the WhatsApp fit support below if you want help before ordering.</p>
+            </div>
+          )}
+        </section>
+      )}
       <div className="sizes">
         {sizes.map((variant) => (
           <button
@@ -94,7 +177,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
             aria-pressed={variant.id === variantId}
             className={variant.id === variantId ? "selected" : ""}
             onClick={() => selectVariant(variant)}
-            title={variant.available < 1 ? "Sold out" : `${variant.available} available`}
+            title={variant.available < 1 ? "Sold out" : variant.id === variantId ? `Unselect size ${variant.size}` : `${variant.available} available`}
           >{variant.size}</button>
         ))}
       </div>

@@ -12,7 +12,19 @@ import { uploadSkuPhotoBatch } from "@/lib/sku-photo-batch";
 
 type Fields = { name: string; slug: string; categoryId: string; shortDescription: string; description: string; fabric: string; care: string; collectionIds: string[] };
 type Matrix = { colors: Array<{ name: string; hex: string }>; sizes: string[]; price: string; mrp: string; weight: string };
-type VariantDraft = { variant: ProductVariant; price: string; mrp: string; weight: string; active: boolean };
+type VariantDraft = {
+  variant: ProductVariant;
+  price: string;
+  mrp: string;
+  weight: string;
+  active: boolean;
+  bust: string;
+  waist: string;
+  hip: string;
+  shoulder: string;
+  sleeveLength: string;
+  garmentLength: string;
+};
 const blankFields = (): Fields => ({ name: "", slug: "", categoryId: "", shortDescription: "", description: "", fabric: "", care: "", collectionIds: [] });
 const blankMatrix = (): Matrix => ({ colors: [{ name: "", hex: "" }], sizes: ["M", "L", "XL", "XXL"], price: "", mrp: "", weight: "" });
 function toFields(p: ProductRecord): Fields {
@@ -22,6 +34,19 @@ function weights(value: string): number | null {
   if (!value.trim()) return null;
   if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 100000) throw new Error("Weight must be a whole number of grams, or left blank.");
   return Number(value);
+}
+function measurementMm(value: string, label: string, minMm: number, maxMm: number): number | null {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if (!/^\d+(?:\.\d)?$/.test(normalized)) throw new Error(`${label}: enter centimetres with at most one decimal place, or leave blank.`);
+  const mm = Math.round(Number(normalized) * 10);
+  if (!Number.isSafeInteger(mm) || mm < minMm || mm > maxMm) throw new Error(`${label}: value is outside the supported garment range.`);
+  return mm;
+}
+function measurementCm(value: number | null) {
+  if (value == null) return "";
+  const cm = value / 10;
+  return Number.isInteger(cm) ? String(cm) : cm.toFixed(1);
 }
 function matrixPayload(m: Matrix) {
   const pricePaise = rupeesToPaise(m.price, "Selling price");
@@ -159,7 +184,17 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
       const pricePaise = rupeesToPaise(editing.price, "Selling price"); const mrpPaise = rupeesToPaise(editing.mrp, "MRP");
       if (pricePaise > mrpPaise) throw new Error("Selling price cannot exceed MRP.");
       const result = await productApi<ProductRecord>(`/${encodeURIComponent(product.id)}/variants/${encodeURIComponent(editing.variant.id)}`, "PATCH", {
-        pricePaise, mrpPaise, weightGrams: weights(editing.weight), active: editing.active, expectedUpdatedAt: product.updatedAt,
+        pricePaise,
+        mrpPaise,
+        weightGrams: weights(editing.weight),
+        active: editing.active,
+        bustMm: measurementMm(editing.bust, "Garment bust", 200, 3000),
+        waistMm: measurementMm(editing.waist, "Garment waist", 200, 3000),
+        hipMm: measurementMm(editing.hip, "Garment hip", 200, 3000),
+        shoulderMm: measurementMm(editing.shoulder, "Shoulder", 100, 1000),
+        sleeveLengthMm: measurementMm(editing.sleeveLength, "Sleeve length", 50, 1500),
+        garmentLengthMm: measurementMm(editing.garmentLength, "Garment length", 100, 2500),
+        expectedUpdatedAt: product.updatedAt,
       });
       accept(result); setEditing(null); setMessage("SKU selling details saved. Historical orders and stock quantities were not changed.");
     });
@@ -270,15 +305,40 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
 
     {product && <>
       <section className={styles.card}>
-        <div className={styles.sectionTitle}><span>02</span><div><h2>SKUs & photography</h2><p>{product.variants.length} SKUs · {product.variants.reduce((n, v) => n + (v.inventory?.onHand ?? 0), 0)} pieces on hand. Add quantities only through Receive Stock.</p></div></div>
+        <div className={styles.sectionTitle}><span>02</span><div><h2>SKUs, HIDI Fit & photography</h2><p>{product.variants.length} SKUs · {product.variants.reduce((n, v) => n + (v.inventory?.onHand ?? 0), 0)} pieces on hand. Add quantities only through Receive Stock.</p></div></div>
         <label className={styles.inlineCheck}><input type="checkbox" checked={photoForColor} onChange={e => setPhotoForColor(e.target.checked)} disabled={busy || pending} /> Apply photo changes (add or remove) to all existing sizes of that colour</label>
         <p className={styles.notice}>Select up to 8 photos at a time, up to 5 MB each. Choosing files starts the upload. Uploads are saved separately from stock receipts. Keep this page open until the batch finishes.</p>
         {pending && <p className={styles.notice}>Save or cancel your pending edits before uploading photos, publishing or returning SKUs to a receipt.</p>}
         <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>SKU / colour / size</th><th>Selling / MRP</th><th>Stock</th><th>Photos</th><th>Actions</th></tr></thead><tbody>
-          {product.variants.map(v => <tr key={v.id}><td><strong>{v.color} / {v.size}</strong><small>{v.sku}</small><span className={styles.smallBadge}>{v.active ? "Enabled" : "Disabled"}</span></td><td>{money(v.pricePaise)}<small>MRP {money(v.mrpPaise)}</small></td><td>{v.inventory?.onHand ?? 0} on hand<small>{v.inventory?.reserved ?? 0} reserved</small></td><td><div className={styles.thumbnails}>{v.images.length ? v.images.map(photo => <span className={styles.photoThumb} key={photo.id}><img src={photo.url} alt={photo.alt || `${v.color} ${v.size}`} loading="lazy" /><button type="button" className={styles.photoRemove} disabled={busy || pending} onClick={() => removePhoto(v, photo)} aria-label={`Remove photo from ${photoForColor ? `all ${v.color} sizes` : v.sku}`} title="Remove photo">×</button></span>) : <small>No photos</small>}</div><small>{v.images.length} photo{v.images.length === 1 ? "" : "s"}</small></td><td><div className={styles.rowActions}><button type="button" disabled={busy || pending} onClick={() => setEditing({ variant: v, price: rupees(v.pricePaise), mrp: rupees(v.mrpPaise), weight: v.weightGrams?.toString() ?? "", active: v.active })}>Edit SKU</button><label className={styles.fileButton} aria-disabled={busy || pending}>Add photos<input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" disabled={busy || pending} onChange={e => { const files = Array.from(e.currentTarget.files ?? []); e.currentTarget.value = ""; if (files.length) upload(v, files); }} /></label></div></td></tr>)}
+          {product.variants.map(v => <tr key={v.id}><td><strong>{v.color} / {v.size}</strong><small>{v.sku}</small><span className={styles.smallBadge}>{v.active ? "Enabled" : "Disabled"}</span>{[v.bustMm, v.waistMm, v.hipMm, v.shoulderMm, v.sleeveLengthMm, v.garmentLengthMm].some(value => value != null) && <span className={styles.smallBadge}> · HIDI Fit ready</span>}</td><td>{money(v.pricePaise)}<small>MRP {money(v.mrpPaise)}</small></td><td>{v.inventory?.onHand ?? 0} on hand<small>{v.inventory?.reserved ?? 0} reserved</small></td><td><div className={styles.thumbnails}>{v.images.length ? v.images.map(photo => <span className={styles.photoThumb} key={photo.id}><img src={photo.url} alt={photo.alt || `${v.color} ${v.size}`} loading="lazy" /><button type="button" className={styles.photoRemove} disabled={busy || pending} onClick={() => removePhoto(v, photo)} aria-label={`Remove photo from ${photoForColor ? `all ${v.color} sizes` : v.sku}`} title="Remove photo">×</button></span>) : <small>No photos</small>}</div><small>{v.images.length} photo{v.images.length === 1 ? "" : "s"}</small></td><td><div className={styles.rowActions}><button type="button" disabled={busy || pending} onClick={() => setEditing({
+  variant: v,
+  price: rupees(v.pricePaise),
+  mrp: rupees(v.mrpPaise),
+  weight: v.weightGrams?.toString() ?? "",
+  active: v.active,
+  bust: measurementCm(v.bustMm),
+  waist: measurementCm(v.waistMm),
+  hip: measurementCm(v.hipMm),
+  shoulder: measurementCm(v.shoulderMm),
+  sleeveLength: measurementCm(v.sleeveLengthMm),
+  garmentLength: measurementCm(v.garmentLengthMm),
+})}>Edit SKU</button><label className={styles.fileButton} aria-disabled={busy || pending}>Add photos<input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" disabled={busy || pending} onChange={e => { const files = Array.from(e.currentTarget.files ?? []); e.currentTarget.value = ""; if (files.length) upload(v, files); }} /></label></div></td></tr>)}
         </tbody></table></div>
         {editing && <form onSubmit={saveVariant} className={styles.variantEdit}><h3>Edit {editing.variant.color} / {editing.variant.size}</h3><p>SKU, colour, size and stock remain unchanged.</p><fieldset disabled={busy} className={styles.fieldset}><div className={styles.grid}>
-          <label>Selling price ₹<input required inputMode="decimal" value={editing.price} onChange={e => setEditing({ ...editing, price: e.target.value })} /></label><label>MRP ₹<input required inputMode="decimal" value={editing.mrp} onChange={e => setEditing({ ...editing, mrp: e.target.value })} /></label><label>Weight (grams)<input inputMode="numeric" value={editing.weight} onChange={e => setEditing({ ...editing, weight: e.target.value })} /></label><label className={styles.inlineCheck}><input type="checkbox" checked={editing.active} onChange={e => setEditing({ ...editing, active: e.target.checked })} />SKU enabled</label></div><div className={styles.actions}><button type="button" onClick={() => setEditing(null)}>Cancel SKU edit</button><button type="submit" className={styles.primary}>Save SKU</button></div></fieldset></form>}
+          <label>Selling price ₹<input required inputMode="decimal" value={editing.price} onChange={e => setEditing({ ...editing, price: e.target.value })} /></label><label>MRP ₹<input required inputMode="decimal" value={editing.mrp} onChange={e => setEditing({ ...editing, mrp: e.target.value })} /></label><label>Weight (grams)<input inputMode="numeric" value={editing.weight} onChange={e => setEditing({ ...editing, weight: e.target.value })} /></label><label className={styles.inlineCheck}><input type="checkbox" checked={editing.active} onChange={e => setEditing({ ...editing, active: e.target.checked })} />SKU enabled</label>
+          <div className={styles.wide}>
+            <p className={styles.label}>HIDI Fit · verified garment measurements (cm)</p>
+            <p className={styles.notice}>Enter the finished garment measurements for this exact size. Bust, waist and hip are full garment circumferences—not body measurements. Leave any unverified value blank.</p>
+            <div className={styles.threeGrid}>
+              <label>Garment bust (cm)<input inputMode="decimal" value={editing.bust} onChange={e => setEditing({ ...editing, bust: e.target.value })} placeholder="e.g. 101.6" /></label>
+              <label>Garment waist (cm)<input inputMode="decimal" value={editing.waist} onChange={e => setEditing({ ...editing, waist: e.target.value })} placeholder="e.g. 96.5" /></label>
+              <label>Garment hip (cm)<input inputMode="decimal" value={editing.hip} onChange={e => setEditing({ ...editing, hip: e.target.value })} placeholder="e.g. 106.7" /></label>
+              <label>Shoulder (cm)<input inputMode="decimal" value={editing.shoulder} onChange={e => setEditing({ ...editing, shoulder: e.target.value })} placeholder="e.g. 38.1" /></label>
+              <label>Sleeve length (cm)<input inputMode="decimal" value={editing.sleeveLength} onChange={e => setEditing({ ...editing, sleeveLength: e.target.value })} placeholder="e.g. 55.9" /></label>
+              <label>Garment length (cm)<input inputMode="decimal" value={editing.garmentLength} onChange={e => setEditing({ ...editing, garmentLength: e.target.value })} placeholder="e.g. 114.3" /></label>
+            </div>
+          </div>
+        </div><div className={styles.actions}><button type="button" onClick={() => setEditing(null)}>Cancel SKU edit</button><button type="submit" className={styles.primary}>Save SKU</button></div></fieldset></form>}
       </section>
 
       <section className={styles.card}>

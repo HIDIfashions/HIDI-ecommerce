@@ -32,6 +32,13 @@ type CheckoutCart = {
 };
 type Attempt = { fingerprint: string; token: string; walletPaise: number };
 
+type DeliveryCheck =
+  | { status: "idle" }
+  | { status: "checking"; pin: string }
+  | { status: "serviceable"; pin: string; city?: string | null; district?: string | null; stateCode?: string | null }
+  | { status: "alternate"; pin: string; city?: string | null; district?: string | null; stateCode?: string | null }
+  | { status: "unavailable"; pin: string };
+
 function cartSignature(cart: CheckoutCart) {
   return JSON.stringify([cart.subtotalPaise, cart.totalPaise, cart.items.map((item) => [item.id, item.variant?.id, item.quantity, item.lineTotalPaise])]);
 }
@@ -49,6 +56,9 @@ export function CheckoutClient() {
   const [walletInput, setWalletInput] = useState("");
   const [prepared, setPrepared] = useState<PreparedCheckout | null>(null);
   const [reloadCart, setReloadCart] = useState(0);
+  const [showAddressDetail, setShowAddressDetail] = useState(false);
+  const [deliveryCheck, setDeliveryCheck] = useState<DeliveryCheck>({ status: "idle" });
+  const deliveryController = useRef<AbortController | null>(null);
   const attempt = useRef<Attempt | null>(null);
   const lock = useRef(false);
   const lifecycle = useRef({ active: false, revision: 0, userId: null as string | null, cartSignature: "" });
@@ -97,6 +107,7 @@ export function CheckoutClient() {
       lifecycle.current.active = false;
       lifecycle.current.revision += 1;
       request.current?.abort();
+      deliveryController.current?.abort();
       payment.current?.close?.();
       window.removeEventListener("hidi-auth-updated", syncAuth);
       window.removeEventListener("storage", onStorage);
@@ -130,6 +141,82 @@ export function CheckoutClient() {
     }).catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Unable to load bag"); });
     return () => controller.abort();
   }, [reloadCart]);
+
+  async function checkDeliveryPin(pinValue: string, form: HTMLFormElement | null) {
+    const pin = pinValue.replace(/\D/g, "").slice(0, 6);
+    deliveryController.current?.abort();
+
+    if (!/^\d{6}$/.test(pin)) {
+      setDeliveryCheck({ status: "idle" });
+      return;
+    }
+
+    const controller = new AbortController();
+    deliveryController.current = controller;
+    setDeliveryCheck({ status: "checking", pin });
+
+    try {
+      const response = await fetch(`${API}/checkout/delivery-serviceability?pin=${encodeURIComponent(pin)}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (controller.signal.aborted) return;
+
+      if (!response.ok || typeof payload?.serviceable !== "boolean") {
+        setDeliveryCheck({ status: "unavailable", pin });
+        return;
+      }
+
+      const next = {
+        pin,
+        city: typeof payload.city === "string" ? payload.city : null,
+        district: typeof payload.district === "string" ? payload.district : null,
+        stateCode: typeof payload.stateCode === "string" ? payload.stateCode : null,
+      };
+
+      if (form) {
+        if (next.city) {
+          const cityField = form.elements.namedItem("city");
+          if (cityField instanceof HTMLInputElement && !cityField.value.trim()) {
+            cityField.value = next.city;
+          }
+        }
+        if (next.stateCode && next.stateCode.length > 2) {
+          const stateField = form.elements.namedItem("state");
+          if (stateField instanceof HTMLInputElement && !stateField.value.trim()) {
+            stateField.value = next.stateCode;
+          }
+        }
+      }
+
+      setDeliveryCheck(payload.serviceable
+        ? { status: "serviceable", ...next }
+        : { status: "alternate", ...next });
+    } catch {
+      if (!controller.signal.aborted) setDeliveryCheck({ status: "unavailable", pin });
+    }
+  }
+
+  function focusCheckoutProblem(message: string) {
+    const form = document.querySelector<HTMLFormElement>(".checkout-form");
+    if (!form) return;
+
+    const lower = message.toLowerCase();
+    const fieldName =
+      lower.includes("email") ? "email" :
+      lower.includes("mobile") || lower.includes("phone") ? "phone" :
+      lower.includes("pin") || lower.includes("delivery address") ? "postalCode" :
+      lower.includes("address") ? "line1" :
+      null;
+
+    if (!fieldName) return;
+    const field = form.elements.namedItem(fieldName);
+    if (field instanceof HTMLElement) {
+      field.focus();
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -223,7 +310,11 @@ export function CheckoutClient() {
       });
       rzp.open();
     } catch (cause) {
-      if (current()) setError(cause instanceof Error ? cause.message : "Unable to start payment");
+      if (current()) {
+        const message = cause instanceof Error ? cause.message : "Unable to start payment";
+        setError(message);
+        focusCheckoutProblem(message);
+      }
       // Preserve the key on ambiguous failure: a server-side reservation may exist.
       release();
     }
@@ -236,6 +327,7 @@ export function CheckoutClient() {
   const previewWallet = useWallet ? (walletAmountPaise(walletInput, gross, gross) ?? 0) : 0;
   const applied = prepared?.walletAppliedPaise ?? previewWallet;
   const payable = prepared?.amountPaise ?? Math.max(0, gross - previewWallet);
+  const complimentaryShipping = gross >= 149900;
 
   return <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
@@ -263,7 +355,9 @@ export function CheckoutClient() {
             <strong>{formatWalletPaise(item.lineTotalPaise)}</strong>
           </Link>
         ))}
+        {complimentaryShipping && <div className="checkout-mobile-shipping-row"><span>Shipping</span><strong>Complimentary</strong></div>}
         <div className="checkout-mobile-total-row"><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div>
+        <Link href="/cart" className="checkout-edit-bag">Edit bag</Link>
       </div>
     </details>
 
@@ -271,39 +365,172 @@ export function CheckoutClient() {
       <form className="checkout-form" onSubmit={submit} onChange={() => { if (!lock.current) { invalidate(false); setError(""); } }}>
         <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <section>
-            <h2>Contact</h2>
-            <input
-              key={`${accountId ?? "guest"}:${signedInEmail}`}
-              name="email"
-              aria-label="Email address"
-              placeholder="Email address"
-              type="email"
-              defaultValue={signedInEmail}
-              required
-            />
+            <div className="checkout-section-heading">
+              <span className="checkout-step">01</span>
+              <div>
+                <h2>Contact</h2>
+                <p>{accountId ? "We’ll use these details for your order." : "Checkout as guest — no account required."}</p>
+              </div>
+            </div>
+
+            <label className="checkout-field">
+              <span>Email address</span>
+              <input
+                key={`${accountId ?? "guest"}:${signedInEmail}`}
+                name="email"
+                aria-label="Email address"
+                placeholder="you@example.com"
+                type="email"
+                autoComplete="email"
+                defaultValue={signedInEmail}
+                required
+              />
+            </label>
+
             {accountId && signedInPhone ? <>
               <input type="hidden" name="phone" value={signedInPhone} />
-              <div
-                aria-label="Verified mobile number"
-                title="Verified mobile number used to sign in"
-                style={{
-                  border: "1px solid #d8d3cb",
-                  minHeight: 52,
-                  padding: "0 14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  background: "#fcf9f9",
-                }}
-              >
-                <span>{signedInPhone.replace(/^\+91/, "+91 ")}</span>
-                <small style={{ opacity: 0.65, whiteSpace: "nowrap" }}>Verified</small>
+              <div className="checkout-verified-phone" aria-label="Verified mobile number" title="Verified mobile number used to sign in">
+                <span>
+                  <small>Mobile number</small>
+                  <strong>{signedInPhone.replace(/^\+91/, "+91 ")}</strong>
+                </span>
+                <b>Verified</b>
               </div>
-            </> : <input name="phone" aria-label="Mobile number" placeholder="Mobile number" inputMode="tel" required />}
+            </> : (
+              <label className="checkout-field">
+                <span>Mobile number</span>
+                <input
+                  name="phone"
+                  aria-label="Mobile number"
+                  placeholder="+91"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={18}
+                  required
+                />
+                <small>Required for delivery and order updates.</small>
+              </label>
+            )}
           </section>
-          <section><h2>Delivery address</h2><div className="two-col"><input name="firstName" aria-label="First name" placeholder="First name" required /><input name="lastName" aria-label="Last name" placeholder="Last name" /></div><input name="line1" aria-label="Address" placeholder="Address" required /><input name="line2" aria-label="Apartment, suite or landmark" placeholder="Apartment, suite, landmark (optional)" /><div className="two-col"><input name="postalCode" aria-label="PIN code" placeholder="PIN code" inputMode="numeric" pattern="[0-9]{6}" required /><input name="city" aria-label="City" placeholder="City" required /></div><div className="two-col"><input name="state" aria-label="State" placeholder="State" required /><input aria-label="Country" value="India" disabled readOnly /></div></section>
-          <section><h2>Payment</h2>
+
+          <section>
+            <div className="checkout-section-heading">
+              <span className="checkout-step">02</span>
+              <div>
+                <h2>Delivery address</h2>
+                <p>Where should we send your HIDI order?</p>
+              </div>
+            </div>
+
+            <div className="two-col">
+              <label className="checkout-field">
+                <span>First name</span>
+                <input name="firstName" aria-label="First name" autoComplete="shipping given-name" autoCapitalize="words" required />
+              </label>
+              <label className="checkout-field">
+                <span>Last name <small>Optional</small></span>
+                <input name="lastName" aria-label="Last name" autoComplete="shipping family-name" autoCapitalize="words" />
+              </label>
+            </div>
+
+            <label className="checkout-field">
+              <span>House / building / street</span>
+              <input name="line1" aria-label="House, building and street address" autoComplete="shipping address-line1" autoCapitalize="words" required />
+            </label>
+
+            <button
+              type="button"
+              className="checkout-optional-toggle"
+              aria-expanded={showAddressDetail}
+              aria-controls="checkout-address-detail"
+              onClick={() => setShowAddressDetail((value) => !value)}
+            >
+              {showAddressDetail ? "Remove apartment / landmark" : "+ Add apartment / landmark"}
+              <span>Optional</span>
+            </button>
+
+            {showAddressDetail && (
+              <label className="checkout-field" id="checkout-address-detail">
+                <span>Apartment, floor or landmark <small>Optional</small></span>
+                <input name="line2" aria-label="Apartment, floor or landmark" autoComplete="shipping address-line2" autoCapitalize="words" />
+              </label>
+            )}
+
+            <div className="two-col">
+              <label className="checkout-field">
+                <span>PIN code</span>
+                <input
+                  name="postalCode"
+                  aria-label="PIN code"
+                  aria-describedby="checkout-pin-status"
+                  inputMode="numeric"
+                  autoComplete="shipping postal-code"
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  title="Enter a 6-digit PIN code"
+                  onInput={(event) => {
+                    event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 6);
+                    if (deliveryCheck.status !== "idle" && deliveryCheck.pin !== event.currentTarget.value) {
+                      const form = event.currentTarget.form;
+                      if (form && "city" in deliveryCheck && deliveryCheck.city) {
+                        const cityField = form.elements.namedItem("city");
+                        if (cityField instanceof HTMLInputElement && cityField.value === deliveryCheck.city) cityField.value = "";
+                      }
+                      if (form && "stateCode" in deliveryCheck && deliveryCheck.stateCode && deliveryCheck.stateCode.length > 2) {
+                        const stateField = form.elements.namedItem("state");
+                        if (stateField instanceof HTMLInputElement && stateField.value === deliveryCheck.stateCode) stateField.value = "";
+                      }
+                      setDeliveryCheck({ status: "idle" });
+                    }
+                  }}
+                  onBlur={(event) => void checkDeliveryPin(event.currentTarget.value, event.currentTarget.form)}
+                  required
+                />
+              </label>
+              <label className="checkout-field">
+                <span>City</span>
+                <input name="city" aria-label="City" autoComplete="shipping address-level2" autoCapitalize="words" required />
+              </label>
+            </div>
+
+            <div
+              id="checkout-pin-status"
+              className={`checkout-delivery-status checkout-delivery-${deliveryCheck.status}`}
+              aria-live="polite"
+            >
+              {deliveryCheck.status === "checking" && <span>Checking delivery availability…</span>}
+              {deliveryCheck.status === "serviceable" && (
+                <span><strong>Delivery available</strong>{deliveryCheck.city ? ` to ${deliveryCheck.city}` : ""}. Prepaid delivery is supported for this PIN code.</span>
+              )}
+              {deliveryCheck.status === "alternate" && (
+                <span><strong>We’ll confirm the best carrier for this PIN.</strong>{deliveryCheck.city ? ` ${deliveryCheck.city} is recognised` : ""}; you can continue checkout.</span>
+              )}
+              {deliveryCheck.status === "unavailable" && (
+                <span>Live delivery check is temporarily unavailable. You can continue checkout; HIDI will verify delivery before dispatch.</span>
+              )}
+            </div>
+
+            <div className="two-col">
+              <label className="checkout-field">
+                <span>State</span>
+                <input name="state" aria-label="State" autoComplete="shipping address-level1" autoCapitalize="words" required />
+              </label>
+              <label className="checkout-field">
+                <span>Country</span>
+                <input aria-label="Country" autoComplete="shipping country-name" value="India" disabled readOnly />
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <div className="checkout-section-heading">
+              <span className="checkout-step">03</span>
+              <div>
+                <h2>Payment</h2>
+                <p>Review rewards, then continue to secure payment.</p>
+              </div>
+            </div>
             {walletEnabled && <div className={walletStyles.checkoutWallet}>
               {!accountId ? <p className={walletStyles.note}><Link href="/account">Sign in</Link> to view and use your HIDI rewards. You can also continue as a guest.</p>
                 : wallet.loading && !wallet.summary ? <p role="status">Loading your rewards…</p>
@@ -316,7 +543,25 @@ export function CheckoutClient() {
                 </> : null}
               {useWallet && (wallet.error || wallet.unavailable) && <button className={walletStyles.textButton} type="button" onClick={() => { invalidate(false); setUseWallet(false); setWalletInput(""); setError(""); }}>Continue without rewards</button>}
             </div>}
-            {payable > 0 ? <div className="payment-placeholder"><strong>Razorpay secure payment</strong><span>UPI · Cards · Net banking · Wallets</span></div> : <div className="payment-placeholder"><strong>Pay with HIDI rewards</strong><span>No cash payment needed if the final amount is fully covered.</span></div>}
+            {payable > 0 ? (
+              <div className="payment-placeholder checkout-payment-trust">
+                <div>
+                  <strong>Razorpay secure payment</strong>
+                  <span>UPI · Cards · Net banking · Wallets</span>
+                </div>
+                <ul>
+                  <li>Payment details are handled by Razorpay.</li>
+                  <li>Your selected stock is reserved while payment is prepared.</li>
+                </ul>
+              </div>
+            ) : (
+              <div className="payment-placeholder checkout-payment-trust">
+                <div>
+                  <strong>Pay with HIDI rewards</strong>
+                  <span>No cash payment needed if the final amount is fully covered.</span>
+                </div>
+              </div>
+            )}
             <p className="fine-print left">{walletEnabled && useWallet ? "Stock and selected rewards are" : "Stock is"} reserved for 15 minutes when checkout is prepared. Closing payment does not immediately release a reservation; retry the same checkout or wait for it to expire.</p>
           </section>
         </fieldset>
@@ -328,7 +573,10 @@ export function CheckoutClient() {
         </button>
       </form>
       <aside className="checkout-summary">
-        <p>Order summary</p>
+        <div className="checkout-summary-head">
+          <p>Order summary</p>
+          <Link href="/cart" className="checkout-edit-bag">Edit bag</Link>
+        </div>
         <strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong>
         <span>{cart.itemCount} item(s) · Taxes included</span>
 
@@ -352,7 +600,7 @@ export function CheckoutClient() {
           ))}
         </div>
 
-        <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Order total</span><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong></div>{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
+        <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Order total</span><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong></div>{complimentaryShipping && <div><span>Shipping</span><strong>Complimentary</strong></div>}{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
         {useWallet && !prepared && <p className={walletStyles.note}>Rewards are applied only after server confirmation.</p>}
         {!!prepared?.walletAppliedPaise && prepared.provider === "RAZORPAY" && <p className={walletStyles.note}>{formatWalletPaise(prepared.walletAppliedPaise)} is reserved for this checkout while the remaining payment is completed.</p>}
       </aside>

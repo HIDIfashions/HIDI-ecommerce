@@ -14,11 +14,12 @@ import { getProductCardVideos } from "@/lib/product-card-videos";
 import { configuredWhatsAppNumber, shareProduct } from "@/lib/product-sharing";
 import { WhatsAppIcon } from "./whatsapp-icon";
 import styles from "./product-card.module.css";
+import { focusFirst, trapFocus } from "@/lib/focus-management";
 
-type Props = { product: ApiProduct; initialVariantId?: string };
+type Props = { product: ApiProduct; initialVariantId?: string; priorityMedia?: boolean };
 type Phase = "idle" | "adding" | "added";
 
-export function ProductCard({ product, initialVariantId }: Props) {
+export function ProductCard({ product, initialVariantId, priorityMedia = false }: Props) {
   const router = useRouter();
   const uid = useId();
   const initial = product.variants.find((entry) => entry.id === initialVariantId && entry.available > 0);
@@ -39,6 +40,8 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const sizesRef = useRef<HTMLDivElement>(null);
   const mobileRibbonRef = useRef<HTMLDivElement>(null);
   const desktopRibbonRef = useRef<HTMLDivElement>(null);
+  const mobileSheetRef = useRef<HTMLElement>(null);
+  const mobileQuickAddRef = useRef<HTMLButtonElement>(null);
   const activeColour = colours.includes(colour) ? colour : colours[0] ?? "";
   const variants = variantsForColour(product.variants, activeColour);
   const selected = variants.find((entry) => entry.id === variantId);
@@ -60,6 +63,13 @@ export function ProductCard({ product, initialVariantId }: Props) {
   const price = cardPrice(variants, selected?.id ?? "", product.minPricePaise);
   const href = `/products/${encodeURIComponent(product.slug)}`;
   const whatsappConfigured = Boolean(configuredWhatsAppNumber());
+
+  function closeMobileQuick(restoreFocus = true) {
+    setMobileQuickOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => mobileQuickAddRef.current?.focus({ preventScroll: true }));
+    }
+  }
 
   useEffect(() => {
     const sync = () => {
@@ -88,11 +98,18 @@ export function ProductCard({ product, initialVariantId }: Props) {
     if (!mobileQuickOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => focusFirst(mobileSheetRef.current), 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) setMobileQuickOpen(false);
+      if (event.key === "Escape" && !busy) {
+        event.preventDefault();
+        closeMobileQuick(true);
+        return;
+      }
+      trapFocus(event, mobileSheetRef.current);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
+      window.clearTimeout(timer);
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKeyDown);
     };
@@ -112,7 +129,10 @@ export function ProductCard({ product, initialVariantId }: Props) {
 
   function selectSize(variant: ApiVariant) {
     if (adding.current || variant.available < 1 || !product.inStock) return;
-    clearFeedback(); setVariantId(variant.id); rememberSelection(variant);
+    const deselecting = variantId === variant.id;
+    clearFeedback();
+    setVariantId(deselecting ? "" : variant.id);
+    rememberSelection(deselecting ? undefined : variant);
   }
 
   function selectColour(value: string) {
@@ -165,9 +185,10 @@ export function ProductCard({ product, initialVariantId }: Props) {
     if (!selected) {
       setChooseSize(true); setError("Choose your size above to continue.");
       const mobileVisible = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
-      (mobileVisible ? mobileRibbonRef.current : desktopRibbonRef.current)
-        ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
-        ?.focus();
+      const sizeHost = mobileQuickOpen
+        ? sizesRef.current
+        : mobileVisible ? mobileRibbonRef.current : desktopRibbonRef.current;
+      sizeHost?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
       return;
     }
     if (selected.available < 1) {
@@ -208,6 +229,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
         videos={getProductCardVideos(product.slug)}
         soldOut={soldOut}
         href={href}
+        priority={priorityMedia}
       />
 
       <button
@@ -221,6 +243,17 @@ export function ProductCard({ product, initialVariantId }: Props) {
         <Heart size={21} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
       </button>
 
+      <button
+        ref={mobileQuickAddRef}
+        type="button"
+        className={styles.mobileQuickAdd}
+        disabled={!canBuy || busy}
+        onClick={() => setMobileQuickOpen(true)}
+        aria-label={`Quick add — ${product.name}`}
+      >
+        {soldOut ? "Sold out" : "Quick add"}
+      </button>
+
     </div>
     <div className={styles.body}>
       <h3 id={`${uid}-name`} className={styles.name}><Link href={href}>{product.name}</Link></h3>
@@ -229,11 +262,24 @@ export function ProductCard({ product, initialVariantId }: Props) {
         {price.mrpPaise !== null && <><s aria-label={`MRP ${money(price.mrpPaise)}`}>{money(price.mrpPaise)}</s>
           <span className={styles.saving}>Save {money(price.savingPaise)}</span></>}
       </div>
+      <div className={styles.ratingSlot}>
+        {!!product.reviewCount && product.reviewCount > 0 && typeof product.averageRating === "number" && (
+          <Link
+            href={`${href}#reviews`}
+            className={styles.ratingSummary}
+            aria-label={`${product.averageRating.toFixed(1)} out of 5 from ${product.reviewCount} customer review${product.reviewCount === 1 ? "" : "s"}`}
+          >
+            <span aria-hidden="true">★</span>
+            <strong>{product.averageRating.toFixed(1)}</strong>
+            <span>({product.reviewCount})</span>
+          </Link>
+        )}
+      </div>
       <div className={styles.mobileInlineShop}>
         <div className={styles.fitRibbonWrap}>
           <div className={styles.fitRibbonLabel}>
-            <span>SELECT SIZE</span>
-            <strong>{selected ? `Selected · ${selected.size}` : "Choose one"}</strong>
+            <span>HIDI FIT</span>
+            <strong>{selected ? `Size ${selected.size}` : "Choose size"}</strong>
           </div>
           <div
             ref={mobileRibbonRef}
@@ -251,7 +297,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
                   aria-pressed={selected?.id === variant.id}
                   className={`${styles.fitRibbonSize} ${selected?.id === variant.id ? styles.fitRibbonSizeActive : ""} ${unavailable ? styles.fitRibbonSizeSoldOut : ""}`}
                   onClick={() => selectSize(variant)}
-                  title={unavailable ? `${variant.size} sold out` : `Choose size ${variant.size}`}
+                  title={unavailable ? `${variant.size} sold out` : selected?.id === variant.id ? `Unselect size ${variant.size}` : `Choose size ${variant.size}`}
                 >
                   <span>{variant.size}</span>
                 </button>
@@ -293,8 +339,8 @@ export function ProductCard({ product, initialVariantId }: Props) {
       <div className={`${styles.quickShop} ${styles.desktopQuickShop}`}>
         <div className={styles.fitRibbonWrap}>
           <div className={styles.fitRibbonLabel}>
-            <span>SELECT SIZE</span>
-            <strong>{selected ? `Selected · ${selected.size}` : "Choose one"}</strong>
+            <span>HIDI FIT</span>
+            <strong>{selected ? `Size ${selected.size}` : "Choose size"}</strong>
           </div>
           <div
             ref={desktopRibbonRef}
@@ -312,7 +358,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
                   aria-pressed={selected?.id === variant.id}
                   className={`${styles.fitRibbonSize} ${selected?.id === variant.id ? styles.fitRibbonSizeActive : ""} ${unavailable ? styles.fitRibbonSizeSoldOut : ""}`}
                   onClick={() => selectSize(variant)}
-                  title={unavailable ? `${variant.size} sold out` : `Choose size ${variant.size}`}
+                  title={unavailable ? `${variant.size} sold out` : selected?.id === variant.id ? `Unselect size ${variant.size}` : `Choose size ${variant.size}`}
                 >
                   <span>{variant.size}</span>
                 </button>
@@ -347,31 +393,14 @@ export function ProductCard({ product, initialVariantId }: Props) {
           </button>
         </div>
 
-        <div className={styles.secondaryActions}>
-          <button
-            type="button"
-            className={styles.whatsappAction}
-            disabled={!whatsappConfigured}
-            title={whatsappConfigured ? "Review your selection on the product page" : "WhatsApp ordering is not available yet"}
-            onClick={orderOnWhatsapp}
-            aria-label={`Order ${product.name} on WhatsApp${whatsappConfigured ? "" : " — not available yet"}`}
-          >
-            <WhatsAppIcon size={16} /> Order on WhatsApp
-          </button>
-          <button
-            type="button"
-            className={styles.shareAction}
-            onClick={() => void share()}
-            aria-label={`Share ${product.name} and get reward`}
-          >
-            <Share2 size={15} aria-hidden="true" /> Share and get reward
-          </button>
-        </div>
-        <div className={styles.feedback}>
-          <p className={styles.error} id={`${uid}-error`} role="alert">{error}</p>
-          <p role="status">{message}</p>
-          {bagLink && <Link href="/cart" className={styles.viewBag}>View bag <ArrowUpRight size={12} aria-hidden="true" /></Link>}
-        </div>
+
+        {(error || message || bagLink) && (
+          <div className={styles.feedback}>
+            {error && <p className={styles.error} id={`${uid}-error`} role="alert">{error}</p>}
+            {message && <p role="status">{message}</p>}
+            {bagLink && <Link href="/cart" className={styles.viewBag}>View bag <ArrowUpRight size={12} aria-hidden="true" /></Link>}
+          </div>
+        )}
       </div>
     </div>
 
@@ -380,15 +409,15 @@ export function ProductCard({ product, initialVariantId }: Props) {
         className={styles.mobileSheetBackdrop}
         role="presentation"
         onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !busy) setMobileQuickOpen(false);
+          if (event.target === event.currentTarget && !busy) closeMobileQuick(true);
         }}
       >
-        <section className={styles.mobileSheet} role="dialog" aria-modal="true" aria-labelledby={`${uid}-quick-title`}>
+        <section ref={mobileSheetRef} className={styles.mobileSheet} role="dialog" aria-modal="true" aria-labelledby={`${uid}-quick-title`}>
           <div className={styles.mobileSheetHandle} aria-hidden="true" />
           <button
             type="button"
             className={styles.mobileSheetClose}
-            onClick={() => setMobileQuickOpen(false)}
+            onClick={() => closeMobileQuick(true)}
             disabled={busy}
             aria-label="Close quick add"
           >
@@ -401,7 +430,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
               <h3 id={`${uid}-quick-title`}>{product.name}</h3>
               <span>{price.from ? "From " : ""}{money(price.pricePaise)}</span>
             </div>
-            <Link href={href} onClick={() => setMobileQuickOpen(false)}>View details <ArrowUpRight size={12} aria-hidden="true" /></Link>
+            <Link href={href} onClick={() => closeMobileQuick(false)}>View details <ArrowUpRight size={12} aria-hidden="true" /></Link>
           </div>
 
           {colours.length > 1 ? (
@@ -471,20 +500,31 @@ export function ProductCard({ product, initialVariantId }: Props) {
             {busy ? "Adding…" : phase === "added" ? "Added to bag" : "Add to bag"}
           </button>
 
+          <button
+            type="button"
+            className={styles.mobileSheetBuy}
+            disabled={busy || !canBuy || !selected || phase === "added"}
+            aria-busy={buying}
+            onClick={() => void add("checkout")}
+          >
+            {buying ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" /> : null}
+            {buying ? "Opening…" : "Buy now"}
+          </button>
+
           <div className={styles.mobileSheetSecondary}>
             <button type="button" onClick={toggleWishlist} disabled={!wishlistReady || busy}>
               <Heart size={17} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
               {saved ? "Saved" : "Save"}
             </button>
             <button type="button" onClick={orderOnWhatsapp} disabled={!whatsappConfigured || busy}>
-              <WhatsAppIcon size={17} /> WhatsApp
+              <WhatsAppIcon size={17} className={styles.whatsappIcon} /> WhatsApp
             </button>
             <button type="button" onClick={() => void share()} disabled={busy}>
               <Share2 size={16} aria-hidden="true" /> Share
             </button>
           </div>
 
-          {bagLink && <Link href="/cart" className={styles.mobileViewBag} onClick={() => setMobileQuickOpen(false)}>View bag <ArrowUpRight size={13} aria-hidden="true" /></Link>}
+          {bagLink && <Link href="/cart" className={styles.mobileViewBag} onClick={() => closeMobileQuick(false)}>View bag <ArrowUpRight size={13} aria-hidden="true" /></Link>}
         </section>
       </div>,
       document.body,

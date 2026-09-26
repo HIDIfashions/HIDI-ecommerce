@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
 import { CatalogImage } from "./catalog-image";
 import styles from "./product-gallery.module.css";
+import { focusFirst, trapFocus } from "@/lib/focus-management";
 
 type GalleryImage = {
   id?: string;
@@ -29,6 +30,8 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const swipe = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLButtonElement | null>(null);
 
   const selected = selectedIndex === null ? null : images[selectedIndex];
   const zoom = ZOOM_LEVELS[zoomIndex];
@@ -41,8 +44,9 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
     swipe.current = null;
   }
 
-  function open(index: number) {
+  function open(index: number, opener?: HTMLButtonElement | null) {
     if (!images[index]?.url) return;
+    openerRef.current = opener ?? null;
     setSelectedIndex(index);
     resetView();
   }
@@ -50,6 +54,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
   function close() {
     setSelectedIndex(null);
     resetView();
+    window.requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
   }
 
   function previous() {
@@ -143,17 +148,24 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => focusFirst(dialogRef.current), 0);
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") close();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+        return;
+      }
       if (event.key === "ArrowLeft") previous();
       if (event.key === "ArrowRight") next();
       if (event.key === "+" || event.key === "=") zoomIn();
       if (event.key === "-") zoomOut();
+      trapFocus(event, dialogRef.current);
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => {
+      window.clearTimeout(timer);
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
@@ -167,7 +179,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
             key={image.id ?? `${image.url}-${index}`}
             type="button"
             className="pdp-image product-art"
-            onClick={() => open(index)}
+            onClick={(event) => open(index, event.currentTarget)}
             aria-label={`Inspect ${image.alt || `${productName} image ${index + 1}`}`}
             title="Click to inspect stitching and details"
             style={{
@@ -235,8 +247,10 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
 
       {selected && selectedIndex !== null ? (
         <div
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
+          tabIndex={-1}
           aria-label={`${productName} detailed image viewer`}
           className={styles.dialog}
           onClick={(event) => {

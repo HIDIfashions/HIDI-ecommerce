@@ -28,6 +28,12 @@ export type ApiVariant = {
   colorHex?: string | null;
   mrpPaise: number;
   pricePaise: number;
+  bustMm?: number | null;
+  waistMm?: number | null;
+  hipMm?: number | null;
+  shoulderMm?: number | null;
+  sleeveLengthMm?: number | null;
+  garmentLengthMm?: number | null;
   available: number;
   images?: { id: string; url: string; alt: string; position: number }[];
 };
@@ -45,6 +51,8 @@ export type ApiProductReview = {
 export type ApiProductReviews = {
   averageRating: number;
   reviewCount: number;
+  verifiedReviewCount: number;
+  ratingDistribution: Record<1 | 2 | 3 | 4 | 5, number>;
   reviews: ApiProductReview[];
 };
 
@@ -64,6 +72,8 @@ export type ApiProduct = {
   maxPricePaise: number;
   inStock: boolean;
   soldQuantity?: number;
+  averageRating?: number;
+  reviewCount?: number;
 };
 
 async function fetchPublicList(url: URL | string): Promise<ApiProduct[]> {
@@ -111,6 +121,13 @@ export async function getProducts(category?: string): Promise<ApiProduct[]> {
   return fetchPublicList(url);
 }
 
+export async function getFeaturedProducts(limit = 4): Promise<ApiProduct[]> {
+  const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 8) : 4;
+  const url = new URL(`${API_URL}/products/featured`);
+  url.searchParams.set("limit", String(safeLimit));
+  return fetchPublicList(url);
+}
+
 export async function getBestSellers(limit = 8): Promise<ApiProduct[]> {
   const url = new URL(`${API_URL}/products/best-sellers`);
   url.searchParams.set("limit", String(limit));
@@ -143,7 +160,13 @@ export async function getProduct(slug: string): Promise<ApiProduct | null> {
 
 export async function getProductReviews(productId: string): Promise<ApiProductReviews> {
   const response = await fetch(`${API_URL}/reviews/products/${encodeURIComponent(productId)}`, { cache: "no-store" });
-  if (!response.ok) return { averageRating: 0, reviewCount: 0, reviews: [] };
+  if (!response.ok) return {
+    averageRating: 0,
+    reviewCount: 0,
+    verifiedReviewCount: 0,
+    ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    reviews: [],
+  };
   return response.json();
 }
 

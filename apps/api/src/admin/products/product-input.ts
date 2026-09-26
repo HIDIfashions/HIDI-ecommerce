@@ -38,6 +38,10 @@ export function integer(value: unknown, label: string, min: number, max: number)
   }
   return value;
 }
+export function optionalInteger(value: unknown, label: string, min: number, max: number): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  return integer(value, label, min, max);
+}
 export function canonical(value: string): string { return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase(); }
 export function slugify(value: string): string {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -107,9 +111,22 @@ export function parseAddVariants(value: unknown) {
   return { ...matrix(input), expectedUpdatedAt: revision(input.expectedUpdatedAt) };
 }
 export function parseVariantEdit(value: unknown) {
-  const input = record(value); only(input, ["pricePaise", "mrpPaise", "weightGrams", "active", "expectedUpdatedAt"]);
+  const input = record(value); only(input, [
+    "pricePaise", "mrpPaise", "weightGrams", "active", "expectedUpdatedAt",
+    "bustMm", "waistMm", "hipMm", "shoulderMm", "sleeveLengthMm", "garmentLengthMm",
+  ]);
   if (typeof input.active !== "boolean") throw new ProductInputError("Active must be true or false.");
-  return { ...prices(input), active: input.active, expectedUpdatedAt: revision(input.expectedUpdatedAt) };
+  return {
+    ...prices(input),
+    active: input.active,
+    bustMm: optionalInteger(input.bustMm, "Garment bust (mm)", 200, 3000),
+    waistMm: optionalInteger(input.waistMm, "Garment waist (mm)", 200, 3000),
+    hipMm: optionalInteger(input.hipMm, "Garment hip (mm)", 200, 3000),
+    shoulderMm: optionalInteger(input.shoulderMm, "Shoulder (mm)", 100, 1000),
+    sleeveLengthMm: optionalInteger(input.sleeveLengthMm, "Sleeve length (mm)", 50, 1500),
+    garmentLengthMm: optionalInteger(input.garmentLengthMm, "Garment length (mm)", 100, 2500),
+    expectedUpdatedAt: revision(input.expectedUpdatedAt),
+  };
 }
 export function parseStatus(value: unknown) {
   const input = record(value); only(input, ["status", "expectedUpdatedAt"]);

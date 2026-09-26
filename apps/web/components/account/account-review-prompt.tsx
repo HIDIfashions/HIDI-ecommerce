@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Star, X } from "lucide-react";
 import { CatalogImage } from "@/components/catalog-image";
 import { BROWSER_API_URL } from "@/lib/browser-api";
 import { getAccessToken } from "@/lib/supabase-auth";
 import type { AccountOrderItem } from "@/lib/account-data";
 import styles from "./account-review-prompt.module.css";
+import { focusFirst, trapFocus } from "@/lib/focus-management";
 
 type Props = {
   orderNumber: string;
@@ -21,24 +22,41 @@ export function AccountReviewPrompt({ orderNumber, item, onSubmitted }: Props) {
   const [body, setBody] = useState(item.review?.body ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const dialogRef = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  function close(restoreFocus = true) {
+    setOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => focusFirst(dialogRef.current), 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) setOpen(false);
+      if (event.key === "Escape" && !busy) {
+        event.preventDefault();
+        close(true);
+        return;
+      }
+      trapFocus(event, dialogRef.current);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
+      window.clearTimeout(timer);
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, busy]);
 
-  function start(nextRating?: number) {
+  function start(nextRating?: number, opener?: HTMLElement | null) {
     if (item.review) return;
     if (nextRating) setRating(nextRating);
+    openerRef.current = opener ?? null;
     setError("");
     setOpen(true);
   }
@@ -113,14 +131,14 @@ export function AccountReviewPrompt({ orderNumber, item, onSubmitted }: Props) {
               <button
                 type="button"
                 key={value}
-                onClick={() => start(value)}
+                onClick={(event) => start(value, event.currentTarget)}
                 aria-label={`Rate ${item.productName} ${value} star${value === 1 ? "" : "s"}`}
               >
                 <Star size={19} strokeWidth={1.5} aria-hidden="true" />
               </button>
             ))}
           </div>
-          <button type="button" className={styles.writeButton} onClick={() => start()}>
+          <button type="button" className={styles.writeButton} onClick={(event) => start(undefined, event.currentTarget)}>
             Write a review
           </button>
         </div>
@@ -131,11 +149,11 @@ export function AccountReviewPrompt({ orderNumber, item, onSubmitted }: Props) {
           className={styles.backdrop}
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !busy) setOpen(false);
+            if (event.target === event.currentTarget && !busy) close(true);
           }}
         >
-          <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby={`review-${item.id}-title`}>
-            <button className={styles.close} type="button" onClick={() => setOpen(false)} disabled={busy} aria-label="Close review">
+          <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby={`review-${item.id}-title`}>
+            <button className={styles.close} type="button" onClick={() => close(true)} disabled={busy} aria-label="Close review">
               <X size={20} />
             </button>
 

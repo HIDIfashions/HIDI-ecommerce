@@ -10,6 +10,12 @@ export class ProductsController {
     return this.products.listPublished(category);
   }
 
+  @Get("featured")
+  featured(@Query("limit") rawLimit?: string) {
+    const limit = rawLimit ? Number(rawLimit) : 4;
+    return this.products.featured(Number.isInteger(limit) ? limit : 4);
+  }
+
   @Get("best-sellers")
   bestSellers(@Query("limit") rawLimit?: string) {
     const limit = rawLimit ? Number(rawLimit) : 8;
