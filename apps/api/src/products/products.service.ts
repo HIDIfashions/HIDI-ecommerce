@@ -63,7 +63,7 @@ export class ProductsService {
       ...(safeLimit ? { take: safeLimit } : {}),
       select: cardSelect,
     });
-    return products.map((product) => this.toCardView(product));
+    return this.withReviewSummaries(products.map((product) => this.toCardView(product)));
   }
 
   async featured(limit = 4) {
@@ -73,7 +73,7 @@ export class ProductsService {
     // edit in parallel with ranking so the homepage never waits on an empty
     // best-seller query before it can render its four cards.
     const [best, fallback] = await Promise.all([
-      this.bestSellers(safeLimit),
+      this.bestSellers(safeLimit, false),
       this.prisma.product.findMany({
         where: { status: "ACTIVE" },
         orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
@@ -82,19 +82,18 @@ export class ProductsService {
       }),
     ]);
 
-    if (!best.length) return fallback.map((product) => this.toCardView(product));
-    if (best.length >= safeLimit) return best.slice(0, safeLimit);
+    const fallbackCards = fallback.map((product) => this.toCardView(product));
+    if (!best.length) return this.withReviewSummaries(fallbackCards);
 
     const rankedIds = new Set(best.map((product: any) => product.id));
-    const fill = fallback
+    const fill = fallbackCards
       .filter((product) => !rankedIds.has(product.id))
-      .slice(0, safeLimit - best.length)
-      .map((product) => this.toCardView(product));
+      .slice(0, safeLimit - best.length);
 
-    return [...best, ...fill].slice(0, safeLimit);
+    return this.withReviewSummaries([...best, ...fill].slice(0, safeLimit));
   }
 
-  async bestSellers(limit = 8) {
+  async bestSellers(limit = 8, includeReviewSummary = true) {
     const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 12) : 8;
     const ranked = await this.prisma.orderItem.groupBy({
       by: ["productId"],
@@ -119,7 +118,7 @@ export class ProductsService {
     });
 
     const byId = new Map(products.map((product) => [product.id, product]));
-    return ranked.flatMap((row) => {
+    const cards = ranked.flatMap((row) => {
       const product = byId.get(row.productId);
       if (!product) return [];
       return [{
@@ -127,6 +126,8 @@ export class ProductsService {
         soldQuantity: row._sum.quantity ?? 0,
       }];
     });
+
+    return includeReviewSummary ? this.withReviewSummaries(cards) : cards;
   }
 
   async related(slug: string, limit = 4) {
@@ -169,7 +170,7 @@ export class ProductsService {
       ? Math.min(...source.variants.map((variant) => variant.pricePaise))
       : 0;
 
-    return candidates
+    const relatedProducts = candidates
       .map((product) => this.toCardView(product))
       .map((product) => {
         const sharedCollections = product.collections.filter((item: any) => sourceCollections.has(item.id)).length;
@@ -183,6 +184,8 @@ export class ProductsService {
       .sort((a, b) => b.score - a.score)
       .slice(0, safeLimit)
       .map(({ product }) => product);
+
+    return this.withReviewSummaries(relatedProducts);
   }
 
   async bySlug(slug: string) {
@@ -197,6 +200,35 @@ export class ProductsService {
     });
     if (!product || product.status !== "ACTIVE") throw new NotFoundException("Product not found");
     return this.toView(product);
+  }
+
+  private async withReviewSummaries<T extends { id: string }>(products: T[]) {
+    if (!products.length) return products;
+
+    const rows = await this.prisma.productReview.groupBy({
+      by: ["productId"],
+      where: {
+        productId: { in: products.map((product) => product.id) },
+        published: true,
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    const summaries = new Map(rows.map((row) => [
+      row.productId,
+      {
+        averageRating: row._avg.rating ?? 0,
+        reviewCount: row._count.rating,
+      },
+    ]));
+
+    return products.map((product) => {
+      const summary = summaries.get(product.id);
+      return summary?.reviewCount
+        ? { ...product, ...summary }
+        : product;
+    });
   }
 
   private toCardView(product: any) {
