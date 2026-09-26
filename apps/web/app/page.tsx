@@ -243,17 +243,34 @@ export default async function Home() {
 
       <section className={styles.manifesto}>
         <div className={styles.manifestoInner + " container"}>
-          <p className={styles.eyebrow}>WEAR THE FEELING</p>
-          <h2>Designed to feel considered. Never complicated.</h2>
-          <div className={styles.manifestoBottom}>
-            <p>
-              Modern Indian silhouettes, thoughtful details and a shopping
-              experience that gives the clothes room to speak.
-            </p>
-            <Link href="/about" className={styles.lightLink}>
-              Discover our story
-              <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
-            </Link>
+          <div className={styles.manifestoGrid}>
+            <div className={styles.manifestoContent}>
+              <p className={styles.eyebrow}>WEAR THE FEELING</p>
+              <h2>Designed to feel considered. Never complicated.</h2>
+              <div className={styles.manifestoBottom}>
+                <p>
+                  Modern Indian silhouettes, thoughtful details and a shopping
+                  experience that gives the clothes room to speak.
+                </p>
+                <Link href="/about" className={styles.lightLink}>
+                  Discover our story
+                  <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
+
+            <figure className={styles.manifestoVisual}>
+              <Image
+                src="/brand/hidi-manifesto-ananya.webp"
+                alt="Ananya in a royal purple HIDI occasion dress"
+                fill
+                sizes="(max-width: 900px) 100vw, 44vw"
+                className={styles.manifestoImage}
+              />
+              <figcaption className={styles.manifestoCaption}>
+                HIDI / Occasion
+              </figcaption>
+            </figure>
           </div>
         </div>
       </section>
