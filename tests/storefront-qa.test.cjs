@@ -204,6 +204,14 @@ test("homepage showcases HIDI Privileges without turning into a discount banner"
   assert.deepEqual(hrefs, ["/collections/all", "/collections/new-arrivals", "/account"]);
 });
 
+test("HIDI Privileges appears after the full-width Ananya editorial", () => {
+  const page = source("app/page.tsx");
+  const editorial = page.indexOf('className={styles.manifesto}');
+  const privileges = page.indexOf('className={styles.privileges}');
+  assert.ok(editorial >= 0, "Ananya editorial section is present");
+  assert.ok(privileges > editorial, "HIDI Privileges must follow the Ananya editorial");
+});
+
 test("HIDI Privileges keeps an editorial three-column desktop layout and stacked mobile layout", () => {
   const file = "app/home.module.css";
   assert.equal(
@@ -479,6 +487,42 @@ test("Option 1 footer keeps the HIDI ending dusty clay, gold and responsive", ()
   assert.match(footerSource, /footer-bottom-shell/);
   assert.match(footerSource, /Good clothes\. Brighter days\./);
   assert.match(footerSource, /\/collections\/all/);
+});
+
+test("HIDI Privileges use the header Mulberry colour on hover and focus", () => {
+  const file = "app/home.module.css";
+  const hover = cssRule(file, ".privilegeCard:hover");
+  assert.equal(hover.background, "var(--home-brand)");
+  assert.equal(hover.color, "#fff8ef");
+
+  assert.equal(
+    cssRule(file, ".privilegeCard:hover .privilegeCopy h3").color,
+    "#fff8ef",
+  );
+  assert.equal(
+    cssRule(file, ".privilegeCard:hover .privilegeCta").color,
+    "var(--home-gold)",
+  );
+});
+
+test("WhatsApp ordering uses the recognisable WhatsApp mark", () => {
+  const card = source("components/product-card.tsx");
+  assert.match(card, /WhatsAppIcon size=\{16\} className=\{styles\.whatsappIcon\}/);
+  assert.match(card, /Order on WhatsApp/);
+
+  const css = cssRule("components/product-card.module.css", ".whatsappIcon");
+  assert.equal(css.color, "#25d366");
+
+  const homepage = source("app/page.tsx");
+  assert.match(homepage, /WhatsAppIcon size=\{18\} className=\{styles\.serviceWhatsappIcon\}/);
+});
+
+test("HIDI Fit selected size toggles off when the same size is clicked again", () => {
+  const card = source("components/product-card.tsx");
+  assert.match(card, /const deselecting = variantId === variant\.id;/);
+  assert.match(card, /setVariantId\(deselecting \? "" : variant\.id\);/);
+  assert.match(card, /rememberSelection\(deselecting \? undefined : variant\);/);
+  assert.match(card, /Unselect size/);
 });
 
 test("modal CSS bounds desktop size and allows content scrolling", () => {
