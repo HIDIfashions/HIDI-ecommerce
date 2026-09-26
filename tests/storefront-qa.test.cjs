@@ -588,6 +588,23 @@ test("checkout keeps guest purchase prominent and minimizes typing friction", ()
   assert.equal(cssRule("app/globals.css", ".checkout-optional-toggle").background, "transparent");
 });
 
+test("checkout keeps shipping promise, delivery assistance and recovery aligned", () => {
+  const checkout = source("components/checkout-client.tsx");
+  const cart = source("components/cart-client.tsx");
+
+  assert.match(checkout, /gross >= 149900/);
+  assert.match(cart, /cart\.subtotalPaise >= 149900/);
+  assert.match(checkout, /delivery-serviceability\?pin=/);
+  assert.match(checkout, /Delivery available/);
+  assert.match(checkout, /Live delivery check is temporarily unavailable/);
+  assert.match(checkout, /focusCheckoutProblem/);
+  assert.match(checkout, /Payment details are handled by Razorpay/);
+  assert.match(checkout, /selected stock is reserved while payment is prepared/);
+
+  const trust = cssRule("app/globals.css", ".checkout-payment-trust");
+  assert.equal(trust["align-items"], "flex-start");
+});
+
 test("HIDI Fit only presents verified garment measurements", () => {
   const addToCart = source("components/add-to-cart.tsx");
   assert.match(addToCart, /Garment measurements/);
