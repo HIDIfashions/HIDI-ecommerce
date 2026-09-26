@@ -21,9 +21,6 @@ export const metadata: Metadata = {
     template: "%s | HIDI",
   },
   description: defaultDescription,
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     locale: "en_IN",
