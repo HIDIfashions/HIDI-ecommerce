@@ -146,7 +146,8 @@ test("homepage launch fallback is bounded, premium and navigable", async () => {
   const root = await harness({ products: catalogue }).homepage();
   assert.equal(root.querySelectorAll("[data-qa-product]").length, 4, "premium homepage edit remains intentionally bounded");
   assert.match(root.text, /THE HIDI EDIT/);
-  assert.match(root.text, /A considered first look at the styles defining HIDI/);
+  assert.match(root.text, /Pieces to live in now/);
+  assert.match(root.text, /Indian wear, made to feel effortless/);
   assert.equal(root.querySelector(".heroCta").getAttribute("href"), "/collections/new-arrivals");
   assert.equal(root.querySelector(".heroImage").getAttribute("src"), "/brand/hidi-hero-green-garden-fullbody.webp");
   assert.match(root.querySelector(".heroImage").getAttribute("alt"), /full-length garden editorial/);
@@ -164,7 +165,8 @@ test("homepage premium edit keeps real best sellers first when sales data exists
     bestSellers.map((item) => item.slug),
   );
   assert.equal(cards[3].getAttribute("data-qa-product"), "style-0", "catalogue fallback only fills the remaining premium slot");
-  assert.match(root.text, /A rotating edit led by what customers are choosing now/);
+  assert.match(root.text, /Pieces to live in now/);
+  assert.doesNotMatch(root.text, /A rotating edit led by what customers are choosing now/);
 });
 
 test("Shop by Edit stays concise and lets the three editorials lead", async () => {
@@ -204,12 +206,24 @@ test("homepage showcases HIDI Privileges without turning into a discount banner"
   assert.deepEqual(hrefs, ["/collections/all", "/collections/new-arrivals", "/account"]);
 });
 
-test("HIDI Privileges appears after the full-width Ananya editorial", () => {
+test("homepage follows the simplified editorial shopping flow", () => {
   const page = source("app/page.tsx");
+  const hero = page.indexOf('className={styles.hero}');
+  const edits = page.indexOf('className={styles.editSection}');
   const editorial = page.indexOf('className={styles.manifesto}');
   const privileges = page.indexOf('className={styles.privileges}');
-  assert.ok(editorial >= 0, "Ananya editorial section is present");
-  assert.ok(privileges > editorial, "HIDI Privileges must follow the Ananya editorial");
+  const featured = page.indexOf('className={styles.featured');
+  const services = page.indexOf('className={styles.serviceStrip}');
+  const brandStory = page.indexOf('className={styles.intro}');
+
+  assert.ok(hero >= 0, "hero is present");
+  assert.ok(edits > hero, "Shop by Edit follows the hero");
+  assert.ok(editorial > edits, "Ananya editorial follows Shop by Edit");
+  assert.ok(privileges > editorial, "HIDI Privileges follows Ananya editorial");
+  assert.ok(featured > privileges, "featured products follow HIDI Privileges");
+  assert.ok(services > featured, "service strip follows featured products");
+  assert.ok(brandStory > services, "short brand story closes the homepage");
+  assert.doesNotMatch(page, /principleGrid/, "repetitive principles grid stays removed");
 });
 
 test("HIDI Privileges keeps an editorial three-column desktop layout and stacked mobile layout", () => {
@@ -385,14 +399,14 @@ test("homepage section transitions stay compact without oversized blank gaps", (
 
 test("homepage premium interactions preserve desktop rhythm, mobile stacking and reduced motion", () => {
   const file = "app/home.module.css";
-  assert.equal(cssRule(file, ".principleGrid")["grid-template-columns"], "repeat(3, minmax(0, 1fr))");
   assert.equal(cssRule(file, ".edits")["grid-template-columns"], "repeat(3, minmax(0, 1fr))");
   assert.equal(cssRule(file, ".productGrid")["grid-template-columns"], "repeat(4, minmax(0, 1fr))");
   assert.equal(cssRule(file, ".serviceGrid")["grid-template-columns"], "repeat(4, minmax(0, 1fr))");
-  assert.equal(cssRule(file, ".principleGrid", "(max-width: 760px)")["grid-template-columns"], "1fr");
   assert.equal(cssRule(file, ".edits", "(max-width: 760px)")["grid-template-columns"], "1fr");
   assert.equal(cssRule(file, ".editCard img", "(prefers-reduced-motion: reduce)").transition, "none");
   assert.equal(cssRule(file, ".serviceLink", "(prefers-reduced-motion: reduce)").transition, "none");
+  assert.match(cssRule(file, ".intro").padding, /clamp\(46px/);
+  assert.equal(cssRule(file, ".serviceItem")["min-height"], "88px");
 });
 
 test("manifesto is a full-width uncropped Ananya editorial with no overlaid copy", () => {
