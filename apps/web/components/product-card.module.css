@@ -1,519 +1,389 @@
 .card {
-  --ink: #30251f;
-  --muted: #756d65;
-  --line: #ddd4c8;
-  --paper: #ffffff;
+  --card-ink: #2f312d;
+  --card-muted: #777a74;
+  --card-line: #dedfd9;
+  --card-sage: #6f7569;
+  --card-sage-deep: #565e52;
+  --card-gold: #a98752;
+  position: relative;
   min-width: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--ink);
+  color: var(--card-ink);
   background: transparent;
-  container-type: inline-size;
 }
 
 .card *,
 .card *::before,
-.card *::after { box-sizing: border-box; }
+.card *::after {
+  box-sizing: border-box;
+}
 
-.card a { color: inherit; }
-.card button { font: inherit; cursor: pointer; }
-.card button:disabled { cursor: not-allowed; }
-.card :is(button, a):focus-visible { outline: 2px solid #815a35; outline-offset: 3px; }
+.card a {
+  color: inherit;
+}
+
+.card button {
+  font: inherit;
+}
+
+.card :is(a, button):focus-visible {
+  outline: 2px solid var(--card-sage);
+  outline-offset: 3px;
+}
+
+.mediaWrap {
+  position: relative;
+  min-width: 0;
+}
+
+.mobileImageHeart {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 8;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(45,49,45,.12);
+  border-radius: 50%;
+  background: rgba(255,255,255,.90);
+  color: #4f554c;
+  box-shadow: 0 5px 18px rgba(31,34,30,.08);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+
+.mobileImageHeart:hover {
+  background: #fff;
+  color: var(--card-sage-deep);
+  transform: translateY(-1px);
+}
+
+.mobileImageHeart[aria-pressed="true"] {
+  background: var(--card-sage);
+  border-color: var(--card-sage);
+  color: #fff;
+}
+
+.mobileImageHeart:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.mobileQuickAdd {
+  display: none;
+}
 
 .body {
+  min-width: 0;
   padding: 14px 1px 0;
   display: flex;
   flex: 1;
   flex-direction: column;
 }
 
-.eyebrow {
-  margin: 0 0 6px;
-  color: #867a6d;
-  font-size: 8px;
-  line-height: 1.4;
-  letter-spacing: .15em;
-  text-transform: uppercase;
-}
-
 .name {
-  margin: 0 0 7px;
-  min-height: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 18px;
-  font-weight: 400;
-  line-height: 1.25;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-product);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
   letter-spacing: -.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.name a { text-decoration: none; }
-.name a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.name a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
 
 .priceRow {
+  min-height: 24px;
+  margin-top: 5px;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 8px;
-  min-height: 23px;
+  gap: 4px 7px;
+  font-family: var(--font-product);
   font-size: 13px;
+  line-height: 1.4;
 }
 
-.priceRow strong { font-weight: 600; }
-.priceRow s { color: var(--muted); font-size: 11px; font-weight: 400; }
-.from { font-size: 10px; font-weight: 400; }
-.saving { color: #527059; font-size: 10px; }
+.priceRow strong {
+  font-weight: 500;
+}
 
-.singleColour {
-  margin: 8px 0 10px;
-  min-height: 16px;
-  color: var(--muted);
+.priceRow s {
+  color: #959791;
+  font-size: 11px;
+}
+
+.from {
+  color: var(--card-muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.saving {
+  color: #66725f;
   font-size: 10px;
 }
 
-.colours {
+.mobileInlineShop,
+.mobilePurchaseActions,
+.mobileAddButton,
+.mobileBuyButton,
+.mobileInlineFeedback {
+  display: none;
+}
+
+.quickShop {
+  min-width: 0;
+}
+
+.desktopQuickShop {
+  padding-top: 0;
+}
+
+.fitRibbonWrap {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--card-line);
+}
+
+.fitRibbonLabel {
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin: 8px 0 10px;
-}
-
-.colourButton {
-  min-height: 28px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 7px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink);
-  font-size: 10px !important;
-}
-
-.colourButton:hover { border-color: var(--line); }
-.colourActive { border-color: #a58e79; background: #f9f5f5; }
-
-.swatch {
-  width: 10px;
-  height: 10px;
-  border: 1px solid rgb(0 0 0 / 14%);
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.quickShop { margin-top: 10px; }
-.sizeHeading {
-  display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 6px;
-  align-items: center;
-  margin-top: auto;
-  padding-top: 11px;
-  border-top: 1px solid #e7dfd5;
-  font-size: 10px;
+  gap: 10px;
 }
 
-.details {
-  min-height: 26px;
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  color: var(--muted) !important;
+.fitRibbonLabel span {
+  color: var(--card-gold);
+  font-family: var(--font-product);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+
+.fitRibbonLabel strong {
+  color: var(--card-muted);
+  font-family: var(--font-product);
   font-size: 9px;
-  text-decoration: none;
+  font-weight: 500;
 }
 
-.details:hover { text-decoration: underline; }
-
-.sizes {
+.fitRibbon {
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  padding-top: 6px;
-  border-radius: 4px;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.needsSize { outline: 1px solid #651f23; outline-offset: 3px; }
+.fitRibbon::-webkit-scrollbar {
+  display: none;
+}
 
-.sizeButton {
-  min-width: 34px;
+.fitRibbonSize {
+  min-width: 40px;
   height: 34px;
-  padding: 0 7px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  color: var(--ink);
-  font-size: 10px !important;
-  transition: background .15s, border-color .15s, color .15s;
+  padding: 0 9px;
+  flex: 0 0 auto;
+  border: 1px solid #d7d8d2;
+  border-radius: 999px;
+  background: #fff;
+  color: #4d504b;
+  font-family: var(--font-product);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, color .16s ease;
 }
 
-.sizeButton:not(:disabled):hover { border-color: #651f23; color: #651f23; }
-.sizeButton.sizeActive { background: #651f23; color: #fff8ef; border-color: #651f23; }
-.sizeButton.unavailable { color: #aaa198; background: #f9f5f5; text-decoration: line-through; border-color: #ebe4db; }
+.fitRibbonSize:not(:disabled):hover {
+  border-color: var(--card-sage);
+  color: var(--card-sage-deep);
+}
 
-.availability {
-  margin: 8px 0 10px;
-  min-height: 24px;
-  color: var(--muted);
-  font-size: 9px;
-  line-height: 1.35;
+.fitRibbonSizeActive {
+  border-color: var(--card-sage);
+  background: var(--card-sage);
+  color: #fff;
+}
+
+.fitRibbonSizeSoldOut {
+  color: #aaa9a4;
+  background: #f4f4f1;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.fitRibbonNeedsChoice {
+  padding: 5px;
+  margin: -5px;
+  border-radius: 9px;
+  box-shadow: 0 0 0 1px rgba(111,117,105,.34);
 }
 
 .actions {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
 }
 
-.addButton {
-  width: 100%;
+.addButton,
+.buyButton {
   min-width: 0;
-  min-height: 42px;
-  padding: 9px;
+  min-height: 44px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px solid #651f23;
-  border-radius: 0;
-  color: #fff8ef;
-  background: #651f23;
-  font-size: 10px !important;
-  font-weight: 600 !important;
-  letter-spacing: .06em;
+  border: 1px solid var(--card-sage);
+  font-family: var(--font-product);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
   text-transform: uppercase;
+  cursor: pointer;
 }
 
-.addButton:not(:disabled):hover { background: #782b2f; border-color: #782b2f; }
-.addButton:disabled:not(.added) { opacity: .5; }
-.addButton.added { background: #8b6036; border-color: #8b6036; }
+.addButton {
+  background: var(--card-sage);
+  color: #fff;
+}
+
+.addButton:hover:not(:disabled) {
+  background: var(--card-sage-deep);
+  border-color: var(--card-sage-deep);
+}
+
+.buyButton {
+  background: #fff;
+  color: var(--card-sage-deep);
+}
+
+.buyButton:hover:not(:disabled) {
+  background: #f4f5f1;
+}
+
+.addButton:disabled,
+.buyButton:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.added {
+  background: #7d856f !important;
+  border-color: #7d856f !important;
+  color: #fff !important;
+}
 
 .wishButton {
-  min-width: 42px;
-  width: 42px;
-  min-height: 42px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  color: var(--ink);
+  display: none;
 }
 
-.wishButton:hover { background: #f9f5f5; border-color: #bd918d; color: #651f23; }
-.wishSaved { background: #651f23; border-color: #651f23; color: #fff8ef; }
-.wishButton:disabled { opacity: .55; }
+.secondaryActions {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.secondaryActions button {
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #777a74;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.secondaryActions button:hover:not(:disabled) {
+  color: var(--card-ink);
+}
+
+.secondaryActions button:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.whatsappAction,
+.shareAction {
+  box-shadow: none;
+}
 
 .feedback {
-  min-height: 35px;
-  padding-top: 6px;
-  color: #4c6650;
+  min-height: 20px;
+  padding-top: 4px;
+  color: #66725f;
   font-size: 9px;
   line-height: 1.45;
 }
 
-.feedback p { margin: 0; }
-.error { color: #913d31; }
+.feedback p {
+  margin: 0;
+}
+
+.error {
+  color: #8d4a43;
+}
 
 .viewBag {
-  min-height: 22px;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  font-size: 10px;
+  gap: 3px;
+  margin-top: 2px;
+  font-size: 9px;
+  text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.spinner { animation: spin .9s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-@media (hover: hover) and (pointer: fine) {
-  .sizes,
-  .availability,
-  .actions {
-    opacity: .78;
-    transition: opacity .18s ease;
-  }
-
-  .card:hover .sizes,
-  .card:hover .availability,
-  .card:hover .actions,
-  .card:focus-within .sizes,
-  .card:focus-within .availability,
-  .card:focus-within .actions {
-    opacity: 1;
-  }
+.spinner {
+  animation: spin .85s linear infinite;
 }
 
-@container (max-width: 225px) {
-  .body { padding-top: 10px; }
-  .name { font-size: 15px; }
-  .eyebrow { font-size: 7px; letter-spacing: .1em; }
-  .colourButton { padding: 3px 5px; }
-  .sizes { gap: 4px; }
-  .sizeButton { min-width: 30px; height: 32px; padding: 0 5px; }
-  .sizeHeading { font-size: 9px; }
-  .addButton { gap: 4px; font-size: 9px !important; padding: 7px 3px; }
-  .addButton svg { width: 14px; }
-  .wishButton { min-width: 38px; width: 38px; }
-  .actions { gap: 4px; }
-  .priceRow { font-size: 12px; gap: 3px 5px; }
-  .saving { flex-basis: 100%; }
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sizeButton { transition: none; }
-  .spinner { animation: none; }
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .quickShop {
+@media (min-width: 621px) and (hover: hover) and (pointer: fine) {
+  .desktopQuickShop {
     max-height: 0;
     opacity: 0;
     overflow: hidden;
-    transform: translateY(-4px);
-    transition: max-height .28s ease, opacity .2s ease, transform .2s ease;
+    transform: translateY(-7px);
+    transition:
+      max-height .32s ease,
+      opacity .2s ease,
+      transform .22s ease;
   }
 
-  .card:hover .quickShop,
-  .card:focus-within .quickShop {
-    max-height: 260px;
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (hover: none) {
-  .quickShop {
-    max-height: none;
+  .card:hover .desktopQuickShop,
+  .card:focus-within .desktopQuickShop {
+    max-height: 280px;
     opacity: 1;
     overflow: visible;
-    transform: none;
-  }
-}
-
-.secondaryActions {
-  display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  gap: 6px;
-  margin-top: 7px;
-}
-
-.secondaryActions button {
-  min-height: 36px;
-  padding: 7px 9px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 9px !important;
-  font-weight: 600;
-  letter-spacing: .04em;
-}
-
-.secondaryActions button:hover {
-  border-color: var(--ink);
-  background: #f9f5f5;
-}
-
-@container (max-width: 225px) {
-  .secondaryActions {
-    grid-template-columns: 1fr;
-  }
-}
-
-
-/* WhatsApp brand treatment */
-.whatsappAction {
-  background: #25D366 !important;
-  border-color: #25D366 !important;
-  color: #ffffff !important;
-  box-shadow: 0 8px 18px rgba(37, 211, 102, .16);
-}
-
-.whatsappAction:hover:not(:disabled) {
-  background: #1ebe5d !important;
-  border-color: #1ebe5d !important;
-  color: #ffffff !important;
-}
-
-.whatsappAction:disabled {
-  background: #25D366 !important;
-  border-color: #25D366 !important;
-  color: #ffffff !important;
-  opacity: .45;
-}
-
-.shareAction {
-  white-space: normal;
-  text-align: center;
-}
-
-
-/* HIDI product-card typography phase 2 */
-.eyebrow {
-  font-size: 11px;
-  letter-spacing: .09em;
-}
-
-.name {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 1.22;
-}
-
-.priceRow { font-size: 14px; }
-.priceRow s,
-.from,
-.saving,
-.singleColour,
-.colourButton,
-.sizeHeading,
-.sizeButton { font-size: 12px !important; }
-
-.details,
-.availability,
-.feedback,
-.secondaryActions button { font-size: 11px !important; }
-
-.addButton {
-  font-size: 12px !important;
-  letter-spacing: .05em;
-}
-
-.viewBag { font-size: 12px; }
-
-@container (max-width: 225px) {
-  .name { font-size: 17px; }
-  .eyebrow { font-size: 10px; letter-spacing: .07em; }
-  .sizeHeading { font-size: 11px; }
-  .addButton { font-size: 11px !important; }
-  .priceRow { font-size: 13px; }
-}
-
-
-/* Mobile product cards: preserve the two-column catalogue without microscopic controls. */
-@media (max-width: 620px) {
-  .body { padding-top: 9px; }
-  .name { font-size: 17px; }
-  .eyebrow { font-size: 10px; }
-  .priceRow { font-size: 13px; }
-  .quickShop { padding-top: 8px; }
-  .sizes { flex-wrap: nowrap; overflow-x: auto; padding: 7px 1px 2px; scrollbar-width: none; }
-  .sizes::-webkit-scrollbar { display: none; }
-  .sizeButton { min-width: 40px; height: 40px; flex: 0 0 auto; }
-  .actions { gap: 5px; }
-  .addButton { min-height: 44px; padding-inline: 5px; font-size: 10px !important; }
-  .wishButton { width: 44px; min-width: 44px; min-height: 44px; }
-  .secondaryActions { grid-template-columns: 1fr; }
-  .secondaryActions button { min-height: 42px; }
-}
-
-
-/* ==========================================================================
-   HIDI MOBILE V2 — catalogue cards + Quick Add bottom sheet
-   Desktop catalogue behavior above remains unchanged.
-   ========================================================================== */
-.mobileCardActions {
-  display: none;
-}
-
-@media (max-width: 620px) {
-  .card {
-    position: relative;
-    height: auto;
-  }
-
-  .body {
-    padding: 10px 0 0;
-  }
-
-  .eyebrow {
-    margin-bottom: 4px;
-    font-size: 9px;
-    letter-spacing: .08em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .name {
-    margin-bottom: 5px;
-    font-size: 16px;
-    line-height: 1.18;
-    min-height: 0;
-  }
-
-  .priceRow {
-    min-height: 20px;
-    gap: 3px 6px;
-    font-size: 13px;
-  }
-
-  .priceRow s,
-  .from,
-  .saving {
-    font-size: 10px !important;
-  }
-
-  .body > .colours,
-  .body > .singleColour,
-  .desktopQuickShop {
-    display: none;
-  }
-
-  .mobileCardActions {
-    margin-top: 8px;
-    min-height: 38px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto 38px;
-    align-items: center;
-    gap: 5px;
-    border-top: 1px solid #eee6de;
-  }
-
-  .mobileColour {
-    min-width: 0;
-    color: #81756b;
-    font-size: 10px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mobileQuickButton {
-    min-height: 38px;
-    padding: 0 7px;
-    border: 0;
-    background: transparent;
-    color: #591d20;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: .025em;
-    white-space: nowrap;
-  }
-
-  .mobileQuickButton:disabled {
-    color: #9b928b;
-  }
-
-  .mobileWishButton {
-    width: 38px;
-    min-width: 38px;
-    height: 38px;
-    padding: 0;
-    display: grid;
-    place-items: center;
-    border: 0;
-    background: transparent;
-    color: #591d20;
+    transform: translateY(0);
   }
 }
 
@@ -521,11 +391,10 @@
   position: fixed;
   inset: 0;
   z-index: 16000;
-  padding: 0;
   display: grid;
   place-items: end stretch;
-  background: rgba(30, 14, 14, .46);
-  backdrop-filter: blur(3px);
+  background: rgba(25,28,24,.42);
+  backdrop-filter: blur(4px);
 }
 
 .mobileSheet {
@@ -533,43 +402,44 @@
   width: 100%;
   max-height: 88dvh;
   overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 13px 16px max(18px, env(safe-area-inset-bottom));
-  border-radius: 20px 20px 0 0;
+  padding: 12px 18px max(20px, env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
   background: #fff;
-  box-shadow: 0 -18px 60px rgba(35, 15, 15, .20);
+  color: var(--card-ink);
+  box-shadow: 0 -22px 70px rgba(21,24,20,.20);
 }
 
 .mobileSheetHandle {
-  width: 38px;
-  height: 4px;
-  margin: 0 auto 10px;
+  width: 34px;
+  height: 3px;
+  margin: 0 auto 12px;
   border-radius: 999px;
-  background: #d6cec8;
+  background: #d8dad4;
 }
 
 .mobileSheetClose {
   position: absolute;
-  top: 15px;
-  right: 14px;
-  width: 42px;
-  height: 42px;
+  top: 17px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: #faf7f4;
-  color: #591d20;
+  background: #f4f5f2;
+  color: var(--card-ink);
+  cursor: pointer;
 }
 
 .mobileSheetHeader {
-  padding: 6px 48px 15px 0;
+  padding: 8px 50px 18px 0;
   display: flex;
-  justify-content: space-between;
   align-items: end;
-  gap: 12px;
-  border-bottom: 1px solid #eee5dd;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid #e4e5df;
 }
 
 .mobileSheetHeader > div {
@@ -578,43 +448,42 @@
 
 .mobileSheetHeader p {
   margin: 0 0 5px;
-  color: #9b7442;
-  font-size: 9px;
+  color: var(--card-gold);
+  font-size: 8px;
   font-weight: 700;
-  letter-spacing: .10em;
+  letter-spacing: .14em;
 }
 
 .mobileSheetHeader h3 {
   margin: 0 0 5px;
-  font-family: var(--font-display);
-  font-size: 23px;
+  font-family: var(--font-product);
+  font-size: 19px;
   font-weight: 500;
-  line-height: 1.08;
+  line-height: 1.22;
 }
 
-.mobileSheetHeader span {
-  font-size: 14px;
-  font-weight: 650;
+.mobileSheetHeader > div > span {
+  font-family: var(--font-product);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .mobileSheetHeader > a {
-  min-height: 34px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #591d20;
-  font-size: 10px;
-  font-weight: 650;
+  color: var(--card-muted);
+  font-size: 9px;
   white-space: nowrap;
 }
 
 .mobileSheetSection {
-  padding: 15px 0;
-  border-bottom: 1px solid #eee5dd;
+  padding: 16px 0;
+  border-bottom: 1px solid #e4e5df;
 }
 
 .mobileSheetLabel {
-  margin-bottom: 10px;
+  margin-bottom: 11px;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -622,23 +491,26 @@
 }
 
 .mobileSheetLabel span {
-  color: #75695f;
-  font-size: 11px;
-  font-weight: 650;
+  color: #666a63;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
 }
 
 .mobileSheetLabel strong {
-  color: #591d20;
+  color: var(--card-sage-deep);
+  font-family: var(--font-product);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .mobileSheetColours {
   display: flex;
   gap: 7px;
   overflow-x: auto;
-  scrollbar-width: none;
   padding-bottom: 2px;
+  scrollbar-width: none;
 }
 
 .mobileSheetColours::-webkit-scrollbar {
@@ -647,22 +519,31 @@
 
 .mobileSheetColour,
 .mobileSheetColourActive {
-  min-height: 42px;
+  min-height: 40px;
   padding: 0 12px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid #ded4cc;
+  border: 1px solid #ddded9;
+  border-radius: 999px;
   background: #fff;
-  color: #50443c;
-  font-size: 11px;
+  color: #555951;
+  font-size: 10px;
+  cursor: pointer;
 }
 
 .mobileSheetColourActive {
-  border-color: #591d20;
-  color: #591d20;
-  background: #fcf7f6;
+  border-color: var(--card-sage);
+  background: #f2f3ef;
+  color: var(--card-sage-deep);
+}
+
+.swatch {
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 50%;
 }
 
 .mobileSheetSizes {
@@ -673,24 +554,40 @@
 
 .mobileSheetSize {
   min-height: 46px;
-  border: 1px solid #dcd2ca;
+  border: 1px solid #d9dad5;
   background: #fff;
-  color: #40362f;
-  font-size: 12px;
-  font-weight: 650;
+  color: #444843;
+  font-family: var(--font-product);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .mobileSheetSizeActive {
-  border-color: #591d20;
-  background: #591d20;
-  color: #fff8ef;
+  border-color: var(--card-sage);
+  background: var(--card-sage);
+  color: #fff;
+}
+
+.unavailable {
+  color: #aaa9a4;
+  background: #f4f4f1;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.needsSize {
+  padding: 5px;
+  margin: -5px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(111,117,105,.36);
 }
 
 .mobileSheetAvailability {
   min-height: 16px;
   margin: 9px 0 0;
-  color: #81756b;
-  font-size: 10px;
+  color: var(--card-muted);
+  font-size: 9px;
 }
 
 .mobileSheetError,
@@ -702,71 +599,167 @@
 }
 
 .mobileSheetError {
-  background: #fff1ef;
-  color: #8b3931;
+  background: #fbf1ef;
+  color: #874a42;
 }
 
 .mobileSheetMessage {
-  background: #f4f7f2;
-  color: #4d654f;
+  background: #f1f4ef;
+  color: #596655;
 }
 
-.mobileSheetAdd {
-  width: 100%;
-  min-height: 52px;
+.mobileSheetAdd,
+.mobileSheetBuy {
+  width: calc(50% - 5px);
+  min-height: 50px;
   margin-top: 15px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  border: 1px solid #591d20;
-  background: #591d20;
-  color: #fff8ef;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .06em;
+  gap: 7px;
+  vertical-align: top;
+  border: 1px solid var(--card-sage);
+  font-family: var(--font-product);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
   text-transform: uppercase;
+  cursor: pointer;
 }
 
-.mobileSheetAdd:disabled:not(.added) {
-  opacity: .48;
+.mobileSheetAdd {
+  margin-right: 6px;
+  background: #fff;
+  color: var(--card-sage-deep);
+}
+
+.mobileSheetBuy {
+  background: var(--card-sage);
+  color: #fff;
+}
+
+.mobileSheetAdd:disabled,
+.mobileSheetBuy:disabled {
+  opacity: .45;
+  cursor: not-allowed;
 }
 
 .mobileSheetSecondary {
-  margin-top: 8px;
+  margin-top: 10px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 
 .mobileSheetSecondary button {
-  min-height: 44px;
-  padding: 0 6px;
+  min-height: 42px;
+  padding: 0 5px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  border: 1px solid #dfd5cc;
+  border: 1px solid #e0e1dc;
   background: #fff;
-  color: #554940;
-  font-size: 10px;
-  font-weight: 650;
+  color: #666a63;
+  font-size: 9px;
+  cursor: pointer;
 }
 
 .mobileSheetSecondary button:disabled {
-  opacity: .45;
+  opacity: .4;
 }
 
 .mobileViewBag {
-  min-height: 42px;
+  min-height: 38px;
   margin-top: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  color: #591d20 !important;
-  font-size: 11px;
-  font-weight: 700;
+  color: var(--card-sage-deep) !important;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.wishSaved {
+  color: #fff;
+}
+
+@media (max-width: 620px) {
+  .card {
+    height: auto;
+  }
+
+  .body {
+    min-height: 72px;
+    padding-top: 10px;
+  }
+
+  .name {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .priceRow {
+    margin-top: 3px;
+    font-size: 12px;
+  }
+
+  .priceRow s,
+  .from,
+  .saving {
+    font-size: 9px;
+  }
+
+  .saving {
+    display: none;
+  }
+
+  .desktopQuickShop,
+  .mobileInlineShop {
+    display: none !important;
+  }
+
+  .mobileImageHeart {
+    top: 8px;
+    right: 8px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .mobileImageHeart svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .mobileQuickAdd {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    z-index: 8;
+    min-width: 112px;
+    min-height: 36px;
+    padding: 0 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateX(-50%);
+    border: 1px solid rgba(43,47,42,.12);
+    background: rgba(255,255,255,.92);
+    color: #3f443d;
+    box-shadow: 0 5px 16px rgba(25,28,24,.08);
+    backdrop-filter: blur(8px);
+    font-family: var(--font-product);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .mobileQuickAdd:disabled {
+    opacity: .55;
+  }
 }
 
 @media (min-width: 621px) {
@@ -776,6 +769,10 @@
 }
 
 @media (max-width: 360px) {
+  .mobileSheet {
+    padding-inline: 14px;
+  }
+
   .mobileSheetSizes {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -783,1040 +780,19 @@
   .mobileSheetSecondary {
     grid-template-columns: 1fr;
   }
-}
-
-
-/* HIDI mobile catalogue rhythm: every SKU reserves the same metadata height. */
-@media (max-width: 620px) {
-  .card {
-    align-self: start;
-    width: 100%;
-  }
-
-  .body {
-    min-height: 126px;
-    display: grid;
-    grid-template-rows: 14px 40px 32px 40px;
-    align-content: start;
-    padding-top: 10px;
-  }
-
-  .eyebrow {
-    min-height: 14px;
-    margin: 0;
-    align-self: start;
-  }
 
   .name {
-    min-height: 40px;
-    margin: 0;
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    align-self: start;
-  }
-
-  .priceRow {
-    min-height: 32px;
-    margin: 0;
-    align-content: start;
-  }
-
-  .mobileCardActions {
-    min-height: 40px;
-    margin-top: 0;
-    align-self: end;
+    font-size: 12px;
   }
 }
 
-
-/* HIDI product-name typography: clean commerce sans, editorial serif stays elsewhere. */
-.name {
-  font-family: var(--font-product);
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.28;
-  letter-spacing: -.015em;
-}
-
-.mobileSheetHeader h3 {
-  font-family: var(--font-product);
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -.015em;
-}
-
-@media (max-width: 620px) {
-  .body {
-    min-height: 122px;
-    grid-template-rows: 14px 36px 32px 40px;
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
   }
 
-  .name {
-    min-height: 36px;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.28;
-    letter-spacing: -.012em;
-  }
-
-  .priceRow {
-    font-family: var(--font-product);
-    font-size: 12.5px;
-  }
-
-  .mobileColour,
-  .mobileQuickButton {
-    font-family: var(--font-product);
-  }
-
-  .mobileSheetHeader h3 {
-    font-size: 18px;
-  }
-}
-
-
-/* Mobile product action row: Quick add + love icon together on the left. */
-@media (max-width: 620px) {
-  .mobileCardActions {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
-    min-height: 40px;
-    margin-top: 0;
-  }
-
-  .mobileQuickButton {
-    min-width: 0;
-    min-height: 40px;
-    padding: 0 8px 0 0;
-    text-align: left;
-  }
-
-  .mobileWishButton {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-  }
-}
-
-
-/* ==========================================================================
-   HIDI MOBILE PRODUCT BUYING — sizes first, Add to Cart below
-   ========================================================================== */
-.mobileInlineShop {
-  display: none;
-}
-
-@media (max-width: 620px) {
-  .body {
-    min-height: 198px;
-    grid-template-rows: 14px 40px 32px auto;
-  }
-
-  .name {
-    min-height: 40px;
-    font-family: var(--font-product);
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 1.05;
-    letter-spacing: 0;
-  }
-
-  .mobileCardActions {
-    display: none !important;
-  }
-
-  .mobileInlineShop {
-    min-width: 0;
-    min-height: 112px;
-    display: grid;
-    grid-template-rows: 28px 36px 42px 18px;
-    gap: 4px;
-    align-content: start;
-    padding-top: 4px;
-    border-top: 1px solid rgba(104,82,62,.18);
-  }
-
-  .mobileSizeHeader {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-  }
-
-  .mobileSizeHeader > span {
-    color: #6f6257;
-    font-family: var(--font-sans);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-  }
-
-  .mobileWishButton {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-  }
-
-  .mobileSizes {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-    overscroll-behavior-inline: contain;
-  }
-
-  .mobileSizes::-webkit-scrollbar {
-    display: none;
-  }
-
-  .mobileSizeButton {
-    min-width: 34px;
-    height: 34px;
-    padding: 0 7px;
-    flex: 0 0 auto;
-    border: 1px solid #cabdad;
-    background: rgba(255,255,255,.5);
-    color: #3c332d;
-    font-family: var(--font-sans);
-    font-size: 10px;
-    font-weight: 650;
-  }
-
-  .mobileSizeButton:not(:disabled):active {
-    border-color: #591d20;
-  }
-
-  .mobileSizeActive {
-    border-color: #591d20;
-    background: #591d20;
-    color: #fff8ef;
-  }
-
-  .mobileAddButton {
-    width: 100%;
-    min-height: 42px;
-    padding: 0 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    border: 1px solid #591d20;
-    background: #591d20;
-    color: #fff8ef;
-    font-family: var(--font-sans);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: .055em;
-    text-transform: uppercase;
-  }
-
-  .mobileAddButton:disabled:not(.added) {
-    opacity: .48;
-  }
-
-  .mobileInlineFeedback {
-    min-width: 0;
-    min-height: 18px;
-    margin: 0;
-    color: #766b61;
-    font-family: var(--font-sans);
-    font-size: 8px;
-    line-height: 18px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-
-
-/* ==========================================================================
-   MOBILE REFERENCE PRODUCT CARD — image controls + name + price only
-   ========================================================================== */
-.mediaWrap {
-  position: relative;
-}
-
-.mobileImageHeart,
-.mobileImagePlus {
-  display: none;
-}
-
-@media (max-width: 620px) {
-  .card {
-    background: transparent;
-  }
-
-  .mediaWrap {
-    position: relative;
-  }
-
+  .desktopQuickShop,
   .mobileImageHeart {
-    position: absolute;
-    top: 12px;
-    right: 10px;
-    z-index: 8;
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    display: grid;
-    place-items: center;
-    border: 0;
-    background: transparent;
-    color: #5f7659;
-  }
-
-  .mobileImageHeart:disabled {
-    opacity: .45;
-  }
-
-  .mobileImagePlus {
-    position: absolute;
-    left: 50%;
-    bottom: 10px;
-    z-index: 8;
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    display: grid;
-    place-items: center;
-    transform: translateX(-50%);
-    border: 1px solid rgba(74,62,53,.20);
-    border-radius: 50%;
-    background: rgba(235,229,221,.92);
-    color: #27221e;
-    box-shadow: 0 3px 10px rgba(49,39,31,.10);
-  }
-
-  .mobileImagePlus span {
-    margin-top: -2px;
-    font-family: var(--font-sans);
-    font-size: 24px;
-    font-weight: 300;
-    line-height: 1;
-  }
-
-  .mobileImagePlus:disabled {
-    opacity: .42;
-  }
-
-  .body {
-    min-height: 88px;
-    display: grid;
-    grid-template-rows: minmax(42px, auto) 32px;
-    gap: 4px;
-    padding: 10px 1px 0;
-  }
-
-  .eyebrow,
-  .body > .colours,
-  .body > .singleColour,
-  .mobileInlineShop,
-  .mobileCardActions,
-  .desktopQuickShop {
-    display: none !important;
-  }
-
-  .name {
-    min-height: 42px;
-    margin: 0;
-    font-family: var(--font-sans);
-    font-size: 15px;
-    font-weight: 500;
-    line-height: 1.22;
-    letter-spacing: -.015em;
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-
-  .priceRow {
-    min-height: 32px;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--font-sans);
-    font-size: 15px;
-    font-weight: 500;
-    line-height: 1.2;
-  }
-
-  .priceRow strong {
-    font: inherit;
-    font-weight: 500;
-  }
-
-  .priceRow s,
-  .from,
-  .saving {
-    font-family: var(--font-sans);
-    font-size: 11px !important;
-  }
-
-  .saving {
-    display: none;
-  }
-}
-
-@media (max-width: 360px) {
-  .name {
-    font-size: 14px;
-  }
-
-  .priceRow {
-    font-size: 14px;
-  }
-
-  .mobileImageHeart {
-    top: 8px;
-    right: 6px;
-  }
-
-  .mobileImagePlus {
-    bottom: 8px;
-    width: 36px;
-    height: 36px;
-  }
-}
-
-
-/* ==========================================================================
-   FINAL HIDI PRODUCT CARD SPEC
-   Futura-style Jost + one-line name + image love + sizes + Add to Cart.
-   ========================================================================== */
-.name {
-  min-width: 0;
-  min-height: 24px;
-  margin: 0;
-  display: block;
-  overflow: hidden;
-  color: var(--hidi-mulberry-clay, #591d20);
-  font-family: var(--font-product);
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 24px;
-  letter-spacing: -.01em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.priceRow,
-.priceRow strong,
-.priceRow s,
-.from,
-.saving {
-  font-family: var(--font-product);
-}
-
-.priceRow {
-  color: #332824;
-  font-weight: 500;
-}
-
-.mediaWrap {
-  position: relative;
-}
-
-.mobileImageHeart {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 8;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border: 0;
-  background: transparent;
-  color: var(--hidi-mulberry-clay, #591d20);
-}
-
-.mobileImageHeart svg {
-  stroke: currentColor;
-}
-
-.mobileImageHeart[aria-pressed="true"] {
-  color: var(--hidi-mulberry-clay, #591d20);
-}
-
-.mobileImageHeart:disabled {
-  opacity: .45;
-}
-
-.mobileImagePlus {
-  display: none !important;
-}
-
-/* The image heart replaces the old wishlist button below the card. */
-.wishButton {
-  display: none;
-}
-
-/* Desktop/web catalogue: sizes + Add to Cart stay visible below the product. */
-.desktopQuickShop {
-  max-height: none !important;
-  opacity: 1 !important;
-  overflow: visible !important;
-  transform: none !important;
-}
-
-.desktopQuickShop .actions {
-  display: block;
-}
-
-.desktopQuickShop .addButton {
-  width: 100%;
-  min-height: 44px;
-  font-family: var(--font-product);
-  font-size: 12px !important;
-  font-weight: 600 !important;
-}
-
-@media (max-width: 620px) {
-  .body {
-    min-height: 176px;
-    display: grid;
-    grid-template-rows: 24px 28px 116px;
-    gap: 4px;
-    align-content: start;
-    padding: 9px 0 0;
-  }
-
-  .eyebrow,
-  .body > .colours,
-  .body > .singleColour,
-  .mobileCardActions,
-  .desktopQuickShop {
-    display: none !important;
-  }
-
-  .name {
-    min-height: 24px;
-    font-size: 14px;
-    line-height: 24px;
-  }
-
-  .priceRow {
-    min-height: 28px;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 13px;
-    line-height: 28px;
-  }
-
-  .priceRow strong {
-    font: inherit;
-    font-weight: 500;
-  }
-
-  .priceRow s,
-  .from,
-  .saving {
-    font-size: 10px !important;
-  }
-
-  .saving {
-    display: none;
-  }
-
-  .mobileInlineShop {
-    min-width: 0;
-    min-height: 116px;
-    display: grid !important;
-    grid-template-rows: 22px 36px 42px 12px;
-    gap: 2px;
-    align-content: start;
-    padding-top: 2px;
-    border-top: 0;
-  }
-
-  .mobileSizeHeader {
-    min-height: 22px;
-    display: flex;
-    align-items: center;
-  }
-
-  .mobileSizeHeader > span {
-    color: #6f6257;
-    font-family: var(--font-product);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-  }
-
-  .mobileSizes {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    overscroll-behavior-inline: contain;
-  }
-
-  .mobileSizes::-webkit-scrollbar {
-    display: none;
-  }
-
-  .mobileSizeButton {
-    min-width: 34px;
-    height: 34px;
-    padding: 0 7px;
-    flex: 0 0 auto;
-    border: 1px solid #cbbdb1;
-    background: rgba(255,255,255,.72);
-    color: #4a3833;
-    font-family: var(--font-product);
-    font-size: 10px;
-    font-weight: 500;
-  }
-
-  .mobileSizeActive {
-    border-color: var(--hidi-mulberry-clay, #591d20);
-    background: var(--hidi-mulberry-clay, #591d20);
-    color: #fff8ef;
-  }
-
-  .mobileAddButton {
-    width: 100%;
-    min-height: 42px;
-    padding: 0 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    border: 1px solid var(--hidi-mulberry-clay, #591d20);
-    background: var(--hidi-mulberry-clay, #591d20);
-    color: #fff8ef;
-    font-family: var(--font-product);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .02em;
-    text-transform: none;
-  }
-
-  .mobileAddButton:disabled:not(.added) {
-    opacity: .46;
-  }
-
-  .mobileInlineFeedback {
-    min-height: 12px;
-    margin: 0;
-    overflow: hidden;
-    color: #7b6e64;
-    font-family: var(--font-product);
-    font-size: 8px;
-    line-height: 12px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .mobileImageHeart {
-    top: 8px;
-    right: 8px;
-    width: 36px;
-    height: 36px;
-  }
-}
-
-
-/* Restore desktop quick-shop reveal animation after the Futura card update. */
-@media (min-width: 621px) and (hover: hover) and (pointer: fine) {
-  .desktopQuickShop {
-    max-height: 0 !important;
-    opacity: 0 !important;
-    overflow: hidden !important;
-    transform: translateY(-6px) !important;
-    transition:
-      max-height .3s ease,
-      opacity .2s ease,
-      transform .22s ease !important;
-  }
-
-  .card:hover .desktopQuickShop,
-  .card:focus-within .desktopQuickShop {
-    max-height: 340px !important;
-    opacity: 1 !important;
-    overflow: visible !important;
-    transform: translateY(0) !important;
-  }
-}
-
-
-/* ==========================================================================
-   FINAL SIZE SELECTOR TREATMENT — dropdown on desktop + mobile
-   ========================================================================== */
-.desktopSelectRow {
-  margin-top: 10px;
-}
-
-.desktopSizeSelect,
-.mobileSizeSelect {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid #cdbfb3;
-  background: #fff;
-  color: #3f322d;
-  font-family: var(--font-product);
-  font-weight: 500;
-  outline: none;
-}
-
-.desktopSizeSelect {
-  min-height: 42px;
-  padding: 0 34px 0 11px;
-  font-size: 12px;
-}
-
-.desktopSizeSelect:focus,
-.mobileSizeSelect:focus {
-  border-color: var(--hidi-mulberry-clay, #591d20);
-  box-shadow: 0 0 0 1px var(--hidi-mulberry-clay, #591d20);
-}
-
-.desktopSizeSelect:disabled,
-.mobileSizeSelect:disabled {
-  opacity: .48;
-  cursor: not-allowed;
-}
-
-@media (max-width: 620px) {
-  .body {
-    grid-template-rows: 24px 28px 114px;
-  }
-
-  .mobileInlineShop {
-    min-height: 114px;
-    grid-template-rows: 22px 38px 42px 10px;
-    gap: 2px;
-  }
-
-  .mobileSizeSelect {
-    min-height: 38px;
-    padding: 0 28px 0 9px;
-    font-size: 16px;
-    background: rgba(255,255,255,.78);
-  }
-
-  .mobileSizes {
-    display: none !important;
-  }
-
-  .mobileInlineFeedback {
-    line-height: 10px;
-  }
-}
-
-
-/* Product-image wishlist must stay legible over every photograph. */
-.mobileImageHeart {
-  border: 1px solid rgba(89,29,32,.14);
-  border-radius: 50%;
-  background: rgba(255,248,239,.94);
-  color: var(--hidi-mulberry-clay, #591d20);
-  box-shadow: 0 4px 14px rgba(52,31,25,.10);
-  backdrop-filter: blur(6px);
-}
-
-.mobileImageHeart[aria-pressed="true"] {
-  background: rgba(255,248,239,.98);
-  border-color: rgba(89,29,32,.28);
-  color: var(--hidi-mulberry-clay, #591d20);
-}
-
-
-/* ==========================================================================
-   CATALOGUE BUY NOW — desktop hover + mobile inline purchase pair
-   ========================================================================== */
-.actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 6px;
-}
-
-.addButton,
-.buyButton {
-  width: 100%;
-  min-width: 0;
-  min-height: 42px;
-  padding: 9px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  font-family: var(--font-product);
-  font-size: 10px !important;
-  font-weight: 600 !important;
-  letter-spacing: .03em;
-}
-
-.buyButton {
-  border: 1px solid #591d20;
-  background: #fffaf5;
-  color: #591d20;
-}
-
-.buyButton:not(:disabled):hover {
-  background: #f7eeea;
-}
-
-.buyButton:disabled {
-  opacity: .48;
-  cursor: not-allowed;
-}
-
-.mobilePurchaseActions {
-  display: none;
-}
-
-@media (min-width: 621px) {
-  .desktopQuickShop .actions {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 6px;
-  }
-
-  .desktopQuickShop .addButton,
-  .desktopQuickShop .buyButton {
-    min-height: 44px;
-  }
-}
-
-@media (max-width: 620px) {
-  .body {
-    min-height: 176px;
-    grid-template-rows: 24px 28px 114px;
-  }
-
-  .mobileInlineShop {
-    min-height: 114px;
-    grid-template-rows: 22px 38px 42px 10px;
-    gap: 2px;
-  }
-
-  .mobilePurchaseActions {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 5px;
-  }
-
-  .mobileAddButton,
-  .mobileBuyButton {
-    min-width: 0;
-    min-height: 42px;
-    padding: 0 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    border: 1px solid #591d20;
-    font-family: var(--font-product);
-    font-size: 9.5px;
-    font-weight: 600;
-    letter-spacing: .01em;
-    text-transform: none;
-  }
-
-  .mobileAddButton {
-    background: #591d20;
-    color: #fff8ef;
-  }
-
-  .mobileBuyButton {
-    background: #fffaf5;
-    color: #591d20;
-  }
-
-  .mobileBuyButton:disabled {
-    opacity: .46;
-  }
-}
-
-
-/* ==========================================================================
-   HIDI FIT RIBBON — branded size selector for catalogue cards
-   ========================================================================== */
-.fitRibbonWrap {
-  min-width: 0;
-  display: grid;
-  gap: 5px;
-  margin-top: 8px;
-}
-
-.fitRibbonLabel {
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.fitRibbonLabel span {
-  color: #b07a35;
-  font-family: var(--font-product);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: .12em;
-}
-
-.fitRibbonLabel strong {
-  min-width: 0;
-  color: #6a584d;
-  font-family: var(--font-product);
-  font-size: 9px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.fitRibbon {
-  position: relative;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  overscroll-behavior-inline: contain;
-}
-
-.fitRibbon::-webkit-scrollbar {
-  display: none;
-}
-
-.fitRibbon::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 1px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(183,124,49,.35) 0 7px,
-      transparent 7px 12px
-    );
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.fitRibbonSize {
-  position: relative;
-  z-index: 1;
-  min-width: 38px;
-  height: 34px;
-  padding: 0 9px;
-  flex: 0 0 auto;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid #ccbcae;
-  border-radius: 999px;
-  background: #fffaf5;
-  color: #4a3731;
-  font-family: var(--font-product);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
-  box-shadow: 0 0 0 3px #f3ecdf;
-  transition:
-    background .16s ease,
-    border-color .16s ease,
-    color .16s ease,
-    transform .16s ease,
-    box-shadow .16s ease;
-}
-
-.fitRibbonSize:not(:disabled):hover,
-.fitRibbonSize:not(:disabled):focus-visible {
-  border-color: #591d20;
-  color: #591d20;
-  transform: translateY(-1px);
-}
-
-.fitRibbonSizeActive {
-  border-color: #591d20;
-  background: #591d20;
-  color: #fff8ef;
-  box-shadow:
-    0 0 0 3px #f3ecdf,
-    0 5px 12px rgba(89,29,32,.16);
-}
-
-.fitRibbonSizeActive::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -6px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #c99646;
-  transform: translateX(-50%);
-}
-
-.fitRibbonSizeSoldOut {
-  border-color: #ddd2c8;
-  background: #f3eee8;
-  color: #a59b92;
-  opacity: .7;
-  text-decoration: line-through;
-  box-shadow: 0 0 0 3px #f3ecdf;
-}
-
-.fitRibbonNeedsChoice {
-  border-radius: 8px;
-  box-shadow: 0 0 0 2px rgba(89,29,32,.12);
-}
-
-@media (max-width: 620px) {
-  .body {
-    min-height: 198px;
-    grid-template-rows: 24px 28px 140px;
-  }
-
-  .mobileInlineShop {
-    min-height: 140px;
-    grid-template-rows: 80px 42px 12px;
-    gap: 3px;
-  }
-
-  .fitRibbonWrap {
-    margin-top: 0;
-    gap: 4px;
-  }
-
-  .fitRibbon {
-    padding-block: 6px 8px;
-  }
-
-  .fitRibbonSize {
-    min-width: 36px;
-    height: 34px;
-    padding-inline: 8px;
-    font-size: 10px;
-  }
-
-  .fitRibbonLabel span {
-    font-size: 7.5px;
-  }
-
-  .fitRibbonLabel strong {
-    font-size: 8.5px;
+    transition: none;
   }
 }
