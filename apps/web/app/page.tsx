@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { WhatsAppIcon } from "@/components/whatsapp-icon";
-import { getBestSellers, getProducts } from "@/lib/api";
+import { getFeaturedProducts } from "@/lib/api";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -77,20 +77,7 @@ const services = [
 ] as const;
 
 export default async function Home() {
-  const [catalogue, bestSellers] = await Promise.all([
-    getProducts(),
-    getBestSellers(8),
-  ]);
-
-  const hasSales = bestSellers.length > 0;
-  const featured = hasSales
-    ? [
-        ...bestSellers,
-        ...catalogue.filter(
-          (product) => !bestSellers.some((best) => best.id === product.id),
-        ),
-      ].slice(0, 4)
-    : catalogue.slice(0, 4);
+  const featured = await getFeaturedProducts(4);
 
   const whatsapp = (process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
   const whatsappHref = whatsapp
