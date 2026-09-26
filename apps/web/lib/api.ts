@@ -1,8 +1,15 @@
 const LOCAL_API_URL = "http://localhost:4000/v1";
+const PRODUCTION_API_URL = "https://hidi-ecommerce-api-96rn-beige.vercel.app/v1";
 
 function normalizeApiUrl(value: string | undefined) {
   const url = value?.trim();
   return url ? url.replace(/\/$/, "") : "";
+}
+
+function productionApiUrl() {
+  return normalizeApiUrl(process.env.API_URL) ||
+    normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) ||
+    PRODUCTION_API_URL;
 }
 
 // Server-rendered storefront pages should talk to the Nest API over the local
@@ -12,13 +19,11 @@ function normalizeApiUrl(value: string | undefined) {
 export const API_URL =
   typeof window === "undefined"
     ? process.env.NODE_ENV === "production"
-      ? normalizeApiUrl(process.env.API_URL) ||
-        normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) ||
-        LOCAL_API_URL
+      ? productionApiUrl()
       : LOCAL_API_URL
     : normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) ||
       normalizeApiUrl(process.env.API_URL) ||
-      LOCAL_API_URL;
+      (process.env.NODE_ENV === "production" ? PRODUCTION_API_URL : LOCAL_API_URL);
 
 export type ApiVariant = {
   id: string;
@@ -125,7 +130,9 @@ export async function getFeaturedProducts(limit = 4): Promise<ApiProduct[]> {
   const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 8) : 4;
   const url = new URL(`${API_URL}/products/featured`);
   url.searchParams.set("limit", String(safeLimit));
-  return fetchPublicList(url);
+  const featured = await fetchPublicList(url);
+  if (featured.length > 0) return featured;
+  return (await getProducts()).slice(0, safeLimit);
 }
 
 export async function getBestSellers(limit = 8): Promise<ApiProduct[]> {
