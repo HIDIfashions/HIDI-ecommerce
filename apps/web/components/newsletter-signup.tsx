@@ -50,13 +50,14 @@ export function NewsletterSignup() {
           type="email"
           placeholder="Email address"
           autoComplete="email"
+          aria-describedby="newsletter-status"
           required
         />
         <button type="submit" disabled={busy}>
           {busy ? "Subscribing…" : "Subscribe & get rewarded"}
         </button>
       </form>
-      <p className="newsletter-status" role="status" aria-live="polite">
+      <p id="newsletter-status" className="newsletter-status" role={error ? "alert" : "status"} aria-live="polite">
         {error || message}
       </p>
     </>
