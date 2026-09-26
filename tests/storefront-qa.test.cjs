@@ -519,6 +519,18 @@ test("HIDI Privileges use the header Mulberry colour on hover and focus", () => 
   );
 });
 
+test("HIDI Fit only presents verified garment measurements", () => {
+  const addToCart = source("components/add-to-cart.tsx");
+  assert.match(addToCart, /Garment measurements/);
+  assert.match(addToCart, /finished-garment measurements, not body measurements/);
+  assert.match(addToCart, /HIDI will not estimate garment measurements/);
+  assert.match(addToCart, /bustMm/);
+  assert.match(addToCart, /garmentLengthMm/);
+
+  const css = cssRule("components/add-to-cart.module.css", ".fitGuide");
+  assert.equal(css.background, "#fffdfb");
+});
+
 test("WhatsApp ordering uses the recognisable WhatsApp mark", () => {
   const card = source("components/product-card.tsx");
   assert.match(card, /WhatsAppIcon size=\{16\} className=\{styles\.whatsappIcon\}/);
