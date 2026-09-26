@@ -303,7 +303,7 @@ export function CheckoutClient() {
   const previewWallet = useWallet ? (walletAmountPaise(walletInput, gross, gross) ?? 0) : 0;
   const applied = prepared?.walletAppliedPaise ?? previewWallet;
   const payable = prepared?.amountPaise ?? Math.max(0, gross - previewWallet);
-  const complimentaryShipping = gross > 149900;
+  const complimentaryShipping = gross >= 149900;
 
   return <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
