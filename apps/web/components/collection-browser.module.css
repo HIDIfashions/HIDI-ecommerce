@@ -244,7 +244,7 @@
 
 .option,
 .colorOption {
-  min-height: 23px;
+  min-height: 32px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -255,8 +255,8 @@
 
 .option input,
 .colorOption input {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   margin: 0;
   flex: 0 0 auto;
   accent-color: var(--hidi-mulberry-clay, #591d20);
