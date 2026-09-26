@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Order Confirmation",
+  robots: { index: false, follow: false },
+};
+
 import { OrderConfirmationClient } from "@/components/order-confirmation-client";
 
 export default async function OrderConfirmed({ searchParams }: { searchParams: Promise<{ order?: string; status?: string }> }) {
