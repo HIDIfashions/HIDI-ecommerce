@@ -148,6 +148,71 @@ function cssRule(relative, selector, media = null) {
   return declarations;
 }
 
+test("SEO foundation exposes canonical metadata, sitemap and crawl controls", () => {
+  const layout = source("app/layout.tsx");
+  const home = source("app/page.tsx");
+  const robots = source("app/robots.ts");
+  const sitemap = source("app/sitemap.ts");
+  const siteUrl = source("lib/site-url.ts");
+
+  assert.match(layout, /metadataBase: site/);
+  assert.match(layout, /summary_large_image/);
+  assert.match(layout, /"@type": "Organization"/);
+  assert.match(layout, /"@type": "WebSite"/);
+  assert.match(home, /alternates: \{ canonical: "\/" \}/);
+
+  assert.match(robots, /sitemap: absoluteUrl\("\/sitemap\.xml"\)/);
+  assert.match(robots, /"\/api"/);
+  assert.match(robots, /"\/admin"/);
+  assert.doesNotMatch(robots, /"\/checkout"/);
+
+  assert.match(sitemap, /\/collections\/new-arrivals/);
+  assert.match(sitemap, /\/about/);
+  assert.match(sitemap, /\/shipping/);
+  assert.match(sitemap, /\/returns/);
+  assert.match(sitemap, /\/products\/\$\{encodeURIComponent\(product\.slug\)\}/);
+
+  assert.match(siteUrl, /process\.env\.SITE_URL/);
+  assert.match(siteUrl, /VERCEL_PROJECT_PRODUCTION_URL/);
+  assert.match(siteUrl, /replace\(\/<\/g, "\\\\u003c"\)/);
+});
+
+test("product and collection pages publish search metadata and structured data", () => {
+  const productPage = source("app/products/[slug]/page.tsx");
+  const collectionPage = source("app/collections/[slug]/page.tsx");
+  const shopAll = source("app/collections/all/page.tsx");
+
+  assert.match(productPage, /generateMetadata/);
+  assert.match(productPage, /alternates: \{ canonical \}/);
+  assert.match(productPage, /"@type": "Product"/);
+  assert.match(productPage, /"@type": "AggregateOffer"/);
+  assert.match(productPage, /"@type": "BreadcrumbList"/);
+  assert.match(productPage, /aggregateRating/);
+  assert.match(productPage, /https:\/\/schema\.org\/InStock/);
+  assert.match(productPage, /cache\(getProduct\)/);
+
+  assert.match(collectionPage, /generateMetadata/);
+  assert.match(collectionPage, /alternates: \{ canonical \}/);
+  assert.match(collectionPage, /notFound\(\)/);
+  assert.match(collectionPage, /"@type": "BreadcrumbList"/);
+  assert.match(shopAll, /canonical: "\/collections\/all"/);
+});
+
+test("private and transactional storefront routes are noindex", () => {
+  for (const file of [
+    "app/account/layout.tsx",
+    "app/admin/layout.tsx",
+    "app/cart/page.tsx",
+    "app/checkout/page.tsx",
+    "app/order-confirmed/page.tsx",
+    "app/search/page.tsx",
+    "app/wishlist/page.tsx",
+    "app/review/[token]/page.tsx",
+  ]) {
+    assert.match(source(file), /robots: \{ index: false, follow: false/);
+  }
+});
+
 test("catalogue cards share media observers instead of creating one per card", () => {
   const media = source("components/product-card-media.tsx");
 
