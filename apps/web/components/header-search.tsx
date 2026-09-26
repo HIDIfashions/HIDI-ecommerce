@@ -9,6 +9,7 @@ import { CatalogImage } from "./catalog-image";
 import iconStyles from "./header-icons.module.css";
 import styles from "./header-search.module.css";
 import { BROWSER_API_URL } from "@/lib/browser-api";
+import { trapFocus } from "@/lib/focus-management";
 
 const API = BROWSER_API_URL;
 
@@ -34,6 +35,15 @@ export function HeaderSearch() {
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+
+  function closeSearch(restoreFocus = true) {
+    setOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus({ preventScroll: true }));
+    }
+  }
 
   useEffect(() => {
     if (!open || products.length) return;
@@ -53,13 +63,21 @@ export function HeaderSearch() {
 
   useEffect(() => {
     if (!open) return;
-    const timer = window.setTimeout(() => inputRef.current?.focus(), 20);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 20);
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeSearch(true);
+        return;
+      }
+      trapFocus(event, panelRef.current);
     };
     document.addEventListener("keydown", onKey);
     return () => {
       window.clearTimeout(timer);
+      document.body.style.overflow = previous;
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -73,19 +91,20 @@ export function HeaderSearch() {
   return (
     <div className={styles.wrap}>
       <button
+        ref={triggerRef}
         className={iconStyles.iconButton}
         type="button"
         aria-label="Search"
         aria-expanded={open}
         title="Search"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => open ? closeSearch(false) : setOpen(true)}
       >
         <Search className={iconStyles.icon} aria-hidden="true" />
       </button>
 
       {open && <>
-        <button className={styles.backdrop} aria-label="Close search" onClick={() => setOpen(false)} />
-        <section className={styles.panel} aria-label="Search HIDI">
+        <button className={styles.backdrop} type="button" tabIndex={-1} aria-hidden="true" onClick={() => closeSearch(true)} />
+        <section ref={panelRef} className={styles.panel} role="dialog" aria-modal="true" aria-label="Search HIDI">
           <div className={styles.inner}>
             <div className={styles.topRow}>
               <div className={styles.searchBox}>
@@ -98,7 +117,7 @@ export function HeaderSearch() {
                     if (event.key !== "Enter") return;
                     const value = query.trim();
                     if (!value) return;
-                    setOpen(false);
+                    closeSearch(false);
                     router.push("/search?q=" + encodeURIComponent(value));
                   }}
                   placeholder="Search products, colours, collections…"
@@ -106,7 +125,7 @@ export function HeaderSearch() {
                 />
                 <Search className={styles.searchGlyph} aria-hidden="true" />
               </div>
-              <button className={styles.close} type="button" onClick={() => setOpen(false)} aria-label="Close search">
+              <button className={styles.close} type="button" onClick={() => closeSearch(true)} aria-label="Close search">
                 <X aria-hidden="true" />
               </button>
             </div>
@@ -117,7 +136,7 @@ export function HeaderSearch() {
             {results.length > 0 && <div className={styles.results}>
               {results.map((product) => {
                 const image = product.images?.[0];
-                return <Link key={product.id} href={`/products/${product.slug}`} className={styles.item} onClick={() => setOpen(false)}>
+                return <Link key={product.id} href={`/products/${product.slug}`} className={styles.item} onClick={() => closeSearch(false)}>
                   <span className={styles.thumb}>
                     <CatalogImage
                       src={image?.url}
