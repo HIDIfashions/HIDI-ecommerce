@@ -26,6 +26,12 @@ export class CheckoutController {
     if (recent.length >= 20) throw new HttpException("Too many PIN checks. Please wait a minute and try again.", HttpStatus.TOO_MANY_REQUESTS);
     recent.push(now);
     this.deliveryRate.set(clientKey, recent);
+    if (this.deliveryRate.size > 1000) {
+      for (const [key, entries] of this.deliveryRate) {
+        if (!entries.some((time) => now - time < 60_000)) this.deliveryRate.delete(key);
+      }
+      if (this.deliveryRate.size > 1000) this.deliveryRate.delete(this.deliveryRate.keys().next().value);
+    }
 
     const cached = this.deliveryCache.get(pin);
     if (cached && cached.expiresAt > now) return cached.value;
@@ -44,6 +50,7 @@ export class CheckoutController {
       for (const [key, entry] of this.deliveryCache) {
         if (entry.expiresAt <= now) this.deliveryCache.delete(key);
       }
+      if (this.deliveryCache.size > 500) this.deliveryCache.delete(this.deliveryCache.keys().next().value);
     }
     return value;
   }
