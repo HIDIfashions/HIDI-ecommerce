@@ -148,6 +148,17 @@ function cssRule(relative, selector, media = null) {
   return declarations;
 }
 
+test("collection LCP prioritizes only the leading product media", () => {
+  const browser = source("components/collection-browser.tsx");
+  const card = source("components/product-card.tsx");
+  const media = source("components/product-card-media.tsx");
+
+  assert.match(browser, /priorityMedia=\{index < 2\}/);
+  assert.match(card, /priority=\{priorityMedia\}/);
+  assert.match(media, /priority=\{priority && index === 0\}/);
+  assert.match(media, /loading=\{priority \? undefined : "lazy"\}/);
+});
+
 test("homepage requests only a bounded featured catalogue payload", () => {
   const page = source("app/page.tsx");
   const api = source("lib/api.ts");
