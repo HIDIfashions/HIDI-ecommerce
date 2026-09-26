@@ -354,25 +354,27 @@ test("HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and war
   assert.equal(filterCount.background, "var(--hidi-mulberry-clay, #591d20)");
 });
 
-test("Option 2 footer keeps the HIDI ending warm, editorial and responsive", () => {
+test("Option 1 footer keeps the HIDI ending dusty clay, gold and responsive", () => {
   const file = "app/globals.css";
   const footer = cssRule(file, ".footer");
-  assert.equal(footer.background, "var(--footer-ivory)");
+  assert.equal(footer.background, "var(--footer-clay)");
   assert.equal(footer.color, "var(--footer-ink)");
+  assert.equal(footer["border-top"], "4px solid #d6b06b");
 
   const main = cssRule(file, ".footer-main");
-  assert.match(main.background, /#f5eadf/);
-  assert.match(main.background, /#efe1d5/);
+  assert.match(main.background, /#96574f/);
+  assert.match(main.background, /var\(--footer-clay\)/);
+  assert.match(main.background, /#824943/);
 
   const heading = cssRule(file, ".footer h3");
-  assert.equal(heading.color, "var(--footer-gold)");
+  assert.equal(heading.color, "var(--footer-gold-bright)");
 
   const link = cssRule(file, ".footer-grid a");
-  assert.equal(link.color, "#553a36");
-  assert.equal(cssRule(file, ".footer-grid a:hover").color, "#591d20");
+  assert.equal(link.color, "#fff3e8");
+  assert.equal(cssRule(file, ".footer-grid a:hover").color, "var(--footer-gold-bright)");
 
   const bottom = cssRule(file, ".footer-bottom-shell");
-  assert.match(bottom.background, /var\(--footer-bottom\)/);
+  assert.match(bottom.background, /var\(--footer-clay-deep\)/);
 
   assert.equal(
     cssRule(file, ".footer .footer-grid", "(max-width: 620px)")["grid-template-columns"],
