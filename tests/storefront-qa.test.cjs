@@ -148,6 +148,30 @@ function cssRule(relative, selector, media = null) {
   return declarations;
 }
 
+test("social proof uses only real published review evidence", () => {
+  const reviews = source("components/product-reviews.tsx");
+  const card = source("components/product-card.tsx");
+  const productsService = fs.readFileSync(path.resolve(__dirname, "../apps/api/src/products/products.service.ts"), "utf8");
+  const reviewFollowUp = fs.readFileSync(path.resolve(__dirname, "../apps/api/src/admin/review-followup.service.ts"), "utf8");
+
+  assert.match(reviews, /ratingDistribution/);
+  assert.match(reviews, /verifiedReviewCount/);
+  assert.match(reviews, /Verified purchase means the review is matched to a delivered HIDI order/);
+  assert.match(reviews, /Ratings include all published customer reviews for this style/);
+
+  assert.match(card, /!!product\.reviewCount && product\.reviewCount > 0/);
+  assert.match(card, /href=\{\`\$\{href\}#reviews\`\}/);
+  assert.match(card, /product\.averageRating\.toFixed\(1\)/);
+
+  assert.match(productsService, /productReview\.groupBy/);
+  assert.match(productsService, /withReviewSummaries/);
+  assert.match(productsService, /published: true/);
+
+  assert.match(reviewFollowUp, /shipments:/);
+  assert.match(reviewFollowUp, /deliveredAt: \{ lte: cutoff \}/);
+  assert.doesNotMatch(reviewFollowUp, /createdAt: \{ lte: cutoff \}/);
+});
+
 test("WCAG foundation keeps keyboard focus visible and modal overlays contained", () => {
   const shell = source("components/site-shell.tsx");
   const header = source("components/header.tsx");
