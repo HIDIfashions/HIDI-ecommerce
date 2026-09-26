@@ -243,7 +243,7 @@ export class ReviewsService {
   }
 
   async productReviews(productId: string) {
-    const [reviews, aggregate] = await Promise.all([
+    const [reviews, aggregate, verifiedReviewCount, distributionRows] = await Promise.all([
       this.prisma.productReview.findMany({
         where: { productId, published: true },
         orderBy: { createdAt: "desc" },
@@ -263,11 +263,34 @@ export class ReviewsService {
         _avg: { rating: true },
         _count: { rating: true },
       }),
+      this.prisma.productReview.count({
+        where: { productId, published: true, verifiedPurchase: true },
+      }),
+      this.prisma.productReview.groupBy({
+        by: ["rating"],
+        where: { productId, published: true },
+        _count: { rating: true },
+      }),
     ]);
+
+    const ratingDistribution: Record<1 | 2 | 3 | 4 | 5, number> = {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    };
+    for (const row of distributionRows) {
+      if (row.rating >= 1 && row.rating <= 5) {
+        ratingDistribution[row.rating as 1 | 2 | 3 | 4 | 5] = row._count.rating;
+      }
+    }
 
     return {
       averageRating: aggregate._avg.rating ?? 0,
       reviewCount: aggregate._count.rating,
+      verifiedReviewCount,
+      ratingDistribution,
       reviews,
     };
   }
