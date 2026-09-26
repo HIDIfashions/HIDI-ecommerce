@@ -89,6 +89,7 @@
 
 .name {
   min-width: 0;
+  min-height: 21px;
   margin: 0;
   overflow: hidden;
   color: var(--card-brand);
@@ -111,9 +112,10 @@
   min-height: 24px;
   margin-top: 5px;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: baseline;
   gap: 4px 7px;
+  white-space: nowrap;
   font-family: var(--font-product);
   font-size: 13px;
   line-height: 1.4;
@@ -156,7 +158,9 @@
 }
 
 .fitRibbonWrap {
+  min-height: 76px;
   display: grid;
+  grid-template-rows: 16px 34px;
   gap: 8px;
   margin-top: 14px;
   padding-top: 13px;
@@ -186,9 +190,11 @@
 }
 
 .fitRibbon {
-  display: flex;
-  gap: 6px;
   min-width: 0;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -242,9 +248,11 @@
 }
 
 .actions {
+  min-height: 44px;
   margin-top: 12px;
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(112px, .65fr);
+  align-items: stretch;
   gap: 8px;
 }
 
