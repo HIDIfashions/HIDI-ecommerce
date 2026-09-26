@@ -28,6 +28,12 @@ export type ApiVariant = {
   colorHex?: string | null;
   mrpPaise: number;
   pricePaise: number;
+  bustMm?: number | null;
+  waistMm?: number | null;
+  hipMm?: number | null;
+  shoulderMm?: number | null;
+  sleeveLengthMm?: number | null;
+  garmentLengthMm?: number | null;
   available: number;
   images?: { id: string; url: string; alt: string; position: number }[];
 };
