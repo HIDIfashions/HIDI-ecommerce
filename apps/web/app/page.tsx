@@ -67,7 +67,7 @@ const services = [
   {
     icon: Truck,
     title: "Complimentary shipping",
-    copy: "On orders above ₹1,499.",
+    copy: "On orders of ₹1,499 and above.",
   },
   {
     icon: RefreshCcw,
