@@ -212,6 +212,12 @@ model ProductVariant {
   pricePaise  Int
   active      Boolean   @default(true)
   weightGrams Int?
+  bustMm      Int?
+  waistMm     Int?
+  hipMm       Int?
+  shoulderMm  Int?
+  sleeveLengthMm Int?
+  garmentLengthMm Int?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
