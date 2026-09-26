@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Shipping Policy",
+  description: "HIDI shipping information for India, including delivery availability, tracking and complimentary-shipping guidance.",
+  alternates: { canonical: "/shipping" },
+};
 import Link from "next/link";
 import styles from "@/components/policy-page.module.css";
 
