@@ -32,6 +32,13 @@ type CheckoutCart = {
 };
 type Attempt = { fingerprint: string; token: string; walletPaise: number };
 
+type DeliveryCheck =
+  | { status: "idle" }
+  | { status: "checking"; pin: string }
+  | { status: "serviceable"; pin: string; city?: string | null; district?: string | null; stateCode?: string | null }
+  | { status: "alternate"; pin: string; city?: string | null; district?: string | null; stateCode?: string | null }
+  | { status: "unavailable"; pin: string };
+
 function cartSignature(cart: CheckoutCart) {
   return JSON.stringify([cart.subtotalPaise, cart.totalPaise, cart.items.map((item) => [item.id, item.variant?.id, item.quantity, item.lineTotalPaise])]);
 }
@@ -50,6 +57,8 @@ export function CheckoutClient() {
   const [prepared, setPrepared] = useState<PreparedCheckout | null>(null);
   const [reloadCart, setReloadCart] = useState(0);
   const [showAddressDetail, setShowAddressDetail] = useState(false);
+  const [deliveryCheck, setDeliveryCheck] = useState<DeliveryCheck>({ status: "idle" });
+  const deliveryController = useRef<AbortController | null>(null);
   const attempt = useRef<Attempt | null>(null);
   const lock = useRef(false);
   const lifecycle = useRef({ active: false, revision: 0, userId: null as string | null, cartSignature: "" });
@@ -98,6 +107,7 @@ export function CheckoutClient() {
       lifecycle.current.active = false;
       lifecycle.current.revision += 1;
       request.current?.abort();
+      deliveryController.current?.abort();
       payment.current?.close?.();
       window.removeEventListener("hidi-auth-updated", syncAuth);
       window.removeEventListener("storage", onStorage);
@@ -131,6 +141,54 @@ export function CheckoutClient() {
     }).catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Unable to load bag"); });
     return () => controller.abort();
   }, [reloadCart]);
+
+  async function checkDeliveryPin(pinValue: string, form: HTMLFormElement | null) {
+    const pin = pinValue.replace(/\D/g, "").slice(0, 6);
+    deliveryController.current?.abort();
+
+    if (!/^\d{6}$/.test(pin)) {
+      setDeliveryCheck({ status: "idle" });
+      return;
+    }
+
+    const controller = new AbortController();
+    deliveryController.current = controller;
+    setDeliveryCheck({ status: "checking", pin });
+
+    try {
+      const response = await fetch(`${API}/checkout/delivery-serviceability?pin=${encodeURIComponent(pin)}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (controller.signal.aborted) return;
+
+      if (!response.ok || typeof payload?.serviceable !== "boolean") {
+        setDeliveryCheck({ status: "unavailable", pin });
+        return;
+      }
+
+      const next = {
+        pin,
+        city: typeof payload.city === "string" ? payload.city : null,
+        district: typeof payload.district === "string" ? payload.district : null,
+        stateCode: typeof payload.stateCode === "string" ? payload.stateCode : null,
+      };
+
+      if (form && next.city) {
+        const cityField = form.elements.namedItem("city");
+        if (cityField instanceof HTMLInputElement && !cityField.value.trim()) {
+          cityField.value = next.city;
+        }
+      }
+
+      setDeliveryCheck(payload.serviceable
+        ? { status: "serviceable", ...next }
+        : { status: "alternate", ...next });
+    } catch {
+      if (!controller.signal.aborted) setDeliveryCheck({ status: "unavailable", pin });
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -371,11 +429,19 @@ export function CheckoutClient() {
                 <input
                   name="postalCode"
                   aria-label="PIN code"
+                  aria-describedby="checkout-pin-status"
                   inputMode="numeric"
                   autoComplete="shipping postal-code"
                   maxLength={6}
                   pattern="[0-9]{6}"
                   title="Enter a 6-digit PIN code"
+                  onInput={(event) => {
+                    event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 6);
+                    if (deliveryCheck.status !== "idle" && deliveryCheck.pin !== event.currentTarget.value) {
+                      setDeliveryCheck({ status: "idle" });
+                    }
+                  }}
+                  onBlur={(event) => void checkDeliveryPin(event.currentTarget.value, event.currentTarget.form)}
                   required
                 />
               </label>
@@ -383,6 +449,23 @@ export function CheckoutClient() {
                 <span>City</span>
                 <input name="city" aria-label="City" autoComplete="shipping address-level2" autoCapitalize="words" required />
               </label>
+            </div>
+
+            <div
+              id="checkout-pin-status"
+              className={`checkout-delivery-status checkout-delivery-${deliveryCheck.status}`}
+              aria-live="polite"
+            >
+              {deliveryCheck.status === "checking" && <span>Checking delivery availability…</span>}
+              {deliveryCheck.status === "serviceable" && (
+                <span><strong>Delivery available</strong>{deliveryCheck.city ? ` to ${deliveryCheck.city}` : ""}. Prepaid delivery is supported for this PIN code.</span>
+              )}
+              {deliveryCheck.status === "alternate" && (
+                <span><strong>We’ll confirm the best carrier for this PIN.</strong>{deliveryCheck.city ? ` ${deliveryCheck.city} is recognised` : ""}; you can continue checkout.</span>
+              )}
+              {deliveryCheck.status === "unavailable" && (
+                <span>Live delivery check is temporarily unavailable. You can continue checkout; HIDI will verify delivery before dispatch.</span>
+              )}
             </div>
 
             <div className="two-col">
