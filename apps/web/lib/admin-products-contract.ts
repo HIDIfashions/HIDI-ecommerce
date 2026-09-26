@@ -5,6 +5,8 @@ export type ProductPhoto = { id: string; url: string; alt: string; position: num
 export type ProductVariant = {
   id: string; sku: string; size: string; color: string; colorHex: string | null;
   pricePaise: number; mrpPaise: number; weightGrams: number | null; active: boolean;
+  bustMm: number | null; waistMm: number | null; hipMm: number | null;
+  shoulderMm: number | null; sleeveLengthMm: number | null; garmentLengthMm: number | null;
   images: ProductPhoto[];
   inventory: { onHand: number; reserved: number; safetyStock: number; reorderLevel: number } | null;
 };
