@@ -9,13 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         "/api",
         "/admin",
-        "/account",
-        "/cart",
-        "/checkout",
-        "/order-confirmed",
-        "/review",
-        "/search",
-        "/wishlist",
       ],
     },
     sitemap: absoluteUrl("/sitemap.xml"),
