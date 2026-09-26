@@ -87,8 +87,13 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
       const eligible = await this.prisma.order.findMany({
         where: {
           status: "DELIVERED" as any,
-          createdAt: { lte: cutoff },
           customerEmail: { not: null },
+          shipments: {
+            some: {
+              status: "DELIVERED" as any,
+              deliveredAt: { lte: cutoff },
+            },
+          },
           reviewFollowUps: {
             none: { channel: "EMAIL" as any },
           },
