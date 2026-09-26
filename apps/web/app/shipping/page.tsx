@@ -23,7 +23,7 @@ const shippingFaqs = [
   },
   {
     q: "Do you offer free shipping on orders?",
-    a: "Yes. Complimentary shipping applies to orders above ₹1,499. Any shipping charge below that threshold will be shown clearly before payment."
+    a: "Yes. Complimentary shipping applies to orders of ₹1,499 and above. Any shipping charge below that threshold will be shown clearly before payment."
   },
   {
     q: "What if my order is delayed?",
@@ -31,7 +31,7 @@ const shippingFaqs = [
   },
   {
     q: "What are the shipping charges?",
-    a: "Orders above ₹1,499 qualify for complimentary shipping. Charges for lower-value orders will be displayed at checkout before payment."
+    a: "Orders of ₹1,499 and above qualify for complimentary shipping. Charges for lower-value orders will be displayed at checkout before payment."
   },
   {
     q: "Is there a limit for COD orders?",
