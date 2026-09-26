@@ -198,6 +198,26 @@ export function CheckoutClient() {
     }
   }
 
+  function focusCheckoutProblem(message: string) {
+    const form = document.querySelector<HTMLFormElement>(".checkout-form");
+    if (!form) return;
+
+    const lower = message.toLowerCase();
+    const fieldName =
+      lower.includes("email") ? "email" :
+      lower.includes("mobile") || lower.includes("phone") ? "phone" :
+      lower.includes("pin") || lower.includes("delivery address") ? "postalCode" :
+      lower.includes("address") ? "line1" :
+      null;
+
+    if (!fieldName) return;
+    const field = form.elements.namedItem(fieldName);
+    if (field instanceof HTMLElement) {
+      field.focus();
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (lock.current || !cart) return;
@@ -290,7 +310,11 @@ export function CheckoutClient() {
       });
       rzp.open();
     } catch (cause) {
-      if (current()) setError(cause instanceof Error ? cause.message : "Unable to start payment");
+      if (current()) {
+        const message = cause instanceof Error ? cause.message : "Unable to start payment";
+        setError(message);
+        focusCheckoutProblem(message);
+      }
       // Preserve the key on ambiguous failure: a server-side reservation may exist.
       release();
     }
@@ -519,7 +543,25 @@ export function CheckoutClient() {
                 </> : null}
               {useWallet && (wallet.error || wallet.unavailable) && <button className={walletStyles.textButton} type="button" onClick={() => { invalidate(false); setUseWallet(false); setWalletInput(""); setError(""); }}>Continue without rewards</button>}
             </div>}
-            {payable > 0 ? <div className="payment-placeholder"><strong>Razorpay secure payment</strong><span>UPI · Cards · Net banking · Wallets</span></div> : <div className="payment-placeholder"><strong>Pay with HIDI rewards</strong><span>No cash payment needed if the final amount is fully covered.</span></div>}
+            {payable > 0 ? (
+              <div className="payment-placeholder checkout-payment-trust">
+                <div>
+                  <strong>Razorpay secure payment</strong>
+                  <span>UPI · Cards · Net banking · Wallets</span>
+                </div>
+                <ul>
+                  <li>Payment details are handled by Razorpay.</li>
+                  <li>Your selected stock is reserved while payment is prepared.</li>
+                </ul>
+              </div>
+            ) : (
+              <div className="payment-placeholder checkout-payment-trust">
+                <div>
+                  <strong>Pay with HIDI rewards</strong>
+                  <span>No cash payment needed if the final amount is fully covered.</span>
+                </div>
+              </div>
+            )}
             <p className="fine-print left">{walletEnabled && useWallet ? "Stock and selected rewards are" : "Stock is"} reserved for 15 minutes when checkout is prepared. Closing payment does not immediately release a reservation; retry the same checkout or wait for it to expire.</p>
           </section>
         </fieldset>
