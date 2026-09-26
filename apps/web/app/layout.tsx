@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./hotfix.css";
 import { SiteShell } from "@/components/site-shell";
 import { absoluteUrl, getSiteUrl, safeJsonLd } from "@/lib/site-url";
 
