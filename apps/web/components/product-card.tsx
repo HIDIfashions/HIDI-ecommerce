@@ -15,10 +15,10 @@ import { configuredWhatsAppNumber, shareProduct } from "@/lib/product-sharing";
 import { WhatsAppIcon } from "./whatsapp-icon";
 import styles from "./product-card.module.css";
 
-type Props = { product: ApiProduct; initialVariantId?: string };
+type Props = { product: ApiProduct; initialVariantId?: string; priorityMedia?: boolean };
 type Phase = "idle" | "adding" | "added";
 
-export function ProductCard({ product, initialVariantId }: Props) {
+export function ProductCard({ product, initialVariantId, priorityMedia = false }: Props) {
   const router = useRouter();
   const uid = useId();
   const initial = product.variants.find((entry) => entry.id === initialVariantId && entry.available > 0);
@@ -212,6 +212,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
         videos={getProductCardVideos(product.slug)}
         soldOut={soldOut}
         href={href}
+        priority={priorityMedia}
       />
 
       <button
