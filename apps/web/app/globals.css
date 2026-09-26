@@ -3261,23 +3261,24 @@ body {
 
 
 /* ==========================================================================
-   HIDI FOOTER OPTION 2 — WARM IVORY EDITORIAL
-   Layered site ending: Mulberry editorial statement -> warm ivory footer ->
-   soft blush legal bar. This block is authoritative for footer presentation.
+   HIDI FOOTER OPTION 1 — DUSTY CLAY LUXURY
+   Layered site ending: Mulberry statement -> champagne edge -> dusty clay
+   footer -> deeper clay legal bar.
    ========================================================================== */
 .footer {
-  --footer-ink: #482d2b;
-  --footer-muted: #74645d;
-  --footer-gold: #bf8d3c;
-  --footer-ivory: #f2e5d9;
-  --footer-ivory-soft: #f7eee7;
-  --footer-bottom: #e5d4c5;
+  --footer-ink: #fff6ed;
+  --footer-muted: #e5cfc6;
+  --footer-gold: #d5a24d;
+  --footer-gold-bright: #f1c36e;
+  --footer-clay: #8c514b;
+  --footer-clay-deep: #78413d;
+  --footer-clay-soft: #a15f57;
   position: relative;
   padding: 0;
   overflow: hidden;
-  background: var(--footer-ivory);
+  background: var(--footer-clay);
   color: var(--footer-ink);
-  border-top: 1px solid rgba(191,141,60,.42);
+  border-top: 4px solid #d6b06b;
 }
 
 .footer-main {
@@ -3285,9 +3286,9 @@ body {
   padding: 82px 0 66px;
   overflow: hidden;
   background:
-    radial-gradient(circle at -4% 12%, rgba(191,141,60,.12), transparent 21%),
-    radial-gradient(circle at 103% 72%, rgba(89,29,32,.055), transparent 24%),
-    linear-gradient(135deg, #f5eadf 0%, #efe1d5 48%, #f8efe7 100%);
+    radial-gradient(circle at -2% 8%, rgba(241,195,110,.10), transparent 24%),
+    radial-gradient(circle at 101% 84%, rgba(70,20,22,.12), transparent 27%),
+    linear-gradient(135deg, #96574f 0%, var(--footer-clay) 52%, #824943 100%);
 }
 
 .footer-main::before,
@@ -3295,23 +3296,23 @@ body {
   content: "";
   position: absolute;
   pointer-events: none;
-  border: 1px solid rgba(191,141,60,.14);
+  border: 1px solid rgba(241,195,110,.13);
   border-radius: 48% 52% 46% 54%;
   transform: rotate(-18deg);
 }
 
 .footer-main::before {
-  width: 290px;
-  height: 410px;
-  left: -185px;
-  bottom: -205px;
+  width: 300px;
+  height: 430px;
+  left: -190px;
+  bottom: -220px;
 }
 
 .footer-main::after {
-  width: 250px;
-  height: 350px;
-  right: -145px;
-  top: 36px;
+  width: 265px;
+  height: 365px;
+  right: -150px;
+  top: 30px;
   transform: rotate(22deg);
 }
 
@@ -3324,7 +3325,7 @@ body {
 
 .footer h3 {
   margin: 0 0 10px;
-  color: var(--footer-gold);
+  color: var(--footer-gold-bright);
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 700;
@@ -3348,14 +3349,14 @@ body {
 
 .footer-grid a {
   width: fit-content;
-  color: #553a36;
+  color: #fff3e8;
   font-size: 13px;
   line-height: 1.5;
   transition: color .18s ease, transform .18s ease;
 }
 
 .footer-grid a:hover {
-  color: #591d20;
+  color: var(--footer-gold-bright);
   text-decoration: none;
   transform: translateX(2px);
 }
@@ -3370,7 +3371,7 @@ body {
 
 .footer-note {
   margin: 12px 0 0;
-  color: #9b5149;
+  color: var(--footer-gold-bright);
   font-family: var(--font-display);
   font-size: 21px;
   font-style: italic;
@@ -3388,47 +3389,47 @@ body {
   height: 38px;
   display: inline-grid;
   place-items: center;
-  border: 1px solid #ccb4a3;
+  border: 1px solid rgba(255,246,237,.35);
   border-radius: 50%;
-  background: rgba(255,255,255,.24);
-  color: #765148;
+  background: rgba(255,255,255,.035);
+  color: #fff3e8;
   transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
 }
 
 .footer .social-link:hover {
-  background: #591d20;
-  border-color: #591d20;
-  color: #fff8ef;
+  background: rgba(89,29,32,.72);
+  border-color: var(--footer-gold-bright);
+  color: var(--footer-gold-bright);
   transform: translateY(-2px);
 }
 
 .footer .social-link-disabled {
-  opacity: .46;
+  opacity: .45;
 }
 
 .footer .newsletter {
   margin-top: 10px;
   min-height: 48px;
-  border-bottom: 1px solid #9d8070;
+  border-bottom: 1px solid rgba(255,243,232,.48);
 }
 
 .footer .newsletter:focus-within {
-  border-bottom-color: #591d20;
+  border-bottom-color: var(--footer-gold-bright);
 }
 
 .footer .newsletter input {
   min-width: 0;
-  color: #482d2b;
+  color: var(--footer-ink);
   font-size: 13px;
 }
 
 .footer .newsletter input::placeholder {
-  color: #8b756a;
+  color: #e0c8be;
 }
 
 .footer .newsletter button {
   padding-left: 16px;
-  color: #9b6d2c;
+  color: var(--footer-gold-bright);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .10em;
@@ -3436,26 +3437,26 @@ body {
 }
 
 .footer .newsletter button:hover:not(:disabled) {
-  color: #591d20;
+  color: #fff8ef;
 }
 
 .footer .newsletter-status {
   min-height: 17px;
   margin: 5px 0 0;
-  color: #8a5a4b;
+  color: #f0d5a2;
   font-size: 9px;
 }
 
 .footer-small {
   margin-top: 2px;
-  color: #8c786e;
+  color: #d9beb5;
   font-size: 9px;
   line-height: 1.55;
 }
 
 .footer-motto {
   margin: 22px 0 0;
-  color: #a77635;
+  color: var(--footer-gold-bright);
   font-family: var(--font-sans);
   font-size: 9px;
   font-weight: 700;
@@ -3467,8 +3468,8 @@ body {
   position: relative;
   z-index: 2;
   background:
-    linear-gradient(90deg, #e7d6c7 0%, var(--footer-bottom) 52%, #eadacd 100%);
-  border-top: 1px solid #d4bda9;
+    linear-gradient(90deg, #713a37 0%, var(--footer-clay-deep) 52%, #6f3936 100%);
+  border-top: 1px solid rgba(241,195,110,.24);
 }
 
 .footer .footer-bottom {
@@ -3480,7 +3481,7 @@ body {
   justify-content: space-between;
   gap: 24px;
   border-top: 0;
-  color: #715c53;
+  color: #e8d2c9;
   font-size: 10px;
   letter-spacing: .02em;
 }
@@ -3559,3 +3560,4 @@ body {
     transition: none;
   }
 }
+
