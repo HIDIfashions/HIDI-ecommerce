@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
@@ -161,16 +160,22 @@ function Photo({ src, alt, sizes, contain = false, priority = false }: {
   }
 
   return (
-    <Image
+    <img
       src={src}
       alt={alt}
-      fill
       sizes={sizes}
-      priority={priority}
-      loading={priority ? undefined : "lazy"}
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : undefined}
+      decoding="async"
       draggable={false}
       className={contain ? styles.contain : styles.photo}
       onError={() => setFailed(true)}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+      }}
     />
   );
 }
@@ -630,17 +635,23 @@ function Gallery({
 
                 {hover && preload?.kind === "image" && (
                   <span className={styles.photoPreload} aria-hidden="true">
-                    <Image
+                    <img
                       key={preload.id}
                       src={preload.url}
                       alt=""
-                      fill
                       sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
                       loading="eager"
+                      decoding="async"
                       draggable={false}
                       className={`${styles.nextPhotoLayer} ${transitioning ? styles.nextPhotoLayerVisible : ""}`}
                       onLoad={() => setPreloadReady(true)}
                       onError={() => setPreloadReady(true)}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                      }}
                     />
                   </span>
                 )}
