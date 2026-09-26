@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { CollectionBrowser } from "@/components/collection-browser";
 import { getProducts } from "@/lib/api";
 import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
@@ -52,7 +53,8 @@ export async function generateMetadata({
 
 export default async function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const collection = labels[slug] ?? labels["new-arrivals"];
+  const collection = labels[slug];
+  if (!collection) notFound();
   const products = await getProducts(slug === "all" ? undefined : slug);
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
