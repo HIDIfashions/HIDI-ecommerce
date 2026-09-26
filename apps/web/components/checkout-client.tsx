@@ -265,6 +265,7 @@ export function CheckoutClient() {
           </Link>
         ))}
         <div className="checkout-mobile-total-row"><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div>
+        <Link href="/cart" className="checkout-edit-bag">Edit bag</Link>
       </div>
     </details>
 
@@ -428,7 +429,10 @@ export function CheckoutClient() {
         </button>
       </form>
       <aside className="checkout-summary">
-        <p>Order summary</p>
+        <div className="checkout-summary-head">
+          <p>Order summary</p>
+          <Link href="/cart" className="checkout-edit-bag">Edit bag</Link>
+        </div>
         <strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong>
         <span>{cart.itemCount} item(s) · Taxes included</span>
 
