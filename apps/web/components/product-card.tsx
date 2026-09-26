@@ -381,11 +381,13 @@ export function ProductCard({ product, initialVariantId }: Props) {
             <Share2 size={15} aria-hidden="true" /> Share and get reward
           </button>
         </div>
-        <div className={styles.feedback}>
-          <p className={styles.error} id={`${uid}-error`} role="alert">{error}</p>
-          <p role="status">{message}</p>
-          {bagLink && <Link href="/cart" className={styles.viewBag}>View bag <ArrowUpRight size={12} aria-hidden="true" /></Link>}
-        </div>
+        {(error || message || bagLink) && (
+          <div className={styles.feedback}>
+            {error && <p className={styles.error} id={`${uid}-error`} role="alert">{error}</p>}
+            {message && <p role="status">{message}</p>}
+            {bagLink && <Link href="/cart" className={styles.viewBag}>View bag <ArrowUpRight size={12} aria-hidden="true" /></Link>}
+          </div>
+        )}
       </div>
     </div>
 
