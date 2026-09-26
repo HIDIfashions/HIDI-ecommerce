@@ -534,6 +534,8 @@ test("checkout keeps guest purchase prominent and minimizes typing friction", ()
   assert.match(checkout, /\+ Add apartment \/ landmark/);
   assert.match(checkout, /showAddressDetail &&/);
   assert.match(checkout, /Pay securely/);
+  assert.match(checkout, /className="checkout-edit-bag"/);
+  assert.match(checkout, /href="\/cart"/);
 
   const field = cssRule("app/globals.css", ".checkout-field");
   assert.equal(field.display, "grid");
