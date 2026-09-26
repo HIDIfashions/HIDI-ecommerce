@@ -251,7 +251,7 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
             <ChevronRight size={17} strokeWidth={1.5} aria-hidden="true" />
           </button>
 
-          <span className={styles.mobileProductCount}>{filtered.length} Products</span>
+          <span className={styles.mobileProductCount} aria-live="polite" aria-atomic="true">{filtered.length} Products</span>
 
           <div className={styles.mobileGridSwitcher} aria-label="Product grid layout">
             <button
@@ -288,7 +288,7 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
               Filter
               {hasFilters && <span className={styles.filterCount}>{selectedSizes.length + selectedColors.length + selectedFabrics.length + (price ? 1 : 0)}</span>}
             </button>
-            <span className={styles.styleCount}>{filtered.length} styles</span>
+            <span className={styles.styleCount} aria-live="polite" aria-atomic="true">{filtered.length} styles</span>
           </div>
 
           <div className={styles.toolbarRight}>
