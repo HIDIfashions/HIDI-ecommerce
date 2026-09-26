@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Review Invitation",
+  robots: { index: false, follow: false },
+};
+
 import { ReviewInvitationClient } from "./review-invitation-client";
 
 export const dynamic = "force-dynamic";
