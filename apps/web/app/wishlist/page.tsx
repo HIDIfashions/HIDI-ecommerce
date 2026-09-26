@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
+import { WishlistPageClient } from "@/components/wishlist-page-client";
+import { getProducts } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Wishlist",
   robots: { index: false, follow: false },
 };
-
-import { WishlistPageClient } from "@/components/wishlist-page-client";
-import { getProducts } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
