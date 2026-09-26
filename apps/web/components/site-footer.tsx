@@ -62,7 +62,8 @@ export function Footer() {
 
   return (
     <footer className="footer">
-      <div className="footer-grid container">
+      <div className="footer-main">
+        <div className="footer-grid container">
         <div className="footer-brand">
           <Link className="footer-logo" href="/" aria-label="HIDI — Wear the Feeling">
             <img src="/brand/hidi-logo-gold-inline.svg" alt="HIDI — Wear the Feeling" />
@@ -77,6 +78,7 @@ export function Footer() {
           <Link href="/collections/work-edit">Work Edit</Link>
           <Link href="/collections/everyday">Everyday</Link>
           <Link href="/collections/occasion">Occasion</Link>
+          <Link href="/collections/all">Shop All</Link>
         </div>
 
         <div>
@@ -100,12 +102,16 @@ export function Footer() {
 
           <NewsletterSignup />
           <p className="footer-small">By subscribing, you agree to receive HIDI updates. You can unsubscribe anytime.</p>
+          <p className="footer-motto">Good clothes. Brighter days.</p>
+        </div>
         </div>
       </div>
 
-      <div className="footer-bottom container">
-        <span>© 2026 HIDI. All rights reserved.</span>
-        <span>Secure payments · Easy 7-day exchange</span>
+      <div className="footer-bottom-shell">
+        <div className="footer-bottom container">
+          <span>© 2026 HIDI. All rights reserved.</span>
+          <span>Secure payments · Easy 7-day exchange</span>
+        </div>
       </div>
     </footer>
   );
