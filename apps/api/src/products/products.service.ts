@@ -3,19 +3,47 @@ import type { Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const CARD_MEDIA_LIMIT = 3;
-const cardInclude = {
-  category: true,
-  collections: { include: { collection: true }, orderBy: { position: "asc" as const } },
-  images: { orderBy: { position: "asc" as const }, take: CARD_MEDIA_LIMIT },
+const cardSelect = {
+  id: true,
+  slug: true,
+  name: true,
+  fabric: true,
+  category: {
+    select: { id: true, name: true, slug: true },
+  },
+  collections: {
+    orderBy: { position: "asc" as const },
+    select: {
+      collection: { select: { id: true, name: true, slug: true } },
+    },
+  },
+  images: {
+    orderBy: { position: "asc" as const },
+    take: CARD_MEDIA_LIMIT,
+    select: { id: true, url: true, alt: true, position: true },
+  },
   variants: {
     where: { active: true },
-    include: {
-      inventory: true,
-      images: { orderBy: { position: "asc" as const }, take: CARD_MEDIA_LIMIT },
-    },
     orderBy: [{ color: "asc" as const }, { size: "asc" as const }],
+    select: {
+      id: true,
+      sku: true,
+      size: true,
+      color: true,
+      colorHex: true,
+      mrpPaise: true,
+      pricePaise: true,
+      inventory: {
+        select: { onHand: true, reserved: true, safetyStock: true },
+      },
+      images: {
+        orderBy: { position: "asc" as const },
+        take: CARD_MEDIA_LIMIT,
+        select: { id: true, url: true, alt: true, position: true },
+      },
+    },
   },
-} satisfies Prisma.ProductInclude;
+} satisfies Prisma.ProductSelect;
 
 @Injectable()
 export class ProductsService {
@@ -33,7 +61,7 @@ export class ProductsService {
       },
       orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
       ...(safeLimit ? { take: safeLimit } : {}),
-      include: cardInclude,
+      select: cardSelect,
     });
     return products.map((product) => this.toCardView(product));
   }
@@ -50,7 +78,7 @@ export class ProductsService {
         where: { status: "ACTIVE" },
         orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
         take: safeLimit,
-        include: cardInclude,
+        select: cardSelect,
       }),
     ]);
 
@@ -87,7 +115,7 @@ export class ProductsService {
     const productIds = ranked.map((row) => row.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds }, status: "ACTIVE" },
-      include: cardInclude,
+      select: cardSelect,
     });
 
     const byId = new Map(products.map((product) => [product.id, product]));
@@ -129,7 +157,7 @@ export class ProductsService {
       },
       orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
       take: Math.max(safeLimit * 4, 12),
-      include: cardInclude,
+      select: cardSelect,
     });
 
     const sourceView = this.toView(source);
