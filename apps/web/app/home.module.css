@@ -408,9 +408,12 @@
   border-left: 1px solid #ddcfc4;
 }
 
-.privilegeCard:hover {
-  background: rgba(255,255,255,.52);
+.privilegeCard:hover,
+.privilegeCard:focus-visible {
+  background: var(--home-brand);
+  color: #fff8ef;
   transform: translateY(-2px);
+  outline: none;
 }
 
 .privilegeIndex {
@@ -461,9 +464,20 @@
   text-transform: uppercase;
 }
 
-.privilegeCard:hover .privilegeCta {
+.privilegeCard:hover .privilegeCopy h3,
+.privilegeCard:focus-visible .privilegeCopy h3 {
+  color: #fff8ef;
+}
+
+.privilegeCard:hover .privilegeCopy p,
+.privilegeCard:focus-visible .privilegeCopy p {
+  color: #ead8cf;
+}
+
+.privilegeCard:hover .privilegeCta,
+.privilegeCard:focus-visible .privilegeCta {
   border-bottom-color: var(--home-gold);
-  color: #7f5425;
+  color: var(--home-gold);
 }
 
 .privilegesFinePrint {
@@ -500,6 +514,10 @@
 .serviceItem svg {
   flex: 0 0 auto;
   color: var(--home-gold);
+}
+
+.serviceWhatsappIcon {
+  color: #25d366 !important;
 }
 
 .serviceItem div {
