@@ -3233,3 +3233,28 @@ body {
     background: #eadfcf;
   }
 }
+
+
+/* ==========================================================================
+   HIDI AUTHORITATIVE BRAND TOKENS
+   Mulberry Clay + HIDI Gold + warm ivory are the storefront-wide theme.
+   Keep this block last so older compatibility aliases cannot turn commerce
+   controls back to Sage Stone.
+   ========================================================================== */
+:root {
+  --hidi-mulberry: #591d20;
+  --hidi-mulberry-deep: #461416;
+  --hidi-mulberry-hover: #69282a;
+  --hidi-mulberry-soft: #f3e5e2;
+  --hidi-mulberry-mist: #fbf6f2;
+  --hidi-mulberry-clay: #591d20;
+  --hidi-mulberry-clay-deep: #461416;
+  --hidi-mulberry-clay-lift: #69282a;
+  --hidi-mulberry-ivory: #f8eee4;
+  --hidi-mulberry-muted: #d8c4b6;
+  --hidi-mulberry-gold: #d5a24d;
+  --hidi-mulberry-gold-bright: #f1c36e;
+  --hidi-mulberry-line: rgba(226, 181, 108, .34);
+  --hidi-gold-accent: #d5a24d;
+  --hidi-ivory-text: #fff8ef;
+}
