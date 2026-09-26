@@ -30,7 +30,10 @@ export class CheckoutController {
       for (const [key, entries] of this.deliveryRate) {
         if (!entries.some((time) => now - time < 60_000)) this.deliveryRate.delete(key);
       }
-      if (this.deliveryRate.size > 1000) this.deliveryRate.delete(this.deliveryRate.keys().next().value);
+      if (this.deliveryRate.size > 1000) {
+        const oldestRateKey = this.deliveryRate.keys().next().value;
+        if (oldestRateKey !== undefined) this.deliveryRate.delete(oldestRateKey);
+      }
     }
 
     const cached = this.deliveryCache.get(pin);
@@ -50,7 +53,10 @@ export class CheckoutController {
       for (const [key, entry] of this.deliveryCache) {
         if (entry.expiresAt <= now) this.deliveryCache.delete(key);
       }
-      if (this.deliveryCache.size > 500) this.deliveryCache.delete(this.deliveryCache.keys().next().value);
+      if (this.deliveryCache.size > 500) {
+        const oldestCacheKey = this.deliveryCache.keys().next().value;
+        if (oldestCacheKey !== undefined) this.deliveryCache.delete(oldestCacheKey);
+      }
     }
     return value;
   }
