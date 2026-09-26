@@ -165,9 +165,10 @@ export function ProductCard({ product, initialVariantId }: Props) {
     if (!selected) {
       setChooseSize(true); setError("Choose your size above to continue.");
       const mobileVisible = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
-      (mobileVisible ? mobileRibbonRef.current : desktopRibbonRef.current)
-        ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
-        ?.focus();
+      const sizeHost = mobileQuickOpen
+        ? sizesRef.current
+        : mobileVisible ? mobileRibbonRef.current : desktopRibbonRef.current;
+      sizeHost?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
       return;
     }
     if (selected.available < 1) {
