@@ -148,6 +148,60 @@ function cssRule(relative, selector, media = null) {
   return declarations;
 }
 
+test("WCAG foundation keeps keyboard focus visible and modal overlays contained", () => {
+  const shell = source("components/site-shell.tsx");
+  const header = source("components/header.tsx");
+  const search = source("components/header-search.tsx");
+  const collection = source("components/collection-browser.tsx");
+  const card = source("components/product-card.tsx");
+  const gallery = source("components/product-gallery.tsx");
+  const focus = source("lib/focus-management.ts");
+  const globals = source("app/globals.css");
+
+  assert.match(shell, /className="skip-link"/);
+  assert.match(shell, /id="main-content"/);
+  assert.match(shell, /tabIndex=\{-1\}/);
+
+  assert.match(focus, /focusableElements/);
+  assert.match(focus, /trapFocus/);
+  assert.match(focus, /event\.key !== "Tab"/);
+
+  assert.match(header, /role="dialog"/);
+  assert.match(header, /aria-modal="true"/);
+  assert.match(header, /trapFocus\(event, menuPanelRef\.current\)/);
+  assert.match(header, /aria-current=\{pathname === href \? "page"/);
+
+  assert.match(search, /role="dialog"/);
+  assert.match(search, /aria-modal="true"/);
+  assert.match(search, /trapFocus\(event, panelRef\.current\)/);
+
+  assert.match(collection, /\{mobileOpen && sidebar\}/);
+  assert.doesNotMatch(collection, /aria-hidden=\{!mobileOpen\}/);
+  assert.match(collection, /trapFocus\(event, filterDialogRef\.current\)/);
+
+  assert.match(card, /trapFocus\(event, mobileSheetRef\.current\)/);
+  assert.match(gallery, /trapFocus\(event, dialogRef\.current\)/);
+
+  assert.match(globals, /:where\(a, button, input, select, textarea, summary, \[tabindex\]\):focus-visible/);
+  assert.match(globals, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test("forms and utility controls expose assistive status and labels", () => {
+  const newsletter = source("components/newsletter-signup.tsx");
+  const search = source("components/header-search.tsx");
+  const productPage = source("app/products/[slug]/page.tsx");
+  const collectionCss = source("components/collection-browser.module.css");
+
+  assert.match(newsletter, /aria-describedby="newsletter-status"/);
+  assert.match(newsletter, /role=\{error \? "alert" : "status"\}/);
+  assert.match(search, /role="status"/);
+  assert.match(productPage, /aria-label="Delivery PIN code"/);
+  assert.match(productPage, /aria-label="Check delivery PIN code"/);
+  assert.match(collectionCss, /min-height: 32px/);
+  assert.match(collectionCss, /width: 18px/);
+  assert.match(collectionCss, /height: 18px/);
+});
+
 test("SEO foundation exposes canonical metadata, sitemap and crawl controls", () => {
   const layout = source("app/layout.tsx");
   const home = source("app/page.tsx");
