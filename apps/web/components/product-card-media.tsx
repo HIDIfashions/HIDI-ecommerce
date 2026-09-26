@@ -38,13 +38,12 @@ export function ProductCardMedia({ name, images, videos = EMPTY_VIDEOS, priority
   return <Gallery key={signature} name={name} items={items} priority={priority} {...rest} />;
 }
 
-function Photo({ src, alt, sizes, contain = false, priority = false, ready }: {
+function Photo({ src, alt, sizes, contain = false, priority = false }: {
   src?: string;
   alt: string;
   sizes: string;
   contain?: boolean;
   priority?: boolean;
-  ready?: () => void;
 }) {
   const [failed, setFailed] = useState(false);
 
@@ -67,11 +66,7 @@ function Photo({ src, alt, sizes, contain = false, priority = false, ready }: {
       loading={priority ? undefined : "lazy"}
       draggable={false}
       className={contain ? styles.contain : styles.photo}
-      onLoad={() => ready?.()}
-      onError={() => {
-        setFailed(true);
-        ready?.();
-      }}
+      onError={() => setFailed(true)}
     />
   );
 }
