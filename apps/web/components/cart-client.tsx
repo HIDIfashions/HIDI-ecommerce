@@ -99,7 +99,7 @@ export function CartClient() {
   if (cart.items.length === 0) return <div className="empty-state"><h2>Your bag is waiting.</h2><p>Find something you love from the latest HIDI edit.</p><Link className="button button-dark" href="/collections/new-arrivals">Browse new arrivals</Link></div>;
 
   const groups = groupCartItems(cart.items);
-  const complimentaryShipping = cart.subtotalPaise > 149900;
+  const complimentaryShipping = cart.subtotalPaise >= 149900;
 
   return <>
     {error && <p className="form-error">{error}</p>}
