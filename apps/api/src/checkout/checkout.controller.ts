@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Post, Query, Req, TooManyRequestsException } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, HttpException, HttpStatus, Param, Post, Query, Req } from "@nestjs/common";
 import { CheckoutService } from "./checkout.service.js";
 import { SupabaseAuthService } from "../auth/supabase-auth.service.js";
 import { DelhiveryService } from "../delhivery/delhivery.service.js";
@@ -23,7 +23,7 @@ export class CheckoutController {
     const now = Date.now();
     const clientKey = String(request?.ip ?? request?.headers?.["x-forwarded-for"] ?? "unknown").split(",")[0].trim();
     const recent = (this.deliveryRate.get(clientKey) ?? []).filter((time) => now - time < 60_000);
-    if (recent.length >= 20) throw new TooManyRequestsException("Too many PIN checks. Please wait a minute and try again.");
+    if (recent.length >= 20) throw new HttpException("Too many PIN checks. Please wait a minute and try again.", HttpStatus.TOO_MANY_REQUESTS);
     recent.push(now);
     this.deliveryRate.set(clientKey, recent);
 
