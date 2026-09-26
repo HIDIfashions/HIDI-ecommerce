@@ -519,6 +519,23 @@ test("HIDI Privileges use the header Mulberry colour on hover and focus", () => 
   );
 });
 
+test("bag groups the same product and colour while preserving size controls", () => {
+  const cart = source("components/cart-client.tsx");
+  const cartService = fs.readFileSync(path.resolve(__dirname, "../apps/api/src/carts/carts.service.ts"), "utf8");
+
+  assert.match(cart, /groupCartItems/);
+  assert.match(cart, /item\.product\.id.*item\.variant\.color/s);
+  assert.match(cart, /Qty \{group\.quantity\}/);
+  assert.match(cart, /group\.items\.map/);
+  assert.match(cart, /Size \{item\.variant\.size\}/);
+  assert.match(cart, /formatPaise\(group\.lineTotalPaise\)/);
+
+  // The API must continue merging repeated adds of the exact same SKU.
+  assert.match(cartService, /cartId_variantId/);
+  assert.match(cartService, /nextQuantity = \(existing\?\.quantity \?\? 0\) \+ quantity/);
+  assert.match(cartService, /update: \{ quantity: nextQuantity/);
+});
+
 test("checkout keeps guest purchase prominent and minimizes typing friction", () => {
   const checkout = source("components/checkout-client.tsx");
 
