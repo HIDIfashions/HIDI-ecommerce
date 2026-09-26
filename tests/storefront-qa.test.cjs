@@ -315,6 +315,14 @@ test("homepage premium interactions preserve desktop rhythm, mobile stacking and
   assert.equal(cssRule(file, ".serviceLink", "(prefers-reduced-motion: reduce)").transition, "none");
 });
 
+test("storefront typography is build-safe and does not depend on Google font fetching", () => {
+  const layout = source("app/layout.tsx");
+  assert.doesNotMatch(layout, /next\/font\/google/);
+  const globals = source("app/globals.css");
+  assert.match(globals, /--font-display:\s*Georgia/);
+  assert.match(globals, /--font-product:[^;]*Futura[^;]*Century Gothic/);
+});
+
 test("HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and warm ivory", () => {
   const globalCss = source("app/globals.css");
   assert.match(
