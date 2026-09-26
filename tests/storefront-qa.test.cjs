@@ -35,6 +35,12 @@ function harness({ products = [], bestSellers = [], whatsappNumber = "" } = {}) 
     "@/lib/api": {
       getProducts: async () => products,
       getBestSellers: async () => bestSellers,
+      getFeaturedProducts: async (limit = 4) => {
+        const ranked = bestSellers.length
+          ? [...bestSellers, ...products.filter((product) => !bestSellers.some((best) => best.id === product.id))]
+          : products;
+        return ranked.slice(0, limit);
+      },
       formatPaise: (value) => new Intl.NumberFormat("en-IN", {
         style: "currency", currency: "INR", maximumFractionDigits: 0,
       }).format(value / 100),
@@ -141,6 +147,20 @@ function cssRule(relative, selector, media = null) {
   assert.ok(declarations, `Missing CSS rule ${selector} in ${relative} (${media ?? "base"})`);
   return declarations;
 }
+
+test("homepage requests only a bounded featured catalogue payload", () => {
+  const page = source("app/page.tsx");
+  const api = source("lib/api.ts");
+  const productsService = fs.readFileSync(path.resolve(__dirname, "../apps/api/src/products/products.service.ts"), "utf8");
+
+  assert.match(page, /getFeaturedProducts\(4\)/);
+  assert.doesNotMatch(page, /getProducts\(\)/);
+  assert.doesNotMatch(page, /getBestSellers\(/);
+  assert.match(api, /\/products\/featured/);
+  assert.match(productsService, /CARD_MEDIA_LIMIT = 3/);
+  assert.match(productsService, /toCardView/);
+  assert.match(productsService, /async featured\(limit = 4\)/);
+});
 
 test("homepage launch fallback is bounded, premium and navigable", async () => {
   const root = await harness({ products: catalogue }).homepage();
