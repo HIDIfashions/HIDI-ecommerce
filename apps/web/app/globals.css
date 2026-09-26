@@ -2816,3 +2816,267 @@ body {
     visibility: visible !important;
   }
 }
+
+
+/* ==========================================================================
+   HIDI PREMIUM STOREFRONT V1 — authoritative brand chrome
+   This final layer intentionally normalizes legacy colour aliases so existing
+   commerce components inherit the Sage Stone identity without logic changes.
+   ========================================================================== */
+:root {
+  --hidi-sage-stone: #6f7569;
+  --hidi-sage-stone-deep: #545b50;
+  --hidi-sage-stone-hover: #7d8476;
+  --hidi-sage-mist: #f3f5f1;
+  --hidi-warm-white: #fbfaf7;
+  --hidi-premium-gold: #c9a766;
+
+  --ink: #2c2f2b;
+  --muted: #6f736d;
+  --paper: #ffffff;
+  --ivory: #fbfaf7;
+  --line: #e1e2dd;
+  --sage: var(--hidi-sage-stone);
+  --gold: var(--hidi-premium-gold);
+
+  /* Legacy aliases used throughout existing commerce modules. */
+  --hidi-mulberry: var(--hidi-sage-stone);
+  --hidi-mulberry-deep: var(--hidi-sage-stone-deep);
+  --hidi-mulberry-hover: var(--hidi-sage-stone-hover);
+  --hidi-mulberry-soft: #e9ede7;
+  --hidi-mulberry-mist: var(--hidi-sage-mist);
+  --hidi-mulberry-clay: var(--hidi-sage-stone);
+  --hidi-mulberry-gold: var(--hidi-premium-gold);
+  --hidi-mulberry-gold-bright: #dfc589;
+  --hidi-mulberry-ivory: #f8f5ec;
+  --hidi-mulberry-muted: #d8ddd3;
+  --hidi-mulberry-line: rgba(223,197,137,.32);
+}
+
+body {
+  background: #fff;
+  color: var(--ink);
+}
+
+.announcement {
+  min-height: 28px;
+  padding: 5px 16px;
+  background: #fff;
+  color: #52574f;
+  border-bottom: 1px solid #e5e6e1;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .11em;
+}
+
+.site-header {
+  background: rgba(111,117,105,.985);
+  color: #f8f5ec;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 8px 28px rgba(40,45,39,.08);
+  backdrop-filter: blur(16px);
+}
+
+.site-header .header-inner {
+  height: 74px;
+  color: #f8f5ec;
+}
+
+.site-header .wordmark {
+  width: 164px;
+  height: auto;
+}
+
+.site-header .wordmark img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter: none;
+}
+
+.site-header .desktop-nav,
+.site-header .utility-nav,
+.site-header .desktop-nav a,
+.site-header .utility-nav a,
+.site-header .utility-nav button,
+.site-header .mobile-menu {
+  color: #f8f5ec;
+}
+
+.site-header .desktop-nav {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .12em;
+}
+
+.site-header .desktop-nav a::after {
+  background: #e0c486;
+}
+
+.site-header .desktop-nav a:hover,
+.site-header .utility-nav a:hover,
+.site-header .utility-nav button:hover,
+.site-header .mobile-menu:hover {
+  color: #ead39f;
+  opacity: 1;
+}
+
+.site-header [class*="count"] {
+  background: #e0c486;
+  color: #444a42;
+  box-shadow: none;
+}
+
+.mobile-nav-panel {
+  background:
+    linear-gradient(145deg, #747b6e 0%, #5d6559 100%) !important;
+  color: #f8f5ec !important;
+}
+
+.mobile-nav-panel a {
+  color: inherit;
+}
+
+.button-dark {
+  background: var(--hidi-sage-stone);
+  border-color: var(--hidi-sage-stone);
+  color: #fff;
+}
+
+.button-dark:hover {
+  background: var(--hidi-sage-stone-deep);
+  border-color: var(--hidi-sage-stone-deep);
+}
+
+.button-light {
+  border-color: #9ca197;
+  color: #4f554d;
+  background: #fff;
+}
+
+.footer {
+  --ink: #f8f5ec;
+  --muted: #d8ddd3;
+  padding-top: 78px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(223,197,137,.08), transparent 30%),
+    linear-gradient(135deg, #666d61 0%, #747b6e 100%);
+  color: #f8f5ec;
+  border-top: 1px solid rgba(255,255,255,.12);
+}
+
+.footer h3,
+.footer strong,
+.footer .footer-note {
+  color: #e0c486;
+}
+
+.footer-grid a {
+  color: #f4f1e8;
+}
+
+.footer-grid a:hover {
+  color: #ead39f;
+}
+
+.footer .muted,
+.footer-small,
+.footer-bottom {
+  color: #d9ddd4;
+}
+
+.footer .newsletter {
+  border-bottom-color: rgba(255,255,255,.42);
+}
+
+.footer .newsletter input {
+  color: #fff;
+}
+
+.footer .newsletter input::placeholder {
+  color: #cfd4ca;
+}
+
+.footer .newsletter button {
+  color: #e0c486;
+}
+
+.footer-bottom {
+  border-top-color: rgba(255,255,255,.16);
+}
+
+.social-link {
+  color: #f4f1e8;
+}
+
+.social-link:hover {
+  color: #e0c486;
+}
+
+/* Cleaner catalogue hierarchy. */
+.collection-page .collection-header {
+  margin-top: 34px;
+  margin-bottom: 50px;
+}
+
+.collection-page .collection-header .eyebrow {
+  color: #9b7d4e;
+}
+
+.collection-page .collection-header h1 {
+  margin-bottom: 14px;
+  color: #2d302c;
+  font-family: var(--font-display);
+  font-size: clamp(52px, 6vw, 82px);
+  font-weight: 400;
+  line-height: .92;
+  letter-spacing: -.045em;
+}
+
+.collection-page .collection-header > p:last-child {
+  max-width: 520px;
+  color: #72766f;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@media (max-width: 1000px) {
+  .site-header .header-inner {
+    height: 64px;
+  }
+
+  .site-header .wordmark {
+    width: 128px;
+  }
+}
+
+@media (max-width: 620px) {
+  :root {
+    --hidi-mobile-announcement: 26px;
+    --hidi-mobile-header: 58px;
+  }
+
+  .announcement {
+    min-height: var(--hidi-mobile-announcement);
+    background: #fff;
+    color: #52574f;
+    border-bottom-color: #e3e4df;
+  }
+
+  .site-header {
+    top: var(--hidi-mobile-announcement);
+  }
+
+  .site-header .header-inner {
+    height: var(--hidi-mobile-header);
+  }
+
+  .site-header .wordmark {
+    width: 112px;
+  }
+
+  .footer {
+    padding-top: 58px;
+  }
+}
