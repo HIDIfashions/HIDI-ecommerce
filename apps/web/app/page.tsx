@@ -34,7 +34,10 @@ export default async function Home() {
     getBestSellers(8),
   ]);
 
-  const featured = (bestSellers.length ? bestSellers : catalogue).slice(0, 4);
+  const hasSales = bestSellers.length > 0;
+  const featured = hasSales
+    ? [...bestSellers, ...catalogue.filter((product) => !bestSellers.some((best) => best.id === product.id))].slice(0, 4)
+    : catalogue.slice(0, 4);
 
   return (
     <>
@@ -93,8 +96,8 @@ export default async function Home() {
       <section className={styles.featured + " container"}>
         <header className={styles.sectionHeader}>
           <div>
-            <p className={styles.eyebrow}>{bestSellers.length ? "MOST CHOSEN" : "NEW TO HIDI"}</p>
-            <h2>{bestSellers.length ? "Pieces customers return to." : "A first look at HIDI."}</h2>
+            <p className={styles.eyebrow}>{hasSales ? "MOST CHOSEN" : "NEW TO HIDI"}</p>
+            <h2>{hasSales ? "Pieces customers return to." : "A first look at HIDI."}</h2>
           </div>
           <Link href="/collections/all" className={styles.textLink}>
             Shop all <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
