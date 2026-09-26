@@ -536,6 +536,35 @@ test("bag groups the same product and colour while preserving size controls", ()
   assert.match(cartService, /update: \{ quantity: nextQuantity/);
 });
 
+test("checkout PIN helper is advisory, sanitized and preserves editable delivery fields", () => {
+  const checkout = source("components/checkout-client.tsx");
+  const controller = fs.readFileSync(path.resolve(__dirname, "../apps/api/src/checkout/checkout.controller.ts"), "utf8");
+
+  assert.match(checkout, /delivery-serviceability\?pin=/);
+  assert.match(checkout, /Delivery available/);
+  assert.match(checkout, /you can continue checkout/);
+  assert.match(checkout, /Live delivery check is temporarily unavailable/);
+  assert.match(checkout, /cityField\.value = next\.city/);
+  assert.match(checkout, /stateCode\.length > 2/);
+  assert.match(checkout, /cityField\.value === deliveryCheck\.city/);
+
+  assert.match(controller, /serviceable: result\.prepaid/);
+  assert.match(controller, /city: result\.city \?\? null/);
+  assert.doesNotMatch(controller, /raw: result\.raw/);
+  assert.match(controller, /30 \* 60_000/);
+  assert.match(controller, /TOO_MANY_REQUESTS/);
+});
+
+test("bag and checkout show complimentary shipping consistently above the threshold", () => {
+  const cart = source("components/cart-client.tsx");
+  const checkout = source("components/checkout-client.tsx");
+
+  assert.match(cart, /complimentaryShipping = cart\.subtotalPaise > 149900/);
+  assert.match(cart, /"Complimentary" : "Calculated at checkout"/);
+  assert.match(checkout, /complimentaryShipping = gross > 149900/);
+  assert.match(checkout, /<strong>Complimentary<\/strong>/);
+});
+
 test("checkout keeps guest purchase prominent and minimizes typing friction", () => {
   const checkout = source("components/checkout-client.tsx");
 
