@@ -232,8 +232,8 @@ export function ProductCard({ product, initialVariantId }: Props) {
       <div className={styles.mobileInlineShop}>
         <div className={styles.fitRibbonWrap}>
           <div className={styles.fitRibbonLabel}>
-            <span>HIDI FIT</span>
-            <strong>{selected ? `Size ${selected.size}` : "Choose size"}</strong>
+            <span>SELECT SIZE</span>
+            <strong>{selected ? `Selected · ${selected.size}` : "Choose one"}</strong>
           </div>
           <div
             ref={mobileRibbonRef}
@@ -293,8 +293,8 @@ export function ProductCard({ product, initialVariantId }: Props) {
       <div className={`${styles.quickShop} ${styles.desktopQuickShop}`}>
         <div className={styles.fitRibbonWrap}>
           <div className={styles.fitRibbonLabel}>
-            <span>HIDI FIT</span>
-            <strong>{selected ? `Size ${selected.size}` : "Choose size"}</strong>
+            <span>SELECT SIZE</span>
+            <strong>{selected ? `Selected · ${selected.size}` : "Choose one"}</strong>
           </div>
           <div
             ref={desktopRibbonRef}
