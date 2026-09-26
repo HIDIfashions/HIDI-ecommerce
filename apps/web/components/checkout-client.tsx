@@ -448,6 +448,15 @@ export function CheckoutClient() {
                   onInput={(event) => {
                     event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 6);
                     if (deliveryCheck.status !== "idle" && deliveryCheck.pin !== event.currentTarget.value) {
+                      const form = event.currentTarget.form;
+                      if (form && "city" in deliveryCheck && deliveryCheck.city) {
+                        const cityField = form.elements.namedItem("city");
+                        if (cityField instanceof HTMLInputElement && cityField.value === deliveryCheck.city) cityField.value = "";
+                      }
+                      if (form && "stateCode" in deliveryCheck && deliveryCheck.stateCode && deliveryCheck.stateCode.length > 2) {
+                        const stateField = form.elements.namedItem("state");
+                        if (stateField instanceof HTMLInputElement && stateField.value === deliveryCheck.stateCode) stateField.value = "";
+                      }
                       setDeliveryCheck({ status: "idle" });
                     }
                   }}
