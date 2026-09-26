@@ -3080,3 +3080,156 @@ body {
     padding-top: 58px;
   }
 }
+
+
+/* ==========================================================================
+   HIDI PREMIUM STOREFRONT V1 — restore approved Mulberry Clay site chrome
+   Keep the new editorial storefront; only header/announcement/footer chrome
+   returns to the previously approved HIDI palette.
+   ========================================================================== */
+.announcement {
+  background: #461416;
+  color: #f2e7dc;
+  border-bottom: 1px solid rgba(220, 172, 101, .32);
+}
+
+.site-header {
+  --ink: #f8eee4;
+  background:
+    radial-gradient(circle at 93% 18%, rgba(176, 89, 76, .12), transparent 25%),
+    radial-gradient(ellipse at 10% 82%, rgba(255, 255, 255, .025), transparent 28%),
+    linear-gradient(104deg, #642326 0%, #591d20 54%, #4b1719 100%);
+  color: #f8eee4;
+  border-bottom-color: rgba(226, 181, 108, .34);
+  box-shadow: 0 10px 30px rgba(48, 11, 13, .17);
+}
+
+.site-header .header-inner,
+.site-header .desktop-nav,
+.site-header .utility-nav,
+.site-header .desktop-nav a,
+.site-header .utility-nav a,
+.site-header .utility-nav button,
+.site-header .mobile-menu {
+  color: #f8eee4;
+}
+
+.site-header .desktop-nav a::after {
+  background: #d5a24d;
+}
+
+.site-header .desktop-nav a:hover,
+.site-header .utility-nav a:hover,
+.site-header .utility-nav button:hover,
+.site-header .mobile-menu:hover {
+  color: #f1c36e;
+  opacity: 1;
+}
+
+.site-header [class*="count"] {
+  background: #e4c589;
+  color: #481619;
+  box-shadow: 0 0 0 1px rgba(70, 20, 22, .56);
+}
+
+.footer {
+  --ink: #f8eee4;
+  --muted: #d8c4b6;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(214, 162, 77, .07), transparent 29%),
+    radial-gradient(circle at 94% 92%, rgba(255, 255, 255, .022), transparent 30%),
+    linear-gradient(120deg, #4b1719 0%, #591d20 58%, #441416 100%);
+  color: #f8eee4;
+  border-top-color: rgba(226, 181, 108, .34);
+}
+
+.footer h3,
+.footer strong,
+.footer .footer-note {
+  color: #dfb45f;
+}
+
+.footer-grid a {
+  color: #f0e4d9;
+}
+
+.footer-grid a:hover {
+  color: #f1c36e;
+}
+
+.footer .muted,
+.footer-small,
+.footer-bottom {
+  color: #d8c4b6;
+}
+
+.footer .newsletter {
+  border-bottom-color: rgba(234, 203, 148, .50);
+}
+
+.footer .newsletter input {
+  color: #f8eee4;
+}
+
+.footer .newsletter input::placeholder {
+  color: #baa79a;
+}
+
+.footer .newsletter button {
+  color: #dfb45f;
+}
+
+.footer-bottom {
+  border-top-color: rgba(229, 190, 127, .21);
+}
+
+.footer .social-link {
+  border-color: rgba(223, 180, 95, .34);
+  color: #f0e4d9;
+}
+
+.footer .social-link:hover {
+  background: rgba(223, 180, 95, .10);
+  border-color: #dfb45f;
+  color: #f1c36e;
+}
+
+.footer .newsletter-status {
+  color: #e2c78f;
+}
+
+@media (max-width: 620px) {
+  .announcement {
+    background: #461416;
+    color: #f2e7dc;
+  }
+
+  .mobile-nav-panel {
+    background: #f3ecdf !important;
+    color: #591d20 !important;
+  }
+
+  .mobile-nav-links {
+    border-top-color: #d7c7b5;
+  }
+
+  .mobile-nav-links a {
+    border-bottom-color: #d7c7b5;
+    color: #591d20;
+  }
+
+  .mobile-nav-links a span,
+  .mobile-nav-account a,
+  .mobile-nav-account a svg {
+    color: #591d20;
+  }
+
+  .mobile-nav-account {
+    border-top-color: #d7c7b5;
+  }
+
+  .mobile-nav-account a {
+    border-color: #cdbda9;
+    background: #eadfcf;
+  }
+}
