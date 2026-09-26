@@ -33,8 +33,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${hidiSans.variable} ${hidiDisplay.variable} ${hidiProduct.variable}`}>
-      <body>
+    <html lang="en" suppressHydrationWarning className={`${hidiSans.variable} ${hidiDisplay.variable} ${hidiProduct.variable}`}>
+      <body suppressHydrationWarning>
         <SiteShell>{children}</SiteShell>
       </body>
     </html>
