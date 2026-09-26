@@ -125,8 +125,8 @@ export function ReviewInvitationClient({ token }: { token: string }) {
         <div className={styles.progress}>{remaining ? `${remaining} review${remaining === 1 ? "" : "s"} remaining` : "All reviews completed — thank you."}</div>
       </section>
 
-      {error && <div className={styles.error}>{error}</div>}
-      {notice && <div className={styles.notice}>{notice}</div>}
+      {error && <div className={styles.error} role="alert">{error}</div>}
+      {notice && <div className={styles.notice} role="status" aria-live="polite">{notice}</div>}
 
       <section className={styles.list}>
         {invitation.items.map((item) => {
@@ -144,7 +144,7 @@ export function ReviewInvitationClient({ token }: { token: string }) {
 
               {item.reviewed && item.review ? (
                 <div className={styles.completed}>
-                  <div className={styles.stars}>{"★".repeat(item.review.rating)}{"☆".repeat(5 - item.review.rating)}</div>
+                  <div className={styles.stars} role="img" aria-label={`${item.review.rating} out of 5 stars`}>{"★".repeat(item.review.rating)}{"☆".repeat(5 - item.review.rating)}</div>
                   {item.review.title && <strong>{item.review.title}</strong>}
                   <p>{item.review.body}</p>
                   <span>Review submitted</span>
@@ -161,6 +161,7 @@ export function ReviewInvitationClient({ token }: { token: string }) {
                           className={rating <= draft.rating ? styles.starActive : styles.star}
                           onClick={() => updateDraft(item.orderItemId, { rating })}
                           aria-label={`${rating} star${rating === 1 ? "" : "s"}`}
+                          aria-pressed={draft.rating === rating}
                         >
                           ★
                         </button>
