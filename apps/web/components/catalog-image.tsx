@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 
 type CatalogImageProps = {
@@ -51,15 +50,24 @@ export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel,
   }
 
   return (
-    <Image
+    <img
       src={src}
       alt={alt}
-      fill
-      priority={priority}
       sizes={sizes}
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : undefined}
+      decoding="async"
       className={className}
       onError={() => setFailed(true)}
-      style={{ objectFit: "cover", objectPosition: "center", display: "block" }}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        objectPosition: "center",
+        display: "block",
+      }}
     />
   );
 }
