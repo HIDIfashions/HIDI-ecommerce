@@ -327,6 +327,23 @@ test("homepage hero preserves the full-body garden composition on desktop", () =
   assert.match(mobileHero.height, /clamp\(560px/);
 });
 
+test("homepage section transitions stay compact without oversized blank gaps", () => {
+  const file = "app/home.module.css";
+  const editSection = cssRule(file, ".editSection");
+  assert.match(editSection["padding-top"], /clamp\(28px/);
+
+  const featured = cssRule(file, ".featured");
+  assert.match(featured["padding-top"], /clamp\(42px/);
+  assert.match(featured["padding-bottom"], /clamp\(40px/);
+
+  const mobileEdit = cssRule(file, ".editSection", "(max-width: 760px)");
+  assert.equal(mobileEdit["padding-top"], "26px");
+
+  const mobileFeatured = cssRule(file, ".featured", "(max-width: 760px)");
+  assert.equal(mobileFeatured["padding-top"], "40px");
+  assert.equal(mobileFeatured["padding-bottom"], "42px");
+});
+
 test("homepage premium interactions preserve desktop rhythm, mobile stacking and reduced motion", () => {
   const file = "app/home.module.css";
   assert.equal(cssRule(file, ".principleGrid")["grid-template-columns"], "repeat(3, minmax(0, 1fr))");
