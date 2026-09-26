@@ -3739,3 +3739,34 @@ body {
     font-size: 9px;
   }
 }
+
+
+.checkout-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.checkout-edit-bag {
+  width: fit-content;
+  color: var(--hidi-mulberry, #651f23) !important;
+  font-size: 9px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.checkout-edit-bag:hover,
+.checkout-edit-bag:focus-visible {
+  color: var(--hidi-mulberry-deep, #4a1719) !important;
+}
+
+@media (max-width: 620px) {
+  .checkout-mobile-summary-body > .checkout-edit-bag {
+    margin-top: 9px;
+    display: inline-flex;
+    min-height: 30px;
+    align-items: center;
+  }
+}
