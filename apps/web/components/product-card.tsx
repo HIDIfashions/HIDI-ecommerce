@@ -361,26 +361,7 @@ export function ProductCard({ product, initialVariantId }: Props) {
           </button>
         </div>
 
-        <div className={styles.secondaryActions}>
-          <button
-            type="button"
-            className={styles.whatsappAction}
-            disabled={!whatsappConfigured}
-            title={whatsappConfigured ? "Review your selection on the product page" : "WhatsApp ordering is not available yet"}
-            onClick={orderOnWhatsapp}
-            aria-label={`Order ${product.name} on WhatsApp${whatsappConfigured ? "" : " — not available yet"}`}
-          >
-            <WhatsAppIcon size={16} className={styles.whatsappIcon} /> Order on WhatsApp
-          </button>
-          <button
-            type="button"
-            className={styles.shareAction}
-            onClick={() => void share()}
-            aria-label={`Share ${product.name} and get reward`}
-          >
-            <Share2 size={15} aria-hidden="true" /> Share and get reward
-          </button>
-        </div>
+
         {(error || message || bagLink) && (
           <div className={styles.feedback}>
             {error && <p className={styles.error} id={`${uid}-error`} role="alert">{error}</p>}
