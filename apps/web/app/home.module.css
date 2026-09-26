@@ -218,7 +218,7 @@
 }
 
 .editSection {
-  padding-top: clamp(48px, 4.2vw, 64px);
+  padding-top: clamp(28px, 2.6vw, 36px);
   background: #fff;
 }
 
@@ -309,8 +309,8 @@
 }
 
 .featured {
-  padding-top: clamp(82px, 8vw, 116px);
-  padding-bottom: clamp(88px, 8vw, 120px);
+  padding-top: clamp(42px, 4vw, 54px);
+  padding-bottom: clamp(40px, 3.8vw, 52px);
 }
 
 .sectionHeader {
@@ -553,7 +553,7 @@
   }
 
   .editSection {
-    padding-top: 44px;
+    padding-top: 26px;
   }
 
   .editHeader {
@@ -590,8 +590,8 @@
   }
 
   .featured {
-    padding-top: 70px;
-    padding-bottom: 80px;
+    padding-top: 40px;
+    padding-bottom: 42px;
   }
 
   .sectionHeader {
