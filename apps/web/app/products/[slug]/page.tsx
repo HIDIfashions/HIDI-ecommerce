@@ -104,6 +104,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       lowPrice: (product.minPricePaise / 100).toFixed(2),
       highPrice: (product.maxPricePaise / 100).toFixed(2),
       offerCount: product.variants.length,
+      availability: product.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       url: canonicalUrl,
     },
     ...(reviews.reviewCount > 0 && reviews.averageRating > 0 ? {
