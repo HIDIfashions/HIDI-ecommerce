@@ -14,6 +14,7 @@ import { getProductCardVideos } from "@/lib/product-card-videos";
 import { configuredWhatsAppNumber, shareProduct } from "@/lib/product-sharing";
 import { WhatsAppIcon } from "./whatsapp-icon";
 import styles from "./product-card.module.css";
+import { focusFirst, trapFocus } from "@/lib/focus-management";
 
 type Props = { product: ApiProduct; initialVariantId?: string; priorityMedia?: boolean };
 type Phase = "idle" | "adding" | "added";
@@ -39,6 +40,8 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false }
   const sizesRef = useRef<HTMLDivElement>(null);
   const mobileRibbonRef = useRef<HTMLDivElement>(null);
   const desktopRibbonRef = useRef<HTMLDivElement>(null);
+  const mobileSheetRef = useRef<HTMLElement>(null);
+  const mobileQuickAddRef = useRef<HTMLButtonElement>(null);
   const activeColour = colours.includes(colour) ? colour : colours[0] ?? "";
   const variants = variantsForColour(product.variants, activeColour);
   const selected = variants.find((entry) => entry.id === variantId);
@@ -60,6 +63,13 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false }
   const price = cardPrice(variants, selected?.id ?? "", product.minPricePaise);
   const href = `/products/${encodeURIComponent(product.slug)}`;
   const whatsappConfigured = Boolean(configuredWhatsAppNumber());
+
+  function closeMobileQuick(restoreFocus = true) {
+    setMobileQuickOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => mobileQuickAddRef.current?.focus({ preventScroll: true }));
+    }
+  }
 
   useEffect(() => {
     const sync = () => {
@@ -88,11 +98,18 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false }
     if (!mobileQuickOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => focusFirst(mobileSheetRef.current), 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) setMobileQuickOpen(false);
+      if (event.key === "Escape" && !busy) {
+        event.preventDefault();
+        closeMobileQuick(true);
+        return;
+      }
+      trapFocus(event, mobileSheetRef.current);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
+      window.clearTimeout(timer);
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKeyDown);
     };
@@ -227,6 +244,7 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false }
       </button>
 
       <button
+        ref={mobileQuickAddRef}
         type="button"
         className={styles.mobileQuickAdd}
         disabled={!canBuy || busy}
@@ -378,15 +396,15 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false }
         className={styles.mobileSheetBackdrop}
         role="presentation"
         onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !busy) setMobileQuickOpen(false);
+          if (event.target === event.currentTarget && !busy) closeMobileQuick(true);
         }}
       >
-        <section className={styles.mobileSheet} role="dialog" aria-modal="true" aria-labelledby={`${uid}-quick-title`}>
+        <section ref={mobileSheetRef} className={styles.mobileSheet} role="dialog" aria-modal="true" aria-labelledby={`${uid}-quick-title`}>
           <div className={styles.mobileSheetHandle} aria-hidden="true" />
           <button
             type="button"
             className={styles.mobileSheetClose}
-            onClick={() => setMobileQuickOpen(false)}
+            onClick={() => closeMobileQuick(true)}
             disabled={busy}
             aria-label="Close quick add"
           >
@@ -399,7 +417,7 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false }
               <h3 id={`${uid}-quick-title`}>{product.name}</h3>
               <span>{price.from ? "From " : ""}{money(price.pricePaise)}</span>
             </div>
-            <Link href={href} onClick={() => setMobileQuickOpen(false)}>View details <ArrowUpRight size={12} aria-hidden="true" /></Link>
+            <Link href={href} onClick={() => closeMobileQuick(false)}>View details <ArrowUpRight size={12} aria-hidden="true" /></Link>
           </div>
 
           {colours.length > 1 ? (
@@ -493,7 +511,7 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false }
             </button>
           </div>
 
-          {bagLink && <Link href="/cart" className={styles.mobileViewBag} onClick={() => setMobileQuickOpen(false)}>View bag <ArrowUpRight size={13} aria-hidden="true" /></Link>}
+          {bagLink && <Link href="/cart" className={styles.mobileViewBag} onClick={() => closeMobileQuick(false)}>View bag <ArrowUpRight size={13} aria-hidden="true" /></Link>}
         </section>
       </div>,
       document.body,
