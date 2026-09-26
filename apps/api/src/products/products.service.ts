@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import type { Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const CARD_MEDIA_LIMIT = 3;
@@ -14,7 +15,7 @@ const cardInclude = {
     },
     orderBy: [{ color: "asc" as const }, { size: "asc" as const }],
   },
-};
+} satisfies Prisma.ProductInclude;
 
 @Injectable()
 export class ProductsService {
