@@ -43,6 +43,9 @@ export const metadata: Metadata = {
     description: defaultDescription,
     images: ["/brand/hidi-hero-green-garden-fullbody.webp"],
   },
+  verification: process.env.GOOGLE_SITE_VERIFICATION?.trim()
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION.trim() }
+    : undefined,
   robots: {
     index: true,
     follow: true,
