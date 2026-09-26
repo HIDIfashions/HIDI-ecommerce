@@ -221,6 +221,16 @@ export function ProductCard({ product, initialVariantId }: Props) {
         <Heart size={21} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
       </button>
 
+      <button
+        type="button"
+        className={styles.mobileQuickAdd}
+        disabled={!canBuy || busy}
+        onClick={() => setMobileQuickOpen(true)}
+        aria-label={`Quick add — ${product.name}`}
+      >
+        {soldOut ? "Sold out" : "Quick add"}
+      </button>
+
     </div>
     <div className={styles.body}>
       <h3 id={`${uid}-name`} className={styles.name}><Link href={href}>{product.name}</Link></h3>
@@ -469,6 +479,17 @@ export function ProductCard({ product, initialVariantId }: Props) {
               : phase === "added" ? <Check size={17} aria-hidden="true" />
               : <ShoppingBag size={17} aria-hidden="true" />}
             {busy ? "Adding…" : phase === "added" ? "Added to bag" : "Add to bag"}
+          </button>
+
+          <button
+            type="button"
+            className={styles.mobileSheetBuy}
+            disabled={busy || !canBuy || !selected || phase === "added"}
+            aria-busy={buying}
+            onClick={() => void add("checkout")}
+          >
+            {buying ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" /> : null}
+            {buying ? "Opening…" : "Buy now"}
           </button>
 
           <div className={styles.mobileSheetSecondary}>
