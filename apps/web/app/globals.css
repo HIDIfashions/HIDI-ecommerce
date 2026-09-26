@@ -2441,11 +2441,11 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 
 
 /* ==========================================================================
-   HIDI WARM BEIGE CANVAS + HANDWRITTEN PRODUCT VOICE
+   HIDI CLEAN WHITE CANVAS + PRODUCT VOICE
    Functional UI stays Manrope for readability.
    ========================================================================== */
 body {
-  background: #f3ecdf;
+  background: #ffffff;
 }
 
 .collection-header h1,
