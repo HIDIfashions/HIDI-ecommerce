@@ -21,6 +21,7 @@ type Props = {
   soldOut?: boolean;
   intervalMs?: number;
   href: string;
+  priority?: boolean;
 };
 
 /**
@@ -31,17 +32,18 @@ type Props = {
  * - Clicking the photo opens product details; the expand control opens the lightbox.
  * - Videos never autoplay and require a customer gesture.
  */
-export function ProductCardMedia({ name, images, videos = EMPTY_VIDEOS, ...rest }: Props) {
+export function ProductCardMedia({ name, images, videos = EMPTY_VIDEOS, priority = false, ...rest }: Props) {
   const items = useMemo(() => buildCardMedia(name, images, videos), [name, images, videos]);
   const signature = JSON.stringify(items);
-  return <Gallery key={signature} name={name} items={items} {...rest} />;
+  return <Gallery key={signature} name={name} items={items} priority={priority} {...rest} />;
 }
 
-function Photo({ src, alt, sizes, contain = false, ready }: {
+function Photo({ src, alt, sizes, contain = false, priority = false, ready }: {
   src?: string;
   alt: string;
   sizes: string;
   contain?: boolean;
+  priority?: boolean;
   ready?: () => void;
 }) {
   const [failed, setFailed] = useState(false);
@@ -61,7 +63,8 @@ function Photo({ src, alt, sizes, contain = false, ready }: {
       alt={alt}
       fill
       sizes={sizes}
-      loading="lazy"
+      priority={priority}
+      loading={priority ? undefined : "lazy"}
       draggable={false}
       className={contain ? styles.contain : styles.photo}
       onLoad={() => ready?.()}
@@ -226,12 +229,14 @@ function Gallery({
   soldOut = false,
   intervalMs = DEFAULT_INTERVAL,
   href,
+  priority = false,
 }: {
   name: string;
   items: CardMedia[];
   soldOut?: boolean;
   intervalMs?: number;
   href: string;
+  priority?: boolean;
 }) {
   const id = useId();
   const router = useRouter();
@@ -555,6 +560,7 @@ function Gallery({
                   src={active?.url}
                   alt={active?.label ?? name}
                   sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
+                  priority={priority && index === 0}
                   ready={() => setLoaded(active?.id ?? "")}
                 />
 
