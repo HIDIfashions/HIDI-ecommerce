@@ -162,7 +162,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <AddToCart product={product} />
         <ProductContactActions product={product} />
         <ProductQualitySummary product={product} />
-        <div className="delivery-box"><strong>Delivery</strong><div><input placeholder="Enter PIN code" inputMode="numeric" /><button>Check</button></div></div>
+        <div className="delivery-box"><strong>Delivery</strong><div><input aria-label="Delivery PIN code" placeholder="Enter PIN code" inputMode="numeric" maxLength={6} pattern="[0-9]{6}" /><button type="button" aria-label="Check delivery PIN code">Check</button></div></div>
         <ProductInfoAccordion product={product} />
       </aside>
     </div>
