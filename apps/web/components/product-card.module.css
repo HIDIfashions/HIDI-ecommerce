@@ -338,6 +338,11 @@
   box-shadow: none;
 }
 
+.whatsappIcon {
+  flex: 0 0 auto;
+  color: #25d366;
+}
+
 .feedback {
   min-height: 20px;
   padding-top: 4px;
