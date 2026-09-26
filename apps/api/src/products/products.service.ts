@@ -1,30 +1,59 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 
+const CARD_MEDIA_LIMIT = 3;
+const cardInclude = {
+  category: true,
+  collections: { include: { collection: true }, orderBy: { position: "asc" as const } },
+  images: { orderBy: { position: "asc" as const }, take: CARD_MEDIA_LIMIT },
+  variants: {
+    where: { active: true },
+    include: {
+      inventory: true,
+      images: { orderBy: { position: "asc" as const }, take: CARD_MEDIA_LIMIT },
+    },
+    orderBy: [{ color: "asc" as const }, { size: "asc" as const }],
+  },
+};
+
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listPublished(category?: string) {
+  async listPublished(category?: string, limit?: number) {
+    const safeLimit = limit === undefined
+      ? undefined
+      : Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 24) : undefined;
+
     const products = await this.prisma.product.findMany({
       where: {
         status: "ACTIVE",
         ...(category ? { collections: { some: { collection: { slug: category, active: true } } } } : {}),
       },
       orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
-      include: {
-        category: true,
-        collections: { include: { collection: true }, orderBy: { position: "asc" } },
-        // Return all photo metadata for the card gallery; browsers load image bytes on demand.
-        images: { orderBy: { position: "asc" } },
-        variants: {
-          where: { active: true },
-          include: { inventory: true, images: { orderBy: { position: "asc" } } },
-          orderBy: [{ color: "asc" }, { size: "asc" }],
-        },
-      },
+      ...(safeLimit ? { take: safeLimit } : {}),
+      include: cardInclude,
     });
-    return products.map((p) => this.toView(p));
+    return products.map((product) => this.toCardView(product));
+  }
+
+  async featured(limit = 4) {
+    const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 8) : 4;
+    const best = await this.bestSellers(safeLimit);
+    if (best.length >= safeLimit) return best.slice(0, safeLimit);
+
+    const excluded = best.map((product: any) => product.id);
+    const fill = await this.prisma.product.findMany({
+      where: {
+        status: "ACTIVE",
+        ...(excluded.length ? { id: { notIn: excluded } } : {}),
+      },
+      orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
+      take: safeLimit - best.length,
+      include: cardInclude,
+    });
+
+    return [...best, ...fill.map((product) => this.toCardView(product))];
   }
 
   async bestSellers(limit = 8) {
@@ -48,16 +77,7 @@ export class ProductsService {
     const productIds = ranked.map((row) => row.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds }, status: "ACTIVE" },
-      include: {
-        category: true,
-        collections: { include: { collection: true }, orderBy: { position: "asc" } },
-        images: { orderBy: { position: "asc" } },
-        variants: {
-          where: { active: true },
-          include: { inventory: true, images: { orderBy: { position: "asc" } } },
-          orderBy: [{ color: "asc" }, { size: "asc" }],
-        },
-      },
+      include: cardInclude,
     });
 
     const byId = new Map(products.map((product) => [product.id, product]));
@@ -65,7 +85,7 @@ export class ProductsService {
       const product = byId.get(row.productId);
       if (!product) return [];
       return [{
-        ...this.toView(product),
+        ...this.toCardView(product),
         soldQuantity: row._sum.quantity ?? 0,
       }];
     });
@@ -99,22 +119,13 @@ export class ProductsService {
       },
       orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
       take: Math.max(safeLimit * 4, 12),
-      include: {
-        category: true,
-        collections: { include: { collection: true }, orderBy: { position: "asc" } },
-        images: { orderBy: { position: "asc" } },
-        variants: {
-          where: { active: true },
-          include: { inventory: true, images: { orderBy: { position: "asc" } } },
-          orderBy: [{ color: "asc" }, { size: "asc" }],
-        },
-      },
+      include: cardInclude,
     });
 
     const sourceView = this.toView(source);
     const sourceCollections = new Set(sourceView.collections.map((item: any) => item.id));
     return candidates
-      .map((product) => this.toView(product))
+      .map((product) => this.toCardView(product))
       .map((product) => {
         const sharedCollections = product.collections.filter((item: any) => sourceCollections.has(item.id)).length;
         const categoryMatch = sourceView.category?.id && product.category?.id === sourceView.category.id ? 1 : 0;
@@ -141,6 +152,72 @@ export class ProductsService {
     });
     if (!product || product.status !== "ACTIVE") throw new NotFoundException("Product not found");
     return this.toView(product);
+  }
+
+  private toCardView(product: any) {
+    const mediaColourSeen = new Set<string>();
+    const variants = product.variants.map((variant: any) => {
+      const colourKey = String(variant.color ?? "").trim().toLowerCase();
+      const sourceImages = (variant.images ?? []).map((image: any) => ({
+        id: image.id,
+        url: image.url,
+        alt: image.alt,
+        position: image.position,
+      }));
+      const images = sourceImages.length && !mediaColourSeen.has(colourKey)
+        ? sourceImages
+        : [];
+      if (images.length) mediaColourSeen.add(colourKey);
+
+      return {
+        id: variant.id,
+        sku: variant.sku,
+        size: variant.size,
+        color: variant.color,
+        colorHex: variant.colorHex,
+        mrpPaise: variant.mrpPaise,
+        pricePaise: variant.pricePaise,
+        available: variant.inventory
+          ? Math.max(0, variant.inventory.onHand - variant.inventory.reserved - variant.inventory.safetyStock)
+          : 0,
+        images,
+      };
+    });
+    const prices = variants.map((variant: any) => variant.pricePaise);
+
+    const imageSource = [
+      ...variants.flatMap((variant: any) => variant.images ?? []),
+      ...(product.images ?? []),
+    ];
+    const seenUrls = new Set<string>();
+    const images = imageSource
+      .filter((image: any) => {
+        const url = typeof image?.url === "string" ? image.url : "";
+        if (!url || seenUrls.has(url)) return false;
+        seenUrls.add(url);
+        return true;
+      })
+      .slice(0, CARD_MEDIA_LIMIT)
+      .map((image: any, position: number) => ({
+        id: image.id,
+        url: image.url,
+        alt: image.alt,
+        position,
+      }));
+
+    return {
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      fabric: product.fabric,
+      category: product.category,
+      collections: product.collections?.map((item: any) => item.collection) ?? [],
+      images,
+      variants,
+      minPricePaise: prices.length ? Math.min(...prices) : 0,
+      maxPricePaise: prices.length ? Math.max(...prices) : 0,
+      inStock: variants.some((variant: any) => variant.available > 0),
+    };
   }
 
   private toView(product: any) {
