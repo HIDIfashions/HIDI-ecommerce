@@ -3874,3 +3874,54 @@ body {
     justify-content: space-between;
   }
 }
+
+
+/* Checkout delivery feedback + field validation */
+.checkout-delivery-status {
+  min-height: 0;
+  margin-top: -3px;
+  color: #7c7067;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.checkout-delivery-status:empty {
+  display: none;
+}
+
+.checkout-delivery-status strong {
+  color: #4f5f45;
+  font-weight: 700;
+}
+
+.checkout-delivery-serviceable {
+  padding: 9px 11px;
+  border-left: 2px solid #7d8d6e;
+  background: #f7f9f4;
+}
+
+.checkout-delivery-alternate,
+.checkout-delivery-unavailable {
+  padding: 9px 11px;
+  border-left: 2px solid #d5a24d;
+  background: #fcf8f2;
+}
+
+.checkout-delivery-checking {
+  color: #8c8077;
+}
+
+.checkout-field input:user-invalid {
+  border-color: #a65f64;
+  background: #fffafa;
+}
+
+.checkout-field input:user-valid {
+  border-color: #d7d1ca;
+}
+
+@media (max-width: 620px) {
+  .checkout-delivery-status {
+    font-size: 8.5px;
+  }
+}
