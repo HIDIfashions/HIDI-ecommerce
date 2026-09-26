@@ -315,22 +315,23 @@ test("homepage premium interactions preserve desktop rhythm, mobile stacking and
   assert.equal(cssRule(file, ".serviceLink", "(prefers-reduced-motion: reduce)").transition, "none");
 });
 
-test("manifesto uses the Ananya editorial image and responsive image-led layout", () => {
+test("manifesto is a full-width uncropped Ananya editorial with no overlaid copy", () => {
   const page = source("app/page.tsx");
   assert.match(page, /\/brand\/hidi-manifesto-ananya\.webp/);
   assert.match(page, /Ananya in a royal purple HIDI occasion dress/);
+  assert.doesNotMatch(page, /Designed to feel considered\. Never complicated\./);
+  assert.doesNotMatch(page, /HIDI \/ Occasion/);
+  assert.doesNotMatch(page, /Ananya['’]s Pick/i);
 
   const file = "app/home.module.css";
-  assert.equal(
-    cssRule(file, ".manifestoGrid")["grid-template-columns"],
-    "minmax(0, 1.04fr) minmax(420px, .96fr)",
-  );
-  assert.match(cssRule(file, ".manifestoVisual")["min-height"], /clamp\(500px/);
-  assert.equal(cssRule(file, ".manifestoImage")["object-position"], "68% center");
-  assert.equal(
-    cssRule(file, ".manifestoGrid", "(max-width: 760px)")["grid-template-columns"],
-    "1fr",
-  );
+  const section = cssRule(file, ".manifesto");
+  assert.equal(section.width, "100%");
+  assert.equal(section.padding, "0");
+
+  const image = cssRule(file, ".manifestoFullImage");
+  assert.equal(image.width, "100%");
+  assert.equal(image.height, "auto");
+  assert.equal(image["object-fit"], "contain");
 });
 
 test("storefront typography is build-safe and does not depend on Google font fetching", () => {
@@ -349,8 +350,7 @@ test("HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and war
   );
 
   const manifesto = cssRule("app/home.module.css", ".manifesto");
-  assert.match(manifesto.background, /#461416/);
-  assert.match(manifesto.background, /#591d20/);
+  assert.equal(manifesto.background, "#ead8c4");
 
   const serviceStrip = cssRule("app/home.module.css", ".serviceStrip");
   assert.match(serviceStrip.background, /var\(--home-soft\)/);
