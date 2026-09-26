@@ -206,9 +206,108 @@ test("guest checkout ignores forged body identity and does not attach an account
   assert.equal(f.calls.some((c) => c.action === "wallet.ensure"), false);
 });
 
+test("checkout rejects malformed contact and address data before order creation", async () => {
+  for (const changes of [
+    { customerEmail: "not-an-email" },
+    { customerPhone: "123" },
+    { shippingAddress: { firstName: "   ", phone: "9876543210", line1: "12 Test Street", city: "Hyderabad", state: "Telangana", postalCode: "500001" } },
+    { shippingAddress: { firstName: "Customer", phone: "9876543210", line1: "   ", city: "Hyderabad", state: "Telangana", postalCode: "500001" } },
+    { shippingAddress: { firstName: "Customer", phone: "9876543210", line1: "12 Test Street", city: "Hyderabad", state: "Telangana", postalCode: "50001" } },
+    { shippingAddress: { firstName: "Customer", phone: "9876543210", line1: "12 Test Street", city: "Hyderabad", state: "Telangana", postalCode: "500001", countryCode: "US" } },
+  ]) {
+    const f = fixture();
+    await assert.rejects(() => f.service.prepare(input(changes)));
+    assert.equal(f.state().orders.length, 0);
+    assert.equal(f.calls.some((call) => call.action.startsWith("razorpay.")), false);
+  }
+});
+
+test("checkout trims customer and delivery text before saving the order", async () => {
+  const f = fixture();
+  await f.service.prepare(input({
+    customerEmail: "  guest@example.test  ",
+    customerPhone: " 9876543210 ",
+    shippingAddress: {
+      firstName: " Customer ",
+      lastName: " Test ",
+      phone: " 9876543210 ",
+      line1: " 12 Test Street ",
+      line2: " Landmark ",
+      city: " Hyderabad ",
+      state: " Telangana ",
+      postalCode: "500001",
+    },
+  }));
+
+  const order = f.state().orders[0];
+  assert.equal(order.customerEmail, "guest@example.test");
+  assert.equal(order.customerPhone, "9876543210");
+  assert.equal(order.shippingAddress.firstName, "Customer");
+  assert.equal(order.shippingAddress.lastName, "Test");
+  assert.equal(order.shippingAddress.line1, "12 Test Street");
+  assert.equal(order.shippingAddress.city, "Hyderabad");
+  assert.equal(order.shippingAddress.state, "Telangana");
+});
+
+test("checkout delivery serviceability returns only sanitized carrier fields and caches PIN results", async () => {
+  let calls = 0;
+  const controller = new CheckoutController(
+    {} as any,
+    {} as any,
+    {
+      checkServiceability: async (pin: string) => {
+        calls += 1;
+        return {
+          pin,
+          prepaid: true,
+          cod: true,
+          pickup: true,
+          city: "Hyderabad",
+          district: "Hyderabad",
+          stateCode: "TG",
+          remarks: "internal",
+          raw: { secretCarrierPayload: true },
+        };
+      },
+    } as any,
+  );
+
+  const request = { ip: "203.0.113.10", headers: {} };
+  const first = await controller.deliveryServiceability("500001", request);
+  const second = await controller.deliveryServiceability("500001", request);
+
+  assert.deepEqual(first, {
+    pin: "500001",
+    serviceable: true,
+    city: "Hyderabad",
+    district: "Hyderabad",
+    stateCode: "TG",
+  });
+  assert.deepEqual(second, first);
+  assert.equal(calls, 1);
+  assert.equal("raw" in first, false);
+  assert.equal("remarks" in first, false);
+});
+
+test("checkout delivery serviceability rejects invalid PIN before calling the carrier", async () => {
+  let calls = 0;
+  const controller = new CheckoutController(
+    {} as any,
+    {} as any,
+    { checkServiceability: async () => { calls += 1; return {}; } } as any,
+  );
+
+  await assert.rejects(() => controller.deliveryServiceability("5000", { ip: "203.0.113.11", headers: {} } as any), /6-digit PIN/);
+  assert.equal(calls, 0);
+});
+
 test("checkout controller rejects an invalid supplied bearer token instead of falling back to guest", async () => {
   let called = false;
-  const controller = new CheckoutController({ prepare: async () => { called = true; } } as any, { requireUser: async () => { throw new Error("Invalid supplied token"); } } as any);
+  const controller = new CheckoutController(
+    { prepare: async () => { called = true; } } as any,
+    { requireUser: async () => { throw new Error("Invalid supplied token"); } } as any,
+    { checkServiceability: async () => { throw new Error("Carrier should not be called"); } } as any,
+  );
   await assert.rejects(() => controller.prepare(input(), "Bearer invalid"), /Invalid supplied token/);
   assert.equal(called, false);
 });
