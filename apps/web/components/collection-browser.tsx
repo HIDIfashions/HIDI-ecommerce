@@ -286,8 +286,8 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
         </div>
 
         {filtered.length
-          ? <div className={`${styles.productGrid} ${mobileColumns === 1 ? styles.gridOne : styles.gridTwo}`}>{filtered.map((product) => (
-              <ProductCard key={product.id} product={product} />
+          ? <div className={`${styles.productGrid} ${mobileColumns === 1 ? styles.gridOne : styles.gridTwo}`}>{filtered.map((product, index) => (
+              <ProductCard key={product.id} product={product} priorityMedia={index < 2} />
             ))}</div>
           : <div className={styles.empty}><h2>No styles match those filters.</h2><p>Try clearing one or more filters.</p><button className="button button-light" type="button" onClick={clearFilters}>Clear filters</button></div>}
       </section>
