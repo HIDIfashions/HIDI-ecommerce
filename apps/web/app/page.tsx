@@ -68,11 +68,6 @@ const services = [
     title: "Secure checkout",
     copy: "Protected payment experience.",
   },
-  {
-    icon: MessageCircle,
-    title: "Human shopping help",
-    copy: "Fit and product support on WhatsApp.",
-  },
 ] as const;
 
 export default async function Home() {
@@ -91,6 +86,11 @@ export default async function Home() {
       ].slice(0, 4)
     : catalogue.slice(0, 4);
 
+  const whatsapp = (process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
+  const whatsappHref = whatsapp
+    ? "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent("Hi HIDI, I would like help choosing a style.")
+    : "/account";
+
   return (
     <div className={styles.home}>
       <section className={styles.hero}>
@@ -99,7 +99,6 @@ export default async function Home() {
           alt="HIDI editorial collection"
           fill
           priority
-          unoptimized
           sizes="100vw"
           className={styles.heroImage}
         />
@@ -227,6 +226,18 @@ export default async function Home() {
               </div>
             </div>
           ))}
+          <Link
+            href={whatsappHref}
+            className={styles.serviceItem + " " + styles.serviceLink}
+            target={whatsapp ? "_blank" : undefined}
+            rel={whatsapp ? "noreferrer" : undefined}
+          >
+            <MessageCircle size={18} strokeWidth={1.45} aria-hidden="true" />
+            <div>
+              <strong>Human shopping help</strong>
+              <span>Fit and product support on WhatsApp.</span>
+            </div>
+          </Link>
         </div>
       </section>
 
