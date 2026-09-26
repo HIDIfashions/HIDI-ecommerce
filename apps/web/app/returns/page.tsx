@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Returns",
+  description: "HIDI return guidance covering eligibility, pickup, damaged items and the 7-day return window.",
+  alternates: { canonical: "/returns" },
+};
 import Link from "next/link";
 import styles from "@/components/policy-page.module.css";
 
