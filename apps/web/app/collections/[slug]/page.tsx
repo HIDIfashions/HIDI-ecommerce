@@ -13,8 +13,6 @@ const labels: Record<string, { title: string; copy: string }> = {
   occasion: { title: "Occasion", copy: "Elevated colour and detail, without the noise." },
 };
 
-};
-
 export async function generateMetadata({
   params,
 }: {
