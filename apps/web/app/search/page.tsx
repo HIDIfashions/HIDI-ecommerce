@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Search",
+  robots: { index: false, follow: false },
+};
+
 import { ProductCard } from "@/components/product-card";
 import { getProducts } from "@/lib/api";
 
