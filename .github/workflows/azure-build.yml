@@ -2,14 +2,20 @@ name: Azure migration build
 on:
   push:
     branches: [migration/azure-sql-blob]
+  pull_request:
+    branches: [migration/azure-sql-blob]
 permissions:
   contents: read
+concurrency:
+  group: hidi-azure-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   source-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+      API_URL: http://127.0.0.1:4100/v1
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -21,10 +27,28 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
-      - name: Test storefront, SEO, responsive media and customer safeguards
+      - name: Test storefront, reporting rules and customer safeguards
         run: node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
       - run: pnpm --filter @hidi/api test:customer-experience
       - run: pnpm --filter @hidi/api build
+      - name: Build and type-check the admin and storefront together
+        run: |
+          export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)"
+          pnpm --filter @hidi/web build
+      - name: Install isolated browser-test tooling on this runner
+        run: |
+          npm install --prefix "$RUNNER_TEMP/hidi-browser" --no-save playwright@1.62.1
+          node "$RUNNER_TEMP/hidi-browser/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Test admin UI and BFF with isolated fixtures
+        run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/admin-workspace.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-workspace-test-results
+          path: test-results/admin-workspace
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Package exact source and original public assets
         run: git archive --format=tar.gz --output=hidi-azure-source.tar.gz HEAD
       - uses: actions/upload-artifact@v4
@@ -33,6 +57,7 @@ jobs:
           path: hidi-azure-source.tar.gz
           retention-days: 7
   containers:
+    if: github.event_name == 'push'
     needs: source-and-test
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -65,3 +90,20 @@ jobs:
             --build-arg API_URL=https://hidi-ecommerce-api-96rn-beige.vercel.app/v1 \
             -t "acrhidiprod0927.azurecr.io/hidi-$HIDI_APP:$GITHUB_SHA" .
           docker push "acrhidiprod0927.azurecr.io/hidi-$HIDI_APP:$GITHUB_SHA"
+  update-existing-admin:
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-admin]')
+    needs: containers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Update existing apps only; verify or roll back
+        run: bash deploy/update-existing-admin.sh "$GITHUB_SHA"
