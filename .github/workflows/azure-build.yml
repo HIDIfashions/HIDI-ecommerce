@@ -58,6 +58,7 @@ jobs:
           docker build -f "deploy/Dockerfile.$HIDI_APP" \
             --build-arg NEXT_PUBLIC_SUPABASE_URL="$SUPABASE_URL" \
             --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --build-arg NEXT_PUBLIC_WALLET_ENABLED=true \
             --build-arg NEXT_PUBLIC_API_URL=https://www.thehidi.com/api/store \
             --build-arg API_URL=https://hidi-ecommerce-api-96rn-beige.vercel.app/v1 \
             -t "acrhidiprod0927.azurecr.io/hidi-$HIDI_APP:$GITHUB_SHA" .
