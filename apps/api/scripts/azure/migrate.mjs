@@ -123,10 +123,13 @@ async function importData() {
   } catch(error){await tx.rollback();throw error;}
 }
 async function grantRuntime() {
-  const principal=process.env.API_PRINCIPAL_ID;
-  if(!/^[0-9a-f-]{36}$/i.test(principal??'')) throw new Error('API_PRINCIPAL_ID required');
+  // Azure SQL service-principal SIDs use the application/client ID, not the object ID.
+  const principal=process.env.API_CLIENT_ID;
+  if(!/^[0-9a-f-]{36}$/i.test(principal??'')) throw new Error('API_CLIENT_ID required');
   await pool.request().input('principal',sql.UniqueIdentifier,principal).batch(`
     DECLARE @sid NVARCHAR(34)=CONVERT(NVARCHAR(34),CONVERT(VARBINARY(16),@principal),1);
+    IF EXISTS(SELECT 1 FROM sys.database_principals WHERE name='id-hidi-api' AND sid <> CONVERT(VARBINARY(16),@principal))
+      THROW 50001, 'Existing API user SID does not match API_CLIENT_ID; repair the identity mapping before continuing', 1;
     IF NOT EXISTS(SELECT 1 FROM sys.database_principals WHERE name='id-hidi-api')
       EXEC('CREATE USER [id-hidi-api] WITH SID = '+@sid+', TYPE = E');
     GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [id-hidi-api];
