@@ -63,18 +63,21 @@
 
   .mobile-nav-panel {
     position: fixed !important;
-    inset: 0 !important;
+    top: calc(114px + env(safe-area-inset-top)) !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
     z-index: 1090 !important;
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
-    height: 100dvh !important;
-    min-height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     overflow: hidden !important;
     background: var(--hidi-mulberry-mist, #fbf6f2) !important;
     color: var(--hidi-mulberry-deep, #461416) !important;
-    padding: calc(184px + env(safe-area-inset-top)) 18px max(30px, calc(24px + env(safe-area-inset-bottom))) !important;
+    padding: 12px 18px max(30px, calc(24px + env(safe-area-inset-bottom))) !important;
     box-shadow: 0 18px 42px rgba(70, 20, 22, 0.18) !important;
   }
 
@@ -92,15 +95,15 @@
 
   .mobile-nav-links a {
     display: flex !important;
-    min-height: 48px !important;
+    min-height: 46px !important;
     align-items: center !important;
     justify-content: space-between !important;
     gap: 14px !important;
-    padding: 5px 0 !important;
+    padding: 4px 0 !important;
     border-bottom: 1px solid rgba(89, 29, 32, 0.12) !important;
     color: var(--hidi-mulberry-deep, #461416) !important;
     font-family: Georgia, "Times New Roman", serif !important;
-    font-size: clamp(1.5rem, 6vw, 2rem) !important;
+    font-size: clamp(1.42rem, 5.8vw, 1.92rem) !important;
     font-weight: 500 !important;
     line-height: 1.08 !important;
     letter-spacing: 0 !important;
@@ -112,15 +115,15 @@
 
   .mobile-nav-links a span {
     display: grid !important;
-    width: 28px !important;
-    height: 28px !important;
-    flex: 0 0 28px !important;
+    width: 26px !important;
+    height: 26px !important;
+    flex: 0 0 26px !important;
     place-items: center !important;
     border: 1px solid rgba(89, 29, 32, 0.22) !important;
     border-radius: 999px !important;
     color: var(--hidi-mulberry, #591d20) !important;
     font-family: inherit !important;
-    font-size: 0.82rem !important;
+    font-size: 0.78rem !important;
     line-height: 1 !important;
   }
 
@@ -154,13 +157,13 @@
 
 @media (max-width: 389px) {
   .mobile-nav-panel {
-    padding-top: calc(166px + env(safe-area-inset-top)) !important;
+    top: calc(108px + env(safe-area-inset-top)) !important;
     padding-inline: 16px !important;
   }
 
   .mobile-nav-links a {
-    min-height: 44px !important;
-    font-size: clamp(1.38rem, 5.8vw, 1.78rem) !important;
+    min-height: 43px !important;
+    font-size: clamp(1.34rem, 5.6vw, 1.72rem) !important;
   }
 
   .mobile-nav-account {
