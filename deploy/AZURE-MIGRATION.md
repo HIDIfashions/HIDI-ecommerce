@@ -32,7 +32,7 @@ The API, Web app, migration job, and GitHub build have separate managed identiti
 - `migrate.mjs` imports into empty tables in one transaction, checks field lengths/types, and compares every source and destination row before committing. It preserves user IDs and Supabase auth subjects.
 - `validate-prisma.mjs` exercises real Prisma reads, relationships, nullable unique fields, email/ID comparison, wallet locking, and rollback without retaining synthetic rows.
 - `media.mjs` uses an allowlist for public Supabase images and repository product assets. It verifies SHA-256 after copying each image before updating SQL references. One archived source image was already absent in the original repository.
-- The API validation setting `MIGRATION_READ_ONLY=true` permits only catalogue/review reads and health checks. The Web setting `DEPLOYMENT_STAGE=validation` adds noindex headers. Checkout and account writes must stay blocked until cutover is complete.
+- The API validation setting `MIGRATION_READ_ONLY=true` defaults to catalogue/review reads and health checks. The explicit isolated customer-test exception is documented below. The Web setting `DEPLOYMENT_STAGE=validation` adds noindex headers. Checkout and account writes must stay blocked until cutover is complete.
 - Both production container builds and all 199 API tests pass in GitHub Actions. The frontend suite has 88 passes and 7 failures; the same seven failures reproduce on the unchanged production source.
 
 Run `deploy/azure-validate.sh` from an authenticated Azure CLI session after the referenced API image is available. It temporarily assigns the migration identity as SQL Entra administrator and restores the original owner with an EXIT trap. Do not leave the migration identity as administrator after running manual recovery commands.
@@ -102,7 +102,7 @@ Before the fresh cutover export is uploaded, use a controlled authenticated uplo
 - Preview cart POST still returns 503 with no-store; validation writes remain disabled. No live transactions were attempted.
 - Azure confirmed SQL and Blob public networking disabled; Blob anonymous/shared-key access disabled; API ingress internal.
 - Azure API environment names confirm no Razorpay or Delhivery configuration is present. Production payment/shipping configuration and end-to-end validation remain outstanding.
-- Cloudflare dashboard still presents human verification in the cloud browser. No DNS/security/cache cutover was performed. Request manual verification in that same cloud browser before continuing.
+- Cloudflare dashboard still presents human verification in the cloud browser. No production DNS/security/cache cutover was performed. The persistent challenge loop has been reported; do not retry or bypass it in this browser.
 - Production final export/import, domain TLS and origin protection, checkout/OTP/webhook checks, and live cutover remain pending. Source remains authoritative; do not import the old rehearsal snapshot as final production data.
 
 ## Custom preview domain verified: 2026-09-27
@@ -118,3 +118,15 @@ The user added DNS-only CNAME `azure-preview.thehidi.com` to the generated Web a
 - Keep preview CNAME DNS-only for managed-certificate issuance and renewal. Production Cloudflare proxy/origin certificate design must be completed separately.
 - The bootstrap `azure-preview.sh` still describes initial creation on the generated hostname. Do not recreate existing apps from it after domain binding; use `az containerapp update` to preserve custom domains and the runtime origin values above.
 - Main domains and source production data remain unchanged. Final coherent production export/import, configured payment/shipping providers, authenticated flow checks, load testing and coordinated live-domain cutover remain outstanding.
+
+## Limited customer testing deployed: 2026-09-27
+
+- User confirmed all 16 preview products are visible and asked to proceed.
+- API image `fea024cd74b9bad97d636b357008f7b1f948afa3`, Actions run `36338395730`, is deployed as healthy running revision `hidi-api--0000004`. Web stays on the previously verified `f66c17b322f92829c8ee5ed0d9f1daa29ae77e4c` image; no Web code changed.
+- `MIGRATION_READ_ONLY=true` plus `MIGRATION_CUSTOMER_TESTING=true` permits cart lifecycle and authenticated account/order/wallet reads only. Startup fails if this mode targets any database except `hidi-sql-validation` or if the migration guard is disabled. Controller authentication and ownership checks remain active.
+- Checkout, payment/webhook, shipping/admin, return/review submissions, marketing and wallet mutation routes remain blocked. Wallet and review-followup workers are explicitly disabled. Supabase remains the mobile OTP provider; no MSG91 change.
+- All 204 API tests and both container builds passed. The separate Quality Gate still reports the same 7 pre-existing frontend test failures (88 pass); this is not a fully green production release.
+- HTTPS smoke checks passed against Web -> private API -> Azure SQL: 16 products; cart creation/add, merge duplicate variant, subtotal, quantity update, invalid quantity rejection, session isolation, cross-session item rejection, item removal; missing and invalid bearer tokens rejected with 401; checkout/payment/admin/wallet writes blocked with 503. Synthetic cart items were removed; empty validation carts may remain.
+- Browser verified Aara Sage Work Kurta M add-to-bag and quantity 1 -> 2, with total INR 2,580 and complimentary shipping displayed. Screenshot `hidi-azure-bag-tested.jpg` records this result.
+- Existing account screen offers mobile OTP. Positive authenticated orders/wallet verification still requires the user's secure test-account sign-in. No successful OTP/login is claimed.
+- Production remains on its previous origin. Payment/shipping credentials, final fresh export/import, production TLS/origin restrictions, load validation and coordinated DNS cutover remain pending.
