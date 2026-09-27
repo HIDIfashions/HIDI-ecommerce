@@ -92,8 +92,11 @@
     min-height: 0 !important;
     max-height: none !important;
     overflow: hidden !important;
-    /* Match the website footer's dusty clay background. */
-    background: #8c514b !important;
+    /* Match the website header's mulberry gradient. */
+    background:
+      radial-gradient(circle at 93% 18%, rgba(176, 89, 76, .12), transparent 25%),
+      radial-gradient(ellipse at 10% 82%, rgba(255, 255, 255, .025), transparent 28%),
+      linear-gradient(104deg, #642326 0%, #591d20 54%, #4b1719 100%) !important;
     color: #fff6ed !important;
     padding: 8px 18px max(16px, env(safe-area-inset-bottom)) !important;
     box-shadow: 0 18px 42px rgba(70, 20, 22, 0.18) !important;
