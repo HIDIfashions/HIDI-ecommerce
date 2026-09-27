@@ -14,6 +14,8 @@ import { ProductCard } from "@/components/product-card";
 import { RecentlyViewedProducts } from "@/components/recently-viewed-products";
 import { formatPaise, getProduct, getProductReviews, getRelatedProducts } from "@/lib/api";
 import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
+import { productOffers } from "@/lib/seo";
+import { DeliveryCheck } from "@/components/delivery-check";
 
 export const dynamic = "force-dynamic";
 
@@ -98,15 +100,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     ...(schemaImages.length ? { image: schemaImages } : {}),
     brand: { "@type": "Brand", name: "HIDI" },
     ...(product.fabric ? { material: product.fabric } : {}),
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "INR",
-      lowPrice: (product.minPricePaise / 100).toFixed(2),
-      highPrice: (product.maxPricePaise / 100).toFixed(2),
-      offerCount: product.variants.length,
-      availability: product.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      url: canonicalUrl,
-    },
+    offers: productOffers(product, canonicalUrl),
     ...(reviews.reviewCount > 0 && reviews.averageRating > 0 ? {
       aggregateRating: {
         "@type": "AggregateRating",
@@ -162,7 +156,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <AddToCart product={product} />
         <ProductContactActions product={product} />
         <ProductQualitySummary product={product} />
-        <div className="delivery-box"><strong>Delivery</strong><div><input aria-label="Delivery PIN code" placeholder="Enter PIN code" inputMode="numeric" maxLength={6} pattern="[0-9]{6}" /><button type="button" aria-label="Check delivery PIN code">Check</button></div></div>
+        <DeliveryCheck />
         <ProductInfoAccordion product={product} />
       </aside>
     </div>

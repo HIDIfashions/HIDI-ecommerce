@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { canOptimizeProductImage, productImageSource } from "@/lib/product-image";
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { ChevronLeft, ChevronRight, Expand, Minus, Plus, Play, X } from "lucide-react";
 import { buildCardMedia, swipeStep, wrapMediaIndex } from "@/lib/product-card-media-utils";
@@ -160,8 +162,10 @@ function Photo({ src, alt, sizes, contain = false, priority = false }: {
   }
 
   return (
-    <img
-      src={src}
+    <Image
+      fill
+      src={productImageSource(src)}
+      unoptimized={!canOptimizeProductImage(productImageSource(src))}
       alt={alt}
       sizes={sizes}
       loading={priority ? "eager" : "lazy"}
@@ -635,9 +639,11 @@ function Gallery({
 
                 {hover && preload?.kind === "image" && (
                   <span className={styles.photoPreload} aria-hidden="true">
-                    <img
+                    <Image
+                      fill
                       key={preload.id}
-                      src={preload.url}
+                      src={productImageSource(preload.url)}
+                      unoptimized={!canOptimizeProductImage(productImageSource(preload.url))}
                       alt=""
                       sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
                       loading="eager"

@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { getProducts } from "@/lib/api";
 import { absoluteUrl } from "@/lib/site-url";
+import { isSearchIndexingEnabled } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
 
 const PUBLIC_ROUTES = [
   { path: "/", priority: 1, changeFrequency: "daily" as const },
@@ -12,9 +15,11 @@ const PUBLIC_ROUTES = [
   { path: "/about", priority: 0.6, changeFrequency: "monthly" as const },
   { path: "/shipping", priority: 0.4, changeFrequency: "monthly" as const },
   { path: "/returns", priority: 0.4, changeFrequency: "monthly" as const },
+  { path: "/contact", priority: 0.4, changeFrequency: "monthly" as const },
 ] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  if (!isSearchIndexingEnabled()) return [];
   const staticEntries: MetadataRoute.Sitemap = PUBLIC_ROUTES.map((route) => ({
     url: absoluteUrl(route.path),
     changeFrequency: route.changeFrequency,
@@ -27,6 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: absoluteUrl(`/products/${encodeURIComponent(product.slug)}`),
       changeFrequency: "daily",
       priority: 0.8,
+      images: product.images.filter((image) => Boolean(image.url)).map((image) => absoluteUrl(image.url)),
     }));
 
     return [...staticEntries, ...productEntries];

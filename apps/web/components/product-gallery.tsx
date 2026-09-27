@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { canOptimizeProductImage, productImageSource } from "@/lib/product-image";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
 import { CatalogImage } from "./catalog-image";
@@ -285,7 +286,8 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
               style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})` }}
             >
               <Image
-                src={selected.url}
+                src={productImageSource(selected.url)}
+                unoptimized={!canOptimizeProductImage(productImageSource(selected.url))}
                 alt={selected.alt || `${productName} enlarged image`}
                 fill
                 priority

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import { canOptimizeProductImage, productImageSource } from "@/lib/product-image";
 
 type CatalogImageProps = {
   src?: string | null;
@@ -50,8 +52,10 @@ export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel,
   }
 
   return (
-    <img
-      src={src}
+    <Image
+      fill
+      src={productImageSource(src)}
+      unoptimized={!canOptimizeProductImage(productImageSource(src))}
       alt={alt}
       sizes={sizes}
       loading={priority ? "eager" : "lazy"}

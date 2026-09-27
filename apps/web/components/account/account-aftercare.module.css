@@ -18,15 +18,15 @@
 
 .summaryGrid span {
   color: #a87837;
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .12em;
 }
 
 .summaryGrid strong {
   margin-top: 18px;
-  font-family: var(--font-display);
-  font-size: 34px;
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 500;
   line-height: 1;
   color: #591d20;
@@ -36,7 +36,7 @@
   margin-top: auto;
   padding-top: 16px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-meta);
   line-height: 1.5;
 }
 
@@ -50,10 +50,10 @@
 
 .sectionHeading h2 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(30px, 3.2vw, 44px);
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 500;
-  letter-spacing: -.025em;
+  letter-spacing: -.02em;
 }
 
 .caseList {
@@ -99,21 +99,21 @@
 .product span,
 .caseAmount span {
   color: #a87837;
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .09em;
 }
 
 .productName {
-  font-family: var(--font-display);
-  font-size: 21px;
+  font-family: var(--font-sans);
+  font-size: var(--type-title);
   font-weight: 500;
   line-height: 1.15;
 }
 
 .product small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--type-meta);
   line-height: 1.45;
 }
 
@@ -126,8 +126,8 @@
 }
 
 .caseAmount strong {
-  font-family: var(--font-display);
-  font-size: 23px;
+  font-family: var(--font-sans);
+  font-size: var(--type-title);
   font-weight: 500;
   color: #4f1a1d;
 }
@@ -173,7 +173,7 @@
 
 .step strong,
 .stepDone strong {
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 650;
   line-height: 1.25;
 }
@@ -205,7 +205,7 @@
   align-items: center;
   gap: 6px;
   color: #6f635b;
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 .actions {
@@ -222,7 +222,7 @@
   gap: 5px;
   border-bottom: 1px solid rgba(89,29,32,.25);
   color: #591d20;
-  font-size: 11px;
+  font-size: var(--type-meta);
   font-weight: 650;
 }
 
@@ -237,12 +237,12 @@
 
 .stopped strong {
   color: #591d20;
-  font-size: 11px;
+  font-size: var(--type-meta);
 }
 
 .stopped span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 .empty,
@@ -259,8 +259,8 @@
 .empty h2,
 .state h2 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 32px;
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 500;
 }
 
@@ -333,14 +333,14 @@
   }
 
   .productName {
-    font-size: 18px;
+    font-size: var(--type-lead);
   }
 }
 
 
 .productName {
-  font-family: var(--font-product);
-  font-size: 17px;
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
   font-weight: 600;
   line-height: 1.28;
   letter-spacing: -.012em;
@@ -348,7 +348,8 @@
 
 @media (max-width: 520px) {
   .productName {
-    font-size: 14px;
+    font-size: var(--type-ui);
     line-height: 1.3;
   }
 }
+

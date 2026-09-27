@@ -41,7 +41,7 @@
   border: 0;
   background: transparent;
   color: #4d3932;
-  font-size: 9px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -61,18 +61,18 @@
   border-radius: 999px;
   background: var(--hidi-mulberry-clay, #591d20);
   color: #fff;
-  font-size: 8px;
+  font-size: var(--type-meta);
   letter-spacing: 0;
 }
 
 .styleCount {
   color: #8b7b71;
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 .sortLabel {
   color: #8b7b71;
-  font-size: 9px;
+  font-size: var(--type-meta);
   letter-spacing: .11em;
   text-transform: uppercase;
 }
@@ -83,7 +83,7 @@
   border: 0;
   background: transparent;
   color: #4d3932;
-  font-size: 11px;
+  font-size: var(--type-body);
   outline: none;
   cursor: pointer;
 }
@@ -102,8 +102,8 @@
 
 .empty h2 {
   margin-bottom: 10px;
-  font-family: var(--font-display);
-  font-size: 42px;
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 400;
 }
 
@@ -149,7 +149,7 @@
   border-bottom: 1px solid #e1e2dd;
   backdrop-filter: blur(12px);
   color: #4d3932;
-  font-size: 10px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .14em;
   text-transform: uppercase;
@@ -172,7 +172,7 @@
   border: 0;
   background: transparent;
   color: #8d7348;
-  font-size: 8px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -217,7 +217,7 @@
   gap: 12px;
   color: #4d3932;
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .13em;
   text-transform: uppercase;
@@ -249,7 +249,7 @@
   align-items: center;
   gap: 10px;
   color: #786b62;
-  font-size: 11px;
+  font-size: var(--type-ui);
   cursor: pointer;
 }
 
@@ -285,7 +285,7 @@
 .colorCount {
   margin-left: -3px;
   color: #9da09a;
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 .drawerBackdrop {
@@ -389,7 +389,7 @@
     justify-content: flex-start;
     gap: 5px;
     color: #4d3932;
-    font-size: 9px;
+    font-size: var(--type-meta);
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -398,7 +398,7 @@
 
   .mobileProductCount {
     padding-inline: 4px;
-    font-size: 9px;
+    font-size: var(--type-meta);
     white-space: nowrap;
   }
 
@@ -437,7 +437,7 @@
   }
 
   .mobileProductCount {
-    font-size: 8px;
+    font-size: var(--type-meta);
   }
 }
 
@@ -447,3 +447,6 @@
     transition: none;
   }
 }
+
+
+.mobileFilterSort { font-size: var(--type-ui); letter-spacing: .04em; }
