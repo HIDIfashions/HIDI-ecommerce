@@ -1,12 +1,22 @@
+import "dotenv/config";
 import { createHash, createHmac } from "node:crypto";
 import pg from "pg";
 
 const DEFAULT_BUCKET = "hidi-product-media-prod";
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
+const args = new Set(process.argv.slice(2));
 
 function required(name, fallback = "") {
   const value = (process.env[name] ?? fallback).trim();
   if (!value) throw new Error(`${name} is required`);
+  return value;
+}
+
+function optionalLimit() {
+  const raw = process.env.R2_MIGRATE_LIMIT?.trim() ?? "";
+  if (!raw) return null;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1) throw new Error("R2_MIGRATE_LIMIT must be a positive whole number");
   return value;
 }
 
@@ -17,7 +27,8 @@ const config = {
   secretAccessKey: required("R2_SECRET_ACCESS_KEY"),
   bucket: required("R2_BUCKET", DEFAULT_BUCKET),
   publicBaseUrl: required("R2_PUBLIC_BASE_URL").replace(/\/$/, ""),
-  write: process.env.R2_MIGRATE_WRITE === "true",
+  write: args.has("--write") || process.env.R2_MIGRATE_WRITE === "true",
+  limit: optionalLimit(),
 };
 
 function sha256Hex(value) {
@@ -91,6 +102,7 @@ async function uploadToR2(key, body, contentType) {
       "X-Amz-Date": amzDate,
     },
     body,
+    signal: AbortSignal.timeout(90_000),
   });
 
   if (!response.ok) {
@@ -100,7 +112,7 @@ async function uploadToR2(key, body, contentType) {
 }
 
 async function fetchImage(row) {
-  const response = await fetch(row.url);
+  const response = await fetch(row.url, { signal: AbortSignal.timeout(90_000) });
   if (!response.ok) throw new Error(`download failed with HTTP ${response.status}`);
 
   const rawType = response.headers.get("content-type")?.split(";")[0]?.toLowerCase() ?? "";
@@ -124,6 +136,7 @@ async function rowsToMigrate(client) {
         AND url NOT LIKE $1
         AND COALESCE("storagePath", '') NOT LIKE 'r2://%'
       ORDER BY table_name, id
+      ${config.limit ? `LIMIT ${config.limit}` : ""}
     `,
     [`${config.publicBaseUrl}%`],
   );
@@ -144,9 +157,10 @@ async function main() {
 
   try {
     const rows = await rowsToMigrate(client);
-    console.log(`${config.write ? "WRITE" : "DRY RUN"}: ${rows.length} product media rows need migration`);
+    console.log(`${config.write ? "WRITE" : "DRY RUN"}: ${rows.length} product media rows need migration${config.limit ? ` (limit ${config.limit})` : ""}`);
 
-    let migrated = 0;
+    let checked = 0;
+    let failed = 0;
     for (const row of rows) {
       try {
         const image = await fetchImage(row);
@@ -159,14 +173,16 @@ async function main() {
           await uploadToR2(key, image.body, image.contentType);
           await updateRow(client, row, nextUrl, storagePath);
         }
-        migrated += 1;
+        checked += 1;
       } catch (error) {
+        failed += 1;
         console.error(`failed ${row.table_name}:${row.id} ${row.url}`);
         console.error(error instanceof Error ? error.message : error);
       }
     }
 
-    console.log(`${config.write ? "Migrated" : "Dry run checked"} ${migrated}/${rows.length} rows`);
+    console.log(`${config.write ? "Migrated" : "Dry run checked"} ${checked}/${rows.length} rows; failed ${failed}`);
+    if (failed > 0) process.exitCode = 1;
   } finally {
     await client.end();
   }
