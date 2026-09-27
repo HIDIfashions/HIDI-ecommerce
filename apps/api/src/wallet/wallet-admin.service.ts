@@ -1,3 +1,4 @@
+import { encodeJson } from "../prisma/json.js";
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { WalletService } from "./wallet.service.js";
@@ -22,7 +23,7 @@ export class WalletAdminService {
   async holdReturn(orderNumber: string, body: unknown) {
     const details = actionDetails(body);
     return withSerializableRetry(this.prisma, async (tx) => {
-      const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Order" WHERE "orderNumber" = ${orderNumber} FOR UPDATE`;
+      const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "orderNumber" = ${orderNumber} `;
       if (!rows[0]) throw new NotFoundException("Order not found");
       const order = await tx.order.findUniqueOrThrow({ where: { id: rows[0].id } });
       if (!["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED", "RETURN_REQUESTED"].includes(order.status)) {
@@ -44,7 +45,7 @@ export class WalletAdminService {
   async refundWalletOnlyOrder(orderNumber: string, body: unknown) {
     const details = actionDetails(body);
     return withSerializableRetry(this.prisma, async (tx) => {
-      const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Order" WHERE "orderNumber" = ${orderNumber} FOR UPDATE`;
+      const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "orderNumber" = ${orderNumber} `;
       if (!rows[0]) throw new NotFoundException("Order not found");
       const order = await tx.order.findUniqueOrThrow({ where: { id: rows[0].id }, include: { payments: true, walletHold: true } });
       if (order.totalPaise <= 0 || order.walletAppliedPaise !== order.totalPaise
@@ -71,9 +72,9 @@ export class WalletAdminService {
         paymentId: payment.id, providerRefundId: refundKey, amountPaise: 0,
         status: "PROCESSED", processedAt: new Date(),
       } });
-      await tx.payment.update({ where: { id: payment.id }, data: { status: "REFUNDED", rawReference: {
+      await tx.payment.update({ where: { id: payment.id }, data: { status: "REFUNDED", rawReference: encodeJson({
         source: "ADMIN_WALLET_FULL_REFUND", reference: details.reference, reason: details.reason,
-      } } });
+      }) } });
       await tx.order.update({ where: { id: order.id }, data: {
         status: "REFUNDED", notes: [order.notes, `WALLET_REFUND: ${details.reference}: ${details.reason}`].filter(Boolean).join("\n"),
       } });
@@ -86,3 +87,4 @@ export class WalletAdminService {
     });
   }
 }
+

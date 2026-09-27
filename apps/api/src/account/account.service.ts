@@ -1,3 +1,4 @@
+import { decodeJson } from "../prisma/json.js";
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { VerifiedAuthUser } from "../auth/supabase-auth.service.js";
@@ -61,7 +62,7 @@ export class AccountService {
     const claimFilter = authUser.phoneVerified && authUser.phone
       ? { customerPhone: authUser.phone }
       : authUser.email
-        ? { customerEmail: { equals: authUser.email, mode: "insensitive" as const } }
+        ? { customerEmail: { equals: authUser.email } }
         : null;
 
     if (claimFilter) {
@@ -156,7 +157,7 @@ export class AccountService {
           walletAppliedPaise: order.walletAppliedPaise,
           cashPayablePaise: order.totalPaise - order.walletAppliedPaise,
           paymentStatus: order.payments[0]?.status ?? null,
-          shippingAddress: order.shippingAddress,
+          shippingAddress: decodeJson(order.shippingAddress),
           shipment: order.shipments[0] ? {
             provider: order.shipments[0].provider,
             awb: order.shipments[0].awb,
@@ -280,7 +281,7 @@ export class AccountService {
     if (refundDestination === "WALLET") await this.wallet.ensureWallet(authUser);
 
     return withSerializableRetry(this.prisma, async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "orderNumber" = ${orderNumber} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "orderNumber" = ${orderNumber} `;
       const order = await tx.order.findFirst({
         where: { orderNumber, userId: user.id },
         include: {
@@ -384,7 +385,7 @@ export class AccountService {
     const user = await this.customer(authUser);
     const updated = await withSerializableRetry(this.prisma, async (tx) => {
       const locked = await tx.$queryRaw<Array<{ id: string }>>`
-        SELECT "id" FROM "Order" WHERE "orderNumber" = ${orderNumber} FOR UPDATE
+        SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "orderNumber" = ${orderNumber} 
       `;
       if (!locked[0]) throw new NotFoundException("Order not found");
 
@@ -438,3 +439,4 @@ export class AccountService {
     return true;
   }
 }
+

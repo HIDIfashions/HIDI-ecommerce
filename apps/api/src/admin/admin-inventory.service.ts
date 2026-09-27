@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InventoryMovementType, Prisma, StockReceiptStatus } from "../generated/prisma/client.js";
+import { Prisma } from "../generated/prisma/client.js";
+import { InventoryMovementType, StockReceiptStatus } from "../prisma/domain-enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 type InventoryStatus = "ALL" | "HEALTHY" | "LOW" | "OUT";
@@ -56,9 +57,9 @@ export class AdminInventoryService {
         ...(q
           ? {
               OR: [
-                { sku: { contains: q, mode: "insensitive" as const } },
-                { product: { name: { contains: q, mode: "insensitive" as const } } },
-                { color: { contains: q, mode: "insensitive" as const } },
+                { sku: { contains: q } },
+                { product: { name: { contains: q } } },
+                { color: { contains: q } },
               ],
             }
           : {}),
@@ -127,9 +128,9 @@ export class AdminInventoryService {
         reorderLevel: number;
       }>>`
         SELECT "id", "onHand", "reserved", "safetyStock", "reorderLevel"
-        FROM "Inventory"
+        FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
         WHERE "variantId" = ${variantId}
-        FOR UPDATE
+        
       `;
       const current = locked[0];
       if (!current) throw new NotFoundException("Inventory variant not found");
@@ -234,9 +235,9 @@ export class AdminInventoryService {
     return this.prisma.$transaction(async (tx) => {
       const lockedReceipt = await tx.$queryRaw<Array<{ id: string; status: StockReceiptStatus }>>`
         SELECT "id", "status"
-        FROM "StockReceipt"
+        FROM "StockReceipt" WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
         WHERE "id" = ${receiptId}
-        FOR UPDATE
+        
       `;
       if (!lockedReceipt[0]) throw new NotFoundException("Stock receipt not found");
       if (lockedReceipt[0].status === StockReceiptStatus.POSTED) return this.receipt(receiptId, tx);
@@ -257,9 +258,9 @@ export class AdminInventoryService {
       for (const line of receipt.lines) {
         const lockedInventory = await tx.$queryRaw<Array<{ id: string; onHand: number; reserved: number }>>`
           SELECT "id", "onHand", "reserved"
-          FROM "Inventory"
+          FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
           WHERE "variantId" = ${line.variantId}
-          FOR UPDATE
+          
         `;
         const inventory = lockedInventory[0];
         if (!inventory) throw new BadRequestException(`Inventory is missing for variant ${line.variantId}`);
@@ -609,3 +610,4 @@ export class AdminInventoryService {
     } satisfies Record<InventoryMovementType, string>)[reason];
   }
 }
+

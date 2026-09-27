@@ -32,14 +32,14 @@ export class WalletService {
   }
 
   private async lockOrder(tx: Tx, orderId: string) {
-    const rows = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
+    const rows = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${orderId} `;
     if (!rows[0]) throw new NotFoundException("Order not found");
   }
 
   private async lockWallet(tx: Tx, walletId: string): Promise<WalletRow> {
     const rows = await tx.$queryRaw<WalletRow[]>`
       SELECT "id", "userId", "authSubject", "currency", "balancePaise", "reservedPaise"
-      FROM "WalletAccount" WHERE "id" = ${walletId} FOR UPDATE
+      FROM "WalletAccount" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${walletId} 
     `;
     const wallet = rows[0];
     if (!wallet || wallet.currency !== "INR" || !validPaise(wallet.reservedPaise)
@@ -391,3 +391,4 @@ export class WalletService {
     return result;
   }
 }
+

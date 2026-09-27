@@ -1,0 +1,32 @@
+name: Azure migration build
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+permissions:
+  contents: read
+jobs:
+  source-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm --filter @hidi/api test:customer-experience
+      - run: pnpm --filter @hidi/api build
+      - name: Package exact source and original public assets
+        run: git archive --format=tar.gz --output=hidi-azure-source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hidi-azure-source
+          path: hidi-azure-source.tar.gz
+          retention-days: 7

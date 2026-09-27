@@ -242,11 +242,11 @@ test("checkout trims customer and delivery text before saving the order", async 
   const order = f.state().orders[0];
   assert.equal(order.customerEmail, "guest@example.test");
   assert.equal(order.customerPhone, "9876543210");
-  assert.equal(order.shippingAddress.firstName, "Customer");
-  assert.equal(order.shippingAddress.lastName, "Test");
-  assert.equal(order.shippingAddress.line1, "12 Test Street");
-  assert.equal(order.shippingAddress.city, "Hyderabad");
-  assert.equal(order.shippingAddress.state, "Telangana");
+  assert.equal(JSON.parse(order.shippingAddress).firstName, "Customer");
+  assert.equal(JSON.parse(order.shippingAddress).lastName, "Test");
+  assert.equal(JSON.parse(order.shippingAddress).line1, "12 Test Street");
+  assert.equal(JSON.parse(order.shippingAddress).city, "Hyderabad");
+  assert.equal(JSON.parse(order.shippingAddress).state, "Telangana");
 });
 
 test("checkout delivery serviceability returns only sanitized carrier fields and caches PIN results", async () => {
@@ -382,3 +382,4 @@ test("a verified customer can adopt the same browser-session cart at purchase", 
   assert.equal(f.state().cart.userId, "user-1");
   assert.equal(f.state().wallet.reservedPaise, 4000);
 });
+

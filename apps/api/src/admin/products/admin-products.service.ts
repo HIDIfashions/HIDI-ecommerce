@@ -61,9 +61,9 @@ export class AdminProductsService {
     const where: Prisma.ProductWhereInput = {
       ...(status && status !== "ALL" ? { status: status as "DRAFT" | "ACTIVE" | "ARCHIVED" } : {}),
       ...(query ? { OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { slug: { contains: query, mode: "insensitive" } },
-        { variants: { some: { sku: { contains: query, mode: "insensitive" } } } },
+        { name: { contains: query } },
+        { slug: { contains: query } },
+        { variants: { some: { sku: { contains: query } } } },
       ] } : {}),
     };
     const [products, total] = await Promise.all([
@@ -114,7 +114,7 @@ export class AdminProductsService {
   }
 
   private async locked(tx: DB, productId: string, expected: Date) {
-    await tx.$queryRaw`SELECT "id" FROM "Product" WHERE "id" = ${productId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "Product" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${productId} `;
     const product = await this.find(tx, productId);
     if (product.updatedAt.getTime() !== expected.getTime()) throw new ConflictException("This product changed after you opened it. Reload the product before saving; your changes were not applied.");
     return product;
@@ -241,3 +241,4 @@ export class AdminProductsService {
 }
 // Shape for the narrow metadata comparison used by idempotent create.
 const fieldsResult = { name: "", categoryId: null as string | null, shortDescription: null as string | null, description: null as string | null, fabric: null as string | null, care: null as string | null };
+

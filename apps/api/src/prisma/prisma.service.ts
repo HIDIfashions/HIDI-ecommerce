@@ -1,44 +1,31 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { PrismaMssql } from "@prisma/adapter-mssql";
 import { PrismaClient } from "../generated/prisma/client.js";
 
-function poolLimit() {
-  const value = Number(process.env.DATABASE_POOL_MAX ?? "1");
-  return Number.isInteger(value) && value > 0 ? Math.min(value, 3) : 1;
-}
-
 function createAdapter() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_URL is required");
-
-  const pool = new Pool({
-    connectionString,
-    max: poolLimit(),
-    idleTimeoutMillis: 5_000,
-    connectionTimeoutMillis: 10_000,
-    allowExitOnIdle: true,
-  });
-
-  return { adapter: new PrismaPg(pool), pool };
+  const server = process.env.AZURE_SQL_SERVER;
+  const database = process.env.AZURE_SQL_DATABASE;
+  if (!server || !database) throw new Error("AZURE_SQL_SERVER and AZURE_SQL_DATABASE are required");
+  const requested = Number(process.env.DATABASE_POOL_MAX ?? "10");
+  const max = Number.isInteger(requested) && requested > 0 ? Math.min(requested, 30) : 10;
+  return new PrismaMssql({
+    server,
+    database,
+    port: 1433,
+    authentication: {
+      type: "azure-active-directory-default",
+      options: process.env.AZURE_CLIENT_ID ? { clientId: process.env.AZURE_CLIENT_ID } : {},
+    },
+    options: { encrypt: true, trustServerCertificate: false },
+    pool: { max, min: 0, idleTimeoutMillis: 30000 },
+    connectionTimeout: 15000,
+    requestTimeout: 30000,
+  }, { schema: "dbo" });
 }
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  private readonly pool: Pool;
-
-  constructor() {
-    const { adapter, pool } = createAdapter();
-    super({ adapter });
-    this.pool = pool;
-  }
-
-  async onModuleInit() {
-    await this.$connect();
-  }
-
-  async onModuleDestroy() {
-    await this.$disconnect();
-    await this.pool.end();
-  }
+  constructor() { super({ adapter: createAdapter() }); }
+  async onModuleInit() { await this.$connect(); }
+  async onModuleDestroy() { await this.$disconnect(); }
 }
