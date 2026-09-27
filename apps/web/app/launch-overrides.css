@@ -192,3 +192,34 @@
   }
 
 }
+
+/* Keep the desktop logo inside the header row. */
+@media (min-width: 1001px) {
+  .site-header .wordmark {
+    width: 144px;
+    height: 56px;
+  }
+
+  .site-header .wordmark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+/* Collection titles use the catalogue typeface at a compact, readable scale. */
+@media (min-width: 621px) {
+  .collection-page .collection-header {
+    max-width: 660px;
+    margin: 12px 0 28px;
+  }
+
+  .collection-page .collection-header h1 {
+    font-family: var(--font-product);
+    font-size: clamp(32px, 3vw, 42px);
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -.015em;
+    margin: 0 0 10px;
+  }
+}
