@@ -104,3 +104,17 @@ Before the fresh cutover export is uploaded, use a controlled authenticated uplo
 - Azure API environment names confirm no Razorpay or Delhivery configuration is present. Production payment/shipping configuration and end-to-end validation remain outstanding.
 - Cloudflare dashboard still presents human verification in the cloud browser. No DNS/security/cache cutover was performed. Request manual verification in that same cloud browser before continuing.
 - Production final export/import, domain TLS and origin protection, checkout/OTP/webhook checks, and live cutover remain pending. Source remains authoritative; do not import the old rehearsal snapshot as final production data.
+
+## Custom preview domain verified: 2026-09-27
+
+The user added DNS-only CNAME `azure-preview.thehidi.com` to the generated Web app hostname and TXT `asuid.azure-preview.thehidi.com`. Both records were verified from Azure Cloud Shell before binding.
+
+- Azure hostname `azure-preview.thehidi.com` is bound with `SniEnabled` to managed certificate `mc-cae-hidi-prod-azure-preview-th-3008`.
+- Verified browser URL: `https://azure-preview.thehidi.com/collections/all`. Home and catalogue render; all 16 products are listed and visible product images have loaded successfully from the same-origin Blob media route.
+- API `WEB_ORIGIN` now equals `https://azure-preview.thehidi.com`; Web `MEDIA_PUBLIC_BASE_URL` equals `https://azure-preview.thehidi.com/media`. Both runtime updates succeeded.
+- Fresh HTTPS checks returned 200 for Web health, proxied SQL readiness, product list (16), catalogue HTML and migrated PNG media. Media retains immutable public cache headers; API retains private/no-store. Validation noindex headers remain present.
+- Preview cart POST returned 503 with the catalogue-only message, confirming write protection. This does not validate authenticated customer journeys or payments.
+- Source Vercel project `hidi-ecommerce-api-96rn` has only DATABASE_URL, SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY under Project; Shared reports no linked variables. Payment/shipping secrets have not been omitted from that source configuration during migration; they are not configured there either.
+- Keep preview CNAME DNS-only for managed-certificate issuance and renewal. Production Cloudflare proxy/origin certificate design must be completed separately.
+- The bootstrap `azure-preview.sh` still describes initial creation on the generated hostname. Do not recreate existing apps from it after domain binding; use `az containerapp update` to preserve custom domains and the runtime origin values above.
+- Main domains and source production data remain unchanged. Final coherent production export/import, configured payment/shipping providers, authenticated flow checks, load testing and coordinated live-domain cutover remain outstanding.
