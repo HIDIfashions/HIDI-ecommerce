@@ -1,0 +1,143 @@
+/* Launch fixes that intentionally load after the main stylesheet. */
+.button.button-dark,
+.button-dark {
+  background: var(--hidi-mulberry, #591d20) !important;
+  border-color: var(--hidi-mulberry, #591d20) !important;
+  color: var(--hidi-ivory-text, #fff8ef) !important;
+}
+
+.button.button-dark:hover,
+.button.button-dark:focus-visible,
+.button-dark:hover,
+.button-dark:focus-visible {
+  background: var(--hidi-mulberry-hover, #69282a) !important;
+  border-color: var(--hidi-mulberry-hover, #69282a) !important;
+  color: var(--hidi-ivory-text, #fff8ef) !important;
+}
+
+@media (max-width: 767px) {
+  .site-header {
+    z-index: 1000;
+  }
+
+  .mobile-nav-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 998 !important;
+    background: rgba(30, 16, 14, 0.34) !important;
+  }
+
+  .mobile-nav-panel {
+    position: fixed !important;
+    inset: 0 0 0 0 !important;
+    z-index: 999 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    background: var(--hidi-mulberry-mist, #fbf6f2) !important;
+    color: var(--hidi-mulberry-deep, #461416) !important;
+    padding: calc(112px + env(safe-area-inset-top)) 18px max(32px, calc(24px + env(safe-area-inset-bottom))) !important;
+    box-shadow: 0 18px 42px rgba(70, 20, 22, 0.18) !important;
+  }
+
+  .mobile-nav-close {
+    display: none !important;
+  }
+
+  .mobile-nav-intro {
+    margin: 0 0 18px !important;
+    padding: 0 0 16px !important;
+    border-bottom: 1px solid rgba(89, 29, 32, 0.14) !important;
+  }
+
+  .mobile-nav-intro span {
+    color: var(--hidi-mulberry-gold, #d5a24d) !important;
+    letter-spacing: 0.18em !important;
+  }
+
+  .mobile-nav-intro strong {
+    color: var(--hidi-mulberry, #591d20) !important;
+  }
+
+  .mobile-nav-intro p {
+    max-width: 28rem !important;
+    color: rgba(70, 20, 22, 0.72) !important;
+  }
+
+  .mobile-nav-links {
+    display: grid !important;
+    gap: 0 !important;
+    margin: 0 !important;
+  }
+
+  .mobile-nav-links a {
+    display: flex !important;
+    min-height: 54px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid rgba(89, 29, 32, 0.12) !important;
+    color: var(--hidi-mulberry-deep, #461416) !important;
+    font-family: Georgia, "Times New Roman", serif !important;
+    font-size: clamp(2rem, 8.8vw, 2.55rem) !important;
+    line-height: 1.04 !important;
+    letter-spacing: 0 !important;
+  }
+
+  .mobile-nav-links a span {
+    display: grid !important;
+    width: 30px !important;
+    height: 30px !important;
+    flex: 0 0 30px !important;
+    place-items: center !important;
+    border: 1px solid rgba(89, 29, 32, 0.22) !important;
+    border-radius: 999px !important;
+    color: var(--hidi-mulberry, #591d20) !important;
+    font-family: inherit !important;
+    font-size: 0.9rem !important;
+    line-height: 1 !important;
+  }
+
+  .mobile-nav-account {
+    position: static !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    margin: 22px 0 0 !important;
+    padding: 18px 0 0 !important;
+    border-top: 1px solid rgba(89, 29, 32, 0.14) !important;
+  }
+
+  .mobile-nav-account a {
+    display: inline-flex !important;
+    min-height: 48px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    border: 1px solid rgba(89, 29, 32, 0.16) !important;
+    border-radius: 999px !important;
+    background: rgba(255, 248, 239, 0.72) !important;
+    color: var(--hidi-mulberry, #591d20) !important;
+    font-size: 0.86rem !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+  }
+}
+
+@media (max-width: 389px) {
+  .mobile-nav-panel {
+    padding-inline: 16px !important;
+  }
+
+  .mobile-nav-links a {
+    min-height: 50px !important;
+    font-size: clamp(1.8rem, 8vw, 2.2rem) !important;
+  }
+
+  .mobile-nav-account {
+    grid-template-columns: 1fr !important;
+  }
+}
