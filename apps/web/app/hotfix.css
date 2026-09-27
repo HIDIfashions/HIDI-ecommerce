@@ -1,14 +1,13 @@
 /* Production polish for the HIDI chrome reported from mobile and desktop QA. */
 .site-header .header-inner {
-  height: 72px;
-  grid-template-columns: 170px minmax(0, 1fr) auto;
+  height: 84px;
+  grid-template-columns: 174px minmax(0, 1fr) auto;
   gap: clamp(18px, 2.2vw, 30px);
 }
 
 .site-header .wordmark {
   width: 154px;
-  height: auto;
-  min-height: 48px;
+  height: 76px;
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
@@ -18,8 +17,8 @@
 
 .site-header .wordmark img {
   display: block;
-  width: 154px;
-  height: auto;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   object-fit: contain;
   object-position: left center;
@@ -36,8 +35,8 @@
 }
 
 .site-header .desktop-nav a {
-  padding-top: 25px;
-  padding-bottom: 23px;
+  padding-top: 31px;
+  padding-bottom: 29px;
 }
 
 .site-header .utility-nav {
@@ -99,13 +98,13 @@
 
 @media (max-width: 1180px) {
   .site-header .header-inner {
-    grid-template-columns: 150px minmax(0, 1fr) auto;
+    grid-template-columns: 156px minmax(0, 1fr) auto;
     gap: 18px;
   }
 
-  .site-header .wordmark,
-  .site-header .wordmark img {
+  .site-header .wordmark {
     width: 142px;
+    height: 70px;
   }
 
   .site-header .desktop-nav {
@@ -123,12 +122,11 @@
 
   .site-header .wordmark {
     width: min(150px, 36vw);
-    min-height: 0;
+    height: 58px;
     justify-content: center;
   }
 
   .site-header .wordmark img {
-    width: min(150px, 36vw);
     object-position: center;
   }
 
@@ -144,10 +142,7 @@
 
   .site-header .wordmark {
     width: min(126px, 38vw);
-  }
-
-  .site-header .wordmark img {
-    width: min(126px, 38vw);
+    height: 52px;
   }
 
   .mobile-nav-panel {
@@ -173,9 +168,9 @@
 }
 
 @media (max-width: 390px) {
-  .site-header .wordmark,
-  .site-header .wordmark img {
+  .site-header .wordmark {
     width: min(116px, 36vw);
+    height: 50px;
   }
 
   .mobile-nav-panel {
