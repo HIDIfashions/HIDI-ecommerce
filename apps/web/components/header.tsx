@@ -66,8 +66,8 @@ export function Header() {
 
   useEffect(() => {
     if (!menuOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const previous = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
     const timer = window.setTimeout(() => focusFirst(menuPanelRef.current), 0);
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -82,7 +82,7 @@ export function Header() {
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.clearTimeout(timer);
-      document.body.style.overflow = previous;
+      document.documentElement.style.overflow = previous;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [menuOpen]);
