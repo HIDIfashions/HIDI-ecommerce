@@ -90,9 +90,12 @@ export function middleware(request: NextRequest) {
     return blockResponse();
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (process.env.DEPLOYMENT_STAGE === "validation") response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return response;
 }
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
+
