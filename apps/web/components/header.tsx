@@ -69,7 +69,7 @@ export function Header() {
         </button>
 
         <Link className="wordmark" href="/" aria-label="HIDI — Wear the Feeling" onClick={() => closeMenu(false)}>
-          <img src="/brand/hidi-logo-gold-inline.svg" alt="" />
+          <img src="/brand/hidi-logo-header.svg" alt="" />
         </Link>
 
         <nav className="desktop-nav" aria-label="Primary navigation">
