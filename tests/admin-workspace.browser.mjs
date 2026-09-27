@@ -8,14 +8,14 @@ import { pathToFileURL } from 'node:url';
 const { chromium } = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
 const port = 3100, upstreamPort = 4100, base = `http://127.0.0.1:${port}`;
 const output = resolve('test-results/admin-workspace'); await mkdir(output, { recursive: true });
-const upstreamRequests = [];
+const upstreamRequests = [], contexts = [], diagnostics = [];
 const upstream = createServer((req, res) => { upstreamRequests.push({ url: req.url, authorization: req.headers.authorization }); res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ message: 'Test upstream: invalid staff token' })); });
 await new Promise(resolve => upstream.listen(upstreamPort, '127.0.0.1', resolve));
 const server = spawn(process.execPath, [resolve('apps/web/node_modules/next/dist/bin/next'), 'start', '-p', String(port)], { cwd: resolve('apps/web'), env: { ...process.env, API_URL: `http://127.0.0.1:${upstreamPort}/v1`, NODE_ENV: 'production' }, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = ''; server.stdout.on('data', b => { log += b; }); server.stderr.on('data', b => { log += b; });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let browser; let passes = 0;
-const passed = name => { passes++; console.log(`PASS ${passes}: ${name}`); };
+const passed = name => { passes++; diagnostics.push(`PASS ${passes}: ${name}`); console.log(diagnostics.at(-1)); };
 const istToday = () => new Date(Date.now() + 19800000).toISOString().slice(0, 10);
 const order = { id: 'ci-order-1', orderNumber: 'HIDI-CI-1042', status: 'CONFIRMED', totalPaise: 599800, createdAt: new Date().toISOString(), customerPhone: '9999999999', customerEmail: 'fixture@example.test', itemCount: 2, payments: [{ status: 'CAPTURED' }], shipments: [] };
 function overview(url, empty = false) {
@@ -26,7 +26,7 @@ function overview(url, empty = false) {
 }
 async function fixtureContext(options = {}) {
   const state = { role: 'OWNER', mode: 'normal', calls: [], ...options };
-  const context = await browser.newContext({ viewport: state.viewport || { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
+  const context = await browser.newContext({ viewport: state.viewport || { width: 1440, height: 1000 }, reducedMotion: 'reduce' }); contexts.push(context);
   await context.route('**/*', async route => {
     const url = new URL(route.request().url());
     if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') return route.abort();
@@ -42,7 +42,8 @@ async function fixtureContext(options = {}) {
     }
     return send({ message: 'Unexpected fixture request' }, 404);
   });
-  const page = await context.newPage(); const errors = []; page.on('pageerror', error => errors.push(error.message));
+  const page = await context.newPage(); const errors = []; page.on('pageerror', error => { errors.push(error.message); diagnostics.push('PAGE ERROR: ' + error.stack); });
+  page.on('framenavigated', frame => { if (frame === page.mainFrame()) diagnostics.push('NAVIGATION: ' + frame.url()); });
   return { context, page, state, errors };
 }
 async function waitText(page, text) { await page.getByText(text, { exact: false }).first().waitFor({ timeout: 15000 }); }
@@ -67,10 +68,12 @@ try {
   await page.getByText('View chart data', { exact: true }).click(); await waitText(page, 'Date (IST)');
   const downloadEvent = page.waitForEvent('download'); await page.getByRole('button', { name: 'Export daily report' }).click(); const download = await downloadEvent; assert(download.suggestedFilename().startsWith('hidi-daily-orders-'));
   passed('overview figures, date presets, accessible chart table and daily CSV download');
-  await page.keyboard.press('Control+k'); await page.getByRole('combobox').fill('Fixture'); await page.getByRole('option').filter({ hasText: 'CI Fixture Customer' }).waitFor(); await page.getByRole('combobox').press('Enter');
-  await page.waitForURL('**/admin/orders?q=9999999999'); await waitText(page, 'HIDI-CI-1042'); passed('global search keyboard navigation opens customer order results');
+  await page.keyboard.press('Control+k'); await page.getByRole('combobox').fill('Fixture'); await page.getByRole('option').filter({ hasText: 'CI Fixture Customer' }).waitFor();
+  await page.screenshot({ path: resolve(output, 'global-search.png') });
+  await page.getByRole('combobox').press('Enter');
+  await page.waitForURL(url => url.pathname === '/admin/orders' && url.searchParams.get('q') === '9999999999', { timeout: 15000 }); await waitText(page, 'HIDI-CI-1042'); passed('global search keyboard navigation opens customer order results');
   await page.goto(base + '/admin/deliveries'); await waitText(page, 'HIDI-CI-1042'); await noOverflow(page);
-  await page.getByRole('button', { name: /Next/ }).click(); await page.waitForURL('**page=2'); await waitText(page, 'HIDI-CI-1042');
+  await page.getByRole('button', { name: /Next/ }).click(); await page.waitForURL(url => url.searchParams.get('page') === '2'); await waitText(page, 'HIDI-CI-1042');
   await page.screenshot({ path: resolve(output, 'desktop-deliveries.png'), fullPage: true }); passed('delivery queue pagination and carrier fallback');
   await page.goto(base + '/admin/returns'); await waitText(page, 'CI fixture size mismatch'); passed('item-level return queue renders reason, quantity and order link');
   state.mode = 'empty'; await page.goto(base + '/admin'); await waitText(page, 'No qualifying orders in this period'); passed('empty reporting state shows zeroes, never sample data');
@@ -86,4 +89,12 @@ try {
   await mobile.page.goto(base + '/admin/orders'); await waitText(mobile.page, 'HIDI-CI-1042'); await noOverflow(mobile.page); assert.deepEqual(mobile.errors, []); await mobile.context.close(); passed('390px mobile layout, navigation dialog and contained table overflow');
   console.log(`${passes} browser checks passed. Isolated UI fixtures only; not a live order lifecycle certification.`);
   await writeFile(resolve(output, 'result.txt'), `${passes} browser checks passed. No live data changes or cloud resources.\n`);
-} finally { if (browser) await browser.close(); server.kill('SIGTERM'); await new Promise(resolve => upstream.close(resolve)); await writeFile(resolve(output, 'next-server.log'), log); }
+} catch (error) {
+  diagnostics.push(error instanceof Error ? error.stack : String(error));
+  for (let i = 0; i < contexts.length; i++) for (const page of contexts[i].pages()) {
+    diagnostics.push('FAILURE URL: ' + page.url());
+    await page.screenshot({ path: resolve(output, `failure-${i}.png`), fullPage: true }).catch(() => {});
+    diagnostics.push(await page.locator('body').innerText().catch(() => 'Body unavailable'));
+  }
+  throw error;
+} finally { await writeFile(resolve(output, 'browser-diagnostics.txt'), diagnostics.join('\n\n')); if (browser) await browser.close(); server.kill('SIGTERM'); await new Promise(resolve => upstream.close(resolve)); await writeFile(resolve(output, 'next-server.log'), log); }
