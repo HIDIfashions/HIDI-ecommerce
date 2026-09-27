@@ -259,3 +259,10 @@
     height: 54px;
   }
 }
+
+/* Larger navigation labels on desktop; mobile typography stays unchanged. */
+@media (min-width: 1001px) {
+  .site-header .desktop-nav {
+    font-size: clamp(12px, 1.05vw, 14px);
+  }
+}
