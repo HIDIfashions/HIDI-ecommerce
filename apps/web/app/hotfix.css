@@ -96,6 +96,21 @@
   margin-top: 4px;
 }
 
+.empty-state .button-dark {
+  background: var(--hidi-mulberry, #591d20);
+  border-color: var(--hidi-mulberry-gold, #d5a24d);
+  color: var(--hidi-mulberry-ivory, #f8eee4);
+  box-shadow: 0 12px 28px rgba(89, 29, 32, .14);
+}
+
+.empty-state .button-dark:hover,
+.empty-state .button-dark:focus-visible {
+  background: var(--hidi-mulberry-deep, #461416);
+  border-color: var(--hidi-mulberry-gold-bright, #f1c36e);
+  color: #fff8ef;
+  opacity: 1;
+}
+
 @media (max-width: 1180px) {
   .site-header .header-inner {
     grid-template-columns: 156px minmax(0, 1fr) auto;
