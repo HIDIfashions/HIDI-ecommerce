@@ -121,7 +121,7 @@
     justify-content: space-between !important;
     gap: 14px !important;
     padding: 4px 0 !important;
-    border-bottom: 1px solid rgba(89, 29, 32, 0.12) !important;
+    border: 0 !important;
     color: var(--hidi-mulberry-deep, #461416) !important;
     font-family: Georgia, "Times New Roman", serif !important;
     font-size: clamp(1.25rem, 5.4vw, 1.5rem) !important;
@@ -131,7 +131,7 @@
   }
 
   .mobile-nav-links a:first-child {
-    border-top: 1px solid rgba(89, 29, 32, 0.12) !important;
+    border-top: 0 !important;
   }
 
   .mobile-nav-links a span {
@@ -156,7 +156,8 @@
     gap: 10px !important;
     margin: 0 !important;
     padding: 14px 0 0 !important;
-    border-top: 1px solid rgba(89, 29, 32, 0.14) !important;
+    border: 0 !important;
+    box-shadow: none !important;
     background: transparent !important;
   }
 
