@@ -80,7 +80,7 @@ The first API startup failed SQL login because the contained user SID was derive
 
 ## Preview smoke checks
 
-The isolated preview host is `hidi-web.delightfulstone-4c9a3791.centralindia.azurecontainerapps.io`. The API uses internal ingress only. Both applications scale between zero and two replicas.
+The isolated preview host is `hidi-web.delightfulstone-4c9a3791.centralindia.azurecontainerapps.io`. The API uses internal ingress only. Both applications scale between one and two replicas after the 2026-09-27 resume verification.
 
 Verified over HTTPS on 2026-09-27:
 
@@ -94,3 +94,13 @@ Verified over HTTPS on 2026-09-27:
 The cloud browser rejected the direct Azure hostname with `ERR_BLOCKED_BY_CLIENT`; these are HTTP-level and Azure runtime checks, not a completed visual browser review. The production domain and old Vercel/Supabase deployment have not been switched. The production `hidi-sql` database remains empty; this preview uses `hidi-sql-validation`. No real OTP, live payment, shipping, admin write, or checkout transaction has been sent during validation.
 
 Before the fresh cutover export is uploaded, use a controlled authenticated upload path to the private migration container. Its public network is now disabled. Do not enable anonymous Blob access or shared keys.
+
+## Resume verification: 2026-09-27 17:08 UTC
+
+- Both apps now have minimum 1 / maximum 2 replicas, preventing scale-to-zero cold starts. Both revision `--0000002` deployments report Succeeded and ready. Application image remains `f66c17b322f92829c8ee5ed0d9f1daa29ae77e4c`.
+- Fresh HTTP checks passed for Web health, Web -> API -> SQL readiness, all 16 catalogue products, the rendered collection page, and one migrated Blob image (HTTP 200, immutable public cache header).
+- Preview cart POST still returns 503 with no-store; validation writes remain disabled. No live transactions were attempted.
+- Azure confirmed SQL and Blob public networking disabled; Blob anonymous/shared-key access disabled; API ingress internal.
+- Azure API environment names confirm no Razorpay or Delhivery configuration is present. Production payment/shipping configuration and end-to-end validation remain outstanding.
+- Cloudflare dashboard still presents human verification in the cloud browser. No DNS/security/cache cutover was performed. Request manual verification in that same cloud browser before continuing.
+- Production final export/import, domain TLS and origin protection, checkout/OTP/webhook checks, and live cutover remain pending. Source remains authoritative; do not import the old rehearsal snapshot as final production data.
