@@ -3,18 +3,19 @@ import "dotenv/config";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
 import { AppModule } from "./app.module.js";
+import { migrationPreviewPolicy } from "./migration-preview.js";
 
 async function bootstrap() {
+  const preview = migrationPreviewPolicy();
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ logger: true, trustProxy: true, bodyLimit: 1024 * 1024 }),
     { rawBody: true },
   );
-  if (process.env.MIGRATION_READ_ONLY === "true") {
+  if (preview.restricted) {
     app.getHttpAdapter().getInstance().addHook("onRequest", async (request: { method: string; url: string }, reply: any) => {
-      const isPublicRead = ["GET", "HEAD"].includes(request.method) && /^\/v1\/(health|products|reviews\/products)(\/|\?|$)/.test(request.url);
-      if (!isPublicRead && request.method !== "OPTIONS") {
-        return reply.code(503).header("Cache-Control", "no-store").send({ message: "This preview is available for catalogue viewing only." });
+      if (!preview.allows(request.method, request.url)) {
+        return reply.code(503).header("Cache-Control", "no-store").send({ message: preview.message });
       }
     });
   }
@@ -29,4 +30,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
