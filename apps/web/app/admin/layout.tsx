@@ -1,10 +1,4 @@
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "HIDI Admin",
-  robots: { index: false, follow: false, nocache: true },
-};
-
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return children;
-}
+import type { Metadata } from 'next';
+import { AdminWorkspace } from '@/components/admin/admin-workspace';
+export const metadata: Metadata = { title: 'Admin | HIDI', robots: { index: false, follow: false } };
+export default function AdminLayout({ children }: { children: React.ReactNode }) { return <AdminWorkspace>{children}</AdminWorkspace>; }
