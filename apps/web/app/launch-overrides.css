@@ -65,6 +65,10 @@
     backdrop-filter: none !important;
   }
 
+  .site-header .utility-nav .desktop-only {
+    display: none !important;
+  }
+
   .mobile-nav-backdrop {
     position: fixed !important;
     inset: var(--hidi-menu-top, 0px) 0 0 !important;
