@@ -76,9 +76,26 @@ small { font-size: var(--type-meta); }
   line-height: 1.5;
 }
 .footer .footer-note { font-style: normal; }
-.newsletter { min-width: 0; }
-.newsletter input { min-width: 0; }
-.newsletter button { white-space: normal; }
+.footer .newsletter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  border-bottom: 0;
+}
+.footer .newsletter input {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  border-bottom: 1px solid rgba(255,243,232,.48);
+}
+.footer .newsletter button {
+  justify-self: start;
+  min-height: 44px;
+  padding: 4px 0;
+  white-space: normal;
+  text-align: left;
+}
 
 /* Larger copy may wrap; keep announcement content in normal flow. */
 .announcement {
