@@ -124,10 +124,10 @@
     padding: 4px 0 !important;
     border: 0 !important;
     color: var(--hidi-mulberry-deep, #461416) !important;
-    font-family: Georgia, "Times New Roman", serif !important;
-    font-size: clamp(1.25rem, 5.4vw, 1.5rem) !important;
+    font-family: var(--font-sans) !important;
+    font-size: 1.125rem !important;
     font-weight: 500 !important;
-    line-height: 1.08 !important;
+    line-height: 1.35 !important;
     letter-spacing: 0 !important;
   }
 
