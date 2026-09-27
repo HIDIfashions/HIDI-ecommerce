@@ -14,8 +14,8 @@
   align-items: center;
   justify-content: center;
   border: 1px solid #591d20;
-  font-family: var(--font-product);
-  font-size: 12px;
+  font-family: var(--font-sans);
+  font-size: var(--type-ui);
   font-weight: 600;
   letter-spacing: .02em;
   cursor: pointer;
@@ -41,7 +41,7 @@
   min-height: 18px;
   margin: 7px 0 0;
   color: #75695f;
-  font-size: 10px;
+  font-size: var(--type-meta);
   line-height: 1.4;
   text-align: center;
 }
@@ -96,14 +96,14 @@
 
   .mobilePrice span {
     color: #84786e;
-    font-size: 9px;
+    font-size: var(--type-meta);
     letter-spacing: .04em;
     text-transform: uppercase;
   }
 
   .mobilePrice strong {
-    font-family: var(--font-product);
-    font-size: 15px;
+    font-family: var(--font-sans);
+    font-size: var(--type-body);
     font-weight: 600;
     white-space: nowrap;
   }
@@ -143,8 +143,8 @@
     align-items: center;
     justify-content: center;
     border: 1px solid #591d20;
-    font-family: var(--font-product);
-    font-size: 11px;
+    font-family: var(--font-sans);
+    font-size: var(--type-meta);
     font-weight: 600;
     letter-spacing: .015em;
   }
@@ -190,16 +190,16 @@
 
 .fitGuideHeader span {
   color: #d5a24d;
-  font-family: var(--font-product);
-  font-size: 8px;
+  font-family: var(--font-sans);
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .14em;
 }
 
 .fitGuideHeader strong {
   color: #591d20;
-  font-family: var(--font-product);
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: var(--type-ui);
   font-weight: 600;
 }
 
@@ -215,7 +215,7 @@
   border: 0;
   background: transparent;
   color: #75675e;
-  font-size: 9px;
+  font-size: var(--type-ui);
   font-weight: 600;
   text-transform: uppercase;
   cursor: pointer;
@@ -241,8 +241,8 @@
   width: 100%;
   min-width: 520px;
   border-collapse: collapse;
-  font-family: var(--font-product);
-  font-size: 10px;
+  font-family: var(--font-sans);
+  font-size: var(--type-meta);
 }
 
 .fitTable th,
@@ -255,7 +255,7 @@
 
 .fitTable thead th {
   color: #7b6c63;
-  font-size: 8px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -279,7 +279,7 @@
 .fitNote {
   margin: 12px 0 0;
   color: #74685f;
-  font-size: 9px;
+  font-size: var(--type-meta);
   line-height: 1.55;
 }
 
@@ -292,15 +292,15 @@
 
 .fitPending strong {
   color: #591d20;
-  font-family: var(--font-product);
-  font-size: 11px;
+  font-family: var(--font-sans);
+  font-size: var(--type-meta);
   font-weight: 600;
 }
 
 .fitPending p {
   margin: 6px 0 0;
   color: #74685f;
-  font-size: 9px;
+  font-size: var(--type-body);
   line-height: 1.55;
 }
 
@@ -323,3 +323,6 @@
     padding: 9px 8px;
   }
 }
+
+
+.addButton, .buyButton, .mobileAdd, .mobileBuy { font-size: var(--type-ui); line-height: 1.4; }

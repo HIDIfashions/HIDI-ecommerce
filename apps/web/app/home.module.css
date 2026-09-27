@@ -46,7 +46,7 @@
 .eyebrow {
   margin: 0 0 14px;
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .18em;
   text-transform: uppercase;
@@ -63,11 +63,11 @@
 .heroContent h1 {
   max-width: 690px;
   margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(68px, 8vw, 126px);
+  font-family: var(--font-sans);
+  font-size: var(--type-hero);
   font-weight: 400;
-  line-height: .84;
-  letter-spacing: -.052em;
+  line-height: 1.2;
+  letter-spacing: -.02em;
   text-wrap: balance;
 }
 
@@ -75,7 +75,7 @@
   max-width: 470px;
   margin: 24px 0 0;
   color: rgba(255,255,255,.88);
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1.7;
 }
 
@@ -88,7 +88,7 @@
   align-items: center;
   gap: 8px;
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .11em;
   text-transform: uppercase;
@@ -111,7 +111,7 @@
   right: max(24px, calc((100vw - 1440px) / 2 + 32px));
   bottom: 25px;
   color: rgba(255,255,255,.62);
-  font-size: 8px;
+  font-size: var(--type-meta);
   letter-spacing: .15em;
 }
 
@@ -133,15 +133,15 @@
 .sectionHeader h2,
 .manifesto h2 {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-weight: 400;
-  letter-spacing: -.042em;
+  letter-spacing: -.02em;
 }
 
 .introLead h2 {
   max-width: 720px;
-  font-size: clamp(46px, 5vw, 70px);
-  line-height: .96;
+  font-size: var(--type-section);
+  line-height: 1.2;
 }
 
 .introCopy {
@@ -154,7 +154,7 @@
   max-width: 430px;
   margin: 0;
   color: var(--home-muted);
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1.75;
 }
 
@@ -191,8 +191,8 @@
 
 .principle > span {
   color: var(--home-gold);
-  font-family: var(--font-product);
-  font-size: 9px;
+  font-family: var(--font-sans);
+  font-size: var(--type-meta);
   font-weight: 600;
   letter-spacing: .08em;
 }
@@ -203,8 +203,8 @@
 }
 
 .principle strong {
-  font-family: var(--font-product);
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: var(--type-ui);
   font-weight: 600;
   line-height: 1.35;
 }
@@ -213,7 +213,7 @@
   max-width: 330px;
   margin: 0;
   color: #777873;
-  font-size: 11px;
+  font-size: var(--type-body);
   line-height: 1.65;
 }
 
@@ -233,8 +233,8 @@
 
 .editHeader h2 {
   max-width: 760px;
-  font-size: clamp(40px, 4.2vw, 58px);
-  line-height: .98;
+  font-size: var(--type-section);
+  line-height: 1.2;
 }
 
 .edits {
@@ -283,15 +283,15 @@
 }
 
 .editCopy small {
-  font-size: 8px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .17em;
 }
 
 .editCopy strong {
   max-width: 360px;
-  font-family: var(--font-display);
-  font-size: clamp(29px, 2.8vw, 44px);
+  font-family: var(--font-sans);
+  font-size: var(--type-subheading);
   font-weight: 400;
   line-height: 1;
   letter-spacing: -.032em;
@@ -302,7 +302,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -323,8 +323,8 @@
 
 .sectionHeader h2 {
   max-width: 720px;
-  font-size: clamp(42px, 4.8vw, 66px);
-  line-height: .96;
+  font-size: var(--type-section);
+  line-height: 1.2;
 }
 
 .sectionAside {
@@ -338,7 +338,7 @@
   max-width: 360px;
   margin: 0;
   color: var(--home-muted);
-  font-size: 12px;
+  font-size: var(--type-body);
   line-height: 1.65;
 }
 
@@ -379,11 +379,11 @@
   max-width: 760px;
   margin: 0;
   color: var(--home-brand);
-  font-family: var(--font-display);
-  font-size: clamp(38px, 4.3vw, 58px);
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 400;
-  line-height: .98;
-  letter-spacing: -.038em;
+  line-height: 1.2;
+  letter-spacing: -.02em;
 }
 
 .privilegeGrid {
@@ -419,8 +419,8 @@
 .privilegeIndex {
   padding-top: 4px;
   color: var(--home-gold);
-  font-family: var(--font-product);
-  font-size: 9px;
+  font-family: var(--font-sans);
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .12em;
 }
@@ -433,18 +433,18 @@
 .privilegeCopy h3 {
   margin: 0;
   color: var(--home-brand);
-  font-family: var(--font-display);
-  font-size: clamp(25px, 2.25vw, 34px);
+  font-family: var(--font-sans);
+  font-size: var(--type-title);
   font-weight: 400;
-  line-height: 1.02;
-  letter-spacing: -.025em;
+  line-height: 1.2;
+  letter-spacing: -.02em;
 }
 
 .privilegeCopy p {
   max-width: 340px;
   margin: 14px 0 0;
   color: #76665d;
-  font-size: 11px;
+  font-size: var(--type-body);
   line-height: 1.7;
 }
 
@@ -458,7 +458,7 @@
   border-bottom: 1px solid rgba(89,29,32,.42);
   color: var(--home-brand);
   font-family: var(--font-sans);
-  font-size: 8px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .11em;
   text-transform: uppercase;
@@ -483,7 +483,7 @@
 .privilegesFinePrint {
   margin: 14px 0 0;
   color: #95847a;
-  font-size: 8px;
+  font-size: var(--type-meta);
   line-height: 1.5;
 }
 
@@ -528,15 +528,15 @@
 
 .serviceItem strong {
   color: var(--home-brand);
-  font-family: var(--font-product);
-  font-size: 11px;
+  font-family: var(--font-sans);
+  font-size: var(--type-meta);
   font-weight: 600;
   line-height: 1.35;
 }
 
 .serviceItem span {
   color: #7b6a61;
-  font-size: 9px;
+  font-size: var(--type-meta);
   line-height: 1.5;
 }
 
@@ -639,14 +639,14 @@
 
   .heroContent h1 {
     max-width: 430px;
-    font-size: clamp(54px, 18vw, 80px);
-    line-height: .86;
+    font-size: var(--type-hero);
+    line-height: 1.2;
   }
 
   .heroIntro {
     max-width: 330px;
     margin-top: 18px;
-    font-size: 12px;
+    font-size: var(--type-body);
     line-height: 1.6;
   }
 
@@ -663,8 +663,8 @@
   }
 
   .introLead h2 {
-    font-size: clamp(40px, 12.5vw, 55px);
-    line-height: .97;
+    font-size: var(--type-section);
+    line-height: 1.2;
   }
 
   .introCopy {
@@ -672,7 +672,7 @@
   }
 
   .introCopy p {
-    font-size: 13px;
+    font-size: var(--type-body);
     line-height: 1.65;
   }
 
@@ -709,7 +709,7 @@
 
   .editHeader h2,
   .sectionHeader h2 {
-    font-size: clamp(36px, 10.5vw, 48px);
+    font-size: var(--type-section);
   }
 
   .edits {
@@ -733,7 +733,7 @@
   }
 
   .editCopy strong {
-    font-size: 34px;
+    font-size: var(--type-section);
   }
 
   .featured {
@@ -768,7 +768,7 @@
   }
 
   .privilegesHeader h2 {
-    font-size: clamp(36px, 10.5vw, 48px);
+    font-size: var(--type-section);
   }
 
   .privilegeCard {
@@ -777,12 +777,12 @@
   }
 
   .privilegeCopy h3 {
-    font-size: 27px;
+    font-size: var(--type-title);
   }
 
   .privilegeCopy p {
     margin-top: 10px;
-    font-size: 10.5px;
+    font-size: var(--type-body);
   }
 
   .privilegeCta {
@@ -828,3 +828,4 @@
     transition: none;
   }
 }
+

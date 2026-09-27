@@ -12,7 +12,7 @@
 }
 
 .authCard h2 {
-  font-size: 38px;
+  font-size: var(--type-section);
   margin-bottom: 10px;
 }
 
@@ -28,7 +28,7 @@
 }
 
 .authForm label {
-  font-size: 12px;
+  font-size: var(--type-ui);
   font-weight: 700;
 }
 
@@ -56,12 +56,12 @@
   cursor: pointer;
   justify-self: start;
   padding: 8px 0;
-  font-size: 12px;
+  font-size: var(--type-ui);
 }
 
 .authMessage {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-ui);
   margin: 16px 0 0;
 }
 
@@ -85,7 +85,7 @@
 
 .accountBar span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .accountBar strong {
@@ -120,13 +120,13 @@
 }
 
 .header h2 {
-  font-size: 26px;
+  font-size: var(--type-section);
   margin-bottom: 6px;
 }
 
 .meta {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-meta);
   margin: 0;
 }
 
@@ -140,7 +140,7 @@
 .status {
   border: 1px solid var(--line);
   padding: 6px 9px;
-  font-size: 10px;
+  font-size: var(--type-meta);
   letter-spacing: .1em;
   text-transform: uppercase;
 }
@@ -166,14 +166,14 @@
 }
 
 .name {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 16px;
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
 }
 
 .item p {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-body);
 }
 
 .footer {
@@ -184,7 +184,7 @@
   gap: 18px;
   align-items: center;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-ui);
 }
 
 .empty {
@@ -194,7 +194,7 @@
 }
 
 .empty h2 {
-  font-size: 34px;
+  font-size: var(--type-section);
   margin-bottom: 10px;
 }
 
@@ -240,14 +240,14 @@
 .header h2,
 .name,
 .empty h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-weight: 500;
 }
 
-.authCard h2 { font-size: 36px; }
-.header h2 { font-size: 25px; }
-.name { font-size: 18px; }
-.status { font-size: 12px; letter-spacing: .07em; }
+.authCard h2 { font-size: var(--type-section); }
+.header h2 { font-size: var(--type-section); }
+.name { font-size: var(--type-lead); }
+.status { font-size: var(--type-meta); letter-spacing: .07em; }
 
 .authForm label,
 .secondaryButton,
@@ -256,15 +256,15 @@
 .meta,
 .item p,
 .footer {
-  font-size: 12px;
+  font-size: var(--type-ui);
 }
 
 
 @media (max-width: 620px) {
   .authWrap { gap: 28px; }
   .authCard { padding: 20px 16px; }
-  .authCard h2 { font-size: 31px; }
-  .authForm input { min-height: 50px; font-size: 16px; }
+  .authCard h2 { font-size: var(--type-section); }
+  .authForm input { min-height: 50px; font-size: var(--type-body); }
   .authForm .button { width: 100%; min-height: 50px; }
   .secondaryButton { min-height: 44px; }
 
@@ -272,10 +272,10 @@
   .accountBar button { min-height: 42px; padding: 0; }
   .card { padding: 17px 14px; }
   .header { gap: 12px; padding-bottom: 14px; }
-  .header h2 { font-size: 23px; }
+  .header h2 { font-size: var(--type-section); }
   .item { grid-template-columns: 64px minmax(0, 1fr); gap: 11px; }
   .thumb { width: 64px; }
-  .name { font-size: 17px; overflow-wrap: anywhere; }
+  .name { font-size: var(--type-body); overflow-wrap: anywhere; }
   .footer { gap: 10px; }
   .footer :global(.button) { width: 100%; min-height: 48px; }
 }
@@ -297,15 +297,15 @@
 }
 
 .customerIdentity strong {
-  font-family: var(--font-display);
-  font-size: 22px;
+  font-family: var(--font-sans);
+  font-size: var(--type-title);
   font-weight: 500;
   letter-spacing: -.015em;
 }
 
 @media (max-width: 620px) {
   .customerIdentity strong {
-    font-size: 20px;
+    font-size: var(--type-title);
   }
 }
 
@@ -323,17 +323,17 @@
 .overviewIntro h2 {
   margin: 0;
   max-width: 760px;
-  font-family: var(--font-display);
-  font-size: clamp(36px, 4vw, 56px);
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 500;
-  line-height: 1;
-  letter-spacing: -.03em;
+  line-height: 1.2;
+  letter-spacing: -.02em;
 }
 
 .overviewIntro > p {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-body);
   line-height: 1.7;
 }
 
@@ -362,15 +362,15 @@
 
 .summaryCard > span {
   color: #a87837;
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .12em;
 }
 
 .summaryCard > strong {
   margin-top: 20px;
-  font-family: var(--font-display);
-  font-size: 38px;
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 500;
   line-height: 1;
   color: #4f1a1d;
@@ -380,7 +380,7 @@
   margin-top: auto;
   padding-top: 18px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-meta);
   line-height: 1.5;
 }
 
@@ -398,10 +398,10 @@
 
 .sectionTitle h2 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(30px, 3.2vw, 44px);
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 500;
-  letter-spacing: -.025em;
+  letter-spacing: -.02em;
 }
 
 .recentOrderGrid {
@@ -437,15 +437,15 @@
 
 .recentOrderCard span {
   color: #a87837;
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
 .recentOrderCard strong {
-  font-family: var(--font-display);
-  font-size: 20px;
+  font-family: var(--font-sans);
+  font-size: var(--type-title);
   font-weight: 500;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -453,7 +453,7 @@
 
 .recentOrderCard small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-meta);
   line-height: 1.5;
 }
 
@@ -492,11 +492,11 @@
 
   .summaryCard > strong {
     margin-top: 14px;
-    font-size: 32px;
+    font-size: var(--type-section);
   }
 
   .summaryCard > small {
-    font-size: 10px;
+    font-size: var(--type-meta);
   }
 
   .recentOrderCard {
@@ -561,7 +561,7 @@
   display: block;
   margin-bottom: 7px;
   color: #9b7442;
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -569,7 +569,7 @@
 
 .itemPrice {
   flex: 0 0 auto;
-  font-size: 13px;
+  font-size: var(--type-ui);
   font-variant-numeric: tabular-nums;
 }
 
@@ -591,7 +591,7 @@
 
 .reviewPrompt span {
   color: #80684f;
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .08em;
 }
@@ -608,7 +608,7 @@
   align-items: center;
   gap: 5px;
   color: #591d20;
-  font-size: 11px;
+  font-size: var(--type-meta);
   font-weight: 650;
 }
 
@@ -641,7 +641,7 @@
   }
 
   .itemPrice {
-    font-size: 12px;
+    font-size: var(--type-ui);
   }
 
   .reviewPrompt {
@@ -660,25 +660,26 @@
 /* Product names in My HIDI use the commerce type system. */
 .name,
 .recentOrderCard strong {
-  font-family: var(--font-product);
+  font-family: var(--font-sans);
   font-weight: 600;
   letter-spacing: -.012em;
 }
 
 .name {
-  font-size: 16px;
+  font-size: var(--type-body);
   line-height: 1.3;
 }
 
 .recentOrderCard strong {
-  font-size: 16px;
+  font-size: var(--type-body);
   line-height: 1.3;
 }
 
 @media (max-width: 620px) {
   .name,
   .recentOrderCard strong {
-    font-size: 14px;
+    font-size: var(--type-ui);
     line-height: 1.3;
   }
 }
+

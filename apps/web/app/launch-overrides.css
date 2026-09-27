@@ -128,8 +128,8 @@
     padding: 4px 0 !important;
     border: 0 !important;
     color: #fff6ed !important;
-    font-family: var(--font-sans) !important;
-    font-size: 1.125rem !important;
+    font-family: var(--font-sans);
+    font-size: var(--type-lead) !important;
     font-weight: 500 !important;
     line-height: 1.35 !important;
     letter-spacing: 0 !important;
@@ -148,8 +148,8 @@
     border: 1px solid rgba(255, 246, 237, 0.4) !important;
     border-radius: 999px !important;
     color: #fff6ed !important;
-    font-family: inherit !important;
-    font-size: 0.78rem !important;
+    font-family: var(--font-sans);
+    font-size: var(--type-meta) !important;
     line-height: 1 !important;
   }
 
@@ -176,7 +176,7 @@
     border-radius: 999px !important;
     background: rgba(255, 248, 239, 0.78) !important;
     color: var(--hidi-mulberry, #591d20) !important;
-    font-size: 0.86rem !important;
+    font-size: var(--type-ui) !important;
     font-weight: 700 !important;
     text-decoration: none !important;
   }
@@ -215,11 +215,11 @@
   }
 
   .collection-page .collection-header h1 {
-    font-family: var(--font-product);
-    font-size: clamp(32px, 3vw, 42px);
+    font-family: var(--font-sans);
+    font-size: var(--type-page);
     font-weight: 500;
-    line-height: 1.15;
-    letter-spacing: -.015em;
+    line-height: 1.2;
+    letter-spacing: -.02em;
     margin: 0 0 10px;
   }
 }
@@ -266,3 +266,4 @@
     font-size: clamp(12px, 1.05vw, 14px);
   }
 }
+

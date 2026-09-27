@@ -17,14 +17,14 @@
 
 .prompt > div:first-child span {
   color: #9b7442;
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .09em;
 }
 
 .prompt > div:first-child strong {
-  font-family: var(--font-display);
-  font-size: 17px;
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
   font-weight: 500;
   line-height: 1.25;
 }
@@ -66,7 +66,7 @@
   background: transparent;
   color: #591d20;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--type-ui);
   font-weight: 650;
   cursor: pointer;
 }
@@ -92,7 +92,7 @@
   align-items: center;
   gap: 6px;
   color: #51684e;
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: .08em;
 }
@@ -108,15 +108,15 @@
 }
 
 .completedCopy strong {
-  font-family: var(--font-display);
-  font-size: 17px;
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
   font-weight: 500;
 }
 
 .completedCopy p {
   margin: 5px 0 0;
   color: #6e6259;
-  font-size: 11px;
+  font-size: var(--type-body);
   line-height: 1.55;
 }
 
@@ -181,22 +181,22 @@
 .product p {
   margin: 0 0 6px;
   color: #a87837;
-  font-size: 9px;
+  font-size: var(--type-body);
   font-weight: 700;
   letter-spacing: .1em;
 }
 
 .product h2 {
   margin: 0 0 5px;
-  font-family: var(--font-display);
-  font-size: 26px;
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 500;
-  line-height: 1.08;
+  line-height: 1.2;
 }
 
 .product span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-meta);
 }
 
 .form {
@@ -216,7 +216,7 @@
   display: grid;
   gap: 8px;
   color: #43362f;
-  font-size: 12px;
+  font-size: var(--type-ui);
   font-weight: 650;
 }
 
@@ -254,7 +254,7 @@
 .form fieldset small,
 .form label small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--type-ui);
   font-weight: 400;
 }
 
@@ -266,7 +266,7 @@
   padding: 12px 13px;
   color: inherit;
   font: inherit;
-  font-size: 16px;
+  font-size: var(--type-body);
   outline: none;
   resize: vertical;
 }
@@ -279,7 +279,7 @@
 .guidance {
   margin: 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--type-meta);
   line-height: 1.55;
 }
 
@@ -289,7 +289,7 @@
   border: 1px solid #d9aaa5;
   background: #fff1ef;
   color: #873630;
-  font-size: 11px;
+  font-size: var(--type-meta);
 }
 
 .submit {
@@ -298,7 +298,7 @@
   background: #591d20;
   color: #fff8ef;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -345,7 +345,7 @@
   }
 
   .product h2 {
-    font-size: 21px;
+    font-size: var(--type-section);
   }
 
   .rating {
@@ -366,3 +366,4 @@
     width: 31px;
   }
 }
+

@@ -54,8 +54,8 @@
   background: transparent;
   color: var(--ink);
   padding: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 17px;
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
   outline: none;
 }
 
@@ -83,7 +83,7 @@
   width: min(800px, calc(100vw - 180px));
   margin: 14px auto 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .results {
@@ -112,8 +112,8 @@
 }
 
 .name {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 15px;
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
   line-height: 1.2;
   display: block;
 }
@@ -121,7 +121,7 @@
 .meta {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-meta);
 }
 
 .backdrop {
@@ -143,7 +143,7 @@
   .searchBox, .results, .helper, .empty { width: calc(100vw - 76px); }
   .results { grid-template-columns: 1fr; }
   .searchBox { height: 48px; }
-  .input { font-size: 16px; }
+  .input { font-size: var(--type-body); }
   .close { font-size: 28px; }
 }
 
@@ -151,20 +151,20 @@
 /* HIDI search typography phase 2 */
 .input {
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: var(--type-body);
   letter-spacing: -.01em;
 }
 
 .name {
-  font-family: var(--font-display);
-  font-size: 17px;
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
   font-weight: 500;
   line-height: 1.2;
 }
 
 .meta,
 .helper,
-.empty { font-size: 12px; }
+.empty { font-size: var(--type-meta); }
 
 
 @media (max-width: 640px) {
@@ -179,3 +179,4 @@
   .close { width: 42px; height: 42px; padding: 0; flex: 0 0 42px; }
   .backdrop { inset: 30px 0 0; }
 }
+
