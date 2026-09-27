@@ -12,6 +12,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:seed": "tsx prisma/seed.ts",
+    "media:r2:dry-run": "node scripts/migrate-product-media-to-r2.mjs",
+    "media:r2:migrate": "node scripts/migrate-product-media-to-r2.mjs --write",
     "test:customer-experience": "node --import tsx --test ../../tests/*.test.ts"
   },
   "dependencies": {
