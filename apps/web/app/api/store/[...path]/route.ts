@@ -33,6 +33,10 @@ async function proxy(
   if (authorization) headers.set("authorization", authorization);
   if (contentType) headers.set("content-type", contentType);
   if (accept) headers.set("accept", accept);
+  if (path.join("/") === "payments/razorpay/webhook") {
+    const signature = request.headers.get("x-razorpay-signature");
+    if (signature) headers.set("x-razorpay-signature", signature);
+  }
 
   const method = request.method.toUpperCase();
   const body = method === "GET" || method === "HEAD"

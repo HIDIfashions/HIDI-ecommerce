@@ -5,7 +5,7 @@ import {PrismaService} from '../../dist/prisma/prisma.service.js';
 const db=new PrismaService();const marker=`migration-${randomUUID()}`;const rollback=new Error('ROLLBACK_VALIDATION');
 try {
  await db.$connect();
- const products=await db.product.findMany({where:{status:'PUBLISHED'},include:{variants:{include:{inventory:true}},images:true}});
+ const products=await db.product.findMany({where:{status:'ACTIVE'},include:{variants:{include:{inventory:true}},images:true}});
  assert(products.length>0,'Imported published catalogue must be present');
  try {
   await db.$transaction(async tx=>{
@@ -24,5 +24,5 @@ try {
  }catch(e){if(e!==rollback)throw e;}
  assert.equal(await db.user.count({where:{id:{startsWith:marker}}}),0,'Synthetic validation rows must roll back');
  console.log(JSON.stringify({passed:true,publishedProducts:products.length,checks:['Prisma catalogue relations','nullable unique indexes','case-insensitive emails','case-sensitive identity IDs','wallet insert and SQL row lock','transaction rollback']}));
-}catch(e){console.error(JSON.stringify({failed:true,code:e.code??'ASSERTION',message:e.code?'Prisma integration check failed':e.message}));process.exitCode=1;}
+}catch(e){console.error(JSON.stringify({failed:true,code:e.code??'ASSERTION',detail:e.meta?.driverAdapterError?.cause,message:e.code && e.code!=='ERR_ASSERTION'?'Prisma integration check failed':e.message}));process.exitCode=1;}
 finally{await db.$disconnect();}

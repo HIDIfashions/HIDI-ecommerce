@@ -77,6 +77,8 @@ async function verify(data, cols, connection=pool) {
   console.log(JSON.stringify({verifiedTables:Object.keys(config).length,verifiedRows:total}));
 }
 async function bootstrap() {
+  const collation=(await pool.request().query("SELECT CAST(DATABASEPROPERTYEX(DB_NAME(),'Collation') AS NVARCHAR(128)) AS collation")).recordset[0].collation;
+  if(collation!=='Latin1_General_100_BIN2') throw new Error('Create the Azure SQL database with Latin1_General_100_BIN2 collation before applying this baseline');
   const text=await readFile(new URL(`../../prisma/migrations-sqlserver/${migrationName}/migration.sql`,import.meta.url),'utf8');
   const tableCount=(await pool.request().query('SELECT COUNT(*) AS n FROM sys.tables')).recordset[0].n;
   if(tableCount) throw new Error('Bootstrap requires an empty database');
@@ -143,6 +145,6 @@ try {
   else throw new Error('Expected bootstrap, import, verify, grant-runtime, or check');
 } catch(error) {
   // Driver errors can contain row values: log only code and our own safe validation messages.
-  console.error(JSON.stringify({failed:true,code:error.code??'VALIDATION',message:error.code?'Database operation failed':error.message}));
+  console.error(JSON.stringify({failed:true,code:error.code??'VALIDATION',number:error.number,line:error.lineNumber,message:process.argv[2]==='bootstrap'?error.message:error.code?'Database operation failed':error.message}));
   process.exitCode=1;
 } finally {await pool.close();}
