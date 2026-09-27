@@ -141,3 +141,9 @@ The user added DNS-only CNAME `azure-preview.thehidi.com` to the generated Web a
 - Attempt to list Key Vault secret metadata was denied with `ForbiddenByRbac`; the signed-in owner lacks a vault data-plane role. No grants were added and no secrets were read. Provider credential inventory is therefore unverified beyond the already inspected application settings.
 - Razorpay India merchant login is open in browser tab 18. A stale indexed Login action was rejected by automatic approval review as unselected Google authentication. A read-only DOM check established the actual India Login link; semantic navigation then opened the method-selection page without authenticating. Secure-form inspection later timed out, so merchant login requires a manual handoff. No provider keys were generated/rotated and no merchant/payment settings were changed.
 - Production gates still include provider credentials and test-mode checkout/shipping/webhooks, unresolved pre-existing frontend Quality Gate failures, production Cloudflare TLS/origin routing, and the final coherent export/import and coordinated cutover.
+
+## User-directed scope update: 2026-09-28 01:17 IST
+
+- User explicitly requested skipping Razorpay testing and stated Razorpay is used in test mode only. Do not request Razorpay login or run payment tests unless the user reopens that step. Do not switch Razorpay to live mode.
+- Razorpay test-mode status is user-reported; no merchant configuration or configured keys have been verified by this agent. Azure checkout remains disabled, and skipped payment validation must not be represented as a pass.
+- Continue next with Delhivery configuration, then remaining migration work. Delhivery One is open at its existing-account login; connected application settings inspected so far contain no Delhivery credentials.
