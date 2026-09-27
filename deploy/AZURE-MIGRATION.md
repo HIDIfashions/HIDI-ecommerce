@@ -147,3 +147,16 @@ The user added DNS-only CNAME `azure-preview.thehidi.com` to the generated Web a
 - User explicitly requested skipping Razorpay testing and stated Razorpay is used in test mode only. Do not request Razorpay login or run payment tests unless the user reopens that step. Do not switch Razorpay to live mode.
 - Razorpay test-mode status is user-reported; no merchant configuration or configured keys have been verified by this agent. Azure checkout remains disabled, and skipped payment validation must not be represented as a pass.
 - Continue next with Delhivery configuration, then remaining migration work. Delhivery One is open at its existing-account login; connected application settings inspected so far contain no Delhivery credentials.
+
+
+## Testing-domain move and latency check: 2026-09-28
+
+The user requested moving the testing domain `thidigk.thehidi.com` to Azure. This is a validation-domain switch, not a production database cutover. User updated the CNAME and TXT record in Cloudflare; public DNS verified the direct Azure Web FQDN and exact verification ID. Keep this managed-certificate CNAME DNS-only for issuance and renewal.
+
+Same-client sequential HTTP checks from Azure Cloud Shell (five samples per route): Vercel catalogue API total ms [2604,1747,1728,1700,1715], Azure [153,271,100,90,122]; Vercel Shop All HTML [2232,2006,2072,1961,1964], Azure [186,161,149,206,138]. Median API 1728 vs 122 ms; median HTML 2006 vs 161 ms. These are server HTTP timings from one location, not browser Core Web Vitals or capacity certification. Vercel direct API three samples 2478,1876,1866 ms localize much of the old delay to its upstream backend path; application/database attribution remains unprofiled.
+
+The first catalogue image is an unoptimized 1,991,424-byte PNG. Azure first request took 3319 ms, repeat requests 101 and 117 ms; do not attribute the first-request delay to a specific component without profiling. Responsive image variants and first-request media overhead remain performance follow-ups.
+
+Completed: Azure managed certificate `mc-cae-hidi-prod-thidigk-thehidi--4091` bound with SniEnabled. Both preview and testing hostnames remain bound. Web SITE_URL is `https://thidigk.thehidi.com`; MEDIA_PUBLIC_BASE_URL is `https://thidigk.thehidi.com/media`. API WEB_ORIGIN allows `https://thidigk.thehidi.com,https://azure-preview.thehidi.com`. Ready revisions `hidi-web--0000005` and `hidi-api--0000005` match latest; application images unchanged.
+
+Post-switch verification: TLS-valid HTTPS requests to /healthz, /api/store/health/ready, /api/store/products and /collections/all all returned 200. Products count 16, no x-vercel-id, validation noindex headers present, API private/no-store preserved. Three timed catalogue API requests took 117,179,292 ms; Shop All HTML 283,194,195 ms. Fresh browser navigation rendered the 16-style catalogue with images. Existing product records may retain the Azure preview media host; both hosts serve the same Azure Web and Blob media. Production root/www DNS and production database cutover remain pending. Razorpay testing remains skipped per user; checkout and payment writes still disabled by migration guard.
