@@ -112,6 +112,7 @@
     overscroll-behavior: contain !important;
     gap: 0 !important;
     margin: 0 !important;
+    border: 0 !important;
   }
 
   .mobile-nav-links a {
