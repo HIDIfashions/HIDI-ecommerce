@@ -107,14 +107,6 @@ export function Header() {
             aria-modal="true"
             role="dialog"
           >
-            <button className="mobile-nav-close" type="button" onClick={() => closeMenu(true)} aria-label="Close menu">
-              <X size={20} aria-hidden="true" />
-            </button>
-            <div className="mobile-nav-intro">
-              <span>HIDI</span>
-              <strong>Wear the feeling.</strong>
-              <p>Indian wear for work, everyday life and the moments in between.</p>
-            </div>
             <div className="mobile-nav-links">
               {mobileLinks.map(([label, href]) => (
                 <Link
