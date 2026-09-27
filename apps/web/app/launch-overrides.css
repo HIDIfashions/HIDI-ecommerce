@@ -65,66 +65,49 @@
     position: fixed !important;
     inset: 0 !important;
     z-index: 1090 !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
     width: 100% !important;
-    height: auto !important;
+    height: 100dvh !important;
     min-height: 100dvh !important;
     max-height: 100dvh !important;
-    overflow-y: auto !important;
+    overflow: hidden !important;
     background: var(--hidi-mulberry-mist, #fbf6f2) !important;
     color: var(--hidi-mulberry-deep, #461416) !important;
-    padding: calc(98px + env(safe-area-inset-top)) 18px max(34px, calc(26px + env(safe-area-inset-bottom))) !important;
+    padding: calc(184px + env(safe-area-inset-top)) 18px max(30px, calc(24px + env(safe-area-inset-bottom))) !important;
     box-shadow: 0 18px 42px rgba(70, 20, 22, 0.18) !important;
   }
 
-  .mobile-nav-close {
-    display: none !important;
-  }
-
+  .mobile-nav-close,
   .mobile-nav-intro {
-    margin: 0 0 14px !important;
-    padding: 0 0 14px !important;
-    border-bottom: 1px solid rgba(89, 29, 32, 0.14) !important;
-  }
-
-  .mobile-nav-intro span {
-    color: var(--hidi-mulberry-gold, #d5a24d) !important;
-    letter-spacing: 0.16em !important;
-  }
-
-  .mobile-nav-intro strong {
-    color: var(--hidi-mulberry, #591d20) !important;
-    font-size: 1.02rem !important;
-  }
-
-  .mobile-nav-intro p {
-    max-width: 28rem !important;
-    margin-top: 6px !important;
-    color: rgba(70, 20, 22, 0.72) !important;
-    font-size: 0.9rem !important;
-    line-height: 1.45 !important;
+    display: none !important;
   }
 
   .mobile-nav-links {
     display: grid !important;
+    flex: 0 0 auto !important;
     gap: 0 !important;
     margin: 0 !important;
   }
 
   .mobile-nav-links a {
     display: flex !important;
-    min-height: 49px !important;
+    min-height: 48px !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 16px !important;
-    padding: 6px 0 !important;
+    gap: 14px !important;
+    padding: 5px 0 !important;
     border-bottom: 1px solid rgba(89, 29, 32, 0.12) !important;
     color: var(--hidi-mulberry-deep, #461416) !important;
     font-family: Georgia, "Times New Roman", serif !important;
-    font-size: clamp(1.5rem, 6.4vw, 2rem) !important;
+    font-size: clamp(1.5rem, 6vw, 2rem) !important;
     font-weight: 500 !important;
     line-height: 1.08 !important;
     letter-spacing: 0 !important;
+  }
+
+  .mobile-nav-links a:first-child {
+    border-top: 1px solid rgba(89, 29, 32, 0.12) !important;
   }
 
   .mobile-nav-links a span {
@@ -144,11 +127,13 @@
   .mobile-nav-account {
     position: static !important;
     display: grid !important;
+    flex: 0 0 auto !important;
     grid-template-columns: 1fr 1fr !important;
     gap: 10px !important;
-    margin: 18px 0 0 !important;
-    padding: 16px 0 0 !important;
+    margin: auto 0 0 !important;
+    padding: 14px 0 0 !important;
     border-top: 1px solid rgba(89, 29, 32, 0.14) !important;
+    background: transparent !important;
   }
 
   .mobile-nav-account a {
@@ -169,12 +154,13 @@
 
 @media (max-width: 389px) {
   .mobile-nav-panel {
+    padding-top: calc(166px + env(safe-area-inset-top)) !important;
     padding-inline: 16px !important;
   }
 
   .mobile-nav-links a {
-    min-height: 46px !important;
-    font-size: clamp(1.42rem, 6vw, 1.8rem) !important;
+    min-height: 44px !important;
+    font-size: clamp(1.38rem, 5.8vw, 1.78rem) !important;
   }
 
   .mobile-nav-account {
