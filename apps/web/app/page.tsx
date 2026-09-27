@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -81,9 +82,41 @@ const services = [
   },
 ] as const;
 
-export default async function Home() {
-  const featured = await getFeaturedProducts(4);
+function FeaturedProductsLoading() {
+  return (
+    <div className={styles.productGrid} role="status" aria-label="Loading featured products" aria-busy="true">
+      {[0, 1, 2, 3].map((index) => (
+        <div key={index} aria-hidden="true">
+          <div style={{ aspectRatio: "3 / 4", background: "var(--home-soft)" }} />
+          <div style={{ height: 112 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
+async function FeaturedProducts() {
+  let featured: Awaited<ReturnType<typeof getFeaturedProducts>>;
+  try {
+    featured = await getFeaturedProducts(4);
+  } catch {
+    return (
+      <p role="status">
+        We couldn&apos;t load the HIDI Edit. Please refresh or{" "}
+        <Link href="/collections/all" className={styles.textLink}>browse the collection</Link>.
+      </p>
+    );
+  }
+  return (
+    <div className={styles.productGrid}>
+      {featured.map((product) => (
+        <ProductCard key={product.slug} product={product} />
+      ))}
+    </div>
+  );
+}
+
+export default function Home() {
   const whatsapp = (process.env.NEXT_PUBLIC_HIDI_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
   const whatsappHref = whatsapp
     ? "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent("Hi HIDI, I would like help choosing a style.")
@@ -203,11 +236,9 @@ export default async function Home() {
           </Link>
         </header>
 
-        <div className={styles.productGrid}>
-          {featured.map((product) => (
-            <ProductCard key={product.slug} product={product} />
-          ))}
-        </div>
+        <Suspense fallback={<FeaturedProductsLoading />}>
+          <FeaturedProducts />
+        </Suspense>
       </section>
 
       <section className={styles.serviceStrip} aria-label="HIDI shopping services">

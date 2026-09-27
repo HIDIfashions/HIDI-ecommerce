@@ -1,3 +1,5 @@
+import { PublicReadError, readPublicJson } from "./public-read";
+
 const LOCAL_API_URL = "http://localhost:4000/v1";
 
 function normalizeApiUrl(value: string | undefined) {
@@ -76,43 +78,28 @@ export type ApiProduct = {
   reviewCount?: number;
 };
 
-async function fetchPublicList(url: URL | string): Promise<ApiProduct[]> {
-  const target = String(url);
-  let lastError: unknown;
+type PublicListOptions = { strict?: boolean; timeoutMs?: number };
 
-  // The root dev command starts Next and Nest in parallel. Nest performs a
-  // full TypeScript build before opening port 4000, so the first storefront
-  // request can arrive several seconds earlier. Do not turn that startup race
-  // into an empty catalogue. Development gets a longer readiness window;
-  // production keeps retries short so genuine upstream failures fail quickly.
-  const maxAttempts = process.env.NODE_ENV === "production" ? 3 : 15;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    try {
-      const response = await fetch(target, { cache: "no-store" });
-      if (response.ok) {
-        const body = await response.json();
-        return Array.isArray(body) ? body : [];
-      }
-
-      lastError = new Error(`HIDI API returned ${response.status} for ${target}`);
-
-      // A client error will not be fixed by waiting for API readiness.
-      if (response.status >= 400 && response.status < 500) break;
-    } catch (error) {
-      lastError = error;
-    }
-
-    if (attempt < maxAttempts - 1) {
-      const delayMs = process.env.NODE_ENV === "production"
-        ? 300 * (attempt + 1)
-        : Math.min(350 * (attempt + 1), 1500);
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
+async function fetchPublicList(
+  url: URL | string,
+  options: PublicListOptions = {},
+): Promise<ApiProduct[]> {
+  const development = process.env.NODE_ENV !== "production";
+  try {
+    return await readPublicJson<ApiProduct[]>(url, {
+      totalTimeoutMs: options.timeoutMs ?? (development ? 25000 : 8000),
+      attemptTimeoutMs: 4000,
+      maxAttempts: development ? 15 : 2,
+      retryDelayMs: development ? 350 : 200,
+      validate: Array.isArray,
+    });
+  } catch (error) {
+    console.error("[HIDI catalogue] Unable to load products:", error);
+    // Preserve existing callers; streamed homepage/related sections explicitly
+    // distinguish an upstream failure from a successful empty catalogue.
+    if (options.strict) throw error;
+    return [];
   }
-
-  console.error("[HIDI catalogue] Unable to load products:", lastError);
-  return [];
 }
 
 export async function getProducts(category?: string): Promise<ApiProduct[]> {
@@ -125,7 +112,7 @@ export async function getFeaturedProducts(limit = 4): Promise<ApiProduct[]> {
   const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 8) : 4;
   const url = new URL(`${API_URL}/products/featured`);
   url.searchParams.set("limit", String(safeLimit));
-  return fetchPublicList(url);
+  return fetchPublicList(url, { strict: true });
 }
 
 export async function getBestSellers(limit = 8): Promise<ApiProduct[]> {
@@ -139,13 +126,24 @@ export async function getRelatedProducts(slug: string, limit = 4): Promise<ApiPr
   const url = new URL(`${API_URL}/products/${encodeURIComponent(slug)}/related`);
   url.searchParams.set("limit", String(safeLimit));
 
-  const related = await fetchPublicList(url);
-  if (related.length > 0) return related.slice(0, safeLimit);
+  const budgetMs = process.env.NODE_ENV === "production" ? 8000 : 25000;
+  const startedAt = performance.now();
+  try {
+    const related = await fetchPublicList(url, { strict: true, timeoutMs: budgetMs });
+    if (related.length > 0) return related.slice(0, safeLimit);
+  } catch (error) {
+    // A missing endpoint can use the legacy fallback. An outage/rate limit must
+    // not trigger a second expensive query against the same failing service.
+    if (!(error instanceof PublicReadError) || error.status !== 404) return [];
+  }
 
-  // Keep the PDP recommendation section visible even if the dedicated related
-  // endpoint is temporarily unavailable or the current product has no direct
-  // category/collection matches.
-  const catalogue = await getProducts();
+  const remainingMs = Math.floor(budgetMs - (performance.now() - startedAt));
+  if (remainingMs <= 0) return [];
+  const fallbackUrl = new URL(`${API_URL}/products`);
+  // One extra card allows the current product to be excluded without loading
+  // the entire catalogue. The API controller passes this bound to Prisma.
+  fallbackUrl.searchParams.set("limit", String(safeLimit + 1));
+  const catalogue = await fetchPublicList(fallbackUrl, { timeoutMs: remainingMs });
   return catalogue
     .filter((product) => product.slug !== slug)
     .slice(0, safeLimit);
