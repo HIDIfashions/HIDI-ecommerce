@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Heart, Menu, UserRound, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CartLink } from "./cart-link";
 import { HeaderSearch } from "./header-search";
 import iconStyles from "./header-icons.module.css";
@@ -20,6 +20,7 @@ const mobileLinks = [
 export function Header() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuPanelRef = useRef<HTMLElement>(null);
 
@@ -29,6 +30,39 @@ export function Header() {
       window.requestAnimationFrame(() => menuButtonRef.current?.focus({ preventScroll: true }));
     }
   }
+
+  // Measure the sticky header before the drawer paints; never guess its height.
+  useLayoutEffect(() => {
+    if (!menuOpen) return;
+    const header = headerRef.current;
+    if (!header) return;
+
+    const updatePosition = () => {
+      if (window.innerWidth > 1000) {
+        setMenuOpen(false);
+        return;
+      }
+      header.style.setProperty(
+        "--hidi-menu-top",
+        `${Math.max(0, header.getBoundingClientRect().bottom)}px`,
+      );
+    };
+
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(header);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, { passive: true });
+    window.visualViewport?.addEventListener("resize", updatePosition);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      header.style.removeProperty("--hidi-menu-top");
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -54,7 +88,7 @@ export function Header() {
   }, [menuOpen]);
 
   return (
-    <header className="site-header">
+    <header ref={headerRef} className="site-header">
       <div className="header-inner">
         <button
           ref={menuButtonRef}
