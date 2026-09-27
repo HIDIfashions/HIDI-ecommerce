@@ -21,6 +21,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
+      - name: Test storefront, SEO, responsive media and customer safeguards
+        run: node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
       - run: pnpm --filter @hidi/api test:customer-experience
       - run: pnpm --filter @hidi/api build
       - name: Package exact source and original public assets

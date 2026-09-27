@@ -214,13 +214,16 @@ test("forms and utility controls expose assistive status and labels", () => {
   const newsletter = source("components/newsletter-signup.tsx");
   const search = source("components/header-search.tsx");
   const productPage = source("app/products/[slug]/page.tsx");
+  const delivery = source("components/delivery-check.tsx");
   const collectionCss = source("components/collection-browser.module.css");
 
   assert.match(newsletter, /aria-describedby="newsletter-status"/);
   assert.match(newsletter, /role=\{error \? "alert" : "status"\}/);
   assert.match(search, /role="status"/);
-  assert.match(productPage, /aria-label="Delivery PIN code"/);
-  assert.match(productPage, /aria-label="Check delivery PIN code"/);
+  assert.match(productPage, /<DeliveryCheck/);
+  assert.match(delivery, /aria-label="Delivery PIN code"/);
+  assert.match(delivery, /aria-label="Check delivery PIN code"/);
+  assert.match(delivery, /role="status"/);
   assert.match(collectionCss, /min-height: 32px/);
   assert.match(collectionCss, /width: 18px/);
   assert.match(collectionCss, /height: 18px/);
@@ -263,10 +266,10 @@ test("product and collection pages publish search metadata and structured data",
   assert.match(productPage, /generateMetadata/);
   assert.match(productPage, /alternates: \{ canonical \}/);
   assert.match(productPage, /"@type": "Product"/);
-  assert.match(productPage, /"@type": "AggregateOffer"/);
+  assert.match(productPage, /offers: productOffers\(product, canonicalUrl\)/);
   assert.match(productPage, /"@type": "BreadcrumbList"/);
   assert.match(productPage, /aggregateRating/);
-  assert.match(productPage, /https:\/\/schema\.org\/InStock/);
+  assert.match(source("lib/seo.ts"), /https:\/\/schema\.org\/InStock/);
   assert.match(productPage, /cache\(getProduct\)/);
 
   assert.match(collectionPage, /generateMetadata/);
@@ -298,7 +301,9 @@ test("catalogue cards share media observers instead of creating one per card", (
   assert.match(media, /mediaEnvironmentSubscribers/);
   assert.match(media, /cardVisibilityObserver/);
   assert.match(media, /observeCardVisibility\(node, setVisible\)/);
-  assert.doesNotMatch(media, /const observer = typeof IntersectionObserver/);
+  // Video playback has its own pause observer; photo cards share one observer.
+  const gallery = media.slice(media.indexOf("function Gallery("));
+  assert.doesNotMatch(gallery, /new IntersectionObserver/);
 });
 
 test("collection LCP prioritizes only the leading product media", () => {
@@ -309,7 +314,8 @@ test("collection LCP prioritizes only the leading product media", () => {
   assert.match(browser, /priorityMedia=\{index < 2\}/);
   assert.match(card, /priority=\{priorityMedia\}/);
   assert.match(media, /priority=\{priority && index === 0\}/);
-  assert.match(media, /loading=\{priority \? undefined : "lazy"\}/);
+  assert.match(media, /loading=\{priority \? "eager" : "lazy"\}/);
+  assert.match(media, /fetchPriority=\{priority \? "high" : undefined\}/);
 });
 
 test("homepage requests only a bounded featured catalogue payload", () => {
@@ -643,8 +649,11 @@ test("HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and war
   assert.equal(add.color, "#fff8ef");
 
   const buy = cssRule("components/product-card.module.css", ".buyButton");
-  assert.equal(buy.background, "#fffaf5");
-  assert.equal(buy.color, "var(--card-brand)");
+  assert.equal(buy.background, "transparent");
+  assert.equal(buy.color, "#6f5f56");
+  const buyHover = cssRule("components/product-card.module.css", ".buyButton:hover:not(:disabled)");
+  assert.equal(buyHover.background, "#fffaf5");
+  assert.equal(buyHover.color, "var(--card-brand)");
 
   const filterCount = cssRule("components/collection-browser.module.css", ".filterCount");
   assert.equal(filterCount.background, "var(--hidi-mulberry-clay, #591d20)");
@@ -739,13 +748,13 @@ test("checkout PIN helper is advisory, sanitized and preserves editable delivery
   assert.match(controller, /TOO_MANY_REQUESTS/);
 });
 
-test("bag and checkout show complimentary shipping consistently above the threshold", () => {
+test("bag and checkout include the advertised complimentary-shipping threshold", () => {
   const cart = source("components/cart-client.tsx");
   const checkout = source("components/checkout-client.tsx");
 
-  assert.match(cart, /complimentaryShipping = cart\.subtotalPaise > 149900/);
+  assert.match(cart, /complimentaryShipping = cart\.subtotalPaise >= 149900/);
   assert.match(cart, /"Complimentary" : "Calculated at checkout"/);
-  assert.match(checkout, /complimentaryShipping = gross > 149900/);
+  assert.match(checkout, /complimentaryShipping = gross >= 149900/);
   assert.match(checkout, /<strong>Complimentary<\/strong>/);
 });
 
@@ -803,8 +812,8 @@ test("HIDI Fit only presents verified garment measurements", () => {
 
 test("WhatsApp ordering uses the recognisable WhatsApp mark", () => {
   const card = source("components/product-card.tsx");
-  assert.match(card, /WhatsAppIcon size=\{16\} className=\{styles\.whatsappIcon\}/);
-  assert.match(card, /Order on WhatsApp/);
+  assert.match(card, /WhatsAppIcon size=\{17\} className=\{styles\.whatsappIcon\}/);
+  assert.match(card, /> WhatsApp/);
 
   const css = cssRule("components/product-card.module.css", ".whatsappIcon");
   assert.equal(css.color, "#25d366");
@@ -838,7 +847,8 @@ test("mobile modal CSS is a bounded bottom sheet with safe-area space and readab
   assert.equal(modal.inset, "auto 0 0");
   assert.equal(modal["max-height"], "92dvh");
   assert.match(modal.padding, /env\(safe-area-inset-bottom\)/);
-  assert.ok(parseFloat(cssRule(file, ".modal select", mobile)["font-size"]) >= 16);
+  assert.equal(cssRule(file, ".modal select", mobile)["font-size"], "var(--type-body)");
+  assert.equal(cssRule("app/typography.css", ":root")["--type-body"], "1rem");
 });
 
 test("modal actions retain usable target sizes, focus outlines and reduced-motion styles", () => {
