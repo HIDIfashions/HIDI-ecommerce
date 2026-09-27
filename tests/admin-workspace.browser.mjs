@@ -11,7 +11,7 @@ const output = resolve('test-results/admin-workspace'); await mkdir(output, { re
 const upstreamRequests = [];
 const upstream = createServer((req, res) => { upstreamRequests.push({ url: req.url, authorization: req.headers.authorization }); res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ message: 'Test upstream: invalid staff token' })); });
 await new Promise(resolve => upstream.listen(upstreamPort, '127.0.0.1', resolve));
-const server = spawn(process.execPath, ['apps/web/node_modules/next/dist/bin/next', 'start', '-p', String(port)], { env: { ...process.env, API_URL: `http://127.0.0.1:${upstreamPort}/v1`, NODE_ENV: 'production' }, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [resolve('apps/web/node_modules/next/dist/bin/next'), 'start', '-p', String(port)], { cwd: resolve('apps/web'), env: { ...process.env, API_URL: `http://127.0.0.1:${upstreamPort}/v1`, NODE_ENV: 'production' }, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = ''; server.stdout.on('data', b => { log += b; }); server.stderr.on('data', b => { log += b; });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let browser; let passes = 0;
@@ -49,7 +49,7 @@ async function waitText(page, text) { await page.getByText(text, { exact: false 
 async function noOverflow(page) { const sizes = await page.evaluate(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth })); assert(sizes.scroll <= sizes.viewport + 1, JSON.stringify(sizes)); }
 try {
   let ready = false;
-  for (let i = 0; i < 90; i++) { try { const r = await fetch(base + '/admin'); if (r.ok) { ready = true; break; } } catch {} await sleep(1000); }
+  for (let i = 0; i < 90; i++) { if (server.exitCode !== null) throw new Error('Next.js exited: ' + log.slice(-2000)); try { const r = await fetch(base + '/admin'); if (r.ok) { ready = true; break; } } catch {} await sleep(1000); }
   assert(ready, 'Next.js did not start: ' + log.slice(-2000));
   const noAuth = await fetch(base + '/api/admin/dashboard/overview'); assert.equal(noAuth.status, 401); assert.match(noAuth.headers.get('cache-control'), /private.*no-store/);
   const badToken = await fetch(base + '/api/admin/dashboard/overview?from=2020-01-01&to=2020-01-01&unexpected=drop', { headers: { Cookie: 'hidi_admin_access=ci-invalid-token' } });
