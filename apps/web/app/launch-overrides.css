@@ -223,3 +223,39 @@
     margin: 0 0 10px;
   }
 }
+
+/* Size the full brand lockup so its tagline stays legible. */
+.site-header .wordmark {
+  flex: none;
+  width: 176px;
+  height: 92px;
+  line-height: 0;
+}
+
+.site-header .wordmark img {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  object-fit: contain;
+}
+
+@media (min-width: 1001px) {
+  .site-header .header-inner {
+    height: 104px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .site-header .wordmark {
+    width: 112px;
+    height: 58px;
+  }
+}
+
+@media (max-width: 389px) {
+  .site-header .wordmark {
+    width: 104px;
+    height: 54px;
+  }
+}
