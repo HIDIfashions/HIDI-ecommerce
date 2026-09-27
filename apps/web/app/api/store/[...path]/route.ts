@@ -67,7 +67,7 @@ async function proxy(
 
     return new Response(text, {
       status: response.status,
-      headers: { "content-type": responseType || "application/json" },
+      headers: { "content-type": responseType || "application/json", "Cache-Control": "private, no-store" },
     });
   } catch {
     return NextResponse.json(
@@ -82,3 +82,4 @@ export const POST = proxy;
 export const PATCH = proxy;
 export const PUT = proxy;
 export const DELETE = proxy;
+

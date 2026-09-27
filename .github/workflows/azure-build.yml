@@ -30,3 +30,35 @@ jobs:
           name: hidi-azure-source
           path: hidi-azure-source.tar.gz
           retention-days: 7
+  containers:
+    needs: source-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Build and push immutable application image
+        env:
+          HIDI_APP: ${{ matrix.app }}
+        run: |
+          az acr login --name acrhidiprod0927
+          SUPABASE_URL=$(jq -r .SUPABASE_URL deploy/public-auth.json)
+          SUPABASE_PUBLISHABLE_KEY=$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)
+          docker build -f "deploy/Dockerfile.$HIDI_APP" \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="$SUPABASE_URL" \
+            --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --build-arg NEXT_PUBLIC_API_URL=https://www.thehidi.com/api/store \
+            --build-arg API_URL=https://hidi-ecommerce-api-96rn-beige.vercel.app/v1 \
+            -t "acrhidiprod0927.azurecr.io/hidi-$HIDI_APP:$GITHUB_SHA" .
+          docker push "acrhidiprod0927.azurecr.io/hidi-$HIDI_APP:$GITHUB_SHA"
