@@ -1,0 +1,93 @@
+/* Shared storefront type scale. Use these roles instead of page-specific sizes.
+   Keep the approved header's system sans stack; the SVG brand mark is artwork. */
+:root {
+  --font-sans: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  --font-display: var(--font-sans);
+  --font-product: var(--font-sans);
+  --type-meta: .75rem;
+  --type-ui: .875rem;
+  --type-body: 1rem;
+  --type-lead: 1.125rem;
+  --type-title: 1.25rem;
+  --type-subheading: 1.5rem;
+  --type-section: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+  --type-page: clamp(1.75rem, 1.5rem + 1.25vw, 2.5rem);
+  --type-hero: clamp(2.5rem, 1.75rem + 3vw, 4.5rem);
+  --text-xs: var(--type-meta);
+  --text-sm: var(--type-ui);
+  --text-base: var(--type-body);
+  --text-md: var(--type-lead);
+  --text-lg: var(--type-title);
+  --text-xl: var(--type-subheading);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  line-height: 1.6;
+}
+
+button, input, select, textarea {
+  font-family: var(--font-sans);
+}
+
+/* Text fields remain readable and do not trigger focus zoom on mobile Safari. */
+body input:not([type="checkbox"]):not([type="radio"]),
+body select,
+body textarea {
+  font-size: var(--type-body) !important;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+h1 { font-size: var(--type-page); }
+h2 { font-size: var(--type-section); }
+h3 { font-size: var(--type-title); }
+h4, h5, h6 { font-size: var(--type-lead); }
+small { font-size: var(--type-meta); }
+
+.button, .text-link, .size-row-title, summary {
+  font-size: var(--type-ui);
+  line-height: 1.4;
+}
+
+.button { white-space: normal; text-align: center; }
+.eyebrow, .breadcrumbs, .fine-print { font-size: var(--type-meta); }
+
+.footer { font-family: var(--font-sans); }
+.footer h3, .footer-grid a, .newsletter button {
+  font-size: var(--type-ui);
+  line-height: 1.5;
+}
+.footer p { font-size: var(--type-body); line-height: 1.6; }
+.footer .fine-print, .footer-bottom, .footer .footer-small, .footer .footer-motto {
+  font-size: var(--type-meta);
+  line-height: 1.5;
+}
+.footer .footer-note { font-style: normal; }
+.newsletter { min-width: 0; }
+.newsletter input { min-width: 0; }
+.newsletter button { white-space: normal; }
+
+/* Larger copy may wrap; keep announcement content in normal flow. */
+.announcement {
+  font-size: var(--type-meta);
+  line-height: 1.4;
+  min-height: 26px;
+  height: auto;
+}
+
+@media (max-width: 1000px) {
+  .mobile-nav-account a { font-size: var(--type-ui) !important; }
+}
+
+@media (max-width: 620px) {
+  .announcement { white-space: normal; padding-block: 6px; }
+  .announcement span:first-child { white-space: normal; }
+}

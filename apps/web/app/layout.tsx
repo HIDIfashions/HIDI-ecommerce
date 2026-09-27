@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./launch-overrides.css";
+import "./typography.css";
 import { SiteShell } from "@/components/site-shell";
 import { absoluteUrl, getSiteUrl, safeJsonLd } from "@/lib/site-url";
 
@@ -92,3 +93,4 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
+
