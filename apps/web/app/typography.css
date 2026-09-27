@@ -31,6 +31,8 @@ button, input, select, textarea {
   font-family: var(--font-sans);
 }
 
+button { font-size: var(--type-ui); }
+
 /* Text fields remain readable and do not trigger focus zoom on mobile Safari. */
 body input:not([type="checkbox"]):not([type="radio"]),
 body select,
@@ -65,7 +67,10 @@ small { font-size: var(--type-meta); }
   font-size: var(--type-ui);
   line-height: 1.5;
 }
-.footer p { font-size: var(--type-body); line-height: 1.6; }
+.footer .footer-grid p:not(.footer-small):not(.footer-motto) {
+  font-size: var(--type-body);
+  line-height: 1.6;
+}
 .footer .fine-print, .footer-bottom, .footer .footer-small, .footer .footer-motto {
   font-size: var(--type-meta);
   line-height: 1.5;

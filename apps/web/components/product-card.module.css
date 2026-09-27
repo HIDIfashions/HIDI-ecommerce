@@ -25,7 +25,9 @@
 }
 
 .card button {
-  font: inherit;
+  font-family: var(--font-sans);
+  font-size: var(--type-ui);
+  line-height: 1.4;
 }
 
 .card :is(a, button):focus-visible {
@@ -874,3 +876,6 @@
   }
 }
 
+/* Product names and prices share the same scale on every viewport. */
+.card .name, .card .priceRow { font-size: var(--type-ui); }
+.card .mobileQuickAdd { width: auto; max-width: calc(100% - 20px); padding: 8px 12px; letter-spacing: .04em; }

@@ -324,3 +324,5 @@
   }
 }
 
+
+.addButton, .buyButton, .mobileAdd, .mobileBuy { font-size: var(--type-ui); line-height: 1.4; }
