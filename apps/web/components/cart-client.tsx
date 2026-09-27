@@ -64,6 +64,7 @@ export function CartClient() {
   const [busy, setBusy] = useState("");
 
   async function load() {
+    setError("");
     try {
       const response = await fetch(`${API}/carts/${getCartSession()}`);
       const data = await response.json();
@@ -95,7 +96,13 @@ export function CartClient() {
     finally { setBusy(""); }
   }
 
-  if (!cart) return <p className="muted">Loading your bag…</p>;
+  if (!cart) return error ? (
+    <div className="empty-state">
+      <h2>We couldn’t load your bag.</h2>
+      <p className="form-error" role="alert">{error}</p>
+      <button className="button button-dark" type="button" onClick={() => void load()}>Try again</button>
+    </div>
+  ) : <p className="muted" role="status">Loading your bag…</p>;
   if (cart.items.length === 0) return <div className="empty-state"><h2>Your bag is waiting.</h2><p>Find something you love from the latest HIDI edit.</p><Link className="button button-dark" href="/collections/new-arrivals">Browse new arrivals</Link></div>;
 
   const groups = groupCartItems(cart.items);
