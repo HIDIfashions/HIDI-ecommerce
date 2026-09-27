@@ -6,8 +6,12 @@ export class ProductsController {
   constructor(private readonly products: ProductsService) {}
 
   @Get()
-  list(@Query("category") category?: string) {
-    return this.products.listPublished(category);
+  list(@Query("category") category?: string, @Query("limit") rawLimit?: string) {
+    const parsedLimit = rawLimit === undefined ? undefined : Number(rawLimit);
+    const limit = parsedLimit !== undefined && Number.isInteger(parsedLimit)
+      ? Math.min(Math.max(parsedLimit, 1), 24)
+      : undefined;
+    return this.products.listPublished(category, limit);
   }
 
   @Get("featured")

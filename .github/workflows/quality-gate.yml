@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/whatsapp-chatbot
+      - feature/premium-storefront-v1
 
 permissions:
   contents: read
@@ -29,6 +30,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Run catalogue performance regression tests
+        run: node --experimental-strip-types --test tests/catalogue-performance.test.mjs
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
