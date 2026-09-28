@@ -23,9 +23,11 @@ const products = Array.from({ length: 4 }, (_, i) => ({
 const requests = [], results = [], errors = [];
 const upstream = createServer((req, res) => {
   requests.push({ method: req.method, url: req.url });
-  const allowed = req.method === "GET" && /^\/v1\/products(?:\/featured)?(?:\?|$)/.test(req.url || "");
-  res.writeHead(allowed ? 200 : 404, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(allowed ? products : { message: "Unexpected isolated fixture request" }));
+  const catalogue = req.method === "GET" && /^\/v1\/products(?:\/featured)?(?:\?|$)/.test(req.url || "");
+  const cart = req.method === "GET" && /^\/v1\/carts\/[\w-]+$/.test(req.url || "");
+  const data = catalogue ? products : cart ? { items: [], itemCount: 0 } : { message: "Unexpected isolated fixture request" };
+  res.writeHead(catalogue || cart ? 200 : 404, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data));
 });
 await new Promise((done, reject) => { upstream.once("error", reject); upstream.listen(apiPort, "127.0.0.1", done); });
 const server = spawn(process.execPath, [
@@ -35,7 +37,7 @@ const server = spawn(process.execPath, [
   env: { ...process.env, NODE_ENV: "production", API_URL: `http://127.0.0.1:${apiPort}/v1` },
   stdio: ["ignore", "pipe", "pipe"],
 });
-let serverLog = "", startError, browser;
+let serverLog = "", startError, browser, page;
 server.on("error", error => { startError = error; });
 server.stdout.on("data", data => { serverLog += data; });
 server.stderr.on("data", data => { serverLog += data; });
@@ -58,12 +60,15 @@ try {
     const url = new URL(route.request().url());
     return url.origin === base ? route.continue() : route.abort();
   });
-  const page = await context.newPage();
+  page = await context.newPage();
   page.on("pageerror", error => errors.push(error.message));
   for (const width of [390, 768, 1024, 1440, 1846]) {
     await page.setViewportSize({ width, height: 1000 });
-    await page.goto(base, { waitUntil: "networkidle" });
+    // Readiness is the rendered page, not global network silence: the real
+    // storefront may prefetch routes and lazily load gallery images.
+    await page.goto(base, { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Pieces to live in now.", exact: true }).waitFor();
+    await page.evaluate(() => document.fonts.ready);
     await page.mouse.move(0, 0);
     const snapshot = await page.evaluate(() => {
       const home = document.querySelector("#main-content > div");
@@ -95,6 +100,7 @@ try {
         scrollWidth: document.documentElement.scrollWidth, viewport: innerWidth,
       };
     });
+    results.push({ width, ...snapshot });
     assert.equal(snapshot.neutral.length, 5, "All neutral homepage sections must be inspected");
     assert.equal(snapshot.homePaint, "rgb(251, 246, 242)");
     for (const section of snapshot.neutral) {
@@ -112,13 +118,19 @@ try {
       scrollTo({ top: section.getBoundingClientRect().bottom + scrollY - header.getBoundingClientRect().height - 100, behavior: "instant" });
     });
     await page.screenshot({ path: resolve(output, `boundary-${width}.png`) });
-    results.push({ width, ...snapshot });
     console.log(`PASS ${width}px: all five neutral sections and both sides of the reported seam render #FBF6F2 without gradients`);
   }
   assert(requests.some(req => req.url.startsWith("/v1/products/featured")));
   assert(requests.every(req => req.method === "GET"), "Unexpected upstream write");
   assert.deepEqual(errors, []);
   console.log("5 production-build homepage viewport checks passed. Catalogue data is isolated; this is not live checkout certification.");
+} catch (error) {
+  errors.push(String(error?.stack || error));
+  if (page && !page.isClosed()) {
+    await page.screenshot({ path: resolve(output, "failure.png"), timeout: 10000 }).catch(() => {});
+    await writeFile(resolve(output, "failure.html"), await page.content().catch(() => ""));
+  }
+  throw error;
 } finally {
   await writeFile(resolve(output, "result.json"), JSON.stringify({ results, errors, requests }, null, 2));
   await writeFile(resolve(output, "next-server.log"), serverLog);
