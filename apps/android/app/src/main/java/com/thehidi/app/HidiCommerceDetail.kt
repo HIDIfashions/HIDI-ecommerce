@@ -434,11 +434,6 @@ private fun FitGuideSheet(variants: List<HidiVariant>, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun RowScopeFitCell(text: String, weight: Float, bold: Boolean = false) {
-    Text(text, color = CommerceColors.Ink, fontSize = 10.sp, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(weight))
-}
-
-@Composable
 private fun androidx.compose.foundation.layout.RowScope.FitCell(text: String, weight: Float, bold: Boolean = false) {
     Text(text, color = CommerceColors.Ink, fontSize = 10.sp, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(weight))
 }
