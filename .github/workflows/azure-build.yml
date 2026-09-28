@@ -42,6 +42,15 @@ jobs:
           node "$RUNNER_TEMP/hidi-browser/node_modules/playwright/cli.js" install --with-deps chromium
       - name: Test admin UI and BFF with isolated fixtures
         run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/admin-workspace.browser.mjs
+      - name: Verify homepage section backgrounds in the production build
+        run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/homepage-background.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: homepage-background-test-results
+          path: test-results/homepage-background
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: always()
         with:
