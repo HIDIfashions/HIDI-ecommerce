@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.application'
+}
+
+def hidiStartUrl = project.findProperty("HIDI_START_URL") ?: "https://thidigk.thehidi.com/"
+
+android {
+    namespace 'com.thehidi.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.thehidi.app'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+        buildConfigField "String", "HIDI_START_URL", "\\\"${hidiStartUrl}\\\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            // Test APK is intentionally signed with the standard Android debug key.
+            // Replace this with Play App Signing / a protected release key before store publishing.
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
