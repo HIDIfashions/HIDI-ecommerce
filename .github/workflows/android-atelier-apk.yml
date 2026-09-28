@@ -1,0 +1,79 @@
+name: HIDI Android Atelier APK
+
+on:
+  push:
+    branches:
+      - feature/android-app-v2-atelier
+    paths:
+      - "apps/android/**"
+      - ".github/workflows/android-atelier-apk.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "apps/android/**"
+      - ".github/workflows/android-atelier-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-atelier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 9.6
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Install Android SDK 37
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${ANDROID_HOME:=/usr/local/lib/android/sdk}"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-37" "build-tools;36.0.0"
+
+      - name: Lint and build Atelier release APK
+        shell: bash
+        run: |
+          gradle -p apps/android --no-daemon clean :app:lintRelease :app:assembleRelease
+
+      - name: Verify Atelier APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="apps/android/app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK"
+          mkdir -p dist
+          cp "$APK" "dist/HIDI-Android-2.0.0-Atelier.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "dist/HIDI-Android-2.0.0-Atelier.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "dist/HIDI-Android-2.0.0-Atelier.apk" | tee "dist/apk-info.txt"
+          sha256sum "dist/HIDI-Android-2.0.0-Atelier.apk" | tee "dist/SHA256SUMS.txt"
+
+      - name: Upload Atelier APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hidi-android-atelier-apk
+          path: |
+            dist/HIDI-Android-2.0.0-Atelier.apk
+            dist/apk-info.txt
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
