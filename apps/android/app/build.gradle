@@ -14,7 +14,7 @@ android {
         targetSdk 35
         versionCode 1
         versionName '1.0.0'
-        buildConfigField "String", "HIDI_START_URL", "\\\"${hidiStartUrl}\\\""
+        buildConfigField "String", "HIDI_START_URL", "\"${hidiStartUrl}\""
     }
 
     buildFeatures {
