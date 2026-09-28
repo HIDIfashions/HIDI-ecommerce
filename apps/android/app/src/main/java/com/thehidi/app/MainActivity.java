@@ -70,7 +70,7 @@ public final class MainActivity extends Activity {
         cookieManager.setAcceptThirdPartyCookies(webView, true);
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
-        WebView.enableSafeBrowsing(this, null);
+        settings.setSafeBrowsingEnabled(true);
 
         webView.setWebViewClient(new HidiWebViewClient());
         webView.setWebChromeClient(new HidiWebChromeClient());
