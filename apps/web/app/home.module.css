@@ -360,9 +360,8 @@
 
 .privileges {
   padding: clamp(54px, 5vw, 72px) 0 clamp(50px, 4.6vw, 66px);
-  background:
-    radial-gradient(circle at 92% 8%, rgba(213,162,77,.06), transparent 25%),
-    linear-gradient(180deg, #fbf7f2 0%, #f8f0e9 100%);
+  /* Match the adjacent featured-products section; no independent tint layer. */
+  background: var(--home-paper);
   border-top: 1px solid #eadfd4;
   border-bottom: 1px solid #eadfd4;
 }
@@ -488,8 +487,7 @@
 }
 
 .serviceStrip {
-  background:
-    linear-gradient(180deg, var(--home-paper) 0%, var(--home-soft) 100%);
+  background: var(--home-soft);
   border-top: 1px solid #eadfd4;
   border-bottom: 1px solid #eadfd4;
 }
