@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [api, web]
+        app: ${{ fromJSON(contains(github.event.head_commit.message, '[reuse-admin-web-e91db4b]') && '["api"]' || '["api","web"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -100,10 +100,14 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Update existing apps only; verify or roll back
-        run: bash deploy/update-existing-admin.sh "$GITHUB_SHA"
+        env:
+          WEB_RELEASE_SHA: ${{ contains(github.event.head_commit.message, '[reuse-admin-web-e91db4b]') && 'e91db4b36578ca1acad759d6f1fe9de659c2152b' || github.sha }}
+        run: bash deploy/update-existing-admin.sh "$GITHUB_SHA" "$WEB_RELEASE_SHA"

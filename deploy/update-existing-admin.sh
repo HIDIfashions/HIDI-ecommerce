@@ -2,12 +2,16 @@
 # Updates existing application images only. No resource creation, migrations, DNS, users or role grants.
 set -Eeuo pipefail
 sha=${1:?Commit SHA required}
-[[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid image tag'; exit 2; }
+web_sha=${2:-$sha}
+[[ "$sha" =~ ^[0-9a-f]{40}$ && "$web_sha" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid image tag'; exit 2; }
 group=rg-hidi-prod
 registry=acrhidiprod0927.azurecr.io
 base=https://thidigk.thehidi.com
 work=$(mktemp -d)
 changed=()
+target_image() {
+  if [[ "$1" == hidi-web ]]; then echo "$registry/$1:$web_sha"; else echo "$registry/$1:$sha"; fi
+}
 snapshot() {
   az containerapp show -g "$group" -n "$1" --only-show-errors \
     --query '{image:properties.template.containers[0].image,containers:length(properties.template.containers),mode:properties.configuration.activeRevisionsMode,latest:properties.latestRevisionName,ready:properties.latestReadyRevisionName,traffic:properties.configuration.ingress.traffic}' -o json
@@ -26,7 +30,7 @@ rollback() {
   for ((i=${#changed[@]}-1; i>=0; i--)); do
     app=${changed[$i]}
     current=$(az containerapp show -g "$group" -n "$app" --query 'properties.template.containers[0].image' -o tsv --only-show-errors) || continue
-    [[ "$current" == "$registry/$app:$sha" ]] || { echo "$app changed by another deployment; refusing to overwrite it."; continue; }
+    [[ "$current" == "$(target_image "$app")" ]] || { echo "$app changed by another deployment; refusing to overwrite it."; continue; }
     prior=$(jq -r .image "$work/$app.json")
     az containerapp update -g "$group" -n "$app" --image "$prior" --only-show-errors -o none || continue
     wait_ready "$app" || continue
@@ -44,12 +48,21 @@ for app in hidi-api hidi-web; do
   if [[ $(jq -r .mode "$work/$app.json") == Multiple ]]; then
     jq -e '.traffic | length == 1 and .[0].weight == 100 and (.[0].label == null)' "$work/$app.json" >/dev/null || { echo "Existing canary/label traffic for $app needs a dedicated rollout; no apps changed."; exit 3; }
   fi
-  echo "Existing $app verified. Image: $(jq -r .image "$work/$app.json")"
+  prior_image=$(jq -r .image "$work/$app.json")
+  prefix="$registry/$app:"
+  [[ "$prior_image" == "$prefix"* ]] || { echo "Unknown image registry for $app; no apps changed."; exit 3; }
+  prior_sha=${prior_image#"$prefix"}
+  desired_image=$(target_image "$app")
+  desired_sha=${desired_image#"$prefix"}
+  [[ "$prior_sha" =~ ^[0-9a-f]{40}$ ]] && git merge-base --is-ancestor "$prior_sha" "$desired_sha" || { echo "Refusing to overwrite newer or unrelated $app code; no apps changed."; exit 3; }
+  echo "Existing $app verified. Image: $prior_image"
 done
 trap rollback ERR
 for app in hidi-api hidi-web; do
+  current=$(az containerapp show -g "$group" -n "$app" --query 'properties.template.containers[0].image' -o tsv --only-show-errors)
+  [[ "$current" == "$(jq -r .image "$work/$app.json")" ]] || { echo "$app changed after preflight; refusing overwrite."; false; }
   changed+=("$app")
-  az containerapp update -g "$group" -n "$app" --image "$registry/$app:$sha" --only-show-errors -o none
+  az containerapp update -g "$group" -n "$app" --image "$(target_image "$app")" --only-show-errors -o none
   wait_ready "$app"
   if [[ $(jq -r .mode "$work/$app.json") == Multiple ]]; then
     revision=$(jq -r .ready "$work/current.json")

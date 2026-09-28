@@ -30,11 +30,26 @@ test("customer preview permits account reads and session-scoped cart lifecycle",
   ]) assert.equal(policy.allows(method, path), true, `${method} ${path}`);
 });
 
-test("customer preview blocks financial, notification, admin and route-confusion requests", () => {
+test("customer preview permits only explicit staff reads behind the existing AdminGuard", () => {
+  const policy = migrationPreviewPolicy(validation);
+  for (const path of ["me", "staff", "dashboard/overview?from=2026-09-01", "dashboard/queue?kind=returns", "dashboard/search?q=test", "orders", "orders/HIDI-123", "products", "products/options", "products/product-1", "inventory", "inventory/receipts", "inventory/variant-1/history"]) {
+    for (const method of ["GET", "HEAD"]) assert.equal(policy.allows(method, `/v1/admin/${path}`), true, `${method} ${path}`);
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) assert.equal(policy.allows(method, `/v1/admin/${path}`), false, `${method} ${path}`);
+    assert.equal(migrationPreviewPolicy({ MIGRATION_READ_ONLY: "true" }).allows("GET", `/v1/admin/${path}`), false);
+  }
+});
+
+test("customer preview blocks financial, notification, admin writes and route-confusion requests", () => {
   const policy = migrationPreviewPolicy(validation);
   for (const [method, path] of [
     ["POST", "/v1/checkout"], ["POST", "/v1/payments/razorpay/webhook"],
-    ["POST", "/v1/wallet/admin/reconcile"], ["GET", "/v1/admin/orders"],
+    ["POST", "/v1/wallet/admin/reconcile"], ["PATCH", "/v1/admin/orders/HIDI-123/status"],
+    ["POST", "/v1/admin/orders/HIDI-123/delhivery/manifest"],
+    ["GET", "/v1/admin/orders/HIDI-123/delhivery/track"],
+    ["GET", "/v1/admin/orders/HIDI-123/delhivery/serviceability"],
+    ["POST", "/v1/admin/staff"], ["PATCH", "/v1/admin/returns/test-request"],
+    ["GET", "/v1/admin/dashboard/unknown"], ["GET", "/v1/admin/orders/../staff"],
+    ["GET", "/v1/admin/orders%2fHIDI-123"], ["GET", "/v1/admin/orders/HIDI-123/"],
     ["POST", "/v1/account/orders/HIDI-123/returns"], ["PATCH", "/v1/retention/preferences"],
     ["POST", "/v1/marketing/newsletter"], ["POST", "/v1/retention/events"],
     ["POST", "/v1/whatsapp/webhook"], ["POST", "/v1/products"],
