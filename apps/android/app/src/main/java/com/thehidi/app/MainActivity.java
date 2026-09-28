@@ -3,10 +3,17 @@ package com.thehidi.app;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -16,39 +23,285 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public final class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
+    private static final String STATE_NATIVE_HOME = "hidi.native.home";
 
+    private static final int IVORY = Color.rgb(248, 238, 228);
+    private static final int CREAM = Color.rgb(255, 250, 245);
+    private static final int MULBERRY = Color.rgb(89, 29, 32);
+    private static final int GOLD = Color.rgb(213, 162, 77);
+    private static final int MUTED = Color.rgb(112, 91, 86);
+
+    private FrameLayout shell;
+    private FrameLayout contentFrame;
     private WebView webView;
+    private HidiHomeView homeView;
+    private RemoteImageLoader imageLoader;
+    private ProgressBar pageProgress;
     private ValueCallback<Uri[]> filePathCallback;
+    private final List<NavItem> navItems = new ArrayList<>();
+    private int selectedNav = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         configureSystemBars();
-
-        webView = new WebView(this);
-        webView.setBackgroundColor(Color.parseColor("#F8EEE4"));
-        setContentView(webView);
-
+        buildAppShell();
         configureWebView();
+
+        boolean restoredNativeHome = savedInstanceState == null
+                || savedInstanceState.getBoolean(STATE_NATIVE_HOME, true);
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState);
-        } else if (!loadDeepLink(getIntent())) {
-            webView.loadUrl(BuildConfig.HIDI_START_URL);
+        }
+
+        if (!loadDeepLink(getIntent())) {
+            if (restoredNativeHome) {
+                showHome();
+            } else {
+                showWeb(false);
+            }
         }
     }
 
     private void configureSystemBars() {
         Window window = getWindow();
-        window.setStatusBarColor(Color.parseColor("#591D20"));
-        window.setNavigationBarColor(Color.parseColor("#F8EEE4"));
-        window.getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        window.setStatusBarColor(MULBERRY);
+        window.setNavigationBarColor(IVORY);
+        window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+    }
+
+    private void buildAppShell() {
+        imageLoader = new RemoteImageLoader(this);
+
+        shell = new FrameLayout(this);
+        shell.setBackgroundColor(IVORY);
+
+        contentFrame = new FrameLayout(this);
+        FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        );
+        contentParams.bottomMargin = dp(72);
+        shell.addView(contentFrame, contentParams);
+
+        homeView = new HidiHomeView(this, this::openWebPath, imageLoader);
+        contentFrame.addView(homeView, matchFrame());
+
+        webView = new WebView(this);
+        webView.setBackgroundColor(IVORY);
+        webView.setVisibility(View.GONE);
+        contentFrame.addView(webView, matchFrame());
+
+        pageProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        pageProgress.setMax(100);
+        pageProgress.setProgressTintList(ColorStateList.valueOf(GOLD));
+        pageProgress.setProgressBackgroundTintList(ColorStateList.valueOf(0x22591D20));
+        pageProgress.setVisibility(View.GONE);
+
+        FrameLayout.LayoutParams progressParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(2),
+                Gravity.TOP
+        );
+        shell.addView(pageProgress, progressParams);
+
+        LinearLayout bottomNav = createBottomNav();
+        FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(72),
+                Gravity.BOTTOM
+        );
+        shell.addView(bottomNav, navParams);
+
+        shell.setOnApplyWindowInsetsListener((view, insets) -> {
+            int top;
+            int bottom;
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets status = insets.getInsets(WindowInsets.Type.statusBars());
+                android.graphics.Insets navigation = insets.getInsets(WindowInsets.Type.navigationBars());
+                top = status.top;
+                bottom = navigation.bottom;
+            } else {
+                top = insets.getSystemWindowInsetTop();
+                bottom = insets.getSystemWindowInsetBottom();
+            }
+            view.setPadding(0, top, 0, bottom);
+            return insets;
+        });
+
+        setContentView(shell);
+        shell.requestApplyInsets();
+    }
+
+    private LinearLayout createBottomNav() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER);
+        bar.setPadding(dp(6), dp(6), dp(6), dp(5));
+
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(CREAM);
+        background.setStroke(dp(1), 0x22591D20);
+        bar.setBackground(background);
+        bar.setElevation(dp(12));
+
+        addNavItem(bar, R.drawable.ic_home, "Home", 0, this::showHome);
+        addNavItem(bar, R.drawable.ic_grid, "Shop", 1, () -> openWebPath("/collections/all"));
+        addNavItem(bar, R.drawable.ic_search, "Search", 2, () -> openWebPath("/search"));
+        addNavItem(bar, R.drawable.ic_heart, "Wishlist", 3, () -> openWebPath("/wishlist"));
+        addNavItem(bar, R.drawable.ic_account, "Account", 4, () -> openWebPath("/account"));
+
+        selectNav(0);
+        return bar;
+    }
+
+    private void addNavItem(
+            LinearLayout bar,
+            int iconRes,
+            String label,
+            int index,
+            Runnable action
+    ) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setGravity(Gravity.CENTER);
+        item.setPadding(dp(6), dp(4), dp(6), dp(2));
+        item.setContentDescription(label);
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        item.addView(icon, new LinearLayout.LayoutParams(dp(25), dp(25)));
+
+        TextView text = new TextView(this);
+        text.setText(label);
+        text.setTextSize(9);
+        text.setTypeface(Typeface.create("sans", Typeface.BOLD));
+        text.setIncludeFontPadding(false);
+        text.setPadding(0, dp(4), 0, 0);
+        item.addView(text);
+
+        item.setOnClickListener(v -> {
+            selectNav(index);
+            action.run();
+        });
+        item.setOnTouchListener((v, event) -> {
+            switch (event.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    v.animate().alpha(0.58f).setDuration(70L).start();
+                    break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    v.animate().alpha(1f).setDuration(100L).start();
+                    break;
+                default:
+                    break;
+            }
+            return false;
+        });
+
+        bar.addView(item, new LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1f
+        ));
+
+        navItems.add(new NavItem(icon, text));
+    }
+
+    private void selectNav(int index) {
+        selectedNav = index;
+        for (int i = 0; i < navItems.size(); i++) {
+            NavItem item = navItems.get(i);
+            boolean selected = i == index;
+            item.icon.setColorFilter(selected ? MULBERRY : MUTED);
+            item.label.setTextColor(selected ? MULBERRY : MUTED);
+            item.label.setAlpha(selected ? 1f : 0.72f);
+            item.icon.setAlpha(selected ? 1f : 0.68f);
+        }
+    }
+
+    private void showHome() {
+        homeView.setVisibility(View.VISIBLE);
+        webView.setVisibility(View.GONE);
+        pageProgress.setVisibility(View.GONE);
+        selectNav(0);
+        homeView.scrollTo(0, 0);
+    }
+
+    private void showWeb(boolean animate) {
+        homeView.setVisibility(View.GONE);
+        webView.setVisibility(View.VISIBLE);
+        if (animate) {
+            webView.setAlpha(0f);
+            webView.animate().alpha(1f).setDuration(170L).start();
+        } else {
+            webView.setAlpha(1f);
+        }
+    }
+
+    private void openWebPath(String path) {
+        showWeb(true);
+        selectNavForPath(path);
+
+        String target = resolveAppUrl(path);
+        String current = webView.getUrl();
+        if (current == null || !current.equals(target)) {
+            pageProgress.setProgress(6);
+            pageProgress.setVisibility(View.VISIBLE);
+            webView.loadUrl(target);
+        }
+    }
+
+    private void openWebUrl(String url) {
+        showWeb(true);
+        selectNavForPath(Uri.parse(url).getPath());
+        pageProgress.setProgress(6);
+        pageProgress.setVisibility(View.VISIBLE);
+        webView.loadUrl(url);
+    }
+
+    private void selectNavForPath(String path) {
+        String normalized = path == null ? "" : path;
+        if (normalized.startsWith("/wishlist")) selectNav(3);
+        else if (normalized.startsWith("/account")) selectNav(4);
+        else if (normalized.startsWith("/search")) selectNav(2);
+        else if (normalized.startsWith("/collections") || normalized.startsWith("/products")) selectNav(1);
+    }
+
+    private String resolveAppUrl(String path) {
+        Uri base = Uri.parse(BuildConfig.HIDI_START_URL);
+        Uri.Builder builder = new Uri.Builder()
+                .scheme(base.getScheme())
+                .encodedAuthority(base.getEncodedAuthority());
+
+        String normalized = path == null || path.isEmpty() ? "/" : path;
+        if (!normalized.startsWith("/")) normalized = "/" + normalized;
+
+        int queryIndex = normalized.indexOf('?');
+        if (queryIndex >= 0) {
+            String rawPath = normalized.substring(0, queryIndex);
+            String rawQuery = normalized.substring(queryIndex + 1);
+            builder.encodedPath(rawPath);
+            builder.encodedQuery(rawQuery);
+        } else {
+            builder.encodedPath(normalized);
+        }
+        return builder.build().toString();
     }
 
     private void configureWebView() {
@@ -63,14 +316,14 @@ public final class MainActivity extends Activity {
         settings.setSupportZoom(false);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " HIDIAndroid/1.0");
+        settings.setSafeBrowsingEnabled(true);
+        settings.setUserAgentString(settings.getUserAgentString() + " HIDIAndroid/1.1");
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
-        settings.setSafeBrowsingEnabled(true);
 
         webView.setWebViewClient(new HidiWebViewClient());
         webView.setWebChromeClient(new HidiWebChromeClient());
@@ -96,23 +349,27 @@ public final class MainActivity extends Activity {
             return false;
         }
 
-        if (webView != null) {
-            webView.loadUrl(data.toString());
-            return true;
+        String path = data.getPath();
+        if (path == null || path.isEmpty() || "/".equals(path)) {
+            showHome();
+        } else {
+            openWebUrl(data.toString());
         }
-        return false;
+        return true;
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        if (webView != null) {
-            webView.saveState(outState);
-        }
+        outState.putBoolean(STATE_NATIVE_HOME, homeView.getVisibility() == View.VISIBLE);
+        webView.saveState(outState);
         super.onSaveInstanceState(outState);
     }
 
     @Override
     protected void onDestroy() {
+        if (homeView != null) homeView.dispose();
+        if (imageLoader != null) imageLoader.shutdown();
+
         if (webView != null) {
             webView.stopLoading();
             webView.setWebChromeClient(null);
@@ -125,10 +382,15 @@ public final class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
+        if (homeView.getVisibility() == View.VISIBLE) {
+            super.onBackPressed();
+            return;
+        }
+
+        if (webView.canGoBack()) {
             webView.goBack();
         } else {
-            super.onBackPressed();
+            showHome();
         }
     }
 
@@ -152,7 +414,7 @@ public final class MainActivity extends Activity {
         String scheme = lower(uri.getScheme());
 
         if ("hidi".equals(scheme) && "retry".equals(lower(uri.getHost()))) {
-            webView.loadUrl(BuildConfig.HIDI_START_URL);
+            webView.reload();
             return true;
         }
 
@@ -265,6 +527,8 @@ public final class MainActivity extends Activity {
         @Override
         public void onPageFinished(WebView view, String url) {
             CookieManager.getInstance().flush();
+            pageProgress.setVisibility(View.GONE);
+            selectNavForPath(Uri.parse(url).getPath());
             super.onPageFinished(view, url);
         }
 
@@ -286,6 +550,16 @@ public final class MainActivity extends Activity {
 
     private final class HidiWebChromeClient extends WebChromeClient {
         @Override
+        public void onProgressChanged(WebView view, int newProgress) {
+            if (webView.getVisibility() == View.VISIBLE && newProgress < 100) {
+                pageProgress.setVisibility(View.VISIBLE);
+                pageProgress.setProgress(Math.max(6, newProgress));
+            } else {
+                pageProgress.setVisibility(View.GONE);
+            }
+        }
+
+        @Override
         @SuppressWarnings("deprecation")
         public boolean onShowFileChooser(
                 WebView webView,
@@ -306,6 +580,27 @@ public final class MainActivity extends Activity {
                 Toast.makeText(MainActivity.this, R.string.no_file_picker, Toast.LENGTH_SHORT).show();
                 return false;
             }
+        }
+    }
+
+    private FrameLayout.LayoutParams matchFrame() {
+        return new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        );
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private static final class NavItem {
+        final ImageView icon;
+        final TextView label;
+
+        NavItem(ImageView icon, TextView label) {
+            this.icon = icon;
+            this.label = label;
         }
     }
 }
