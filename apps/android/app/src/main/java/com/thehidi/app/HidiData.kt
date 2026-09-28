@@ -16,21 +16,35 @@ data class HidiVariant(
     val color: String,
     val pricePaise: Int,
     val available: Int,
+    val bustMm: Int? = null,
+    val waistMm: Int? = null,
+    val hipMm: Int? = null,
+    val shoulderMm: Int? = null,
+    val sleeveLengthMm: Int? = null,
+    val garmentLengthMm: Int? = null,
 )
 
 data class HidiProduct(
+    val id: String,
     val slug: String,
     val name: String,
     val description: String,
     val fabric: String,
     val care: String,
+    val category: String,
     val minPricePaise: Int,
+    val maxPricePaise: Int,
     val inStock: Boolean,
+    val soldQuantity: Int,
+    val averageRating: Double,
+    val reviewCount: Int,
     val images: List<String>,
     val variants: List<HidiVariant>,
     val collections: List<String>,
 ) {
     val primaryImage: String get() = images.firstOrNull().orEmpty()
+    val colours: List<String> get() = variants.map { it.color }.filter { it.isNotBlank() }.distinct()
+    val sizes: List<String> get() = variants.map { it.size }.filter { it.isNotBlank() }.distinct()
 }
 
 data class HidiCartItem(
@@ -52,7 +66,7 @@ data class HidiCart(
 )
 
 class HidiStore(context: Context) {
-    private val prefs = context.getSharedPreferences("hidi_atelier", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("hidi_v3", Context.MODE_PRIVATE)
 
     fun cartSession(): String {
         val existing = prefs.getString("cart_session", null)
@@ -76,38 +90,45 @@ class HidiStore(context: Context) {
         prefs.edit().putStringSet("saved", values).apply()
         return nowSaved
     }
+
+    fun recentSearches(): List<String> =
+        prefs.getString("recent_searches", "")
+            .orEmpty()
+            .split("|||")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .take(6)
+
+    fun saveSearch(value: String) {
+        val clean = value.trim()
+        if (clean.length < 2) return
+        val next = (listOf(clean) + recentSearches().filterNot { it.equals(clean, true) }).take(6)
+        prefs.edit().putString("recent_searches", next.joinToString("|||")).apply()
+    }
 }
 
 class HidiRepository(private val store: HidiStore) {
     suspend fun products(): List<HidiProduct> = withContext(Dispatchers.IO) {
         val body = request("GET", "${BuildConfig.HIDI_API_URL}/products") ?: return@withContext emptyList()
-        runCatching {
-            val array = JSONArray(body)
-            buildList {
-                for (i in 0 until array.length()) {
-                    parseProduct(array.optJSONObject(i))?.let(::add)
-                }
-            }
-        }.getOrDefault(emptyList())
+        parseProductList(body)
     }
 
     suspend fun featured(): List<HidiProduct> = withContext(Dispatchers.IO) {
         val body = request("GET", "${BuildConfig.HIDI_API_URL}/products/featured?limit=8")
             ?: return@withContext emptyList()
-        runCatching {
-            val array = JSONArray(body)
-            buildList {
-                for (i in 0 until array.length()) {
-                    parseProduct(array.optJSONObject(i))?.let(::add)
-                }
-            }
-        }.getOrDefault(emptyList())
+        parseProductList(body)
     }
 
-    suspend fun product(slug: String): HidiProduct? = withContext(Dispatchers.IO) {
-        val body = request("GET", "${BuildConfig.HIDI_API_URL}/products/${encode(slug)}")
-            ?: return@withContext null
-        runCatching { parseProduct(JSONObject(body)) }.getOrNull()
+    suspend fun bestSellers(): List<HidiProduct> = withContext(Dispatchers.IO) {
+        val body = request("GET", "${BuildConfig.HIDI_API_URL}/products/best-sellers?limit=8")
+            ?: return@withContext emptyList()
+        parseProductList(body)
+    }
+
+    suspend fun related(slug: String): List<HidiProduct> = withContext(Dispatchers.IO) {
+        val body = request("GET", "${BuildConfig.HIDI_API_URL}/products/${encode(slug)}/related?limit=6")
+            ?: return@withContext emptyList()
+        parseProductList(body)
     }
 
     suspend fun cart(): HidiCart = withContext(Dispatchers.IO) {
@@ -136,6 +157,13 @@ class HidiRepository(private val store: HidiStore) {
 
     private fun cartUrl() = "${BuildConfig.HIDI_API_URL}/carts/${encode(store.cartSession())}"
 
+    private fun parseProductList(body: String): List<HidiProduct> = runCatching {
+        val array = JSONArray(body)
+        buildList {
+            for (i in 0 until array.length()) parseProduct(array.optJSONObject(i))?.let(::add)
+        }
+    }.getOrDefault(emptyList())
+
     private fun parseProduct(item: JSONObject?): HidiProduct? {
         item ?: return null
         val slug = item.optString("slug")
@@ -156,6 +184,8 @@ class HidiRepository(private val store: HidiStore) {
             if (array != null) {
                 for (i in 0 until array.length()) {
                     val v = array.optJSONObject(i) ?: continue
+                    fun optionalInt(key: String): Int? =
+                        if (v.has(key) && !v.isNull(key)) v.optInt(key) else null
                     add(
                         HidiVariant(
                             id = v.optString("id"),
@@ -163,6 +193,12 @@ class HidiRepository(private val store: HidiStore) {
                             color = v.optString("color"),
                             pricePaise = v.optInt("pricePaise", item.optInt("minPricePaise")),
                             available = v.optInt("available"),
+                            bustMm = optionalInt("bustMm"),
+                            waistMm = optionalInt("waistMm"),
+                            hipMm = optionalInt("hipMm"),
+                            shoulderMm = optionalInt("shoulderMm"),
+                            sleeveLengthMm = optionalInt("sleeveLengthMm"),
+                            garmentLengthMm = optionalInt("garmentLengthMm"),
                         )
                     )
                 }
@@ -179,14 +215,22 @@ class HidiRepository(private val store: HidiStore) {
             }
         }
 
+        val category = item.optJSONObject("category")?.optString("slug").orEmpty()
+
         return HidiProduct(
+            id = item.optString("id"),
             slug = slug,
             name = item.optString("name", "HIDI"),
             description = item.optString("description", item.optString("shortDescription", "")),
             fabric = item.optString("fabric"),
             care = item.optString("care"),
+            category = category,
             minPricePaise = item.optInt("minPricePaise"),
+            maxPricePaise = item.optInt("maxPricePaise", item.optInt("minPricePaise")),
             inStock = item.optBoolean("inStock", true),
+            soldQuantity = item.optInt("soldQuantity"),
+            averageRating = item.optDouble("averageRating"),
+            reviewCount = item.optInt("reviewCount"),
             images = images,
             variants = variants,
             collections = collections,
@@ -232,13 +276,12 @@ class HidiRepository(private val store: HidiStore) {
             connection.connectTimeout = 7_000
             connection.readTimeout = 10_000
             connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("User-Agent", "HIDIAtelier/2.0")
+            connection.setRequestProperty("User-Agent", "HIDIAndroid/3.0")
             if (payload != null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.outputStream.use { it.write(payload.toByteArray(StandardCharsets.UTF_8)) }
             }
-
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }
