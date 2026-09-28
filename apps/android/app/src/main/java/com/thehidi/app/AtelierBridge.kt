@@ -58,7 +58,7 @@ fun AtelierBridgeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = androidx.compose.ui.unit.dp(10), vertical = androidx.compose.ui.unit.dp(6)),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
         ) {
             IconButton(onClick = onBack) {
                 Icon(
@@ -89,7 +89,7 @@ fun AtelierBridgeScreen(
             )
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier.fillMaxWidth().height((LocalConfiguration.current.screenHeightDp - 82).dp)) {
             AndroidView(
                 factory = { viewContext ->
                     WebView(viewContext).apply {
