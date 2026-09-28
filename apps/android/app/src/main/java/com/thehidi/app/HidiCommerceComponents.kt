@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -77,7 +78,7 @@ fun CommerceAppBar(
     onBag: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(CommerceColors.Surface)
             .padding(
@@ -130,6 +131,7 @@ fun CommerceAppBar(
 @Composable
 fun CommerceBottomNav(
     current: CommerceTab,
+    modifier: Modifier = Modifier,
     wishlistCount: Int,
     onSelect: (CommerceTab) -> Unit,
 ) {
