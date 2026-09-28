@@ -118,7 +118,7 @@ export function CartClient() {
               href={`/products/${group.product.slug}`}
               className="cart-thumb"
               aria-label={`View ${group.product.name}`}
-              style={{ position: "relative", display: "block", overflow: "hidden", background: "#ffffff" }}
+              style={{ position: "relative", display: "block", overflow: "hidden", background: "var(--hidi-page-bg, #fbf6f2)" }}
             >
               <CatalogImage
                 src={group.product.image}

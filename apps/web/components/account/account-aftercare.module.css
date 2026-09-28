@@ -13,7 +13,7 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .summaryGrid span {
@@ -64,7 +64,7 @@
 .caseCard {
   padding: 20px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .caseHeader {
@@ -158,7 +158,7 @@
   place-items: center;
   border-radius: 50%;
   border: 1px solid #ddd2c9;
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .stepDone {
@@ -253,7 +253,7 @@
   justify-items: start;
   gap: 10px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .empty h2,

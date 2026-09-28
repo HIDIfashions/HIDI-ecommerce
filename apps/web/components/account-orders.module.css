@@ -36,7 +36,7 @@
   width: 100%;
   min-height: 50px;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--hidi-page-bg, #fbf6f2);
   padding: 0 14px;
   outline: none;
 }
@@ -349,7 +349,7 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
   transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
 
@@ -418,7 +418,7 @@
   gap: 16px;
   align-items: center;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .recentThumb {
@@ -533,7 +533,7 @@
   gap: 18px;
   align-items: stretch;
   border: 1px solid #e3d7cc;
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .thumb {

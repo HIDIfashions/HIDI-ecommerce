@@ -47,7 +47,7 @@
   gap: 8px;
   padding: 7px 9px;
   border-radius: 999px;
-  background: rgba(255,255,255,.94);
+  background: var(--hidi-page-bg, #fbf6f2);
   color: #4a1719;
   box-shadow: 0 8px 24px rgba(0,0,0,.24);
 }
@@ -60,7 +60,7 @@
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: #34271f;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(0,0,0,.14);
@@ -97,7 +97,7 @@
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: #34271f;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(0,0,0,.18);

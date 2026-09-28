@@ -147,7 +147,7 @@
   justify-content: center;
   padding: 0 20px;
   border: 1px solid #d8cbc2;
-  background: #ffffff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: #4a1719;
   text-decoration: none;
   font-size: var(--type-ui);

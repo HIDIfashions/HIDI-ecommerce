@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: minmax(230px, .8fr) minmax(0, 1.2fr);
   border: 1px solid var(--line);
-  background: #fcf9f9;
+  background: var(--hidi-page-bg, #fbf6f2);
   margin: 34px 0;
 }
 
