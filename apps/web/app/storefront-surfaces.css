@@ -39,8 +39,8 @@ body {
 #main-content .mobile-cart-checkout,
 #main-content .pdp-mobile-buybar,
 #main-content .wishlist-button-compact,
-#main-content .sizes button,
-#main-content .colour-options button,
+#main-content .sizes button:not(.selected):not(:disabled),
+#main-content .colour-options button:not(.selected):not(:disabled),
 #main-content .delivery-box button,
 #main-content .button-light {
   background-color: var(--hidi-page-bg);
