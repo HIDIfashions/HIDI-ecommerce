@@ -28,6 +28,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
       - name: Test storefront, reporting rules and customer safeguards
+        id: frontend_tests
+        continue-on-error: true
         run: node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
       - run: pnpm --filter @hidi/api test:customer-experience
       - run: pnpm --filter @hidi/api build
@@ -39,11 +41,22 @@ jobs:
       - name: Install isolated browser-test tooling on this runner
         run: |
           npm install --prefix "$RUNNER_TEMP/hidi-browser" --no-save playwright@1.62.1
-          node "$RUNNER_TEMP/hidi-browser/node_modules/playwright/cli.js" install --with-deps chromium
+          node "$RUNNER_TEMP/hidi-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
       - name: Test admin UI and BFF with isolated fixtures
         run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/admin-workspace.browser.mjs
       - name: Verify homepage section backgrounds in the production build
+        id: background_tests
+        continue-on-error: true
         run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/homepage-background.browser.mjs
+      - name: Verify editorial storefront across browser engines with isolated commerce
+        run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-storefront.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: editorial-storefront-test-results
+          path: test-results/editorial-storefront
+          if-no-files-found: ignore
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -58,6 +71,12 @@ jobs:
           path: test-results/admin-workspace
           if-no-files-found: ignore
           retention-days: 7
+      - name: Enforce all source and background gates after collecting browser evidence
+        if: always()
+        env:
+          FRONTEND_OUTCOME: ${{ steps.frontend_tests.outcome }}
+          BACKGROUND_OUTCOME: ${{ steps.background_tests.outcome }}
+        run: test "$FRONTEND_OUTCOME" = success && test "$BACKGROUND_OUTCOME" = success
       - name: Package exact source and original public assets
         run: git archive --format=tar.gz --output=hidi-azure-source.tar.gz HEAD
       - uses: actions/upload-artifact@v4
