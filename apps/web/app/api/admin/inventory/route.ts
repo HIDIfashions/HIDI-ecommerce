@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     if (response.status === 401) {
       return NextResponse.json(
         { message: "Admin session expired. Sign in again." },
-        { status: 502 },
+        { status: 401 },
       );
     }
 

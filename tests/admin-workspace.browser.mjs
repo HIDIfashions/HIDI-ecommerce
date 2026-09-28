@@ -56,6 +56,12 @@ try {
   const badToken = await fetch(base + '/api/admin/dashboard/overview?from=2020-01-01&to=2020-01-01&unexpected=drop', { headers: { Cookie: 'hidi_admin_access=ci-invalid-token' } });
   assert.equal(badToken.status, 401); assert(upstreamRequests.some(r => r.authorization === 'Bearer ci-invalid-token')); assert(upstreamRequests.every(r => !r.url.includes('unexpected')));
   assert.equal((await fetch(base + '/api/admin/dashboard/not-allowed', { headers: { Cookie: 'hidi_admin_access=ci-invalid-token' } })).status, 404);
+  for (const token of [null, 'ci-invalid-token']) {
+    const deniedInventory = await fetch(base + '/api/admin/inventory', {
+      headers: token ? { Cookie: 'hidi_admin_access=' + token } : {},
+    });
+    assert.equal(deniedInventory.status, 401, 'inventory preserves the upstream authentication status');
+  }
   passed('real Next.js BFF denies missing and forged sessions; forwards only allowed filters');
   browser = await chromium.launch({ headless: true });
   const signedOut = await browser.newPage(); await signedOut.goto(base + '/admin'); await waitText(signedOut, 'Secure staff access'); assert.equal(await signedOut.getByRole('heading', { name: 'Overview', exact: true }).count(), 0); await signedOut.close(); passed('signed-out workspace does not render operational data');

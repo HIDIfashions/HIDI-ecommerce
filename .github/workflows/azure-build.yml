@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJSON(contains(github.event.head_commit.message, '[reuse-admin-web-e91db4b]') && '["api"]' || '["api","web"]') }}
+        app: ${{ fromJSON(contains(github.event.head_commit.message, '[reuse-admin-web-e91db4b]') && '["api"]' || contains(github.event.head_commit.message, '[reuse-admin-api-a1b0ca6]') && '["web"]' || '["api","web"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -109,5 +109,6 @@ jobs:
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Update existing apps only; verify or roll back
         env:
+          API_RELEASE_SHA: ${{ contains(github.event.head_commit.message, '[reuse-admin-api-a1b0ca6]') && 'a1b0ca64e4408894f2ef3fcd27ea339cba4db5d5' || github.sha }}
           WEB_RELEASE_SHA: ${{ contains(github.event.head_commit.message, '[reuse-admin-web-e91db4b]') && 'e91db4b36578ca1acad759d6f1fe9de659c2152b' || github.sha }}
-        run: bash deploy/update-existing-admin.sh "$GITHUB_SHA" "$WEB_RELEASE_SHA"
+        run: bash deploy/update-existing-admin.sh "$API_RELEASE_SHA" "$WEB_RELEASE_SHA"
