@@ -12,7 +12,7 @@ val hidiApiUrl = providers.gradleProperty("HIDI_API_URL")
 
 android {
     namespace = "com.thehidi.app"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.thehidi.app"
@@ -48,7 +48,7 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.06.00")
     implementation(composeBom)
 
     implementation("androidx.core:core-ktx:1.19.0")
@@ -59,8 +59,8 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    implementation("io.coil-kt.coil3:coil-compose:3.6.3")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.3")
+    implementation("io.coil-kt.coil3:coil-compose:3.5.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
