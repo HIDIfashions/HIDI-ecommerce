@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.thehidi.app
 
 import android.content.Intent
@@ -23,7 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -174,7 +175,7 @@ fun HidiCommerceProductScreen(
                         modifier = Modifier.padding(top = 5.dp),
                     )
                     Text(
-                        money(selectedVariant?.pricePaise ?: product.minPricePaise),
+                        commerceMoney(selectedVariant?.pricePaise ?: product.minPricePaise),
                         color = CommerceColors.Ink,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
@@ -323,7 +324,7 @@ fun HidiCommerceProductScreen(
                     adding -> "ADDING…"
                     !product.inStock -> "COMING SOON"
                     selectedVariant == null -> "SELECT A SIZE"
-                    else -> "ADD TO BAG · ${money(selectedVariant!!.pricePaise)}"
+                    else -> "ADD TO BAG · ${commerceMoney(selectedVariant!!.pricePaise)}"
                 },
                 color = Color.White,
                 fontSize = 11.sp,
@@ -497,7 +498,7 @@ fun HidiCommerceBagScreen(
                     Column(Modifier.background(CommerceColors.Surface).padding(horizontal = 14.dp, vertical = 12.dp)) {
                         Text(
                             if (current.subtotalPaise >= freeShippingAt) "You unlocked complimentary shipping"
-                            else "Add ${money(freeShippingAt - current.subtotalPaise)} more for complimentary shipping",
+                            else "Add ${commerceMoney(freeShippingAt - current.subtotalPaise)} more for complimentary shipping",
                             color = CommerceColors.Ink,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -546,7 +547,7 @@ fun HidiCommerceBagScreen(
                             Column(Modifier.background(CommerceColors.Surface, RoundedCornerShape(14.dp)).padding(14.dp)) {
                                 Row(Modifier.fillMaxWidth()) {
                                     Text("Subtotal", color = CommerceColors.Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
-                                    Text(money(current.subtotalPaise), color = CommerceColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text(commerceMoney(current.subtotalPaise), color = CommerceColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                 }
                                 Text(
                                     if (current.subtotalPaise >= freeShippingAt) "Shipping · Complimentary" else "Shipping · Calculated at checkout",
@@ -566,7 +567,7 @@ fun HidiCommerceBagScreen(
         val current = cart
         if (current != null && current.items.isNotEmpty()) {
             Text(
-                "CHECKOUT · ${money(current.subtotalPaise)}",
+                "CHECKOUT · ${commerceMoney(current.subtotalPaise)}",
                 color = Color.White,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
@@ -601,7 +602,7 @@ private fun BagLine(
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(item.productName, color = CommerceColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
             Text("${item.color} · Size ${item.size}", color = CommerceColors.Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
-            Text(money(item.lineTotalPaise), color = CommerceColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 7.dp))
+            Text(commerceMoney(item.lineTotalPaise), color = CommerceColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 7.dp))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 13.dp)) {
                 IconButton(onClick = onMinus, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Outlined.Remove, null, tint = CommerceColors.Ink, modifier = Modifier.size(16.dp))
