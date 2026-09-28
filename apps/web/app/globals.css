@@ -4073,3 +4073,75 @@ body {
   }
 }
 
+/* Final storefront surface pass from 28 Sep QA.
+   Keep public pages on one warm paper tone and make collection headers compact. */
+:root {
+  --hidi-page-bg: #fbf6f2;
+  --paper: var(--hidi-page-bg);
+  --ivory: var(--hidi-page-bg);
+}
+
+html,
+body {
+  background: var(--hidi-page-bg);
+}
+
+body {
+  color: var(--ink);
+}
+
+.site-header,
+.site-header .header-inner,
+.collection-page,
+.product-page,
+.cart-page,
+.checkout-page,
+.order-summary,
+.checkout-summary,
+.promise > div,
+.product-badge,
+.sizes button,
+.delivery-box button,
+.checkout-form input,
+.colour-options button {
+  background-color: var(--hidi-page-bg);
+}
+
+.collection-page {
+  padding-top: 26px;
+}
+
+.collection-page .collection-header {
+  max-width: none;
+  margin: 0 0 22px;
+  padding: 0;
+}
+
+.collection-page .collection-header .eyebrow,
+.collection-page .collection-header > p {
+  display: none;
+}
+
+.collection-page .collection-header h1 {
+  margin: 0;
+  color: #2d302c;
+  font-family: var(--font-sans);
+  font-size: clamp(28px, 2.45vw, 40px);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -.02em;
+}
+
+@media (max-width: 620px) {
+  .collection-page {
+    padding-top: 18px;
+  }
+
+  .collection-page .collection-header {
+    margin-bottom: 16px;
+  }
+
+  .collection-page .collection-header h1 {
+    font-size: clamp(25px, 8vw, 32px);
+  }
+}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Heart, Menu, UserRound, X } from "lucide-react";
+import type { MouseEvent } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CartLink } from "./cart-link";
 import { HeaderSearch } from "./header-search";
@@ -29,6 +30,13 @@ export function Header() {
     if (restoreFocus) {
       window.requestAnimationFrame(() => menuButtonRef.current?.focus({ preventScroll: true }));
     }
+  }
+
+  function handleWordmarkClick(event: MouseEvent<HTMLAnchorElement>) {
+    closeMenu(false);
+    if (pathname !== "/") return;
+    event.preventDefault();
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
   }
 
   // Measure the sticky header before the drawer paints; never guess its height.
@@ -102,7 +110,7 @@ export function Header() {
           {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
         </button>
 
-        <Link className="wordmark" href="/" aria-label="HIDI — Wear the Feeling" onClick={() => closeMenu(false)}>
+        <Link className="wordmark" href="/" aria-label="HIDI — Wear the Feeling" onClick={handleWordmarkClick}>
           <img src="/brand/hidi-logo-header.svg" alt="" />
         </Link>
 

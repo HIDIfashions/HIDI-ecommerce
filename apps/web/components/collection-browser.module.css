@@ -8,8 +8,9 @@
 }
 
 .toolbar {
-  min-height: 54px;
+  min-height: 58px;
   margin-bottom: 34px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -22,6 +23,7 @@
 .toolbarRight {
   display: flex;
   align-items: center;
+  min-height: 58px;
 }
 
 .toolbarLeft {
@@ -29,7 +31,7 @@
 }
 
 .toolbarRight {
-  gap: 8px;
+  gap: 14px;
 }
 
 .mobileFilterButton {
@@ -41,9 +43,9 @@
   border: 0;
   background: transparent;
   color: #4d3932;
-  font-size: var(--type-ui);
-  font-weight: 700;
-  letter-spacing: .12em;
+  font-size: clamp(12px, 1.05vw, 14px);
+  font-weight: 750;
+  letter-spacing: .055em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -67,23 +69,29 @@
 
 .styleCount {
   color: #8b7b71;
-  font-size: var(--type-meta);
+  font-size: var(--type-ui);
+  line-height: 1;
 }
 
 .sortLabel {
   color: #8b7b71;
-  font-size: var(--type-meta);
-  letter-spacing: .11em;
+  font-size: clamp(12px, 1.05vw, 14px);
+  font-weight: 700;
+  letter-spacing: .055em;
+  line-height: 1;
   text-transform: uppercase;
 }
 
 .sortSelect {
-  min-height: 38px;
-  padding: 0 26px 0 6px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 30px 0 0;
   border: 0;
   background: transparent;
   color: #4d3932;
-  font-size: var(--type-body);
+  font-size: clamp(12px, 1.05vw, 14px);
+  font-weight: 700;
+  line-height: 42px;
   outline: none;
   cursor: pointer;
 }
@@ -119,7 +127,7 @@
   padding: 24px 28px 42px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
   border-right: 1px solid #e1e2dd;
   box-shadow: 18px 0 60px rgba(35,39,34,.13);
   transform: translateX(-104%);
@@ -145,7 +153,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(255,255,255,.98);
+  background: color-mix(in srgb, var(--hidi-page-bg, #fbf6f2) 96%, transparent);
   border-bottom: 1px solid #e1e2dd;
   backdrop-filter: blur(12px);
   color: #4d3932;
@@ -193,7 +201,7 @@
   justify-content: center;
   border: 1px solid #e1e2dd;
   border-radius: 50%;
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: #4d3932;
   cursor: pointer;
 }
@@ -376,7 +384,7 @@
     grid-template-columns: 1fr auto auto;
     align-items: center;
     gap: 8px;
-    background: rgba(255,255,255,.97);
+    background: color-mix(in srgb, var(--hidi-page-bg, #fbf6f2) 96%, transparent);
     border-bottom: 1px solid #e3e4df;
     backdrop-filter: blur(12px);
   }

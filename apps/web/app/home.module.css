@@ -1,8 +1,8 @@
 .home {
   --home-ink: #2d302d;
   --home-muted: #6f716c;
-  --home-soft: #fbf7f2;
-  --home-paper: #ffffff;
+  --home-soft: var(--hidi-page-bg, #fbf6f2);
+  --home-paper: var(--hidi-page-bg, #fbf6f2);
   --home-line: #eadfd4;
   --home-gold: var(--hidi-mulberry-gold, #d5a24d);
   --home-brand: var(--hidi-mulberry-clay, #591d20);
@@ -489,7 +489,7 @@
 
 .serviceStrip {
   background:
-    linear-gradient(180deg, #fffdfb 0%, var(--home-soft) 100%);
+    linear-gradient(180deg, var(--home-paper) 0%, var(--home-soft) 100%);
   border-top: 1px solid #eadfd4;
   border-bottom: 1px solid #eadfd4;
 }
@@ -828,4 +828,3 @@
     transition: none;
   }
 }
-

@@ -42,9 +42,7 @@ export default async function ShopAllPage() {
     <div className="container collection-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }} />
       <header className="collection-header">
-        <p className="eyebrow">HIDI EDIT</p>
         <h1>{title}</h1>
-        <p>{description}</p>
       </header>
 
       <CollectionBrowser products={products} />
