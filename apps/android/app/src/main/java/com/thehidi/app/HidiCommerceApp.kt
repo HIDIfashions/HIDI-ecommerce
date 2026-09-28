@@ -1,5 +1,7 @@
 package com.thehidi.app
 
+import android.net.Uri
+import android.widget.VideoView
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -74,6 +76,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.launch
 
 private const val HERO = "https://thidigk.thehidi.com/brand/hidi-hero-green-garden-fullbody.webp"
@@ -884,35 +887,72 @@ private fun HidiTvScreen(
                 Text("Shoppable styling stories from HIDI.", color = CommerceColors.Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
             }
         }
-        items(products, key = { it.slug }) { product ->
+        if (products.isNotEmpty()) {
+            item {
+                val product = products.first()
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp)
+                        .height(560.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                ) {
+                    AndroidView(
+                        factory = { context ->
+                            VideoView(context).apply {
+                                setVideoURI(Uri.parse("https://thidigk.thehidi.com/video/discover-hidi.mp4"))
+                                setOnPreparedListener { player ->
+                                    player.isLooping = true
+                                    player.setVolume(0f, 0f)
+                                    start()
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, Color(0xA0000000)))))
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                            .background(Color.White.copy(.95f), RoundedCornerShape(12.dp))
+                            .clickable { onProduct(product) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("DISCOVER HIDI", color = CommerceColors.Muted, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text(product.name, color = CommerceColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.padding(top = 3.dp))
+                            Text(money(product.minPricePaise), color = CommerceColors.Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+                        }
+                        Text("SHOP LOOK", color = CommerceColors.Wine, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        items(products.drop(1), key = { it.slug }) { product ->
             Box(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp)
-                    .height(560.dp)
+                    .height(520.dp)
                     .clip(RoundedCornerShape(15.dp))
                     .clickable { onProduct(product) }
             ) {
                 CommerceImage(product.primaryImage, Modifier.fillMaxSize())
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, Color(0xB0000000)))))
-                Box(Modifier.align(Alignment.Center).size(56.dp).background(Color.White.copy(.88f), CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.PlayArrow, null, tint = CommerceColors.Wine, modifier = Modifier.size(30.dp))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, Color(0xA0000000)))))
+                Box(Modifier.align(Alignment.Center).size(52.dp).background(Color.White.copy(.88f), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.PlayArrow, null, tint = CommerceColors.Wine, modifier = Modifier.size(28.dp))
                 }
-                Row(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(14.dp)
-                        .background(Color.White.copy(.94f), RoundedCornerShape(12.dp))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(product.name, color = CommerceColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text(money(product.minPricePaise), color = CommerceColors.Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
-                    }
-                    Text("SHOP LOOK", color = CommerceColors.Wine, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                }
+                Text(
+                    "STYLE STORY  ·  ${product.name}",
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
+                )
             }
         }
     }
