@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material3.Icon
@@ -33,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
 
@@ -48,133 +48,115 @@ fun AtelierBridgeScreen(
     var loading by remember(path) { mutableStateOf(true) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(AtelierCanvas),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.Outlined.ArrowBack,
-                    contentDescription = "Back",
-                    tint = AtelierInk,
-                )
-            }
-            Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
-                Text(
-                    "HIDI ATELIER",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = AtelierGold,
-                )
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = AtelierInk,
-                )
-            }
-        }
+        AndroidView(
+            factory = { viewContext ->
+                WebView(viewContext).apply {
+                    webViewRef = this
+                    setBackgroundColor(android.graphics.Color.rgb(244, 240, 234))
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.databaseEnabled = true
+                    settings.allowFileAccess = false
+                    settings.allowContentAccess = true
+                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    settings.setSupportZoom(false)
+                    settings.builtInZoomControls = false
+                    settings.displayZoomControls = false
+                    settings.safeBrowsingEnabled = true
+                    settings.userAgentString = settings.userAgentString + " HIDIAtelier/2.0"
 
-        if (loading) {
-            LinearProgressIndicator(
-                color = AtelierGold,
-                trackColor = AtelierLine,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+                    CookieManager.getInstance().setAcceptCookie(true)
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
 
-        Box(modifier = Modifier.fillMaxWidth().height((LocalConfiguration.current.screenHeightDp - 82).dp)) {
-            AndroidView(
-                factory = { viewContext ->
-                    WebView(viewContext).apply {
-                        webViewRef = this
-                        setBackgroundColor(android.graphics.Color.rgb(244, 240, 234))
+                    webViewClient = object : WebViewClient() {
+                        private var sessionInjected = false
 
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.databaseEnabled = true
-                        settings.allowFileAccess = false
-                        settings.allowContentAccess = true
-                        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        settings.setSupportZoom(false)
-                        settings.builtInZoomControls = false
-                        settings.displayZoomControls = false
-                        settings.safeBrowsingEnabled = true
-                        settings.userAgentString = settings.userAgentString + " HIDIAtelier/2.0"
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView,
+                            request: WebResourceRequest,
+                        ): Boolean = handleBridgeUri(context, request.url)
 
-                        CookieManager.getInstance().setAcceptCookie(true)
-                        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                        @Suppress("DEPRECATION")
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView,
+                            url: String,
+                        ): Boolean = handleBridgeUri(context, Uri.parse(url))
 
-                        webViewClient = object : WebViewClient() {
-                            private var sessionInjected = false
+                        override fun onPageFinished(view: WebView, url: String) {
+                            super.onPageFinished(view, url)
+                            CookieManager.getInstance().flush()
+                            injectAtelierChrome(view)
 
-                            override fun shouldOverrideUrlLoading(
-                                view: WebView,
-                                request: WebResourceRequest,
-                            ): Boolean {
-                                return handleAtelierUri(
-                                    request.url,
-                                    onInternal = { false },
-                                    onExternal = { uri ->
-                                        try {
-                                            context.startActivity(
-                                                Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE),
-                                            )
-                                        } catch (_: ActivityNotFoundException) {
-                                        }
-                                        true
-                                    },
-                                )
-                            }
-
-                            @Suppress("DEPRECATION")
-                            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                                val uri = Uri.parse(url)
-                                return handleAtelierUri(
-                                    uri,
-                                    onInternal = { false },
-                                    onExternal = { external ->
-                                        try {
-                                            context.startActivity(
-                                                Intent(Intent.ACTION_VIEW, external).addCategory(Intent.CATEGORY_BROWSABLE),
-                                            )
-                                        } catch (_: ActivityNotFoundException) {
-                                        }
-                                        true
-                                    },
-                                )
-                            }
-
-                            override fun onPageFinished(view: WebView, url: String) {
-                                super.onPageFinished(view, url)
-                                CookieManager.getInstance().flush()
-                                injectAtelierChrome(view)
-                                if (!sessionInjected) {
-                                    val safeSession = cartSession.replace("'", "")
-                                    val js = "try{localStorage.setItem('hidi_cart_session','" +
-                                        safeSession +
-                                        "');true}catch(e){false}"
-                                    view.evaluateJavascript(js) {
-                                        sessionInjected = true
-                                        if (view.url != targetUrl) view.loadUrl(targetUrl)
-                                    }
-                                } else {
-                                    loading = false
+                            if (!sessionInjected) {
+                                val safeSession = cartSession.replace("'", "")
+                                val js = "try{localStorage.setItem('hidi_cart_session','" +
+                                    safeSession +
+                                    "');true}catch(e){false}"
+                                view.evaluateJavascript(js) {
+                                    sessionInjected = true
+                                    if (view.url != targetUrl) view.loadUrl(targetUrl)
+                                    else loading = false
                                 }
+                            } else {
+                                loading = false
                             }
                         }
-
-                        loadUrl(BuildConfig.HIDI_START_URL)
                     }
-                },
-                modifier = Modifier.fillMaxSize(),
-            )
+
+                    loadUrl(BuildConfig.HIDI_START_URL)
+                }
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 74.dp),
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .background(AtelierCanvas),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.Outlined.ArrowBack,
+                        contentDescription = "Back",
+                        tint = AtelierInk,
+                    )
+                }
+                Column(modifier = Modifier.padding(start = 8.dp)) {
+                    Text(
+                        "HIDI ATELIER",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AtelierGold,
+                    )
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = AtelierInk,
+                    )
+                }
+            }
+
+            if (loading) {
+                LinearProgressIndicator(
+                    color = AtelierGold,
+                    trackColor = AtelierLine,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 
@@ -184,6 +166,42 @@ fun AtelierBridgeScreen(
             webViewRef?.destroy()
             webViewRef = null
         }
+    }
+}
+
+private fun handleBridgeUri(
+    context: android.content.Context,
+    uri: Uri,
+): Boolean {
+    val scheme = uri.scheme?.lowercase().orEmpty()
+    val host = uri.host?.lowercase().orEmpty()
+
+    if (scheme == "http" || scheme == "https") {
+        val internal = host == "thehidi.com" ||
+            host.endsWith(".thehidi.com") ||
+            host == "razorpay.com" ||
+            host.endsWith(".razorpay.com") ||
+            host == "rzp.io" ||
+            host.endsWith(".rzp.io")
+        if (internal) return false
+    }
+
+    return try {
+        val intent = if (scheme == "intent") {
+            Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME).apply {
+                addCategory(Intent.CATEGORY_BROWSABLE)
+                component = null
+                selector = null
+            }
+        } else {
+            Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
+        }
+        context.startActivity(intent)
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: Exception) {
+        false
     }
 }
 
@@ -205,35 +223,11 @@ private fun injectAtelierChrome(view: WebView) {
           bottom: 0 !important;
         }
     """.trimIndent()
+
     val js = "(function(){var i='hidi-atelier-native';var s=document.getElementById(i);" +
         "if(!s){s=document.createElement('style');s.id=i;document.head.appendChild(s);}" +
         "s.textContent=" + JSONObject.quote(css) + ";})();"
     view.evaluateJavascript(js, null)
-}
-
-private fun handleAtelierUri(
-    uri: Uri,
-    onInternal: () -> Boolean,
-    onExternal: (Uri) -> Boolean,
-): Boolean {
-    val scheme = uri.scheme?.lowercase().orEmpty()
-    val host = uri.host?.lowercase().orEmpty()
-
-    if (scheme == "http" || scheme == "https") {
-        val internal = host == "thehidi.com" ||
-            host.endsWith(".thehidi.com") ||
-            host == "razorpay.com" ||
-            host.endsWith(".razorpay.com") ||
-            host == "rzp.io" ||
-            host.endsWith(".rzp.io")
-        return if (internal) onInternal() else onExternal(uri)
-    }
-
-    if (scheme == "intent" || scheme == "upi" || scheme == "whatsapp" || scheme == "tel") {
-        return onExternal(uri)
-    }
-
-    return onExternal(uri)
 }
 
 private fun atelierResolveUrl(path: String): String {
