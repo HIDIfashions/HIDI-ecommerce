@@ -53,16 +53,16 @@ jobs:
           set -euo pipefail
           APK="apps/android/app/build/outputs/apk/release/app-release.apk"
           mkdir -p dist
-          cp "$APK" "dist/HIDI-Android-3.1.0-Indya-Launch.apk"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "dist/HIDI-Android-3.1.0-Indya-Launch.apk"
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "dist/HIDI-Android-3.1.0-Indya-Launch.apk" | tee "dist/apk-info.txt"
-          sha256sum "dist/HIDI-Android-3.1.0-Indya-Launch.apk" | tee "dist/SHA256SUMS.txt"
+          cp "$APK" "dist/HIDI-Android-3.1.1-Launch-Fix.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "dist/HIDI-Android-3.1.1-Launch-Fix.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "dist/HIDI-Android-3.1.1-Launch-Fix.apk" | tee "dist/apk-info.txt"
+          sha256sum "dist/HIDI-Android-3.1.1-Launch-Fix.apk" | tee "dist/SHA256SUMS.txt"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: hidi-android-commerce-apk
           path: |
-            dist/HIDI-Android-3.1.0-Indya-Launch.apk
+            dist/HIDI-Android-3.1.1-Launch-Fix.apk
             dist/apk-info.txt
             dist/SHA256SUMS.txt
           if-no-files-found: error
