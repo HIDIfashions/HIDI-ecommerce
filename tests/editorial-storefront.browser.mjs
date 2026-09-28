@@ -15,7 +15,8 @@ const products=folders.map((slug,i)=>({
   collections:[{id:'new',slug:'new-arrivals',name:'New arrivals'}],category:{id:'kurta',name:'Kurta',slug:'kurta'},
   minPricePaise:149900,maxPricePaise:i===1?179900:149900,inStock:i!==4,
   images:['01-main.png','03-detail.png'].map((name,n)=>({id:`img-${i}-${n}`,url:`/products/${slug}/${name}`,alt:n?'Garment detail':'HIDI editorial portrait',position:n})),
-  variants:[{id:`v-${i}-m`,sku:`FIXTURE-${i}-M`,color:'Ivory',size:'M',pricePaise:149900,mrpPaise:199900,available:i===4?0:4},{id:`v-${i}-l`,sku:`FIXTURE-${i}-L`,color:'Ivory',size:'L',pricePaise:i===1?179900:149900,mrpPaise:199900,available:0},...(i===0?[{id:'v-0-xl',sku:'FIXTURE-0-XL',color:'Wine',size:'XL',pricePaise:149900,mrpPaise:199900,available:3}]:[])],
+  // A price range must contain two PURCHASABLE prices, not an unavailable variant.
+  variants:[{id:`v-${i}-m`,sku:`FIXTURE-${i}-M`,color:'Ivory',size:'M',pricePaise:149900,mrpPaise:199900,available:i===4?0:4},{id:`v-${i}-l`,sku:`FIXTURE-${i}-L`,color:'Ivory',size:'L',pricePaise:i===1?179900:149900,mrpPaise:199900,available:i===1?4:0},...(i===0?[{id:'v-0-xl',sku:'FIXTURE-0-XL',color:'Wine',size:'XL',pricePaise:149900,mrpPaise:199900,available:3}]:[])],
 }));
 const carts=new Map(),writes=[],results=[],typography=[],pageErrors=[];
 let cartMode='ok',catalogueMode='ok',serverLog='',server,activeBrowser;
@@ -49,7 +50,7 @@ const upstream=createServer(async(req,res)=>{
       }
       const current=basket(session),item=current.items.find(i=>i.id===cart[2]);if(!item)return send(404,{message:'Not found'});
       if(req.method==='DELETE')carts.set(session,current.items.filter(i=>i.id!==item.id));
-      if(req.method==='PATCH'){item.quantity=body.quantity;item.lineTotalPaise=body.quantity*149900;}
+      if(req.method==='PATCH'){item.quantity=body.quantity;item.lineTotalPaise=body.quantity*item.variant.pricePaise;}
       return send(200,basket(session));
     }
     if(route==='/marketing/newsletter'&&req.method==='POST')return send(200,{message:'You are on the HIDI list. Thank you for joining.'});
@@ -73,7 +74,7 @@ async function scenario(browser,engine,id,title,work,options={}){
   await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
   const page=await context.newPage();page.setDefaultTimeout(8000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
   cartMode='ok';catalogueMode='ok';const start=Date.now();
-  try{await page.goto(base,{waitUntil:'domcontentloaded'});await page.locator('[data-hidi-editorial="v2"]').waitFor();await work(page,context);assert.deepEqual(errors,[],'Unexpected browser exceptions');results.push({engine,id,title,status:'PASS',durationMs:Date.now()-start});console.log(`PASS ${engine} ${id} ${title}`);}
+  try{await page.goto(base,{waitUntil:'domcontentloaded'});await page.locator('[data-hidi-editorial="v2"]').waitFor();await until(()=>page.locator('[data-editorial-product]').first().locator('button[aria-pressed]').first().isEnabled(),'storefront hydration');await work(page,context);assert.deepEqual(errors,[],'Unexpected browser exceptions');results.push({engine,id,title,status:'PASS',durationMs:Date.now()-start});console.log(`PASS ${engine} ${id} ${title}`);}
   catch(error){results.push({engine,id,title,status:'FAIL',error:String(error.stack||error),durationMs:Date.now()-start});console.error(`FAIL ${engine} ${id}: ${error}`);await page.screenshot({path:resolve(output,`${engine}-${id}-failure.png`),timeout:10000}).catch(()=>{});await writeFile(resolve(output,`${engine}-${id}-failure.html`),await page.content().catch(()=>''));}
   finally{pageErrors.push(...errors.map(error=>({engine,id,error})));await context.close();}
 }
@@ -90,6 +91,8 @@ try{
         assert(state.scroll<=state.width+1,`Horizontal overflow at ${width}`);assert.equal(state.h1,1);assert.equal(state.fields,0);assert.equal(state.neutral.length,6);
         for(const surface of state.neutral){assert.equal(surface.bg,'rgb(251, 246, 242)');assert.equal(surface.image,'none');}
         await fontAudit(page,engine,`homepage-${width}`);
+        const name=await card(page).locator('h3').evaluate(el=>getComputedStyle(el).fontSize),price=await card(page).locator('h3 + p').evaluate(el=>getComputedStyle(el).fontSize).catch(()=>null);
+        const actualPrice=await card(page).locator('p').first().evaluate(el=>getComputedStyle(el).fontSize);assert.equal(name,'14px');assert.equal(actualPrice,name,'Product name and price share the same type role');
         const first=page.locator('[data-section="hero"] img').first();await until(()=>first.evaluate(el=>el.complete&&el.naturalWidth>0),'hero image');
         if(width===390||width===1440)await page.screenshot({path:resolve(output,`${engine}-home-${width}.png`),fullPage:true});
       }
@@ -101,7 +104,7 @@ try{
     });
     await scenario(browser,engine,'NAV-01','Mobile drawer anchor, single close action, Escape and focus return',async page=>{
       const button=page.getByRole('button',{name:'Open menu',exact:true});await button.click();const panel=page.getByRole('dialog',{name:'Mobile navigation'});await panel.waitFor();
-      const headerBox=await page.locator('.site-header').boundingBox(),panelBox=await panel.boundingBox();assert(Math.abs(panelBox.y-(headerBox.y+headerBox.height))<=2,'Drawer must meet header');assert.equal(await page.getByRole('button',{name:'Close menu',exact:true}).count(),1);
+      const headerBox=await page.locator('.site-header').boundingBox(),panelBox=await panel.boundingBox();assert(Math.abs(panelBox.y-(headerBox.y+headerBox.height))<=2,'Drawer must meet header');assert.equal(await page.getByRole('button',{name:'Close menu',exact:true}).count(),1);await fontAudit(page,engine,'mobile-navigation');
       await page.keyboard.press('Escape');await panel.waitFor({state:'hidden'});await until(()=>page.getByRole('button',{name:'Open menu',exact:true}).evaluate(el=>el===document.activeElement),'menu focus return');
     },{viewport:{width:390,height:844},hasTouch:true});
     await scenario(browser,engine,'MOT-01','Reduced motion avoids playback and keeps campaign poster visible',async page=>{
@@ -123,19 +126,25 @@ try{
       assert.equal(await page.locator('[data-editorial-product]').count(),6);assert.equal(await card(page).locator('select:visible,fieldset:visible').count(),0);assert.match(await card(page).innerText(),/₹1,499/);assert.equal(await card(page).locator('del:visible').count(),1);assert.equal(await page.locator('[data-editorial-product="myra-peach-comfort-kurta-set"] del:visible').count(),0,'Range prices must not pair misleading MRP');
       const sold=page.locator('[data-editorial-product="rhea-mint-daily-kurta"]');assert.equal(await sold.getByRole('button',{name:'Quick add'}).count(),0);assert.match(await sold.innerText(),/Sold out/);assert.equal(await page.locator('[data-editorial-product="anika-ivory-embroidered-set"] h3').evaluate(el=>getComputedStyle(el).textOverflow),'ellipsis');
     });
-    await scenario(browser,engine,'CART-01','Quick add requires size, handles colour changes and restores keyboard focus',async page=>{
+    await scenario(browser,engine,'CART-01','Quick add requires size, handles colour changes and cycles keyboard focus',async page=>{
       const dialog=await openAdd(page),add=dialog.getByRole('button',{name:'Add to bag',exact:true});assert.equal(await add.isDisabled(),true);assert.equal(await dialog.getByRole('button',{name:'L — unavailable',exact:true}).isDisabled(),true);await dialog.getByRole('button',{name:'M',exact:true}).click();assert.equal(await add.isEnabled(),true);await dialog.getByRole('button',{name:'Wine',exact:true}).click();assert.equal(await add.isDisabled(),true);assert.equal(await dialog.getByRole('button',{name:'XL',exact:true}).getAttribute('aria-pressed'),'false');
-      await fontAudit(page,engine,'quick-add');await page.screenshot({path:resolve(output,`${engine}-quick-add.png`)});for(let i=0;i<15;i++){await page.keyboard.press('Tab');assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'Focus escaped modal');}await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await until(()=>card(page).getByRole('button',{name:'Quick add'}).evaluate(el=>el===document.activeElement),'quick-add focus return');
+      await fontAudit(page,engine,'quick-add');await page.screenshot({path:resolve(output,`${engine}-quick-add.png`)});for(const key of ['Tab','Shift+Tab'])for(let i=0;i<15;i++){await page.keyboard.press(key);assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'Focus escaped modal');}await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await until(()=>card(page).getByRole('button',{name:'Quick add'}).evaluate(el=>el===document.activeElement),'quick-add focus return');
     });
     await scenario(browser,engine,'CART-02','Confirmed cart write occurs once; bag and checkout retain the same session',async page=>{
       const dialog=await openAdd(page);await dialog.getByRole('button',{name:'M',exact:true}).click();const before=writes.length;await dialog.getByRole('button',{name:'Add to bag',exact:true}).evaluate(button=>{button.click();button.click();button.click();});await dialog.getByRole('status').filter({hasText:'added to your bag'}).waitFor();assert.equal(writes.length-before,1);assert.deepEqual(writes.at(-1).body,{variantId:'v-0-m',quantity:1});
-      await dialog.getByRole('link',{name:'View shopping bag'}).click();await page.waitForURL('**/cart');await page.getByRole('heading',{name:'Ira everyday kurta'}).waitFor();assert.match(await page.locator('.order-summary').innerText(),/₹1,499/);await page.getByRole('link',{name:'Continue to checkout',exact:true}).click();await page.waitForURL('**/checkout');await page.getByRole('heading',{name:'Almost yours.'}).waitFor();assert(!writes.some(r=>/orders|payments|auth|otp/.test(r.route)),'No real order/payment/auth writes');
+      await dialog.getByRole('link',{name:'View shopping bag'}).click();await page.waitForURL('**/cart');await page.getByRole('heading',{name:'Ira everyday kurta'}).waitFor();assert.match(await page.locator('.order-summary').innerText(),/₹1,499/);await fontAudit(page,engine,'populated-bag');await page.getByRole('link',{name:'Continue to checkout',exact:true}).click();await page.waitForURL('**/checkout');await page.getByRole('heading',{name:'Almost yours.'}).waitFor();await fontAudit(page,engine,'checkout');assert(!writes.some(r=>/orders|payments|auth|otp/.test(r.route)),'No real order/payment/auth writes');
     });
     for(const[mode,id,pattern]of[['conflict','CART-03',/no longer available/],['server','CART-04',/Check your bag before trying again/],['rate','CART-05',/Please wait a moment/],['malformed','CART-06',/Check your bag before trying again/]]){
       await scenario(browser,engine,id,`Quick-add ${mode} response never fabricates success or automatically retries`,async page=>{cartMode=mode;const dialog=await openAdd(page);await dialog.getByRole('button',{name:'M',exact:true}).click();const before=writes.length;await dialog.getByRole('button',{name:'Add to bag',exact:true}).click();await dialog.getByRole('alert').waitFor();assert.match(await dialog.getByRole('alert').innerText(),pattern);await delay(350);assert.equal(writes.length-before,1);assert.doesNotMatch(await dialog.getByRole('status').innerText(),/added to your bag/);if(mode==='conflict')assert.equal(await dialog.getByRole('button',{name:'M — unavailable',exact:true}).isDisabled(),true);});
     }
-    await scenario(browser,engine,'WISH-01','Wishlist toggles and survives reload without changing cart',async page=>{
-      const before=writes.length;await card(page).getByRole('button',{name:/Add to wishlist/}).click();await card(page).getByRole('button',{name:/Remove from wishlist/}).waitFor();await page.reload({waitUntil:'domcontentloaded'});await card(page).getByRole('button',{name:/Remove from wishlist/}).waitFor();await card(page).getByRole('button',{name:/Remove from wishlist/}).click();await card(page).getByRole('button',{name:/Add to wishlist/}).waitFor();assert.equal(writes.length,before);
+    await scenario(browser,engine,'CART-07','Touch quick add and mobile bag quantity increase, decrease and removal',async page=>{
+      await card(page).getByRole('button',{name:'Quick add',exact:true}).tap();const dialog=page.getByRole('dialog',{name:'Ira everyday kurta',exact:true});await dialog.getByRole('button',{name:'M',exact:true}).tap();await dialog.getByRole('button',{name:'Add to bag',exact:true}).tap();await dialog.getByRole('status').filter({hasText:'added to your bag'}).waitFor();await fontAudit(page,engine,'mobile-quick-add');await page.screenshot({path:resolve(output,`${engine}-mobile-quick-add.png`)});
+      await dialog.getByRole('link',{name:'View shopping bag'}).tap();await page.waitForURL('**/cart');await page.getByRole('button',{name:'Increase size M quantity'}).tap();await until(()=>page.locator('.cart-group-heading p').innerText().then(v=>v.includes('Qty 2')),'quantity increase');assert.match(await page.locator('.order-summary').innerText(),/₹2,998/);await page.getByRole('button',{name:'Decrease size M quantity'}).tap();await until(()=>page.locator('.cart-group-heading p').innerText().then(v=>v.includes('Qty 1')),'quantity decrease');await fontAudit(page,engine,'mobile-bag');await page.getByRole('button',{name:'Remove size M from bag'}).tap();await page.getByRole('heading',{name:'Your bag is waiting.'}).waitFor();
+    },{viewport:{width:390,height:844},hasTouch:true});
+    await scenario(browser,engine,'WISH-01','Wishlist toggles and survives a settled full reload without changing cart',async page=>{
+      const before=writes.length;await card(page).getByRole('button',{name:/Add to wishlist/}).click();await card(page).getByRole('button',{name:/Remove from wishlist/}).waitFor();
+      // Settle Next prefetch before unloading. Do not suppress WebKit page errors.
+      await page.waitForLoadState('networkidle');await page.reload({waitUntil:'networkidle'});await card(page).getByRole('button',{name:/Remove from wishlist/}).waitFor();await card(page).getByRole('button',{name:/Remove from wishlist/}).click();await card(page).getByRole('button',{name:/Add to wishlist/}).waitFor();assert.equal(writes.length,before);
     });
     await scenario(browser,engine,'PRIV-01','Compact privileges preserve offer destinations and terms',async page=>{
       const details=page.locator('[data-section="privileges"] details');assert.equal(await details.getAttribute('open'),null);await details.locator('summary').click();assert.match(await details.innerText(),/₹3,999\+/);assert.match(await details.innerText(),/2 g silver/);assert.equal(await details.getByRole('link').count(),3);await fontAudit(page,engine,'privileges-expanded');await details.locator('summary').click();assert.equal(await details.getAttribute('open'),null);
@@ -148,7 +157,7 @@ try{
       const footer=page.locator('.footer');assert.equal(await footer.locator('[aria-disabled="true"]').count(),0);assert((await footer.locator('a[href="/lookbook"]').count())>0);await footer.getByRole('textbox',{name:'Email address',exact:true}).fill('editorial-fixture@example.invalid');const before=writes.length;await footer.getByRole('button',{name:/Subscribe/}).click();await until(()=>writes.length>before,'newsletter request');assert.equal(writes.at(-1).route,'/marketing/newsletter');assert.equal(writes.at(-1).body.source,'FOOTER');await page.locator('#newsletter-status').filter({hasText:/joined|list|Thank|subscribed|Welcome/i}).waitFor();
     });
     await scenario(browser,engine,'EMPTY-01','Empty catalogue retains hero, discovery and calm recovery',async page=>{
-      catalogueMode='empty';await page.reload({waitUntil:'domcontentloaded'});await page.getByText('Our latest edit is being prepared.').waitFor();assert.equal(await page.locator('[data-editorial-product]').count(),0);assert.equal(await page.getByRole('heading',{name:'Wear the feeling.'}).count(),1);
+      catalogueMode='empty';await page.waitForLoadState('networkidle');await page.reload({waitUntil:'networkidle'});await page.getByText('Our latest edit is being prepared.').waitFor();assert.equal(await page.locator('[data-editorial-product]').count(),0);assert.equal(await page.getByRole('heading',{name:'Wear the feeling.'}).count(),1);
     });
     await browser.close();activeBrowser=null;
   }

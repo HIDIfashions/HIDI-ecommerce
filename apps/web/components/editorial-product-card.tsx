@@ -7,6 +7,7 @@ import type { ApiProduct } from "@/lib/api";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
 import { cardPrice, money, variantsForColour } from "@/lib/product-card-utils";
 import { getWishlistItems, removeWishlistSlug, saveWishlistItem, WISHLIST_EVENT } from "@/lib/wishlist";
+import { trapFocus } from "@/lib/focus-management";
 import { CatalogImage } from "./catalog-image";
 import styles from "./editorial-product-card.module.css";
 /** Homepage presentation only. Cart writes use the existing shared client. */
@@ -34,7 +35,9 @@ export function EditorialProductCard({ product }: { product: ApiProduct }) {
     if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden"; dialog.current?.showModal();
-    return () => { dialog.current?.close(); document.body.style.overflow = previous; trigger.current?.focus({ preventScroll: true }); };
+    const keepFocus = (event: KeyboardEvent) => trapFocus(event, dialog.current);
+    document.addEventListener("keydown", keepFocus);
+    return () => { document.removeEventListener("keydown", keepFocus); dialog.current?.close(); document.body.style.overflow = previous; trigger.current?.focus({ preventScroll: true }); };
   }, [open]);
   function toggleWishlist() {
     try { if (saved) removeWishlistSlug(product.slug); else saveWishlistItem({ slug: product.slug }); setSaved(!saved); setMessage(saved ? "Removed from wishlist." : "Saved to wishlist."); setError(""); }
