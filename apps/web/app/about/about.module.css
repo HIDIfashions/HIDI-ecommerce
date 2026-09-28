@@ -13,7 +13,7 @@
 .hero {
   position: relative;
   overflow: hidden;
-  background: #fcf9f9;
+  background: var(--hidi-page-bg, #fbf6f2);
   min-height: 620px;
 }
 
@@ -84,7 +84,7 @@
 }
 
 .primaryButton {
-  background: white;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: var(--ink);
   border: 1px solid white;
 }

@@ -91,7 +91,7 @@
   place-items: center;
   border-radius: 50%;
   border: 1px solid #dacfc7;
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .progressDone {
@@ -161,7 +161,7 @@
   grid-template-columns: 124px minmax(0, 1fr);
   gap: 20px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .thumb {
@@ -239,7 +239,7 @@
   min-width: 0;
   padding: 22px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .cardTitle {

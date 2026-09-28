@@ -80,7 +80,7 @@
       "price wishlist"
       "actions actions";
     gap: 7px 8px;
-    background: rgba(255,255,255,.985);
+    background: var(--hidi-page-bg, #fbf6f2);
     border-top: 1px solid #dfd4cb;
     box-shadow: 0 -12px 32px rgba(48,20,20,.14);
     backdrop-filter: blur(12px);

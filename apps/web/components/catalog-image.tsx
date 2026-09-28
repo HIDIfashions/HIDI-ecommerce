@@ -28,7 +28,7 @@ export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel,
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
-          background: "linear-gradient(0deg, #541d1f 0 36px, transparent 56px), linear-gradient(145deg, #ffffff, #fcf9f9)",
+          background: "linear-gradient(0deg, #541d1f 0 36px, transparent 56px), linear-gradient(145deg, var(--hidi-page-bg, #fbf6f2), var(--hidi-page-bg, #fbf6f2))",
         }}
       >
         <span style={{ fontFamily: "Georgia, serif", fontSize: "clamp(54px, 8vw, 110px)", color: "rgba(255,255,255,.34)" }}>H</span>

@@ -212,7 +212,7 @@
   flex: 0 0 auto;
   border: 1px solid #d7d8d2;
   border-radius: 999px;
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: #4d504b;
   font-family: var(--font-sans);
   font-size: var(--type-ui);
@@ -582,7 +582,7 @@
 .mobileSheetSize {
   min-height: 46px;
   border: 1px solid #d9dad5;
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: #444843;
   font-family: var(--font-sans);
   font-size: var(--type-ui);

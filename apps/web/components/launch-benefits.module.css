@@ -6,7 +6,7 @@
   align-items: start;
   background:
     radial-gradient(circle at 8% 0%, rgba(84,29,31,.025), transparent 30%),
-    linear-gradient(135deg, #fcf9f9 0%, #fcf9f9 100%);
+    linear-gradient(135deg, var(--hidi-page-bg, #fbf6f2) 0%, var(--hidi-page-bg, #fbf6f2) 100%);
   color: #34271f;
   border-top: 1px solid #dac7b3;
   border-bottom: 1px solid #dac7b3;
@@ -66,7 +66,7 @@
   flex-direction: column;
   align-items: flex-start;
   border: 1px solid #d8c6b4;
-  background: rgba(255,255,255,.72);
+  background: var(--hidi-page-bg, #fbf6f2);
   color: #3d3028;
   transition:
     background .22s ease,
@@ -180,7 +180,7 @@
   padding: 36px;
   background:
     radial-gradient(circle at 90% 5%, rgba(84,29,31,.02), transparent 28%),
-    #ffffff;
+    var(--hidi-page-bg, #fbf6f2);
   border: 1px solid #d9c6b3;
   box-shadow: 0 28px 80px rgba(40,20,17,.28);
   color: #34271f;
@@ -271,7 +271,7 @@
 .note {
   margin: 22px 0 0;
   padding: 14px 16px;
-  background: #fcf9f9;
+  background: var(--hidi-page-bg, #fbf6f2);
   border-left: 3px solid #541d1f;
   color: #6e5d54;
   font-size: var(--type-meta);
@@ -456,7 +456,7 @@
 
 @media (hover: none) {
   .card:hover {
-    background: rgba(255,255,255,.72);
+    background: var(--hidi-page-bg, #fbf6f2);
     border-color: #d8c6b4;
     color: #3d3028;
     transform: none;

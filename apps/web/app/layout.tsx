@@ -3,6 +3,7 @@ import "./globals.css";
 import "./hotfix.css";
 import "./launch-overrides.css";
 import "./typography.css";
+import "./storefront-surfaces.css";
 import { SiteShell } from "@/components/site-shell";
 import { absoluteUrl, getSiteUrl, safeJsonLd } from "@/lib/site-url";
 import { isSearchIndexingEnabled } from "@/lib/seo";

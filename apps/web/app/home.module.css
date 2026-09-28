@@ -219,7 +219,7 @@
 
 .editSection {
   padding-top: clamp(28px, 2.6vw, 36px);
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
 }
 
 .editHeader {

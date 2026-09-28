@@ -185,7 +185,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
             title="Click to inspect stitching and details"
             style={{
               position: "relative",
-              background: "#ffffff",
+              background: "var(--hidi-page-bg, #fbf6f2)",
               border: 0,
               padding: 0,
               margin: 0,
@@ -211,7 +211,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
                 top: 14,
                 zIndex: 3,
                 padding: "6px 8px",
-                background: "rgba(255,255,255,.9)",
+                background: "var(--hidi-page-bg, #fbf6f2)",
                 color: "#42352c",
                 fontSize: 9,
                 letterSpacing: ".12em",
@@ -233,7 +233,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
                   borderRadius: "50%",
                   display: "grid",
                   placeItems: "center",
-                  background: "rgba(255,255,255,.92)",
+                  background: "var(--hidi-page-bg, #fbf6f2)",
                   color: "#4a1719",
                   fontSize: 17,
                   boxShadow: "0 2px 12px rgba(0,0,0,.12)",

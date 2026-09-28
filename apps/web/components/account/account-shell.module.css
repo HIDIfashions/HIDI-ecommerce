@@ -93,7 +93,7 @@
     gap: 4px;
     overflow-x: auto;
     scrollbar-width: none;
-    background: rgba(255,255,255,.96);
+    background: var(--hidi-page-bg, #fbf6f2);
     border-bottom: 1px solid var(--line);
     backdrop-filter: blur(10px);
   }
