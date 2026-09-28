@@ -10,11 +10,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.navigationBarColor = android.graphics.Color.rgb(245, 241, 235)
+        window.navigationBarColor = android.graphics.Color.rgb(248, 245, 240)
 
         setContent {
             HidiAtelierTheme {
-                HidiAtelierApp(
+                HidiCommerceApp(
                     initialPath = intent?.data?.path.orEmpty(),
                 )
             }
