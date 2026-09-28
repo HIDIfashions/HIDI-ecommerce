@@ -29,7 +29,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
+import org.json.JSONObject;\n\nimport java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -471,7 +471,7 @@ public final class MainActivity extends Activity {
                 + ".site-shell{min-height:100vh!important}";
         String js = "(function(){var id='hidi-native-style';var s=document.getElementById(id);"
                 + "if(!s){s=document.createElement('style');s.id=id;document.head.appendChild(s);}s.textContent="
-                + JSONObjectString.quote(css) + ";})();";
+                + JSONObject.quote(css) + ";})();";
         webView.evaluateJavascript(js, null);
     }
 
