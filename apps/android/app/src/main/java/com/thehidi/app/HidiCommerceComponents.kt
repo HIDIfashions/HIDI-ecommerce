@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -328,7 +327,7 @@ fun CommerceProductCard(
             modifier = Modifier.padding(top = 8.dp),
         )
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 3.dp)) {
-            Text(money(product.minPricePaise), color = CommerceColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(commerceMoney(product.minPricePaise), color = CommerceColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             if (product.averageRating > 0.0 && product.reviewCount > 0) {
                 Text(
                     "  ★ ${String.format(Locale.US, "%.1f", product.averageRating)}",
@@ -434,6 +433,6 @@ fun RewardsStrip(
     }
 }
 
-fun money(paise: Int): String =
+fun commerceMoney(paise: Int): String =
     NumberFormat.getCurrencyInstance(Locale("en", "IN")).apply { maximumFractionDigits = 0 }
         .format(paise / 100.0)
