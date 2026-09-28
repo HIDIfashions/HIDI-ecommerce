@@ -132,12 +132,12 @@ fun CommerceAppBar(
 @Composable
 fun CommerceBottomNav(
     current: CommerceTab,
-    modifier: Modifier = Modifier,
     wishlistCount: Int,
+    modifier: Modifier = Modifier,
     onSelect: (CommerceTab) -> Unit,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(CommerceColors.Surface)
             .padding(
