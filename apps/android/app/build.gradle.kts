@@ -18,8 +18,8 @@ android {
         applicationId = "com.thehidi.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20
-        versionName = "2.0.0"
+        versionCode = 30
+        versionName = "3.0.0"
         buildConfigField("String", "HIDI_START_URL", "\"$hidiStartUrl\"")
         buildConfigField("String", "HIDI_API_URL", "\"$hidiApiUrl\"")
     }
