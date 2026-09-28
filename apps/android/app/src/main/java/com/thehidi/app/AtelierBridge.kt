@@ -67,7 +67,7 @@ fun AtelierBridgeScreen(
                     tint = AtelierInk,
                 )
             }
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
                 Text(
                     "HIDI ATELIER",
                     style = MaterialTheme.typography.labelSmall,
