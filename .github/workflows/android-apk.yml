@@ -62,17 +62,17 @@ jobs:
           APK="apps/android/app/build/outputs/apk/release/app-release.apk"
           test -f "$APK"
           mkdir -p dist
-          cp "$APK" "dist/HIDI-Android-v1.0.0-test.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "dist/HIDI-Android-v1.0.0-test.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "dist/HIDI-Android-v1.0.0-test.apk" | tee "dist/apk-info.txt"
-          sha256sum "dist/HIDI-Android-v1.0.0-test.apk" | tee "dist/SHA256SUMS.txt"
+          cp "$APK" "dist/HIDI-Android-v1.1.0-test.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "dist/HIDI-Android-v1.1.0-test.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "dist/HIDI-Android-v1.1.0-test.apk" | tee "dist/apk-info.txt"
+          sha256sum "dist/HIDI-Android-v1.1.0-test.apk" | tee "dist/SHA256SUMS.txt"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hidi-android-apk
+          name: hidi-android-native-home-apk
           path: |
-            dist/HIDI-Android-v1.0.0-test.apk
+            dist/HIDI-Android-v1.1.0-test.apk
             dist/apk-info.txt
             dist/SHA256SUMS.txt
           if-no-files-found: error
