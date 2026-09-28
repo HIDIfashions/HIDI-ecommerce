@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="#1F1C1B" />
+    </item>
+    <item>
+        <bitmap
+            android:src="@drawable/hidi_splash_model"
+            android:gravity="center"
+            android:filter="true" />
+    </item>
+</layer-list>
