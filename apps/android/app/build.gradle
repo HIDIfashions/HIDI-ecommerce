@@ -8,7 +8,7 @@ def hidiApiUrl = project.findProperty("HIDI_API_URL") ?: "https://hidi-ecommerce
 
 android {
     namespace 'com.thehidi.app'
-    compileSdk 36
+    compileSdk 37
 
     defaultConfig {
         applicationId 'com.thehidi.app'
