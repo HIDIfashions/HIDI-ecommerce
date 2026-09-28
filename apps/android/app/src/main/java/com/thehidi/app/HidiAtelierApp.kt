@@ -131,7 +131,7 @@ fun HidiAtelierApp(initialPath: String = "") {
     var products by remember { mutableStateOf<List<HidiProduct>>(emptyList()) }
     var featured by remember { mutableStateOf<List<HidiProduct>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    val saved = remember { store.saved().toMutableStateSet() }
+    var saved by remember { mutableStateOf(store.saved()) }
 
     LaunchedEffect(Unit) {
         products = repository.products()
@@ -166,7 +166,7 @@ fun HidiAtelierApp(initialPath: String = "") {
 
     fun toggleSaved(slug: String) {
         val now = store.toggleSaved(slug)
-        if (now) saved.add(slug) else saved.remove(slug)
+        saved = store.saved()
     }
 
     BackHandler(enabled = screen !is AtelierScreen.Home) {
