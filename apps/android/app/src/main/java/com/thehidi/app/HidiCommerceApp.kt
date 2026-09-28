@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.thehidi.app
 
 import android.net.Uri
@@ -25,7 +27,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -924,7 +925,7 @@ private fun HidiTvScreen(
                         Column(Modifier.weight(1f)) {
                             Text("DISCOVER HIDI", color = CommerceColors.Muted, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                             Text(product.name, color = CommerceColors.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.padding(top = 3.dp))
-                            Text(money(product.minPricePaise), color = CommerceColors.Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+                            Text(commerceMoney(product.minPricePaise), color = CommerceColors.Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
                         }
                         Text("SHOP LOOK", color = CommerceColors.Wine, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     }
