@@ -74,6 +74,7 @@ enum class CommerceTab { HOME, SHOP, TV, WISHLIST, ACCOUNT }
 fun CommerceAppBar(
     title: String? = null,
     cartCount: Int = 0,
+    modifier: Modifier = Modifier,
     onSearch: () -> Unit,
     onBag: () -> Unit,
 ) {
