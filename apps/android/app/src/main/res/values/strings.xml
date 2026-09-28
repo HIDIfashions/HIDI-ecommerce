@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HIDI</string>
+    <string name="connection_error_detail">We could not reach HIDI. Check your connection and try again.</string>
+    <string name="server_error_detail">HIDI is temporarily unavailable. Please try again.</string>
+    <string name="no_compatible_app">No compatible app is installed for this action.</string>
+    <string name="no_file_picker">No file picker is available on this device.</string>
+</resources>
