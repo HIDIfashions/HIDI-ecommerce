@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -36,94 +35,92 @@ import java.util.Locale;
 
 public final class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
-    private static final String STATE_NATIVE_HOME = "hidi.native.home";
-
-    private static final int IVORY = Color.rgb(248, 238, 228);
-    private static final int CREAM = Color.rgb(255, 250, 245);
-    private static final int MULBERRY = Color.rgb(89, 29, 32);
-    private static final int GOLD = Color.rgb(213, 162, 77);
-    private static final int MUTED = Color.rgb(112, 91, 86);
 
     private FrameLayout shell;
-    private FrameLayout contentFrame;
+    private FrameLayout nativeContainer;
     private WebView webView;
-    private HidiHomeView homeView;
-    private RemoteImageLoader imageLoader;
+    private LinearLayout bottomNav;
     private ProgressBar pageProgress;
+
+    private RemoteImageLoader imageLoader;
+    private HidiCatalog catalog;
+    private HidiAppStore store;
+    private HidiCartClient cart;
+
     private ValueCallback<Uri[]> filePathCallback;
     private final List<NavItem> navItems = new ArrayList<>();
-    private int selectedNav = 0;
+
+    private int currentTab = 0;
+    private int returnTab = 0;
+    private boolean bridgeReady = false;
+    private String pendingCommercePath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        store = new HidiAppStore(this);
+        catalog = new HidiCatalog();
+        cart = new HidiCartClient(store);
+        imageLoader = new RemoteImageLoader(this);
+
         configureSystemBars();
-        buildAppShell();
+        buildShell();
         configureWebView();
-
-        boolean restoredNativeHome = savedInstanceState == null
-                || savedInstanceState.getBoolean(STATE_NATIVE_HOME, true);
-
-        if (savedInstanceState != null) {
-            webView.restoreState(savedInstanceState);
-        }
+        prewarmCommerceBridge();
 
         if (!loadDeepLink(getIntent())) {
-            if (restoredNativeHome) {
-                showHome();
-            } else {
-                showWeb(false);
-            }
+            showHome();
         }
     }
 
     private void configureSystemBars() {
         Window window = getWindow();
-        window.setStatusBarColor(MULBERRY);
-        window.setNavigationBarColor(IVORY);
-        window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        window.setStatusBarColor(HidiUi.CANVAS);
+        window.setNavigationBarColor(HidiUi.CANVAS);
+        window.getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        );
     }
 
-    private void buildAppShell() {
-        imageLoader = new RemoteImageLoader(this);
-
+    private void buildShell() {
         shell = new FrameLayout(this);
-        shell.setBackgroundColor(IVORY);
+        shell.setBackgroundColor(HidiUi.CANVAS);
 
-        contentFrame = new FrameLayout(this);
-        FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-        );
-        contentParams.bottomMargin = dp(72);
-        shell.addView(contentFrame, contentParams);
-
-        homeView = new HidiHomeView(this, this::openWebPath, imageLoader);
-        contentFrame.addView(homeView, matchFrame());
+        nativeContainer = new FrameLayout(this);
+        FrameLayout.LayoutParams nativeParams = HidiUi.match();
+        nativeParams.bottomMargin = HidiUi.dp(this, 92);
+        shell.addView(nativeContainer, nativeParams);
 
         webView = new WebView(this);
-        webView.setBackgroundColor(IVORY);
+        webView.setBackgroundColor(HidiUi.CANVAS);
         webView.setVisibility(View.GONE);
-        contentFrame.addView(webView, matchFrame());
+        shell.addView(webView, HidiUi.match());
 
         pageProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         pageProgress.setMax(100);
-        pageProgress.setProgressTintList(ColorStateList.valueOf(GOLD));
-        pageProgress.setProgressBackgroundTintList(ColorStateList.valueOf(0x22591D20));
+        pageProgress.setProgressTintList(ColorStateList.valueOf(HidiUi.GOLD));
+        pageProgress.setProgressBackgroundTintList(ColorStateList.valueOf(0x1A5D252D));
         pageProgress.setVisibility(View.GONE);
 
         FrameLayout.LayoutParams progressParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(2),
+                HidiUi.dp(this, 2),
                 Gravity.TOP
         );
         shell.addView(pageProgress, progressParams);
 
-        LinearLayout bottomNav = createBottomNav();
+        bottomNav = createBottomNav();
         FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(72),
+                HidiUi.dp(this, 72),
                 Gravity.BOTTOM
+        );
+        navParams.setMargins(
+                HidiUi.dp(this, 14),
+                0,
+                HidiUi.dp(this, 14),
+                HidiUi.dp(this, 10)
         );
         shell.addView(bottomNav, navParams);
 
@@ -151,19 +148,15 @@ public final class MainActivity extends Activity {
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER);
-        bar.setPadding(dp(6), dp(6), dp(6), dp(5));
-
-        GradientDrawable background = new GradientDrawable();
-        background.setColor(CREAM);
-        background.setStroke(dp(1), 0x22591D20);
-        bar.setBackground(background);
-        bar.setElevation(dp(12));
+        bar.setPadding(HidiUi.dp(this, 6), HidiUi.dp(this, 6), HidiUi.dp(this, 6), HidiUi.dp(this, 6));
+        bar.setBackground(HidiUi.rounded(HidiUi.SURFACE, 24, this));
+        bar.setElevation(HidiUi.dp(this, 16));
 
         addNavItem(bar, R.drawable.ic_home, "Home", 0, this::showHome);
-        addNavItem(bar, R.drawable.ic_grid, "Shop", 1, () -> openWebPath("/collections/all"));
-        addNavItem(bar, R.drawable.ic_search, "Search", 2, () -> openWebPath("/search"));
-        addNavItem(bar, R.drawable.ic_heart, "Wishlist", 3, () -> openWebPath("/wishlist"));
-        addNavItem(bar, R.drawable.ic_account, "Account", 4, () -> openWebPath("/account"));
+        addNavItem(bar, R.drawable.ic_grid, "Shop", 1, () -> showShop("all"));
+        addNavItem(bar, R.drawable.ic_search, "Search", 2, this::showSearch);
+        addNavItem(bar, R.drawable.ic_heart, "Saved", 3, this::showSaved);
+        addNavItem(bar, R.drawable.ic_account, "You", 4, this::showAccount);
 
         selectNav(0);
         return bar;
@@ -179,129 +172,212 @@ public final class MainActivity extends Activity {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.VERTICAL);
         item.setGravity(Gravity.CENTER);
-        item.setPadding(dp(6), dp(4), dp(6), dp(2));
-        item.setContentDescription(label);
+        item.setPadding(HidiUi.dp(this, 5), HidiUi.dp(this, 5), HidiUi.dp(this, 5), HidiUi.dp(this, 3));
+        item.setBackground(HidiUi.rounded(android.graphics.Color.TRANSPARENT, 18, this));
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
         icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        item.addView(icon, new LinearLayout.LayoutParams(dp(25), dp(25)));
+        item.addView(icon, new LinearLayout.LayoutParams(HidiUi.dp(this, 23), HidiUi.dp(this, 23)));
 
-        TextView text = new TextView(this);
-        text.setText(label);
-        text.setTextSize(9);
-        text.setTypeface(Typeface.create("sans", Typeface.BOLD));
-        text.setIncludeFontPadding(false);
-        text.setPadding(0, dp(4), 0, 0);
+        TextView text = HidiUi.text(this, label, 9, HidiUi.MUTED, Typeface.BOLD);
+        text.setPadding(0, HidiUi.dp(this, 4), 0, 0);
         item.addView(text);
 
         item.setOnClickListener(v -> {
             selectNav(index);
             action.run();
         });
-        item.setOnTouchListener((v, event) -> {
-            switch (event.getActionMasked()) {
-                case android.view.MotionEvent.ACTION_DOWN:
-                    v.animate().alpha(0.58f).setDuration(70L).start();
-                    break;
-                case android.view.MotionEvent.ACTION_UP:
-                case android.view.MotionEvent.ACTION_CANCEL:
-                    v.animate().alpha(1f).setDuration(100L).start();
-                    break;
-                default:
-                    break;
-            }
-            return false;
-        });
+        HidiUi.press(item);
 
         bar.addView(item, new LinearLayout.LayoutParams(
                 0,
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 1f
         ));
-
-        navItems.add(new NavItem(icon, text));
+        navItems.add(new NavItem(item, icon, text));
     }
 
     private void selectNav(int index) {
-        selectedNav = index;
+        currentTab = index;
         for (int i = 0; i < navItems.size(); i++) {
             NavItem item = navItems.get(i);
             boolean selected = i == index;
-            item.icon.setColorFilter(selected ? MULBERRY : MUTED);
-            item.label.setTextColor(selected ? MULBERRY : MUTED);
-            item.label.setAlpha(selected ? 1f : 0.72f);
+            item.icon.setColorFilter(selected ? HidiUi.WINE : HidiUi.MUTED);
+            item.label.setTextColor(selected ? HidiUi.WINE : HidiUi.MUTED);
+            item.container.setBackground(selected
+                    ? HidiUi.rounded(0x0D5D252D, 18, this)
+                    : HidiUi.rounded(android.graphics.Color.TRANSPARENT, 18, this));
             item.icon.setAlpha(selected ? 1f : 0.68f);
+            item.label.setAlpha(selected ? 1f : 0.68f);
         }
     }
 
     private void showHome() {
-        homeView.setVisibility(View.VISIBLE);
+        showNative(
+                new HidiHomeView(
+                        this,
+                        new HidiHomeView.Navigator() {
+                            @Override public void openShop(String collection) { showShop(collection); }
+                            @Override public void openSearch() { showSearch(); }
+                            @Override public void openBag() { showBag(); }
+                            @Override public void openProduct(HidiCatalog.Product product) { showProduct(product); }
+                            @Override public void openSaved() { showSaved(); }
+                        },
+                        imageLoader,
+                        catalog,
+                        store
+                ),
+                true,
+                0
+        );
+    }
+
+    private void showShop(String filter) {
+        showNative(
+                new HidiShopView(
+                        this,
+                        filter,
+                        new HidiShopView.Navigator() {
+                            @Override public void openSearch() { showSearch(); }
+                            @Override public void openBag() { showBag(); }
+                            @Override public void openProduct(HidiCatalog.Product product) { showProduct(product); }
+                        },
+                        imageLoader,
+                        catalog,
+                        store
+                ),
+                true,
+                1
+        );
+    }
+
+    private void showSearch() {
+        showNative(
+                new HidiSearchView(
+                        this,
+                        new HidiSearchView.Navigator() {
+                            @Override public void openBag() { showBag(); }
+                            @Override public void openProduct(HidiCatalog.Product product) { showProduct(product); }
+                            @Override public void openShop(String filter) { showShop(filter); }
+                        },
+                        imageLoader,
+                        catalog,
+                        store
+                ),
+                true,
+                2
+        );
+    }
+
+    private void showSaved() {
+        showNative(
+                new HidiSavedView(
+                        this,
+                        new HidiSavedView.Navigator() {
+                            @Override public void openBag() { showBag(); }
+                            @Override public void openShop() { showShop("all"); }
+                            @Override public void openProduct(HidiCatalog.Product product) { showProduct(product); }
+                        },
+                        imageLoader,
+                        catalog,
+                        store
+                ),
+                true,
+                3
+        );
+    }
+
+    private void showAccount() {
+        showNative(
+                new HidiAccountView(
+                        this,
+                        new HidiAccountView.Navigator() {
+                            @Override public void openBag() { showBag(); }
+                            @Override public void openCommerce(String path) { openCommerce(path); }
+                        }
+                ),
+                true,
+                4
+        );
+    }
+
+    private void showProduct(HidiCatalog.Product product) {
+        returnTab = currentTab;
+        showNative(
+                new HidiProductView(
+                        this,
+                        product,
+                        new HidiProductView.Navigator() {
+                            @Override public void back() { showCurrentTab(); }
+                            @Override public void openBag() { showBag(); }
+                            @Override public void cartChanged(int itemCount) { syncCartSessionIntoWeb(); }
+                        },
+                        imageLoader,
+                        store,
+                        cart
+                ),
+                false,
+                currentTab
+        );
+    }
+
+    private void showProductBySlug(String slug) {
+        catalog.product(slug, product -> {
+            if (product != null) showProduct(product);
+            else showShop("all");
+        });
+    }
+
+    private void showBag() {
+        returnTab = currentTab;
+        showNative(
+                new HidiBagView(
+                        this,
+                        new HidiBagView.Navigator() {
+                            @Override public void back() { showCurrentTab(); }
+                            @Override public void browse() { showShop("all"); }
+                            @Override public void checkout() { openCommerce("/checkout"); }
+                            @Override public void cartChanged(int itemCount) { syncCartSessionIntoWeb(); }
+                        },
+                        imageLoader,
+                        cart
+                ),
+                false,
+                currentTab
+        );
+    }
+
+    private void showCurrentTab() {
+        switch (returnTab) {
+            case 1: showShop("all"); break;
+            case 2: showSearch(); break;
+            case 3: showSaved(); break;
+            case 4: showAccount(); break;
+            default: showHome(); break;
+        }
+    }
+
+    private void showNative(View view, boolean showNav, int selectedTab) {
         webView.setVisibility(View.GONE);
         pageProgress.setVisibility(View.GONE);
-        selectNav(0);
-        homeView.scrollTo(0, 0);
+        nativeContainer.setVisibility(View.VISIBLE);
+        nativeContainer.removeAllViews();
+        nativeContainer.addView(view, HidiUi.match());
+
+        setBottomNavVisible(showNav);
+        if (showNav) selectNav(selectedTab);
+
+        view.setAlpha(0f);
+        view.setTranslationY(HidiUi.dp(this, 5));
+        view.animate().alpha(1f).translationY(0f).setDuration(180L).start();
     }
 
-    private void showWeb(boolean animate) {
-        homeView.setVisibility(View.GONE);
-        webView.setVisibility(View.VISIBLE);
-        if (animate) {
-            webView.setAlpha(0f);
-            webView.animate().alpha(1f).setDuration(170L).start();
-        } else {
-            webView.setAlpha(1f);
-        }
-    }
-
-    private void openWebPath(String path) {
-        showWeb(true);
-        selectNavForPath(path);
-
-        String target = resolveAppUrl(path);
-        String current = webView.getUrl();
-        if (current == null || !current.equals(target)) {
-            pageProgress.setProgress(6);
-            pageProgress.setVisibility(View.VISIBLE);
-            webView.loadUrl(target);
-        }
-    }
-
-    private void openWebUrl(String url) {
-        showWeb(true);
-        selectNavForPath(Uri.parse(url).getPath());
-        pageProgress.setProgress(6);
-        pageProgress.setVisibility(View.VISIBLE);
-        webView.loadUrl(url);
-    }
-
-    private void selectNavForPath(String path) {
-        String normalized = path == null ? "" : path;
-        if (normalized.startsWith("/wishlist")) selectNav(3);
-        else if (normalized.startsWith("/account")) selectNav(4);
-        else if (normalized.startsWith("/search")) selectNav(2);
-        else if (normalized.startsWith("/collections") || normalized.startsWith("/products")) selectNav(1);
-    }
-
-    private String resolveAppUrl(String path) {
-        Uri base = Uri.parse(BuildConfig.HIDI_START_URL);
-        Uri.Builder builder = new Uri.Builder()
-                .scheme(base.getScheme())
-                .encodedAuthority(base.getEncodedAuthority());
-
-        String normalized = path == null || path.isEmpty() ? "/" : path;
-        if (!normalized.startsWith("/")) normalized = "/" + normalized;
-
-        int queryIndex = normalized.indexOf('?');
-        if (queryIndex >= 0) {
-            String rawPath = normalized.substring(0, queryIndex);
-            String rawQuery = normalized.substring(queryIndex + 1);
-            builder.encodedPath(rawPath);
-            builder.encodedQuery(rawQuery);
-        } else {
-            builder.encodedPath(normalized);
-        }
-        return builder.build().toString();
+    private void setBottomNavVisible(boolean visible) {
+        bottomNav.setVisibility(visible ? View.VISIBLE : View.GONE);
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) nativeContainer.getLayoutParams();
+        params.bottomMargin = visible ? HidiUi.dp(this, 92) : 0;
+        nativeContainer.setLayoutParams(params);
     }
 
     private void configureWebView() {
@@ -317,19 +393,86 @@ public final class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSafeBrowsingEnabled(true);
-        settings.setUserAgentString(settings.getUserAgentString() + " HIDIAndroid/1.1");
+        settings.setUserAgentString(settings.getUserAgentString() + " HIDIAndroid/1.2 Native");
 
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptCookie(true);
-        cookieManager.setAcceptThirdPartyCookies(webView, true);
+        CookieManager cookies = CookieManager.getInstance();
+        cookies.setAcceptCookie(true);
+        cookies.setAcceptThirdPartyCookies(webView, true);
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
-
         webView.setWebViewClient(new HidiWebViewClient());
         webView.setWebChromeClient(new HidiWebChromeClient());
-
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
                 openExternal(Uri.parse(url)));
+    }
+
+    private void prewarmCommerceBridge() {
+        webView.loadUrl(BuildConfig.HIDI_START_URL);
+    }
+
+    private void openCommerce(String path) {
+        pendingCommercePath = path;
+        pageProgress.setProgress(8);
+        pageProgress.setVisibility(View.VISIBLE);
+
+        if (bridgeReady) {
+            String target = resolveAppUrl(path);
+            pendingCommercePath = null;
+            nativeContainer.setVisibility(View.GONE);
+            setBottomNavVisible(false);
+            webView.setVisibility(View.VISIBLE);
+            webView.loadUrl(target);
+        } else if (webView.getUrl() == null) {
+            prewarmCommerceBridge();
+        }
+    }
+
+    private void syncCartSessionIntoWeb() {
+        if (webView == null) return;
+        String session = store.cartSession().replace("'", "");
+        String js = "try{localStorage.setItem('hidi_cart_session','" + session + "');true}catch(e){false}";
+        webView.evaluateJavascript(js, value -> {
+            bridgeReady = true;
+            if (pendingCommercePath != null) {
+                String path = pendingCommercePath;
+                pendingCommercePath = null;
+                nativeContainer.setVisibility(View.GONE);
+                setBottomNavVisible(false);
+                webView.setVisibility(View.VISIBLE);
+                webView.loadUrl(resolveAppUrl(path));
+            }
+        });
+    }
+
+    private String resolveAppUrl(String path) {
+        Uri base = Uri.parse(BuildConfig.HIDI_START_URL);
+        Uri.Builder builder = new Uri.Builder()
+                .scheme(base.getScheme())
+                .encodedAuthority(base.getEncodedAuthority());
+
+        String normalized = path == null || path.isEmpty() ? "/" : path;
+        if (!normalized.startsWith("/")) normalized = "/" + normalized;
+
+        int queryIndex = normalized.indexOf('?');
+        if (queryIndex >= 0) {
+            builder.encodedPath(normalized.substring(0, queryIndex));
+            builder.encodedQuery(normalized.substring(queryIndex + 1));
+        } else {
+            builder.encodedPath(normalized);
+        }
+        return builder.build().toString();
+    }
+
+    private void injectBridgePolish() {
+        String css = "header,footer{display:none!important}"
+                + "body{padding-top:0!important;background:#f7f3ee!important}"
+                + "main{padding-top:12px!important}"
+                + ".mobile-cart-checkout{bottom:0!important}"
+                + ".site-shell{min-height:100vh!important}";
+        String js = "(function(){var id='hidi-native-style';var s=document.getElementById(id);"
+                + "if(!s){s=document.createElement('style');s.id=id;document.head.appendChild(s);}s.textContent="
+                + JSONObjectString.quote(css) + ";})();";
+        webView.evaluateJavascript(js, null);
     }
 
     @Override
@@ -340,34 +483,54 @@ public final class MainActivity extends Activity {
     }
 
     private boolean loadDeepLink(Intent intent) {
-        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) {
-            return false;
-        }
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) return false;
 
         Uri data = intent.getData();
-        if (data == null || !isHidiHost(data.getHost())) {
-            return false;
-        }
+        if (data == null || !isHidiHost(data.getHost())) return false;
 
-        String path = data.getPath();
-        if (path == null || path.isEmpty() || "/".equals(path)) {
-            showHome();
-        } else {
-            openWebUrl(data.toString());
-        }
+        routeHidiPath(data);
         return true;
     }
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        outState.putBoolean(STATE_NATIVE_HOME, homeView.getVisibility() == View.VISIBLE);
-        webView.saveState(outState);
-        super.onSaveInstanceState(outState);
+    private boolean routeHidiPath(Uri uri) {
+        String path = uri.getPath() == null ? "/" : uri.getPath();
+
+        if ("/".equals(path)) {
+            showHome();
+            return true;
+        }
+        if (path.startsWith("/collections")) {
+            String[] parts = path.split("/");
+            String filter = parts.length > 2 && !parts[2].isEmpty() ? parts[2] : "all";
+            showShop(filter);
+            return true;
+        }
+        if (path.startsWith("/products/")) {
+            String slug = path.substring("/products/".length());
+            if (!slug.isEmpty()) {
+                showProductBySlug(slug);
+                return true;
+            }
+        }
+        if (path.startsWith("/search")) {
+            showSearch();
+            return true;
+        }
+        if (path.startsWith("/wishlist")) {
+            showSaved();
+            return true;
+        }
+        if (path.startsWith("/cart")) {
+            showBag();
+            return true;
+        }
+        return false;
     }
 
     @Override
     protected void onDestroy() {
-        if (homeView != null) homeView.dispose();
+        if (catalog != null) catalog.shutdown();
+        if (cart != null) cart.shutdown();
         if (imageLoader != null) imageLoader.shutdown();
 
         if (webView != null) {
@@ -382,15 +545,30 @@ public final class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (homeView.getVisibility() == View.VISIBLE) {
-            super.onBackPressed();
+        if (webView.getVisibility() == View.VISIBLE) {
+            String path = "";
+            try {
+                path = Uri.parse(webView.getUrl()).getPath();
+            } catch (Exception ignored) {}
+
+            if (path != null && (path.startsWith("/checkout") || path.startsWith("/account")
+                    || path.startsWith("/returns") || path.startsWith("/order-confirmed"))) {
+                showCurrentTab();
+                return;
+            }
+
+            if (webView.canGoBack()) {
+                webView.goBack();
+            } else {
+                showCurrentTab();
+            }
             return;
         }
 
-        if (webView.canGoBack()) {
-            webView.goBack();
+        if (bottomNav.getVisibility() == View.GONE) {
+            showCurrentTab();
         } else {
-            showHome();
+            super.onBackPressed();
         }
     }
 
@@ -407,9 +585,7 @@ public final class MainActivity extends Activity {
     }
 
     private boolean handleUri(Uri uri) {
-        if (uri == null) {
-            return false;
-        }
+        if (uri == null) return false;
 
         String scheme = lower(uri.getScheme());
 
@@ -420,9 +596,11 @@ public final class MainActivity extends Activity {
 
         if ("http".equals(scheme) || "https".equals(scheme)) {
             String host = lower(uri.getHost());
-            if (isHidiHost(host) || isRazorpayHost(host)) {
+            if (isHidiHost(host)) {
+                if (routeHidiPath(uri)) return true;
                 return false;
             }
+            if (isRazorpayHost(host)) return false;
             openExternal(uri);
             return true;
         }
@@ -449,15 +627,13 @@ public final class MainActivity extends Activity {
                 String fallback = parsed.getStringExtra("browser_fallback_url");
                 if (fallback != null) {
                     Uri fallbackUri = Uri.parse(fallback);
-                    if ("http".equals(lower(fallbackUri.getScheme())) ||
-                            "https".equals(lower(fallbackUri.getScheme()))) {
+                    if ("http".equals(lower(fallbackUri.getScheme()))
+                            || "https".equals(lower(fallbackUri.getScheme()))) {
                         webView.loadUrl(fallback);
                         return;
                     }
                 }
-            } catch (Exception ignored) {
-                // The branded toast below is the final fallback.
-            }
+            } catch (Exception ignored) {}
             Toast.makeText(this, R.string.no_compatible_app, Toast.LENGTH_SHORT).show();
         }
     }
@@ -489,29 +665,6 @@ public final class MainActivity extends Activity {
         return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
-    private void showErrorPage(String message) {
-        String safeMessage = message == null || message.trim().isEmpty()
-                ? getString(R.string.connection_error_detail)
-                : message.replace("&", "&amp;")
-                         .replace("<", "&lt;")
-                         .replace(">", "&gt;");
-
-        String html = "<!doctype html><html><head>"
-                + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-                + "<style>"
-                + "body{margin:0;min-height:100vh;display:grid;place-items:center;padding:28px;"
-                + "background:#F8EEE4;color:#241415;font-family:Arial,sans-serif;text-align:center}"
-                + "main{max-width:420px}h1{margin:0 0 12px;color:#591D20;font-size:32px}"
-                + "p{line-height:1.55;margin:0 0 22px}a{display:inline-block;padding:13px 22px;"
-                + "background:#591D20;color:white;text-decoration:none;border-radius:3px;font-weight:700}"
-                + "</style></head><body><main>"
-                + "<h1>HIDI</h1><p>" + safeMessage + "</p>"
-                + "<a href='hidi://retry'>Try again</a>"
-                + "</main></body></html>";
-
-        webView.loadDataWithBaseURL(BuildConfig.HIDI_START_URL, html, "text/html", "UTF-8", null);
-    }
-
     private final class HidiWebViewClient extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -527,23 +680,29 @@ public final class MainActivity extends Activity {
         @Override
         public void onPageFinished(WebView view, String url) {
             CookieManager.getInstance().flush();
+            syncCartSessionIntoWeb();
+            injectBridgePolish();
             pageProgress.setVisibility(View.GONE);
-            selectNavForPath(Uri.parse(url).getPath());
             super.onPageFinished(view, url);
         }
 
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-            if (request.isForMainFrame()) {
-                CharSequence description = error.getDescription();
-                showErrorPage(description == null ? null : description.toString());
+            if (request.isForMainFrame() && webView.getVisibility() == View.VISIBLE) {
+                Toast.makeText(MainActivity.this, R.string.connection_error_detail, Toast.LENGTH_SHORT).show();
             }
         }
 
         @Override
-        public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
-            if (request.isForMainFrame() && errorResponse.getStatusCode() >= 500) {
-                showErrorPage(getString(R.string.server_error_detail));
+        public void onReceivedHttpError(
+                WebView view,
+                WebResourceRequest request,
+                WebResourceResponse errorResponse
+        ) {
+            if (request.isForMainFrame()
+                    && errorResponse.getStatusCode() >= 500
+                    && webView.getVisibility() == View.VISIBLE) {
+                Toast.makeText(MainActivity.this, R.string.server_error_detail, Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -553,8 +712,8 @@ public final class MainActivity extends Activity {
         public void onProgressChanged(WebView view, int newProgress) {
             if (webView.getVisibility() == View.VISIBLE && newProgress < 100) {
                 pageProgress.setVisibility(View.VISIBLE);
-                pageProgress.setProgress(Math.max(6, newProgress));
-            } else {
+                pageProgress.setProgress(Math.max(8, newProgress));
+            } else if (newProgress >= 100) {
                 pageProgress.setVisibility(View.GONE);
             }
         }
@@ -583,24 +742,36 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private FrameLayout.LayoutParams matchFrame() {
-        return new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-        );
-    }
-
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
-    }
-
     private static final class NavItem {
+        final LinearLayout container;
         final ImageView icon;
         final TextView label;
 
-        NavItem(ImageView icon, TextView label) {
+        NavItem(LinearLayout container, ImageView icon, TextView label) {
+            this.container = container;
             this.icon = icon;
             this.label = label;
+        }
+    }
+
+    private static final class JSONObjectString {
+        static String quote(String value) {
+            if (value == null) return "null";
+            StringBuilder out = new StringBuilder(""");
+            for (int i = 0; i < value.length(); i++) {
+                char c = value.charAt(i);
+                switch (c) {
+                    case '\\': out.append("\\\\"); break;
+                    case '"': out.append("\\\""); break;
+                    case '\n': out.append("\\n"); break;
+                    case '\r': out.append("\\r"); break;
+                    case '\t': out.append("\\t"); break;
+                    default:
+                        if (c < 32) out.append(String.format("\\u%04x", (int) c));
+                        else out.append(c);
+                }
+            }
+            return out.append('"').toString();
         }
     }
 }
