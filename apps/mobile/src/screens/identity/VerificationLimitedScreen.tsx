@@ -29,7 +29,7 @@ export default function VerificationLimitedScreen({ navigation, route }: Props) 
   }, [remaining]);
 
   async function changeNumber() {
-    if (remaining <= 0) await localStore.setVerificationRetryUntil(0);
+    if (remaining <= 0) await localStore.clearVerificationLimit();
     navigation.replace("SignIn");
   }
 
