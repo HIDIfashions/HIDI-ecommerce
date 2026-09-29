@@ -24,7 +24,9 @@ export default function LaunchRestoreScreen({ navigation }: Props) {
         navigation.replace("VerificationLimited", { retryUntil });
         return;
       }
-      const deepProduct = initialUrl?.match(/(?:thehidi\.com|hidi:\/\/[^/]*)(?:\/)?products\/([^/?#]+)/i)?.[1];
+      const webProduct = initialUrl?.match(/\/products\/([^/?#]+)/i)?.[1];
+      const appProduct = initialUrl?.match(/^hidi:\/\/products\/([^/?#]+)/i)?.[1];
+      const deepProduct = webProduct ?? appProduct;
       if (deepProduct) {
         navigation.replace("ProductDeferred", { slug: decodeURIComponent(deepProduct) });
         return;
