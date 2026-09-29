@@ -34,13 +34,20 @@ export default function SavedForLaterScreen({ navigation }: Props) {
         <HidiText variant="title">Saved for later.</HidiText>
         <HidiText variant="secondary" style={{ color: colors.mutedText }}>Deferred bag items are stored on this device because the current server cart has no saved-items endpoint.</HidiText>
 
+        {catalog.state.kind === "error" ? (
+          <MessageCard tone="error">Current catalogue availability could not be refreshed. Saved items stay untouched; opening a style rechecks it independently.</MessageCard>
+        ) : catalog.state.kind === "loading" ? (
+          <MessageCard>Checking current price and availability…</MessageCard>
+        ) : null}
+
         {!cart.savedForLater.length ? (
           <EmptyState title="Nothing saved from your bag." body="Items moved out of the bag can wait here without being purchased automatically." action="Back to bag" onAction={() => navigation.navigate("MainTabs", { screen: "Bag" })} />
         ) : cart.savedForLater.map((item) => {
+          const availabilityKnown = catalog.state.kind === "content";
           const product = currentBySlug.get(item.slug);
           const variant = product?.variants.find((entry: any) => entry.id === item.variantId);
-          const available = Boolean(variant && variant.available >= item.quantity && product?.inStock);
-          const currentPrice = variant?.pricePaise;
+          const available = Boolean(availabilityKnown && variant && variant.available >= item.quantity && product?.inStock);
+          const currentPrice = availabilityKnown ? variant?.pricePaise : undefined;
           return (
             <View key={item.key} style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               <View style={styles.row}>
@@ -51,12 +58,13 @@ export default function SavedForLaterScreen({ navigation }: Props) {
                   <HidiText variant="secondary" style={styles.bold}>{item.name}</HidiText>
                   <HidiText variant="metadata">{item.color} · Size {item.size} · Qty {item.quantity}</HidiText>
                   <HidiText variant="secondary">{currentPrice !== undefined ? formatINRPaise(currentPrice) : formatINRPaise(item.savedPricePaise)}</HidiText>
-                  {!available ? <HidiText variant="metadata" style={{ color: colors.error }}>Preferred SKU is currently unavailable.</HidiText> : null}
+                  {availabilityKnown && !available ? <HidiText variant="metadata" style={{ color: colors.error }}>Preferred SKU is currently unavailable.</HidiText> : null}
+                  {!availabilityKnown ? <HidiText variant="metadata" style={{ color: colors.mutedText }}>Availability will be rechecked when you open size choices.</HidiText> : null}
                   {currentPrice !== undefined && currentPrice !== item.savedPricePaise ? <HidiText variant="metadata" style={{ color: colors.caution }}>Price changed since it was saved.</HidiText> : null}
                 </View>
               </View>
               <HidiButton
-                label={available ? "Review size & move to bag" : "Choose another size"}
+                label={availabilityKnown ? (available ? "Review size & move to bag" : "Choose another size") : "Review size & availability"}
                 onPress={() => navigation.navigate("VariantPicker", { slug: item.slug, selectedVariantId: available ? item.variantId : undefined, savedForLaterKey: item.key })}
               />
               <Pressable accessibilityRole="button" style={styles.remove} onPress={() => void cart.removeSavedForLater(item.key)}>
