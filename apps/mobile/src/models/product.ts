@@ -1,3 +1,5 @@
+import { resolveHidiMediaUrl } from "../network/config";
+
 export type ApiImage = {
   id: string;
   url: string;
@@ -36,7 +38,8 @@ export type ApiProduct = {
 };
 
 export function productImage(product: ApiProduct) {
-  return product.images?.[0]?.url || product.variants.flatMap((variant) => variant.images ?? [])[0]?.url || "";
+  const raw = product.images?.[0]?.url || product.variants.flatMap((variant) => variant.images ?? [])[0]?.url || "";
+  return resolveHidiMediaUrl(raw);
 }
 
 export function formatINRPaise(value: number) {

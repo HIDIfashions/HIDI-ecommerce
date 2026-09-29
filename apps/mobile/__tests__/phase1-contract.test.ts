@@ -18,6 +18,7 @@ import {
 } from "../src/data/catalog";
 import { screenRegistry } from "../src/spec/screenRegistry";
 import type { ApiProduct } from "../src/models/product";
+import { resolveHidiMediaUrl } from "../src/network/config";
 
 function product(overrides: Partial<ApiProduct> = {}): ApiProduct {
   return {
@@ -80,6 +81,12 @@ describe("Phase 1 discovery contracts", () => {
     const unrated = product({ id: "a", slug: "a", averageRating: undefined });
     const rated = product({ id: "b", slug: "b", averageRating: 4.7 });
     expect(sortProducts([unrated, rated], "rating").map((item) => item.id)).toEqual(["b", "a"]);
+  });
+
+  it("resolves current storefront-relative catalogue media for React Native", () => {
+    expect(resolveHidiMediaUrl("/media/products/item.png")).toMatch(/^https:\/\/[^/]+\/media\/products\/item\.png$/);
+    expect(resolveHidiMediaUrl("https://media.example.com/item.png")).toBe("https://media.example.com/item.png");
+    expect(resolveHidiMediaUrl("http://unsafe.example.com/item.png")).toBe("");
   });
 
   it("keeps recommended sort stable", () => {
