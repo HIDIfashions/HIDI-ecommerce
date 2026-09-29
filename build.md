@@ -1,7 +1,7 @@
 # HIDI Mobile - Build Specification
 
 Branch: `hidi-mobile-build-from-scratch`
-Current phase: Phase 1 COMPLETE / VERIFIED
+Current phase: Phase 2 COMPLETE / SIMULATION VERIFIED
 Scope: React Native frontend only
 
 ## Runtime
@@ -143,5 +143,31 @@ Required build-time public values for live customer OTP:
 
 WhatsApp OTP provider/sender configuration remains outside this frontend branch.
 
+## Phase 2 implementation evidence
+Implemented frontend scope:
+- H023-H036 product detail, gallery, exact SKU selection, supplied size measurements, fit-capability fallback, details/care, PIN serviceability, reviews, stock/unavailable recovery, related products and canonical add confirmation.
+- H037-H044 canonical bag, empty state, quantity edit, confirmed remove/undo, promotion capability state, bag-change acknowledgement and local Saved-for-later revalidation.
+- Cart writes are serialized. Ambiguous add/update/remove results are reconciled against a fresh canonical GET before success is claimed.
+- Canonical mutation results are compared against the last acknowledged bag and, for newly added SKUs, the shopper-visible expected price.
+- Checkout is blocked by stale bag state, unresolved price/stock attention, or quantity above current availability.
+- Unsupported server features are recorded in `src/spec/phase2Capabilities.ts`; the frontend does not manufacture success.
+
+Deterministic simulation result:
+- 10/10 Phase 0-2 commerce scenarios passed.
+- Simulation checks exact-SKU search/filtering, stock exclusion, duplicate-add merge math, initial unavailable lines, first-add price races, price+stock conflict, unresolved-attention preservation, stock quantity limits, minor-unit arithmetic and local Saved-for-later quantity revalidation.
+
+Phase 2 backend reconciliation:
+- Existing product detail/related/reviews/cart/PIN-serviceability contracts are used as-is.
+- Current cart server supports read, add exact variant, quantity update and remove.
+- Current backend does not expose fit recommendations, stock alerts, promotion evaluation, atomic variant replacement, cart/quote versioning or server Saved-for-later.
+- No backend/APIM source was modified to fill those gaps.
+
+Phase 2 native verification status:
+- Latest Actions attempt: `36610550967`.
+- Android and iOS jobs failed before any workflow step was created or executed; GitHub returned `steps: null` for both jobs.
+- Therefore this run provides no TypeScript/test/build failure evidence and is not counted as a failed application build.
+- Last full native baseline evidence remains Phase 1 run `36585777566`: TypeScript, tests, Android debug build, CocoaPods and iOS simulator build all passed.
+- Rerun the Phase 2 Android/iOS workflow when GitHub Actions runner capacity/account execution is available.
+
 ## Gate
-Phase 1 is complete. Do not start H023-H044 until the owner explicitly approves Phase 2.
+Phase 2 implementation and simulation are complete. Do not start H045-H060 until the owner explicitly approves Phase 3.
