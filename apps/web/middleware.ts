@@ -86,7 +86,7 @@ function blockResponse() {
 export function middleware(request: NextRequest) {
   const hostname = getHostname(request);
 
-  if (blockedHosts.has(hostname) && process.env.ALLOW_PUBLIC_DOMAIN !== "true") {
+  if (blockedHosts.has(hostname) && process.env.ALLOW_PUBLIC_DOMAIN === "false") {
     return blockResponse();
   }
 
