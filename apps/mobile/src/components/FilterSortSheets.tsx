@@ -74,6 +74,9 @@ export function FilterSheet({
           <HidiText variant="metadata" style={{ color: colors.mutedText }}>
             {selectedCount} selected · {liveCount} matching {liveCount === 1 ? "style" : "styles"}
           </HidiText>
+          {liveCount === 0 ? (
+            <HidiText variant="metadata" style={{ color: colors.caution }}>No current style has this exact combination. Adjust one option to recover results.</HidiText>
+          ) : null}
 
           <HidiText variant="secondary" style={styles.sectionTitle}>Size</HidiText>
           {options.sizes.map((value) => <Choice key={value} label={value} selected={draft.sizes.includes(value)} onPress={() => toggle("sizes", value)} />)}
