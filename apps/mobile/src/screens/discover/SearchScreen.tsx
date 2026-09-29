@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Clock3, Search, X } from "lucide-react-native";
 import { AppHeader } from "../../components/AppHeader";
@@ -21,8 +21,14 @@ export default function SearchScreen({ navigation }: Props) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [recents, setRecents] = useState<string[]>([]);
+  const [rememberSearches, setRememberSearches] = useState(true);
 
-  useEffect(() => { void localStore.recentSearches().then(setRecents); }, []);
+  useEffect(() => {
+    void Promise.all([localStore.recentSearches(), localStore.searchTrackingEnabled()]).then(([items, enabled]) => {
+      setRecents(items);
+      setRememberSearches(enabled);
+    });
+  }, []);
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query.trim()), 180);
     return () => clearTimeout(timer);
@@ -58,6 +64,12 @@ export default function SearchScreen({ navigation }: Props) {
   async function clearRecents() {
     await localStore.clearSearches();
     setRecents([]);
+  }
+
+  async function changeSearchTracking(enabled: boolean) {
+    await localStore.setSearchTrackingEnabled(enabled);
+    setRememberSearches(enabled);
+    if (!enabled) setRecents([]);
   }
 
   function openCategory(item: { slug: string; name: string; kind: "collection" | "category" }) {
@@ -101,6 +113,13 @@ export default function SearchScreen({ navigation }: Props) {
                 <HidiText variant="metadata" style={{ color: colors.action }}>Clear all</HidiText>
               </Pressable>
             ) : null}
+          </View>
+          <View style={[styles.privacyRow, { borderBottomColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <HidiText variant="metadata" style={styles.bold}>Remember searches</HidiText>
+              <HidiText variant="metadata" style={{ color: colors.mutedText }}>Stored only on this device.</HidiText>
+            </View>
+            <Switch value={rememberSearches} onValueChange={(value) => void changeSearchTracking(value)} thumbColor={rememberSearches ? colors.action : colors.surface} />
           </View>
           {recents.map((item) => (
             <View key={item} style={[styles.row, { borderBottomColor: colors.border }]}>
@@ -150,9 +169,19 @@ export default function SearchScreen({ navigation }: Props) {
             ))}
           </> : null}
 
-          {state.kind === "error" ? (
+          {state.kind === "error" ? <>
             <InlineFailure label="Live search is unavailable. Your recent searches are still on this device." onRetry={() => void refresh()} />
-          ) : null}
+            {recents.length ? (
+              <View style={styles.offlineRecents}>
+                <HidiText variant="metadata" style={styles.bold}>Recent searches</HidiText>
+                {recents.slice(0, 4).map((item) => (
+                  <Pressable key={"offline-"+item} accessibilityRole="button" onPress={() => setQuery(item)} style={styles.offlineRecent}>
+                    <HidiText variant="secondary">{item}</HidiText>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+          </> : null}
 
           {matches.length ? <>
             <HidiText variant="secondary" style={[styles.bold, styles.sectionTitle]}>A few favourites</HidiText>
@@ -178,6 +207,7 @@ const styles = StyleSheet.create({
   sectionTitle: { marginTop: 24, marginBottom: 6 },
   bold: { fontWeight: "600" },
   smallAction: { minHeight: 48, justifyContent: "center", paddingHorizontal: 8 },
+  privacyRow: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   row: { minHeight: 52, flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth },
   rowMain: { flex: 1, minHeight: 52, flexDirection: "row", gap: 10, alignItems: "center" },
   rowRemove: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
@@ -186,4 +216,6 @@ const styles = StyleSheet.create({
   categoryRow: { minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: StyleSheet.hairlineWidth },
   submitRow: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   productRows: { flexDirection: "row", gap: 12, flexWrap: "wrap" },
+  offlineRecents: { marginTop: 14, gap: 4 },
+  offlineRecent: { minHeight: 44, justifyContent: "center" },
 });
