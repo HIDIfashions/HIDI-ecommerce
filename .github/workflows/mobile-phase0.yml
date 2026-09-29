@@ -1,4 +1,4 @@
-name: Mobile Phase 0
+name: Mobile Phase 1
 
 on:
   push:
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  android-foundation:
+  android-phase1:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -47,3 +47,32 @@ jobs:
 
       - name: Android debug build
         run: ./android/gradlew -p android assembleDebug
+
+  ios-phase1:
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.13.1"
+          cache: npm
+          cache-dependency-path: apps/mobile/package.json
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Ruby dependencies
+        run: bundle install
+
+      - name: Install iOS pods
+        run: cd ios && bundle exec pod install
+
+      - name: iOS simulator build
+        run: xcodebuild -workspace ios/HIDI.xcworkspace -scheme HIDI -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
