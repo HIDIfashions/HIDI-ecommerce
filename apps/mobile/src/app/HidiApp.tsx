@@ -12,10 +12,7 @@ function AppChrome() {
 
   return (
     <>
-      <StatusBar
-        backgroundColor={colors.canvas}
-        barStyle={mode === "dark" ? "light-content" : "dark-content"}
-      />
+      <StatusBar barStyle={mode === "dark" ? "light-content" : "dark-content"} />
       <RootNavigator />
     </>
   );
