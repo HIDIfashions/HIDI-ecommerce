@@ -55,7 +55,7 @@ This app reuses that layer; it does not add a new one.
 ## Current checkpoint
 - Phase 0 is complete and CI-verified.
 - Phase 1 H001-H022 is complete and CI-verified in run `36585777566`.
-- Phase 2 H023-H044 is implementation-complete and deterministic simulation passed 10/10 commerce scenarios.
+- Phase 2 H023-H044 is implementation-complete and deterministic simulation passed 16/16 commerce scenarios.
 - H004/H005 use WhatsApp OTP while provider secrets remain outside React Native.
 - Phase 2 reuses only the existing product, review, PIN-serviceability and cart contracts. Unsupported fit, stock-alert, promo, atomic-SKU-replace, quote-version and server Saved-for-later capabilities are represented as explicit unavailable/local-adaptation states.
 - The latest Phase 2 Actions attempt `36610550967` failed before any job step started (`steps: null` for Android and iOS), so it is not treated as native build evidence.
