@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Bell, ChevronRight, HelpCircle, Mail, MapPin, ShieldCheck, UserRound } from "lucide-react-native";
+import { Bell, ChevronRight, HelpCircle, MapPin, ShieldCheck, UserRound } from "lucide-react-native";
 import { AppHeader } from "../../components/AppHeader";
 import { HidiButton } from "../../components/HidiButton";
 import { HidiField } from "../../components/HidiField";
@@ -14,15 +14,37 @@ import { maskPhone, updateProfile } from "../../auth/session";
 import { checkoutStorage } from "../../storage/checkoutStorage";
 import { localStore } from "../../storage/localStore";
 import { accountStorage, defaultNotificationPreference, defaultPrivacyPreference } from "../../storage/accountStorage";
-import { canSubmitSupportDraft, makeOperationId, normalizeOptionalEmail, phase5Capabilities, safeGuestOrderLookup, sanitizeSupportText } from "../../models/account";
-import type { NotificationPreference, PrivacyPreference } from "../../models/account";
+import {
+  canSubmitSupportDraft,
+  makeOperationId,
+  normalizeOptionalEmail,
+  phase5Capabilities,
+  safeGuestOrderLookup,
+  sanitizeSupportText,
+} from "../../models/account";
+import type { NotificationPreference, PrivacyPreference, SupportTicketDraft } from "../../models/account";
 import type { CheckoutAddress } from "../../models/checkout";
+import { addressSummary } from "../../models/checkout";
 import { useHidiTheme } from "../../theme/HidiTheme";
 import type { RootStackParamList } from "../../navigation/types";
 
 type Props<Name extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, Name>;
 
-type AccountNavigation = Props<"MyHidi">["navigation"];
+type BasicNavigation = {
+  navigate: (name: string, params?: unknown) => void;
+  replace?: (name: string, params?: unknown) => void;
+  goBack?: () => void;
+  reset?: (state: unknown) => void;
+};
+
+function go(navigation: BasicNavigation, name: keyof RootStackParamList, params?: unknown) {
+  navigation.navigate(String(name), params);
+}
+
+function replaceWith(navigation: BasicNavigation, name: keyof RootStackParamList, params?: unknown) {
+  if (navigation.replace) navigation.replace(String(name), params);
+  else navigation.navigate(String(name), params);
+}
 
 function Shell({ title, testID, onBack, children }: { title: string; testID: string; onBack?: () => void; children: React.ReactNode }) {
   return (
@@ -58,11 +80,11 @@ function CapabilityNotice({ capability, supportedCopy }: { capability: keyof typ
   return <MessageCard>{copy}</MessageCard>;
 }
 
-function fullAddressName(address: CheckoutAddress) {
+function displayAddressName(address: CheckoutAddress) {
   return address.firstName + (address.lastName ? " " + address.lastName : "");
 }
 
-export function AccountHomeScreen({ navigation }: { navigation: AccountNavigation }) {
+export function AccountHomeScreen({ navigation }: { navigation: BasicNavigation }) {
   const { colors } = useHidiTheme();
   const auth = useAuth();
   const [summaryError, setSummaryError] = useState(false);
@@ -75,7 +97,7 @@ export function AccountHomeScreen({ navigation }: { navigation: AccountNavigatio
     return () => { alive = false; };
   }, []);
 
-  if (!auth.session) return <GuestAccountScreen navigation={navigation as any} route={{ key: "GuestAccount", name: "GuestAccount" } as any} />;
+  if (!auth.session) return <GuestAccountScreen navigation={navigation as never} route={{ key: "GuestAccount", name: "GuestAccount" } as never} />;
 
   return (
     <ScrollView testID="H083" style={{ flex: 1, backgroundColor: colors.canvas }} contentContainerStyle={styles.scrollBody}>
@@ -84,14 +106,15 @@ export function AccountHomeScreen({ navigation }: { navigation: AccountNavigatio
       <HidiText variant="secondary" style={{ color: colors.mutedText }}>{auth.session.user.phone ? maskPhone(auth.session.user.phone) : "Signed in securely"}</HidiText>
       {summaryError ? <MessageCard tone="error">Account summary could not refresh. Sign-out and help remain available.</MessageCard> : null}
       <View style={styles.cardGroup}>
-        <Row title="My orders" detail="View current and past orders" onPress={() => navigation.navigate("MyOrders")} icon={<UserRound size={18} color={colors.action} />} />
-        <Row title="Saved items" detail={savedCount + " saved on this device"} onPress={() => navigation.navigate("MainTabs", { screen: "Saved" })} />
-        <Row title="Addresses" detail="Manage delivery addresses" onPress={() => navigation.navigate("ManageAddresses")} icon={<MapPin size={18} color={colors.action} />} />
-        <Row title="Shopping preferences" detail="Interests, sizes and history controls" onPress={() => navigation.navigate("ShoppingPreferences")} />
-        <Row title="Notifications" detail="Inbox and channel settings" onPress={() => navigation.navigate("NotificationsInbox")} icon={<Bell size={18} color={colors.action} />} />
-        <Row title="Help centre" detail="Orders, payment, delivery and support" onPress={() => navigation.navigate("HelpCentre")} icon={<HelpCircle size={18} color={colors.action} />} />
-        <Row title="Privacy choices" detail="Consent, export and deletion" onPress={() => navigation.navigate("PrivacyChoices")} icon={<ShieldCheck size={18} color={colors.action} />} />
-        <Row title="Sign out" detail="Clear local account data on this device" onPress={() => navigation.navigate("SignOutConfirm")} />
+        <Row title="My orders" detail="View current and past orders" onPress={() => go(navigation, "MyOrders")} icon={<UserRound size={18} color={colors.action} />} />
+        <Row title="Saved items" detail={savedCount + " saved on this device"} onPress={() => go(navigation, "MainTabs", { screen: "Saved" })} />
+        <Row title="Addresses" detail="Manage delivery addresses" onPress={() => go(navigation, "ManageAddresses")} icon={<MapPin size={18} color={colors.action} />} />
+        <Row title="Shopping preferences" detail="Interests, sizes and history controls" onPress={() => go(navigation, "ShoppingPreferences")} />
+        <Row title="Notifications" detail="Inbox and channel settings" onPress={() => go(navigation, "NotificationsInbox")} icon={<Bell size={18} color={colors.action} />} />
+        <Row title="Help centre" detail="Orders, payment, delivery and support" onPress={() => go(navigation, "HelpCentre")} icon={<HelpCircle size={18} color={colors.action} />} />
+        <Row title="Privacy choices" detail="Consent, export and deletion" onPress={() => go(navigation, "PrivacyChoices")} icon={<ShieldCheck size={18} color={colors.action} />} />
+        <Row title="Edit profile" detail="Name, email and phone settings" onPress={() => go(navigation, "EditProfile")} />
+        <Row title="Sign out" detail="Clear local account session on this device" onPress={() => go(navigation, "SignOutConfirm")} />
       </View>
     </ScrollView>
   );
@@ -104,12 +127,12 @@ export function GuestAccountScreen({ navigation }: Props<"GuestAccount">) {
       <HidiText variant="metadata" style={{ color: colors.mutedText, letterSpacing: 1.2 }}>GUEST HIDI</HidiText>
       <HidiText variant="title">Browse freely. Sign in only when useful.</HidiText>
       <HidiText variant="secondary" style={{ color: colors.mutedText }}>Sync favourites, addresses and order access when you choose. Help and guest order lookup stay available without marketing opt-in.</HidiText>
-      <HidiButton label="Sign in / join HIDI" onPress={() => navigation.navigate("SignIn")} />
+      <HidiButton label="Sign in / join HIDI" onPress={() => go(navigation, "SignIn")} />
       <View style={styles.cardGroup}>
-        <Row title="Find a guest order" detail="Use reference plus verified contact" onPress={() => navigation.navigate("FindGuestOrder")} />
-        <Row title="Help centre" detail="Payment, delivery, returns and support" onPress={() => navigation.navigate("HelpCentre")} />
-        <Row title="Policies & legal" detail="Shipping, returns, privacy and merchant details" onPress={() => navigation.navigate("PoliciesLegal")} />
-        <Row title="Contact HIDI" detail="Use the supported async route" onPress={() => navigation.navigate("ContactHidi")} />
+        <Row title="Find a guest order" detail="Use reference plus verified contact" onPress={() => go(navigation, "FindGuestOrder")} />
+        <Row title="Help centre" detail="Payment, delivery, returns and support" onPress={() => go(navigation, "HelpCentre")} />
+        <Row title="Policies & legal" detail="Shipping, returns, privacy and merchant details" onPress={() => go(navigation, "PoliciesLegal")} />
+        <Row title="Contact HIDI" detail="Use the supported async route" onPress={() => go(navigation, "ContactHidi")} />
       </View>
     </ScrollView>
   );
@@ -130,7 +153,7 @@ export function EditProfileScreen({ navigation }: Props<"EditProfile">) {
       setBusy(true);
       const session = await updateProfile({ preferredName: name, email: normalizedEmail ?? undefined });
       auth.setSession(session);
-      navigation.navigate("MyHidi");
+      go(navigation, "MyHidi");
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "Unable to save profile.");
     } finally { setBusy(false); }
@@ -142,8 +165,8 @@ export function EditProfileScreen({ navigation }: Props<"EditProfile">) {
       <HidiText variant="secondary" style={{ color: colors.mutedText }}>Preferred name and optional email only. Phone changes use a separate secure flow.</HidiText>
       <HidiField label="Preferred name" value={name} onChangeText={setName} autoCapitalize="words" />
       <HidiField label="Email address (optional)" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-      <Row title="Change phone number" detail="Requires secure re-verification" onPress={() => navigation.navigate("ChangePhoneNumber")} />
-      <Row title="Verify email address" detail="Optional receipts and account messages" onPress={() => navigation.navigate("VerifyEmailAddress", { email })} />
+      <Row title="Change phone number" detail="Requires secure re-verification" onPress={() => go(navigation, "ChangePhoneNumber")} />
+      <Row title="Verify email address" detail="Optional receipts and account messages" onPress={() => go(navigation, "VerifyEmailAddress", { email })} />
       {message ? <MessageCard tone="error">{message}</MessageCard> : null}
       <HidiButton label="Save changes" loading={busy} onPress={() => void save()} />
     </Shell>
@@ -165,16 +188,16 @@ export function ManageAddressesScreen({ navigation }: Props<"ManageAddresses">) 
       {message ? <MessageCard tone="success">{message}</MessageCard> : null}
       {items.length ? items.map((item) => (
         <View key={item.id} style={[styles.panel, { borderColor: colors.border, backgroundColor: colors.surface }]}> 
-          <HidiText variant="secondary" style={styles.bold}>{fullAddressName(item)}{item.isDefault ? " · Default" : ""}</HidiText>
-          <HidiText variant="metadata">{item.line1}, {item.city}, {item.state} {item.postalCode}</HidiText>
+          <HidiText variant="secondary" style={styles.bold}>{displayAddressName(item)}{item.isDefault ? " · Default" : ""}</HidiText>
+          <HidiText variant="metadata">{addressSummary(item)}</HidiText>
           <View style={styles.inlineActions}>
-            <Pressable accessibilityRole="button" onPress={() => navigation.navigate("AddAddress")} style={styles.inlineButton}><HidiText variant="metadata" style={{ color: colors.action }}>Edit</HidiText></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => go(navigation, "AddAddress")} style={styles.inlineButton}><HidiText variant="metadata" style={{ color: colors.action }}>Edit</HidiText></Pressable>
             <Pressable accessibilityRole="button" onPress={() => void makeDefault(item.id)} style={styles.inlineButton}><HidiText variant="metadata" style={{ color: colors.action }}>Make default</HidiText></Pressable>
             <Pressable accessibilityRole="button" onPress={() => void remove(item.id)} style={styles.inlineButton}><HidiText variant="metadata" style={{ color: colors.error }}>Delete</HidiText></Pressable>
           </View>
         </View>
       )) : <MessageCard>No saved addresses yet. Add one when you checkout or create it now.</MessageCard>}
-      <HidiButton label="Add address" onPress={() => navigation.navigate("AddAddress")} />
+      <HidiButton label="Add address" onPress={() => go(navigation, "AddAddress")} />
     </Shell>
   );
 }
@@ -185,7 +208,7 @@ export function SavedPaymentMethodsScreen({ navigation }: Props<"SavedPaymentMet
       <HidiText variant="title">Secure payment methods.</HidiText>
       <CapabilityNotice capability="paymentMethodTokens" supportedCopy="Provider-tokenized methods are available." />
       <MessageCard>No saved payment methods are returned by the current HIDI API. You can still choose a fresh provider-owned payment method at checkout.</MessageCard>
-      <HidiButton label="Back to My HIDI" onPress={() => navigation.navigate("MyHidi")} />
+      <HidiButton label="Back to My HIDI" onPress={() => go(navigation, "MyHidi")} />
     </Shell>
   );
 }
@@ -194,14 +217,13 @@ export function ShoppingPreferencesScreen({ navigation }: Props<"ShoppingPrefere
   const [interests, setInterests] = useState<string[]>([]);
   const [recent, setRecent] = useState(true);
   const [searches, setSearches] = useState(true);
-
-  useEffect(() => { void Promise.all([localStore.stylePreferences(), localStore.recentTrackingEnabled(), localStore.searchTrackingEnabled()]).then(([i,r,s]) => { setInterests(i); setRecent(r); setSearches(s); }); }, []);
-  async function save() { await localStore.saveStylePreferences(interests); await localStore.setRecentTrackingEnabled(recent); await localStore.setSearchTrackingEnabled(searches); navigation.navigate("MyHidi"); }
+  useEffect(() => { void Promise.all([localStore.stylePreferences(), localStore.recentTrackingEnabled(), localStore.searchTrackingEnabled()]).then(([i, r, s]) => { setInterests(i); setRecent(r); setSearches(s); }); }, []);
+  async function save() { await localStore.saveStylePreferences(interests); await localStore.setRecentTrackingEnabled(recent); await localStore.setSearchTrackingEnabled(searches); go(navigation, "MyHidi"); }
   return (
     <Shell testID="H088" title="Shopping preferences" onBack={navigation.goBack}>
       <HidiText variant="title">Make HIDI yours.</HidiText>
-      <CapabilityNotice capability="shoppingPreferences" supportedCopy="Shopping preferences are synced." />
-      {['Everyday ease','Soft tailoring','Occasion dressing','Indian wear','Accessories'].map((label) => {
+      <CapabilityNotice capability="addressBook" supportedCopy="Shopping preferences are synced." />
+      {["Everyday ease", "Soft tailoring", "Occasion dressing", "Indian wear", "Accessories"].map((label) => {
         const selected = interests.includes(label);
         return <ToggleRow key={label} title={label} detail="Personalize discovery" value={selected} onValueChange={(v) => setInterests((cur) => v ? [...cur.filter((x) => x !== label), label] : cur.filter((x) => x !== label))} />;
       })}
@@ -217,36 +239,36 @@ export function NotificationsInboxScreen({ navigation }: Props<"NotificationsInb
   return (
     <Shell testID="H089" title="Notifications" onBack={navigation.goBack}>
       <HidiText variant="title">Nothing urgent.</HidiText>
-      <CapabilityNotice capability="notifications" supportedCopy="Notifications are synced." />
+      <CapabilityNotice capability="notificationsApi" supportedCopy="Notifications are synced." />
       <View style={[styles.panel, { borderColor: colors.border, backgroundColor: colors.surface }]}><HidiText variant="secondary">Service messages will appear here when notification sync is connected.</HidiText></View>
-      <HidiButton label="Notification settings" onPress={() => navigation.navigate("NotificationSettings")} />
+      <HidiButton label="Notification settings" onPress={() => go(navigation, "NotificationSettings")} />
     </Shell>
   );
 }
 
 export function NotificationSettingsScreen({ navigation }: Props<"NotificationSettings">) {
   const [pref, setPref] = useState<NotificationPreference>(defaultNotificationPreference);
-  useEffect(() => { void accountStorage.notificationPreference().then(setPref); }, []);
-  async function save() { await accountStorage.saveNotificationPreference(pref); navigation.navigate("NotificationsInbox"); }
+  useEffect(() => { void accountStorage.notificationPreferences().then(setPref); }, []);
+  async function save() { await accountStorage.saveNotificationPreferences(pref); go(navigation, "NotificationsInbox"); }
   return (
     <Shell testID="H090" title="Notification settings" onBack={navigation.goBack}>
       <HidiText variant="title">Choose what reaches you.</HidiText>
-      <CapabilityNotice capability="notifications" supportedCopy="Notification channels are synced." />
-      <ToggleRow title="Order updates" detail="Delivery and payment service messages" value={pref.orderUpdates} onValueChange={(v) => setPref((p) => ({...p, orderUpdates:v}))} />
-      <ToggleRow title="Support updates" detail="Replies to your requests" value={pref.supportUpdates} onValueChange={(v) => setPref((p) => ({...p, supportUpdates:v}))} />
-      <ToggleRow title="Promotions" detail="Optional marketing only" value={pref.promotions} onValueChange={(v) => setPref((p) => ({...p, promotions:v}))} />
+      <CapabilityNotice capability="notificationsApi" supportedCopy="Notification channels are synced." />
+      <ToggleRow title="SMS order updates" detail="Delivery and payment service messages" value={pref.orderSms} onValueChange={(v) => setPref((p) => ({ ...p, orderSms: v }))} />
+      <ToggleRow title="WhatsApp order updates" detail="Service messages only" value={pref.orderWhatsApp} onValueChange={(v) => setPref((p) => ({ ...p, orderWhatsApp: v }))} />
+      <ToggleRow title="Promotions" detail="Optional marketing only" value={pref.promotional} onValueChange={(v) => setPref((p) => ({ ...p, promotional: v }))} />
       <HidiButton label="Save settings" onPress={() => void save()} />
-      <Row title="OS notification permission" detail="Open permission education" onPress={() => navigation.navigate("NotificationPermissionHandoff")} />
+      <Row title="OS notification permission" detail="Open permission education" onPress={() => go(navigation, "AndroidPermissionDialog", { returnTo: "NotificationSettings" })} />
     </Shell>
   );
 }
 
-export function NotificationPermissionHandoffScreen({ navigation }: Props<"NotificationPermissionHandoff">) {
+export function AndroidPermissionDialogScreen({ navigation }: Props<"AndroidPermissionDialog">) {
   return (
     <Shell testID="H091" title="Permission handoff" onBack={navigation.goBack}>
       <HidiText variant="title">Turn on notifications only when useful.</HidiText>
-      <MessageCard>HIDI will request OS notification permission only after this explanation. The current build shows the education state; native permission request wiring belongs to the release hardening phase.</MessageCard>
-      <HidiButton label="Back to settings" onPress={() => navigation.navigate("NotificationSettings")} />
+      <MessageCard>HIDI will request OS notification permission only after this explanation. The current build shows the education state; native permission request wiring belongs to release hardening.</MessageCard>
+      <HidiButton label="Back to settings" onPress={() => go(navigation, "NotificationSettings")} />
     </Shell>
   );
 }
@@ -255,40 +277,51 @@ export function HelpCentreScreen({ navigation }: Props<"HelpCentre">) {
   return (
     <Shell testID="H092" title="Help centre" onBack={navigation.goBack}>
       <HidiText variant="title">How can we help?</HidiText>
-      <Row title="I need help with an order" detail="Use order context when available" onPress={() => navigation.navigate("OrderHelp")} />
-      <Row title="Create support request" detail="Question, bug, delivery or payment concern" onPress={() => navigation.navigate("SupportRequest")} />
-      <Row title="Contact HIDI" detail="Email and website route" onPress={() => navigation.navigate("ContactHidi")} />
-      <Row title="Policies & legal" detail="Return, shipping and privacy" onPress={() => navigation.navigate("PoliciesLegal")} />
+      <CapabilityNotice capability="helpTopicsApi" supportedCopy="Help topics are synced." />
+      <Row title="I need help with an order" detail="Use order context when available" onPress={() => go(navigation, "HelpWithOrder")} />
+      <Row title="Create support request" detail="Question, bug, delivery or payment concern" onPress={() => go(navigation, "CreateSupportRequest")} />
+      <Row title="Contact HIDI" detail="Email and website route" onPress={() => go(navigation, "ContactHidi")} />
+      <Row title="Policies & legal" detail="Return, shipping and privacy" onPress={() => go(navigation, "PoliciesLegal")} />
     </Shell>
   );
 }
 
-export function OrderHelpScreen({ navigation }: Props<"OrderHelp">) {
+export function HelpWithOrderScreen({ navigation }: Props<"HelpWithOrder">) {
   return (
     <Shell testID="H093" title="Order help" onBack={navigation.goBack}>
       <HidiText variant="title">Use the exact order when possible.</HidiText>
       <MessageCard>Order-specific help is available from an order detail screen. Guest lookup requires a reference and a verified contact before showing private details.</MessageCard>
-      <HidiButton label="Find guest order" onPress={() => navigation.navigate("FindGuestOrder")} />
+      <HidiButton label="Find guest order" onPress={() => go(navigation, "FindGuestOrder")} />
     </Shell>
   );
 }
 
-export function SupportRequestScreen({ navigation, route }: Props<"SupportRequest">) {
-  const [category, setCategory] = useState(route.params?.orderId ? "Order" : "General");
+export function CreateSupportRequestScreen({ navigation, route }: Props<"CreateSupportRequest">) {
+  const [topic, setTopic] = useState(route.params?.topic ?? "General");
+  const [subject, setSubject] = useState(route.params?.orderNumber ? "Help with order " + route.params.orderNumber : "");
   const [body, setBody] = useState("");
   const [result, setResult] = useState("");
   async function submit() {
-    const text = sanitizeSupportText(body);
-    if (!canSubmitSupportDraft(text)) { setResult("Please add a clear message of at least 12 characters."); return; }
-    const id = makeOperationId("support");
-    await accountStorage.saveSupportDraft({ id, category, body: text, orderId: route.params?.orderId, createdAt: Date.now(), status: "local-draft" });
-    navigation.navigate("SupportReceived", { reference: id });
+    const cleanSubject = sanitizeSupportText(subject, 120) || topic;
+    const cleanBody = sanitizeSupportText(body, 2000);
+    if (!canSubmitSupportDraft(cleanSubject, cleanBody)) { setResult("Please add a clear subject and message of at least 12 characters."); return; }
+    const draft: SupportTicketDraft = {
+      operationId: makeOperationId("support"),
+      topic,
+      subject: cleanSubject,
+      body: cleanBody,
+      orderNumber: route.params?.orderNumber,
+      contactPreference: "email",
+    };
+    const ticket = await accountStorage.createOrGetSupportTicket(draft);
+    go(navigation, "SupportReceived", { caseId: ticket.caseId, topic: ticket.topic, orderNumber: ticket.orderNumber });
   }
   return (
     <Shell testID="H094" title="Support request" onBack={navigation.goBack}>
       <HidiText variant="title">Tell us what happened.</HidiText>
-      <CapabilityNotice capability="supportTickets" supportedCopy="Support ticket submission is available." />
-      <HidiField label="Category" value={category} onChangeText={setCategory} />
+      <CapabilityNotice capability="supportTicketsApi" supportedCopy="Support ticket submission is available." />
+      <HidiField label="Topic" value={topic} onChangeText={setTopic} />
+      <HidiField label="Subject" value={subject} onChangeText={setSubject} />
       <HidiField label="Message" value={body} onChangeText={setBody} multiline numberOfLines={5} />
       {result ? <MessageCard tone="error">{result}</MessageCard> : null}
       <HidiButton label="Save support draft" onPress={() => void submit()} />
@@ -297,11 +330,13 @@ export function SupportRequestScreen({ navigation, route }: Props<"SupportReques
 }
 
 export function SupportConversationScreen({ navigation, route }: Props<"SupportConversation">) {
+  const [ticketTopic, setTicketTopic] = useState("Support request");
+  useEffect(() => { void accountStorage.supportTicket(route.params.caseId).then((ticket) => { if (ticket?.topic) setTicketTopic(ticket.topic); }); }, [route.params.caseId]);
   return (
     <Shell testID="H095" title="Support conversation" onBack={navigation.goBack}>
-      <HidiText variant="title">Reference {route.params.reference}</HidiText>
-      <CapabilityNotice capability="supportTickets" supportedCopy="Live support conversation is available." />
-      <MessageCard>Conversation messages are not exposed by the current HIDI customer API. The local draft reference is preserved so it can be retried when support sync is available.</MessageCard>
+      <HidiText variant="title">{ticketTopic}</HidiText>
+      <CapabilityNotice capability="supportTicketsApi" supportedCopy="Live support conversation is available." />
+      <MessageCard>Reference {route.params.caseId} is saved locally. Conversation messages are not exposed by the current HIDI customer API.</MessageCard>
     </Shell>
   );
 }
@@ -330,48 +365,66 @@ export function PoliciesLegalScreen({ navigation }: Props<"PoliciesLegal">) {
 
 export function PrivacyChoicesScreen({ navigation }: Props<"PrivacyChoices">) {
   const [pref, setPref] = useState<PrivacyPreference>(defaultPrivacyPreference);
-  useEffect(() => { void accountStorage.privacyPreference().then(setPref); }, []);
-  async function save() { await accountStorage.savePrivacyPreference(pref); navigation.navigate("MyHidi"); }
+  useEffect(() => { void accountStorage.privacyPreferences().then(setPref); }, []);
+  async function save() { await accountStorage.savePrivacyPreferences(pref); go(navigation, "MyHidi"); }
   return (
     <Shell testID="H098" title="Privacy choices" onBack={navigation.goBack}>
       <HidiText variant="title">Control optional data.</HidiText>
-      <ToggleRow title="Analytics" detail="Optional product analytics" value={pref.analytics} onValueChange={(v) => setPref((p) => ({...p, analytics:v}))} />
-      <ToggleRow title="Personalization" detail="Use saved shopping signals" value={pref.personalization} onValueChange={(v) => setPref((p) => ({...p, personalization:v}))} />
-      <ToggleRow title="Promotions" detail="Optional marketing messages" value={pref.promotions} onValueChange={(v) => setPref((p) => ({...p, promotions:v}))} />
-      <Row title="Export data" detail="Server export capability" onPress={() => navigation.navigate("ExportData")} />
-      <Row title="Delete account" detail="Requires recent authentication" onPress={() => navigation.navigate("DeleteAccount")} />
+      <ToggleRow title="Analytics" detail="Optional product analytics" value={pref.analytics} onValueChange={(v) => setPref((p) => ({ ...p, analytics: v }))} />
+      <ToggleRow title="Personalization" detail="Use saved shopping signals" value={pref.personalization} onValueChange={(v) => setPref((p) => ({ ...p, personalization: v }))} />
+      <ToggleRow title="Recently viewed history" detail="Local-device history" value={pref.recentHistory} onValueChange={(v) => setPref((p) => ({ ...p, recentHistory: v }))} />
+      <ToggleRow title="Fit data" detail="Stored only when a supported fit helper is available" value={pref.fitData} onValueChange={(v) => setPref((p) => ({ ...p, fitData: v }))} />
+      <Row title="Export data" detail="Server export capability" onPress={() => go(navigation, "ExportMyData")} />
+      <Row title="Delete account" detail="Requires recent authentication" onPress={() => go(navigation, "DeleteAccount")} />
       <HidiButton label="Save privacy choices" onPress={() => void save()} />
     </Shell>
   );
 }
 
-export function ExportDataScreen({ navigation }: Props<"ExportData">) {
+export function ExportMyDataScreen({ navigation }: Props<"ExportMyData">) {
   return (
     <Shell testID="H099" title="Export data" onBack={navigation.goBack}>
       <HidiText variant="title">Data export.</HidiText>
-      <CapabilityNotice capability="privacyExport" supportedCopy="Privacy export is available." />
+      <CapabilityNotice capability="privacyExportApi" supportedCopy="Privacy export is available." />
       <MessageCard>The current HIDI API does not expose a customer privacy-export job. The app therefore does not claim that an export was submitted.</MessageCard>
     </Shell>
   );
 }
 
 export function DeleteAccountScreen({ navigation }: Props<"DeleteAccount">) {
+  const [requestId, setRequestId] = useState("");
+  async function recordLocalRequest() {
+    const request = await accountStorage.requestDeletion();
+    setRequestId(request.requestId);
+  }
   return (
     <Shell testID="H100" title="Delete account" onBack={navigation.goBack}>
       <HidiText variant="title">Account deletion.</HidiText>
-      <CapabilityNotice capability="privacyDeletion" supportedCopy="Privacy deletion is available." />
-      <MessageCard>Deletion requires server-side identity verification, retention checks and order/legal safeguards. This build does not expose a deletion endpoint.</MessageCard>
+      <CapabilityNotice capability="privacyDeletionApi" supportedCopy="Privacy deletion is available." />
+      <MessageCard>Deletion requires server-side identity verification, retention checks and order/legal safeguards. This build records a local request only.</MessageCard>
+      {requestId ? <MessageCard tone="success">Local deletion request {requestId} recorded.</MessageCard> : null}
+      <HidiButton label="Record local deletion request" onPress={() => void recordLocalRequest()} />
+      {requestId ? <HidiButton label="Continue" onPress={() => replaceWith(navigation, "DeletionRequested", { requestId })} /> : null}
     </Shell>
   );
 }
 
-export function SignOutConfirmScreen({ navigation }: Props<"SignOutConfirm">) {
+export function DeletionRequestedScreen({ navigation, route }: Props<"DeletionRequested">) {
+  return (
+    <Shell testID="H101" title="Deletion requested" onBack={navigation.goBack}>
+      <HidiText variant="title">Deletion request saved locally.</HidiText>
+      <MessageCard>Reference {route.params.requestId}. Server deletion is unavailable in the current customer API, so no account data has been deleted remotely.</MessageCard>
+    </Shell>
+  );
+}
+
+export function SignOutScreen({ navigation }: Props<"SignOutConfirm">) {
   const auth = useAuth();
   return (
     <Shell testID="H102" title="Sign out" onBack={navigation.goBack}>
       <HidiText variant="title">Sign out of this device?</HidiText>
       <MessageCard>Your local bag and guest browsing state remain available. Account session tokens are cleared.</MessageCard>
-      <HidiButton label="Sign out" onPress={() => void auth.signOut().then(() => navigation.navigate("MainTabs", { screen: "You" }))} />
+      <HidiButton label="Sign out" onPress={() => void auth.signOut().then(() => go(navigation, "MainTabs", { screen: "You" }))} />
     </Shell>
   );
 }
@@ -380,7 +433,7 @@ export function ChangePhoneNumberScreen({ navigation }: Props<"ChangePhoneNumber
   return (
     <Shell testID="H123" title="Phone number" onBack={navigation.goBack}>
       <HidiText variant="title">Change phone number.</HidiText>
-      <CapabilityNotice capability="phoneChange" supportedCopy="Phone change is available." />
+      <CapabilityNotice capability="phoneChangeApi" supportedCopy="Phone change is available." />
       <MessageCard>The current customer identity contract does not expose secure phone replacement. Sign out and sign in with the new verified phone if needed.</MessageCard>
     </Shell>
   );
@@ -390,17 +443,8 @@ export function VerifyEmailAddressScreen({ navigation, route }: Props<"VerifyEma
   return (
     <Shell testID="H124" title="Email verification" onBack={navigation.goBack}>
       <HidiText variant="title">Verify email.</HidiText>
-      <CapabilityNotice capability="emailVerification" supportedCopy="Email verification is available." />
+      <CapabilityNotice capability="emailVerificationApi" supportedCopy="Email verification is available." />
       <MessageCard>{route.params?.email ? "Email on file: " + route.params.email : "Add an email from profile first."} The current mobile customer contract does not expose an email-verification challenge.</MessageCard>
-    </Shell>
-  );
-}
-
-export function PermissionEducationScreen({ navigation }: Props<"PermissionEducation">) {
-  return (
-    <Shell testID="H125" title="Permission education" onBack={navigation.goBack}>
-      <HidiText variant="title">Permission first, prompt later.</HidiText>
-      <MessageCard>HIDI explains why a permission is useful before asking the operating system. No first-launch permission prompt is used.</MessageCard>
     </Shell>
   );
 }
@@ -409,18 +453,20 @@ export function FindGuestOrderScreen({ navigation }: Props<"FindGuestOrder">) {
   const [reference, setReference] = useState("");
   const [contact, setContact] = useState("");
   const [message, setMessage] = useState("");
-  function lookup() {
+  async function lookup() {
     const result = safeGuestOrderLookup(reference, contact);
-    if (!result.ok) { setMessage(result.reason); return; }
-    setMessage("This device can preserve the request, but the current API does not expose scoped guest-order lookup yet.");
+    if (!result.accepted) { setMessage(result.message); return; }
+    await accountStorage.saveGuestOrderLookup({ reference, contact, checkedAt: Date.now() });
+    setMessage(result.message + " The current API does not expose scoped guest-order lookup yet.");
   }
   return (
     <Shell testID="H126" title="Find guest order" onBack={navigation.goBack}>
       <HidiText variant="title">Find a guest order.</HidiText>
+      <CapabilityNotice capability="guestOrderAccessApi" supportedCopy="Guest-order lookup is available." />
       <HidiField label="Order reference" value={reference} onChangeText={setReference} />
       <HidiField label="Verified contact" value={contact} onChangeText={setContact} />
       {message ? <MessageCard>{message}</MessageCard> : null}
-      <HidiButton label="Check access" onPress={lookup} />
+      <HidiButton label="Check access" onPress={() => void lookup()} />
     </Shell>
   );
 }
@@ -429,8 +475,8 @@ export function SupportReceivedScreen({ navigation, route }: Props<"SupportRecei
   return (
     <Shell testID="H132" title="Support received" onBack={navigation.goBack}>
       <HidiText variant="title">Support draft saved.</HidiText>
-      <MessageCard>Reference {route.params.reference} is saved locally. When the support-ticket API is connected, this can be submitted without losing your context.</MessageCard>
-      <HidiButton label="View conversation" onPress={() => navigation.replace("SupportConversation", { reference: route.params.reference })} />
+      <MessageCard>Reference {route.params.caseId} is saved locally. When the support-ticket API is connected, this can be submitted without losing your context.</MessageCard>
+      <HidiButton label="View conversation" onPress={() => replaceWith(navigation, "SupportConversation", { caseId: route.params.caseId })} />
     </Shell>
   );
 }
@@ -439,11 +485,11 @@ const styles = StyleSheet.create({
   zero: { paddingHorizontal: 0, paddingTop: 0 },
   body: { padding: 20, gap: 14 },
   scrollBody: { padding: 20, paddingBottom: 40, gap: 14 },
-  cardGroup: { gap: 2 },
+  cardGroup: { gap: 2, marginTop: 6 },
   row: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   rowIcon: { width: 28, alignItems: "center" },
   bold: { fontWeight: "600" },
   panel: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 8 },
-  inlineActions: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  inlineButton: { minHeight: 44, justifyContent: "center" },
+  inlineActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  inlineButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 6 },
 });
