@@ -11,9 +11,10 @@ const keys = {
   lastSafeRoute: "hidi.mobile.lastSafeRoute.v1",
   verificationRetryUntil: "hidi.mobile.verificationRetryUntil.v1",
   recentTracking: "hidi.mobile.recentTracking.v1",
+  searchTracking: "hidi.mobile.searchTracking.v1",
 };
 
-export type RecentVisit = { slug: string; viewedAt: number };
+export type RecentVisit = { slug: string; viewedAt: number; name?: string };
 
 async function getJson<T>(key: string, fallback: T): Promise<T> {
   try {
@@ -40,7 +41,14 @@ export const localStore = {
     await AsyncStorage.setItem(keys.onboardingSeen, "1").catch(() => undefined);
   },
   stylePreferences: () => getJson<string[]>(keys.stylePreferences, []),
-  saveStylePreferences: (values: string[]) => setJson(keys.stylePreferences, Array.from(new Set(values))),
+  async saveStylePreferences(values: string[]) {
+    try {
+      await AsyncStorage.setItem(keys.stylePreferences, JSON.stringify(Array.from(new Set(values))));
+      return true;
+    } catch {
+      return false;
+    }
+  },
   wishlist: () => getJson<string[]>(keys.wishlist, []),
   async setWishlist(slugs: string[]) {
     await setJson(keys.wishlist, Array.from(new Set(slugs)));
@@ -52,10 +60,11 @@ export const localStore = {
     return next;
   },
   recentlyViewed: () => getJson<RecentVisit[]>(keys.recentlyViewed, []),
-  async rememberViewed(slug: string) {
+  async rememberViewed(slug: string, name?: string) {
     if (!(await this.recentTrackingEnabled())) return;
     const existing = await this.recentlyViewed();
-    const next = [{ slug, viewedAt: Date.now() }, ...existing.filter((item) => item.slug !== slug)].slice(0, 12);
+    const previous = existing.find((item) => item.slug === slug);
+    const next = [{ slug, viewedAt: Date.now(), name: name ?? previous?.name }, ...existing.filter((item) => item.slug !== slug)].slice(0, 12);
     await setJson(keys.recentlyViewed, next);
   },
   async clearRecentlyViewed() {
@@ -70,9 +79,18 @@ export const localStore = {
     if (!enabled) await this.clearRecentlyViewed();
   },
   recentSearches: () => getJson<string[]>(keys.recentSearches, []),
+  async searchTrackingEnabled() {
+    const raw = await AsyncStorage.getItem(keys.searchTracking).catch(() => null);
+    return raw !== "0";
+  },
+  async setSearchTrackingEnabled(enabled: boolean) {
+    await AsyncStorage.setItem(keys.searchTracking, enabled ? "1" : "0").catch(() => undefined);
+    if (!enabled) await this.clearSearches();
+  },
   async rememberSearch(query: string) {
+    if (!(await this.searchTrackingEnabled())) return;
     const clean = query.trim().slice(0, 160);
-    if (!clean) return;
+    if (!clean || /@/.test(clean) || /\d{10,}/.test(clean.replace(/\D/g, ""))) return;
     const existing = await this.recentSearches();
     await setJson(keys.recentSearches, [clean, ...existing.filter((item) => item.toLowerCase() !== clean.toLowerCase())].slice(0, 8));
   },
@@ -83,8 +101,15 @@ export const localStore = {
   clearSearches: () => setJson(keys.recentSearches, []),
   catalogCache: () => getJson<{ savedAt: number; products: unknown[] } | null>(keys.catalogCache, null),
   saveCatalogCache: (products: unknown[]) => setJson(keys.catalogCache, { savedAt: Date.now(), products }),
-  consentDraft: () => getJson<{ personalizationOptIn: boolean; whatsappOptIn: boolean }>(keys.consentDraft, { personalizationOptIn: false, whatsappOptIn: false }),
-  saveConsentDraft: (value: { personalizationOptIn: boolean; whatsappOptIn: boolean }) => setJson(keys.consentDraft, value),
+  async consentDraft() {
+    const value = await getJson<Partial<{ analyticsOptIn: boolean; personalizationOptIn: boolean; whatsappOptIn: boolean }>>(keys.consentDraft, {});
+    return {
+      analyticsOptIn: value.analyticsOptIn === true,
+      personalizationOptIn: value.personalizationOptIn === true,
+      whatsappOptIn: value.whatsappOptIn === true,
+    };
+  },
+  saveConsentDraft: (value: { analyticsOptIn: boolean; personalizationOptIn: boolean; whatsappOptIn: boolean }) => setJson(keys.consentDraft, value),
   lastSafeRoute: () => AsyncStorage.getItem(keys.lastSafeRoute).catch(() => null),
   saveLastSafeRoute: (route: string) => AsyncStorage.setItem(keys.lastSafeRoute, route).catch(() => undefined),
   async verificationRetryUntil() {
