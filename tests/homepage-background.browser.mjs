@@ -24,10 +24,15 @@ try {
   const context = await browser.newContext({ reducedMotion: "reduce", deviceScaleFactor: 1 });
   await context.route("**/*", route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
   page = await context.newPage(); page.on("pageerror", error => errors.push(error.message));
+  // Load once and exercise actual responsive transitions. Network-idle is not a layout assertion.
+  await page.goto(base, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "Pieces to live in now.", exact: true }).waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(() => Boolean(document.querySelector('[data-editorial-product] button[aria-pressed]:not(:disabled)')));
   for (const width of widths) {
-    await page.setViewportSize({ width, height: 1000 }); await page.goto(base, { waitUntil: "networkidle" });
-    await page.getByRole("heading", { name: "Pieces to live in now.", exact: true }).waitFor(); await page.evaluate(() => document.fonts.ready); await page.mouse.move(0, 0);
-    await page.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+    await page.setViewportSize({ width, height: 1000 });
+    await page.mouse.move(0, 0);
+    await page.evaluate(() => { scrollTo({ top: 0, behavior: "instant" }); return new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))); });
     await page.waitForFunction(() => document.querySelector(".site-header")?.getAttribute("data-scrolled") === "false");
     const snapshot = await page.evaluate(() => {
       const home = document.querySelector("#main-content > div"); if (!home) throw new Error("Missing homepage root");

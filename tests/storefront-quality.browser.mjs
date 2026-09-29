@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 export async function runQualityChecks({browser,engine,scenario,until,base,output,products,writes,setCartMode}) {
  const run=(id,title,work,options)=>scenario(browser,engine,id,title,work,options);
- const pdp=async(page,index=0)=>{await page.waitForLoadState('networkidle');await page.goto(base+'/products/'+products[index].slug,{waitUntil:'networkidle'});await page.locator('[data-pdp-summary]').waitFor();};
+ // This settles the old document before explicit test-driven unloads; UI assertions below still determine readiness.
+ const navigate=async(page,url)=>{await page.waitForLoadState('networkidle');return page.goto(url,{waitUntil:'networkidle'});};
+ const pdp=async(page,index=0)=>{await navigate(page,base+'/products/'+products[index].slug);await page.locator('[data-pdp-summary]').waitFor();};
  const actions=page=>page.locator('[aria-label="Purchase actions"]');
  const size=(page,name)=>page.locator('.sizes').getByRole('button',{name,exact:true});
  const summary=page=>page.locator('[data-pdp-summary]');
@@ -50,14 +52,14 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
   await dialog.getByRole('button',{name:'Next product image',exact:true}).click();assert(await dialog.getByRole('button',{name:'Zoom out',exact:true}).isDisabled());await page.keyboard.press('ArrowLeft');await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await until(()=>opener.evaluate(el=>document.activeElement===el),'gallery focus restored');
  },phone);
  await run('QUAL-08','Mobile filters correlate size and colour, expose removable selections, clear and restore focus',async page=>{
-  await page.goto(base+'/collections/all',{waitUntil:'networkidle'});const trigger=page.getByRole('button',{name:/^Filter & Sort/});await trigger.click();const dialog=page.getByRole('dialog',{name:'Product filters'});
+  await navigate(page,base+'/collections/all');const trigger=page.getByRole('button',{name:/^Filter & Sort/});await trigger.click();const dialog=page.getByRole('dialog',{name:'Product filters'});
   await dialog.getByRole('checkbox',{name:'M',exact:true}).check();await dialog.getByRole('checkbox',{name:/^Wine/}).check();await dialog.getByRole('button',{name:'Show 0 styles',exact:true}).click();await page.getByRole('heading',{name:'No styles match those filters.'}).waitFor();
   await page.getByRole('button',{name:'Remove size M filter'}).click();await trigger.click();await dialog.getByRole('checkbox',{name:'XL',exact:true}).check();await dialog.getByRole('button',{name:'Show 1 styles',exact:true}).click();assert.equal(await page.locator('[aria-label="Applied filters"] button').count(),3);await until(()=>trigger.evaluate(el=>el===document.activeElement),'filter focus restored');
   await page.getByRole('button',{name:'Clear all filters',exact:true}).click();await trigger.click();assert.equal(await dialog.locator('input[type="checkbox"]:checked').count(),0);await page.keyboard.press('Escape');await until(()=>trigger.evaluate(el=>el===document.activeElement),'filter focus restored');
   for(const [name,pressed] of [['Show one product per row','true'],['Show two products per row','true']]){await page.getByRole('button',{name,exact:true}).click();assert.equal(await page.getByRole('button',{name,exact:true}).getAttribute('aria-pressed'),pressed);}await shots(page,'collection');
  },phone);
  await run('QUAL-09','Every price option, fabric selection, sort radio and desktop sort dropdown works',async page=>{
-  await page.goto(base+'/collections/all',{waitUntil:'networkidle'});await page.getByRole('button',{name:'Filter',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Product filters'});
+  await navigate(page,base+'/collections/all');await page.getByRole('button',{name:'Filter',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Product filters'});
   await dialog.locator('summary').filter({hasText:'Fabric'}).click();await dialog.getByRole('checkbox',{name:'Fixture fabric information',exact:true}).check();assert(await dialog.getByRole('checkbox',{name:'Fixture fabric information',exact:true}).isChecked());await dialog.getByRole('checkbox',{name:'Fixture fabric information',exact:true}).uncheck();
   await dialog.locator('summary').filter({hasText:'Price',hasNotText:'Sort'}).click();for(const label of ['Under ₹1,500','₹1,500–₹2,000','Above ₹2,000','All prices']){await dialog.getByRole('radio',{name:label,exact:true}).check();assert(await dialog.getByRole('radio',{name:label,exact:true}).isChecked());}
   for(const label of ['Price: Low to high','Price: High to low','Name: A–Z','Featured']){await dialog.getByRole('radio',{name:label,exact:true}).check();assert(await dialog.getByRole('radio',{name:label,exact:true}).isChecked());}
@@ -66,7 +68,9 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
  await run('QUAL-10','Search handles reversed words, full-results navigation and repeated query parameters',async page=>{
   await page.getByRole('button',{name:'Search',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Search HIDI',exact:true});const input=dialog.getByRole('searchbox',{name:'Search HIDI products'});await input.fill('wine ira');await until(()=>dialog.locator('#hidi-search-results a').count().then(n=>n===1),'reversed-word search');
   await dialog.getByRole('link',{name:'View all search results',exact:true}).click();await page.waitForURL('**/search?*');assert.match(await page.locator('.filter-bar').innerText(),/1 result/);
-  await page.goto(base+'/search?q=ira&q=ignored',{waitUntil:'networkidle'});assert.match(await page.locator('.filter-bar').innerText(),/1 result/);await page.getByRole('searchbox',{name:'Search HIDI products'}).fill('no such fixture');await page.locator('.search-form').getByRole('button',{name:'Search',exact:true}).click();await page.getByRole('heading',{name:'No styles found.'}).waitFor();
+  await navigate(page,base+'/search?q=ira&q=ignored');assert.match(await page.locator('.filter-bar').innerText(),/1 result/);await page.getByRole('searchbox',{name:'Search HIDI products'}).fill('no such fixture');
+  await page.waitForLoadState('networkidle');
+  await page.locator('.search-form').getByRole('button',{name:'Search',exact:true}).click();await page.getByRole('heading',{name:'No styles found.'}).waitFor();
  });
  await run('QUAL-11','Malformed search responses show a recoverable error, never an empty catalogue',async page=>{
   let bad=true;await page.route('**/api/store/products',route=>bad?route.fulfill({status:200,contentType:'application/json',body:'{"unexpected":true}'}):route.continue());await page.getByRole('button',{name:'Search',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Search HIDI',exact:true});await dialog.getByRole('alert').waitFor();bad=false;await dialog.getByRole('button',{name:'Try again'}).click();await dialog.locator('[aria-label="Discover HIDI products"]').waitFor();
@@ -78,15 +82,15 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
   for(const [state,text] of [['yes','Delivery is available'],['no','Delivery is currently unavailable'],['error','cannot be checked right now']]){mode=state;await input.fill('500001');await check.click();await until(async()=>(await page.locator('.delivery-box').innerText()).includes(text),state+' PIN response');}assert.equal(calls,3);
  });
  await run('QUAL-13','Policy, contact and planned-offer destinations resolve with explicit unapproved-content boundaries',async page=>{
-  for(const path of ['/contact','/shipping','/returns','/offers','/about']){const response=await page.goto(base+path,{waitUntil:'networkidle'});assert.equal(response.status(),200,path);assert.equal(await page.locator('main').count(),1);assert.equal(await page.locator('h1').count(),1);assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),path+' overflow');}
-  await page.goto(base+'/shipping');assert.match(await page.locator('#main-content').innerText(),/₹1,499 and above/);
-  await page.goto(base+'/returns');assert.match(await page.locator('#main-content').innerText(),/7 days/);assert.doesNotMatch(await page.locator('#main-content').innerText(),/easy exchanges/i);
-  await page.goto(base+'/offers');assert.match(await page.locator('#main-content').innerText(),/not combined/);assert.equal(await page.locator('#rupee').count(),1);assert.equal(await page.locator('#silver').count(),1);
-  await page.goto(base+'/contact');assert.equal(await page.locator('a[href^="mailto:"]').count(),0);assert.match(await page.locator('#main-content').innerText(),/not open in this preview/);await shots(page,'contact');
+  for(const path of ['/contact','/shipping','/returns','/offers','/about']){const response=await navigate(page,base+path);assert.equal(response.status(),200,path);assert.equal(await page.locator('main').count(),1);assert.equal(await page.locator('h1').count(),1);assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),path+' overflow');}
+  await navigate(page,base+'/shipping');assert.match(await page.locator('#main-content').innerText(),/₹1,499 and above/);
+  await navigate(page,base+'/returns');assert.match(await page.locator('#main-content').innerText(),/7 days/);assert.doesNotMatch(await page.locator('#main-content').innerText(),/easy exchanges/i);
+  await navigate(page,base+'/offers');assert.match(await page.locator('#main-content').innerText(),/not combined/);assert.equal(await page.locator('#rupee').count(),1);assert.equal(await page.locator('#silver').count(),1);
+  await navigate(page,base+'/contact');assert.equal(await page.locator('a[href^="mailto:"]').count(),0);assert.match(await page.locator('#main-content').innerText(),/not open in this preview/);await shots(page,'contact');
  },phone);
  await run('QUAL-14','Editorial archive uses alternate photographs and about page has no heavy autoplay film',async page=>{
-  await page.goto(base+'/lookbook',{waitUntil:'networkidle'});const images=await page.locator('[aria-label="Editorial lookbook"] img').evaluateAll(items=>items.map(i=>i.getAttribute('src')));assert.equal(images.length,6);assert(images.every(src=>src.includes('02-alt.png')||src.includes('02-alt')));
-  assert.equal(await page.locator('[aria-label="Editorial lookbook"] a[href^="/products/"]').count(),6);await page.goto(base+'/about',{waitUntil:'networkidle'});assert.equal(await page.locator('#main-content video[autoplay]').count(),0);await shots(page,'about');
+  await navigate(page,base+'/lookbook');const images=await page.locator('[aria-label="Editorial lookbook"] img').evaluateAll(items=>items.map(i=>i.getAttribute('src')));assert.equal(images.length,6);assert(images.every(src=>src.includes('02-alt.png')||src.includes('02-alt')));
+  assert.equal(await page.locator('[aria-label="Editorial lookbook"] a[href^="/products/"]').count(),6);await navigate(page,base+'/about');assert.equal(await page.locator('#main-content video[autoplay]').count(),0);await shots(page,'about');
  });
  await run('QUAL-15','Buy Now retains the bag and guest checkout field constraints without submitting payment',async page=>{
   await pdp(page);await size(page,'M').click();const before=writes.length;await actions(page).getByRole('button',{name:'Buy Now',exact:true}).click();await page.waitForURL('**/checkout');await page.locator('.checkout-form').getByRole('textbox',{name:'Email address',exact:true}).waitFor();
