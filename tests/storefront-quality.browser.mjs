@@ -13,7 +13,7 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
  const size=(page,name)=>page.locator('.sizes').getByRole('button',{name,exact:true});
  const summary=page=>page.locator('[data-pdp-summary]');
  const phone={viewport:{width:390,height:844},hasTouch:true};
- const shots=async(page,name)=>page.screenshot({path:resolve(output,`${engine}-quality-${name}.png`),fullPage:true});
+ const shots=async(page,name)=>page.screenshot({path:resolve(output,`${engine}-quality-${name}.png`),fullPage:true,timeout:30000});
  await run('QUAL-01','Mobile hero separates header, garment and copy at 320, 390 and 768px',async page=>{
   for(const width of [320,390,768]){await page.setViewportSize({width,height:844});await page.evaluate(()=>window.scrollTo(0,0));
    const boxes=await page.evaluate(()=>{const box=s=>{const r=document.querySelector(s).getBoundingClientRect();return{top:r.top,bottom:r.bottom,width:r.width,height:r.height};};return{header:box('.site-header'),hero:box('[data-section="hero"]'),image:box('[data-hidi-campaign]'),title:box('[data-section="hero"] h1'),overflow:document.documentElement.scrollWidth>innerWidth};});
