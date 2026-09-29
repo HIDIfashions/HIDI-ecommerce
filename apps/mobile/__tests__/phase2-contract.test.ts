@@ -146,6 +146,33 @@ describe("Phase 2 H023-H044 contract simulation", () => {
     expect(changes[0].afterPaise).toBe(139000);
   });
 
+  it("keeps unrelated price attention after another line is removed", () => {
+    const first = cart().items[0];
+    const acknowledged = cart({
+      items: [
+        first,
+        {
+          ...first,
+          id: "line-2",
+          product: { ...first.product, id: "p2", slug: "second-style", name: "Second Style" },
+          variant: { ...first.variant, id: "v-2", sku: "SECOND-M" },
+        },
+      ],
+      itemCount: 2,
+      subtotalPaise: 258000,
+    });
+    const afterRemoval = cart({
+      items: [{
+        ...acknowledged.items[0],
+        unitPricePaise: 139000,
+        lineTotalPaise: 139000,
+      }],
+      itemCount: 1,
+      subtotalPaise: 139000,
+    });
+    expect(compareCartSnapshots(acknowledged, afterRemoval).map((change) => change.kind)).toEqual(["price"]);
+  });
+
   it("preserves deferred quantity when a saved bag SKU is reviewed", () => {
     const savedQuantity = 2;
     const selectedAvailable = 4;
