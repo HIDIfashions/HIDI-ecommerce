@@ -4,11 +4,13 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { enableScreens } from "react-native-screens";
 import RootNavigator from "../navigation/RootNavigator";
 import { HidiThemeProvider, useHidiTheme } from "../theme/HidiTheme";
+import { AuthProvider } from "../auth/AuthContext";
+import { CatalogProvider } from "../data/CatalogContext";
 
 enableScreens(true);
 
 function AppChrome() {
-  const { mode, colors } = useHidiTheme();
+  const { mode } = useHidiTheme();
 
   return (
     <>
@@ -22,7 +24,11 @@ export default function HidiApp() {
   return (
     <SafeAreaProvider>
       <HidiThemeProvider>
-        <AppChrome />
+        <AuthProvider>
+          <CatalogProvider>
+            <AppChrome />
+          </CatalogProvider>
+        </AuthProvider>
       </HidiThemeProvider>
     </SafeAreaProvider>
   );

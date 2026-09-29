@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { HidiText } from "../../components/HidiText";
 import { localStore } from "../../storage/localStore";
@@ -16,10 +16,21 @@ export default function LaunchRestoreScreen({ navigation }: Props) {
     void Promise.all([
       localStore.onboardingSeen(),
       localStore.verificationRetryUntil(),
-    ]).then(([seen, retryUntil]) => {
+      localStore.lastSafeRoute(),
+      Linking.getInitialURL().catch(() => null),
+    ]).then(([seen, retryUntil, lastSafeRoute, initialUrl]) => {
       if (!alive) return;
       if (retryUntil > Date.now()) {
         navigation.replace("VerificationLimited", { retryUntil });
+        return;
+      }
+      const deepProduct = initialUrl?.match(/(?:thehidi\.com|hidi:\/\/[^/]*)(?:\/)?products\/([^/?#]+)/i)?.[1];
+      if (deepProduct) {
+        navigation.replace("ProductDeferred", { slug: decodeURIComponent(deepProduct) });
+        return;
+      }
+      if (seen && lastSafeRoute?.startsWith("product:")) {
+        navigation.replace("ProductDeferred", { slug: lastSafeRoute.slice("product:".length) });
         return;
       }
       navigation.replace(seen ? "MainTabs" : "Welcome");
@@ -28,7 +39,7 @@ export default function LaunchRestoreScreen({ navigation }: Props) {
   }, [navigation]);
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.action }]}>
+    <View testID="H001" style={[styles.root, { backgroundColor: colors.action }]}>
       <HidiText variant="display" style={[styles.logo, { color: colors.canvas }]}>HIDI</HidiText>
       <HidiText variant="metadata" style={{ color: colors.canvas, letterSpacing: 3 }}>EVERYDAY, BEAUTIFULLY.</HidiText>
     </View>
