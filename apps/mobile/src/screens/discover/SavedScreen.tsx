@@ -42,7 +42,7 @@ export default function SavedScreen() {
           onAction={() => navigation.navigate("Shop")}
         />
         {!auth.session ? (
-          <Pressable accessibilityRole="button" onPress={() => navigation.navigate("SignIn")} style={styles.signIn}>
+          <Pressable accessibilityRole="button" onPress={() => navigation.navigate("SignIn", { returnTo: "saved" })} style={styles.signIn}>
             <HidiText variant="metadata" style={{ color: colors.action }}>Sign in to sync your favourites</HidiText>
           </Pressable>
         ) : null}
