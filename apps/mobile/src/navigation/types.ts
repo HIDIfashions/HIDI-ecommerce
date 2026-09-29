@@ -11,10 +11,10 @@ export type RootStackParamList = {
   VerificationLimited: { phone?: string; retryUntil: number };
   MainTabs: undefined;
   Collection: { slug: string; title: string };
-  Listing: { title: string; collectionSlug?: string; query?: string; filters?: Filters; sort?: SortKey };
+  Listing: { title: string; collectionSlug?: string; categorySlug?: string; query?: string; filters?: Filters; sort?: SortKey };
   Search: undefined;
   SearchResults: { query: string; filters?: Filters; sort?: SortKey };
-  Filters: { title: string; productsSource: "listing" | "search"; query?: string; collectionSlug?: string; current: Filters; sort?: SortKey };
+  Filters: { title: string; productsSource: "listing" | "search"; query?: string; collectionSlug?: string; categorySlug?: string; current: Filters; sort?: SortKey };
   RecentlyViewed: undefined;
   ProductDeferred: { slug: string };
 };
