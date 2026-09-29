@@ -128,12 +128,29 @@ async function refreshSession(session: StoredSession) {
   return saveSession(payload);
 }
 
+let pendingRefresh: {
+  userId: string;
+  refreshToken: string;
+  promise: Promise<StoredSession | null>;
+} | null = null;
+
 export async function getAccessToken() {
   const session = getStoredSession();
   if (!session) return null;
   if (session.expires_at > Math.floor(Date.now() / 1000)) return session.access_token;
-  const refreshed = await refreshSession(session);
-  return refreshed?.access_token ?? null;
+  // Account, wallet and navigation mount together. Share the token rotation so
+  // every caller receives the same authenticated result instead of a stale null.
+  if (!pendingRefresh || pendingRefresh.userId !== session.user.id || pendingRefresh.refreshToken !== session.refresh_token) {
+    const promise = refreshSession(session).finally(() => {
+      if (pendingRefresh?.promise === promise) pendingRefresh = null;
+    });
+    pendingRefresh = { userId: session.user.id, refreshToken: session.refresh_token, promise };
+  }
+  const refreshed = await pendingRefresh.promise;
+  const current = getStoredSession();
+  return refreshed && current?.user.id === session.user.id && current.access_token === refreshed.access_token
+    ? refreshed.access_token
+    : null;
 }
 
 export async function signOut() {

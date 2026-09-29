@@ -6,22 +6,22 @@ import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 export const dynamic = "force-dynamic";
 
 const title = "Shop All";
-const description = "Explore the complete HIDI edit in one place.";
+const description = "Shop HIDI women's kurta sets and Indian wear for work, everyday dressing and special occasions. Explore colours, sizes and the complete collection.";
 
 export const metadata: Metadata = {
-  title,
+  title: "Women's Kurta Sets & Indian Wear",
   description,
   alternates: { canonical: "/collections/all" },
   openGraph: {
     type: "website",
     url: "/collections/all",
-    title: "Shop All | HIDI",
+    title: "Women's Kurta Sets & Indian Wear | HIDI",
     description,
     images: ["/brand/hidi-hero-green-garden-fullbody.webp"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Shop All | HIDI",
+    title: "Women's Kurta Sets & Indian Wear | HIDI",
     description,
     images: ["/brand/hidi-hero-green-garden-fullbody.webp"],
   },
@@ -42,9 +42,7 @@ export default async function ShopAllPage() {
     <div className="container collection-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }} />
       <header className="collection-header">
-        <p className="eyebrow">HIDI EDIT</p>
         <h1>{title}</h1>
-        <p>{description}</p>
       </header>
 
       <CollectionBrowser products={products} />
