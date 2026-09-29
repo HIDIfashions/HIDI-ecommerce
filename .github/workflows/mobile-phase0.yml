@@ -49,7 +49,6 @@ jobs:
         run: ./android/gradlew -p android assembleDebug
 
   ios-phase2:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     timeout-minutes: 45
     defaults:
