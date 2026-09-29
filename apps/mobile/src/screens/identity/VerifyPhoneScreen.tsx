@@ -77,9 +77,9 @@ export default function VerifyPhoneScreen({ navigation, route }: Props) {
     <HidiScreen testID="H005" contentStyle={styles.zeroTop}>
       <AppHeader title="Verify phone" onBack={navigation.goBack} />
       <Pressable style={styles.body} onPress={() => inputRef.current?.focus()}>
-        <HidiText variant="metadata" style={{ color: colors.mutedText, letterSpacing: 1.3 }}>ONE QUICK CHECK</HidiText>
-        <HidiText variant="title">Check your messages.</HidiText>
-        <HidiText variant="secondary" style={{ color: colors.mutedText }}>Enter the 6-digit code sent to {maskPhone(route.params.phone)}.</HidiText>
+        <HidiText variant="metadata" style={{ color: colors.mutedText, letterSpacing: 1.3 }}>WHATSAPP VERIFICATION</HidiText>
+        <HidiText variant="title">Check WhatsApp.</HidiText>
+        <HidiText variant="secondary" style={{ color: colors.mutedText }}>Enter the 6-digit code we sent on WhatsApp to {maskPhone(route.params.phone)}.</HidiText>
 
         <Pressable accessibilityRole="button" onPress={() => navigation.replace("SignIn", { returnTo: route.params.returnTo })}>
           <HidiText variant="metadata" style={{ color: colors.action }}>Change number</HidiText>
@@ -110,7 +110,7 @@ export default function VerifyPhoneScreen({ navigation, route }: Props) {
         </HidiText>
         {seconds <= 0 ? (
           <Pressable accessibilityRole="button" style={styles.resend} onPress={() => void resend()}>
-            <HidiText variant="action" style={{ color: colors.action }}>Resend code</HidiText>
+            <HidiText variant="action" style={{ color: colors.action }}>Resend on WhatsApp</HidiText>
           </Pressable>
         ) : null}
 
