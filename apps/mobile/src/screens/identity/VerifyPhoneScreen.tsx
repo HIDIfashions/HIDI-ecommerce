@@ -59,7 +59,7 @@ export default function VerifyPhoneScreen({ navigation, route }: Props) {
   }
 
   return (
-    <HidiScreen contentStyle={styles.zeroTop}>
+    <HidiScreen testID="H005" contentStyle={styles.zeroTop}>
       <AppHeader title="Verify phone" onBack={navigation.goBack} />
       <Pressable style={styles.body} onPress={() => inputRef.current?.focus()}>
         <HidiText variant="metadata" style={{ color: colors.mutedText, letterSpacing: 1.3 }}>ONE QUICK CHECK</HidiText>
