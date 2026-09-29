@@ -2,6 +2,13 @@ jest.mock("@react-native-community/netinfo", () => ({
   fetch: jest.fn(),
 }));
 
+jest.mock("../src/storage/localStore", () => ({
+  localStore: {
+    catalogCache: jest.fn(),
+    saveCatalogCache: jest.fn(),
+  },
+}));
+
 import {
   emptyFilters,
   filterProducts,
