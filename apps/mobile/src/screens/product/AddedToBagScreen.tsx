@@ -17,7 +17,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "AddedToBag">;
 
 export default function AddedToBagScreen({ navigation, route }: Props) {
   const { colors } = useHidiTheme();
-  const { cart } = useCart();
+  const { cart, attention } = useCart();
   const detail = useProductDetail(route.params.slug);
   const variant = detail.product?.variants.find((item) => item.id === route.params.variantId);
   const canonicalLine = useMemo(() => cart?.items.find((item) => item.variant.id === route.params.variantId), [cart, route.params.variantId]);
@@ -50,7 +50,7 @@ export default function AddedToBagScreen({ navigation, route }: Props) {
         ) : null}
 
         {route.params.reconciled ? <MessageCard tone="success">The first add response was uncertain, so HIDI re-read your bag and confirmed the item before showing success.</MessageCard> : null}
-        {cart && cart.items.some((line) => line.variant.id === route.params.variantId) && useCart().attention.some((change) => change.lineId === canonicalLine?.id) ? (
+        {cart && cart.items.some((line) => line.variant.id === route.params.variantId) && attention.some((change) => change.lineId === canonicalLine?.id) ? (
           <MessageCard tone="error">The canonical bag response contains a price or availability change for this line. Review the bag change before checkout.</MessageCard>
         ) : null}
         {route.params.savedCleanupFailed ? <MessageCard tone="error">The item is in your bag, but its local Saved-for-later entry could not be cleared. Review Saved for later before adding it again.</MessageCard> : null}
