@@ -15,7 +15,7 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 
 function AccountTabScreen({ navigation }: BottomTabScreenProps<RootTabParamList, "You">) {
   const rootNavigation = navigation.getParent();
-  return <AccountHomeScreen navigation={(rootNavigation ?? navigation) as any} route={{ key: "MyHidi", name: "MyHidi" } as any} />;
+  return <AccountHomeScreen navigation={(rootNavigation ?? navigation) as any} />;
 }
 
 function icon(route: keyof RootTabParamList, color: string, size: number) {
