@@ -11,7 +11,7 @@ jest.mock("../src/storage/localStore", () => ({
 
 import { screenRegistry } from "../src/spec/screenRegistry";
 import { phase2Capabilities } from "../src/spec/phase2Capabilities";
-import { compareCartSnapshots, type ApiCart } from "../src/models/cart";
+import { cartAttentionAfterMutation, compareCartSnapshots, type ApiCart } from "../src/models/cart";
 import { lineQuantityForVariant } from "../src/data/cartApi";
 import { filterProducts, matchesSearch } from "../src/data/catalog";
 import type { ApiProduct } from "../src/models/product";
@@ -117,6 +117,20 @@ describe("Phase 2 H023-H044 contract simulation", () => {
     expect(lineQuantityForVariant(afterSecondAdd, "v-m")).toBe(2);
     expect(afterSecondAdd.items[0].lineTotalPaise).toBe(afterSecondAdd.items[0].unitPricePaise * 2);
     expect(afterSecondAdd.subtotalPaise).toBe(258000);
+  });
+
+  it("detects a server price change on the first add against the shopper-visible price", () => {
+    const canonical = cart({
+      subtotalPaise: 139000,
+      items: [{ ...cart().items[0], unitPricePaise: 139000, lineTotalPaise: 139000 }],
+    });
+    const changes = cartAttentionAfterMutation(null, canonical, {
+      variantId: "v-m",
+      expectedUnitPricePaise: 129000,
+    });
+    expect(changes.map((change) => change.kind)).toEqual(["price"]);
+    expect(changes[0].beforePaise).toBe(129000);
+    expect(changes[0].afterPaise).toBe(139000);
   });
 
   it("flags an unavailable line even without a previous local snapshot", () => {
