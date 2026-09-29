@@ -9,6 +9,7 @@ import { MessageCard } from "../../components/MessageCard";
 import { maskPhone, sendPhoneOtp, verifyPhoneOtp } from "../../auth/session";
 import { useAuth } from "../../auth/AuthContext";
 import { useHidiTheme } from "../../theme/HidiTheme";
+import { localStore } from "../../storage/localStore";
 import { hidiRadius } from "../../theme/tokens";
 import type { RootStackParamList } from "../../navigation/types";
 
@@ -41,7 +42,14 @@ export default function VerifyPhoneScreen({ navigation, route }: Props) {
         routes: [{ name: "MainTabs", params: route.params.returnTo === "saved" ? { screen: "Saved" } : { screen: "Home" } }],
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to verify the code.");
+      const err = cause as Error & { status?: number; retryAfterSeconds?: number };
+      if (err.status === 429) {
+        const retryUntil = Date.now() + Math.max(err.retryAfterSeconds ?? 60, 60) * 1000;
+        await localStore.setVerificationLimit(route.params.phone, retryUntil);
+        navigation.replace("VerificationLimited", { retryUntil, phone: route.params.phone });
+        return;
+      }
+      setError(err.message || "Unable to verify the code.");
     } finally {
       setBusy(false);
     }
@@ -54,7 +62,14 @@ export default function VerifyPhoneScreen({ navigation, route }: Props) {
       setSeconds(result.resendAfterSeconds);
       setCode("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to resend right now.");
+      const err = cause as Error & { status?: number; retryAfterSeconds?: number };
+      if (err.status === 429) {
+        const retryUntil = Date.now() + Math.max(err.retryAfterSeconds ?? 60, 60) * 1000;
+        await localStore.setVerificationLimit(route.params.phone, retryUntil);
+        navigation.replace("VerificationLimited", { retryUntil, phone: route.params.phone });
+        return;
+      }
+      setError(err.message || "Unable to resend right now.");
     }
   }
 
