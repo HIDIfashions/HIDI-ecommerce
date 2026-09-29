@@ -5,6 +5,7 @@ import { Check } from "lucide-react-native";
 import { AppHeader } from "../../components/AppHeader";
 import { HidiButton } from "../../components/HidiButton";
 import { HidiScreen } from "../../components/HidiScreen";
+import { MessageCard } from "../../components/MessageCard";
 import { HidiText } from "../../components/HidiText";
 import { localStore } from "../../storage/localStore";
 import { useHidiTheme } from "../../theme/HidiTheme";
@@ -24,6 +25,7 @@ const options = [
 export default function StylePreferencesScreen({ navigation }: Props) {
   const { colors } = useHidiTheme();
   const [selected, setSelected] = useState<string[]>([]);
+  const [error, setError] = useState("");
 
   useEffect(() => { void localStore.stylePreferences().then(setSelected); }, []);
 
@@ -32,9 +34,16 @@ export default function StylePreferencesScreen({ navigation }: Props) {
   }
 
   async function finish(save: boolean) {
-    if (save) await localStore.saveStylePreferences(selected);
+    setError("");
+    if (save) {
+      const saved = await localStore.saveStylePreferences(selected);
+      if (!saved) {
+        setError("Your choices are still here. We couldn’t save them on this device yet.");
+        return;
+      }
+    }
     await localStore.setOnboardingSeen();
-    navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+    navigation.reset({ index: 0, routes: [{ name: "MainTabs", params: { screen: "Home" } }] });
   }
 
   return (
@@ -64,6 +73,7 @@ export default function StylePreferencesScreen({ navigation }: Props) {
         </View>
 
         <HidiText variant="metadata" style={{ color: colors.mutedText }}>Your preferences never limit what you can shop.</HidiText>
+        {error ? <MessageCard tone="error">{error}</MessageCard> : null}
         <View style={styles.actions}>
           <HidiButton label="Save my edit" onPress={() => void finish(true)} />
           <Pressable accessibilityRole="button" style={styles.skip} onPress={() => void finish(false)}>
