@@ -14,11 +14,13 @@ export function ProductCard({
   onOpen,
   compact = false,
   onSavedChange,
+  savedBaselinePaise,
 }: {
   product: ApiProduct;
   onOpen: () => void;
   compact?: boolean;
   onSavedChange?: (saved: boolean) => void;
+  savedBaselinePaise?: number;
 }) {
   const { colors } = useHidiTheme();
   const [saved, setSaved] = useState(false);
@@ -39,7 +41,7 @@ export function ProductCard({
     const desired = !desiredSaved.current;
     desiredSaved.current = desired;
     setSaved(desired);
-    const finalList = await setWishlistDesired(product.slug, desired);
+    const finalList = await setWishlistDesired(product.slug, desired, { pricePaise: product.minPricePaise, inStock: product.inStock });
     if (desiredSaved.current === desired) {
       const finalSaved = finalList.includes(product.slug);
       setSaved(finalSaved);
@@ -77,6 +79,9 @@ export function ProductCard({
         <HidiText variant="metadata" style={{ color: colors.mutedText }}>
           {colorCount ? String(colorCount) + (colorCount === 1 ? " colour" : " colours") : "HIDI edit"}
         </HidiText>
+        {savedBaselinePaise !== undefined && savedBaselinePaise !== product.minPricePaise ? (
+          <HidiText variant="metadata" style={{ color: colors.caution }}>Price changed since you saved this</HidiText>
+        ) : null}
       </Pressable>
     </View>
   );

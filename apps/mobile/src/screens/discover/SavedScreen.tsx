@@ -5,7 +5,7 @@ import { HidiText } from "../../components/HidiText";
 import { ProductGrid } from "../../components/ProductGrid";
 import { CatalogSkeleton, EmptyState, ErrorState, InlineFailure, OfflineBadge } from "../../components/StateViews";
 import { useCatalog } from "../../data/CatalogContext";
-import { localStore } from "../../storage/localStore";
+import { localStore, WishlistSnapshot } from "../../storage/localStore";
 import { useAuth } from "../../auth/AuthContext";
 import { useHidiTheme } from "../../theme/HidiTheme";
 
@@ -15,10 +15,15 @@ export default function SavedScreen() {
   const auth = useAuth();
   const { state, refresh } = useCatalog();
   const [savedSlugs, setSavedSlugs] = useState<string[] | null>(null);
+  const [savedSnapshots, setSavedSnapshots] = useState<Record<string, WishlistSnapshot>>({});
 
   const reloadSaved = useCallback(() => {
     let alive = true;
-    void localStore.wishlist().then((items) => { if (alive) setSavedSlugs(items); });
+    void Promise.all([localStore.wishlist(), localStore.wishlistSnapshots()]).then(([items, snapshots]) => {
+      if (!alive) return;
+      setSavedSlugs(items);
+      setSavedSnapshots(snapshots);
+    });
     return () => { alive = false; };
   }, []);
 
@@ -67,9 +72,13 @@ export default function SavedScreen() {
         ) : null}
         <ProductGrid
           products={products}
+          savedSnapshots={savedSnapshots}
           onOpen={(product) => navigation.navigate("ProductDeferred", { slug: product.slug })}
+          onSavedChange={(product, saved) => {
+            if (!saved) setSavedSlugs((current) => current?.filter((slug) => slug !== product.slug) ?? current);
+          }}
         />
-        <HidiText variant="metadata" style={{ color: colors.mutedText }}>Saved items do not reserve stock. Availability is shown from the latest loaded catalogue.</HidiText>
+        <HidiText variant="metadata" style={{ color: colors.mutedText }}>Saved items do not reserve stock. Availability and any price changes use the latest loaded catalogue; guest saves stay on this device.</HidiText>
       </> : null}
     </ScrollView>
   );

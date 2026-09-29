@@ -4,6 +4,7 @@ const keys = {
   onboardingSeen: "hidi.mobile.onboardingSeen.v1",
   stylePreferences: "hidi.mobile.stylePreferences.v1",
   wishlist: "hidi.mobile.wishlist.v1",
+  wishlistSnapshots: "hidi.mobile.wishlistSnapshots.v1",
   recentlyViewed: "hidi.mobile.recentlyViewed.v1",
   recentSearches: "hidi.mobile.recentSearches.v1",
   catalogCache: "hidi.mobile.catalogCache.v1",
@@ -17,6 +18,7 @@ const keys = {
 };
 
 export type RecentVisit = { slug: string; viewedAt: number; name?: string };
+export type WishlistSnapshot = { pricePaise: number; inStock: boolean; savedAt: number };
 
 async function getJson<T>(key: string, fallback: T): Promise<T> {
   try {
@@ -54,6 +56,17 @@ export const localStore = {
   wishlist: () => getJson<string[]>(keys.wishlist, []),
   async setWishlist(slugs: string[]) {
     await setJson(keys.wishlist, Array.from(new Set(slugs)));
+  },
+  wishlistSnapshots: () => getJson<Record<string, WishlistSnapshot>>(keys.wishlistSnapshots, {}),
+  async setWishlistSnapshot(slug: string, snapshot: WishlistSnapshot) {
+    const current = await this.wishlistSnapshots();
+    await setJson(keys.wishlistSnapshots, { ...current, [slug]: snapshot });
+  },
+  async removeWishlistSnapshot(slug: string) {
+    const current = await this.wishlistSnapshots();
+    if (!(slug in current)) return;
+    delete current[slug];
+    await setJson(keys.wishlistSnapshots, current);
   },
   async toggleWishlist(slug: string) {
     const current = await this.wishlist();
