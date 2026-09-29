@@ -44,13 +44,23 @@ export default function StockAlertScreen({ navigation, route }: Props) {
         </View>
 
         <View style={[styles.icon, { backgroundColor: colors.blush }]}><BellOff size={28} color={colors.action} /></View>
-        <HidiText variant="title">Availability alerts aren’t connected yet.</HidiText>
-        <HidiText variant="secondary" style={{ color: colors.mutedText }}>
-          The current HIDI customer API does not expose the blueprint’s stock-alert subscription endpoint or a verified alert destination. HIDI will not pretend an alert was scheduled.
-        </HidiText>
-        <MessageCard>This screen does not opt you into promotional messages. Saving the style is local shopping intent, not marketing consent.</MessageCard>
-        <HidiButton label={saved ? "Saved" : "Save this style instead"} disabled={saved} onPress={() => void saveStyle()} />
-        <HidiButton label="Back to size choices" onPress={() => navigation.navigate("VariantPicker", { slug: product.slug })} />
+        {variant.available > 0 ? (
+          <>
+            <HidiText variant="title">This size is available now.</HidiText>
+            <HidiText variant="secondary" style={{ color: colors.mutedText }}>Availability changed while you were here. Return to size choices to add it normally.</HidiText>
+            <HidiButton label="Choose this size" onPress={() => navigation.navigate("VariantPicker", { slug: product.slug, selectedVariantId: variant.id })} />
+          </>
+        ) : (
+          <>
+            <HidiText variant="title">Availability alerts aren’t connected yet.</HidiText>
+            <HidiText variant="secondary" style={{ color: colors.mutedText }}>
+              The current HIDI customer API does not expose the blueprint’s stock-alert subscription endpoint or a verified alert destination. HIDI will not pretend an alert was scheduled.
+            </HidiText>
+            <MessageCard>This screen does not opt you into promotional messages. Saving the style is local shopping intent, not marketing consent.</MessageCard>
+            <HidiButton label={saved ? "Saved" : "Save this style instead"} disabled={saved} onPress={() => void saveStyle()} />
+            <HidiButton label="Back to size choices" onPress={() => navigation.navigate("VariantPicker", { slug: product.slug })} />
+          </>
+        )}
       </View>
     </HidiScreen>
   );
