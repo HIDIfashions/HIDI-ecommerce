@@ -47,11 +47,12 @@ export default function GuestCheckoutContactScreen({ navigation }: Props) {
       setError("Enter a valid email address, or leave it blank.");
       return;
     }
+    const cleanEmail = email.trim();
     await checkoutStorage.saveContact({
       phone: normalized,
-      email: email.trim() || undefined,
       verified: Boolean(sessionPhone),
       source: sessionPhone ? "session" : "guest",
+      ...(cleanEmail ? { email: cleanEmail } : {}),
     });
     navigation.navigate("CheckoutAddress");
   }
