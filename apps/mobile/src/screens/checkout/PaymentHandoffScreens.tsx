@@ -18,12 +18,14 @@ import type { RootStackParamList } from "../../navigation/types";
 
 type UpiProps = NativeStackScreenProps<RootStackParamList, "UpiHandoff">;
 type CardProps = NativeStackScreenProps<RootStackParamList, "SecureCardCheckout">;
-type CheckoutNavigation = {
-  goBack: () => void;
-  replace: (name: keyof RootStackParamList, params?: object) => void;
+type SecureHandoffProps = {
+  mode: "upi" | "card";
+  onBack: () => void;
+  onOrderConfirmed: (orderNumber: string) => void;
+  onConfirmingPayment: (orderNumber: string) => void;
 };
 
-function SecureHandoff({ navigation, mode }: { navigation: CheckoutNavigation; mode: "upi" | "card" }) {
+function SecureHandoff({ mode, onBack, onOrderConfirmed, onConfirmingPayment }: SecureHandoffProps) {
   const { colors } = useHidiTheme();
   const auth = useAuth();
   const { cart } = useCart();
@@ -44,8 +46,8 @@ function SecureHandoff({ navigation, mode }: { navigation: CheckoutNavigation; m
     setBusy(true); setError("");
     try {
       const attempt = await createCheckoutAttempt({ cart, contact, address, accessToken: auth.session?.access_token, methodIntent: mode });
-      if (attempt.captured) navigation.replace("OrderConfirmed", { orderNumber: attempt.orderNumber });
-      else navigation.replace("ConfirmingPayment", { orderNumber: attempt.orderNumber });
+      if (attempt.captured) onOrderConfirmed(attempt.orderNumber);
+      else onConfirmingPayment(attempt.orderNumber);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Secure payment could not be prepared.");
     } finally {
@@ -57,7 +59,7 @@ function SecureHandoff({ navigation, mode }: { navigation: CheckoutNavigation; m
   const Icon = mode === "upi" ? Smartphone : CreditCard;
   return (
     <HidiScreen testID={mode === "upi" ? "H053" : "H054"} contentStyle={styles.zero}>
-      <AppHeader title={title} onBack={navigation.goBack} />
+      <AppHeader title={title} onBack={onBack} />
       <View style={styles.body}>
         <View style={[styles.icon, { backgroundColor: colors.blush }]}><Icon size={30} color={colors.action} /></View>
         <HidiText variant="title">Leave HIDI securely.</HidiText>
@@ -76,11 +78,25 @@ function SecureHandoff({ navigation, mode }: { navigation: CheckoutNavigation; m
 }
 
 export function UpiHandoffScreen({ navigation }: UpiProps) {
-  return <SecureHandoff navigation={navigation} mode="upi" />;
+  return (
+    <SecureHandoff
+      mode="upi"
+      onBack={navigation.goBack}
+      onOrderConfirmed={(orderNumber) => navigation.replace("OrderConfirmed", { orderNumber })}
+      onConfirmingPayment={(orderNumber) => navigation.replace("ConfirmingPayment", { orderNumber })}
+    />
+  );
 }
 
 export function SecureCardCheckoutScreen({ navigation }: CardProps) {
-  return <SecureHandoff navigation={navigation} mode="card" />;
+  return (
+    <SecureHandoff
+      mode="card"
+      onBack={navigation.goBack}
+      onOrderConfirmed={(orderNumber) => navigation.replace("OrderConfirmed", { orderNumber })}
+      onConfirmingPayment={(orderNumber) => navigation.replace("ConfirmingPayment", { orderNumber })}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
