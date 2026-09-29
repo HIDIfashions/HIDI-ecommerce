@@ -38,7 +38,7 @@ export default function StylePreferencesScreen({ navigation }: Props) {
   }
 
   return (
-    <HidiScreen contentStyle={styles.zeroTop}>
+    <HidiScreen testID="H003" contentStyle={styles.zeroTop}>
       <AppHeader title="Style preferences" onBack={navigation.goBack} />
       <View style={styles.body}>
         <HidiText variant="metadata" style={{ color: colors.mutedText, letterSpacing: 1.2 }}>MAKE YOURSELF AT HOME</HidiText>
