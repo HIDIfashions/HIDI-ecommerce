@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CreditCard, Smartphone } from "lucide-react-native";
 import { AppHeader } from "../../components/AppHeader";
 import { HidiButton } from "../../components/HidiButton";
@@ -18,7 +18,10 @@ import type { RootStackParamList } from "../../navigation/types";
 
 type UpiProps = NativeStackScreenProps<RootStackParamList, "UpiHandoff">;
 type CardProps = NativeStackScreenProps<RootStackParamList, "SecureCardCheckout">;
-type CheckoutNavigation = NativeStackNavigationProp<RootStackParamList>;
+type CheckoutNavigation = {
+  goBack: () => void;
+  replace: (name: keyof RootStackParamList, params?: object) => void;
+};
 
 function SecureHandoff({ navigation, mode }: { navigation: CheckoutNavigation; mode: "upi" | "card" }) {
   const { colors } = useHidiTheme();
