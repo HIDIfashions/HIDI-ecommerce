@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Heart } from "lucide-react-native";
 import { AppHeader } from "../../components/AppHeader";
@@ -42,7 +42,9 @@ export default function ProductUnavailableScreen({ navigation, route }: Props) {
           {notFound ? "This product is no longer published in the current catalogue." : "This published style is currently sold out."}
         </HidiText>
         <HidiButton label="Explore similar styles" onPress={() => navigation.navigate("SimilarStyles", { slug: route.params.slug })} />
-        <HidiButton label="Browse HIDI" onPress={() => navigation.navigate("MainTabs", { screen: "Shop" })} />
+        <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => navigation.navigate("MainTabs", { screen: "Shop" })}>
+          <HidiText variant="secondary" style={{ color: colors.action }}>Browse HIDI</HidiText>
+        </Pressable>
       </View>
     </HidiScreen>
   );
@@ -57,4 +59,5 @@ const styles = StyleSheet.create({
   icon: { width: 76, height: 76, borderRadius: 38, alignItems: "center", justifyContent: "center", marginTop: 20 },
   center: { textAlign: "center" },
   bold: { fontWeight: "600" },
+  secondary: { minHeight: 48, alignItems: "center", justifyContent: "center" },
 });

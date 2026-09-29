@@ -34,10 +34,14 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
   }, [product]);
 
   useEffect(() => {
+    if (notFound) {
+      navigation.replace("ProductUnavailable", { slug: route.params.slug });
+      return;
+    }
     if (product && !product.inStock) {
       navigation.replace("ProductUnavailable", { slug: product.slug });
     }
-  }, [navigation, product]);
+  }, [navigation, notFound, product, route.params.slug]);
 
   const selected = product?.variants.find((variant) => variant.id === route.params.selectedVariantId);
   const defaultColor = selected?.color ?? product?.variants.find((variant) => variant.available > 0)?.color ?? product?.variants[0]?.color ?? "";

@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ruler } from "lucide-react-native";
 import { AppHeader } from "../../components/AppHeader";
@@ -28,7 +28,9 @@ export default function FitHelperScreen({ navigation, route }: Props) {
           No body measurements are collected, saved, or sent from this screen. When an approved fit endpoint exists, recommendations must explain their basis and still let you choose any size.
         </MessageCard>
         <HidiButton label="View size guide" onPress={() => navigation.replace("SizeGuide", { slug: route.params.slug, selectedVariantId: route.params.selectedVariantId })} />
-        <HidiButton label="Back to size choices" onPress={() => navigation.replace("VariantPicker", { slug: route.params.slug, selectedVariantId: route.params.selectedVariantId })} />
+        <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => navigation.replace("VariantPicker", { slug: route.params.slug, selectedVariantId: route.params.selectedVariantId })}>
+          <HidiText variant="secondary" style={{ color: colors.action }}>Back to size choices</HidiText>
+        </Pressable>
       </View>
     </HidiScreen>
   );
@@ -38,4 +40,5 @@ const styles = StyleSheet.create({
   zero: { paddingHorizontal: 0, paddingTop: 0 },
   body: { padding: 24, gap: 16 },
   icon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
+  secondary: { minHeight: 48, alignItems: "center", justifyContent: "center" },
 });

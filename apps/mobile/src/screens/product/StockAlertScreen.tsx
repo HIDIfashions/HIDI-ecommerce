@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BellOff } from "lucide-react-native";
 import { AppHeader } from "../../components/AppHeader";
@@ -58,7 +58,9 @@ export default function StockAlertScreen({ navigation, route }: Props) {
             </HidiText>
             <MessageCard>This screen does not opt you into promotional messages. Saving the style is local shopping intent, not marketing consent.</MessageCard>
             <HidiButton label={saved ? "Saved" : "Save this style instead"} disabled={saved} onPress={() => void saveStyle()} />
-            <HidiButton label="Back to size choices" onPress={() => navigation.navigate("VariantPicker", { slug: product.slug })} />
+            <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => navigation.navigate("VariantPicker", { slug: product.slug })}>
+              <HidiText variant="secondary" style={{ color: colors.action }}>Back to size choices</HidiText>
+            </Pressable>
           </>
         )}
       </View>
@@ -74,4 +76,5 @@ const styles = StyleSheet.create({
   image: { width: "100%", height: "100%" },
   bold: { fontWeight: "600" },
   icon: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  secondary: { minHeight: 48, alignItems: "center", justifyContent: "center" },
 });
