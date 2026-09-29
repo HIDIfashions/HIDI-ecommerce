@@ -18,7 +18,25 @@ import ListingScreen from "../screens/discover/ListingScreen";
 import SearchScreen from "../screens/discover/SearchScreen";
 import SearchResultsScreen from "../screens/discover/SearchResultsScreen";
 import RecentlyViewedScreen from "../screens/discover/RecentlyViewedScreen";
-import DeferredProductScreen from "../screens/discover/DeferredProductScreen";
+import ProductDetailScreen from "../screens/product/ProductDetailScreen";
+import ProductGalleryScreen from "../screens/product/ProductGalleryScreen";
+import VariantPickerScreen from "../screens/product/VariantPickerScreen";
+import SizeGuideScreen from "../screens/product/SizeGuideScreen";
+import FitHelperScreen from "../screens/product/FitHelperScreen";
+import DetailsCareScreen from "../screens/product/DetailsCareScreen";
+import DeliveryCheckScreen from "../screens/product/DeliveryCheckScreen";
+import ReviewsScreen from "../screens/product/ReviewsScreen";
+import ReviewDetailScreen from "../screens/product/ReviewDetailScreen";
+import StockAlertScreen from "../screens/product/StockAlertScreen";
+import ProductUnavailableScreen from "../screens/product/ProductUnavailableScreen";
+import SimilarStylesScreen from "../screens/product/SimilarStylesScreen";
+import AddedToBagScreen from "../screens/product/AddedToBagScreen";
+import BagEditScreen from "../screens/bag/BagEditScreen";
+import BagRemoveScreen from "../screens/bag/BagRemoveScreen";
+import PromotionsScreen from "../screens/bag/PromotionsScreen";
+import PromoFailureScreen from "../screens/bag/PromoFailureScreen";
+import BagAttentionScreen from "../screens/bag/BagAttentionScreen";
+import SavedForLaterScreen from "../screens/bag/SavedForLaterScreen";
 import { parseHidiDeepLink } from "./deepLinks";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -89,7 +107,25 @@ export default function RootNavigator() {
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
         <Stack.Screen name="RecentlyViewed" component={RecentlyViewedScreen} />
-        <Stack.Screen name="ProductDeferred" component={DeferredProductScreen} />
+        <Stack.Screen name="ProductDeferred" component={ProductDetailScreen} />
+        <Stack.Screen name="ProductGallery" component={ProductGalleryScreen} options={{ animation: "fade" }} />
+        <Stack.Screen name="VariantPicker" component={VariantPickerScreen} />
+        <Stack.Screen name="SizeGuide" component={SizeGuideScreen} />
+        <Stack.Screen name="FitHelper" component={FitHelperScreen} />
+        <Stack.Screen name="DetailsCare" component={DetailsCareScreen} />
+        <Stack.Screen name="DeliveryCheck" component={DeliveryCheckScreen} />
+        <Stack.Screen name="Reviews" component={ReviewsScreen} />
+        <Stack.Screen name="ReviewDetail" component={ReviewDetailScreen} />
+        <Stack.Screen name="StockAlert" component={StockAlertScreen} />
+        <Stack.Screen name="ProductUnavailable" component={ProductUnavailableScreen} />
+        <Stack.Screen name="SimilarStyles" component={SimilarStylesScreen} />
+        <Stack.Screen name="AddedToBag" component={AddedToBagScreen} options={{ animation: reduceMotion ? "fade" : "slide_from_bottom" }} />
+        <Stack.Screen name="BagEdit" component={BagEditScreen} options={{ animation: reduceMotion ? "fade" : "slide_from_bottom" }} />
+        <Stack.Screen name="BagRemove" component={BagRemoveScreen} options={{ animation: reduceMotion ? "fade" : "slide_from_bottom" }} />
+        <Stack.Screen name="Promotions" component={PromotionsScreen} />
+        <Stack.Screen name="PromoFailure" component={PromoFailureScreen} />
+        <Stack.Screen name="BagAttention" component={BagAttentionScreen} />
+        <Stack.Screen name="SavedForLater" component={SavedForLaterScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

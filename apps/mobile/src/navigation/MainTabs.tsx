@@ -5,7 +5,7 @@ import type { RootTabParamList } from "./types";
 import HomeScreen from "../screens/discover/HomeScreen";
 import ShopCategoriesScreen from "../screens/discover/ShopCategoriesScreen";
 import SavedScreen from "../screens/discover/SavedScreen";
-import BagPlaceholderScreen from "../screens/discover/BagPlaceholderScreen";
+import ShoppingBagScreen from "../screens/bag/ShoppingBagScreen";
 import YouPlaceholderScreen from "../screens/discover/YouPlaceholderScreen";
 import { useHidiTheme } from "../theme/HidiTheme";
 import { useCart } from "../data/CartContext";
@@ -49,7 +49,7 @@ export default function MainTabs() {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Shop" component={ShopCategoriesScreen} />
       <Tab.Screen name="Saved" component={SavedScreen} />
-      <Tab.Screen name="Bag" component={BagPlaceholderScreen} />
+      <Tab.Screen name="Bag" component={ShoppingBagScreen} />
       <Tab.Screen name="You" component={YouPlaceholderScreen} />
     </Tab.Navigator>
   );
