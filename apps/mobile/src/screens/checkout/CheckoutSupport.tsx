@@ -44,7 +44,7 @@ export function AddressSummary({ address }: { address: CheckoutAddress }) {
   return (
     <View style={styles.summaryBlock}>
       <HidiText variant="metadata" style={{ color: colors.mutedText }}>Delivery address</HidiText>
-      <HidiText variant="secondary" style={styles.multiline}>{addressSummary(address)}</HidiText>
+      <HidiText variant="secondary">{addressSummary(address)}</HidiText>
     </View>
   );
 }
@@ -91,7 +91,6 @@ const styles = StyleSheet.create({
   rowLink: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   bold: { fontWeight: "600" },
   summaryBlock: { gap: 3 },
-  multiline: { whiteSpace: "pre-line" as never },
   line: { flexDirection: "row", gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   thumb: { width: 64, height: 82, borderRadius: 8, overflow: "hidden" },
   image: { width: "100%", height: "100%" },
