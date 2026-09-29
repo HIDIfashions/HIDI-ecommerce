@@ -128,7 +128,13 @@ export async function verifyPhoneOtp(phone: string, code: string) {
   }).catch(() => null);
   if (!response) throw new Error("Unable to verify right now. Check your connection and try again.");
   const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
-  if (!response.ok) throw new Error(String(payload.msg ?? payload.message ?? "That code is invalid or has expired."));
+  if (!response.ok) {
+    const error = new Error(String(payload.msg ?? payload.message ?? "That code is invalid or has expired.")) as Error & { status?: number; retryAfterSeconds?: number };
+    error.status = response.status;
+    const retryAfter = Number(response.headers.get("retry-after") ?? 0);
+    error.retryAfterSeconds = Number.isFinite(retryAfter) ? retryAfter : 0;
+    throw error;
+  }
   return saveSession(payload as unknown as SupabaseAuthPayload);
 }
 
