@@ -79,11 +79,14 @@ export default function RecentlyViewedScreen({ navigation }: Props) {
           ) : (
             <EmptyState title="Nothing here yet." body={tracking ? "Styles you open will appear here on this device." : "Recently viewed tracking is off."} action="Browse HIDI" onAction={() => navigation.navigate("MainTabs")} />
           )}
-          {visits.length > products.length ? (
-            <HidiText variant="metadata" style={{ color: colors.mutedText }}>
-              Some earlier styles are unavailable in the current catalogue and are not shown as purchasable.
-            </HidiText>
-          ) : null}
+          {visits.filter((visit) => !products.some((product) => product.slug === visit.slug)).map((visit) => (
+            <View key={visit.slug} style={[styles.unavailable, { borderColor: colors.border }]}>
+              <HidiText variant="secondary">{visit.name ?? visit.slug.replace(/-/g, " ")}</HidiText>
+              <HidiText variant="metadata" style={{ color: colors.mutedText }}>
+                {state.freshness === "offline-cache" ? "Unavailable in this saved catalogue snapshot" : "Unavailable"}
+              </HidiText>
+            </View>
+          ))}
         </> : null}
       </View>
     </ScrollView>
@@ -96,4 +99,5 @@ const styles = StyleSheet.create({
   privacyRow: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 10, padding: 14, marginTop: 8 },
   bold: { fontWeight: "600" },
   clear: { minHeight: 48, justifyContent: "center", alignSelf: "flex-start" },
+  unavailable: { minHeight: 64, borderWidth: 1, borderRadius: 10, padding: 12, justifyContent: "center", gap: 3 },
 });
