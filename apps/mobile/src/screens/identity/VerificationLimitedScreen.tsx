@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Linking, Pressable, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Clock3 } from "lucide-react-native";
 import { AppHeader } from "../../components/AppHeader";
@@ -46,6 +46,9 @@ export default function VerificationLimitedScreen({ navigation, route }: Props) 
         </HidiText>
         <Pressable accessibilityRole="button" onPress={() => navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] })} style={styles.guest}>
           <HidiText variant="secondary" style={{ color: colors.action }}>You can still explore as a guest</HidiText>
+        </Pressable>
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL("https://thehidi.com/contact")} style={styles.guest}>
+          <HidiText variant="secondary" style={{ color: colors.action }}>Get HIDI support</HidiText>
         </Pressable>
         <HidiButton label="Change number" onPress={() => void changeNumber()} />
       </View>
