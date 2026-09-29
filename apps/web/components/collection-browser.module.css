@@ -8,8 +8,9 @@
 }
 
 .toolbar {
-  min-height: 54px;
+  min-height: 58px;
   margin-bottom: 34px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -22,6 +23,7 @@
 .toolbarRight {
   display: flex;
   align-items: center;
+  min-height: 58px;
 }
 
 .toolbarLeft {
@@ -29,7 +31,7 @@
 }
 
 .toolbarRight {
-  gap: 8px;
+  gap: 14px;
 }
 
 .mobileFilterButton {
@@ -41,9 +43,9 @@
   border: 0;
   background: transparent;
   color: #4d3932;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .12em;
+  font-size: clamp(12px, 1.05vw, 14px);
+  font-weight: 750;
+  letter-spacing: .055em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -61,29 +63,35 @@
   border-radius: 999px;
   background: var(--hidi-mulberry-clay, #591d20);
   color: #fff;
-  font-size: 8px;
+  font-size: var(--type-meta);
   letter-spacing: 0;
 }
 
 .styleCount {
   color: #8b7b71;
-  font-size: 10px;
+  font-size: var(--type-ui);
+  line-height: 1;
 }
 
 .sortLabel {
   color: #8b7b71;
-  font-size: 9px;
-  letter-spacing: .11em;
+  font-size: clamp(12px, 1.05vw, 14px);
+  font-weight: 700;
+  letter-spacing: .055em;
+  line-height: 1;
   text-transform: uppercase;
 }
 
 .sortSelect {
-  min-height: 38px;
-  padding: 0 26px 0 6px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 30px 0 0;
   border: 0;
   background: transparent;
   color: #4d3932;
-  font-size: 11px;
+  font-size: clamp(12px, 1.05vw, 14px);
+  font-weight: 700;
+  line-height: 42px;
   outline: none;
   cursor: pointer;
 }
@@ -102,8 +110,8 @@
 
 .empty h2 {
   margin-bottom: 10px;
-  font-family: var(--font-display);
-  font-size: 42px;
+  font-family: var(--font-sans);
+  font-size: var(--type-section);
   font-weight: 400;
 }
 
@@ -114,12 +122,12 @@
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
-  z-index: 100;
+  z-index: 1201;
   width: min(370px, 92vw);
   padding: 24px 28px 42px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
   border-right: 1px solid #e1e2dd;
   box-shadow: 18px 0 60px rgba(35,39,34,.13);
   transform: translateX(-104%);
@@ -145,11 +153,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(255,255,255,.98);
+  background: color-mix(in srgb, var(--hidi-page-bg, #fbf6f2) 96%, transparent);
   border-bottom: 1px solid #e1e2dd;
   backdrop-filter: blur(12px);
   color: #4d3932;
-  font-size: 10px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .14em;
   text-transform: uppercase;
@@ -172,7 +180,7 @@
   border: 0;
   background: transparent;
   color: #8d7348;
-  font-size: 8px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -185,15 +193,15 @@
 }
 
 .drawerClose {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 1px solid #e1e2dd;
   border-radius: 50%;
-  background: #fff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: #4d3932;
   cursor: pointer;
 }
@@ -217,7 +225,7 @@
   gap: 12px;
   color: #4d3932;
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--type-ui);
   font-weight: 700;
   letter-spacing: .13em;
   text-transform: uppercase;
@@ -244,12 +252,12 @@
 
 .option,
 .colorOption {
-  min-height: 32px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 10px;
   color: #786b62;
-  font-size: 11px;
+  font-size: var(--type-ui);
   cursor: pointer;
 }
 
@@ -285,13 +293,13 @@
 .colorCount {
   margin-left: -3px;
   color: #9da09a;
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 .drawerBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 1200;
   border: 0;
   background: rgba(29,33,28,.34);
   backdrop-filter: blur(2px);
@@ -367,7 +375,7 @@
 
   .mobileCatalogueBar {
     position: sticky;
-    top: 84px;
+    top: var(--hidi-header-height, 63px);
     z-index: 30;
     min-height: 48px;
     margin: 0 -4px 18px;
@@ -376,7 +384,7 @@
     grid-template-columns: 1fr auto auto;
     align-items: center;
     gap: 8px;
-    background: rgba(255,255,255,.97);
+    background: color-mix(in srgb, var(--hidi-page-bg, #fbf6f2) 96%, transparent);
     border-bottom: 1px solid #e3e4df;
     backdrop-filter: blur(12px);
   }
@@ -389,7 +397,7 @@
     justify-content: flex-start;
     gap: 5px;
     color: #4d3932;
-    font-size: 9px;
+    font-size: var(--type-meta);
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -398,7 +406,7 @@
 
   .mobileProductCount {
     padding-inline: 4px;
-    font-size: 9px;
+    font-size: var(--type-meta);
     white-space: nowrap;
   }
 
@@ -437,7 +445,7 @@
   }
 
   .mobileProductCount {
-    font-size: 8px;
+    font-size: var(--type-meta);
   }
 }
 
@@ -447,3 +455,11 @@
     transition: none;
   }
 }
+
+
+.mobileFilterSort { font-size: var(--type-ui); letter-spacing: .04em; }
+
+.activeFilters { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 20px; }
+.activeFilters button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); background: var(--hidi-page-bg); color: var(--ink); font: inherit; font-size: var(--type-ui); cursor: pointer; }
+.drawerApply { position: sticky; bottom: -24px; padding: 16px 0; background: var(--hidi-page-bg); border-top: 1px solid var(--line); }
+.drawerApply button { width: 100%; min-height: 48px; }

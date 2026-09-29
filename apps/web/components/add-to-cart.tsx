@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatPaise, type ApiProduct } from "@/lib/api";
+import { type ApiProduct } from "@/lib/api";
 import { WishlistButton } from "@/components/wishlist-button";
-import { getCartSession } from "@/lib/cart-session";
+import Link from "next/link";
+import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
+import { cardPrice, money, compareSizes } from "@/lib/product-card-utils";
 import { PRODUCT_VARIANT_EVENT, publishProductSelection, type ProductVariantSelection } from "@/lib/product-sharing";
 import styles from "./add-to-cart.module.css";
 
-import { BROWSER_API_URL } from "@/lib/browser-api";
-const API = BROWSER_API_URL;
 export { PRODUCT_VARIANT_EVENT } from "@/lib/product-sharing";
 
 const FIT_MEASUREMENTS = [
@@ -24,7 +24,7 @@ const FIT_MEASUREMENTS = [
 type FitMeasurementKey = typeof FIT_MEASUREMENTS[number]["key"];
 
 function formatFitMeasurement(mm: number | null | undefined, unit: "cm" | "in") {
-  if (mm == null) return "—";
+  if (mm == null || !Number.isFinite(mm) || mm <= 0) return "—";
   if (unit === "in") return (mm / 25.4).toFixed(1);
   const cm = mm / 10;
   return Number.isInteger(cm) ? String(cm) : cm.toFixed(1);
@@ -36,11 +36,16 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   const colors = useMemo(() => Array.from(new Set(product.variants.map((v) => v.color))), [product]);
   const [color, setColor] = useState(colors[0] ?? "");
   const sizes = useMemo(
-    () => product.variants.filter((v) => v.color === color).sort((a, b) => ["XS","S","M","L","XL","XXL","3XL"].indexOf(a.size) - ["XS","S","M","L","XL","XXL","3XL"].indexOf(b.size)),
+    () => product.variants.filter((v) => v.color === color).sort((a, b) => compareSizes(a.size, b.size)),
     [product, color],
   );
   const [variantId, setVariantId] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [unavailable, setUnavailable] = useState<string[]>([]);
+  const writing = useRef(false);
+  const selected = sizes.find(v => v.id === variantId && v.available > 0 && !unavailable.includes(v.id));
+  const price = cardPrice(sizes, selected?.id ?? "", product.minPricePaise);
   const [busyAction, setBusyAction] = useState<"add" | "buy" | null>(null);
   const [fitHelp, setFitHelp] = useState(false);
   const [fitUnit, setFitUnit] = useState<"cm" | "in">("cm");
@@ -48,17 +53,19 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   useEffect(() => {
     function syncSelection(event: Event) {
       const detail = (event as CustomEvent<ProductVariantSelection>).detail;
-      if (detail?.slug !== product.slug) return;
-      const variant = product.variants.find((item) => item.id === detail.variantId);
+      if (writing.current || detail?.slug !== product.slug || !colors.includes(detail.color)) return;
+      const variant = product.variants.find((item) => item.id === detail.variantId && item.available > 0 && !unavailable.includes(item.id));
       setColor(variant?.color ?? detail.color ?? colors[0] ?? "");
       setVariantId(variant?.id ?? "");
       setMessage("");
     }
     window.addEventListener(PRODUCT_VARIANT_EVENT, syncSelection);
     return () => window.removeEventListener(PRODUCT_VARIANT_EVENT, syncSelection);
-  }, [product, colors]);
+  }, [product, colors, unavailable]);
 
   function selectVariant(variant: ApiProduct["variants"][number]) {
+    if (writing.current || variant.available < 1 || unavailable.includes(variant.id) || !product.inStock) return;
+    setError("");
     const deselecting = variant.id === variantId;
     setVariantId(deselecting ? "" : variant.id);
     setMessage("");
@@ -71,33 +78,26 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   }
 
   const visibleFitMeasurements = FIT_MEASUREMENTS.filter(({ key }) =>
-    sizes.some((variant) => variant[key as FitMeasurementKey] != null),
+    sizes.some((variant) => Number.isFinite(variant[key as FitMeasurementKey]) && (variant[key as FitMeasurementKey] ?? 0) > 0),
   );
   const hasVerifiedFit = visibleFitMeasurements.length > 0;
 
   async function add(destination: "bag" | "checkout" = "bag") {
-    if (!variantId) { setMessage("Please select a size."); return; }
-    setBusyAction(destination === "checkout" ? "buy" : "add");
-    setMessage("");
+    if (writing.current || !product.inStock) return;
+    if (!selected) { setError("Please select an available size."); return; }
+    writing.current = true;
+    setBusyAction(destination === "checkout" ? "buy" : "add"); setMessage(""); setError("");
     try {
-      const response = await fetch(`${API}/carts/${getCartSession()}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ variantId, quantity: 1 }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.message ?? "Unable to add item");
-      window.dispatchEvent(new CustomEvent("hidi-cart-updated", { detail: data.itemCount }));
-      if (destination === "checkout") {
-        router.push("/checkout");
-        return;
+      await addCatalogueVariant(selected.id);
+      if (destination === "checkout") router.push("/checkout");
+      else setMessage(`Size ${selected.size} · ${selected.color} added to your bag.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "We couldn’t confirm the update. Check your bag before trying again.");
+      if (cause instanceof CatalogCartError && cause.refreshCatalogue) {
+        setUnavailable(current => [...current, selected.id]); setVariantId("");
+        publishProductSelection({ slug: product.slug, variantId: "", color }); router.refresh();
       }
-      setMessage("Added to your bag.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to add item. Please try again.");
-    } finally {
-      setBusyAction(null);
-    }
+    } finally { writing.current = false; setBusyAction(null); }
   }
 
   return (
@@ -105,7 +105,9 @@ export function AddToCart({ product }: { product: ApiProduct }) {
       {colors.length > 1 && <>
         <div className="size-row-title"><strong>Colour</strong></div>
         <div className="colour-options">
-          {colors.map((value) => <button key={value} type="button" aria-pressed={value === color} className={value === color ? "selected" : ""} onClick={() => {
+          {colors.map((value) => <button key={value} type="button" disabled={busyAction !== null} aria-pressed={value === color} className={value === color ? "selected" : ""} onClick={() => {
+            if (writing.current || value === color) return;
+            setError("");
             setColor(value);
             setVariantId("");
             setMessage("");
@@ -163,7 +165,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           ) : (
             <div className={styles.fitPending}>
               <strong>Verified measurements are not published for this style yet.</strong>
-              <p>HIDI will not estimate garment measurements. Choose your usual size or use the WhatsApp fit support below if you want help before ordering.</p>
+              <p>HIDI will not estimate garment measurements. Compare a similar garment you own with the measurements when available. Size labels alone do not confirm fit.</p>
             </div>
           )}
         </section>
@@ -173,7 +175,8 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           <button
             key={variant.id}
             type="button"
-            disabled={variant.available < 1}
+            disabled={busyAction !== null || !product.inStock || variant.available < 1 || unavailable.includes(variant.id)}
+            aria-label={variant.size + (variant.available < 1 || unavailable.includes(variant.id) ? " — unavailable" : "")}
             aria-pressed={variant.id === variantId}
             className={variant.id === variantId ? "selected" : ""}
             onClick={() => selectVariant(variant)}
@@ -185,7 +188,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
         <button
           className={styles.addButton}
           type="button"
-          disabled={busyAction !== null || !product.inStock || !variantId}
+          disabled={busyAction !== null || !product.inStock || !selected}
           onClick={() => void add("bag")}
         >
           {busyAction === "add" ? "Adding…" : "Add to Cart"}
@@ -193,7 +196,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
         <button
           className={styles.buyButton}
           type="button"
-          disabled={busyAction !== null || !product.inStock || !variantId}
+          disabled={busyAction !== null || !product.inStock || !selected}
           onClick={() => void add("checkout")}
         >
           {busyAction === "buy" ? "Opening checkout…" : "Buy Now"}
@@ -202,12 +205,13 @@ export function AddToCart({ product }: { product: ApiProduct }) {
       <p className={styles.helper}>
         {!product.inStock ? "This piece is currently sold out." : !variantId ? "Select a size to continue." : ""}
       </p>
-      {message && <p className="inline-message pdp-add-message" role="status">{message}</p>}
+      <p className="inline-message pdp-add-message" role="status" aria-live="polite">{message}</p>
+      {error && <p className="inline-message" role="alert">{error} <Link href="/cart">Review your bag</Link></p>}
 
       <div className={styles.mobileBar} aria-label="Mobile purchase actions">
         <div className={styles.mobilePrice}>
-          <span>{variantId ? "Selected" : "From"}</span>
-          <strong>{formatPaise(product.variants.find((variant) => variant.id === variantId)?.pricePaise ?? product.minPricePaise)}</strong>
+          <span>{selected ? "Selected" : price.from ? "From" : "Price"}</span>
+          <strong>{money(price.pricePaise)}</strong>
         </div>
         <div className={styles.mobileWishlist}>
           <WishlistButton slug={product.slug} compact />
@@ -216,7 +220,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           <button
             className={styles.mobileAdd}
             type="button"
-            disabled={busyAction !== null || !product.inStock || !variantId}
+            disabled={busyAction !== null || !product.inStock || !selected}
             onClick={() => void add("bag")}
           >
             {busyAction === "add" ? "Adding…" : "Add to Cart"}
@@ -224,7 +228,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           <button
             className={styles.mobileBuy}
             type="button"
-            disabled={busyAction !== null || !product.inStock || !variantId}
+            disabled={busyAction !== null || !product.inStock || !selected}
             onClick={() => void add("checkout")}
           >
             {busyAction === "buy" ? "Opening…" : "Buy Now"}

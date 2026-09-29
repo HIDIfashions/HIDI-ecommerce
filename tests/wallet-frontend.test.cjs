@@ -138,7 +138,8 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
     "@/components/wallet-balance": { useWalletSummary: () => ({ userId: h.state.userId, summary: state.walletData, loading: false, error: "", unavailable: !state.walletData.enabled, refresh: async () => { state.walletRefreshes++; return state.walletData; } }) },
     "./wallet.module.css": new Proxy({}, { get: (_, key) => key }),
   }, {
-    window, process: { env: { NEXT_PUBLIC_API_URL: "http://test.invalid/v1" } },
+    window, document: { querySelector: () => null },
+    process: { env: { NEXT_PUBLIC_API_URL: "http://test.invalid/v1" } },
     FormData: class { constructor(form) { this.form = form; } get(key) { return this.form[key] ?? ""; } },
     fetch: async (url, init = {}) => {
       if (url.includes("/carts/")) return { ok: true, json: async () => ({ subtotalPaise: 100000, itemCount: 1, items: [{ id: "line-1", quantity: 1, lineTotalPaise: 100000, product: { name: "Test Product", slug: "test-product", image: null }, variant: { id: "v1", size: "M", color: "Test" } }] }) };
