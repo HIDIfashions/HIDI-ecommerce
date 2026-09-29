@@ -13,6 +13,7 @@ const keys = {
   verificationPhone: "hidi.mobile.verificationPhone.v1",
   recentTracking: "hidi.mobile.recentTracking.v1",
   searchTracking: "hidi.mobile.searchTracking.v1",
+  catalogSort: "hidi.mobile.catalogSort.v1",
 };
 
 export type RecentVisit = { slug: string; viewedAt: number; name?: string };
@@ -102,6 +103,13 @@ export const localStore = {
   clearSearches: () => setJson(keys.recentSearches, []),
   catalogCache: () => getJson<{ savedAt: number; products: unknown[] } | null>(keys.catalogCache, null),
   saveCatalogCache: (products: unknown[]) => setJson(keys.catalogCache, { savedAt: Date.now(), products }),
+  async catalogSort() {
+    const value = await AsyncStorage.getItem(keys.catalogSort).catch(() => null);
+    return value === "recommended" || value === "newest" || value === "price-low" || value === "price-high" || value === "rating"
+      ? value
+      : "recommended";
+  },
+  saveCatalogSort: (value: string) => AsyncStorage.setItem(keys.catalogSort, value).catch(() => undefined),
   async consentDraft() {
     const value = await getJson<Partial<{ analyticsOptIn: boolean; personalizationOptIn: boolean; whatsappOptIn: boolean }>>(keys.consentDraft, {});
     return {
