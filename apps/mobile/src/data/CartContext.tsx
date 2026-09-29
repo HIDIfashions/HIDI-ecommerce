@@ -15,7 +15,7 @@ type CartContextValue = {
   busyKey: string;
   undoCandidate: CartLine | null;
   refresh: () => Promise<void>;
-  addVariant: (variantId: string, quantity?: number) => Promise<{ cart: ApiCart; reconciled: boolean }>;
+  addVariant: (variantId: string, quantity?: number, expectedUnitPricePaise?: number) => Promise<{ cart: ApiCart; reconciled: boolean }>;
   updateQuantity: (lineId: string, quantity: number) => Promise<ApiCart>;
   removeLine: (lineId: string) => Promise<ApiCart>;
   undoRemove: () => Promise<ApiCart | null>;
@@ -101,25 +101,62 @@ export function CartProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const addVariant = useCallback(async (variantId: string, quantity = 1) => withMutation("add:" + variantId, async () => {
+  const applyCanonicalMutation = useCallback(async (
+    previous: ApiCart | null,
+    next: ApiCart,
+    expectedVariant?: { variantId: string; expectedUnitPricePaise: number },
+  ) => {
+    const acknowledged = await cartStorage.acknowledgedCart();
+    const baseline = acknowledged ?? previous;
+    const changes = compareCartSnapshots(baseline, next);
+
+    if (expectedVariant) {
+      const line = next.items.find((item) => item.variant.id === expectedVariant.variantId);
+      const alreadyFlagged = changes.some((change) => change.lineId === line?.id && change.kind === "price");
+      if (line && !alreadyFlagged && line.unitPricePaise !== expectedVariant.expectedUnitPricePaise) {
+        changes.unshift({
+          lineId: line.id,
+          productName: line.product.name,
+          kind: "price",
+          message: line.product.name + " changed price before the bag update was confirmed.",
+          beforePaise: expectedVariant.expectedUnitPricePaise,
+          afterPaise: line.unitPricePaise,
+        });
+      }
+    }
+
+    setCart(next);
+    setError("");
+    setStale(false);
+    setAttention(changes);
+    if (!changes.length) await cartStorage.acknowledgeCart(next).catch(() => undefined);
+  }, []);
+
+  const addVariant = useCallback(async (variantId: string, quantity = 1, expectedUnitPricePaise?: number) => withMutation("add:" + variantId, async () => {
     const sessionId = await cartStorage.sessionId();
-    const result = await addCartVariant(sessionId, variantId, quantity, cart);
-    await commit(result.cart, true);
+    const previous = cart;
+    const result = await addCartVariant(sessionId, variantId, quantity, previous);
+    await applyCanonicalMutation(
+      previous,
+      result.cart,
+      expectedUnitPricePaise === undefined ? undefined : { variantId, expectedUnitPricePaise },
+    );
     return result;
-  }), [cart, commit, withMutation]);
+  }), [applyCanonicalMutation, cart, withMutation]);
 
   const updateQuantity = useCallback(async (lineId: string, quantity: number) => withMutation("update:" + lineId, async () => {
     const sessionId = await cartStorage.sessionId();
     try {
+      const previous = cart;
       const next = await updateCartQuantity(sessionId, lineId, quantity);
-      await commit(next, true);
+      await applyCanonicalMutation(previous, next);
       return next;
     } catch (cause) {
       if (!ambiguous(cause)) throw cause;
       const reconciled = await fetchCart(sessionId);
       const line = reconciled.items.find((item) => item.id === lineId);
       if (line?.quantity === quantity) {
-        await commit(reconciled, true);
+        await applyCanonicalMutation(cart, reconciled);
         return reconciled;
       }
       throw new HidiApiError({
@@ -128,7 +165,7 @@ export function CartProvider({ children }: PropsWithChildren) {
         retryable: false,
       });
     }
-  }), [commit, withMutation]);
+  }), [applyCanonicalMutation, cart, withMutation]);
 
   const removeLine = useCallback(async (lineId: string) => withMutation("remove:" + lineId, async () => {
     const existing = cart?.items.find((item) => item.id === lineId);
@@ -158,7 +195,7 @@ export function CartProvider({ children }: PropsWithChildren) {
   const undoRemove = useCallback(async () => {
     const line = undoCandidate;
     if (!line) return cart;
-    const result = await addVariant(line.variant.id, line.quantity);
+    const result = await addVariant(line.variant.id, line.quantity, line.unitPricePaise);
     setUndoCandidate(null);
     return result.cart;
   }, [addVariant, cart, undoCandidate]);
@@ -196,7 +233,7 @@ export function CartProvider({ children }: PropsWithChildren) {
   const moveSavedToBag = useCallback(async (key: string) => {
     const item = savedForLater.find((entry) => entry.key === key);
     if (!item) throw new HidiApiError({ message: "That saved item is no longer available.", status: 404, retryable: false });
-    const result = await addVariant(item.variantId, item.quantity);
+    const result = await addVariant(item.variantId, item.quantity, item.savedPricePaise);
     let savedRemovalFailed = false;
     try {
       setSavedForLater(await cartStorage.removeSavedForLater(key));
