@@ -16,6 +16,8 @@ jobs:
     env:
       DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
       API_URL: http://127.0.0.1:4100/v1
+      # Install and every browser suite must use the same job-local binaries.
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/hidi-playwright-browsers
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -42,6 +44,28 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/hidi-browser" --no-save playwright@1.62.1
           node "$RUNNER_TEMP/hidi-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Verify installed browser engines can launch
+        env:
+          HIDI_PLAYWRIGHT_MODULE: ${{ runner.temp }}/hidi-browser/node_modules/playwright/index.mjs
+        run: |
+          node --input-type=module <<'NODE'
+          import { constants } from 'node:fs';
+          import { access } from 'node:fs/promises';
+          import { pathToFileURL } from 'node:url';
+          const pw = await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
+          for (const engine of ['chromium', 'firefox', 'webkit']) {
+            const executable = pw[engine].executablePath();
+            await access(executable, constants.X_OK);
+            const browser = await pw[engine].launch({ headless: true, timeout: 30000 });
+            try {
+              const page = await browser.newPage();
+              await page.goto('about:blank');
+              console.log(`READY ${engine}: ${executable}`);
+            } finally {
+              await browser.close();
+            }
+          }
+          NODE
       - name: Test admin UI and BFF with isolated fixtures
         run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/admin-workspace.browser.mjs
       - name: Verify homepage section backgrounds in the production build
