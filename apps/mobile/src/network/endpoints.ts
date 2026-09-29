@@ -17,6 +17,7 @@ export const hidiEndpoints = {
   accountOrders: "/account/orders",
   accountOrder: (orderNumber: string) => "/account/orders/" + encodeURIComponent(orderNumber),
   productReviews: (productId: string) => "/reviews/products/" + encodeURIComponent(productId),
+  deliveryServiceability: (pin: string) => "/checkout/delivery-serviceability?pin=" + encodeURIComponent(pin),
   retentionPreferences: "/retention/preferences",
   retentionEvents: "/retention/events",
   rewardsSummary: "/rewards/summary",

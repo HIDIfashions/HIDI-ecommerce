@@ -16,6 +16,12 @@ export type ApiVariant = {
   mrpPaise: number;
   pricePaise: number;
   available: number;
+  bustMm?: number | null;
+  waistMm?: number | null;
+  hipMm?: number | null;
+  shoulderMm?: number | null;
+  sleeveLengthMm?: number | null;
+  garmentLengthMm?: number | null;
   images?: ApiImage[];
 };
 
@@ -26,6 +32,7 @@ export type ApiProduct = {
   shortDescription?: string | null;
   description?: string | null;
   fabric?: string | null;
+  care?: string | null;
   category?: { id: string; name: string; slug: string } | null;
   collections: { id: string; name: string; slug: string }[];
   images: ApiImage[];
