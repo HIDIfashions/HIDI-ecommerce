@@ -36,7 +36,10 @@ export default function VerifyPhoneScreen({ navigation, route }: Props) {
       auth.setSession(session);
       const name = typeof session.user.user_metadata?.first_name === "string" ? String(session.user.user_metadata?.first_name).trim() : "";
       if (!name) navigation.replace("CompleteProfile", { returnTo: route.params.returnTo });
-      else navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+      else navigation.reset({
+        index: 0,
+        routes: [{ name: "MainTabs", params: route.params.returnTo === "saved" ? { screen: "Saved" } : { screen: "Home" } }],
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to verify the code.");
     } finally {
