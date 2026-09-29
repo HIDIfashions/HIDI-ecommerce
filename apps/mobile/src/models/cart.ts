@@ -93,3 +93,29 @@ export function compareCartSnapshots(previous: ApiCart | null, current: ApiCart)
 
   return changes;
 }
+
+export function cartAttentionAfterMutation(
+  previous: ApiCart | null,
+  current: ApiCart,
+  expectedVariant?: { variantId: string; expectedUnitPricePaise: number },
+): CartAttention[] {
+  const changes = compareCartSnapshots(previous, current);
+
+  if (!expectedVariant) return changes;
+
+  const line = current.items.find((item) => item.variant.id === expectedVariant.variantId);
+  const alreadyFlagged = changes.some((change) => change.lineId === line?.id && change.kind === "price");
+
+  if (line && !alreadyFlagged && line.unitPricePaise !== expectedVariant.expectedUnitPricePaise) {
+    changes.unshift({
+      lineId: line.id,
+      productName: line.product.name,
+      kind: "price",
+      message: line.product.name + " changed price before the bag update was confirmed.",
+      beforePaise: expectedVariant.expectedUnitPricePaise,
+      afterPaise: line.unitPricePaise,
+    });
+  }
+
+  return changes;
+}
