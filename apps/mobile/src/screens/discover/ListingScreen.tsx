@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SlidersHorizontal, ArrowUpDown, X } from "lucide-react-native";
@@ -11,6 +11,7 @@ import { HidiText } from "../../components/HidiText";
 import { emptyFilters, filterProducts, Filters, sortProducts, SortKey } from "../../data/catalog";
 import { useCatalog } from "../../data/CatalogContext";
 import { useHidiTheme } from "../../theme/HidiTheme";
+import { localStore } from "../../storage/localStore";
 import { hidiRadius } from "../../theme/tokens";
 import type { RootStackParamList } from "../../navigation/types";
 
@@ -25,6 +26,11 @@ export default function ListingScreen({ navigation, route }: Props) {
   const { state, refresh } = useCatalog();
   const [filters, setFilters] = useState<Filters>(route.params.filters ?? emptyFilters);
   const [sort, setSort] = useState<SortKey>(route.params.sort ?? "recommended");
+
+  useEffect(() => {
+    if (route.params.sort) return;
+    void localStore.catalogSort().then((value) => setSort(value as SortKey));
+  }, [route.params.sort]);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
 
@@ -101,7 +107,7 @@ export default function ListingScreen({ navigation, route }: Props) {
       </ScrollView>
 
       <FilterSheet visible={filterOpen} products={source} current={filters} onClose={() => setFilterOpen(false)} onApply={(next) => { setFilters(next); setFilterOpen(false); }} />
-      <SortSheet visible={sortOpen} current={sort} onClose={() => setSortOpen(false)} onApply={(next) => { setSort(next); setSortOpen(false); }} />
+      <SortSheet visible={sortOpen} current={sort} onClose={() => setSortOpen(false)} onApply={(next) => { setSort(next); void localStore.saveCatalogSort(next); setSortOpen(false); }} />
     </SafeAreaView>
   );
 }
