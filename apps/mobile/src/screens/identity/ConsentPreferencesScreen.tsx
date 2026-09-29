@@ -26,6 +26,7 @@ type PreferencePayload = {
 export default function ConsentPreferencesScreen({ navigation }: Props) {
   const { colors } = useHidiTheme();
   const auth = useAuth();
+  const [analytics, setAnalytics] = useState(false);
   const [personalization, setPersonalization] = useState(false);
   const [promotional, setPromotional] = useState(false);
   const [consentVersion, setConsentVersion] = useState("");
@@ -36,6 +37,7 @@ export default function ConsentPreferencesScreen({ navigation }: Props) {
     let alive = true;
     void localStore.consentDraft().then((draft) => {
       if (!alive) return;
+      setAnalytics(draft.analyticsOptIn);
       setPersonalization(draft.personalizationOptIn);
       setPromotional(draft.whatsappOptIn);
     });
@@ -55,7 +57,7 @@ export default function ConsentPreferencesScreen({ navigation }: Props) {
   async function save() {
     setBusy(true); setError("");
     try {
-      await localStore.saveConsentDraft({ personalizationOptIn: personalization, whatsappOptIn: promotional });
+      await localStore.saveConsentDraft({ analyticsOptIn: analytics, personalizationOptIn: personalization, whatsappOptIn: promotional });
       if (auth.session && consentVersion) {
         await hidiRequest(hidiEndpoints.retentionPreferences, {
           method: "PATCH",
@@ -81,7 +83,7 @@ export default function ConsentPreferencesScreen({ navigation }: Props) {
 
         <View style={styles.list}>
           <ToggleRow title="Essential services" detail="Needed to save your bag, process orders and protect your account." value fixedLabel="Always on" onValueChange={() => undefined} disabled />
-          <ToggleRow title="Product analytics" detail="Help us understand what works. Stored only when the approved analytics layer is active." value={personalization} onValueChange={setPersonalization} />
+          <ToggleRow title="Product analytics" detail="Help us understand what works. This local choice does not send data unless an approved analytics layer is active." value={analytics} onValueChange={setAnalytics} />
           <ToggleRow title="Personalised suggestions" detail="Use your saved interests and consented product activity." value={personalization} onValueChange={setPersonalization} />
           <ToggleRow title="Promotional messages" detail="Receive optional HIDI updates through an approved verified channel." value={promotional} onValueChange={setPromotional} />
         </View>
