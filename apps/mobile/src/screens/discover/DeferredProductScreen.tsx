@@ -20,9 +20,9 @@ export default function DeferredProductScreen({ navigation, route }: Props) {
   const product = useMemo(() => state.kind === "content" ? state.data.find((item) => item.slug === route.params.slug) : undefined, [state, route.params.slug]);
 
   React.useEffect(() => {
-    void localStore.rememberViewed(route.params.slug);
+    void localStore.rememberViewed(route.params.slug, product?.name);
     void localStore.saveLastSafeRoute("product:" + route.params.slug);
-  }, [route.params.slug]);
+  }, [route.params.slug, product?.name]);
 
   return (
     <HidiScreen>
