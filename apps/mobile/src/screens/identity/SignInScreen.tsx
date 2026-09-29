@@ -42,7 +42,7 @@ export default function SignInScreen({ navigation, route }: Props) {
         navigation.replace("VerificationLimited", { retryUntil, phone: normalizedPhone || phone });
         return;
       }
-      setError(err.message || "Unable to send a verification code.");
+      setError(err.message || "Unable to send a WhatsApp verification code.");
     } finally {
       setBusy(false);
     }
@@ -54,7 +54,7 @@ export default function SignInScreen({ navigation, route }: Props) {
       <View style={styles.body}>
         <HidiText variant="metadata" style={{ color: colors.mutedText, letterSpacing: 1.3 }}>YOUR DETAILS, KEPT YOURS</HidiText>
         <HidiText variant="title">Welcome to HIDI</HidiText>
-        <HidiText variant="secondary" style={{ color: colors.mutedText }}>Sign in or join with a one-time code.</HidiText>
+        <HidiText variant="secondary" style={{ color: colors.mutedText }}>Sign in or join with a one-time code on WhatsApp.</HidiText>
 
         <View style={{ marginTop: 18 }}>
           <HidiField
@@ -72,10 +72,10 @@ export default function SignInScreen({ navigation, route }: Props) {
         {!customerAuthConfigured() ? (
           <MessageCard tone="error">Customer verification configuration is not available in this build.</MessageCard>
         ) : (
-          <MessageCard>We’ll send a verification code only for sign-in. This does not opt you into marketing.</MessageCard>
+          <MessageCard>We’ll send the sign-in code to this number on WhatsApp. This does not opt you into marketing.</MessageCard>
         )}
 
-        <HidiButton label="Send verification code" loading={busy} disabled={!customerAuthConfigured()} onPress={() => void send()} />
+        <HidiButton label="Send code on WhatsApp" loading={busy} disabled={!customerAuthConfigured()} onPress={() => void send()} />
         <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] })}>
           <HidiText variant="action">Continue browsing</HidiText>
         </Pressable>
