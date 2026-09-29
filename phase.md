@@ -1,171 +1,69 @@
 # HIDI Mobile - Phase Plan
 
 Branch: `hidi-mobile-build-from-scratch`
-Status: Planning/contract audit
-Source of truth: `HIDI_Mobile_App_Development_Blueprint.pdf` (V1.0, 27 Sep 2026)
+Implementation mode: frontend-only React Native
+Source of truth: HIDI Mobile App Development Blueprint V1.0 / 27 Sep 2026
 
-## Non-negotiable build rules
-- Build the Android app from scratch. Do not copy or adapt code/UI from prior Android branches.
-- Screen IDs H001-H132 are the traceability key across design, engineering and QA.
-- P0 correctness, recovery, accessibility, privacy and payment safety come before visual polish.
-- P1 features H119 (Circle), H120 (referrals) and H127 (gifting) remain feature-flagged until business rules are approved.
-- Existing website/API remain the system of record for product, price, stock, order and payment truth.
-- Never fabricate success, stock, delivery promises, refunds, reviews, support channels or policy terms.
+## Confirmed decisions
+- New UI/frontend only. Existing backend, API gateway/APIM layer, database and provider integrations remain unchanged.
+- React Native only; no Kotlin/Compose UI implementation.
+- Native build projects are committed under `apps/mobile/android` and `apps/mobile/ios`.
+- Android application ID and iOS bundle ID: `com.thehidi.app`.
+- Do not copy UI/application source from prior mobile branches.
+- Prior branches may be inspected only for already-established integration contracts.
+- Complete one phase, update tracking docs, report, then wait for owner approval.
 
-## Phase 0 - Contract audit and foundation
-Status: IN PROGRESS
+## Phase 0 - React Native foundation
+Status: COMPLETE
 
-Scope:
-- Confirm public mobile gateway strategy and package/signing ownership.
-- Map every blueprint endpoint/state to the real HIDI backend.
-- Create native Android project/module skeleton under the approved path.
-- Establish HIDI design tokens, typography strategy, icons, navigation shell and accessibility baseline.
-- Establish environment/flavor configuration and secret policy.
-- Create deterministic fixture layer for screen-state development without pretending fixtures are production data.
-- Create screen registry and traceability matrix H001-H132.
+Completed:
+- React Native 0.87.1 / React 19.2.3 project created from the official Community native template.
+- Android and iOS native build folders created.
+- Android minSdk 26 / targetSdk 36 and HIDI native launch surface prepared.
+- HIDI light/dark semantic design tokens implemented.
+- 48dp interaction baseline and scalable typography primitives created.
+- React Navigation stack foundation and five root-tab route types reserved: Home, Shop, Saved, Bag, You.
+- Shared `UiState<T>` and `MutationState<T>` contracts created.
+- Existing HIDI gateway consumed from the frontend; no APIM/backend resource created.
+- Typed API request/error layer and existing route constants created.
+- H001-H132 registry created with phase/priority traceability.
+- M1-M8 motion and accessibility contracts recorded in code.
+- Foundation tests added.
+- Root pnpm workspace excludes `apps/mobile`, keeping web/API dependency state isolated.
 
-Exit evidence:
-- Android project builds from clean checkout.
-- API contract matrix classifies every screen as: existing API / backend extension / OS-provider handoff / local-only.
-- No secret is present in source or APK config.
-- Base design-system previews cover light/dark, 200% text, loading/error and reduced-motion variants.
+Phase 0 exit:
+- Frontend/native structure is ready for Phase 1.
+- No previous app UI code was copied.
+- No backend source or infrastructure was changed.
 
 ## Phase 1 - Welcome, identity and discovery
-Screens:
-- H001-H022
-- H103-H108 where needed for shared state/recovery
-
-Work:
-- Launch/restore, welcome, optional preferences, sign-in/OTP, consent and verification limits.
-- Home, categories, collections, listing, search, suggestions, filters/sort, saved and recently viewed.
-- Guest browsing first; sign-in never blocks catalogue browsing.
-- Restore tab history, scroll position and safe return intent.
-
-Exit evidence:
-- Guest reaches Home in one tap.
-- OTP return-to-intent works.
-- Product/list/search states handle loading, empty, partial failure and offline correctly.
-- Wishlist local/offline behavior is deterministic and later merge-safe.
+Status: WAITING FOR OWNER APPROVAL
+Screens: H001-H022
+Shared states: H103-H108 as needed
 
 ## Phase 2 - Product confidence and bag
-Screens:
-- H023-H044
-
-Work:
-- PDP, full-screen gallery, SKU picker, size guide, optional fit helper, details/care, PIN serviceability, reviews, stock alert, unavailable/similar states.
-- Bag CRUD, promotions, changed-price/stock acknowledgement, saved-for-later.
-- Exact SKU identity and authoritative totals.
-
-Exit evidence:
-- Last-unit race never shows false success.
-- A selected size/color maps to a specific SKU.
-- Bag totals equal server values.
-- Changed stock/price is acknowledged before checkout.
+Status: NOT STARTED
+Screens: H023-H044
 
 ## Phase 3 - Checkout and payment
-Screens:
-- H045-H060
-- H115 where rate limiting applies
+Status: NOT STARTED
+Screens: H045-H060
 
-Work:
-- Verified guest checkout, address flow, serviceability, delivery options, final review, payment methods.
-- Razorpay/UPI/provider handoff behind a PaymentGateway abstraction.
-- COD path.
-- Payment pending/failure/confirmed/resume states.
-- Stable idempotency/operation IDs and server reconciliation.
-
-Exit evidence:
-- Lost callback resolves the same order.
-- No duplicate order/charge on retry/process recreation.
-- PAN/CVV/UPI PIN never enters HIDI fields/logs/analytics.
-- Pending is treated as a real state and never auto-converted to failure/success.
-
-## Phase 4 - Orders, delivery and after-sales
-Screens:
-- H061-H082
-- H128-H131
-
-Work:
-- Orders, order detail, shipment tracking/split shipments/delivery exception.
-- Item-level cancellation.
-- Invoice/receipt.
-- Returns, evidence, pickup, tracking, refunds, exchanges and price differences.
-- Review submission.
-
-Exit evidence:
-- Partial/split states are item-quantity scoped.
-- Refund cannot exceed remaining paid amount.
-- Replayed provider/carrier events are idempotent.
-- Pickup/refund/order states remain separate.
+## Phase 4 - Orders and after-sales
+Status: NOT STARTED
+Screens: H061-H082, H128-H131
 
 ## Phase 5 - Account, support and privacy
-Screens:
-- H083-H102
-- H123-H126
-- H132
-
-Work:
-- Profile, addresses, payment-token view, shopping preferences.
-- Notifications inbox/settings.
-- Help centre, order-aware support, ticket conversation and real contact channels.
-- Policies/legal.
-- Privacy choices, export/delete, phone/email changes, guest order lookup and sign-out isolation.
-
-Exit evidence:
-- Cross-account reads fail without data leakage.
-- Logout clears scoped local data.
-- Export/delete are reauthenticated and tracked.
-- Support requests are idempotent and resume safely.
+Status: NOT STARTED
+Screens: H083-H102, H123-H126, H132
 
 ## Phase 6 - Resilience, system states and editorial
-Screens:
-- H103-H118
-- H121-H122
-- H125
-
-Work:
-- Shared loading, partial error, offline cached/no-cache, generic error, session expiry, maintenance, required/optional updates.
-- Permission education/denial and OS-owned permission dialog.
-- Deep-link recovery.
-- Editorial story and shop-the-look.
-- Light/dark appearance with semantic tokens.
-
-Exit evidence:
-- Every P0 route has loading/empty/error/offline handling where applicable.
-- No permission prompt on first launch.
-- Deep links validate route + authorization.
-- Theme changes do not recreate payment attempts or lose state.
+Status: NOT STARTED
+Screens: H103-H118, H121-H122, H125
 
 ## Phase 7 - Optional growth
-Screens:
-- H119, H120, H127
+Status: FEATURE-FLAGGED / NOT STARTED
+Screens: H119, H120, H127
 
-Status: FEATURE-FLAGGED / NOT LAUNCH-BLOCKING
-
-Work only after commercial approval:
-- HIDI Circle.
-- Referral sharing.
-- Gift note/packaging.
-
-## Phase 8 - Hardening, release and evidence
-Work:
-- Device matrix: API 26 baseline through API 36/current supported release.
-- 320/360/390/412 dp, landscape, tablets/foldables.
-- TalkBack, Switch Access, keyboard, 100/130/200% text, reduced motion.
-- Lossy network/process death/provider app-switch failure injection.
-- Performance benchmark and screenshot regression for all H001-H132 states.
-- Signed internal APK + test AAB, SBOM/checksums, release record and rollback plan.
-
-Stop-release defects:
-- Double charge/order.
-- Wrong total/refund.
-- Unauthorized object access.
-- Lost confirmed order.
-- Unhandled payment ambiguity.
-- Inaccessible checkout blocker.
-- Misleading return eligibility.
-
-## Current open decisions
-1. Public mobile gateway: no Azure API Management resource/key is currently established in the repository or prior confirmed infrastructure. Existing public path is the Next.js server proxy `/api/store/*` -> internal NestJS `/v1/*`. Confirm this as the Android gateway or provide an APIM service/key if one now exists.
-2. Confirm final Android application ID/signing ownership. Previous Android work used `com.thehidi.app`; this build will not inherit old app code.
-3. Confirm that required backend/API additions for blueprint gaps may be developed in this same branch, backward-compatible with the website.
+## Phase 8 - Hardening and release evidence
+Status: NOT STARTED
