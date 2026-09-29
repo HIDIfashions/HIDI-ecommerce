@@ -172,16 +172,17 @@ export function CartProvider({ children }: PropsWithChildren) {
     if (!existing) throw new HidiApiError({ message: "That bag line is no longer available.", status: 404, retryable: false });
     const sessionId = await cartStorage.sessionId();
     try {
+      const previous = cart;
       const next = await removeCartLine(sessionId, lineId);
       setUndoCandidate(existing);
-      await commit(next, true);
+      await applyCanonicalMutation(previous, next);
       return next;
     } catch (cause) {
       if (!ambiguous(cause)) throw cause;
       const reconciled = await fetchCart(sessionId);
       if (!reconciled.items.some((item) => item.id === lineId)) {
         setUndoCandidate(existing);
-        await commit(reconciled, true);
+        await applyCanonicalMutation(cart, reconciled);
         return reconciled;
       }
       throw new HidiApiError({
@@ -190,7 +191,7 @@ export function CartProvider({ children }: PropsWithChildren) {
         retryable: false,
       });
     }
-  }), [cart, commit, withMutation]);
+  }), [applyCanonicalMutation, cart, withMutation]);
 
   const undoRemove = useCallback(async () => {
     const line = undoCandidate;
