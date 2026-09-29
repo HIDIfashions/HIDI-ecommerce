@@ -20,7 +20,6 @@ export default function ShoppingBagScreen() {
   const { colors } = useHidiTheme();
   const cartState = useCart();
   const catalog = useCatalog();
-  const [checkoutBoundary, setCheckoutBoundary] = useState(false);
   const [recentSlugs, setRecentSlugs] = useState<string[]>([]);
   const [undoError, setUndoError] = useState("");
 
@@ -61,7 +60,7 @@ export default function ShoppingBagScreen() {
           <HidiText variant="secondary" style={{ color: colors.action }}>View saved styles</HidiText>
         </Pressable>
         {cartState.savedForLater.length ? (
-          <Pressable accessibilityRole="button" onPress={() => navigation.navigate("SavedForLater")} style={[styles.savedShortcut, { borderColor: colors.border }]}>
+          <Pressable accessibilityRole="button" onPress={() => navigation.navigate("SavedForLater")} style={[styles.savedShortcut, { borderColor: colors.border }]}> 
             <View>
               <HidiText variant="secondary" style={styles.bold}>Saved for later</HidiText>
               <HidiText variant="metadata" style={{ color: colors.mutedText }}>{cartState.savedForLater.length} deferred bag {cartState.savedForLater.length === 1 ? "item" : "items"}</HidiText>
@@ -94,7 +93,7 @@ export default function ShoppingBagScreen() {
       ) : null}
 
       {cartState.attention.length ? (
-        <Pressable accessibilityRole="button" onPress={() => navigation.navigate("BagAttention")} style={[styles.attention, { borderColor: colors.caution }]}>
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate("BagAttention")} style={[styles.attention, { borderColor: colors.caution }]}> 
           <AlertTriangle size={20} color={colors.caution} />
           <View style={{ flex: 1 }}>
             <HidiText variant="secondary" style={styles.bold}>Your bag needs attention.</HidiText>
@@ -119,8 +118,8 @@ export default function ShoppingBagScreen() {
 
       <View style={styles.lines}>
         {cart.items.map((line) => (
-          <View key={line.id} style={[styles.line, { borderBottomColor: colors.border }]}>
-            <Pressable onPress={() => navigation.navigate("ProductDeferred", { slug: line.product.slug, selectedVariantId: line.variant.id })} style={[styles.thumb, { backgroundColor: colors.blush }]}>
+          <View key={line.id} style={[styles.line, { borderBottomColor: colors.border }]}> 
+            <Pressable onPress={() => navigation.navigate("ProductDeferred", { slug: line.product.slug, selectedVariantId: line.variant.id })} style={[styles.thumb, { backgroundColor: colors.blush }]}> 
               {cartLineImage(line) ? <Image source={{ uri: cartLineImage(line) }} style={styles.image} resizeMode="cover" /> : null}
             </Pressable>
             <View style={{ flex: 1, gap: 4 }}>
@@ -139,7 +138,7 @@ export default function ShoppingBagScreen() {
         ))}
       </View>
 
-      <Pressable accessibilityRole="button" onPress={() => navigation.navigate("Promotions")} style={[styles.promo, { borderColor: colors.border }]}>
+      <Pressable accessibilityRole="button" onPress={() => navigation.navigate("Promotions")} style={[styles.promo, { borderColor: colors.border }]}> 
         <Gift size={18} color={colors.action} />
         <View style={{ flex: 1 }}>
           <HidiText variant="secondary" style={styles.bold}>Offers & promo code</HidiText>
@@ -149,7 +148,7 @@ export default function ShoppingBagScreen() {
       </Pressable>
 
       {cartState.savedForLater.length ? (
-        <Pressable accessibilityRole="button" onPress={() => navigation.navigate("SavedForLater")} style={[styles.promo, { borderColor: colors.border }]}>
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate("SavedForLater")} style={[styles.promo, { borderColor: colors.border }]}> 
           <View style={{ flex: 1 }}>
             <HidiText variant="secondary" style={styles.bold}>Saved for later</HidiText>
             <HidiText variant="metadata" style={{ color: colors.mutedText }}>{cartState.savedForLater.length} {cartState.savedForLater.length === 1 ? "item" : "items"} on this device</HidiText>
@@ -158,17 +157,16 @@ export default function ShoppingBagScreen() {
         </Pressable>
       ) : null}
 
-      <View style={[styles.summary, { borderTopColor: colors.border }]}>
+      <View style={[styles.summary, { borderTopColor: colors.border }]}> 
         <View style={styles.totalRow}><HidiText variant="secondary">Server bag subtotal</HidiText><HidiText variant="secondary" style={styles.bold}>{formatINRPaise(cart.subtotalPaise)}</HidiText></View>
         <View style={styles.totalRow}><HidiText variant="metadata" style={{ color: colors.mutedText }}>Shipping</HidiText><HidiText variant="metadata" style={{ color: colors.mutedText }}>Calculated at checkout</HidiText></View>
         <HidiText variant="metadata" style={{ color: colors.mutedText }}>The current bag API does not return promotions, shipping, tax allocation or a quote version. Final payable amount is therefore not invented here.</HidiText>
       </View>
 
-      {checkoutBoundary ? <MessageCard>Checkout is Phase 3 (H045+). Phase 2 preserves your canonical bag and stops before creating a checkout/payment attempt.</MessageCard> : null}
       <HidiButton
         label={"Continue to checkout · " + formatINRPaise(cart.subtotalPaise)}
         disabled={cartState.stale || cartState.attention.length > 0 || hasBlockingLine}
-        onPress={() => setCheckoutBoundary(true)}
+        onPress={() => navigation.navigate("ResumeCheckout")}
       />
     </ScrollView>
   );
