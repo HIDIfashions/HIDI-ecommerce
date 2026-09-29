@@ -5,18 +5,19 @@ import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { runQualityChecks } from './storefront-quality.browser.mjs';
 const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
 const output = resolve('test-results/editorial-storefront'); await mkdir(output, {recursive:true});
 const port=3107, apiPort=4107, base=`http://127.0.0.1:${port}`;
 const folders=['ira-beige-office-kurta-set','myra-peach-comfort-kurta-set','kiara-wine-festive-kurta-set','nivya-olive-work-kurta','rhea-mint-daily-kurta','anika-ivory-embroidered-set'];
 const products=folders.map((slug,i)=>({
   id:`fixture-${i}`,slug,name:i===0?'Ira everyday kurta':i===5?'Anika embroidered occasion set with a deliberately long product name':`HIDI editorial piece ${i+1}`,
-  description:'Isolated browser-test catalogue. Not a customer order.',shortDescription:'Considered Indian wear.',fabric:'Fixture fabric information',care:'Read the garment care label.',
+  description:'Isolated browser-test catalogue. Not a customer order.\nIncludes: Kurta and trousers\nFit: Relaxed\nLining: Unlined',shortDescription:'Considered Indian wear.',fabric:'Fixture fabric information',care:'Read the garment care label.',
   collections:[{id:'new',slug:'new-arrivals',name:'New arrivals'}],category:{id:'kurta',name:'Kurta',slug:'kurta'},
   minPricePaise:149900,maxPricePaise:i===1?179900:149900,inStock:i!==4,
   images:['01-main.png','03-detail.png'].map((name,n)=>({id:`img-${i}-${n}`,url:`/products/${slug}/${name}`,alt:n?'Garment detail':'HIDI editorial portrait',position:n})),
   // A price range must contain two PURCHASABLE prices, not an unavailable variant.
-  variants:[{id:`v-${i}-m`,sku:`FIXTURE-${i}-M`,color:'Ivory',size:'M',pricePaise:149900,mrpPaise:199900,available:i===4?0:4},{id:`v-${i}-l`,sku:`FIXTURE-${i}-L`,color:'Ivory',size:'L',pricePaise:i===1?179900:149900,mrpPaise:199900,available:i===1?4:0},...(i===0?[{id:'v-0-xl',sku:'FIXTURE-0-XL',color:'Wine',size:'XL',pricePaise:149900,mrpPaise:199900,available:3}]:[])],
+  variants:[{id:`v-${i}-m`,sku:`FIXTURE-${i}-M`,color:'Ivory',size:'M',pricePaise:149900,mrpPaise:199900,available:i===4?0:4,bustMm:1100,garmentLengthMm:1120},{id:`v-${i}-l`,sku:`FIXTURE-${i}-L`,color:'Ivory',size:'L',pricePaise:i===1?179900:149900,mrpPaise:199900,available:i===1?4:0},...(i===0?[{id:'v-0-xl',sku:'FIXTURE-0-XL',color:'Wine',size:'XL',pricePaise:149900,mrpPaise:199900,available:3,images:[{id:'wine-fixture',url:`/products/${slug}/02-alt.png`,alt:'Isolated alternate-colour image',position:0}]}]:[])],
 }));
 const carts=new Map(),writes=[],results=[],typography=[],pageErrors=[];
 let cartMode='ok',catalogueMode='ok',serverLog='',server,activeBrowser;
@@ -70,11 +71,23 @@ async function fontAudit(page,engine,label){
   for(const input of await page.locator('input:not([type="checkbox"]):not([type="radio"]):visible,select:visible,textarea:visible').all())assert(await input.evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=16),'Text fields must remain at least 16px');
 }
 async function scenario(browser,engine,id,title,work,options={}){
-  const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce',...options});
+  const {startPath='/',...contextOptions}=options;
+  assert(typeof startPath==='string'&&startPath.startsWith('/')&&!startPath.startsWith('//'),'Only isolated same-origin entry routes are allowed');
+  const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce',...contextOptions});
   await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
   const page=await context.newPage();page.setDefaultTimeout(8000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
   cartMode='ok';catalogueMode='ok';const start=Date.now();
-  try{await page.goto(base,{waitUntil:'domcontentloaded'});await page.locator('[data-hidi-editorial="v2"]').waitFor();await until(()=>page.locator('[data-editorial-product]').first().locator('button[aria-pressed]').first().isEnabled(),'storefront hydration');await work(page,context);assert.deepEqual(errors,[],'Unexpected browser exceptions');results.push({engine,id,title,status:'PASS',durationMs:Date.now()-start});console.log(`PASS ${engine} ${id} ${title}`);}
+  try{
+    await page.goto(base+startPath,{waitUntil:'domcontentloaded'});await page.locator('#main-content').waitFor();
+    if(startPath==='/'){
+      await page.locator('[data-hidi-editorial="v2"]').waitFor();await until(()=>page.locator('[data-editorial-product]').first().locator('button[aria-pressed]').first().isEnabled(),'storefront hydration');
+      await page.waitForLoadState('networkidle');
+    }else{
+      // CartLink creates this browser-session key from its client effect; no fixture state is injected.
+      await until(()=>page.evaluate(()=>Boolean(localStorage.getItem('hidi_cart_session'))),'direct-entry client hydration');
+    }
+    await work(page,context);assert.deepEqual(errors,[],'Unexpected browser exceptions');results.push({engine,id,title,status:'PASS',durationMs:Date.now()-start});console.log(`PASS ${engine} ${id} ${title}`);
+  }
   catch(error){results.push({engine,id,title,status:'FAIL',error:String(error.stack||error),durationMs:Date.now()-start});console.error(`FAIL ${engine} ${id}: ${error}`);await page.screenshot({path:resolve(output,`${engine}-${id}-failure.png`),timeout:10000}).catch(()=>{});await writeFile(resolve(output,`${engine}-${id}-failure.html`),await page.content().catch(()=>''));}
   finally{pageErrors.push(...errors.map(error=>({engine,id,error})));await context.close();}
 }
@@ -116,8 +129,8 @@ try{
     },{reducedMotion:'no-preference'});
     await scenario(browser,engine,'SRCH-01','Search suggestions, thumbnails, typed results, no-match state and focus restoration',async page=>{
       await page.getByRole('button',{name:'Search',exact:true}).click();const search=page.getByRole('dialog',{name:'Search HIDI',exact:true});await search.waitFor();await until(()=>search.locator('[aria-label="Discover HIDI products"] a').count().then(n=>n===4),'discovery thumbnails');assert.equal(await search.getByRole('navigation',{name:'Suggested searches'}).getByRole('link').count(),4);
-      await search.getByRole('textbox',{name:'Search HIDI products'}).fill('Ira');await until(()=>search.locator('#hidi-search-results a').count().then(n=>n===1),'matching result');await fontAudit(page,engine,'search-dialog');await page.screenshot({path:resolve(output,`${engine}-search.png`)});
-      await search.getByRole('textbox',{name:'Search HIDI products'}).fill('zz-no-match-zz');await search.getByRole('status').filter({hasText:'No HIDI pieces matched'}).waitFor();await page.keyboard.press('Escape');await search.waitFor({state:'hidden'});await until(()=>page.getByRole('button',{name:'Search',exact:true}).evaluate(el=>el===document.activeElement),'search focus return');
+      await search.getByRole('searchbox',{name:'Search HIDI products'}).fill('Ira');await until(()=>search.locator('#hidi-search-results a').count().then(n=>n===1),'matching result');await fontAudit(page,engine,'search-dialog');await page.screenshot({path:resolve(output,`${engine}-search.png`)});
+      await search.getByRole('searchbox',{name:'Search HIDI products'}).fill('zz-no-match-zz');await search.getByRole('status').filter({hasText:'No HIDI pieces matched'}).waitFor();await page.keyboard.press('Escape');await search.waitFor({state:'hidden'});await until(()=>page.getByRole('button',{name:'Search',exact:true}).evaluate(el=>el===document.activeElement),'search focus return');
     });
     await scenario(browser,engine,'SRCH-02','Search network failure is explicit and retry recovers',async page=>{
       let fail=true;await page.route('**/api/store/products',route=>fail?route.fulfill({status:503,contentType:'application/json',body:'{"message":"Unavailable"}'}):route.continue());await page.getByRole('button',{name:'Search',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Search HIDI',exact:true});await dialog.getByRole('alert').waitFor();fail=false;await dialog.getByRole('button',{name:'Try again'}).click();await dialog.locator('[aria-label="Discover HIDI products"]').waitFor();
@@ -159,6 +172,7 @@ try{
     await scenario(browser,engine,'EMPTY-01','Empty catalogue retains hero, discovery and calm recovery',async page=>{
       catalogueMode='empty';await page.waitForLoadState('networkidle');await page.reload({waitUntil:'networkidle'});await page.getByText('Our latest edit is being prepared.').waitFor();assert.equal(await page.locator('[data-editorial-product]').count(),0);assert.equal(await page.getByRole('heading',{name:'Wear the feeling.'}).count(),1);
     });
+    await runQualityChecks({browser,engine,scenario,until,base,output,products,writes,setCartMode:value=>{cartMode=value;}});
     await browser.close();activeBrowser=null;
   }
 }finally{

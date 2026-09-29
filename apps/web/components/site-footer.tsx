@@ -15,5 +15,5 @@ export function Footer() {
       {(instagram || facebook || x || youtube) && <div className="social-links" aria-label="HIDI social channels"><SocialLink href={instagram} label="HIDI on Instagram"><InstagramIcon size={18} /></SocialLink><SocialLink href={facebook} label="HIDI on Facebook"><FacebookIcon size={18} /></SocialLink><SocialLink href={x} label="HIDI on X"><XIcon size={17} /></SocialLink><SocialLink href={youtube} label="HIDI on YouTube"><YouTubeIcon size={19} /></SocialLink></div>}
       <Link href="/lookbook" className="footer-lookbook-link">Explore our editorial archive →</Link><NewsletterSignup /><p className="footer-small">By subscribing, you agree to receive HIDI updates. You can unsubscribe anytime.</p><p className="footer-motto">Good clothes. Brighter days.</p>
     </div>
-  </div></div><div className="footer-bottom-shell"><div className="footer-bottom container"><span>© 2026 HIDI. All rights reserved.</span><span>Secure payments · Easy 7-day exchange</span></div></div></footer>;
+  </div></div><div className="footer-bottom-shell"><div className="footer-bottom container"><span>© 2026 HIDI. All rights reserved.</span><span><Link href="/shipping">Delivery</Link> · <Link href="/returns">Returns &amp; exchanges</Link> · <Link href="/contact">Order support</Link></span></div></div></footer>;
 }

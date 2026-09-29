@@ -5,6 +5,8 @@ import { ChevronDown, ChevronRight, Filter, SlidersHorizontal, X } from "lucide-
 import { ApiProduct } from "@/lib/api";
 import { ProductCard } from "./product-card";
 import styles from "./collection-browser.module.css";
+import { compareSizes } from "@/lib/product-card-utils";
+import { filterCatalogue, PRICE_LABELS } from "@/lib/catalogue-discovery";
 import { focusFirst, trapFocus } from "@/lib/focus-management";
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -49,7 +51,7 @@ function toggleValue(current: string[], value: string) {
 
 export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
   const sizes = useMemo(
-    () => Array.from(new Set(products.flatMap((p) => p.variants.map((v) => v.size)))).sort(),
+    () => Array.from(new Set(products.flatMap((p) => p.variants.map((v) => v.size)))).sort(compareSizes),
     [products],
   );
   const colors = useMemo(
@@ -111,33 +113,9 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
     };
   }, [mobileOpen]);
 
-  const filtered = useMemo(() => {
-    const result = products.filter((product) => {
-      if (
-        selectedSizes.length &&
-        !product.variants.some((variant) => selectedSizes.includes(variant.size) && variant.available > 0)
-      ) return false;
-
-      if (
-        selectedColors.length &&
-        !product.variants.some((variant) => selectedColors.includes(variant.color) && variant.available > 0)
-      ) return false;
-
-      if (selectedFabrics.length && (!product.fabric || !selectedFabrics.includes(product.fabric))) return false;
-
-      if (price === "under1500" && product.minPricePaise >= 150000) return false;
-      if (price === "1500to2000" && (product.minPricePaise < 150000 || product.minPricePaise > 200000)) return false;
-      if (price === "over2000" && product.minPricePaise <= 200000) return false;
-      return true;
-    });
-
-    return [...result].sort((a, b) => {
-      if (sort === "price-low") return a.minPricePaise - b.minPricePaise;
-      if (sort === "price-high") return b.minPricePaise - a.minPricePaise;
-      if (sort === "name") return a.name.localeCompare(b.name);
-      return 0;
-    });
-  }, [products, selectedSizes, selectedColors, selectedFabrics, price, sort]);
+  const filtered = useMemo(() => filterCatalogue(products, {
+    sizes: selectedSizes, colors: selectedColors, fabrics: selectedFabrics, price, sort,
+  }), [products, selectedSizes, selectedColors, selectedFabrics, price, sort]);
 
   const hasFilters = selectedSizes.length > 0 || selectedColors.length > 0 || selectedFabrics.length > 0 || Boolean(price);
   const activeControlCount = selectedSizes.length + selectedColors.length + selectedFabrics.length + (price ? 1 : 0) + (sort !== "featured" ? 1 : 0);
@@ -230,6 +208,9 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
           </label>)}
         </div>
       </details>
+      <div className={styles.drawerApply}>
+        <button className="button button-dark" type="button" onClick={() => closeFilters(true)}>Show {filtered.length} styles</button>
+      </div>
     </aside>
   );
 
@@ -302,6 +283,13 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
           </div>
         </div>
 
+        {hasFilters && <div className={styles.activeFilters} role="group" aria-label="Applied filters">
+          {selectedSizes.map(value => <button key={"size-" + value} type="button" aria-label={`Remove size ${value} filter`} onClick={() => setSelectedSizes(current => toggleValue(current, value))}>Size {value} <X size={14} aria-hidden="true" /></button>)}
+          {selectedColors.map(value => <button key={"color-" + value} type="button" aria-label={`Remove colour ${value} filter`} onClick={() => setSelectedColors(current => toggleValue(current, value))}>{value} <X size={14} aria-hidden="true" /></button>)}
+          {selectedFabrics.map(value => <button key={"fabric-" + value} type="button" aria-label={`Remove fabric ${value} filter`} onClick={() => setSelectedFabrics(current => toggleValue(current, value))}>{value} <X size={14} aria-hidden="true" /></button>)}
+          {price && <button type="button" aria-label="Remove price filter" onClick={() => setPrice("")}>{PRICE_LABELS[price]} <X size={14} aria-hidden="true" /></button>}
+          <button type="button" onClick={clearFilters}>Clear all filters</button>
+        </div>}
         {filtered.length
           ? <div className={`${styles.productGrid} ${mobileColumns === 1 ? styles.gridOne : styles.gridTwo}`}>{filtered.map((product, index) => (
               <ProductCard key={product.id} product={product} priorityMedia={index < 2}

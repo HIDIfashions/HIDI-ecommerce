@@ -42,14 +42,14 @@ export function AmbientHero({ videoSrc }: { videoSrc?: string }) {
     video.muted = true; void video.play().catch(() => setPlaying(false));
   }, [running, loadVideo, failed]);
   return <>
-    <div ref={mediaRef} className={styles.media} data-motion={running ? "running" : "paused"} data-video-playing={playing && !failed}>
+    <div ref={mediaRef} className={styles.media} data-hidi-campaign data-motion={running ? "running" : "paused"} data-video-playing={playing && !failed}>
       <Image src="/brand/hidi-hero-green-garden-fullbody.webp" alt="HIDI garden campaign, full-length Indian wear styling" fill priority sizes="100vw" className={styles.poster} />
       {source && !failed && <video ref={videoRef} className={styles.video} src={loadVideo ? source : undefined} muted loop playsInline preload="none" aria-hidden="true" tabIndex={-1} onPlaying={() => setPlaying(true)} onError={() => { setFailed(true); setPlaying(false); }} />}
     </div>
-    {allowed && <button type="button" className={styles.motionControl} onClick={() => setPaused(value => !value)} aria-label={paused ? "Play ambient motion" : "Pause ambient motion"} aria-pressed={paused}>{paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}<span>Motion {paused ? "off" : "on"}</span></button>}
+    {allowed && <button type="button" className={styles.motionControl} data-hidi-motion-control onClick={() => setPaused(value => !value)} aria-label={paused ? "Play ambient motion" : "Pause ambient motion"} aria-pressed={paused}>{paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}<span>Motion {paused ? "off" : "on"}</span></button>}
   </>;
 }
-const messages = ["Complimentary shipping · ₹1,499+", "Easy exchange within 7 days", "Secure checkout. Considered style."];
+const messages = ["Complimentary shipping · ₹1,499+", "7-day returns · review eligibility", "Secure checkout. Considered style."];
 export function AnnouncementTicker() {
   const allowed = useMotionPreference();
   const [index, setIndex] = useState(0), [paused, setPaused] = useState(false), [interacting, setInteracting] = useState(false);

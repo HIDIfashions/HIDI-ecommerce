@@ -15,6 +15,7 @@ const PUBLIC_ROUTES = [
   { path: "/about", priority: 0.6, changeFrequency: "monthly" as const },
   { path: "/shipping", priority: 0.4, changeFrequency: "monthly" as const },
   { path: "/returns", priority: 0.4, changeFrequency: "monthly" as const },
+  { path: "/offers", priority: 0.4, changeFrequency: "monthly" as const },
   { path: "/contact", priority: 0.4, changeFrequency: "monthly" as const },
 ] as const;
 

@@ -326,3 +326,7 @@
 
 
 .addButton, .buyButton, .mobileAdd, .mobileBuy { font-size: var(--type-ui); line-height: 1.4; }
+
+/* The sticky purchase bar must remain below search, filter and gallery dialogs. */
+@media (max-width: 620px) { .mobileBar { z-index: 90; } }
+.fitUnits button { min-width: 44px; min-height: 44px; }

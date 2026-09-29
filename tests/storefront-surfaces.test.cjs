@@ -77,6 +77,11 @@ test('public CSS modules contain no hard-coded white surface fills', () => {
   }
 });
 test('inline product and cart fills use the shared token without altering imagery', () => {
+  const page = read('apps/web/app/products/[slug]/page.tsx');
+  const media = read('apps/web/components/product-purchase-summary.tsx');
+  assert.match(page, /<ProductMedia key=\{product\.id\} product=\{product\}/);
+  assert.match(media, /<ProductGallery/);
+  assert.match(media, /specific\.length \? specific : product\.images/);
   for (const file of ['product-gallery.tsx', 'cart-client.tsx', 'catalog-image.tsx']) {
     const content = read('apps/web/components/' + file);
     assert.doesNotMatch(content, /background:\s*"(?:#fff(?:fff)?|white|rgba\(255,255,255,\.(?:9|92)\))"/);
