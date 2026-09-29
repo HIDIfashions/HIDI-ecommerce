@@ -8,7 +8,7 @@ import { HidiScreen } from "../../components/HidiScreen";
 import { HidiText } from "../../components/HidiText";
 import { MessageCard } from "../../components/MessageCard";
 import { customerAuthConfigured } from "../../config/publicRuntime";
-import { sendPhoneOtp } from "../../auth/session";
+import { normalizeIndianPhone, sendPhoneOtp } from "../../auth/session";
 import { localStore } from "../../storage/localStore";
 import { useHidiTheme } from "../../theme/HidiTheme";
 import type { RootStackParamList } from "../../navigation/types";
@@ -24,20 +24,22 @@ export default function SignInScreen({ navigation, route }: Props) {
   async function send() {
     setError("");
     setBusy(true);
+    let normalizedPhone = "";
     try {
-      const activeLimit = await localStore.verificationRetryUntil();
-      if (activeLimit > Date.now()) {
-        navigation.replace("VerificationLimited", { retryUntil: activeLimit, phone });
+      normalizedPhone = normalizeIndianPhone(phone);
+      const activeLimit = await localStore.verificationLimit();
+      if (activeLimit.retryUntil > Date.now() && activeLimit.phone === normalizedPhone) {
+        navigation.replace("VerificationLimited", { retryUntil: activeLimit.retryUntil, phone: normalizedPhone });
         return;
       }
-      const result = await sendPhoneOtp(phone);
+      const result = await sendPhoneOtp(normalizedPhone);
       navigation.navigate("VerifyPhone", { ...result, returnTo: route.params?.returnTo });
     } catch (cause) {
       const err = cause as Error & { status?: number; retryAfterSeconds?: number };
       if (err.status === 429) {
         const retryUntil = Date.now() + Math.max(err.retryAfterSeconds ?? 60, 60) * 1000;
-        await localStore.setVerificationRetryUntil(retryUntil);
-        navigation.replace("VerificationLimited", { retryUntil, phone });
+        await localStore.setVerificationLimit(normalizedPhone || phone, retryUntil);
+        navigation.replace("VerificationLimited", { retryUntil, phone: normalizedPhone || phone });
         return;
       }
       setError(err.message || "Unable to send a verification code.");
