@@ -49,3 +49,9 @@ For every phase:
 - Production: `https://thehidi.com/api/store`
 
 This app reuses that layer; it does not add a new one.
+
+
+## Current checkpoint
+- Phase 0 is complete and CI-verified.
+- Typecheck, unit tests and Android debug build passed in workflow run `36570551111`.
+- Phase 1 (H001-H022) must not start until the owner explicitly approves it.
