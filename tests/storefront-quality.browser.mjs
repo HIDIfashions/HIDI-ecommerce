@@ -1,11 +1,15 @@
 /** Additional field/selection regression cases, reusing the isolated production-build harness. */
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
+import { watchRoutePrefetch, settleRoutePrefetch } from './browser-navigation.mjs';
 export async function runQualityChecks({browser,engine,scenario,until,base,output,products,writes,setCartMode}) {
- const run=(id,title,work,options)=>scenario(browser,engine,id,title,work,options);
- // This settles the old document before explicit test-driven unloads; UI assertions below still determine readiness.
- const navigate=async(page,url)=>{await page.waitForLoadState('networkidle');return page.goto(url,{waitUntil:'networkidle'});};
- const pdp=async(page,index=0)=>{await navigate(page,base+'/products/'+products[index].slug);await page.locator('[data-pdp-summary]').waitFor();};
+ const run=(id,title,work,options)=>scenario(browser,engine,id,title,async(page,context)=>{
+  const cleanup=watchRoutePrefetch(page);
+  try { await work(page,context); await settleRoutePrefetch(page); } finally { cleanup(); }
+ },options);
+ // Observe actual in-flight route requests, not a cached network-idle event from the old document.
+ const navigate=async(page,url)=>{await settleRoutePrefetch(page);const response=await page.goto(url,{waitUntil:'domcontentloaded'});await page.locator('#main-content').waitFor();await settleRoutePrefetch(page);return response;};
+ const pdp=async(page,index=0)=>{await navigate(page,base+'/products/'+products[index].slug);await page.locator('[data-pdp-summary]').waitFor();await until(()=>page.locator('.pdp-related button[aria-pressed]').first().isEnabled(),'product-page hydration');};
  const actions=page=>page.locator('[aria-label="Purchase actions"]');
  const size=(page,name)=>page.locator('.sizes').getByRole('button',{name,exact:true});
  const summary=page=>page.locator('[data-pdp-summary]');
@@ -69,7 +73,7 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
   await page.getByRole('button',{name:'Search',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Search HIDI',exact:true});const input=dialog.getByRole('searchbox',{name:'Search HIDI products'});await input.fill('wine ira');await until(()=>dialog.locator('#hidi-search-results a').count().then(n=>n===1),'reversed-word search');
   await dialog.getByRole('link',{name:'View all search results',exact:true}).click();await page.waitForURL('**/search?*');assert.match(await page.locator('.filter-bar').innerText(),/1 result/);
   await navigate(page,base+'/search?q=ira&q=ignored');assert.match(await page.locator('.filter-bar').innerText(),/1 result/);await page.getByRole('searchbox',{name:'Search HIDI products'}).fill('no such fixture');
-  await page.waitForLoadState('networkidle');
+  await settleRoutePrefetch(page);
   await page.locator('.search-form').getByRole('button',{name:'Search',exact:true}).click();await page.getByRole('heading',{name:'No styles found.'}).waitFor();
  });
  await run('QUAL-11','Malformed search responses show a recoverable error, never an empty catalogue',async page=>{
