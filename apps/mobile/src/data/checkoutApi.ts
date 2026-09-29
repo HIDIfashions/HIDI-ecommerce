@@ -73,27 +73,27 @@ export async function createCheckoutAttempt(input: {
 
   const response = await hidiRequest<CheckoutPrepareResponse>(hidiEndpoints.prepareCheckout, {
     method: "POST",
-    accessToken: input.accessToken,
+    ...(input.accessToken ? { accessToken: input.accessToken } : {}),
     body: JSON.stringify(payload),
     timeoutMs: 25000,
   });
 
   const attempt: CheckoutAttempt = {
     checkoutToken,
-    hidiOrderId: response.hidiOrderId,
     orderNumber: response.orderNumber,
     provider: response.provider,
-    providerOrderId: response.providerOrderId,
-    razorpayKeyId: response.razorpayKeyId,
     amountPaise: response.amountPaise,
     totalPaise: response.totalPaise,
     walletAppliedPaise: response.walletAppliedPaise ?? 0,
     currency: response.currency,
     status: response.status,
     captured: response.captured,
-    reservationMinutes: response.reservationMinutes,
     createdAt: Date.now(),
     methodIntent: input.methodIntent,
+    ...(response.hidiOrderId ? { hidiOrderId: response.hidiOrderId } : {}),
+    ...(response.providerOrderId ? { providerOrderId: response.providerOrderId } : {}),
+    ...(response.razorpayKeyId ? { razorpayKeyId: response.razorpayKeyId } : {}),
+    ...(response.reservationMinutes !== undefined ? { reservationMinutes: response.reservationMinutes } : {}),
   };
   await checkoutStorage.saveAttempt(attempt);
   return attempt;
