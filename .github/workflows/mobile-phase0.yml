@@ -1,5 +1,6 @@
 name: Mobile Phase 5
 
+# Phase 5 re-check after account screen type fixes.
 on:
   push:
     branches:
