@@ -72,7 +72,7 @@ export default function ReviewsScreen({ navigation, route }: Props) {
                 <View key={rating} style={styles.distRow}>
                   <HidiText variant="metadata" style={styles.starLabel}>{rating} ★</HidiText>
                   <View style={[styles.track, { backgroundColor: colors.border }]}>
-                    <View style={[styles.fillBar, { backgroundColor: colors.action, width: Math.max(0, Math.min(1, pct)) * 100 + "%" }]} />
+                    <View style={[styles.fillBar, { backgroundColor: colors.action, width: (Math.max(0, Math.min(1, pct)) * 100 + "%") as `${number}%` }]} />
                   </View>
                   <HidiText variant="metadata" style={styles.count}>{count}</HidiText>
                 </View>
