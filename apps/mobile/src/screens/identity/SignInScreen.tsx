@@ -77,6 +77,9 @@ export default function SignInScreen({ navigation, route }: Props) {
         <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] })}>
           <HidiText variant="action">Continue browsing</HidiText>
         </Pressable>
+        <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => navigation.navigate("ConsentPreferences")}>
+          <HidiText variant="metadata" style={{ color: colors.action }}>Review privacy choices</HidiText>
+        </Pressable>
         <HidiText variant="metadata" style={[styles.legal, { color: colors.mutedText }]}>Optional after verification: you control analytics and promotional contact separately.</HidiText>
       </View>
     </HidiScreen>
