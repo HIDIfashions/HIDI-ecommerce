@@ -47,7 +47,7 @@ export default function SignInScreen({ navigation, route }: Props) {
   }
 
   return (
-    <HidiScreen contentStyle={styles.zeroTop}>
+    <HidiScreen testID="H004" contentStyle={styles.zeroTop}>
       <AppHeader title="Sign in" onBack={navigation.goBack} />
       <View style={styles.body}>
         <HidiText variant="metadata" style={{ color: colors.mutedText, letterSpacing: 1.3 }}>YOUR DETAILS, KEPT YOURS</HidiText>
