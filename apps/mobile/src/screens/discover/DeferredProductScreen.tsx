@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AppHeader } from "../../components/AppHeader";
+import { CatalogSkeleton, ErrorState } from "../../components/StateViews";
 import { HidiScreen } from "../../components/HidiScreen";
 import { HidiText } from "../../components/HidiText";
 import { useCatalog } from "../../data/CatalogContext";
@@ -26,7 +27,9 @@ export default function DeferredProductScreen({ navigation, route }: Props) {
   return (
     <HidiScreen>
       <AppHeader title="HIDI" onBack={navigation.goBack} />
-      {product ? (
+      {state.kind === "loading" ? <CatalogSkeleton /> : null}
+      {state.kind === "error" ? <ErrorState message={state.errorKind} onRetry={() => undefined} /> : null}
+      {state.kind === "content" && product ? (
         <View style={styles.body}>
           <View style={[styles.media, { backgroundColor: colors.blush }]}>
             {productImage(product) ? <Image source={{ uri: productImage(product) }} style={styles.image} resizeMode="cover" /> : null}
@@ -37,9 +40,9 @@ export default function DeferredProductScreen({ navigation, route }: Props) {
             Product detail, sizing and add-to-bag are implemented in Phase 2. This Phase 1 route preserves your discovery position and recently viewed history.
           </HidiText>
         </View>
-      ) : (
+      ) : state.kind === "content" ? (
         <HidiText variant="secondary">This style is no longer available in the current catalogue.</HidiText>
-      )}
+      ) : null}
     </HidiScreen>
   );
 }
