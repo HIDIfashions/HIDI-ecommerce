@@ -64,7 +64,7 @@ async function saveSession(payload: SupabaseAuthPayload): Promise<HidiSession> {
 
 export async function loadSession(): Promise<HidiSession | null> {
   const credentials = await Keychain.getGenericPassword({ service: SERVICE }).catch(() => false);
-  if (!credentials) return null;
+  if (!credentials || typeof credentials !== "object") return null;
   try {
     return JSON.parse(credentials.password) as HidiSession;
   } catch {
