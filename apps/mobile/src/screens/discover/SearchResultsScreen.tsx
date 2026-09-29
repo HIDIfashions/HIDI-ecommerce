@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ArrowUpDown, SlidersHorizontal, X } from "lucide-react-native";
@@ -11,6 +11,7 @@ import { HidiText } from "../../components/HidiText";
 import { emptyFilters, filterProducts, Filters, matchesSearch, sortProducts, SortKey } from "../../data/catalog";
 import { useCatalog } from "../../data/CatalogContext";
 import { useHidiTheme } from "../../theme/HidiTheme";
+import { localStore } from "../../storage/localStore";
 import { hidiRadius } from "../../theme/tokens";
 import type { RootStackParamList } from "../../navigation/types";
 
@@ -25,6 +26,12 @@ export default function SearchResultsScreen({ navigation, route }: Props) {
   const { state, refresh } = useCatalog();
   const [filters, setFilters] = useState<Filters>(route.params.filters ?? emptyFilters);
   const [sort, setSort] = useState<SortKey>(route.params.sort ?? "recommended");
+  const queryId = useRef("search-" + Date.now().toString(36));
+
+  useEffect(() => {
+    if (route.params.sort) return;
+    void localStore.catalogSort().then((value) => setSort(value as SortKey));
+  }, [route.params.sort]);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
 
@@ -72,7 +79,7 @@ export default function SearchResultsScreen({ navigation, route }: Props) {
         {state.kind === "content" ? <>
           {state.freshness === "offline-cache" ? <OfflineBadge /> : null}
           {shown.length ? (
-            <ProductGrid products={shown} onOpen={(product) => navigation.navigate("ProductDeferred", { slug: product.slug })} />
+            <ProductGrid products={shown} onOpen={(product) => navigation.navigate("ProductDeferred", { slug: product.slug, queryId: queryId.current })} />
           ) : (
             <EmptyState
               icon="search"
@@ -85,7 +92,7 @@ export default function SearchResultsScreen({ navigation, route }: Props) {
         </> : null}
       </ScrollView>
       <FilterSheet visible={filterOpen} products={matched} current={filters} onClose={() => setFilterOpen(false)} onApply={(next) => { setFilters(next); setFilterOpen(false); }} />
-      <SortSheet visible={sortOpen} current={sort} onClose={() => setSortOpen(false)} onApply={(next) => { setSort(next); setSortOpen(false); }} />
+      <SortSheet visible={sortOpen} current={sort} onClose={() => setSortOpen(false)} onApply={(next) => { setSort(next); void localStore.saveCatalogSort(next); setSortOpen(false); }} />
     </SafeAreaView>
   );
 }
