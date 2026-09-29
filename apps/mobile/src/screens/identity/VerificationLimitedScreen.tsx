@@ -34,7 +34,7 @@ export default function VerificationLimitedScreen({ navigation, route }: Props) 
   }
 
   return (
-    <HidiScreen contentStyle={styles.zeroTop}>
+    <HidiScreen testID="H008" contentStyle={styles.zeroTop}>
       <AppHeader title="Verification limited" onBack={() => navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] })} />
       <View style={styles.body}>
         <View style={[styles.iconWrap, { backgroundColor: colors.blush }]}>
