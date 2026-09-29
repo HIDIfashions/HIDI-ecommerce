@@ -76,7 +76,7 @@ export default function ProductGalleryScreen({ navigation, route }: Props) {
   const { width } = useWindowDimensions();
   const { product, loading, error, reload } = useProductDetail(route.params.slug);
   const [index, setIndex] = useState(Math.max(0, route.params.initialIndex ?? 0));
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<any>(null);
 
   const media = useMemo(() => {
     if (!product) return [];
@@ -102,7 +102,7 @@ export default function ProductGalleryScreen({ navigation, route }: Props) {
   }
 
   return (
-    <SafeAreaView testID="H024" style={[styles.safe, { backgroundColor: colors.canvas }]}>
+    <SafeAreaView testID="H024" style={[styles.safe, { backgroundColor: colors.canvas }]}> 
       <AppHeader title="Full-screen gallery" onBack={navigation.goBack} />
       {media.length ? (
         <>
@@ -124,15 +124,15 @@ export default function ProductGalleryScreen({ navigation, route }: Props) {
               />
             ))}
           </ScrollView>
-          <View style={[styles.controls, { borderTopColor: colors.border }]}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Previous image" disabled={safeIndex <= 0} onPress={() => move(safeIndex - 1)} style={[styles.nav, { opacity: safeIndex <= 0 ? 0.35 : 1 }]}>
+          <View style={[styles.controls, { borderTopColor: colors.border }]}> 
+            <Pressable accessibilityRole="button" accessibilityLabel="Previous image" disabled={safeIndex <= 0} onPress={() => move(safeIndex - 1)} style={[styles.nav, { opacity: safeIndex <= 0 ? 0.35 : 1 }]}> 
               <ChevronLeft size={20} color={colors.ink} />
             </Pressable>
             <View style={styles.count}>
               <HidiText variant="metadata">{safeIndex + 1} of {media.length}</HidiText>
               <HidiText variant="metadata" style={{ color: colors.mutedText }}>Swipe or pinch to inspect garment details.</HidiText>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Next image" disabled={safeIndex >= media.length - 1} onPress={() => move(safeIndex + 1)} style={[styles.nav, { opacity: safeIndex >= media.length - 1 ? 0.35 : 1 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Next image" disabled={safeIndex >= media.length - 1} onPress={() => move(safeIndex + 1)} style={[styles.nav, { opacity: safeIndex >= media.length - 1 ? 0.35 : 1 }]}> 
               <ChevronRight size={20} color={colors.ink} />
             </Pressable>
           </View>
