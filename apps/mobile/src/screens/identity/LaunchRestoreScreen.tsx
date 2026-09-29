@@ -5,6 +5,7 @@ import { HidiText } from "../../components/HidiText";
 import { localStore } from "../../storage/localStore";
 import { useHidiTheme } from "../../theme/HidiTheme";
 import type { RootStackParamList } from "../../navigation/types";
+import { parseHidiDeepLink } from "../../navigation/deepLinks";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Launch">;
 
@@ -24,20 +25,13 @@ export default function LaunchRestoreScreen({ navigation }: Props) {
         navigation.replace("VerificationLimited", { retryUntil: verificationLimit.retryUntil, phone: verificationLimit.phone || undefined });
         return;
       }
-      const webProduct = initialUrl?.match(/\/products\/([^/?#]+)/i)?.[1];
-      const appProduct = initialUrl?.match(/^hidi:\/\/products\/([^/?#]+)/i)?.[1];
-      const deepProduct = webProduct ?? appProduct;
-      if (deepProduct) {
-        navigation.replace("ProductDeferred", { slug: decodeURIComponent(deepProduct) });
+      const deepLink = parseHidiDeepLink(initialUrl);
+      if (deepLink?.type === "product") {
+        navigation.replace("ProductDeferred", { slug: deepLink.slug });
         return;
       }
-      const webCollection = initialUrl?.match(/\/collections\/([^/?#]+)/i)?.[1];
-      const appCollection = initialUrl?.match(/^hidi:\/\/collections\/([^/?#]+)/i)?.[1];
-      const deepCollection = webCollection ?? appCollection;
-      if (deepCollection) {
-        const slug = decodeURIComponent(deepCollection);
-        const title = slug.split("-").map((part) => part ? part[0].toUpperCase() + part.slice(1) : part).join(" ");
-        navigation.replace("Collection", { slug, title });
+      if (deepLink?.type === "collection") {
+        navigation.replace("Collection", { slug: deepLink.slug, title: deepLink.title });
         return;
       }
       if (seen && lastSafeRoute?.startsWith("product:")) {

@@ -23,6 +23,23 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="hidi" />
+        </intent-filter>
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" android:host="thehidi.com" android:pathPrefix="/products/" />
+            <data android:scheme="https" android:host="thehidi.com" android:pathPrefix="/collections/" />
+            <data android:scheme="https" android:host="www.thehidi.com" android:pathPrefix="/products/" />
+            <data android:scheme="https" android:host="www.thehidi.com" android:pathPrefix="/collections/" />
+            <data android:scheme="https" android:host="thidigk.thehidi.com" android:pathPrefix="/products/" />
+            <data android:scheme="https" android:host="thidigk.thehidi.com" android:pathPrefix="/collections/" />
+        </intent-filter>
       </activity>
     </application>
 </manifest>

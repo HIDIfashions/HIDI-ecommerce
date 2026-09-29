@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { AccessibilityInfo } from "react-native";
-import { DarkTheme, DefaultTheme, NavigationContainer } from "@react-navigation/native";
+import { AccessibilityInfo, Linking } from "react-native";
+import { DarkTheme, DefaultTheme, NavigationContainer, useNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useHidiTheme } from "../theme/HidiTheme";
 import type { RootStackParamList } from "./types";
@@ -19,12 +19,14 @@ import SearchScreen from "../screens/discover/SearchScreen";
 import SearchResultsScreen from "../screens/discover/SearchResultsScreen";
 import RecentlyViewedScreen from "../screens/discover/RecentlyViewedScreen";
 import DeferredProductScreen from "../screens/discover/DeferredProductScreen";
+import { parseHidiDeepLink } from "./deepLinks";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   const { mode, colors } = useHidiTheme();
   const [reduceMotion, setReduceMotion] = useState(false);
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const base = mode === "dark" ? DarkTheme : DefaultTheme;
 
   useEffect(() => {
@@ -36,6 +38,19 @@ export default function RootNavigator() {
       subscription.remove();
     };
   }, []);
+
+  useEffect(() => {
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      const target = parseHidiDeepLink(url);
+      if (!target || !navigationRef.isReady()) return;
+      if (target.type === "product") {
+        navigationRef.navigate("ProductDeferred", { slug: target.slug });
+      } else {
+        navigationRef.navigate("Collection", { slug: target.slug, title: target.title });
+      }
+    });
+    return () => subscription.remove();
+  }, [navigationRef]);
 
   const navigationTheme = {
     ...base,
@@ -51,7 +66,7 @@ export default function RootNavigator() {
   };
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer ref={navigationRef} theme={navigationTheme}>
       <Stack.Navigator
         initialRouteName="Launch"
         screenOptions={{
