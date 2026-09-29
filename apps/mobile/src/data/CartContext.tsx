@@ -51,16 +51,6 @@ export function CartProvider({ children }: PropsWithChildren) {
     setSavedForLater(await cartStorage.savedForLater());
   }, []);
 
-  const commit = useCallback(async (next: ApiCart, acknowledge = true) => {
-    setCart(next);
-    setError("");
-    setStale(false);
-    if (acknowledge) {
-      setAttention([]);
-      await cartStorage.acknowledgeCart(next).catch(() => undefined);
-    }
-  }, []);
-
   const refresh = useCallback(async () => {
     const sessionId = await cartStorage.sessionId();
     const acknowledged = await cartStorage.acknowledgedCart();
