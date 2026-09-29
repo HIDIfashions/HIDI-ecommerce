@@ -15,13 +15,13 @@ export default function LaunchRestoreScreen({ navigation }: Props) {
     let alive = true;
     void Promise.all([
       localStore.onboardingSeen(),
-      localStore.verificationRetryUntil(),
+      localStore.verificationLimit(),
       localStore.lastSafeRoute(),
       Linking.getInitialURL().catch(() => null),
-    ]).then(([seen, retryUntil, lastSafeRoute, initialUrl]) => {
+]).then(([seen, verificationLimit, lastSafeRoute, initialUrl]) => {
       if (!alive) return;
-      if (retryUntil > Date.now()) {
-        navigation.replace("VerificationLimited", { retryUntil });
+      if (verificationLimit.retryUntil > Date.now()) {
+        navigation.replace("VerificationLimited", { retryUntil: verificationLimit.retryUntil, phone: verificationLimit.phone || undefined });
         return;
       }
       const webProduct = initialUrl?.match(/\/products\/([^/?#]+)/i)?.[1];
