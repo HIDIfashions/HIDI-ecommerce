@@ -11,7 +11,7 @@ Scope: React Native frontend only
 - React Native Screens 4.28.0
 - React Native Safe Area Context 5.10.0
 - TypeScript 6.x
-- Node >= 22.11
+- Node >= 22.13.0
 
 The project uses the official React Native Community native template, not prior HIDI mobile source.
 
