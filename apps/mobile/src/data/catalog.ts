@@ -86,12 +86,23 @@ export const emptyFilters: Filters = { sizes: [], colors: [], fabrics: [] };
 export function filterProducts(products: ApiProduct[], filters: Filters) {
   return products.filter((product) => {
     if (filters.fabrics.length && (!product.fabric || !filters.fabrics.includes(product.fabric))) return false;
-    const variants = product.variants.filter((variant) => variant.available > 0);
-    if (filters.sizes.length && !variants.some((variant) => filters.sizes.includes(variant.size))) return false;
-    if (filters.colors.length && !variants.some((variant) => filters.colors.includes(variant.color))) return false;
-    if (filters.minPricePaise !== undefined && product.maxPricePaise < filters.minPricePaise) return false;
-    if (filters.maxPricePaise !== undefined && product.minPricePaise > filters.maxPricePaise) return false;
-    return true;
+
+    const hasVariantConstraint = Boolean(
+      filters.sizes.length ||
+      filters.colors.length ||
+      filters.minPricePaise !== undefined ||
+      filters.maxPricePaise !== undefined
+    );
+
+    if (!hasVariantConstraint) return true;
+
+    return product.variants.some((variant) =>
+      variant.available > 0 &&
+      (!filters.sizes.length || filters.sizes.includes(variant.size)) &&
+      (!filters.colors.length || filters.colors.includes(variant.color)) &&
+      (filters.minPricePaise === undefined || variant.pricePaise >= filters.minPricePaise) &&
+      (filters.maxPricePaise === undefined || variant.pricePaise <= filters.maxPricePaise)
+    );
   });
 }
 
