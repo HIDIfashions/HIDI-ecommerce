@@ -79,6 +79,30 @@ export type RootStackParamList = {
   ReturnPickupMissed: { orderNumber: string; requestId: string };
   ExchangePriceDifference: { orderNumber: string; orderItemId: string; requestedSize: string };
   RefundNeedsAttention: { orderNumber: string; requestId?: string };
+  MyHidi: undefined;
+  GuestAccount: undefined;
+  EditProfile: undefined;
+  ManageAddresses: undefined;
+  SavedPaymentMethods: undefined;
+  ShoppingPreferences: undefined;
+  NotificationsInbox: undefined;
+  NotificationSettings: undefined;
+  HelpCentre: undefined;
+  HelpWithOrder: { orderNumber?: string } | undefined;
+  CreateSupportRequest: { orderNumber?: string; topic?: string } | undefined;
+  SupportConversation: { caseId: string };
+  ContactHidi: undefined;
+  PoliciesLegal: undefined;
+  PrivacyChoices: undefined;
+  ExportMyData: undefined;
+  DeleteAccount: undefined;
+  DeletionRequested: { requestId: string };
+  SignOutConfirm: undefined;
+  ChangePhoneNumber: undefined;
+  VerifyEmailAddress: { email?: string } | undefined;
+  AndroidPermissionDialog: { returnTo?: string } | undefined;
+  FindGuestOrder: undefined;
+  SupportReceived: { caseId: string; topic: string; orderNumber?: string };
 };
 
 export type RootTabParamList = {

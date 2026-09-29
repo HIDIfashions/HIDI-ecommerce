@@ -55,6 +55,26 @@ export const checkoutStorage = {
     return normalized;
   },
 
+  async deleteAddress(id: string) {
+    const current = await this.addresses();
+    const next = current.filter((item) => item.id !== id);
+    await writeJson(keys.addresses, next);
+    const selected = await this.selectedAddressId();
+    if (selected === id) {
+      if (next[0]) await this.selectAddress(next[0].id);
+      else await AsyncStorage.removeItem(keys.selectedAddress).catch(() => undefined);
+    }
+    return next;
+  },
+
+  async setDefaultAddress(id: string) {
+    const current = await this.addresses();
+    const next = current.map((item) => ({ ...item, isDefault: item.id === id }));
+    await writeJson(keys.addresses, next);
+    await this.selectAddress(id);
+    return next;
+  },
+
   selectedAddressId: () => AsyncStorage.getItem(keys.selectedAddress).catch(() => null),
   selectAddress: (id: string) => AsyncStorage.setItem(keys.selectedAddress, id).catch(() => undefined),
 

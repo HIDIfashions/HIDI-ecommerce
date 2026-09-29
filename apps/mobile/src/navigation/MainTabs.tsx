@@ -6,7 +6,7 @@ import HomeScreen from "../screens/discover/HomeScreen";
 import ShopCategoriesScreen from "../screens/discover/ShopCategoriesScreen";
 import SavedScreen from "../screens/discover/SavedScreen";
 import ShoppingBagScreen from "../screens/bag/ShoppingBagScreen";
-import YouPlaceholderScreen from "../screens/discover/YouPlaceholderScreen";
+import { AccountHomeScreen } from "../screens/account/AccountScreens";
 import { useHidiTheme } from "../theme/HidiTheme";
 import { useCart } from "../data/CartContext";
 
@@ -33,13 +33,7 @@ export default function MainTabs() {
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.action,
         tabBarInactiveTintColor: colors.mutedText,
-        tabBarStyle: {
-          backgroundColor: colors.canvas,
-          borderTopColor: colors.border,
-          height: 66,
-          paddingTop: 6,
-          paddingBottom: 8,
-        },
+        tabBarStyle: { backgroundColor: colors.canvas, borderTopColor: colors.border, height: 66, paddingTop: 6, paddingBottom: 8 },
         tabBarLabelStyle: { fontSize: 11 },
         tabBarIcon: ({ color, size }) => icon(route.name, color, Math.min(size, 22)),
         tabBarBadge: route.name === "Bag" && (cart?.itemCount ?? 0) > 0 ? cart?.itemCount : undefined,
@@ -50,7 +44,7 @@ export default function MainTabs() {
       <Tab.Screen name="Shop" component={ShopCategoriesScreen} />
       <Tab.Screen name="Saved" component={SavedScreen} />
       <Tab.Screen name="Bag" component={ShoppingBagScreen} />
-      <Tab.Screen name="You" component={YouPlaceholderScreen} />
+      <Tab.Screen name="You" component={AccountHomeScreen} />
     </Tab.Navigator>
   );
 }

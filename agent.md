@@ -24,39 +24,13 @@ Build the UI and client-side flows in the HIDI Mobile App Development Blueprint 
 - Failed fetch is not an empty state. Timeout is not payment failure.
 - No mandatory sign-in for browsing.
 - No first-launch permission prompt.
-- Phone OTP delivery for launch uses WhatsApp through the existing Supabase Auth contract; provider credentials stay outside the app.
-
-## Phase discipline
-For every phase:
-1. Re-read all blueprint screens in scope.
-2. Build reusable primitives first.
-3. Wire only to existing HIDI integration contracts.
-4. Implement required loading/empty/error/offline/recovery states.
-5. Add deterministic tests and screen-ID traceability.
-6. Update `phase.md`, `agent.md`, `build.md`.
-7. Report completion and stop until owner approval.
-
-## UI baseline
-- Canvas `#FAF8F4`, berry `#702B42`, ink `#2B2427`, blush `#F0E5E8`, forest `#4C654D`.
-- 48dp minimum interaction target.
-- Scalable text up to 200% without clipping critical content.
-- Editorial serif for display/title and readable system sans for interface copy until approved fonts exist.
-- Product photography never color-inverted.
-- Reduced motion removes nonessential travel/shimmer.
-- Do not imitate provider/OS security dialogs.
-
-## Existing gateway
-- Debug/staging: `https://thidigk.thehidi.com/api/store`
-- Production: `https://thehidi.com/api/store`
-
-This app reuses that layer; it does not add a new one.
-
 
 ## Current checkpoint
-- Phase 0 is complete and CI-verified.
-- Phase 1 H001-H022 is complete and CI-verified in run `36585777566`.
-- Phase 2 H023-H044 is implementation-complete and deterministic simulation passed 16/16 commerce scenarios.
-- H004/H005 use WhatsApp OTP while provider secrets remain outside React Native.
-- Phase 2 reuses only the existing product, review, PIN-serviceability and cart contracts. Unsupported fit, stock-alert, promo, atomic-SKU-replace, quote-version and server Saved-for-later capabilities are represented as explicit unavailable/local-adaptation states.
-- The latest Phase 2 Actions attempt `36610550967` failed before any job step started (`steps: null` for Android and iOS), so it is not treated as native build evidence.
-- Do not start H045+ checkout/payment work until the owner explicitly approves Phase 3.
+- Phase 0 is complete and verified.
+- Phase 1 H001-H022 is complete and verified.
+- Phase 2 H023-H044 is complete and verified.
+- Phase 3 H045-H060 is complete and verified in run `36628638488`.
+- Phase 4 H061-H082/H128-H131 is complete and verified in run `36634182910`.
+- Phase 5 H083-H102/H123-H126/H132 is owner-approved and in progress.
+- Phase 5 must keep unsupported account/support/privacy APIs explicit. Do not claim support tickets, privacy exports, deletion, phone changes, email verification, notification sync or guest order access are submitted to the server unless an existing endpoint actually confirms it.
+- Do not start Phase 6 until owner approval after Phase 5 verification.

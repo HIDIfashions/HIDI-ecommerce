@@ -53,32 +53,19 @@ import PaymentFailedScreen from "../screens/checkout/PaymentFailedScreen";
 import OrderConfirmedScreen from "../screens/checkout/OrderConfirmedScreen";
 import ResumeCheckoutScreen from "../screens/checkout/ResumeCheckoutScreen";
 import {
-  CancelOrderItemsScreen,
-  CancellationResultScreen,
-  CodRefundDestinationScreen,
-  DeliveredOrderScreen,
-  DeliveryAttemptFailedScreen,
-  ExchangePriceDifferenceScreen,
-  ExchangeReviewScreen,
-  ExchangeSizeScreen,
-  InvoiceReceiptScreen,
-  MyOrdersScreen,
-  OrderDetailScreen,
-  RefundCompletedScreen,
-  RefundInProgressScreen,
-  RefundNeedsAttentionScreen,
-  ReturnEvidenceScreen,
-  ReturnPickupMissedScreen,
-  ReturnPickupScreen,
-  ReturnReasonScreen,
-  ReturnTrackingScreen,
-  ReturnUnavailableScreen,
-  ReviewReturnScreen,
-  SelectReturnItemsScreen,
-  SplitShipmentsScreen,
-  TrackShipmentScreen,
-  WriteReviewScreen,
+  CancelOrderItemsScreen, CancellationResultScreen, CodRefundDestinationScreen, DeliveredOrderScreen, DeliveryAttemptFailedScreen,
+  ExchangePriceDifferenceScreen, ExchangeReviewScreen, ExchangeSizeScreen, InvoiceReceiptScreen, MyOrdersScreen, OrderDetailScreen,
+  RefundCompletedScreen, RefundInProgressScreen, RefundNeedsAttentionScreen, ReturnEvidenceScreen, ReturnPickupMissedScreen,
+  ReturnPickupScreen, ReturnReasonScreen, ReturnTrackingScreen, ReturnUnavailableScreen, ReviewReturnScreen, SelectReturnItemsScreen,
+  SplitShipmentsScreen, TrackShipmentScreen, WriteReviewScreen,
 } from "../screens/orders/OrderScreens";
+import {
+  AccountHomeScreen, AndroidPermissionDialogScreen, ChangePhoneNumberScreen, ContactHidiScreen, CreateSupportRequestScreen,
+  DeleteAccountScreen, DeletionRequestedScreen, EditProfileScreen, ExportMyDataScreen, FindGuestOrderScreen, GuestAccountScreen,
+  HelpCentreScreen, HelpWithOrderScreen, ManageAddressesScreen, NotificationSettingsScreen, NotificationsInboxScreen,
+  PoliciesLegalScreen, PrivacyChoicesScreen, SavedPaymentMethodsScreen, ShoppingPreferencesScreen, SignOutScreen,
+  SupportConversationScreen, SupportReceivedScreen, VerifyEmailAddressScreen,
+} from "../screens/account/AccountScreens";
 import { parseHidiDeepLink } from "./deepLinks";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -93,10 +80,7 @@ export default function RootNavigator() {
     let alive = true;
     void AccessibilityInfo.isReduceMotionEnabled().then((value) => { if (alive) setReduceMotion(value); });
     const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
-    return () => {
-      alive = false;
-      subscription.remove();
-    };
+    return () => { alive = false; subscription.remove(); };
   }, []);
 
   useEffect(() => {
@@ -109,10 +93,7 @@ export default function RootNavigator() {
     return () => subscription.remove();
   }, [navigationRef]);
 
-  const navigationTheme = {
-    ...base,
-    colors: { ...base.colors, primary: colors.action, background: colors.canvas, card: colors.surface, text: colors.ink, border: colors.border, notification: colors.error },
-  };
+  const navigationTheme = { ...base, colors: { ...base.colors, primary: colors.action, background: colors.canvas, card: colors.surface, text: colors.ink, border: colors.border, notification: colors.error } };
 
   return (
     <NavigationContainer ref={navigationRef} theme={navigationTheme}>
@@ -191,6 +172,30 @@ export default function RootNavigator() {
         <Stack.Screen name="ReturnPickupMissed" component={ReturnPickupMissedScreen} />
         <Stack.Screen name="ExchangePriceDifference" component={ExchangePriceDifferenceScreen} />
         <Stack.Screen name="RefundNeedsAttention" component={RefundNeedsAttentionScreen} />
+        <Stack.Screen name="MyHidi" component={AccountHomeScreen} />
+        <Stack.Screen name="GuestAccount" component={GuestAccountScreen} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen name="ManageAddresses" component={ManageAddressesScreen} />
+        <Stack.Screen name="SavedPaymentMethods" component={SavedPaymentMethodsScreen} />
+        <Stack.Screen name="ShoppingPreferences" component={ShoppingPreferencesScreen} />
+        <Stack.Screen name="NotificationsInbox" component={NotificationsInboxScreen} />
+        <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+        <Stack.Screen name="HelpCentre" component={HelpCentreScreen} />
+        <Stack.Screen name="HelpWithOrder" component={HelpWithOrderScreen} />
+        <Stack.Screen name="CreateSupportRequest" component={CreateSupportRequestScreen} />
+        <Stack.Screen name="SupportConversation" component={SupportConversationScreen} />
+        <Stack.Screen name="ContactHidi" component={ContactHidiScreen} />
+        <Stack.Screen name="PoliciesLegal" component={PoliciesLegalScreen} />
+        <Stack.Screen name="PrivacyChoices" component={PrivacyChoicesScreen} />
+        <Stack.Screen name="ExportMyData" component={ExportMyDataScreen} />
+        <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+        <Stack.Screen name="DeletionRequested" component={DeletionRequestedScreen} />
+        <Stack.Screen name="SignOutConfirm" component={SignOutScreen} />
+        <Stack.Screen name="ChangePhoneNumber" component={ChangePhoneNumberScreen} />
+        <Stack.Screen name="VerifyEmailAddress" component={VerifyEmailAddressScreen} />
+        <Stack.Screen name="AndroidPermissionDialog" component={AndroidPermissionDialogScreen} />
+        <Stack.Screen name="FindGuestOrder" component={FindGuestOrderScreen} />
+        <Stack.Screen name="SupportReceived" component={SupportReceivedScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
