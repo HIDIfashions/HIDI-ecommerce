@@ -125,10 +125,11 @@ export function buildPrepareCheckoutPayload(input: {
   cart: ApiCart;
   walletPaise?: number;
 }) {
+  const cleanEmail = input.contact.email?.trim();
   return {
     sessionId: input.sessionId,
     checkoutToken: input.checkoutToken,
-    customerEmail: input.contact.email?.trim() || undefined,
+    ...(cleanEmail ? { customerEmail: cleanEmail } : {}),
     customerPhone: input.contact.phone,
     expectedTotalPaise: input.cart.subtotalPaise,
     walletPaise: input.walletPaise ?? 0,
