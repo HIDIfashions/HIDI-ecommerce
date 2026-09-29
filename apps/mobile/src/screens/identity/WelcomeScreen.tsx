@@ -22,7 +22,7 @@ export default function WelcomeScreen({ navigation }: Props) {
   }
 
   return (
-    <HidiScreen contentStyle={styles.content}>
+    <HidiScreen testID="H002" contentStyle={styles.content}>
       <HidiText variant="display" style={styles.wordmark}>HIDI</HidiText>
       <View style={[styles.hero, { backgroundColor: colors.blush }]}>
         <Image source={{ uri: HERO }} style={styles.image} resizeMode="cover" accessibilityLabel="HIDI editorial Indian wear" />
