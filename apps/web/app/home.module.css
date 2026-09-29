@@ -91,3 +91,16 @@
 }
 @media (max-width: 359px) { .heroContent h1 { font-size: 2.6rem; } .editCard:not(:first-child) { aspect-ratio: 3 / 5.5; } .serviceGrid { grid-template-columns: 1fr; } .serviceItem + .serviceItem { border-left: 0; border-top: 1px solid var(--line); } }
 @media (prefers-reduced-motion: reduce) { .editCard img, .editDetail, .serviceLink, .privilegeSummary > span { transition: none; } }
+
+/* Mobile art direction: the garment and campaign copy have separate space. */
+@media (max-width: 760px) {
+  .hero { color: var(--ink); background: var(--home-paper); }
+  .hero [data-hidi-campaign] { bottom: 190px; }
+  .heroShade { bottom: 190px; background: linear-gradient(0deg, rgba(19,24,17,.15), transparent 35%); }
+  .heroContent { left: 0; right: 0; bottom: 0; width: 100%; max-width: none; height: 190px; padding: 20px 22px 18px; background: var(--home-paper); }
+  .heroEyebrow { color: var(--muted); margin-bottom: 6px; }
+  .heroContent h1 { max-width: none; font-size: clamp(30px, 8vw, 36px); line-height: 1.15; }
+  .heroIntro { color: var(--muted); margin-top: 6px; font-size: var(--type-ui); }
+  .heroCta { margin-top: 6px; color: var(--home-brand); min-height: 48px; }
+  .hero [data-hidi-motion-control] { bottom: 206px; }
+}

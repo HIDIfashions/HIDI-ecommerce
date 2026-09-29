@@ -5,6 +5,7 @@ import "./launch-overrides.css";
 import "./typography.css";
 import "./storefront-surfaces.css";
 import "./editorial-chrome.css";
+import "./storefront-quality.css";
 import { SiteShell } from "@/components/site-shell";
 import { absoluteUrl, getSiteUrl, safeJsonLd } from "@/lib/site-url";
 import { isSearchIndexingEnabled } from "@/lib/seo";

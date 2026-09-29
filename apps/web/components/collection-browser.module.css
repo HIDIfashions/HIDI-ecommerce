@@ -122,7 +122,7 @@
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
-  z-index: 100;
+  z-index: 1201;
   width: min(370px, 92vw);
   padding: 24px 28px 42px;
   overflow-y: auto;
@@ -193,8 +193,8 @@
 }
 
 .drawerClose {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -252,7 +252,7 @@
 
 .option,
 .colorOption {
-  min-height: 32px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -299,7 +299,7 @@
 .drawerBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 1200;
   border: 0;
   background: rgba(29,33,28,.34);
   backdrop-filter: blur(2px);
@@ -375,7 +375,7 @@
 
   .mobileCatalogueBar {
     position: sticky;
-    top: 84px;
+    top: var(--hidi-header-height, 63px);
     z-index: 30;
     min-height: 48px;
     margin: 0 -4px 18px;
@@ -458,3 +458,8 @@
 
 
 .mobileFilterSort { font-size: var(--type-ui); letter-spacing: .04em; }
+
+.activeFilters { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 20px; }
+.activeFilters button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); background: var(--hidi-page-bg); color: var(--ink); font: inherit; font-size: var(--type-ui); cursor: pointer; }
+.drawerApply { position: sticky; bottom: -24px; padding: 16px 0; background: var(--hidi-page-bg); border-top: 1px solid var(--line); }
+.drawerApply button { width: 100%; min-height: 48px; }
