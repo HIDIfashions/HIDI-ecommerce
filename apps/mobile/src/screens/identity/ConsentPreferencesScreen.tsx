@@ -72,7 +72,7 @@ export default function ConsentPreferencesScreen({ navigation }: Props) {
   }
 
   return (
-    <HidiScreen contentStyle={styles.zeroTop}>
+    <HidiScreen testID="H007" contentStyle={styles.zeroTop}>
       <AppHeader title="Consent preferences" onBack={navigation.goBack} />
       <View style={styles.body}>
         <HidiText variant="metadata" style={{ color: colors.mutedText, letterSpacing: 1.2 }}>PRIVACY, WITH CHOICE</HidiText>
