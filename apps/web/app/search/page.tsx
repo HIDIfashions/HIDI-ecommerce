@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Form from "next/form";
 import { ProductCard } from "@/components/product-card";
 import { matchesProductSearch } from "@/lib/catalogue-discovery";
 import { getProducts } from "@/lib/api";
@@ -21,10 +22,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <header className="collection-header compact">
       <p className="eyebrow">SEARCH HIDI</p>
       <h1>Find your next piece.</h1>
-      <form action="/search" method="get" className="search-form">
-        <input name="q" type="search" aria-label="Search HIDI products" maxLength={160} defaultValue={q} placeholder="Search by style, colour, collection…" autoFocus />
+      <Form action="/search" className="search-form">
+        <input key={q} name="q" type="search" aria-label="Search HIDI products" maxLength={160} defaultValue={q} placeholder="Search by style, colour, collection…" autoFocus />
         <button className="button button-dark" type="submit">Search</button>
-      </form>
+      </Form>
     </header>
 
     {query ? <>

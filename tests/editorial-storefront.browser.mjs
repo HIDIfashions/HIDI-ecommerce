@@ -71,14 +71,23 @@ async function fontAudit(page,engine,label){
   for(const input of await page.locator('input:not([type="checkbox"]):not([type="radio"]):visible,select:visible,textarea:visible').all())assert(await input.evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=16),'Text fields must remain at least 16px');
 }
 async function scenario(browser,engine,id,title,work,options={}){
-  const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce',...options});
+  const {startPath='/',...contextOptions}=options;
+  assert(typeof startPath==='string'&&startPath.startsWith('/')&&!startPath.startsWith('//'),'Only isolated same-origin entry routes are allowed');
+  const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce',...contextOptions});
   await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
   const page=await context.newPage();page.setDefaultTimeout(8000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
   cartMode='ok';catalogueMode='ok';const start=Date.now();
-  try{await page.goto(base,{waitUntil:'domcontentloaded'});await page.locator('[data-hidi-editorial="v2"]').waitFor();await until(()=>page.locator('[data-editorial-product]').first().locator('button[aria-pressed]').first().isEnabled(),'storefront hydration');
-    // Settle Next prefetch before a scenario performs a hard navigation, including WebKit.
-    await page.waitForLoadState('networkidle');
-    await work(page,context);assert.deepEqual(errors,[],'Unexpected browser exceptions');results.push({engine,id,title,status:'PASS',durationMs:Date.now()-start});console.log(`PASS ${engine} ${id} ${title}`);}
+  try{
+    await page.goto(base+startPath,{waitUntil:'domcontentloaded'});await page.locator('#main-content').waitFor();
+    if(startPath==='/'){
+      await page.locator('[data-hidi-editorial="v2"]').waitFor();await until(()=>page.locator('[data-editorial-product]').first().locator('button[aria-pressed]').first().isEnabled(),'storefront hydration');
+      await page.waitForLoadState('networkidle');
+    }else{
+      // CartLink creates this browser-session key from its client effect; no fixture state is injected.
+      await until(()=>page.evaluate(()=>Boolean(localStorage.getItem('hidi_cart_session'))),'direct-entry client hydration');
+    }
+    await work(page,context);assert.deepEqual(errors,[],'Unexpected browser exceptions');results.push({engine,id,title,status:'PASS',durationMs:Date.now()-start});console.log(`PASS ${engine} ${id} ${title}`);
+  }
   catch(error){results.push({engine,id,title,status:'FAIL',error:String(error.stack||error),durationMs:Date.now()-start});console.error(`FAIL ${engine} ${id}: ${error}`);await page.screenshot({path:resolve(output,`${engine}-${id}-failure.png`),timeout:10000}).catch(()=>{});await writeFile(resolve(output,`${engine}-${id}-failure.html`),await page.content().catch(()=>''));}
   finally{pageErrors.push(...errors.map(error=>({engine,id,error})));await context.close();}
 }
