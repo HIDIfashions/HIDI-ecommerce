@@ -24,11 +24,13 @@ export default function BagRemoveScreen({ navigation, route }: Props) {
     return <HidiScreen testID="H040" contentStyle={styles.zero}><AppHeader title="Remove bag item" onBack={navigation.goBack} /><View style={styles.body}><MessageCard>This item is no longer in your current bag.</MessageCard><HidiButton label="Back to bag" onPress={() => navigation.navigate("MainTabs", { screen: "Bag" })} /></View></HidiScreen>;
   }
 
+  const removableLine = line;
+
   async function remove(moveToSaved: boolean) {
     setError("");
     try {
-      if (moveToSaved) await cart.moveToSaved(line.id);
-      else await cart.removeLine(line.id);
+      if (moveToSaved) await cart.moveToSaved(removableLine.id);
+      else await cart.removeLine(removableLine.id);
       navigation.navigate("MainTabs", { screen: "Bag" });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The item could not be removed.");
@@ -42,16 +44,16 @@ export default function BagRemoveScreen({ navigation, route }: Props) {
         <HidiText variant="title">A little change of heart?</HidiText>
         <HidiText variant="secondary" style={{ color: colors.mutedText }}>Remove this exact SKU from your bag, or keep it for later on this device.</HidiText>
         <View style={[styles.summary, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-          <View style={[styles.thumb, { backgroundColor: colors.blush }]}>{cartLineImage(line) ? <Image source={{ uri: cartLineImage(line) }} style={styles.image} /> : null}</View>
+          <View style={[styles.thumb, { backgroundColor: colors.blush }]}>{cartLineImage(removableLine) ? <Image source={{ uri: cartLineImage(removableLine) }} style={styles.image} /> : null}</View>
           <View style={{ flex: 1 }}>
-            <HidiText variant="secondary" style={styles.bold}>{line.product.name}</HidiText>
-            <HidiText variant="metadata">{line.variant.color} · Size {line.variant.size} · Qty {line.quantity}</HidiText>
-            <HidiText variant="secondary">{formatINRPaise(line.lineTotalPaise)}</HidiText>
+            <HidiText variant="secondary" style={styles.bold}>{removableLine.product.name}</HidiText>
+            <HidiText variant="metadata">{removableLine.variant.color} · Size {removableLine.variant.size} · Qty {removableLine.quantity}</HidiText>
+            <HidiText variant="secondary">{formatINRPaise(removableLine.lineTotalPaise)}</HidiText>
           </View>
         </View>
         <MessageCard>Failed deletion leaves the server bag line intact. Undo is offered from the bag only after a confirmed removal.</MessageCard>
         {error ? <MessageCard tone="error">{error}</MessageCard> : null}
-        <HidiButton label="Remove item" loading={cart.busyKey === "remove:" + line.id} onPress={() => void remove(false)} />
+        <HidiButton label="Remove item" loading={cart.busyKey === "remove:" + removableLine.id} onPress={() => void remove(false)} />
         <Pressable accessibilityRole="button" disabled={Boolean(cart.busyKey)} onPress={() => void remove(true)} style={styles.secondaryAction}>
           <HidiText variant="secondary" style={{ color: colors.action }}>Move to saved for later</HidiText>
         </Pressable>
