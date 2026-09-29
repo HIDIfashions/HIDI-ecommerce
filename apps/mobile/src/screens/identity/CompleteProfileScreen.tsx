@@ -15,7 +15,7 @@ import type { RootStackParamList } from "../../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CompleteProfile">;
 
-export default function CompleteProfileScreen({ navigation }: Props) {
+export default function CompleteProfileScreen({ navigation, route }: Props) {
   const { colors } = useHidiTheme();
   const auth = useAuth();
   const [name, setName] = useState("");
@@ -29,7 +29,10 @@ export default function CompleteProfileScreen({ navigation }: Props) {
     try {
       const session = await updateProfile({ preferredName: name, email: email.trim() || undefined });
       auth.setSession(session);
-      navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "MainTabs", params: route.params?.returnTo === "saved" ? { screen: "Saved" } : { screen: "Home" } }],
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save your profile.");
     } finally {
