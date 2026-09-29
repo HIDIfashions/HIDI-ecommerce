@@ -34,10 +34,11 @@ export function Header() {
   }
 
   function handleWordmarkClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     closeMenu(false);
     if (pathname !== "/") return;
     event.preventDefault();
-    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, left: 0, behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   }
 
   // Measure the sticky header before the drawer paints; never guess its height.

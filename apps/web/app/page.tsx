@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, RefreshCcw, ShieldCheck, Truck } from "lucide-react";
+import { EditorialDetailImage } from "@/components/editorial-detail-image";
 import { AmbientHero } from "@/components/editorial-motion";
 import { EditorialProductCard } from "@/components/editorial-product-card";
 import { EditorialLookbook } from "@/components/editorial-lookbook";
@@ -38,9 +39,9 @@ export default async function Home() {
     </section>
     <section className={styles.editSection} aria-labelledby="hidi-edits-title" data-neutral-surface data-section="edits">
       <header className={styles.sectionHeader + " container"}><div><p className={styles.eyebrow}>SHOP BY EDIT</p><h2 id="hidi-edits-title">For every side of you.</h2></div><span className={styles.sectionNote}>Work. Everyday. Occasion.</span></header>
-      <div className={styles.edits + " container"} aria-label="Shop HIDI edits">{edits.map(edit => <Link className={styles.editCard} href={edit.href} key={edit.href}>
-        <Image src={edit.image} alt="" fill sizes="(max-width: 760px) 100vw, 60vw" className={styles.editPrimary} />
-        <span className={styles.editDetail} aria-hidden="true"><Image src={edit.detail} alt="" fill sizes="(max-width: 760px) 100vw, 60vw" /></span><span className={styles.editShade} aria-hidden="true" />
+      <div className={styles.edits + " container"} aria-label="Shop HIDI edits">{edits.map((edit, index) => <Link className={styles.editCard} href={edit.href} key={edit.href}>
+        <Image src={edit.image} alt="" fill sizes={index === 0 ? "(max-width: 760px) calc(100vw - 36px), (max-width: 1504px) calc(60vw - 50.4px), 852px" : "(max-width: 760px) calc(50vw - 24px), (max-width: 1504px) calc(40vw - 33.6px), 568px"} className={styles.editPrimary} />
+        <EditorialDetailImage key={edit.detail} src={edit.detail} sizes={index === 0 ? "(max-width: 760px) calc(100vw - 36px), (max-width: 1504px) calc(60vw - 50.4px), 852px" : "(max-width: 760px) calc(50vw - 24px), (max-width: 1504px) calc(40vw - 33.6px), 568px"} className={styles.editDetail} /><span className={styles.editShade} aria-hidden="true" />
         <span className={styles.editCopy}><small>{edit.eyebrow}</small><strong>{edit.title}</strong><span>Discover<ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" /></span></span>
       </Link>)}</div>
     </section>
