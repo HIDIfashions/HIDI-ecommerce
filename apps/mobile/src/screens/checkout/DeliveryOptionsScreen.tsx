@@ -43,10 +43,10 @@ export default function DeliveryOptionsScreen({ navigation }: Props) {
         label: "Standard delivery",
         serviceable: true,
         pin: result.pin,
-        city: result.city,
-        stateCode: result.stateCode,
         feePaise: 0,
         checkedAt: Date.now(),
+        ...(result.city !== undefined ? { city: result.city } : {}),
+        ...(result.stateCode !== undefined ? { stateCode: result.stateCode } : {}),
       };
       setDelivery(next);
       await checkoutStorage.saveDelivery(next);
