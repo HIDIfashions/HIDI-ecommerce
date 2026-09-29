@@ -1,5 +1,6 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { Filters, SortKey } from "../data/catalog";
+import type { AddressFieldErrors, CheckoutAddress } from "../models/checkout";
 
 export type RootStackParamList = {
   Launch: undefined;
@@ -36,6 +37,22 @@ export type RootStackParamList = {
   PromoFailure: { code: string };
   BagAttention: undefined;
   SavedForLater: undefined;
+  CheckoutContact: undefined;
+  CheckoutAddress: undefined;
+  AddAddress: undefined;
+  AddressErrors: { errors: AddressFieldErrors; draft: CheckoutAddress };
+  AddressUnavailable: { pin: string };
+  DeliveryOptions: undefined;
+  ReviewOrder: undefined;
+  PaymentMethods: undefined;
+  UpiHandoff: undefined;
+  SecureCardCheckout: undefined;
+  CashOnDelivery: undefined;
+  ConfirmingPayment: { orderNumber: string };
+  PaymentPending: { orderNumber: string; reason?: string };
+  PaymentFailed: { orderNumber: string; reason: string };
+  OrderConfirmed: { orderNumber: string };
+  ResumeCheckout: undefined;
 };
 
 export type RootTabParamList = {
