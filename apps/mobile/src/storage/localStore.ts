@@ -10,6 +10,7 @@ const keys = {
   consentDraft: "hidi.mobile.consentDraft.v1",
   lastSafeRoute: "hidi.mobile.lastSafeRoute.v1",
   verificationRetryUntil: "hidi.mobile.verificationRetryUntil.v1",
+  verificationPhone: "hidi.mobile.verificationPhone.v1",
   recentTracking: "hidi.mobile.recentTracking.v1",
   searchTracking: "hidi.mobile.searchTracking.v1",
 };
@@ -112,9 +113,27 @@ export const localStore = {
   saveConsentDraft: (value: { analyticsOptIn: boolean; personalizationOptIn: boolean; whatsappOptIn: boolean }) => setJson(keys.consentDraft, value),
   lastSafeRoute: () => AsyncStorage.getItem(keys.lastSafeRoute).catch(() => null),
   saveLastSafeRoute: (route: string) => AsyncStorage.setItem(keys.lastSafeRoute, route).catch(() => undefined),
-  async verificationRetryUntil() {
-    const value = Number(await AsyncStorage.getItem(keys.verificationRetryUntil).catch(() => "0"));
-    return Number.isFinite(value) ? value : 0;
+  async verificationLimit() {
+    const [rawUntil, phone] = await Promise.all([
+      AsyncStorage.getItem(keys.verificationRetryUntil).catch(() => "0"),
+      AsyncStorage.getItem(keys.verificationPhone).catch(() => null),
+    ]);
+    const retryUntil = Number(rawUntil);
+    return {
+      phone: phone ?? "",
+      retryUntil: Number.isFinite(retryUntil) ? retryUntil : 0,
+    };
   },
-  setVerificationRetryUntil: (timestampMs: number) => AsyncStorage.setItem(keys.verificationRetryUntil, String(timestampMs)).catch(() => undefined),
+  async setVerificationLimit(phone: string, timestampMs: number) {
+    await Promise.all([
+      AsyncStorage.setItem(keys.verificationRetryUntil, String(timestampMs)).catch(() => undefined),
+      AsyncStorage.setItem(keys.verificationPhone, phone).catch(() => undefined),
+    ]);
+  },
+  async clearVerificationLimit() {
+    await Promise.all([
+      AsyncStorage.removeItem(keys.verificationRetryUntil).catch(() => undefined),
+      AsyncStorage.removeItem(keys.verificationPhone).catch(() => undefined),
+    ]);
+  },
 };
