@@ -21,7 +21,7 @@ export default function VerifyPhoneScreen({ navigation, route }: Props) {
   const [seconds, setSeconds] = useState(route.params.resendAfterSeconds);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
 
   useEffect(() => {
     if (seconds <= 0) return;
