@@ -16,7 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "ProductDeferred">;
 
 export default function DeferredProductScreen({ navigation, route }: Props) {
   const { colors } = useHidiTheme();
-  const { state } = useCatalog();
+  const { state, refresh } = useCatalog();
   const product = useMemo(() => state.kind === "content" ? state.data.find((item) => item.slug === route.params.slug) : undefined, [state, route.params.slug]);
 
   React.useEffect(() => {
@@ -28,7 +28,7 @@ export default function DeferredProductScreen({ navigation, route }: Props) {
     <HidiScreen>
       <AppHeader title="HIDI" onBack={navigation.goBack} />
       {state.kind === "loading" ? <CatalogSkeleton /> : null}
-      {state.kind === "error" ? <ErrorState message={state.errorKind} onRetry={() => undefined} /> : null}
+      {state.kind === "error" ? <ErrorState message={state.errorKind} onRetry={() => void refresh()} /> : null}
       {state.kind === "content" && product ? (
         <View style={styles.body}>
           <View style={[styles.media, { backgroundColor: colors.blush }]}>
