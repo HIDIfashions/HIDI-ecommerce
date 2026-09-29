@@ -55,7 +55,12 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
       return true;
     });
     const source = specific.length ? specific : product.images;
-    return source.filter((item) => item.url && !seen.has("fallback:" + item.url));
+    const finalSeen = new Set<string>();
+    return source.filter((item) => {
+      if (!item.url || finalSeen.has(item.url)) return false;
+      finalSeen.add(item.url);
+      return true;
+    });
   }, [activeVariants, product]);
   const imageUrl = resolveHidiMediaUrl(media[0]?.url);
 

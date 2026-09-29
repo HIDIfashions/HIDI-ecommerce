@@ -108,6 +108,7 @@ export default function ProductGalleryScreen({ navigation, route }: Props) {
         <>
           <ScrollView
             ref={scrollRef}
+            style={styles.galleryScroll}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
@@ -145,6 +146,7 @@ export default function ProductGalleryScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  galleryScroll: { flex: 1 },
   frame: { flex: 1, height: "100%", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   fallback: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28, gap: 10 },
   controls: { minHeight: 84, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", alignItems: "center", paddingHorizontal: 12 },

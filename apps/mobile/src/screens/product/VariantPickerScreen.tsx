@@ -39,6 +39,9 @@ export default function VariantPickerScreen({ navigation, route }: Props) {
   const colorsAvailable = useMemo(() => product ? Array.from(new Set(product.variants.map((variant) => variant.color))) : [], [product]);
   const variants = useMemo(() => product?.variants.filter((variant) => variant.color === color) ?? [], [product, color]);
   const selected = variants.find((variant) => variant.id === variantId);
+  const savedQuantity = route.params.savedForLaterKey
+    ? cart.savedForLater.find((item) => item.key === route.params.savedForLaterKey)?.quantity ?? 1
+    : 1;
 
   useEffect(() => {
     if (variantId && !variants.some((variant) => variant.id === variantId)) setVariantId("");
@@ -50,8 +53,12 @@ export default function VariantPickerScreen({ navigation, route }: Props) {
       return;
     }
     setMessage("");
+    if (selected.available < savedQuantity) {
+      setMessage("Only " + selected.available + " of this size are currently available. Choose another size or review the saved quantity.");
+      return;
+    }
     try {
-      const result = await cart.addVariant(selected.id, 1);
+      const result = await cart.addVariant(selected.id, savedQuantity);
       let cleanupFailed = false;
       if (route.params.savedForLaterKey) {
         try { await cart.removeSavedForLater(route.params.savedForLaterKey); }
@@ -61,7 +68,7 @@ export default function VariantPickerScreen({ navigation, route }: Props) {
       navigation.replace("AddedToBag", {
         slug: product!.slug,
         variantId: selected.id,
-        quantity: 1,
+        quantity: savedQuantity,
         reconciled: result.reconciled,
         savedCleanupFailed: cleanupFailed || undefined,
       });
@@ -159,7 +166,7 @@ export default function VariantPickerScreen({ navigation, route }: Props) {
         {message ? <MessageCard tone="error">{message}</MessageCard> : null}
       </ScrollView>
       <View style={[styles.fixed, { borderTopColor: colors.border, backgroundColor: colors.canvas }]}>
-        <HidiButton label="Add to bag" loading={cart.busyKey === "add:" + selected?.id} disabled={!selected} onPress={() => void add()} />
+        <HidiButton label={savedQuantity > 1 ? "Add " + savedQuantity + " to bag" : "Add to bag"} loading={cart.busyKey === "add:" + selected?.id} disabled={!selected || selected.available < savedQuantity} onPress={() => void add()} />
       </View>
     </SafeAreaView>
   );
