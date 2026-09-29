@@ -85,12 +85,21 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
   await input.fill('000000');await check.click();assert.equal(calls,0);assert.match(await page.locator('.delivery-box').innerText(),/valid six-digit/);
   for(const [state,text] of [['yes','Delivery is available'],['no','Delivery is currently unavailable'],['error','cannot be checked right now']]){mode=state;await input.fill('500001');await check.click();await until(async()=>(await page.locator('.delivery-box').innerText()).includes(text),state+' PIN response');}assert.equal(calls,3);
  });
- await run('QUAL-13','Policy, contact and planned-offer destinations resolve with explicit unapproved-content boundaries',async page=>{
-  for(const path of ['/contact','/shipping','/returns','/offers','/about']){const response=await navigate(page,base+path);assert.equal(response.status(),200,path);assert.equal(await page.locator('main').count(),1);assert.equal(await page.locator('h1').count(),1);assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),path+' overflow');}
-  await navigate(page,base+'/shipping');assert.match(await page.locator('#main-content').innerText(),/₹1,499 and above/);
-  await navigate(page,base+'/returns');assert.match(await page.locator('#main-content').innerText(),/7 days/);assert.doesNotMatch(await page.locator('#main-content').innerText(),/easy exchanges/i);
-  await navigate(page,base+'/offers');assert.match(await page.locator('#main-content').innerText(),/not combined/);assert.equal(await page.locator('#rupee').count(),1);assert.equal(await page.locator('#silver').count(),1);
-  await navigate(page,base+'/contact');assert.equal(await page.locator('a[href^="mailto:"]').count(),0);assert.match(await page.locator('#main-content').innerText(),/not open in this preview/);await shots(page,'contact');
+ await run('QUAL-13','Policy, contact and planned-offer links navigate with explicit unapproved-content boundaries',async page=>{
+  const routes=[['/about','For every role you carry.'],['/contact','How can we help?'],['/shipping','Shipping & delivery'],['/returns','Returns & exchanges'],['/offers','A little more, with clear terms.']];
+  for(const [path,title] of routes){
+   const response=await page.request.get(base+path);assert.equal(response.status(),200,path);
+   await page.locator(`a[href="${path}"]`).first().click();
+   await page.waitForURL(url=>url.pathname===path);
+   await page.getByRole('heading',{name:title,exact:true}).waitFor();
+   assert.equal(await page.locator('main').count(),1);assert.equal(await page.locator('h1').count(),1);
+   assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),path+' overflow');
+   const content=await page.locator('#main-content').innerText();
+   if(path==='/shipping')assert.match(content,/₹1,499 and above/);
+   if(path==='/returns'){assert.match(content,/7 days/);assert.doesNotMatch(content,/easy exchanges/i);}
+   if(path==='/offers'){assert.match(content,/not combined/);assert.equal(await page.locator('#rupee').count(),1);assert.equal(await page.locator('#silver').count(),1);}
+   if(path==='/contact'){assert.equal(await page.locator('a[href^="mailto:"]').count(),0);assert.match(content,/not open in this preview/);await shots(page,'contact');}
+  }
  },phone);
  await run('QUAL-14','Editorial archive uses alternate photographs and about page has no heavy autoplay film',async page=>{
   await navigate(page,base+'/lookbook');const images=await page.locator('[aria-label="Editorial lookbook"] img').evaluateAll(items=>items.map(i=>i.getAttribute('src')));assert.equal(images.length,6);assert(images.every(src=>src.includes('02-alt.png')||src.includes('02-alt')));
