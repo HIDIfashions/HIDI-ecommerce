@@ -8,6 +8,7 @@ import SavedScreen from "../screens/discover/SavedScreen";
 import BagPlaceholderScreen from "../screens/discover/BagPlaceholderScreen";
 import YouPlaceholderScreen from "../screens/discover/YouPlaceholderScreen";
 import { useHidiTheme } from "../theme/HidiTheme";
+import { useCart } from "../data/CartContext";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -21,6 +22,7 @@ function icon(route: keyof RootTabParamList, color: string, size: number) {
 
 export default function MainTabs() {
   const { colors } = useHidiTheme();
+  const { cart } = useCart();
 
   return (
     <Tab.Navigator
@@ -40,6 +42,8 @@ export default function MainTabs() {
         },
         tabBarLabelStyle: { fontSize: 11 },
         tabBarIcon: ({ color, size }) => icon(route.name, color, Math.min(size, 22)),
+        tabBarBadge: route.name === "Bag" && (cart?.itemCount ?? 0) > 0 ? cart?.itemCount : undefined,
+        tabBarBadgeStyle: { backgroundColor: colors.action, color: colors.canvas, fontSize: 10 },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />

@@ -6,6 +6,7 @@ import RootNavigator from "../navigation/RootNavigator";
 import { HidiThemeProvider, useHidiTheme } from "../theme/HidiTheme";
 import { AuthProvider } from "../auth/AuthContext";
 import { CatalogProvider } from "../data/CatalogContext";
+import { CartProvider } from "../data/CartContext";
 
 enableScreens(true);
 
@@ -26,7 +27,9 @@ export default function HidiApp() {
       <HidiThemeProvider>
         <AuthProvider>
           <CatalogProvider>
-            <AppChrome />
+            <CartProvider>
+              <AppChrome />
+            </CartProvider>
           </CatalogProvider>
         </AuthProvider>
       </HidiThemeProvider>
