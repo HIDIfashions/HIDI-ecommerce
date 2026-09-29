@@ -21,7 +21,7 @@
 }
 
 .selectRow label {
-  font-size: 11px;
+  font-size: var(--type-ui);
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--muted);
@@ -48,7 +48,7 @@
   min-height: 42px;
   border: 1px solid var(--ink);
   padding: 0 12px;
-  font-size: 11px;
+  font-size: var(--type-ui);
   text-transform: uppercase;
   letter-spacing: .08em;
   cursor: pointer;
@@ -73,7 +73,7 @@
 
 .message {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--type-ui);
   color: var(--muted);
 }
 
@@ -93,7 +93,8 @@
 
 @media (max-width: 620px) {
   .controls { margin-top: 11px; gap: 8px; }
-  .select { min-height: 46px; font-size: 16px; }
-  .addButton, .removeButton { min-height: 46px; font-size: 10px; }
+  .select { min-height: 46px; font-size: var(--type-body); }
+  .addButton, .removeButton { min-height: 46px; font-size: var(--type-ui); }
   .message { min-height: 18px; }
 }
+

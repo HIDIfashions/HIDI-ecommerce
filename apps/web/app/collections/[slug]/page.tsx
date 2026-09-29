@@ -72,7 +72,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
 
   return <div className="container collection-page">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }} />
-    <header className="collection-header"><p className="eyebrow">HIDI EDIT</p><h1>{collection.title}</h1><p>{collection.copy}</p></header>
+    <header className="collection-header"><h1>{collection.title}</h1></header>
     <CollectionBrowser products={products} />
   </div>;
 }
