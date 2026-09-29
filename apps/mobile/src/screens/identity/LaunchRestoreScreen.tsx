@@ -31,6 +31,15 @@ export default function LaunchRestoreScreen({ navigation }: Props) {
         navigation.replace("ProductDeferred", { slug: decodeURIComponent(deepProduct) });
         return;
       }
+      const webCollection = initialUrl?.match(/\/collections\/([^/?#]+)/i)?.[1];
+      const appCollection = initialUrl?.match(/^hidi:\/\/collections\/([^/?#]+)/i)?.[1];
+      const deepCollection = webCollection ?? appCollection;
+      if (deepCollection) {
+        const slug = decodeURIComponent(deepCollection);
+        const title = slug.split("-").map((part) => part ? part[0].toUpperCase() + part.slice(1) : part).join(" ");
+        navigation.replace("Collection", { slug, title });
+        return;
+      }
       if (seen && lastSafeRoute?.startsWith("product:")) {
         navigation.replace("ProductDeferred", { slug: lastSafeRoute.slice("product:".length) });
         return;
