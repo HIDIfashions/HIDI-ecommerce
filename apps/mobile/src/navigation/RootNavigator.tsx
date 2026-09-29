@@ -37,6 +37,21 @@ import PromotionsScreen from "../screens/bag/PromotionsScreen";
 import PromoFailureScreen from "../screens/bag/PromoFailureScreen";
 import BagAttentionScreen from "../screens/bag/BagAttentionScreen";
 import SavedForLaterScreen from "../screens/bag/SavedForLaterScreen";
+import GuestCheckoutContactScreen from "../screens/checkout/GuestCheckoutContactScreen";
+import CheckoutAddressScreen from "../screens/checkout/CheckoutAddressScreen";
+import AddAddressScreen from "../screens/checkout/AddAddressScreen";
+import AddressErrorsScreen from "../screens/checkout/AddressErrorsScreen";
+import AddressUnavailableScreen from "../screens/checkout/AddressUnavailableScreen";
+import DeliveryOptionsScreen from "../screens/checkout/DeliveryOptionsScreen";
+import ReviewOrderScreen from "../screens/checkout/ReviewOrderScreen";
+import PaymentMethodsScreen from "../screens/checkout/PaymentMethodsScreen";
+import { SecureCardCheckoutScreen, UpiHandoffScreen } from "../screens/checkout/PaymentHandoffScreens";
+import CashOnDeliveryScreen from "../screens/checkout/CashOnDeliveryScreen";
+import ConfirmingPaymentScreen from "../screens/checkout/ConfirmingPaymentScreen";
+import PaymentPendingScreen from "../screens/checkout/PaymentPendingScreen";
+import PaymentFailedScreen from "../screens/checkout/PaymentFailedScreen";
+import OrderConfirmedScreen from "../screens/checkout/OrderConfirmedScreen";
+import ResumeCheckoutScreen from "../screens/checkout/ResumeCheckoutScreen";
 import { parseHidiDeepLink } from "./deepLinks";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -126,6 +141,22 @@ export default function RootNavigator() {
         <Stack.Screen name="PromoFailure" component={PromoFailureScreen} />
         <Stack.Screen name="BagAttention" component={BagAttentionScreen} />
         <Stack.Screen name="SavedForLater" component={SavedForLaterScreen} />
+        <Stack.Screen name="CheckoutContact" component={GuestCheckoutContactScreen} />
+        <Stack.Screen name="CheckoutAddress" component={CheckoutAddressScreen} />
+        <Stack.Screen name="AddAddress" component={AddAddressScreen} />
+        <Stack.Screen name="AddressErrors" component={AddressErrorsScreen} />
+        <Stack.Screen name="AddressUnavailable" component={AddressUnavailableScreen} />
+        <Stack.Screen name="DeliveryOptions" component={DeliveryOptionsScreen} />
+        <Stack.Screen name="ReviewOrder" component={ReviewOrderScreen} />
+        <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
+        <Stack.Screen name="UpiHandoff" component={UpiHandoffScreen} />
+        <Stack.Screen name="SecureCardCheckout" component={SecureCardCheckoutScreen} />
+        <Stack.Screen name="CashOnDelivery" component={CashOnDeliveryScreen} />
+        <Stack.Screen name="ConfirmingPayment" component={ConfirmingPaymentScreen} />
+        <Stack.Screen name="PaymentPending" component={PaymentPendingScreen} />
+        <Stack.Screen name="PaymentFailed" component={PaymentFailedScreen} />
+        <Stack.Screen name="OrderConfirmed" component={OrderConfirmedScreen} options={{ animation: "fade" }} />
+        <Stack.Screen name="ResumeCheckout" component={ResumeCheckoutScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
