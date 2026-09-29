@@ -13,10 +13,12 @@ export function ProductCard({
   product,
   onOpen,
   compact = false,
+  onSavedChange,
 }: {
   product: ApiProduct;
   onOpen: () => void;
   compact?: boolean;
+  onSavedChange?: (saved: boolean) => void;
 }) {
   const { colors } = useHidiTheme();
   const [saved, setSaved] = useState(false);
@@ -38,7 +40,11 @@ export function ProductCard({
     desiredSaved.current = desired;
     setSaved(desired);
     const finalList = await setWishlistDesired(product.slug, desired);
-    if (desiredSaved.current === desired) setSaved(finalList.includes(product.slug));
+    if (desiredSaved.current === desired) {
+      const finalSaved = finalList.includes(product.slug);
+      setSaved(finalSaved);
+      onSavedChange?.(finalSaved);
+    }
   }
 
   const image = productImage(product);
