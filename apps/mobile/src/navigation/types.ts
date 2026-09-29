@@ -17,7 +17,25 @@ export type RootStackParamList = {
   SearchResults: { query: string; filters?: Filters; sort?: SortKey };
   Filters: { title: string; productsSource: "listing" | "search"; query?: string; collectionSlug?: string; categorySlug?: string; current: Filters; sort?: SortKey };
   RecentlyViewed: undefined;
-  ProductDeferred: { slug: string; queryId?: string };
+  ProductDeferred: { slug: string; queryId?: string; selectedVariantId?: string };
+  ProductGallery: { slug: string; initialIndex?: number };
+  VariantPicker: { slug: string; selectedVariantId?: string; savedForLaterKey?: string };
+  SizeGuide: { slug: string; selectedVariantId?: string };
+  FitHelper: { slug: string; selectedVariantId?: string };
+  DetailsCare: { slug: string };
+  DeliveryCheck: { slug: string; variantId: string };
+  Reviews: { slug: string };
+  ReviewDetail: { slug: string; reviewId: string };
+  StockAlert: { slug: string; variantId: string };
+  ProductUnavailable: { slug: string };
+  SimilarStyles: { slug: string };
+  AddedToBag: { slug: string; variantId: string; quantity: number; reconciled: boolean; savedCleanupFailed?: boolean };
+  BagEdit: { lineId: string };
+  BagRemove: { lineId: string };
+  Promotions: undefined;
+  PromoFailure: { code: string };
+  BagAttention: undefined;
+  SavedForLater: undefined;
 };
 
 export type RootTabParamList = {
