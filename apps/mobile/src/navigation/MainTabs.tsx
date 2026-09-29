@@ -1,5 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { Grid2X2, Heart, House, ShoppingBag, UserRound } from "lucide-react-native";
 import type { RootTabParamList } from "./types";
 import HomeScreen from "../screens/discover/HomeScreen";
@@ -11,6 +12,11 @@ import { useHidiTheme } from "../theme/HidiTheme";
 import { useCart } from "../data/CartContext";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
+
+function AccountTabScreen({ navigation }: BottomTabScreenProps<RootTabParamList, "You">) {
+  const rootNavigation = navigation.getParent();
+  return <AccountHomeScreen navigation={(rootNavigation ?? navigation) as any} route={{ key: "MyHidi", name: "MyHidi" } as any} />;
+}
 
 function icon(route: keyof RootTabParamList, color: string, size: number) {
   if (route === "Home") return <House size={size} color={color} />;
@@ -44,7 +50,7 @@ export default function MainTabs() {
       <Tab.Screen name="Shop" component={ShopCategoriesScreen} />
       <Tab.Screen name="Saved" component={SavedScreen} />
       <Tab.Screen name="Bag" component={ShoppingBagScreen} />
-      <Tab.Screen name="You" component={AccountHomeScreen} />
+      <Tab.Screen name="You" component={AccountTabScreen} />
     </Tab.Navigator>
   );
 }
