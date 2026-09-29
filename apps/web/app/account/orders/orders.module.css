@@ -11,23 +11,24 @@
 
 .header h1 {
   margin: 0 0 12px;
-  font-family: var(--font-display);
-  font-size: clamp(42px, 5vw, 64px);
+  font-family: var(--font-sans);
+  font-size: var(--type-page);
   font-weight: 500;
-  line-height: .98;
-  letter-spacing: -.035em;
+  line-height: 1.2;
+  letter-spacing: -.02em;
 }
 
 .header > p:last-child {
   max-width: 650px;
   margin: 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1.7;
 }
 
 @media (max-width: 620px) {
   .page { padding-top: 18px; }
   .header { margin-bottom: 20px; padding-bottom: 18px; }
-  .header h1 { font-size: clamp(38px, 12vw, 50px); }
+  .header h1 { font-size: var(--type-page); }
 }
+

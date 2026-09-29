@@ -1,20 +1,20 @@
-.panel { margin: 30px 0; padding: 30px; border: 1px solid var(--line); background: #ffffff; }
+.panel { margin: 30px 0; padding: 30px; border: 1px solid var(--line); background: var(--hidi-page-bg, #fbf6f2); }
 .heading { margin-bottom: 23px; }
-.eyebrow { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: .15em; color: #40533c; }
-.heading h2 { margin: 10px 0 0; font-size: clamp(25px, 3vw, 34px); letter-spacing: -.02em; line-height: 1.18; }
+.eyebrow { display: flex; align-items: center; gap: 8px; font-size: var(--type-meta); font-weight: 700; letter-spacing: .15em; color: #40533c; }
+.heading h2 { margin: 10px 0 0; font-size: var(--type-section); letter-spacing: -.02em; line-height: 1.2; }
 .balances { display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: 20px; }
 .balances > div {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 18px;
-  background: #ffffff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: var(--ink);
   border: 1px solid var(--line);
   transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease;
 }
 .balances > .primary {
-  background: #ffffff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: var(--ink);
   border-color: var(--line);
 }
@@ -28,25 +28,25 @@
 .balances > div:hover small {
   color: inherit;
 }
-.balances span { font-size: 11px; }
-.balances strong { font-size: clamp(24px, 3vw, 36px); font-weight: 500; line-height: 1.1; }
-.balances small { font-size: 10px; line-height: 1.6; opacity: .8; }
-.rule, .note { font-size: 11px; color: var(--muted); line-height: 1.75; margin: 16px 0 0; }
-.empty { font-size: 12px; margin: 20px 0 0; }
+.balances span { font-size: var(--type-meta); }
+.balances strong { font-size: var(--type-subheading); font-weight: 500; line-height: 1.1; }
+.balances small { font-size: var(--type-meta); line-height: 1.6; opacity: .8; }
+.rule, .note { font-size: var(--type-meta); color: var(--muted); line-height: 1.75; margin: 16px 0 0; }
+.empty { font-size: var(--type-ui); margin: 20px 0 0; }
 .history { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 18px; }
-.history h3 { display: flex; align-items: center; gap: 8px; font-family: inherit; font-size: 13px; }
+.history h3 { display: flex; align-items: center; gap: 8px; font-family: var(--font-sans); font-size: var(--type-title); }
 .history ul { list-style: none; padding: 0; margin: 0; }
 .history li { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 11px 0; border-bottom: 1px solid var(--line); }
 .history li > div { display: flex; flex-direction: column; gap: 3px; }
-.history strong, .history b { font-size: 12px; font-weight: 600; }
-.history span { font-size: 10px; color: #64705e; }
+.history strong, .history b { font-size: var(--type-ui); font-weight: 600; }
+.history span { font-size: var(--type-meta); color: #64705e; }
 .credit { color: #541d1f; }
-.textButton { background: transparent; border: 0; padding: 10px 0; min-height: 44px; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.textButton { background: transparent; border: 0; padding: 10px 0; min-height: 44px; font: inherit; font-size: var(--type-ui); text-decoration: underline; cursor: pointer; }
 .checkoutWallet {
   border: 1px solid var(--line);
   padding: 19px;
   margin-bottom: 20px;
-  background: #ffffff;
+  background: var(--hidi-page-bg, #fbf6f2);
   color: var(--ink);
   transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease;
 }
@@ -63,17 +63,17 @@
 .checkoutWallet:hover a {
   color: inherit;
 }
-.toggle { display: flex; gap: 11px; align-items: center; cursor: pointer; font-size: 13px; font-weight: 600; }
+.toggle { display: flex; gap: 11px; align-items: center; cursor: pointer; font-size: var(--type-ui); font-weight: 600; }
 .toggle input { width: 20px !important; min-height: 20px !important; height: 20px; margin: 0; padding: 0; accent-color: #541d1f; flex-shrink: 0; }
-.amount { margin-top: 16px; display: grid; gap: 7px; font-size: 12px; }
+.amount { margin-top: 16px; display: grid; gap: 7px; font-size: var(--type-ui); }
 .amount input { max-width: 220px; }
 .summaryRows { margin-top: 20px; padding-top: 18px; border-top: 1px solid #d6d6ce; display: grid; gap: 12px; width: 100%; }
 .summaryRows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 15px; }
-.summaryRows > div > strong { font-family: inherit; font-size: 16px; }
-.summaryRows span { font-size: 12px; }
+.summaryRows > div > strong { font-family: var(--font-sans); font-size: var(--type-body); }
+.summaryRows span { font-size: var(--type-ui); }
 .summaryRows .payable { border-top: 1px solid #d6d6ce; padding-top: 14px; }
-.summaryRows .payable strong { font-size: 23px; }
-.warning { color: #91362a; font-size: 12px; }
+.summaryRows .payable strong { font-size: var(--type-title); }
+.warning { color: #91362a; font-size: var(--type-ui); }
 .textButton:focus-visible, .toggle input:focus-visible { outline: 2px solid #541d1f; outline-offset: 4px; }
 
 @media (max-width: 720px) {
@@ -99,7 +99,7 @@
   .balances > div { padding: 15px 14px; }
   .history li { align-items: flex-start; }
   .checkoutWallet { padding: 15px 13px; }
-  .amount input { max-width: none; width: 100%; font-size: 16px; }
+  .amount input { max-width: none; width: 100%; font-size: var(--type-body); }
   .summaryRows > div { align-items: flex-start; }
 }
 
@@ -107,7 +107,7 @@
 @media (hover: none) {
   .balances > div:hover,
   .checkoutWallet:hover {
-    background: #ffffff;
+    background: var(--hidi-page-bg, #fbf6f2);
     color: var(--ink);
     border-color: var(--line);
     transform: none;
@@ -133,7 +133,7 @@
 }
 
 .compactHeading h2 {
-  font-size: clamp(22px, 2.2vw, 30px);
+  font-size: var(--type-section);
 }
 
 .compactBalances {
@@ -148,18 +148,18 @@
 }
 
 .compactBalances span {
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 .compactBalances strong {
-  font-size: clamp(18px, 2vw, 25px);
+  font-size: var(--type-subheading);
   overflow-wrap: anywhere;
 }
 
 .compactNote,
 .compactRule {
   margin-top: 10px;
-  font-size: 10px;
+  font-size: var(--type-meta);
   line-height: 1.5;
 }
 
@@ -176,7 +176,7 @@
   align-items: center;
   gap: 7px;
   list-style: none;
-  font-size: 11px;
+  font-size: var(--type-ui);
   font-weight: 650;
   cursor: pointer;
 }
@@ -207,12 +207,12 @@
 
 .compactHistory li strong,
 .compactHistory li b {
-  font-size: 11px;
+  font-size: var(--type-meta);
 }
 
 .compactHistory li span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 
 @media (max-width: 1100px) {
@@ -235,11 +235,11 @@
   }
 
   .compactBalances span {
-    font-size: 9px;
+    font-size: var(--type-meta);
   }
 
   .compactBalances strong {
-    font-size: 17px;
+    font-size: var(--type-body);
   }
 }
 
@@ -267,7 +267,7 @@
 }
 
 .compactTop .eyebrow {
-  font-size: 9px;
+  font-size: var(--type-meta);
   letter-spacing: .12em;
 }
 
@@ -278,7 +278,7 @@
   align-items: center;
   gap: 4px;
   color: #591d20;
-  font-size: 9px;
+  font-size: var(--type-ui);
   font-weight: 650;
   white-space: nowrap;
 }
@@ -295,19 +295,19 @@
 }
 
 .compactBalances span {
-  font-size: 8px;
+  font-size: var(--type-meta);
   letter-spacing: .03em;
 }
 
 .compactBalances strong {
-  font-size: clamp(15px, 1.45vw, 19px);
+  font-size: var(--type-subheading);
   line-height: 1.05;
   overflow-wrap: anywhere;
 }
 
 .compactNote {
   margin-top: 8px;
-  font-size: 9px;
+  font-size: var(--type-meta);
   line-height: 1.4;
 }
 
@@ -315,7 +315,7 @@
 .compactError {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 .compactError {
@@ -327,7 +327,7 @@
 .compactError .textButton {
   min-height: 30px;
   padding: 0;
-  font-size: 10px;
+  font-size: var(--type-ui);
 }
 
 @media (max-width: 620px) {
@@ -344,7 +344,7 @@
   }
 
   .compactBalances strong {
-    font-size: 15px;
+    font-size: var(--type-body);
   }
 }
 
@@ -372,7 +372,7 @@
 
   .toggle {
     gap: 9px;
-    font-size: 11px;
+    font-size: var(--type-meta);
   }
 
   .toggle input {
@@ -383,14 +383,14 @@
 
   .checkoutWallet .note {
     margin-top: 8px;
-    font-size: 9px;
+    font-size: var(--type-meta);
     line-height: 1.5;
   }
 
   .amount {
     margin-top: 11px;
     gap: 5px;
-    font-size: 10px;
+    font-size: var(--type-meta);
   }
 
   .amount input {
@@ -404,3 +404,4 @@
     transform: none;
   }
 }
+

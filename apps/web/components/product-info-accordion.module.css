@@ -26,8 +26,8 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 21px;
+  font-family: var(--font-sans);
+  font-size: var(--type-title);
   line-height: 1.2;
 }
 
@@ -43,7 +43,7 @@
 .content {
   padding: 0 0 22px 34px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1.75;
 }
 
@@ -82,31 +82,31 @@
   }
 
   .titleWrap {
-    font-size: 19px;
+    font-size: var(--type-lead);
   }
 
   .content {
     padding-left: 0;
-    font-size: 13px;
+    font-size: var(--type-body);
   }
 }
 
 
 /* HIDI PDP accordion typography phase 2 */
 .titleWrap {
-  font-family: var(--font-display);
-  font-size: 20px;
+  font-family: var(--font-sans);
+  font-size: var(--type-title);
   font-weight: 500;
 }
 
 .content {
-  font-size: 15px;
+  font-size: var(--type-body);
   line-height: 1.7;
 }
 
 @media (max-width: 640px) {
-  .titleWrap { font-size: 18px; }
-  .content { font-size: 14px; }
+  .titleWrap { font-size: var(--type-lead); }
+  .content { font-size: var(--type-body); }
 }
 
 
@@ -123,7 +123,7 @@
 
   .titleWrap {
     gap: 9px;
-    font-size: 16px;
+    font-size: var(--type-body);
   }
 
   .titleWrap svg {
@@ -133,7 +133,8 @@
 
   .content {
     padding: 0 0 16px;
-    font-size: 12px;
+    font-size: var(--type-body);
     line-height: 1.65;
   }
 }
+

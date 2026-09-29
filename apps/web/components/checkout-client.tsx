@@ -467,7 +467,7 @@ export function CheckoutClient() {
                   inputMode="numeric"
                   autoComplete="shipping postal-code"
                   maxLength={6}
-                  pattern="[0-9]{6}"
+                  pattern="[1-9][0-9]{5}"
                   title="Enter a 6-digit PIN code"
                   onInput={(event) => {
                     event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 6);

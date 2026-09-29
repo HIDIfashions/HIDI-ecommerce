@@ -26,11 +26,11 @@ const offers = [
     key: "rupeeDress" as const,
     icon: Gift,
     eyebrow: "₹1 EXTRA DRESS",
-    title: "Shop ₹3,500+ and unlock another eligible dress for ₹1.",
-    mobileTitle: "₹1 dress on ₹3,500+",
+    title: "Shop ₹3,999+ and unlock another eligible dress for ₹1.",
+    mobileTitle: "₹1 dress on ₹3,999+",
     short: "A launch benefit on qualifying orders and selected styles.",
     terms: [
-      "The qualifying purchase value shown at checkout must be ₹3,500 or more.",
+      "The qualifying purchase value shown at checkout must be ₹3,999 or more.",
       "One eligible promotional dress may be selected for ₹1 per qualifying order, subject to stock.",
       "The ₹1 benefit applies only to products identified as eligible for this launch promotion.",
       "If an order is changed, cancelled or returned, eligibility will be recalculated using the final qualifying purchase value.",
@@ -46,7 +46,7 @@ const offers = [
     terms: [
       "Flat 15% applies only to eligible launch merchandise and qualifying orders.",
       "The discount is calculated on eligible merchandise value shown at checkout.",
-      "Offer duration, exclusions and offer-stacking eligibility will be displayed at checkout.",
+      "The ₹1 dress privilege and the alternative 15% offer are not combined. Final duration and exclusions require publication before launch.",
       "HIDI may withdraw or revise a launch promotion before purchase; confirmed paid orders keep the offer applied at checkout.",
     ],
   },
