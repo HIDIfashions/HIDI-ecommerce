@@ -63,7 +63,7 @@ export default function CompleteProfileScreen({ navigation, route }: Props) {
         </MessageCard>
         {error ? <MessageCard tone="error">{error}</MessageCard> : null}
         <HidiButton label="Save profile" loading={busy} onPress={() => void save()} />
-        <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] })}>
+        <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => navigation.reset({ index: 0, routes: [{ name: "MainTabs", params: route.params?.returnTo === "saved" ? { screen: "Saved" } : { screen: "Home" } }] })}>
           <HidiText variant="action">Not now</HidiText>
         </Pressable>
       </View>
