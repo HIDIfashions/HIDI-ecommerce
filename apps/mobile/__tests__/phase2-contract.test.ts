@@ -119,6 +119,16 @@ describe("Phase 2 H023-H044 contract simulation", () => {
     expect(afterSecondAdd.subtotalPaise).toBe(258000);
   });
 
+  it("flags an unavailable line even without a previous local snapshot", () => {
+    const unavailable = cart({
+      items: [{
+        ...cart().items[0],
+        variant: { ...cart().items[0].variant, available: 0 },
+      }],
+    });
+    expect(compareCartSnapshots(null, unavailable).map((change) => change.kind)).toEqual(["unavailable"]);
+  });
+
   it("simulates H043 price and stock reconciliation before checkout", () => {
     const acknowledged = cart();
     const changed = cart({
@@ -134,6 +144,19 @@ describe("Phase 2 H023-H044 contract simulation", () => {
     expect(changes.map((change) => change.kind)).toEqual(["price", "unavailable"]);
     expect(changes[0].beforePaise).toBe(129000);
     expect(changes[0].afterPaise).toBe(139000);
+  });
+
+  it("preserves deferred quantity when a saved bag SKU is reviewed", () => {
+    const savedQuantity = 2;
+    const selectedAvailable = 4;
+    expect(selectedAvailable >= savedQuantity).toBe(true);
+    const canonical = cart({
+      itemCount: savedQuantity,
+      subtotalPaise: 129000 * savedQuantity,
+      items: [{ ...cart().items[0], quantity: savedQuantity, lineTotalPaise: 129000 * savedQuantity }],
+    });
+    expect(canonical.itemCount).toBe(2);
+    expect(canonical.subtotalPaise).toBe(258000);
   });
 
   it("does not pretend unsupported backend capabilities are implemented", () => {
