@@ -1,7 +1,7 @@
 # HIDI Mobile - Build Specification
 
 Branch: `hidi-mobile-build-from-scratch`
-Current phase: Phase 0 COMPLETE / VERIFIED
+Current phase: Phase 1 COMPLETE / VERIFIED
 Scope: React Native frontend only
 
 ## Runtime
@@ -105,5 +105,43 @@ Passed:
 
 iOS native project is committed and structurally configured; iOS compilation requires a macOS/Xcode runner and will be part of the iOS validation gate before distribution.
 
+## Phase 1 implementation evidence
+Implemented frontend scope:
+- H001-H008 launch, onboarding, WhatsApp phone verification UI, optional profile and consent.
+- H009-H012 Home, Shop/category discovery, collection landing and catalogue listing.
+- H013-H016 search entry/suggestions/results/no-results.
+- H017-H019 filter, sort and filtered listing.
+- H020-H022 Saved Items and Recently Viewed.
+- Offline saved catalogue presentation, partial-section failure handling and generic retry surfaces required by Phase 1.
+- HIDI allowlisted product/collection deep-link recovery on Android and iOS.
+- Secure native session persistence through Keychain.
+- Local privacy controls for recent searches and Recently Viewed.
+- Saved-item price/availability snapshots.
+- Relative storefront media URL resolution for React Native.
+
+Live Phase 1 catalogue integration was checked against the existing testing gateway and currently returns published product/category/collection/inventory data and relative product media paths.
+
+CI workflow: `Mobile Phase 1`
+Verified run: `36585777566`
+
+Passed:
+- npm dependency installation.
+- TypeScript typecheck.
+- Foundation tests.
+- Phase 1 discovery/filter/deep-link contract tests.
+- Android debug build.
+- iOS Ruby/CocoaPods dependency installation.
+- iOS simulator build with code signing disabled.
+
+## Phase 1 auth runtime configuration
+The frontend deliberately does not contain Supabase/provider secrets.
+
+Required build-time public values for live customer OTP:
+- `HIDI_SUPABASE_URL`
+- `HIDI_SUPABASE_PUBLISHABLE_KEY`
+- `HIDI_MOBILE_ENV=staging|production`
+
+WhatsApp OTP provider/sender configuration remains outside this frontend branch.
+
 ## Gate
-Phase 1 is owner-approved and in progress. Treat WhatsApp OTP as integration-ready only after the Supabase/Twilio sender configuration is validated with a real +91 test number.
+Phase 1 is complete. Do not start H023-H044 until the owner explicitly approves Phase 2.

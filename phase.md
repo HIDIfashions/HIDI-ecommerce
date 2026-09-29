@@ -40,17 +40,52 @@ Phase 0 exit:
 - Verification workflow: `Mobile Phase 0`, run `36570551111`.
 
 ## Phase 1 - Welcome, identity and discovery
-Status: IN PROGRESS
+Status: COMPLETE / VERIFIED
 
-Identity update:
-- H004 sign-in requests the phone OTP over WhatsApp.
-- H005 verification remains the same 6-digit phone OTP verification contract.
-- Provider prerequisite: the existing Supabase Auth project must use Twilio/Twilio Verify with an approved WhatsApp sender before live delivery can succeed.
 Screens: H001-H022
-Shared states: H103-H108 as needed
+Shared states used where needed: H103-H108
+
+Completed:
+- H001 launch/restore with onboarding restore, safe product/collection deep links, process-restart recovery and no artificial second splash.
+- H002 welcome with HIDI visual language, guest-first browsing, optional sign-in and optional style setup.
+- H003 style preferences with optional selections, storage-failure recovery and no shopping restriction.
+- H004-H008 identity path: phone entry, WhatsApp OTP request, six-digit verification, optional profile completion, consent controls, phone-scoped rate-limit recovery and guest fallback.
+- Auth session tokens use secure native keychain storage; OTP codes are never persisted.
+- H009 Home with live catalogue content, editorial hero, collection discovery, featured fallback, offline-cache badge and Recently Viewed entry.
+- H010 Shop categories built from current published category/collection data instead of fabricated taxonomy.
+- H011 collection landing with live product data and expired/unpublished collection recovery.
+- H012 product listing with live inventory-aware cards.
+- H013-H016 search entry, suggestions, results and no-results recovery with local recent-search privacy controls.
+- H017 filter workspace with size/colour/fabric/price groups and same-SKU inventory-safe matching.
+- H018 sorting with persisted selection; Recommended, price and rating are supported. Newest remains visibly disabled until the existing catalogue API exposes a stable published-date sort contract.
+- H019 filtered listing with removable chips and zero-result recovery.
+- H020-H021 guest Saved Items and empty state, including current availability and saved-price-change messaging.
+- H022 Recently Viewed with local-device privacy toggle, clear-history control and unavailable-item handling.
+- Catalogue loading/content/error/offline-cache states are distinct; failed network fetches are not presented as empty catalogues.
+- Live storefront relative media URLs are resolved against the selected HIDI public origin.
+- Android and iOS deep-link handling is allowlisted to HIDI product/collection routes.
+- Five persistent root tabs are active: Home, Shop, Saved, Bag, You. Bag/You are intentionally lightweight placeholders because their full contracts belong to later phases.
+- Product taps hand off to a temporary Phase-1 detail bridge only; H023+ product detail behavior is deliberately deferred to Phase 2.
+
+Verification:
+- Workflow: `Mobile Phase 1`
+- Verified run: `36585777566`
+- TypeScript typecheck: PASS
+- Phase 0 + Phase 1 unit tests: PASS
+- Android debug build: PASS
+- iOS CocoaPods install: PASS
+- iOS simulator build: PASS
+
+Known external integration prerequisite, not a Phase 1 frontend defect:
+- Live H004/H005 WhatsApp OTP still requires the existing Supabase Auth project/provider configuration and mobile-safe public auth build variables. No credential or provider secret is guessed or embedded in the app.
+
+Phase 1 exit:
+- H001-H022 frontend/UI/navigation/recovery scope is implemented and CI-verified.
+- No backend/APIM/database resource was created or changed for Phase 1.
+- Phase 2 must not start until owner approval.
 
 ## Phase 2 - Product confidence and bag
-Status: NOT STARTED
+Status: WAITING FOR OWNER APPROVAL
 Screens: H023-H044
 
 ## Phase 3 - Checkout and payment

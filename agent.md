@@ -54,7 +54,9 @@ This app reuses that layer; it does not add a new one.
 
 ## Current checkpoint
 - Phase 0 is complete and CI-verified.
-- Typecheck, unit tests and Android debug build passed in workflow run `36570551111`.
-- Phase 1 is approved and in progress.
-- H004/H005 now use WhatsApp OTP delivery while keeping the existing Supabase phone-session contract.
-- Live WhatsApp delivery remains provider-configuration dependent; do not expose Twilio or Meta secrets in React Native.
+- Phase 1 H001-H022 is complete and CI-verified.
+- Phase 1 verification run `36585777566` passed TypeScript, unit tests, Android debug build, CocoaPods installation and iOS simulator build.
+- H004/H005 use WhatsApp OTP delivery while keeping the existing Supabase phone-session contract.
+- Live WhatsApp delivery remains dependent on the existing Supabase/provider configuration and public mobile auth build variables; do not guess or expose provider secrets.
+- H023+ product confidence and real bag flows have not been started.
+- Phase 2 is waiting for explicit owner approval.
