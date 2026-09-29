@@ -41,7 +41,7 @@ export default function CompleteProfileScreen({ navigation, route }: Props) {
   }
 
   return (
-    <HidiScreen contentStyle={styles.zeroTop}>
+    <HidiScreen testID="H006" contentStyle={styles.zeroTop}>
       <AppHeader title="Complete profile" onBack={navigation.goBack} />
       <View style={styles.body}>
         <HidiText variant="title">Make yourself at home.</HidiText>
