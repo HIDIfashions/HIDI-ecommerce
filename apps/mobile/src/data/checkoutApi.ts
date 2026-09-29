@@ -106,12 +106,13 @@ export async function getCheckoutConfirmation(orderNumber: string) {
 
 export async function classifySavedAttempt(attempt: CheckoutAttempt) {
   const confirmation = await getCheckoutConfirmation(attempt.orderNumber);
+  const paymentStatus = confirmation.payment?.status;
   return {
     confirmation,
     state: classifyPaymentState({
       orderStatus: confirmation.status,
-      paymentStatus: confirmation.payment?.status,
       captured: attempt.captured,
+      ...(paymentStatus ? { paymentStatus } : {}),
     }),
   };
 }
