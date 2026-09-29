@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 export async function runQualityChecks({browser,engine,scenario,until,base,output,products,writes,setCartMode}) {
  const run=(id,title,work,options)=>scenario(browser,engine,id,title,work,options);
- const pdp=async(page,index=0)=>{await page.goto(base+'/products/'+products[index].slug,{waitUntil:'networkidle'});await page.locator('[data-pdp-summary]').waitFor();};
+ const pdp=async(page,index=0)=>{await page.waitForLoadState('networkidle');await page.goto(base+'/products/'+products[index].slug,{waitUntil:'networkidle'});await page.locator('[data-pdp-summary]').waitFor();};
  const actions=page=>page.locator('[aria-label="Purchase actions"]');
  const size=(page,name)=>page.locator('.sizes').getByRole('button',{name,exact:true});
  const summary=page=>page.locator('[data-pdp-summary]');
