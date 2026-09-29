@@ -153,8 +153,8 @@ Implemented frontend scope:
 - Unsupported server features are recorded in `src/spec/phase2Capabilities.ts`; the frontend does not manufacture success.
 
 Deterministic simulation result:
-- 10/10 Phase 0-2 commerce scenarios passed.
-- Simulation checks exact-SKU search/filtering, stock exclusion, duplicate-add merge math, initial unavailable lines, first-add price races, price+stock conflict, unresolved-attention preservation, stock quantity limits, minor-unit arithmetic and local Saved-for-later quantity revalidation.
+- 16/16 Phase 0-2 commerce scenarios passed.
+- Simulation checks phone normalization/validation, search token order, exact-SKU filtering, sold-out exclusion, allowlisted/untrusted deep links, duplicate-add merge math, initial unavailable lines, first-add price races, price+stock conflict, unresolved-attention preservation, stock quantity limits, minor-unit arithmetic, local Saved-for-later quantity revalidation and unsupported-capability honesty.
 
 Phase 2 backend reconciliation:
 - Existing product detail/related/reviews/cart/PIN-serviceability contracts are used as-is.
