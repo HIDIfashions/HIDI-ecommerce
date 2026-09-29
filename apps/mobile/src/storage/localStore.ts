@@ -9,6 +9,8 @@ const keys = {
   catalogCache: "hidi.mobile.catalogCache.v1",
   consentDraft: "hidi.mobile.consentDraft.v1",
   lastSafeRoute: "hidi.mobile.lastSafeRoute.v1",
+  verificationRetryUntil: "hidi.mobile.verificationRetryUntil.v1",
+  recentTracking: "hidi.mobile.recentTracking.v1",
 };
 
 export type RecentVisit = { slug: string; viewedAt: number };
@@ -51,12 +53,21 @@ export const localStore = {
   },
   recentlyViewed: () => getJson<RecentVisit[]>(keys.recentlyViewed, []),
   async rememberViewed(slug: string) {
+    if (!(await this.recentTrackingEnabled())) return;
     const existing = await this.recentlyViewed();
     const next = [{ slug, viewedAt: Date.now() }, ...existing.filter((item) => item.slug !== slug)].slice(0, 12);
     await setJson(keys.recentlyViewed, next);
   },
   async clearRecentlyViewed() {
     await setJson(keys.recentlyViewed, []);
+  },
+  async recentTrackingEnabled() {
+    const raw = await AsyncStorage.getItem(keys.recentTracking).catch(() => null);
+    return raw !== "0";
+  },
+  async setRecentTrackingEnabled(enabled: boolean) {
+    await AsyncStorage.setItem(keys.recentTracking, enabled ? "1" : "0").catch(() => undefined);
+    if (!enabled) await this.clearRecentlyViewed();
   },
   recentSearches: () => getJson<string[]>(keys.recentSearches, []),
   async rememberSearch(query: string) {
@@ -76,4 +87,9 @@ export const localStore = {
   saveConsentDraft: (value: { personalizationOptIn: boolean; whatsappOptIn: boolean }) => setJson(keys.consentDraft, value),
   lastSafeRoute: () => AsyncStorage.getItem(keys.lastSafeRoute).catch(() => null),
   saveLastSafeRoute: (route: string) => AsyncStorage.setItem(keys.lastSafeRoute, route).catch(() => undefined),
+  async verificationRetryUntil() {
+    const value = Number(await AsyncStorage.getItem(keys.verificationRetryUntil).catch(() => "0"));
+    return Number.isFinite(value) ? value : 0;
+  },
+  setVerificationRetryUntil: (timestampMs: number) => AsyncStorage.setItem(keys.verificationRetryUntil, String(timestampMs)).catch(() => undefined),
 };
