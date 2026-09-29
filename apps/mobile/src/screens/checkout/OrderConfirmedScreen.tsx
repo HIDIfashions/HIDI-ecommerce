@@ -28,9 +28,7 @@ export default function OrderConfirmedScreen({ navigation, route }: Props) {
     try {
       const next = await getCheckoutConfirmation(route.params.orderNumber);
       setData(next);
-      if (["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].includes(String(next.status).toUpperCase())) {
-        await checkoutStorage.clearAfterOrder();
-      }
+      if (["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].includes(String(next.status).toUpperCase())) await checkoutStorage.clearAfterOrder();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Order confirmation could not be loaded.");
     }
@@ -65,8 +63,7 @@ export default function OrderConfirmedScreen({ navigation, route }: Props) {
           })}
           <View style={styles.totalRow}><HidiText variant="secondary">Order total</HidiText><HidiText variant="secondary" style={styles.bold}>{formatINRPaise(data.totalPaise)}</HidiText></View>
         </View>
-        <MessageCard>Order tracking, shipment detail and receipt downloads are implemented in Phase 4. Repeat success callbacks reuse this same order reference.</MessageCard>
-        <HidiButton label="Track my order" onPress={() => navigation.navigate("MainTabs", { screen: "You" })} />
+        <HidiButton label="Track my order" onPress={() => navigation.navigate("OrderDetail", { orderNumber: data.orderNumber })} />
         <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => navigation.navigate("MainTabs", { screen: "Home" })}>
           <HidiText variant="metadata" style={{ color: colors.action }}>Continue shopping</HidiText>
         </Pressable>

@@ -1,4 +1,4 @@
-name: Mobile Phase 3
+name: Mobile Phase 4
 
 on:
   push:
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  android-phase3:
+  android-phase4:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -48,7 +48,7 @@ jobs:
       - name: Android debug build
         run: ./android/gradlew -p android assembleDebug
 
-  ios-phase3:
+  ios-phase4:
     runs-on: macos-15
     timeout-minutes: 45
     defaults:

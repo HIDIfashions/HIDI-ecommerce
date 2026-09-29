@@ -52,6 +52,33 @@ import PaymentPendingScreen from "../screens/checkout/PaymentPendingScreen";
 import PaymentFailedScreen from "../screens/checkout/PaymentFailedScreen";
 import OrderConfirmedScreen from "../screens/checkout/OrderConfirmedScreen";
 import ResumeCheckoutScreen from "../screens/checkout/ResumeCheckoutScreen";
+import {
+  CancelOrderItemsScreen,
+  CancellationResultScreen,
+  CodRefundDestinationScreen,
+  DeliveredOrderScreen,
+  DeliveryAttemptFailedScreen,
+  ExchangePriceDifferenceScreen,
+  ExchangeReviewScreen,
+  ExchangeSizeScreen,
+  InvoiceReceiptScreen,
+  MyOrdersScreen,
+  OrderDetailScreen,
+  RefundCompletedScreen,
+  RefundInProgressScreen,
+  RefundNeedsAttentionScreen,
+  ReturnEvidenceScreen,
+  ReturnPickupMissedScreen,
+  ReturnPickupScreen,
+  ReturnReasonScreen,
+  ReturnTrackingScreen,
+  ReturnUnavailableScreen,
+  ReviewReturnScreen,
+  SelectReturnItemsScreen,
+  SplitShipmentsScreen,
+  TrackShipmentScreen,
+  WriteReviewScreen,
+} from "../screens/orders/OrderScreens";
 import { parseHidiDeepLink } from "./deepLinks";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -76,38 +103,20 @@ export default function RootNavigator() {
     const subscription = Linking.addEventListener("url", ({ url }) => {
       const target = parseHidiDeepLink(url);
       if (!target || !navigationRef.isReady()) return;
-      if (target.type === "product") {
-        navigationRef.navigate("ProductDeferred", { slug: target.slug });
-      } else {
-        navigationRef.navigate("Collection", { slug: target.slug, title: target.title });
-      }
+      if (target.type === "product") navigationRef.navigate("ProductDeferred", { slug: target.slug });
+      else navigationRef.navigate("Collection", { slug: target.slug, title: target.title });
     });
     return () => subscription.remove();
   }, [navigationRef]);
 
   const navigationTheme = {
     ...base,
-    colors: {
-      ...base.colors,
-      primary: colors.action,
-      background: colors.canvas,
-      card: colors.surface,
-      text: colors.ink,
-      border: colors.border,
-      notification: colors.error,
-    },
+    colors: { ...base.colors, primary: colors.action, background: colors.canvas, card: colors.surface, text: colors.ink, border: colors.border, notification: colors.error },
   };
 
   return (
     <NavigationContainer ref={navigationRef} theme={navigationTheme}>
-      <Stack.Navigator
-        initialRouteName="Launch"
-        screenOptions={{
-          headerShown: false,
-          animation: reduceMotion ? "fade" : "slide_from_right",
-          contentStyle: { backgroundColor: colors.canvas },
-        }}
-      >
+      <Stack.Navigator initialRouteName="Launch" screenOptions={{ headerShown: false, animation: reduceMotion ? "fade" : "slide_from_right", contentStyle: { backgroundColor: colors.canvas } }}>
         <Stack.Screen name="Launch" component={LaunchRestoreScreen} options={{ animation: "fade" }} />
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="StylePreferences" component={StylePreferencesScreen} />
@@ -157,6 +166,31 @@ export default function RootNavigator() {
         <Stack.Screen name="PaymentFailed" component={PaymentFailedScreen} />
         <Stack.Screen name="OrderConfirmed" component={OrderConfirmedScreen} options={{ animation: "fade" }} />
         <Stack.Screen name="ResumeCheckout" component={ResumeCheckoutScreen} />
+        <Stack.Screen name="MyOrders" component={MyOrdersScreen} />
+        <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
+        <Stack.Screen name="TrackShipment" component={TrackShipmentScreen} />
+        <Stack.Screen name="SplitShipments" component={SplitShipmentsScreen} />
+        <Stack.Screen name="DeliveryAttemptFailed" component={DeliveryAttemptFailedScreen} />
+        <Stack.Screen name="CancelOrderItems" component={CancelOrderItemsScreen} />
+        <Stack.Screen name="CancellationResult" component={CancellationResultScreen} />
+        <Stack.Screen name="InvoiceReceipt" component={InvoiceReceiptScreen} />
+        <Stack.Screen name="DeliveredOrder" component={DeliveredOrderScreen} />
+        <Stack.Screen name="SelectReturnItems" component={SelectReturnItemsScreen} />
+        <Stack.Screen name="ReturnReason" component={ReturnReasonScreen} />
+        <Stack.Screen name="ReturnEvidence" component={ReturnEvidenceScreen} />
+        <Stack.Screen name="ReturnPickup" component={ReturnPickupScreen} />
+        <Stack.Screen name="ReviewReturn" component={ReviewReturnScreen} />
+        <Stack.Screen name="ReturnTracking" component={ReturnTrackingScreen} />
+        <Stack.Screen name="RefundInProgress" component={RefundInProgressScreen} />
+        <Stack.Screen name="RefundCompleted" component={RefundCompletedScreen} />
+        <Stack.Screen name="ExchangeSize" component={ExchangeSizeScreen} />
+        <Stack.Screen name="ExchangeReview" component={ExchangeReviewScreen} />
+        <Stack.Screen name="ReturnUnavailable" component={ReturnUnavailableScreen} />
+        <Stack.Screen name="WriteReview" component={WriteReviewScreen} />
+        <Stack.Screen name="CodRefundDestination" component={CodRefundDestinationScreen} />
+        <Stack.Screen name="ReturnPickupMissed" component={ReturnPickupMissedScreen} />
+        <Stack.Screen name="ExchangePriceDifference" component={ExchangePriceDifferenceScreen} />
+        <Stack.Screen name="RefundNeedsAttention" component={RefundNeedsAttentionScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -16,6 +16,11 @@ export const hidiEndpoints = {
   paymentVerify: "/payments/razorpay/verify",
   accountOrders: "/account/orders",
   accountOrder: (orderNumber: string) => "/account/orders/" + encodeURIComponent(orderNumber),
+  accountOrderItemReview: (orderNumber: string, orderItemId: string) =>
+    "/account/orders/" + encodeURIComponent(orderNumber) + "/items/" + encodeURIComponent(orderItemId) + "/review",
+  accountOrderReturns: (orderNumber: string) => "/account/orders/" + encodeURIComponent(orderNumber) + "/returns",
+  accountOrderReturnCancel: (orderNumber: string, requestId: string) =>
+    "/account/orders/" + encodeURIComponent(orderNumber) + "/returns/" + encodeURIComponent(requestId) + "/cancel",
   productReviews: (productId: string) => "/reviews/products/" + encodeURIComponent(productId),
   deliveryServiceability: (pin: string) => "/checkout/delivery-serviceability?pin=" + encodeURIComponent(pin),
   retentionPreferences: "/retention/preferences",

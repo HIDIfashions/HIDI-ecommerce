@@ -1,6 +1,7 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { Filters, SortKey } from "../data/catalog";
 import type { AddressFieldErrors, CheckoutAddress } from "../models/checkout";
+import type { AfterSalesDraft, AfterSalesType } from "../models/order";
 
 export type RootStackParamList = {
   Launch: undefined;
@@ -53,6 +54,31 @@ export type RootStackParamList = {
   PaymentFailed: { orderNumber: string; reason: string };
   OrderConfirmed: { orderNumber: string };
   ResumeCheckout: undefined;
+  MyOrders: undefined;
+  OrderDetail: { orderNumber: string };
+  TrackShipment: { orderNumber: string };
+  SplitShipments: { orderNumber: string };
+  DeliveryAttemptFailed: { orderNumber: string };
+  CancelOrderItems: { orderNumber: string };
+  CancellationResult: { orderNumber: string; status: string; message?: string };
+  InvoiceReceipt: { orderNumber: string };
+  DeliveredOrder: { orderNumber: string };
+  SelectReturnItems: { orderNumber: string; mode?: AfterSalesType };
+  ReturnReason: { orderNumber: string; orderItemId: string; quantity: number; type: AfterSalesType };
+  ReturnEvidence: { draft: AfterSalesDraft };
+  ReturnPickup: { draft: AfterSalesDraft };
+  ReviewReturn: { draft: AfterSalesDraft };
+  ReturnTracking: { orderNumber: string; requestId: string };
+  RefundInProgress: { orderNumber: string; requestId: string };
+  RefundCompleted: { orderNumber: string; requestId: string };
+  ExchangeSize: { orderNumber: string; orderItemId: string; quantity: number };
+  ExchangeReview: { orderNumber: string; orderItemId: string; quantity: number; requestedSize: string };
+  ReturnUnavailable: { orderNumber: string; reason: string };
+  WriteReview: { orderNumber: string; orderItemId: string };
+  CodRefundDestination: { orderNumber?: string; draft?: AfterSalesDraft } | undefined;
+  ReturnPickupMissed: { orderNumber: string; requestId: string };
+  ExchangePriceDifference: { orderNumber: string; orderItemId: string; requestedSize: string };
+  RefundNeedsAttention: { orderNumber: string; requestId?: string };
 };
 
 export type RootTabParamList = {
