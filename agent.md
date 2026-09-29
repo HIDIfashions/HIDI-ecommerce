@@ -24,6 +24,7 @@ Build the UI and client-side flows in the HIDI Mobile App Development Blueprint 
 - Failed fetch is not an empty state. Timeout is not payment failure.
 - No mandatory sign-in for browsing.
 - No first-launch permission prompt.
+- Phone OTP delivery for launch uses WhatsApp through the existing Supabase Auth contract; provider credentials stay outside the app.
 
 ## Phase discipline
 For every phase:
@@ -54,4 +55,6 @@ This app reuses that layer; it does not add a new one.
 ## Current checkpoint
 - Phase 0 is complete and CI-verified.
 - Typecheck, unit tests and Android debug build passed in workflow run `36570551111`.
-- Phase 1 (H001-H022) must not start until the owner explicitly approves it.
+- Phase 1 is approved and in progress.
+- H004/H005 now use WhatsApp OTP delivery while keeping the existing Supabase phone-session contract.
+- Live WhatsApp delivery remains provider-configuration dependent; do not expose Twilio or Meta secrets in React Native.
