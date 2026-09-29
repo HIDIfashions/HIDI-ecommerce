@@ -20,6 +20,7 @@ export default function HomeScreen() {
 
   useFocusEffect(React.useCallback(() => {
     let alive = true;
+    void localStore.saveLastSafeRoute("home");
     void localStore.recentlyViewed().then((items) => { if (alive) setRecentCount(items.length); });
     return () => { alive = false; };
   }, []));
