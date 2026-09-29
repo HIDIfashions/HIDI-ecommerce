@@ -29,21 +29,15 @@ import { useHidiTheme } from "../../theme/HidiTheme";
 import type { RootStackParamList } from "../../navigation/types";
 
 type Props<Name extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, Name>;
+type AnyNavigation = { navigate: (...args: any[]) => void; replace?: (...args: any[]) => void; goBack?: () => void; reset?: (...args: any[]) => void };
 
-type BasicNavigation = {
-  navigate: (name: string, params?: unknown) => void;
-  replace?: (name: string, params?: unknown) => void;
-  goBack?: () => void;
-  reset?: (state: unknown) => void;
-};
-
-function go(navigation: BasicNavigation, name: keyof RootStackParamList, params?: unknown) {
-  navigation.navigate(String(name), params);
+function go(navigation: AnyNavigation, name: keyof RootStackParamList, params?: any) {
+  navigation.navigate(name as any, params as never);
 }
 
-function replaceWith(navigation: BasicNavigation, name: keyof RootStackParamList, params?: unknown) {
-  if (navigation.replace) navigation.replace(String(name), params);
-  else navigation.navigate(String(name), params);
+function replaceWith(navigation: AnyNavigation, name: keyof RootStackParamList, params?: any) {
+  if (navigation.replace) navigation.replace(name as any, params as never);
+  else go(navigation, name, params);
 }
 
 function Shell({ title, testID, onBack, children }: { title: string; testID: string; onBack?: () => void; children: React.ReactNode }) {
@@ -84,7 +78,7 @@ function displayAddressName(address: CheckoutAddress) {
   return address.firstName + (address.lastName ? " " + address.lastName : "");
 }
 
-export function AccountHomeScreen({ navigation }: { navigation: BasicNavigation }) {
+export function AccountHomeScreen({ navigation }: { navigation: AnyNavigation }) {
   const { colors } = useHidiTheme();
   const auth = useAuth();
   const [summaryError, setSummaryError] = useState(false);
@@ -255,7 +249,7 @@ export function NotificationSettingsScreen({ navigation }: Props<"NotificationSe
       <HidiText variant="title">Choose what reaches you.</HidiText>
       <CapabilityNotice capability="notificationsApi" supportedCopy="Notification channels are synced." />
       <ToggleRow title="SMS order updates" detail="Delivery and payment service messages" value={pref.orderSms} onValueChange={(v) => setPref((p) => ({ ...p, orderSms: v }))} />
-      <ToggleRow title="WhatsApp order updates" detail="Service messages only" value={pref.orderWhatsApp} onValueChange={(v) => setPref((p) => ({ ...p, orderWhatsApp: v }))} />
+      <ToggleRow title="WhatsApp order updates" detail="Service updates only" value={pref.orderWhatsApp} onValueChange={(v) => setPref((p) => ({ ...p, orderWhatsApp: v }))} />
       <ToggleRow title="Promotions" detail="Optional marketing only" value={pref.promotional} onValueChange={(v) => setPref((p) => ({ ...p, promotional: v }))} />
       <HidiButton label="Save settings" onPress={() => void save()} />
       <Row title="OS notification permission" detail="Open permission education" onPress={() => go(navigation, "AndroidPermissionDialog", { returnTo: "NotificationSettings" })} />
@@ -267,7 +261,7 @@ export function AndroidPermissionDialogScreen({ navigation }: Props<"AndroidPerm
   return (
     <Shell testID="H091" title="Permission handoff" onBack={navigation.goBack}>
       <HidiText variant="title">Turn on notifications only when useful.</HidiText>
-      <MessageCard>HIDI will request OS notification permission only after this explanation. The current build shows the education state; native permission request wiring belongs to release hardening.</MessageCard>
+      <MessageCard>HIDI explains why a permission is useful before asking the operating system. This screen is the education step before an OS prompt.</MessageCard>
       <HidiButton label="Back to settings" onPress={() => go(navigation, "NotificationSettings")} />
     </Shell>
   );
@@ -277,7 +271,6 @@ export function HelpCentreScreen({ navigation }: Props<"HelpCentre">) {
   return (
     <Shell testID="H092" title="Help centre" onBack={navigation.goBack}>
       <HidiText variant="title">How can we help?</HidiText>
-      <CapabilityNotice capability="helpTopicsApi" supportedCopy="Help topics are synced." />
       <Row title="I need help with an order" detail="Use order context when available" onPress={() => go(navigation, "HelpWithOrder")} />
       <Row title="Create support request" detail="Question, bug, delivery or payment concern" onPress={() => go(navigation, "CreateSupportRequest")} />
       <Row title="Contact HIDI" detail="Email and website route" onPress={() => go(navigation, "ContactHidi")} />
@@ -297,24 +290,24 @@ export function HelpWithOrderScreen({ navigation }: Props<"HelpWithOrder">) {
 }
 
 export function CreateSupportRequestScreen({ navigation, route }: Props<"CreateSupportRequest">) {
-  const [topic, setTopic] = useState(route.params?.topic ?? "General");
+  const [topic, setTopic] = useState(route.params?.topic ?? (route.params?.orderNumber ? "Order" : "General"));
   const [subject, setSubject] = useState(route.params?.orderNumber ? "Help with order " + route.params.orderNumber : "");
   const [body, setBody] = useState("");
   const [result, setResult] = useState("");
   async function submit() {
-    const cleanSubject = sanitizeSupportText(subject, 120) || topic;
+    const cleanSubject = sanitizeSupportText(subject, 120);
     const cleanBody = sanitizeSupportText(body, 2000);
-    if (!canSubmitSupportDraft(cleanSubject, cleanBody)) { setResult("Please add a clear subject and message of at least 12 characters."); return; }
+    if (!canSubmitSupportDraft(cleanSubject, cleanBody)) { setResult("Please add a clear subject and message."); return; }
     const draft: SupportTicketDraft = {
       operationId: makeOperationId("support"),
+      orderNumber: route.params?.orderNumber,
       topic,
       subject: cleanSubject,
       body: cleanBody,
-      orderNumber: route.params?.orderNumber,
       contactPreference: "email",
     };
     const ticket = await accountStorage.createOrGetSupportTicket(draft);
-    go(navigation, "SupportReceived", { caseId: ticket.caseId, topic: ticket.topic, orderNumber: ticket.orderNumber });
+    replaceWith(navigation, "SupportReceived", { caseId: ticket.caseId, topic: ticket.topic, orderNumber: ticket.orderNumber });
   }
   return (
     <Shell testID="H094" title="Support request" onBack={navigation.goBack}>
@@ -330,13 +323,13 @@ export function CreateSupportRequestScreen({ navigation, route }: Props<"CreateS
 }
 
 export function SupportConversationScreen({ navigation, route }: Props<"SupportConversation">) {
-  const [ticketTopic, setTicketTopic] = useState("Support request");
-  useEffect(() => { void accountStorage.supportTicket(route.params.caseId).then((ticket) => { if (ticket?.topic) setTicketTopic(ticket.topic); }); }, [route.params.caseId]);
+  const [subject, setSubject] = useState("Support request");
+  useEffect(() => { void accountStorage.supportTicket(route.params.caseId).then((ticket) => { if (ticket) setSubject(ticket.subject); }); }, [route.params.caseId]);
   return (
     <Shell testID="H095" title="Support conversation" onBack={navigation.goBack}>
-      <HidiText variant="title">{ticketTopic}</HidiText>
+      <HidiText variant="title">{subject}</HidiText>
       <CapabilityNotice capability="supportTicketsApi" supportedCopy="Live support conversation is available." />
-      <MessageCard>Reference {route.params.caseId} is saved locally. Conversation messages are not exposed by the current HIDI customer API.</MessageCard>
+      <MessageCard>Reference {route.params.caseId} is preserved locally. Conversation sync is not exposed by the current customer API.</MessageCard>
     </Shell>
   );
 }
@@ -372,8 +365,8 @@ export function PrivacyChoicesScreen({ navigation }: Props<"PrivacyChoices">) {
       <HidiText variant="title">Control optional data.</HidiText>
       <ToggleRow title="Analytics" detail="Optional product analytics" value={pref.analytics} onValueChange={(v) => setPref((p) => ({ ...p, analytics: v }))} />
       <ToggleRow title="Personalization" detail="Use saved shopping signals" value={pref.personalization} onValueChange={(v) => setPref((p) => ({ ...p, personalization: v }))} />
-      <ToggleRow title="Recently viewed history" detail="Local-device history" value={pref.recentHistory} onValueChange={(v) => setPref((p) => ({ ...p, recentHistory: v }))} />
-      <ToggleRow title="Fit data" detail="Stored only when a supported fit helper is available" value={pref.fitData} onValueChange={(v) => setPref((p) => ({ ...p, fitData: v }))} />
+      <ToggleRow title="Recently viewed" detail="Local-device browsing history" value={pref.recentHistory} onValueChange={(v) => setPref((p) => ({ ...p, recentHistory: v }))} />
+      <ToggleRow title="Fit data" detail="Only if fit helper is enabled later" value={pref.fitData} onValueChange={(v) => setPref((p) => ({ ...p, fitData: v }))} />
       <Row title="Export data" detail="Server export capability" onPress={() => go(navigation, "ExportMyData")} />
       <Row title="Delete account" detail="Requires recent authentication" onPress={() => go(navigation, "DeleteAccount")} />
       <HidiButton label="Save privacy choices" onPress={() => void save()} />
@@ -382,29 +375,33 @@ export function PrivacyChoicesScreen({ navigation }: Props<"PrivacyChoices">) {
 }
 
 export function ExportMyDataScreen({ navigation }: Props<"ExportMyData">) {
+  const [requestId, setRequestId] = useState("");
+  async function request() {
+    const record = await accountStorage.requestDataExport();
+    setRequestId(record.requestId);
+  }
   return (
     <Shell testID="H099" title="Export data" onBack={navigation.goBack}>
       <HidiText variant="title">Data export.</HidiText>
       <CapabilityNotice capability="privacyExportApi" supportedCopy="Privacy export is available." />
-      <MessageCard>The current HIDI API does not expose a customer privacy-export job. The app therefore does not claim that an export was submitted.</MessageCard>
+      <MessageCard>The current HIDI API does not expose a customer privacy-export job. This action records a local request only.</MessageCard>
+      {requestId ? <MessageCard tone="success">Local request recorded: {requestId}</MessageCard> : null}
+      <HidiButton label="Record local export request" onPress={() => void request()} />
     </Shell>
   );
 }
 
 export function DeleteAccountScreen({ navigation }: Props<"DeleteAccount">) {
-  const [requestId, setRequestId] = useState("");
-  async function recordLocalRequest() {
-    const request = await accountStorage.requestDeletion();
-    setRequestId(request.requestId);
+  async function request() {
+    const record = await accountStorage.requestDeletion();
+    replaceWith(navigation, "DeletionRequested", { requestId: record.requestId });
   }
   return (
     <Shell testID="H100" title="Delete account" onBack={navigation.goBack}>
       <HidiText variant="title">Account deletion.</HidiText>
       <CapabilityNotice capability="privacyDeletionApi" supportedCopy="Privacy deletion is available." />
       <MessageCard>Deletion requires server-side identity verification, retention checks and order/legal safeguards. This build records a local request only.</MessageCard>
-      {requestId ? <MessageCard tone="success">Local deletion request {requestId} recorded.</MessageCard> : null}
-      <HidiButton label="Record local deletion request" onPress={() => void recordLocalRequest()} />
-      {requestId ? <HidiButton label="Continue" onPress={() => replaceWith(navigation, "DeletionRequested", { requestId })} /> : null}
+      <HidiButton label="Record local deletion request" onPress={() => void request()} />
     </Shell>
   );
 }
@@ -412,8 +409,9 @@ export function DeleteAccountScreen({ navigation }: Props<"DeleteAccount">) {
 export function DeletionRequestedScreen({ navigation, route }: Props<"DeletionRequested">) {
   return (
     <Shell testID="H101" title="Deletion requested" onBack={navigation.goBack}>
-      <HidiText variant="title">Deletion request saved locally.</HidiText>
-      <MessageCard>Reference {route.params.requestId}. Server deletion is unavailable in the current customer API, so no account data has been deleted remotely.</MessageCard>
+      <HidiText variant="title">Request recorded locally.</HidiText>
+      <MessageCard>Reference {route.params.requestId}. This is not a submitted server deletion request because the current API does not expose that capability.</MessageCard>
+      <HidiButton label="Back to privacy choices" onPress={() => go(navigation, "PrivacyChoices")} />
     </Shell>
   );
 }
@@ -455,14 +453,13 @@ export function FindGuestOrderScreen({ navigation }: Props<"FindGuestOrder">) {
   const [message, setMessage] = useState("");
   async function lookup() {
     const result = safeGuestOrderLookup(reference, contact);
-    if (!result.accepted) { setMessage(result.message); return; }
-    await accountStorage.saveGuestOrderLookup({ reference, contact, checkedAt: Date.now() });
-    setMessage(result.message + " The current API does not expose scoped guest-order lookup yet.");
+    setMessage(result.message);
+    if (result.accepted) await accountStorage.saveGuestOrderLookup({ reference, contact, checkedAt: Date.now() });
   }
   return (
     <Shell testID="H126" title="Find guest order" onBack={navigation.goBack}>
       <HidiText variant="title">Find a guest order.</HidiText>
-      <CapabilityNotice capability="guestOrderAccessApi" supportedCopy="Guest-order lookup is available." />
+      <CapabilityNotice capability="guestOrderAccessApi" supportedCopy="Guest order access is available." />
       <HidiField label="Order reference" value={reference} onChangeText={setReference} />
       <HidiField label="Verified contact" value={contact} onChangeText={setContact} />
       {message ? <MessageCard>{message}</MessageCard> : null}
@@ -485,11 +482,11 @@ const styles = StyleSheet.create({
   zero: { paddingHorizontal: 0, paddingTop: 0 },
   body: { padding: 20, gap: 14 },
   scrollBody: { padding: 20, paddingBottom: 40, gap: 14 },
-  cardGroup: { gap: 2, marginTop: 6 },
-  row: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  rowIcon: { width: 28, alignItems: "center" },
+  cardGroup: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)" },
+  row: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 10 },
+  rowIcon: { width: 24, alignItems: "center" },
   bold: { fontWeight: "600" },
-  panel: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 8 },
-  inlineActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
-  inlineButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 6 },
+  panel: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 10 },
+  inlineActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  inlineButton: { minHeight: 40, justifyContent: "center", paddingRight: 8 },
 });
