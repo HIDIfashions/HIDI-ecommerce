@@ -3,6 +3,10 @@ import { publicRuntime, customerAuthConfigured } from "../config/publicRuntime";
 
 const SERVICE = "com.thehidi.app.customer-session";
 
+// HIDI launch auth uses WhatsApp OTP. Supabase verifies phone OTPs with type "sms"
+// even when delivery was requested through the WhatsApp channel.
+export const PHONE_OTP_CHANNEL = "whatsapp" as const;
+
 export type HidiAuthUser = {
   id: string;
   phone?: string | null;
@@ -103,13 +107,13 @@ export async function sendPhoneOtp(rawPhone: string) {
   const response = await fetch(publicRuntime.supabaseUrl + "/auth/v1/otp", {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ phone, create_user: true, channel: "sms" }),
+    body: JSON.stringify({ phone, create_user: true, channel: PHONE_OTP_CHANNEL }),
   }).catch(() => null);
 
-  if (!response) throw new Error("Unable to reach verification. Check your connection and try again.");
+  if (!response) throw new Error("Unable to reach WhatsApp verification. Check your connection and try again.");
   const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (!response.ok) {
-    const message = String(payload.msg ?? payload.message ?? "Unable to send the verification code.");
+    const message = String(payload.msg ?? payload.message ?? "Unable to send the WhatsApp verification code.");
     const retryAfter = Number(response.headers.get("retry-after") ?? 0);
     const error = new Error(message) as Error & { status?: number; retryAfterSeconds?: number };
     error.status = response.status;
