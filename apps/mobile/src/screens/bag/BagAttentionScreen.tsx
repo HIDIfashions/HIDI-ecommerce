@@ -19,6 +19,11 @@ export default function BagAttentionScreen({ navigation }: Props) {
   const cart = useCart();
   const [error, setError] = useState("");
 
+  function openChange(kind: "price" | "stock" | "unavailable", lineId: string) {
+    if (kind === "unavailable") navigation.navigate("BagRemove", { lineId });
+    else if (kind === "stock") navigation.navigate("BagEdit", { lineId });
+  }
+
   async function acknowledge() {
     setError("");
     try {
@@ -46,9 +51,7 @@ export default function BagAttentionScreen({ navigation }: Props) {
                 <HidiText variant="metadata" style={{ color: colors.caution }}>{formatINRPaise(change.beforePaise)} → {formatINRPaise(change.afterPaise)}</HidiText>
               ) : null}
             </View>
-            <Pressable accessibilityRole="button" onPress={() => change.kind === "price"
-              ? undefined
-              : navigation.navigate(change.kind === "unavailable" ? "BagRemove" : "BagEdit", { lineId: change.lineId } as any)} style={styles.changeAction}>
+            <Pressable accessibilityRole="button" disabled={change.kind === "price"} onPress={() => openChange(change.kind, change.lineId)} style={styles.changeAction}>
               {change.kind !== "price" ? <ChevronRight size={18} color={colors.action} /> : null}
             </Pressable>
           </View>
