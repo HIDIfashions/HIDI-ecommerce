@@ -73,7 +73,7 @@ export default function BagEditScreen({ navigation, route }: Props) {
         </Pressable>
 
         <HidiText variant="secondary" style={styles.bold}>Quantity</HidiText>
-        <View style={styles.stepper}>
+        <View style={[styles.stepper, { borderColor: colors.border }]}>
           <Pressable accessibilityRole="button" accessibilityLabel="Decrease quantity" disabled={quantity <= 1} onPress={() => setQuantity((value) => Math.max(1, value - 1))} style={styles.step}><Minus size={18} color={colors.ink} /></Pressable>
           <HidiText variant="secondary" style={styles.qty}>{quantity}</HidiText>
           <Pressable accessibilityRole="button" accessibilityLabel="Increase quantity" disabled={quantity >= max} onPress={() => setQuantity((value) => Math.min(max, value + 1))} style={styles.step}><Plus size={18} color={colors.ink} /></Pressable>
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   sizes: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   size: { minWidth: 50, minHeight: 48, borderWidth: 1, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   openProduct: { minHeight: 48, justifyContent: "center" },
-  stepper: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", borderWidth: 1, borderColor: "#DED5D2", borderRadius: 8 },
+  stepper: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", borderWidth: 1, borderRadius: 8 },
   step: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
   qty: { minWidth: 42, textAlign: "center" },
 });
