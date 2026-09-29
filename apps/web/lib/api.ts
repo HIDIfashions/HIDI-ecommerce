@@ -1,15 +1,17 @@
 const LOCAL_API_URL = "http://localhost:4000/v1";
-const PRODUCTION_API_URL = "https://hidi-ecommerce-api-96rn-beige.vercel.app/v1";
-
 function normalizeApiUrl(value: string | undefined) {
   const url = value?.trim();
   return url ? url.replace(/\/$/, "") : "";
 }
 
 function productionApiUrl() {
-  return normalizeApiUrl(process.env.API_URL) ||
-    normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) ||
-    PRODUCTION_API_URL;
+  const configured =
+    normalizeApiUrl(process.env.API_URL) ||
+    normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
+  if (!configured) {
+    throw new Error("HIDI production API URL is not configured");
+  }
+  return configured;
 }
 
 // Server-rendered storefront pages should talk to the Nest API over the local
@@ -23,7 +25,9 @@ export const API_URL =
       : LOCAL_API_URL
     : normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) ||
       normalizeApiUrl(process.env.API_URL) ||
-      (process.env.NODE_ENV === "production" ? PRODUCTION_API_URL : LOCAL_API_URL);
+      (process.env.NODE_ENV === "production"
+        ? `${window.location.origin}/api/store`
+        : LOCAL_API_URL);
 
 export type ApiVariant = {
   id: string;
