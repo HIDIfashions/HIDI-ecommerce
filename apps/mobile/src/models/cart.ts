@@ -62,7 +62,6 @@ export function compareCartSnapshots(previous: ApiCart | null, current: ApiCart)
 
   for (const line of current.items) {
     const old = before.get(line.id);
-    if (!old) continue;
 
     if (old && old.unitPricePaise !== line.unitPricePaise) {
       changes.push({
