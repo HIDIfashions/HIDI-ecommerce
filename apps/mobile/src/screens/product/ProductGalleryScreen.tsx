@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Image, PanResponder, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react-native";
@@ -13,13 +13,19 @@ import type { RootStackParamList } from "../../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ProductGallery">;
 
-function PinchImage({ uri, alt, width }: { uri: string; alt: string; width: number }) {
+function PinchImage({ uri, alt, width, active }: { uri: string; alt: string; width: number; active: boolean }) {
   const { colors } = useHidiTheme();
   const scale = useRef(new Animated.Value(1)).current;
   const currentScale = useRef(1);
   const startScale = useRef(1);
   const startDistance = useRef(1);
   const [broken, setBroken] = useState(false);
+
+  useEffect(() => {
+    if (active) return;
+    currentScale.current = 1;
+    scale.setValue(1);
+  }, [active, scale]);
 
   function distance(touches: readonly { pageX: number; pageY: number }[]) {
     if (touches.length < 2) return 1;
@@ -107,8 +113,14 @@ export default function ProductGalleryScreen({ navigation, route }: Props) {
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={(event) => setIndex(Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width)))}
           >
-            {media.map((item) => (
-              <PinchImage key={item.id + ":" + item.url} uri={resolveHidiMediaUrl(item.url)} alt={item.alt || product?.name || "HIDI garment"} width={width} />
+            {media.map((item, mediaIndex) => (
+              <PinchImage
+                key={item.id + ":" + item.url}
+                uri={resolveHidiMediaUrl(item.url)}
+                alt={item.alt || product?.name || "HIDI garment"}
+                width={width}
+                active={mediaIndex === safeIndex}
+              />
             ))}
           </ScrollView>
           <View style={[styles.controls, { borderTopColor: colors.border }]}>

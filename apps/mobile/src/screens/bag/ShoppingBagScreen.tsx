@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { AlertTriangle, ChevronRight, Gift, RotateCcw } from "lucide-react-native";
@@ -27,7 +27,7 @@ export default function ShoppingBagScreen() {
   useFocusEffect(useCallback(() => {
     void cartState.refresh();
     void localStore.recentlyViewed().then((items) => setRecentSlugs(items.map((item) => item.slug)));
-  }, []));
+  }, [cartState.refresh]));
 
   const recentProducts = useMemo(() => {
     if (catalog.state.kind !== "content") return [];

@@ -41,6 +41,11 @@ export function CartProvider({ children }: PropsWithChildren) {
   const [busyKey, setBusyKey] = useState("");
   const [undoCandidate, setUndoCandidate] = useState<CartLine | null>(null);
   const mutationLock = useRef(false);
+  const cartRef = useRef<ApiCart | null>(null);
+
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
 
   const loadSaved = useCallback(async () => {
     setSavedForLater(await cartStorage.savedForLater());
@@ -59,7 +64,7 @@ export function CartProvider({ children }: PropsWithChildren) {
   const refresh = useCallback(async () => {
     const sessionId = await cartStorage.sessionId();
     const acknowledged = await cartStorage.acknowledgedCart();
-    if (!cart && acknowledged) setCart(acknowledged);
+    if (!cartRef.current && acknowledged) setCart(acknowledged);
     try {
       const next = await fetchCart(sessionId);
       const changes = compareCartSnapshots(acknowledged, next);
@@ -71,11 +76,11 @@ export function CartProvider({ children }: PropsWithChildren) {
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Unable to refresh your bag.";
       setError(message);
-      if (cart || acknowledged) setStale(true);
+      if (cartRef.current || acknowledged) setStale(true);
     } finally {
       setLoading(false);
     }
-  }, [cart]);
+  }, []);
 
   useEffect(() => {
     void Promise.all([refresh(), loadSaved()]);
