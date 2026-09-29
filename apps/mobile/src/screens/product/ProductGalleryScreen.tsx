@@ -52,7 +52,7 @@ function PinchImage({ uri, alt, width }: { uri: string; alt: string; width: numb
   return (
     <View style={[styles.frame, { width, backgroundColor: colors.blush }]} {...responder.panHandlers}>
       {!broken && uri ? (
-        <Animated.View style={{ transform: [{ scale }] }}>
+        <Animated.View style={{ width, height: "100%", transform: [{ scale }] }}>
           <Image source={{ uri }} resizeMode="contain" style={{ width, height: "100%" }} onError={() => setBroken(true)} accessibilityLabel={alt} />
         </Animated.View>
       ) : (
