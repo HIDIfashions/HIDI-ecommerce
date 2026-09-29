@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Clock3, Search, X } from "lucide-react-native";
@@ -21,7 +21,6 @@ export default function SearchScreen({ navigation }: Props) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [recents, setRecents] = useState<string[]>([]);
-  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => { void localStore.recentSearches().then(setRecents); }, []);
   useEffect(() => {
@@ -75,7 +74,6 @@ export default function SearchScreen({ navigation }: Props) {
         <View style={[styles.searchBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
           <Search size={17} color={colors.mutedText} />
           <TextInput
-            ref={inputRef}
             autoFocus
             value={query}
             onChangeText={setQuery}
