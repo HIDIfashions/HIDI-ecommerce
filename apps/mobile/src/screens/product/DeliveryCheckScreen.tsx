@@ -87,10 +87,16 @@ export default function DeliveryCheckScreen({ navigation, route }: Props) {
             The existing serviceability API validates the PIN only. It does not currently return SKU-specific delivery dates, delivery fees or COD eligibility, so those are not invented here.
           </MessageCard>
         )}
-        <HidiButton label={busy ? "Checking…" : "Check availability"} loading={busy} disabled={pin.length !== 6} onPress={() => void check()} />
         {result?.serviceable ? (
-          <HidiButton label="Back to product" onPress={() => navigation.navigate("ProductDeferred", { slug: product.slug, selectedVariantId: variant.id })} />
-        ) : null}
+          <>
+            <HidiButton label="Back to product" onPress={() => navigation.navigate("ProductDeferred", { slug: product.slug, selectedVariantId: variant.id })} />
+            <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => { setResult(null); setPin(""); }}>
+              <HidiText variant="secondary" style={{ color: colors.action }}>Check another PIN</HidiText>
+            </Pressable>
+          </>
+        ) : (
+          <HidiButton label={busy ? "Checking…" : "Check availability"} loading={busy} disabled={pin.length !== 6} onPress={() => void check()} />
+        )}
       </View>
     </HidiScreen>
   );
