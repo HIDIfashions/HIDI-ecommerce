@@ -1,3 +1,4 @@
+import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { Filters, SortKey } from "../data/catalog";
 
 export type RootStackParamList = {
@@ -9,7 +10,7 @@ export type RootStackParamList = {
   CompleteProfile: { returnTo?: string } | undefined;
   ConsentPreferences: undefined;
   VerificationLimited: { phone?: string; retryUntil: number };
-  MainTabs: undefined;
+  MainTabs: NavigatorScreenParams<RootTabParamList> | undefined;
   Collection: { slug: string; title: string };
   Listing: { title: string; collectionSlug?: string; categorySlug?: string; query?: string; filters?: Filters; sort?: SortKey };
   Search: undefined;
