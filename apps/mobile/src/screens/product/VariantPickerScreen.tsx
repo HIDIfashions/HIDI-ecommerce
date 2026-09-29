@@ -58,7 +58,7 @@ export default function VariantPickerScreen({ navigation, route }: Props) {
       return;
     }
     try {
-      const result = await cart.addVariant(selected.id, savedQuantity);
+      const result = await cart.addVariant(selected.id, savedQuantity, selected.pricePaise);
       let cleanupFailed = false;
       if (route.params.savedForLaterKey) {
         try { await cart.removeSavedForLater(route.params.savedForLaterKey); }
