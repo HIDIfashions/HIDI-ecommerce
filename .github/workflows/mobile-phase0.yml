@@ -1,0 +1,49 @@
+name: Mobile Phase 0
+
+on:
+  push:
+    branches:
+      - hidi-mobile-build-from-scratch
+    paths:
+      - "apps/mobile/**"
+      - "phase.md"
+      - "agent.md"
+      - "build.md"
+      - ".github/workflows/mobile-phase0.yml"
+  workflow_dispatch:
+
+jobs:
+  android-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.11.0"
+          cache: npm
+          cache-dependency-path: apps/mobile/package.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test -- --runInBand
+
+      - name: Android debug build
+        run: ./android/gradlew -p android assembleDebug
