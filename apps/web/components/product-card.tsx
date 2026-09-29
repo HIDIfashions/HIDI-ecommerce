@@ -16,10 +16,10 @@ import { WhatsAppIcon } from "./whatsapp-icon";
 import styles from "./product-card.module.css";
 import { focusFirst, trapFocus } from "@/lib/focus-management";
 
-type Props = { product: ApiProduct; initialVariantId?: string; priorityMedia?: boolean; imageSizes?: string };
+type Props = { product: ApiProduct; initialVariantId?: string; priorityMedia?: boolean };
 type Phase = "idle" | "adding" | "added";
 
-export function ProductCard({ product, initialVariantId, priorityMedia = false, imageSizes }: Props) {
+export function ProductCard({ product, initialVariantId, priorityMedia = false }: Props) {
   const router = useRouter();
   const uid = useId();
   const initial = product.variants.find((entry) => entry.id === initialVariantId && entry.available > 0);
@@ -230,7 +230,6 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false, 
         soldOut={soldOut}
         href={href}
         priority={priorityMedia}
-        sizes={imageSizes}
       />
 
       <button

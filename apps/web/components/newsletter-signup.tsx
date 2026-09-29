@@ -54,7 +54,7 @@ export function NewsletterSignup() {
           required
         />
         <button type="submit" disabled={busy}>
-          {busy ? "Subscribing…" : "Subscribe"}
+          {busy ? "Subscribing…" : "Subscribe & get rewarded"}
         </button>
       </form>
       <p id="newsletter-status" className="newsletter-status" role={error ? "alert" : "status"} aria-live="polite">

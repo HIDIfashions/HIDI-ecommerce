@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { canOptimizeProductImage, productImageSource } from "@/lib/product-image";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
 import { CatalogImage } from "./catalog-image";
@@ -185,7 +184,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
             title="Click to inspect stitching and details"
             style={{
               position: "relative",
-              background: "var(--hidi-page-bg, #fbf6f2)",
+              background: "#ffffff",
               border: 0,
               padding: 0,
               margin: 0,
@@ -211,7 +210,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
                 top: 14,
                 zIndex: 3,
                 padding: "6px 8px",
-                background: "var(--hidi-page-bg, #fbf6f2)",
+                background: "rgba(255,255,255,.9)",
                 color: "#42352c",
                 fontSize: 9,
                 letterSpacing: ".12em",
@@ -233,7 +232,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
                   borderRadius: "50%",
                   display: "grid",
                   placeItems: "center",
-                  background: "var(--hidi-page-bg, #fbf6f2)",
+                  background: "rgba(255,255,255,.92)",
                   color: "#4a1719",
                   fontSize: 17,
                   boxShadow: "0 2px 12px rgba(0,0,0,.12)",
@@ -286,8 +285,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
               style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})` }}
             >
               <Image
-                src={productImageSource(selected.url)}
-                unoptimized={!canOptimizeProductImage(productImageSource(selected.url))}
+                src={selected.url}
                 alt={selected.alt || `${productName} enlarged image`}
                 fill
                 priority

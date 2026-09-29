@@ -1,14 +1,48 @@
-"use client";
+import { Check, Palette, Ruler, Sparkles } from "lucide-react";
 import type { ApiProduct } from "@/lib/api";
-import { productFacts } from "@/lib/product-facts";
-import { useProductSelection } from "@/lib/use-product-selection";
+import { getProductInformation } from "@/lib/product-information";
 import styles from "./product-quality-summary.module.css";
+
 export function ProductQualitySummary({ product }: { product: ApiProduct }) {
-  const facts = productFacts(product), { color } = useProductSelection(product);
-  const rows = [["Fabric", facts.fabric], ["Included pieces", facts.includes], ["Fit", facts.fit], ["Lining", facts.lining], ["Colour", color], ["Care", facts.care], ["Model information", facts.model]].filter(([,value]) => value);
-  return <section className={styles.wrap} aria-label="Product quality and fit summary">
-    <div className={styles.heading}><p>KNOW THE PIECE</p><h2>The details, at a glance.</h2></div>
-    <dl className={styles.facts}>{rows.map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-    {!facts.includes && <p className={styles.pending}>Included pieces are not specified for this style yet. Photography alone does not confirm the contents.</p>}
-  </section>;
+  const info = getProductInformation(product.slug);
+  const colour = product.variants[0]?.color || "See colour options";
+
+  return (
+    <section className={styles.wrap} aria-label="Product quality and fit summary">
+      <div className={styles.heading}>
+        <p>KNOW THE PIECE</p>
+        <h2>What to check before you choose.</h2>
+      </div>
+
+      <div className={styles.grid}>
+        <div>
+          <Sparkles size={18} strokeWidth={1.5} aria-hidden="true" />
+          <span>Fabric</span>
+          <strong>{product.fabric || "See product description"}</strong>
+          <p>Start with the fabric — it changes drape, structure, comfort and care.</p>
+        </div>
+
+        <div>
+          <Ruler size={18} strokeWidth={1.5} aria-hidden="true" />
+          <span>Fit profile</span>
+          <strong>{info?.fitDetail || info?.productType || "See size selection"}</strong>
+          <p>Use the fit description together with your usual size before adding to bag.</p>
+        </div>
+
+        <div>
+          <Palette size={18} strokeWidth={1.5} aria-hidden="true" />
+          <span>Colour</span>
+          <strong>{colour}</strong>
+          <p>Review all available product images; lighting and screens can shift colour slightly.</p>
+        </div>
+
+        <div>
+          <Check size={18} strokeWidth={1.5} aria-hidden="true" />
+          <span>Care</span>
+          <strong>{product.care || "Follow garment care label"}</strong>
+          <p>Care requirements matter for repeat wear, especially with embroidery and delicate surfaces.</p>
+        </div>
+      </div>
+    </section>
+  );
 }

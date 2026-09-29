@@ -8,7 +8,7 @@
   align-items: center;
   gap: 7px;
   color: #6e625a;
-  font-size: var(--type-ui);
+  font-size: 12px;
 }
 
 .hero {
@@ -23,17 +23,17 @@
 
 .hero h1 {
   margin: 0 0 10px;
-  font-family: var(--font-sans);
-  font-size: var(--type-page);
+  font-family: var(--font-display);
+  font-size: clamp(38px, 4.5vw, 62px);
   font-weight: 500;
-  line-height: 1.2;
-  letter-spacing: -.02em;
+  line-height: .98;
+  letter-spacing: -.035em;
 }
 
 .hero p {
   margin: 0;
   color: var(--muted);
-  font-size: var(--type-body);
+  font-size: 13px;
 }
 
 .heroStatus {
@@ -47,21 +47,21 @@
   padding: 7px 10px;
   border: 1px solid #d8c7bd;
   color: #591d20;
-  font-size: var(--type-meta);
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
 .heroStatus strong {
-  font-family: var(--font-sans);
-  font-size: var(--type-meta);
+  font-family: var(--font-display);
+  font-size: 28px;
   font-weight: 500;
 }
 
 .heroStatus small {
   color: var(--muted);
-  font-size: var(--type-meta);
+  font-size: 11px;
 }
 
 .progress {
@@ -91,7 +91,7 @@
   place-items: center;
   border-radius: 50%;
   border: 1px solid #dacfc7;
-  background: var(--hidi-page-bg, #fbf6f2);
+  background: #fff;
 }
 
 .progressDone {
@@ -106,7 +106,7 @@
 
 .progressStep strong,
 .progressDone strong {
-  font-size: var(--type-meta);
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -138,15 +138,15 @@
 
 .sectionHeading h2 {
   margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--type-section);
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.2vw, 44px);
   font-weight: 500;
-  letter-spacing: -.02em;
+  letter-spacing: -.025em;
 }
 
 .sectionHeading > span {
   color: var(--muted);
-  font-size: var(--type-meta);
+  font-size: 11px;
 }
 
 .items {
@@ -161,7 +161,7 @@
   grid-template-columns: 124px minmax(0, 1fr);
   gap: 20px;
   border: 1px solid var(--line);
-  background: var(--hidi-page-bg, #fbf6f2);
+  background: #fff;
 }
 
 .thumb {
@@ -189,7 +189,7 @@
   display: block;
   margin-bottom: 7px;
   color: #a87837;
-  font-size: var(--type-meta);
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .09em;
   text-transform: uppercase;
@@ -197,8 +197,8 @@
 
 .itemName {
   display: block;
-  font-family: var(--font-sans);
-  font-size: var(--type-title);
+  font-family: var(--font-display);
+  font-size: 23px;
   font-weight: 500;
   line-height: 1.15;
 }
@@ -206,7 +206,7 @@
 .itemTop p {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: var(--type-body);
+  font-size: 12px;
 }
 
 .itemActions {
@@ -224,7 +224,7 @@
   gap: 5px;
   border-bottom: 1px solid rgba(89,29,32,.25);
   color: #591d20;
-  font-size: var(--type-meta);
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -239,7 +239,7 @@
   min-width: 0;
   padding: 22px;
   border: 1px solid var(--line);
-  background: var(--hidi-page-bg, #fbf6f2);
+  background: #fff;
 }
 
 .cardTitle {
@@ -252,8 +252,8 @@
 
 .cardTitle h3 {
   margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--type-title);
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 500;
 }
 
@@ -268,7 +268,7 @@
   justify-content: space-between;
   gap: 16px;
   border-bottom: 1px solid #eee6df;
-  font-size: var(--type-ui);
+  font-size: 12px;
 }
 
 .rows > div span {
@@ -278,14 +278,14 @@
 .rows .total {
   padding-top: 14px;
   border-bottom: 0;
-  font-size: var(--type-body);
+  font-size: 15px;
 }
 
 .detailCard address {
   display: grid;
   gap: 4px;
   color: #675c54;
-  font-size: var(--type-ui);
+  font-size: 12px;
   font-style: normal;
   line-height: 1.55;
 }
@@ -300,19 +300,19 @@
 
 .shipment span {
   color: #591d20;
-  font-size: var(--type-meta);
+  font-size: 11px;
   font-weight: 700;
 }
 
 .shipment small {
   color: var(--muted);
-  font-size: var(--type-meta);
+  font-size: 10px;
 }
 
 .shipment a {
   width: fit-content;
   color: #591d20;
-  font-size: var(--type-meta);
+  font-size: 11px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -324,8 +324,8 @@
 }
 
 .state h2 {
-  font-family: var(--font-sans);
-  font-size: var(--type-section);
+  font-family: var(--font-display);
+  font-size: 32px;
 }
 
 .state p {
@@ -365,7 +365,7 @@
 
   .progressStep strong,
   .progressDone strong {
-    font-size: var(--type-meta);
+    font-size: 9px;
   }
 
   .item {
@@ -379,7 +379,7 @@
   }
 
   .itemName {
-    font-size: var(--type-lead);
+    font-size: 18px;
   }
 
   .itemTop {
@@ -387,7 +387,7 @@
   }
 
   .itemTop > strong {
-    font-size: var(--type-ui);
+    font-size: 12px;
   }
 
   .detailCard {
@@ -397,8 +397,8 @@
 
 
 .itemName {
-  font-family: var(--font-sans);
-  font-size: var(--type-lead);
+  font-family: var(--font-product);
+  font-size: 18px;
   font-weight: 600;
   line-height: 1.28;
   letter-spacing: -.012em;
@@ -406,8 +406,7 @@
 
 @media (max-width: 620px) {
   .itemName {
-    font-size: var(--type-ui);
+    font-size: 14px;
     line-height: 1.3;
   }
 }
-

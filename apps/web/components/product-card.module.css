@@ -25,9 +25,7 @@
 }
 
 .card button {
-  font-family: var(--font-sans);
-  font-size: var(--type-ui);
-  line-height: 1.4;
+  font: inherit;
 }
 
 .card :is(a, button):focus-visible {
@@ -95,8 +93,8 @@
   margin: 0;
   overflow: hidden;
   color: var(--card-brand);
-  font-family: var(--font-sans);
-  font-size: var(--type-body);
+  font-family: var(--font-product);
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.35;
   letter-spacing: -.01em;
@@ -118,8 +116,8 @@
   align-items: baseline;
   gap: 4px 7px;
   white-space: nowrap;
-  font-family: var(--font-sans);
-  font-size: var(--type-ui);
+  font-family: var(--font-product);
+  font-size: 13px;
   line-height: 1.4;
 }
 
@@ -129,18 +127,18 @@
 
 .priceRow s {
   color: #959791;
-  font-size: var(--type-meta);
+  font-size: 11px;
 }
 
 .from {
   color: var(--card-muted);
-  font-size: var(--type-meta);
+  font-size: 10px;
   font-weight: 400;
 }
 
 .saving {
   color: #8b673c;
-  font-size: var(--type-meta);
+  font-size: 10px;
 }
 
 .mobileInlineShop,
@@ -178,16 +176,16 @@
 
 .fitRibbonLabel span {
   color: var(--card-gold);
-  font-family: var(--font-sans);
-  font-size: var(--type-meta);
+  font-family: var(--font-product);
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: .14em;
 }
 
 .fitRibbonLabel strong {
   color: var(--card-muted);
-  font-family: var(--font-sans);
-  font-size: var(--type-meta);
+  font-family: var(--font-product);
+  font-size: 9px;
   font-weight: 500;
 }
 
@@ -212,10 +210,10 @@
   flex: 0 0 auto;
   border: 1px solid #d7d8d2;
   border-radius: 999px;
-  background: var(--hidi-page-bg, #fbf6f2);
+  background: #fff;
   color: #4d504b;
-  font-family: var(--font-sans);
-  font-size: var(--type-ui);
+  font-family: var(--font-product);
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   transition: border-color .16s ease, background .16s ease, color .16s ease;
@@ -268,8 +266,8 @@
   justify-content: center;
   gap: 7px;
   border: 1px solid var(--card-brand);
-  font-family: var(--font-sans);
-  font-size: var(--type-ui);
+  font-family: var(--font-product);
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -291,7 +289,7 @@
   border-color: #dccfc5;
   background: transparent;
   color: #6f5f56;
-  font-size: var(--type-ui);
+  font-size: 9px;
   letter-spacing: .03em;
 }
 
@@ -336,7 +334,7 @@
   align-items: center;
   gap: 5px;
   font-family: var(--font-sans);
-  font-size: var(--type-ui);
+  font-size: 8.5px;
   font-weight: 500;
   cursor: pointer;
 }
@@ -363,7 +361,7 @@
 .feedback {
   padding-top: 5px;
   color: #66725f;
-  font-size: var(--type-meta);
+  font-size: 9px;
   line-height: 1.45;
 }
 
@@ -380,7 +378,7 @@
   align-items: center;
   gap: 3px;
   margin-top: 2px;
-  font-size: var(--type-meta);
+  font-size: 9px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -476,22 +474,22 @@
 .mobileSheetHeader p {
   margin: 0 0 5px;
   color: var(--card-gold);
-  font-size: var(--type-body);
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: .14em;
 }
 
 .mobileSheetHeader h3 {
   margin: 0 0 5px;
-  font-family: var(--font-sans);
-  font-size: var(--type-title);
+  font-family: var(--font-product);
+  font-size: 19px;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.22;
 }
 
 .mobileSheetHeader > div > span {
-  font-family: var(--font-sans);
-  font-size: var(--type-ui);
+  font-family: var(--font-product);
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -500,7 +498,7 @@
   align-items: center;
   gap: 4px;
   color: var(--card-muted);
-  font-size: var(--type-meta);
+  font-size: 9px;
   white-space: nowrap;
 }
 
@@ -519,7 +517,7 @@
 
 .mobileSheetLabel span {
   color: #666a63;
-  font-size: var(--type-meta);
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: .03em;
   text-transform: uppercase;
@@ -527,8 +525,8 @@
 
 .mobileSheetLabel strong {
   color: var(--card-brand-deep);
-  font-family: var(--font-sans);
-  font-size: var(--type-meta);
+  font-family: var(--font-product);
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -556,7 +554,7 @@
   border-radius: 999px;
   background: #fffaf5;
   color: #624a40;
-  font-size: var(--type-meta);
+  font-size: 10px;
   cursor: pointer;
 }
 
@@ -582,10 +580,10 @@
 .mobileSheetSize {
   min-height: 46px;
   border: 1px solid #d9dad5;
-  background: var(--hidi-page-bg, #fbf6f2);
+  background: #fff;
   color: #444843;
-  font-family: var(--font-sans);
-  font-size: var(--type-ui);
+  font-family: var(--font-product);
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
 }
@@ -615,14 +613,14 @@
   min-height: 16px;
   margin: 9px 0 0;
   color: var(--card-muted);
-  font-size: var(--type-meta);
+  font-size: 9px;
 }
 
 .mobileSheetError,
 .mobileSheetMessage {
   margin: 10px 0 0;
   padding: 9px 11px;
-  font-size: var(--type-meta);
+  font-size: 10px;
   line-height: 1.45;
 }
 
@@ -647,8 +645,8 @@
   gap: 7px;
   vertical-align: top;
   border: 1px solid var(--card-brand);
-  font-family: var(--font-sans);
-  font-size: var(--type-meta);
+  font-family: var(--font-product);
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -689,7 +687,7 @@
   border: 1px solid #eadfd4;
   background: #fffaf5;
   color: #6f4b45;
-  font-size: var(--type-ui);
+  font-size: 9px;
   cursor: pointer;
 }
 
@@ -705,7 +703,7 @@
   justify-content: center;
   gap: 5px;
   color: var(--card-brand-deep) !important;
-  font-size: var(--type-meta);
+  font-size: 10px;
   font-weight: 600;
 }
 
@@ -724,19 +722,19 @@
   }
 
   .name {
-    font-size: var(--type-ui);
+    font-size: 13px;
     line-height: 1.3;
   }
 
   .priceRow {
     margin-top: 3px;
-    font-size: var(--type-ui);
+    font-size: 12px;
   }
 
   .priceRow s,
   .from,
   .saving {
-    font-size: var(--type-meta);
+    font-size: 9px;
   }
 
   .saving {
@@ -777,8 +775,8 @@
     color: var(--card-brand);
     box-shadow: 0 5px 16px rgba(65,38,29,.09);
     backdrop-filter: blur(8px);
-    font-family: var(--font-sans);
-    font-size: var(--type-ui);
+    font-family: var(--font-product);
+    font-size: 9px;
     font-weight: 600;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -810,7 +808,7 @@
   }
 
   .name {
-    font-size: var(--type-ui);
+    font-size: 12px;
   }
 }
 
@@ -840,15 +838,15 @@
   align-items: center;
   gap: 4px;
   color: #755b33 !important;
-  font-family: var(--font-sans);
-  font-size: var(--type-meta);
+  font-family: var(--font-product);
+  font-size: 9px;
   line-height: 1;
   text-decoration: none;
 }
 
 .ratingSummary > span:first-child {
   color: #9b7539;
-  font-size: var(--type-meta);
+  font-size: 11px;
 }
 
 .ratingSummary strong {
@@ -872,10 +870,6 @@
 
   .ratingSummary {
     min-height: 22px;
-    font-size: var(--type-meta);
+    font-size: 8.5px;
   }
 }
-
-/* Product names and prices share the same scale on every viewport. */
-.card .name, .card .priceRow { font-size: var(--type-ui); }
-.card .mobileQuickAdd { width: auto; max-width: calc(100% - 20px); padding: 8px 12px; letter-spacing: .04em; }

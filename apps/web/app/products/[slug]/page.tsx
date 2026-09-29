@@ -3,7 +3,7 @@ import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
-import { ProductMedia, ProductPurchaseSummary } from "@/components/product-purchase-summary";
+import { ProductGallery } from "@/components/product-gallery";
 import { ProductInfoAccordion } from "@/components/product-info-accordion";
 import { WishlistButton } from "@/components/wishlist-button";
 import { ProductReviews } from "@/components/product-reviews";
@@ -12,11 +12,8 @@ import { ProductContactActions } from "@/components/product-contact-actions";
 import { RetentionTracker } from "@/components/retention-tracker";
 import { ProductCard } from "@/components/product-card";
 import { RecentlyViewedProducts } from "@/components/recently-viewed-products";
-import { getProduct, getProductReviews, getRelatedProducts } from "@/lib/api";
+import { formatPaise, getProduct, getProductReviews, getRelatedProducts } from "@/lib/api";
 import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
-import { productOffers } from "@/lib/seo";
-import { productNarrative } from "@/lib/product-facts";
-import { DeliveryCheck } from "@/components/delivery-check";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +79,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   ]);
 
   const collection = product.collections[0] ?? { slug: "new-arrivals", name: "New Arrivals" };
+  const gallery = product.images?.length ? product.images : [
+    { id: "fallback-1", url: "", alt: product.name, position: 1 },
+    { id: "fallback-2", url: "", alt: product.name, position: 2 },
+  ];
 
   const canonicalUrl = absoluteUrl(`/products/${encodeURIComponent(product.slug)}`);
   const schemaImages = product.images
@@ -97,7 +98,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     ...(schemaImages.length ? { image: schemaImages } : {}),
     brand: { "@type": "Brand", name: "HIDI" },
     ...(product.fabric ? { material: product.fabric } : {}),
-    offers: productOffers(product, canonicalUrl),
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "INR",
+      lowPrice: (product.minPricePaise / 100).toFixed(2),
+      highPrice: (product.maxPricePaise / 100).toFixed(2),
+      offerCount: product.variants.length,
+      availability: product.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      url: canonicalUrl,
+    },
     ...(reviews.reviewCount > 0 && reviews.averageRating > 0 ? {
       aggregateRating: {
         "@type": "AggregateRating",
@@ -140,7 +149,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <RetentionTracker productId={product.id} slug={product.slug} />
     <div className="breadcrumbs"><Link href="/">Home</Link> / <Link href={`/collections/${collection.slug}`}>{collection.name}</Link> / {product.name}</div>
     <div className="pdp-grid">
-      <ProductMedia key={product.id} product={product} />
+      <ProductGallery productName={product.name} images={gallery} />
       <aside className="pdp-info">
         <p className="eyebrow">{product.category?.name ?? "HIDI EDIT"}</p>
         <div className="pdp-title-row">
@@ -148,12 +157,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <WishlistButton slug={product.slug} compact />
         </div>
         <p className="pdp-subtitle">{product.shortDescription}</p>
-        <ProductPurchaseSummary key={product.id} product={product} />
-        {productNarrative(product.description) && <p className="pdp-description">{productNarrative(product.description)}</p>}
-        <AddToCart key={product.id} product={product} />
+        <div className="pdp-price">{formatPaise(product.minPricePaise)} <span>inclusive of taxes</span></div>
+        <p className="pdp-description">{product.description}</p>
+        <AddToCart product={product} />
         <ProductContactActions product={product} />
         <ProductQualitySummary product={product} />
-        <DeliveryCheck />
+        <div className="delivery-box"><strong>Delivery</strong><div><input aria-label="Delivery PIN code" placeholder="Enter PIN code" inputMode="numeric" maxLength={6} pattern="[0-9]{6}" /><button type="button" aria-label="Check delivery PIN code">Check</button></div></div>
         <ProductInfoAccordion product={product} />
       </aside>
     </div>

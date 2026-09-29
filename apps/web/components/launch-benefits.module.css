@@ -6,7 +6,7 @@
   align-items: start;
   background:
     radial-gradient(circle at 8% 0%, rgba(84,29,31,.025), transparent 30%),
-    linear-gradient(135deg, var(--hidi-page-bg, #fbf6f2) 0%, var(--hidi-page-bg, #fbf6f2) 100%);
+    linear-gradient(135deg, #fcf9f9 0%, #fcf9f9 100%);
   color: #34271f;
   border-top: 1px solid #dac7b3;
   border-bottom: 1px solid #dac7b3;
@@ -15,25 +15,25 @@
 .intro h2 {
   margin: 0;
   max-width: 560px;
-  font-family: var(--font-sans);
-  font-size: var(--type-section);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(38px, 4.4vw, 64px);
   font-weight: 400;
-  line-height: 1.2;
-  letter-spacing: -.02em;
+  line-height: .98;
+  letter-spacing: -.04em;
 }
 
 .intro > p:not(.eyebrow) {
   max-width: 520px;
   margin: 22px 0 0;
   color: #6f6056;
-  font-size: var(--type-meta);
+  font-size: 13px;
   line-height: 1.75;
 }
 
 .eyebrow {
   margin: 0 0 16px;
   color: #a87837;
-  font-size: var(--type-meta);
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .22em;
   text-transform: uppercase;
@@ -47,7 +47,7 @@
   gap: 7px;
   border-bottom: 1px solid #a87837;
   color: #651f23;
-  font-size: var(--type-ui);
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -66,7 +66,7 @@
   flex-direction: column;
   align-items: flex-start;
   border: 1px solid #d8c6b4;
-  background: var(--hidi-page-bg, #fbf6f2);
+  background: rgba(255,255,255,.72);
   color: #3d3028;
   transition:
     background .22s ease,
@@ -107,7 +107,7 @@
 .cardEyebrow {
   margin: 0 0 10px;
   color: #9a6c32;
-  font-size: var(--type-meta);
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .16em;
   transition: color .22s ease;
@@ -120,8 +120,8 @@
 
 .card strong {
   margin-bottom: 14px;
-  font-family: var(--font-sans);
-  font-size: var(--type-subheading);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(20px, 1.8vw, 28px);
   font-weight: 400;
   line-height: 1.18;
 }
@@ -129,7 +129,7 @@
 .short {
   margin-top: auto;
   color: #74665c;
-  font-size: var(--type-body);
+  font-size: 10px;
   line-height: 1.55;
   transition: color .22s ease;
 }
@@ -149,7 +149,7 @@
   border-bottom: 1px solid currentColor;
   background: transparent;
   color: #651f23;
-  font-size: var(--type-meta);
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .09em;
   text-transform: uppercase;
@@ -180,7 +180,7 @@
   padding: 36px;
   background:
     radial-gradient(circle at 90% 5%, rgba(84,29,31,.02), transparent 28%),
-    var(--hidi-page-bg, #fbf6f2);
+    #ffffff;
   border: 1px solid #d9c6b3;
   box-shadow: 0 28px 80px rgba(40,20,17,.28);
   color: #34271f;
@@ -215,7 +215,7 @@
 .modalEyebrow {
   margin: 0 0 8px;
   color: #a87837;
-  font-size: var(--type-meta);
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .18em;
 }
@@ -224,16 +224,16 @@
   margin: 0;
   max-width: 560px;
   color: #541d1f;
-  font-family: var(--font-sans);
-  font-size: var(--type-title);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(30px, 4vw, 46px);
   font-weight: 400;
-  line-height: 1.2;
+  line-height: 1.02;
 }
 
 .modalIntro {
   margin: 24px 0 12px;
   color: #5d4b42;
-  font-size: var(--type-body);
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: .09em;
   text-transform: uppercase;
@@ -255,14 +255,14 @@
   gap: 12px;
   align-items: start;
   color: #67584f;
-  font-size: var(--type-ui);
+  font-size: 12px;
   line-height: 1.65;
 }
 
 .terms li::before {
   content: counter(term, decimal-leading-zero);
   color: #a87837;
-  font-size: var(--type-meta);
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .08em;
   padding-top: 3px;
@@ -271,10 +271,10 @@
 .note {
   margin: 22px 0 0;
   padding: 14px 16px;
-  background: var(--hidi-page-bg, #fbf6f2);
+  background: #fcf9f9;
   border-left: 3px solid #541d1f;
   color: #6e5d54;
-  font-size: var(--type-meta);
+  font-size: 10px;
   line-height: 1.55;
 }
 
@@ -294,7 +294,7 @@
   justify-content: center;
   gap: 7px;
   border: 1px solid #541d1f;
-  font-size: var(--type-ui);
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -362,13 +362,13 @@
   }
 
   .intro h2 {
-    font-size: var(--type-section);
-    line-height: 1.2;
+    font-size: clamp(34px, 10.5vw, 44px);
+    line-height: 1;
   }
 
   .intro > p:not(.eyebrow) {
     margin-top: 16px;
-    font-size: var(--type-meta);
+    font-size: 13px;
     line-height: 1.6;
   }
 
@@ -404,7 +404,7 @@
   .cardEyebrow {
     min-height: 22px;
     margin-bottom: 6px;
-    font-size: var(--type-meta);
+    font-size: 7px;
     line-height: 1.25;
     letter-spacing: .08em;
   }
@@ -416,8 +416,8 @@
   .mobileTitle {
     display: block;
     margin: 0;
-    font-family: var(--font-sans);
-    font-size: var(--type-subheading);
+    font-family: var(--font-display);
+    font-size: clamp(13px, 3.6vw, 15px);
     font-weight: 500;
     line-height: 1.16;
     letter-spacing: -.015em;
@@ -430,7 +430,7 @@
   .knowMore {
     margin-top: auto;
     padding-top: 12px;
-    font-size: var(--type-meta);
+    font-size: 8px;
     letter-spacing: .05em;
     white-space: nowrap;
   }
@@ -450,13 +450,13 @@
   }
 
   .mobileTitle {
-    font-size: var(--type-ui);
+    font-size: 12.5px;
   }
 }
 
 @media (hover: none) {
   .card:hover {
-    background: var(--hidi-page-bg, #fbf6f2);
+    background: rgba(255,255,255,.72);
     border-color: #d8c6b4;
     color: #3d3028;
     transform: none;
@@ -481,4 +481,3 @@
     color: #651f23;
   }
 }
-

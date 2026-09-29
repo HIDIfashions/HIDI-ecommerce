@@ -2,8 +2,6 @@
 
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { canOptimizeProductImage, productImageSource } from "@/lib/product-image";
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { ChevronLeft, ChevronRight, Expand, Minus, Plus, Play, X } from "lucide-react";
 import { buildCardMedia, swipeStep, wrapMediaIndex } from "@/lib/product-card-media-utils";
@@ -127,7 +125,6 @@ type Props = {
   intervalMs?: number;
   href: string;
   priority?: boolean;
-  sizes?: string;
 };
 
 /**
@@ -163,10 +160,8 @@ function Photo({ src, alt, sizes, contain = false, priority = false }: {
   }
 
   return (
-    <Image
-      fill
-      src={productImageSource(src)}
-      unoptimized={!canOptimizeProductImage(productImageSource(src))}
+    <img
+      src={src}
       alt={alt}
       sizes={sizes}
       loading={priority ? "eager" : "lazy"}
@@ -339,11 +334,9 @@ function Gallery({
   intervalMs = DEFAULT_INTERVAL,
   href,
   priority = false,
-  sizes = "(max-width:720px) 50vw, (max-width:1050px) 50vw, 33vw",
 }: {
   name: string;
   items: CardMedia[];
-  sizes?: string;
   soldOut?: boolean;
   intervalMs?: number;
   href: string;
@@ -636,19 +629,17 @@ function Gallery({
                   key={active?.id ?? "empty"}
                   src={active?.url}
                   alt={active?.label ?? name}
-                  sizes={sizes}
+                  sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
                   priority={priority && index === 0}
                 />
 
                 {hover && preload?.kind === "image" && (
                   <span className={styles.photoPreload} aria-hidden="true">
-                    <Image
-                      fill
+                    <img
                       key={preload.id}
-                      src={productImageSource(preload.url)}
-                      unoptimized={!canOptimizeProductImage(productImageSource(preload.url))}
+                      src={preload.url}
                       alt=""
-                      sizes={sizes}
+                      sizes="(max-width:720px) 50vw, (max-width:1100px) 33vw, 25vw"
                       loading="eager"
                       decoding="async"
                       draggable={false}

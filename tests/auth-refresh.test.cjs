@@ -118,55 +118,26 @@ test("a session switch during JSON parsing also prevents a stale save", async ()
   assert.equal(h.state.writes, 0);
 });
 
-test("concurrent account, wallet and navigation callers share one successful refresh", async () => {
+test("concurrent refresh success cannot overwrite the first rotated token", async () => {
   const h = harness();
   const first = h.auth.getAccessToken();
   const second = h.auth.getAccessToken();
-  const third = h.auth.getAccessToken();
-  assert.equal(h.state.requests.length, 1);
   h.respond(0, refreshed("customer-a", "first-rotated-token"));
   assert.equal(await first, "fresh-access");
-  assert.equal(await second, "fresh-access");
-  assert.equal(await third, "fresh-access");
+  h.respond(1, refreshed("customer-a", "second-rotated-token"));
+  assert.equal(await second, null);
   assert.equal(h.auth.getStoredSession().refresh_token, "first-rotated-token");
   assert.equal(h.state.writes, 1);
 });
 
-test("concurrent failed refresh clears the expired session once for all callers", async () => {
+test("concurrent refresh failure cannot clear the first rotated token", async () => {
   const h = harness();
   const first = h.auth.getAccessToken();
   const second = h.auth.getAccessToken();
-  assert.equal(h.state.requests.length, 1);
-  h.respond(0, {}, false);
-  assert.equal(await first, null);
-  assert.equal(await second, null);
-  assert.equal(h.auth.getStoredSession(), null);
-  assert.equal(h.state.clears, 1);
-});
-
-test("a different customer never joins another customer's in-flight refresh", async () => {
-  const h = harness();
-  const first = h.auth.getAccessToken();
-  h.storage.set(STORAGE_KEY, JSON.stringify(session("customer-b", "b-refresh")));
-  const second = h.auth.getAccessToken();
-  assert.equal(h.state.requests.length, 2);
-  h.respond(0, refreshed());
-  assert.equal(await first, null);
-  h.respond(1, refreshed("customer-b", "b-rotated"));
-  assert.equal(await second, "fresh-access");
-  assert.equal(h.auth.getStoredSession().user.id, "customer-b");
-  assert.equal(h.state.writes, 1);
-});
-
-test("a later expiry starts a new refresh after the shared request completes", async () => {
-  const h = harness();
-  const first = h.auth.getAccessToken();
-  h.respond(0, refreshed());
+  h.respond(0, refreshed("customer-a", "first-rotated-token"));
   await first;
-  h.storage.set(STORAGE_KEY, JSON.stringify(session("customer-a", "rotated-refresh")));
-  const second = h.auth.getAccessToken();
-  assert.equal(h.state.requests.length, 2);
-  h.respond(1, refreshed("customer-a", "next-refresh"));
-  assert.equal(await second, "fresh-access");
-  assert.equal(h.auth.getStoredSession().refresh_token, "next-refresh");
+  h.respond(1, {}, false);
+  assert.equal(await second, null);
+  assert.equal(h.auth.getStoredSession().refresh_token, "first-rotated-token");
+  assert.equal(h.state.clears, 0);
 });

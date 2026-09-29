@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -24,11 +23,22 @@ import styles from "./about.module.css";
 
 export default function AboutPage() {
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <div className={styles.breadcrumbs}>Home / Discover HIDI</div>
 
       <section className={styles.hero}>
-        <Image className={styles.video} src="/brand/hidi-manifesto-ananya.webp" alt="HIDI occasion-wear campaign in a sunlit architectural setting" width={1672} height={941} sizes="(max-width: 1288px) 100vw, 1240px" priority />
+        <video
+          className={styles.video}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-label="Discover HIDI brand film"
+        >
+          <source src="/video/discover-hidi.mp4" type="video/mp4" />
+          Your browser does not support HTML5 video.
+        </video>
 
         <div className={styles.shade} aria-hidden="true" />
 
@@ -58,7 +68,7 @@ export default function AboutPage() {
           <p>
             Some women wear uniforms. Some carry titles. Some care for people,
             teach, lead teams, build careers and hold families together. HIDI is
-            for the woman behind every role — thoughtfully chosen Indian wear
+            for the woman behind every role — thoughtfully designed Indian wear
             for the hours when she wants to feel comfortable, composed and
             completely herself.
           </p>
@@ -90,6 +100,6 @@ export default function AboutPage() {
           Discover the collection
         </Link>
       </section>
-    </div>
+    </main>
   );
 }
