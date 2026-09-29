@@ -9,6 +9,7 @@ import { cardPrice, money, variantsForColour } from "@/lib/product-card-utils";
 import { getWishlistItems, removeWishlistSlug, saveWishlistItem, WISHLIST_EVENT } from "@/lib/wishlist";
 import { trapFocus } from "@/lib/focus-management";
 import { CatalogImage } from "./catalog-image";
+import { EditorialDetailImage } from "./editorial-detail-image";
 import styles from "./editorial-product-card.module.css";
 /** Homepage presentation only. Cart writes use the existing shared client. */
 export function EditorialProductCard({ product }: { product: ApiProduct }) {
@@ -54,8 +55,8 @@ export function EditorialProductCard({ product }: { product: ApiProduct }) {
   return <article className={styles.card} data-editorial-product={product.slug} aria-labelledby={`${id}-name`}>
     <div className={styles.media}>
       <Link href={href} className={styles.imageLink} aria-label={`View ${product.name}`}>
-        <CatalogImage src={images[0]?.url} alt={images[0]?.alt || product.name} sizes="(max-width: 760px) 50vw, 33vw" className={styles.primaryImage} />
-        {detail && detail.url !== images[0]?.url && <span className={styles.detailImage} aria-hidden="true"><CatalogImage src={detail.url} alt="" sizes="(max-width: 760px) 50vw, 33vw" /></span>}
+        <CatalogImage src={images[0]?.url} alt={images[0]?.alt || product.name} sizes="(max-width: 760px) calc(50vw - 24px), (max-width: 1504px) calc(33.333vw - 37.333px), 464px" className={styles.primaryImage} />
+        {detail && detail.url !== images[0]?.url && <EditorialDetailImage key={detail.url} src={detail.url} sizes="(max-width: 760px) calc(50vw - 24px), (max-width: 1504px) calc(33.333vw - 37.333px), 464px" className={styles.detailImage} />}
       </Link>
       <button type="button" className={styles.heart} aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`} aria-pressed={saved} disabled={!ready} onClick={toggleWishlist}><Heart size={19} strokeWidth={1.4} fill={saved ? "currentColor" : "none"} aria-hidden="true" /></button>
       {soldOut ? <span className={styles.soldOut}>Sold out</span> : <button ref={trigger} type="button" className={styles.quickAdd} aria-haspopup="dialog" aria-controls={`${id}-quick-add`} onClick={showQuickAdd} disabled={busy}>Quick add</button>}
@@ -63,7 +64,8 @@ export function EditorialProductCard({ product }: { product: ApiProduct }) {
     <div className={styles.meta}><h3 id={`${id}-name`} title={product.name}><Link href={href}>{product.name}</Link></h3><p className={styles.price}>{price.from ? "From " : ""}{money(price.pricePaise)} {price.mrpPaise && <del aria-label={`Original price ${money(price.mrpPaise)}`}>{money(price.mrpPaise)}</del>}</p></div>
     {!open && error && <p role="alert" className={styles.feedback}>{error}</p>}
     {!open && <span className="sr-only" role="status">{message}</span>}
-    <dialog ref={dialog} id={`${id}-quick-add`} className={styles.dialog} aria-labelledby={`${id}-dialog-title`} onCancel={() => setOpen(false)} onClose={() => setOpen(false)} onClick={event => { const node = dialog.current; if (node && event.target === node) { const r = node.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) setOpen(false); } }}>
+    <dialog ref={dialog} id={`${id}-quick-add`} className={styles.dialog} aria-labelledby={open ? `${id}-dialog-title` : undefined} aria-label={open ? undefined : `Quick add ${product.name}`} onCancel={() => setOpen(false)} onClose={() => setOpen(false)} onClick={event => { const node = dialog.current; if (node && event.target === node) { const r = node.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) setOpen(false); } }}>
+      {open && <>
       <div className={styles.dialogHeader}><p>QUICK ADD</p><button type="button" className={styles.close} aria-label="Close quick add" onClick={() => setOpen(false)}><X size={20} aria-hidden="true" /></button></div>
       <h2 id={`${id}-dialog-title`}>{product.name}</h2>
       <p className={styles.dialogPrice}>{selectionPrice.from ? "From " : ""}{money(selectionPrice.pricePaise)} {selectionPrice.mrpPaise && <del>{money(selectionPrice.mrpPaise)}</del>}</p>
@@ -74,6 +76,7 @@ export function EditorialProductCard({ product }: { product: ApiProduct }) {
       <p role="status" className={styles.feedback}>{message && <><Check size={15} aria-hidden="true" /> {message}</>}</p>
       {error && <p role="alert" className={styles.feedback}>{error}</p>}
       {(message.includes("added to your bag") || error) && <Link className={styles.bagLink} href="/cart" onClick={() => setOpen(false)}>View shopping bag</Link>}
+      </>}
     </dialog>
   </article>;
 }

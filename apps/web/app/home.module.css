@@ -16,7 +16,7 @@
 .edits { display: grid; grid-template-columns: 3fr 2fr; grid-template-rows: repeat(2, minmax(0, 1fr)); height: clamp(600px, 52vw, 780px); gap: 20px; }
 .editCard { position: relative; min-width: 0; overflow: hidden; color: #fff8ef; background: var(--home-soft); }
 .editCard:first-child { grid-row: 1 / 3; }
-.editCard img { object-fit: cover; object-position: center 40%; transition: transform 650ms ease; }
+.editCard img { object-fit: cover; object-position: center 20%; transition: transform 650ms ease; }
 .editDetail { position: absolute; inset: 0; opacity: 0; transition: opacity 450ms ease; }
 .editShade { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(28, 21, 16, .73), transparent 72%); }
 .editCopy { position: absolute; left: clamp(20px, 3vw, 40px); right: 20px; bottom: 24px; display: flex; flex-direction: column; align-items: flex-start; }
@@ -43,7 +43,7 @@
 .privilegesFinePrint { font-size: var(--type-meta); color: var(--muted); margin: 0 0 24px; max-width: 940px; line-height: 1.6; }
 .craft { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(28px, 6vw, 90px); padding-top: clamp(42px, 6vw, 76px); padding-bottom: clamp(24px, 3vw, 46px); background: var(--home-paper); }
 .craftImage { position: relative; aspect-ratio: 1 / 1.08; overflow: hidden; background: var(--home-soft); }
-.craftImage img { object-fit: cover; object-position: center 64%; transform: scale(1.35); }
+.craftImage img { object-fit: cover; object-position: center 45%; }
 .craftIntro { font-size: var(--type-body); color: var(--muted); margin: 20px 0 0; line-height: 1.7; max-width: 470px; }
 .pillars { display: grid; gap: 20px; margin: 26px 0 20px; }
 .pillars h3 { font: 500 var(--type-ui)/1.5 var(--font-sans); margin: 0 0 4px; }
@@ -62,7 +62,7 @@
 @media (max-width: 1000px) { .edits { height: 620px; } .craft { gap: 30px; } .serviceGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .serviceItem:nth-child(3) { border-left: 0; } }
 @media (max-width: 760px) {
   .home :global(.container) { width: calc(100% - 36px); }
-  .hero { aspect-ratio: auto; height: clamp(560px, 82svh, 720px); min-height: 560px; }
+  .hero { aspect-ratio: auto; height: clamp(560px, 70svh, 640px); min-height: 560px; }
   .heroContent { left: 22px; bottom: 66px; width: calc(100% - 44px); max-width: 440px; }
   .heroContent h1 { font-size: clamp(2.8rem, 10vw, 4.2rem); max-width: 360px; }
   .heroIntro { margin-top: 16px; }

@@ -9,11 +9,11 @@
 .searchGlyph { font-size: 21px; opacity: .9; }
 .close { border: 0; background: transparent; color: var(--ink); cursor: pointer; font-size: 32px; line-height: 1; width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; padding: 0; }
 .helper, .empty { width: min(800px, calc(100vw - 180px)); margin: 14px auto 0; color: var(--muted); font-size: var(--type-meta); }
-.results { width: min(800px, calc(100vw - 180px)); margin: 22px auto 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.results { width: min(800px, calc(100vw - 180px)); margin: 22px auto 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .item { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; align-items: center; color: var(--ink); min-width: 0; }
 .thumb { position: relative; width: 72px; aspect-ratio: 4 / 5.2; overflow: hidden; background: var(--ivory); }
-.name { font-family: var(--font-sans); font-size: var(--type-body); font-weight: 500; line-height: 1.2; display: block; }
-.meta { margin: 4px 0 0; color: var(--muted); font-size: var(--type-meta); }
+.name { font-family: var(--font-sans); font-size: var(--type-ui); font-weight: 500; line-height: 1.5; display: block; overflow-wrap: anywhere; }
+.meta { display: block; margin: 4px 0 0; color: var(--muted); font-size: var(--type-meta); }
 .backdrop { position: fixed; inset: 0; z-index: 1300; border: 0; background: rgba(29,29,26,.22); }
 .searchBox:focus-within { outline: 2px solid var(--hidi-mulberry-clay, #591d20); outline-offset: 3px; }
 .suggestions { width: min(800px, calc(100vw - 180px)); margin: 22px auto 0; }
