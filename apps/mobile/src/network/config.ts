@@ -1,6 +1,12 @@
 export type HidiEnvironment = "staging" | "production";
 
-export const HIDI_ENVIRONMENT: HidiEnvironment = __DEV__ ? "staging" : "production";
+const requestedEnvironment = (process.env.HIDI_MOBILE_ENV ?? "").trim().toLowerCase();
+export const HIDI_ENVIRONMENT: HidiEnvironment =
+  requestedEnvironment === "production"
+    ? "production"
+    : requestedEnvironment === "staging"
+      ? "staging"
+      : __DEV__ ? "staging" : "production";
 
 export const HIDI_PUBLIC_ORIGIN =
   HIDI_ENVIRONMENT === "staging"
