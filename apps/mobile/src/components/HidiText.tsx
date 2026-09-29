@@ -1,5 +1,5 @@
-import React, { PropsWithChildren } from "react";
-import { Platform, StyleProp, Text, TextStyle } from "react-native";
+import React from "react";
+import { Platform, Text, TextProps } from "react-native";
 import { hidiType } from "../theme/tokens";
 import { useHidiTheme } from "../theme/HidiTheme";
 
@@ -9,19 +9,15 @@ export function HidiText({
   children,
   variant = "body",
   style,
-  accessibilityRole,
-}: PropsWithChildren<{
-  variant?: Variant;
-  style?: StyleProp<TextStyle>;
-  accessibilityRole?: "header" | "text";
-}>) {
+  ...props
+}: TextProps & { variant?: Variant }) {
   const { colors } = useHidiTheme();
   const type = variant === "action" ? hidiType.secondary : hidiType[variant];
   const editorial = variant === "display" || variant === "title";
 
   return (
     <Text
-      accessibilityRole={accessibilityRole}
+      {...props}
       allowFontScaling
       maxFontSizeMultiplier={2}
       style={[
