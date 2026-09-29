@@ -24,7 +24,13 @@ export default function BagAttentionScreen({ navigation }: Props) {
     else if (kind === "stock") navigation.navigate("BagEdit", { lineId });
   }
 
+  const hasBlockingStock = cart.attention.some((change) => change.kind === "stock" || change.kind === "unavailable");
+
   async function acknowledge() {
+    if (hasBlockingStock) {
+      setError("Resolve unavailable or reduced-stock lines before continuing.");
+      return;
+    }
     setError("");
     try {
       await cart.acknowledgeAttention();
@@ -59,7 +65,11 @@ export default function BagAttentionScreen({ navigation }: Props) {
 
         <MessageCard>Unavailable lines are never removed automatically. A price change updates no payment amount because Phase 2 creates no payment intent.</MessageCard>
         {error ? <MessageCard tone="error">{error}</MessageCard> : null}
-        <HidiButton label="I reviewed these changes" disabled={!cart.attention.length} onPress={() => void acknowledge()} />
+        <HidiButton
+          label={hasBlockingStock ? "Resolve stock changes first" : "I reviewed these changes"}
+          disabled={!cart.attention.length || hasBlockingStock}
+          onPress={() => void acknowledge()}
+        />
       </View>
     </HidiScreen>
   );

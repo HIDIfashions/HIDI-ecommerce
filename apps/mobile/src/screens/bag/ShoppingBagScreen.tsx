@@ -81,6 +81,8 @@ export default function ShoppingBagScreen() {
     );
   }
 
+  const hasBlockingLine = cart.items.some((line) => line.variant.available < line.quantity);
+
   return (
     <ScrollView testID="H037" style={[styles.fill, { backgroundColor: colors.canvas }]} contentContainerStyle={styles.content}>
       <HidiText variant="metadata" style={{ color: colors.mutedText, letterSpacing: 1.2 }}>SHOPPING BAG</HidiText>
@@ -163,7 +165,11 @@ export default function ShoppingBagScreen() {
       </View>
 
       {checkoutBoundary ? <MessageCard>Checkout is Phase 3 (H045+). Phase 2 preserves your canonical bag and stops before creating a checkout/payment attempt.</MessageCard> : null}
-      <HidiButton label={"Continue to checkout · " + formatINRPaise(cart.subtotalPaise)} disabled={cartState.stale || cartState.attention.length > 0} onPress={() => setCheckoutBoundary(true)} />
+      <HidiButton
+        label={"Continue to checkout · " + formatINRPaise(cart.subtotalPaise)}
+        disabled={cartState.stale || cartState.attention.length > 0 || hasBlockingLine}
+        onPress={() => setCheckoutBoundary(true)}
+      />
     </ScrollView>
   );
 }

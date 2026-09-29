@@ -57,15 +57,14 @@ export function cartLineImage(line: CartLine) {
 }
 
 export function compareCartSnapshots(previous: ApiCart | null, current: ApiCart): CartAttention[] {
-  if (!previous) return [];
-  const before = new Map(previous.items.map((line) => [line.id, line]));
+  const before = new Map((previous?.items ?? []).map((line) => [line.id, line]));
   const changes: CartAttention[] = [];
 
   for (const line of current.items) {
     const old = before.get(line.id);
     if (!old) continue;
 
-    if (old.unitPricePaise !== line.unitPricePaise) {
+    if (old && old.unitPricePaise !== line.unitPricePaise) {
       changes.push({
         lineId: line.id,
         productName: line.product.name,
