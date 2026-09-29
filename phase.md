@@ -82,10 +82,14 @@ Known external integration prerequisite, not a Phase 1 frontend defect:
 Phase 1 exit:
 - H001-H022 frontend/UI/navigation/recovery scope is implemented and CI-verified.
 - No backend/APIM/database resource was created or changed for Phase 1.
-- Phase 2 must not start until owner approval.
+- Phase 2 owner approval has now been granted.
 
 ## Phase 2 - Product confidence and bag
-Status: WAITING FOR OWNER APPROVAL
+Status: IN PROGRESS
+
+Owner approval: granted 29 Sep 2026.
+Screens: H023-H044
+Scope remains React Native frontend only; existing backend/APIM/provider contracts are unchanged.
 Screens: H023-H044
 
 ## Phase 3 - Checkout and payment
