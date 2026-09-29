@@ -159,7 +159,7 @@ export function ManageAddressesScreen({ navigation }: Props<"ManageAddresses">) 
       {message ? <MessageCard tone="success">{message}</MessageCard> : null}
       {items.length ? items.map((item) => (
         <View key={item.id} style={[styles.panel, { borderColor: colors.border, backgroundColor: colors.surface }]}> 
-          <HidiText variant="secondary" style={styles.bold}>{item.recipientName}{item.isDefault ? " · Default" : ""}</HidiText>
+          <HidiText variant="secondary" style={styles.bold}>{item.firstName}{item.lastName ? " " + item.lastName : ""}{item.isDefault ? " · Default" : ""}</HidiText>
           <HidiText variant="metadata">{item.line1}, {item.city}, {item.state} {item.postalCode}</HidiText>
           <View style={styles.inlineActions}>
             <Pressable accessibilityRole="button" onPress={() => navigation.navigate("AddAddress")} style={styles.inlineButton}><HidiText variant="metadata" style={{ color: colors.action }}>Edit</HidiText></Pressable>
