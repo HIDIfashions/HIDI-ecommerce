@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   search: { minHeight: 48, borderWidth: 1, borderRadius: hidiRadius.control, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, marginBottom: 16 },
   hero: { height: 260, borderRadius: hidiRadius.card, overflow: "hidden", justifyContent: "flex-end" },
   heroImage: { borderRadius: hidiRadius.card },
-  heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(35,24,28,0.20)" },
+  heroShade: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(35,24,28,0.20)" },
   heroCopy: { padding: 18, gap: 6 },
   heroEyebrow: { color: "#FAF8F4", letterSpacing: 1.4 },
   heroTitle: { color: "#FAF8F4", fontSize: 28 },
