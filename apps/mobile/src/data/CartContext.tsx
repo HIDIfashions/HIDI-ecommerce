@@ -1,6 +1,6 @@
 import React, { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ApiCart, CartAttention, CartLine, SavedForLaterItem } from "../models/cart";
-import { compareCartSnapshots } from "../models/cart";
+import { cartAttentionAfterMutation, compareCartSnapshots } from "../models/cart";
 import { HidiApiError } from "../network/apiClient";
 import { addCartVariant, fetchCart, removeCartLine, updateCartQuantity } from "./cartApi";
 import { cartStorage } from "../storage/cartStorage";
@@ -98,22 +98,7 @@ export function CartProvider({ children }: PropsWithChildren) {
   ) => {
     const acknowledged = await cartStorage.acknowledgedCart();
     const baseline = acknowledged ?? previous;
-    const changes = compareCartSnapshots(baseline, next);
-
-    if (expectedVariant) {
-      const line = next.items.find((item) => item.variant.id === expectedVariant.variantId);
-      const alreadyFlagged = changes.some((change) => change.lineId === line?.id && change.kind === "price");
-      if (line && !alreadyFlagged && line.unitPricePaise !== expectedVariant.expectedUnitPricePaise) {
-        changes.unshift({
-          lineId: line.id,
-          productName: line.product.name,
-          kind: "price",
-          message: line.product.name + " changed price before the bag update was confirmed.",
-          beforePaise: expectedVariant.expectedUnitPricePaise,
-          afterPaise: line.unitPricePaise,
-        });
-      }
-    }
+    const changes = cartAttentionAfterMutation(baseline, next, expectedVariant);
 
     setCart(next);
     setError("");
