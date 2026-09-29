@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, gap: 4 },
   clear: { minHeight: 48, alignItems: "center", justifyContent: "center" },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(20,16,18,0.36)" },
+  scrim: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(20,16,18,0.36)" },
   sortSheet: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   handle: { width: 38, height: 4, borderRadius: 2, backgroundColor: "#B7ADB1", alignSelf: "center", marginBottom: 16 },
   sortHeader: { flexDirection: "row", gap: 12, alignItems: "flex-start", marginBottom: 12 },
