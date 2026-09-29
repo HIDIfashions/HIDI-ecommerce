@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - hidi-mobile-build-from-scratch
+      - phase5-ci-verify
     paths:
       - "apps/mobile/**"
       - "phase.md"
