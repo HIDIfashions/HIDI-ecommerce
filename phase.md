@@ -25,6 +25,7 @@ Completed:
 - React Navigation stack foundation and five root-tab route types reserved: Home, Shop, Saved, Bag, You.
 - Shared `UiState<T>` and `MutationState<T>` contracts created.
 - Existing HIDI gateway consumed from the frontend; no APIM/backend resource created.
+- Phase 1 phone sign-in delivery is WhatsApp OTP through the existing Supabase Auth contract. No new mobile-side provider secret or APIM route is introduced.
 - Typed API request/error layer and existing route constants created.
 - H001-H132 registry created with phase/priority traceability.
 - M1-M8 motion and accessibility contracts recorded in code.
@@ -39,7 +40,12 @@ Phase 0 exit:
 - Verification workflow: `Mobile Phase 0`, run `36570551111`.
 
 ## Phase 1 - Welcome, identity and discovery
-Status: WAITING FOR OWNER APPROVAL
+Status: IN PROGRESS
+
+Identity update:
+- H004 sign-in requests the phone OTP over WhatsApp.
+- H005 verification remains the same 6-digit phone OTP verification contract.
+- Provider prerequisite: the existing Supabase Auth project must use Twilio/Twilio Verify with an approved WhatsApp sender before live delivery can succeed.
 Screens: H001-H022
 Shared states: H103-H108 as needed
 
