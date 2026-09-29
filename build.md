@@ -1,7 +1,7 @@
 # HIDI Mobile - Build Specification
 
 Branch: `hidi-mobile-build-from-scratch`
-Current phase: Phase 0 COMPLETE
+Current phase: Phase 0 COMPLETE / VERIFIED
 Scope: React Native frontend only
 
 ## Runtime
@@ -83,9 +83,20 @@ npm run ios
 ```
 
 ## Phase 0 verification
+CI workflow: `Mobile Phase 0`
+
+Latest verified run: `36570551111`
+
+Passed:
+- Dependency installation.
+- TypeScript typecheck.
+- Foundation unit tests.
+- Android debug APK compilation.
 - Exact core color and 48dp token tests.
-- H001-H132 registry must contain 132 unique IDs.
+- H001-H132 registry contains 132 unique IDs.
 - H119, H120 and H127 are the only P1 screens.
+
+iOS native project is committed and structurally configured; iOS compilation requires a macOS/Xcode runner and will be part of the iOS validation gate before distribution.
 
 ## Gate
 Do not start H001-H022 until owner approval.
