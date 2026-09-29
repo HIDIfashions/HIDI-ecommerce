@@ -34,10 +34,12 @@ export default function BagEditScreen({ navigation, route }: Props) {
     return <HidiScreen testID="H039" contentStyle={styles.zero}><AppHeader title="Edit bag item" onBack={navigation.goBack} /><View style={styles.body}><MessageCard tone="error">This bag line is no longer present. Return to your bag to review the latest state.</MessageCard><HidiButton label="Back to bag" onPress={() => navigation.navigate("MainTabs", { screen: "Bag" })} /></View></HidiScreen>;
   }
 
+  const editableLine = line;
+
   async function update() {
     setMessage("");
     try {
-      await cart.updateQuantity(line.id, quantity);
+      await cart.updateQuantity(editableLine.id, quantity);
       navigation.navigate("MainTabs", { screen: "Bag" });
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "Unable to update this bag item.");
@@ -48,13 +50,13 @@ export default function BagEditScreen({ navigation, route }: Props) {
     <HidiScreen testID="H039" contentStyle={styles.zero}>
       <AppHeader title="Edit bag item" onBack={navigation.goBack} />
       <View style={styles.body}>
-        <HidiText variant="title">{line.product.name}</HidiText>
-        <HidiText variant="secondary" style={{ color: colors.mutedText }}>{line.variant.color} · current size {line.variant.size}</HidiText>
+        <HidiText variant="title">{editableLine.product.name}</HidiText>
+        <HidiText variant="secondary" style={{ color: colors.mutedText }}>{editableLine.variant.color} · current size {editableLine.variant.size}</HidiText>
 
         <HidiText variant="secondary" style={styles.bold}>Size</HidiText>
         <View style={styles.sizes}>
           {variants.map((variant) => {
-            const current = variant.id === line.variant.id;
+            const current = variant.id === editableLine.variant.id;
             return (
               <Pressable
                 key={variant.id}
@@ -68,7 +70,7 @@ export default function BagEditScreen({ navigation, route }: Props) {
           })}
         </View>
 
-        <Pressable accessibilityRole="button" onPress={() => navigation.navigate("ProductDeferred", { slug: line.product.slug, selectedVariantId: line.variant.id })} style={styles.openProduct}>
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate("ProductDeferred", { slug: editableLine.product.slug, selectedVariantId: editableLine.variant.id })} style={styles.openProduct}>
           <HidiText variant="metadata" style={{ color: colors.action }}>Open product to choose another size</HidiText>
         </Pressable>
 
@@ -79,9 +81,9 @@ export default function BagEditScreen({ navigation, route }: Props) {
           <Pressable accessibilityRole="button" accessibilityLabel="Increase quantity" disabled={quantity >= max} onPress={() => setQuantity((value) => Math.min(max, value + 1))} style={styles.step}><Plus size={18} color={colors.ink} /></Pressable>
         </View>
 
-        <MessageCard>Resulting line total if the server confirms this quantity: {formatINRPaise(line.unitPricePaise * quantity)}. Inventory is revalidated on update.</MessageCard>
+        <MessageCard>Resulting line total if the server confirms this quantity: {formatINRPaise(editableLine.unitPricePaise * quantity)}. Inventory is revalidated on update.</MessageCard>
         {message ? <MessageCard tone="error">{message}</MessageCard> : null}
-        <HidiButton label="Update bag" loading={cart.busyKey === "update:" + line.id} disabled={quantity === line.quantity || quantity > max} onPress={() => void update()} />
+        <HidiButton label="Update bag" loading={cart.busyKey === "update:" + editableLine.id} disabled={quantity === editableLine.quantity || quantity > max} onPress={() => void update()} />
       </View>
     </HidiScreen>
   );
