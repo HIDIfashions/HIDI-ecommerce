@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AppHeader } from "../../components/AppHeader";
 import { HidiButton } from "../../components/HidiButton";
@@ -52,7 +52,9 @@ export default function BagRemoveScreen({ navigation, route }: Props) {
         <MessageCard>Failed deletion leaves the server bag line intact. Undo is offered from the bag only after a confirmed removal.</MessageCard>
         {error ? <MessageCard tone="error">{error}</MessageCard> : null}
         <HidiButton label="Remove item" loading={cart.busyKey === "remove:" + line.id} onPress={() => void remove(false)} />
-        <HidiButton label="Move to saved for later" disabled={Boolean(cart.busyKey)} onPress={() => void remove(true)} />
+        <Pressable accessibilityRole="button" disabled={Boolean(cart.busyKey)} onPress={() => void remove(true)} style={styles.secondaryAction}>
+          <HidiText variant="secondary" style={{ color: colors.action }}>Move to saved for later</HidiText>
+        </Pressable>
       </View>
     </HidiScreen>
   );
@@ -65,4 +67,5 @@ const styles = StyleSheet.create({
   thumb: { width: 72, height: 92, borderRadius: 8, overflow: "hidden" },
   image: { width: "100%", height: "100%" },
   bold: { fontWeight: "600" },
+  secondaryAction: { minHeight: 48, alignItems: "center", justifyContent: "center" },
 });
