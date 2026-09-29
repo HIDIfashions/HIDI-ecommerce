@@ -60,7 +60,7 @@ export function makeOperationId(prefix: string) {
 }
 
 export function caseIdFromOperation(operationId: string) {
-  const safe = operationId.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(-10) || "LOCAL";
+  const safe = operationId.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(-8) || "LOCAL";
   return "LOCAL-" + safe;
 }
 
