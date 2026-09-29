@@ -10,6 +10,7 @@ import { getRelatedProducts } from "../../data/productDetail";
 import { useProductDetail } from "../../data/useProductDetail";
 import type { ApiProduct } from "../../models/product";
 import { useHidiTheme } from "../../theme/HidiTheme";
+import { HidiApiError } from "../../network/apiClient";
 import type { RootStackParamList } from "../../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SimilarStyles">;
@@ -23,7 +24,10 @@ export default function SimilarStylesScreen({ navigation, route }: Props) {
   async function load() {
     setError("");
     try { setItems(await getRelatedProducts(route.params.slug, 6)); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Similar styles are unavailable."); }
+    catch (cause) {
+      if (cause instanceof HidiApiError && cause.status === 404) setItems([]);
+      else setError(cause instanceof Error ? cause.message : "Similar styles are unavailable.");
+    }
   }
 
   useEffect(() => { void load(); }, [route.params.slug]);
