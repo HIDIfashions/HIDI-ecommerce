@@ -124,8 +124,8 @@ Existing-backend capability gaps surfaced honestly in the UI:
 These were not replaced with fabricated client success states.
 
 Simulation:
-- Deterministic Phase 0-2 commerce simulation: 10/10 scenarios passed.
-- Covered exact SKU availability, duplicate-add quantity merging, initial unavailable line blocking, first-add canonical price race, combined price/stock conflict, attention persistence after another line removal, quantity-over-stock blocking, paise arithmetic, deferred quantity revalidation and unsupported-capability honesty.
+- Deterministic Phase 0-2 commerce simulation: 16/16 scenarios passed.
+- Covered phone normalization/validation, search token order, same-SKU filtering, sold-out exclusion, trusted/untrusted deep links, duplicate-add quantity merging, initial unavailable-line blocking, first-add canonical price race, combined price/stock conflict, attention persistence after another line removal, quantity-over-stock blocking, paise arithmetic, deferred quantity revalidation and unsupported-capability honesty.
 
 Verification state:
 - Current GitHub Actions run `36610550967` did not enter any Android or iOS workflow steps: both jobs returned `steps: null`.
