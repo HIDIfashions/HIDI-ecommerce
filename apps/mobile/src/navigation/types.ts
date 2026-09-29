@@ -17,7 +17,7 @@ export type RootStackParamList = {
   SearchResults: { query: string; filters?: Filters; sort?: SortKey };
   Filters: { title: string; productsSource: "listing" | "search"; query?: string; collectionSlug?: string; categorySlug?: string; current: Filters; sort?: SortKey };
   RecentlyViewed: undefined;
-  ProductDeferred: { slug: string };
+  ProductDeferred: { slug: string; queryId?: string };
 };
 
 export type RootTabParamList = {
