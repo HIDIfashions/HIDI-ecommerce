@@ -51,6 +51,13 @@ iOS:
 - `src/spec`: H001-H132 registry, motion, accessibility
 - `src/screens`: phase-owned UI
 
+## Identity delivery
+- Mobile phone sign-in requests OTP delivery with Supabase Auth channel `whatsapp`.
+- Phone OTP verification continues to use Supabase verification type `sms`, as required by the phone OTP contract.
+- WhatsApp delivery requires the existing Supabase Auth project to be configured with Twilio or Twilio Verify and an approved WhatsApp sender.
+- No Twilio/Meta secret is stored in the React Native app.
+- There is no SMS fallback enabled for launch while DLT remains unresolved.
+
 ## Existing gateway - unchanged
 Debug/staging:
 `https://thidigk.thehidi.com/api/store`
@@ -99,4 +106,4 @@ Passed:
 iOS native project is committed and structurally configured; iOS compilation requires a macOS/Xcode runner and will be part of the iOS validation gate before distribution.
 
 ## Gate
-Do not start H001-H022 until owner approval.
+Phase 1 is owner-approved and in progress. Treat WhatsApp OTP as integration-ready only after the Supabase/Twilio sender configuration is validated with a real +91 test number.
