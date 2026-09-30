@@ -165,7 +165,7 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
 .meet-copy > .text-link { margin-top: 7px; }
 .meet-section--cinematic { padding-block: 0; }
 .meet-section--cinematic .container { width: 100%; max-width: none; }
-.meet-cinematic { position: relative; aspect-ratio: 2046 / 769; overflow: hidden; border-radius: 0; background: #d7b88c; isolation: isolate; box-shadow: none; }
+.meet-cinematic { position: relative; aspect-ratio: 5460 / 2048; overflow: hidden; border-radius: 0; background: #d7b88c; isolation: isolate; box-shadow: none; }
 .meet-cinematic::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, #2d110d66 0%, #2d110d26 30%, #2d110d00 57%), linear-gradient(0deg, #2d110d63 0%, #2d110d00 34%); pointer-events: none; }
 .meet-cinematic > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; }
 .meet-cinematic__content { position: absolute; inset: 0; z-index: 2; display: flex; align-items: flex-end; justify-content: flex-start; padding: clamp(28px, 4vw, 58px); }
