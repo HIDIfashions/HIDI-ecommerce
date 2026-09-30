@@ -1,6 +1,6 @@
 # HIDI Azure migration
 
-Target: Cloudflare -> Azure Container Apps Web -> internal Container Apps API -> Azure SQL. The Web app serves catalogue images from private Azure Blob Storage through `/media/products/...`, allowing Cloudflare to cache public images without making the storage account anonymous. Supabase Auth remains the OTP provider. MSG91 is deferred.
+Target: Cloudflare -> Azure Container Apps Web -> internal Container Apps API -> Azure SQL. The Web app serves catalogue images from private Azure Blob Storage through `/media/products/...`, allowing Cloudflare to cache public images without making the storage account anonymous. Customer sign-in now has a HIDI-owned WhatsApp OTP/session path; production sending still requires approved WhatsApp Business/auth-template credentials.
 
 ## Resources
 
@@ -124,7 +124,7 @@ The user added DNS-only CNAME `azure-preview.thehidi.com` to the generated Web a
 - User confirmed all 16 preview products are visible and asked to proceed.
 - API image `fea024cd74b9bad97d636b357008f7b1f948afa3`, Actions run `36338395730`, is deployed as healthy running revision `hidi-api--0000004`. Web stays on the previously verified `f66c17b322f92829c8ee5ed0d9f1daa29ae77e4c` image; no Web code changed.
 - `MIGRATION_READ_ONLY=true` plus `MIGRATION_CUSTOMER_TESTING=true` permits cart lifecycle and authenticated account/order/wallet reads only. Startup fails if this mode targets any database except `hidi-sql-validation` or if the migration guard is disabled. Controller authentication and ownership checks remain active.
-- Checkout, payment/webhook, shipping/admin, return/review submissions, marketing and wallet mutation routes remain blocked. Wallet and review-followup workers are explicitly disabled. Supabase remains the mobile OTP provider; no MSG91 change.
+- Checkout, payment/webhook, shipping/admin, return/review submissions, marketing and wallet mutation routes remain blocked. Wallet and review-followup workers are explicitly disabled. At that checkpoint Supabase remained the mobile OTP provider; later WhatsApp OTP app readiness is documented below.
 - All 204 API tests and both container builds passed. The separate Quality Gate still reports the same 7 pre-existing frontend test failures (88 pass); this is not a fully green production release.
 - HTTPS smoke checks passed against Web -> private API -> Azure SQL: 16 products; cart creation/add, merge duplicate variant, subtotal, quantity update, invalid quantity rejection, session isolation, cross-session item rejection, item removal; missing and invalid bearer tokens rejected with 401; checkout/payment/admin/wallet writes blocked with 503. Synthetic cart items were removed; empty validation carts may remain.
 - Browser verified Aara Sage Work Kurta M add-to-bag and quantity 1 -> 2, with total INR 2,580 and complimentary shipping displayed. Screenshot `hidi-azure-bag-tested.jpg` records this result.
@@ -141,6 +141,15 @@ The user added DNS-only CNAME `azure-preview.thehidi.com` to the generated Web a
 - Attempt to list Key Vault secret metadata was denied with `ForbiddenByRbac`; the signed-in owner lacks a vault data-plane role. No grants were added and no secrets were read. Provider credential inventory is therefore unverified beyond the already inspected application settings.
 - Razorpay India merchant login is open in browser tab 18. A stale indexed Login action was rejected by automatic approval review as unselected Google authentication. A read-only DOM check established the actual India Login link; semantic navigation then opened the method-selection page without authenticating. Secure-form inspection later timed out, so merchant login requires a manual handoff. No provider keys were generated/rotated and no merchant/payment settings were changed.
 - Production gates still include provider credentials and test-mode checkout/shipping/webhooks, unresolved pre-existing frontend Quality Gate failures, production Cloudflare TLS/origin routing, and the final coherent export/import and coordinated cutover.
+
+## Customer phone OTP app readiness: 2026-09-29 UTC
+
+- Added HIDI-owned customer auth endpoints for phone OTP request/verify, access-token validation, rotating refresh tokens and logout. Firebase Phone Auth is verified server-side by validating Firebase ID tokens against Google's SecureToken certificates before issuing HIDI sessions.
+- The storefront account flow now calls `/v1/auth/otp/request`, `/v1/auth/otp/verify`, `/v1/auth/refresh` and `/v1/auth/logout`; it no longer calls Supabase directly for customer phone sign-in. Supabase bearer validation remains as a compatibility fallback for existing admin/staff paths.
+- The active SQL Server schema now includes `CustomerAuthOtp` and `CustomerAuthSession`. Refresh sessions preserve the resolved auth subject so existing wallet/retention identities can continue linking after the customer auth migration.
+- Production Firebase OTP requires `HIDI_AUTH_SECRET`, `CUSTOMER_OTP_PROVIDER=firebase`, API-side `FIREBASE_PROJECT_ID`, and browser-side `NEXT_PUBLIC_FIREBASE_*` web app config. WhatsApp delivery remains available only as an optional fallback through Meta WhatsApp Cloud API or Twilio when `CUSTOMER_OTP_PROVIDER=whatsapp`.
+- Firebase project `hidi-dee0f` now has Web app `HIDI Storefront` and Phone provider enabled. Authorised domains include `thehidi.com`, `www.thehidi.com`, `thidigk.thehidi.com`, and `azure-preview.thehidi.com`. A fictitious Firebase test phone number is configured for no-SMS smoke testing; do not use it as a customer account.
+- The existing Azure update script now applies `CUSTOMER_OTP_PROVIDER=firebase` and `FIREBASE_PROJECT_ID=hidi-dee0f` to `hidi-api` during image rollout. `HIDI_AUTH_SECRET` must remain configured as a server-side Container App secret/env var.
 
 ## User-directed scope update: 2026-09-28 01:17 IST
 

@@ -62,7 +62,14 @@ for app in hidi-api hidi-web; do
   current=$(az containerapp show -g "$group" -n "$app" --query 'properties.template.containers[0].image' -o tsv --only-show-errors)
   [[ "$current" == "$(jq -r .image "$work/$app.json")" ]] || { echo "$app changed after preflight; refusing overwrite."; false; }
   changed+=("$app")
-  az containerapp update -g "$group" -n "$app" --image "$(target_image "$app")" --only-show-errors -o none
+  if [[ "$app" == hidi-api ]]; then
+    az containerapp update -g "$group" -n "$app" \
+      --image "$(target_image "$app")" \
+      --set-env-vars CUSTOMER_OTP_PROVIDER=firebase FIREBASE_PROJECT_ID=hidi-dee0f \
+      --only-show-errors -o none
+  else
+    az containerapp update -g "$group" -n "$app" --image "$(target_image "$app")" --only-show-errors -o none
+  fi
   wait_ready "$app"
   if [[ $(jq -r .mode "$work/$app.json") == Multiple ]]; then
     revision=$(jq -r .ready "$work/current.json")

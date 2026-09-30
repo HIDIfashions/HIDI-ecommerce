@@ -100,8 +100,40 @@ model User {
   couponUses    CouponRedemption[]
   retentionProfile RetentionProfile?
   wallet        WalletAccount?
+  authSessions  CustomerAuthSession[]
 
   @@index([createdAt])
+}
+
+model CustomerAuthOtp {
+  id          String   @id @default(cuid())
+  phone       String
+  codeHash    String
+  purpose     String   @default("SIGN_IN")
+  channel     String   @default("WHATSAPP")
+  attempts    Int      @default(0)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([phone, purpose, expiresAt])
+  @@index([expiresAt, consumedAt])
+}
+
+model CustomerAuthSession {
+  id          String   @id @default(cuid())
+  userId      String
+  authSubject String
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([authSubject])
+  @@index([expiresAt, revokedAt])
 }
 
 model Address {
@@ -820,4 +852,3 @@ model ReturnRequest {
   @@index([orderItemId, status])
   @@index([status, updatedAt])
 }
-

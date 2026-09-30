@@ -34,8 +34,40 @@ model User {
   couponUses    CouponRedemption[]
   retentionProfile RetentionProfile?
   wallet        WalletAccount?
+  authSessions  CustomerAuthSession[]
 
   @@index([createdAt])
+}
+
+model CustomerAuthOtp {
+  id          String   @id @default(cuid()) @db.NVarChar(64)
+  phone       String   @db.NVarChar(191)
+  codeHash    String   @db.NVarChar(128)
+  purpose     String   @default("SIGN_IN") @db.NVarChar(40)
+  channel     String   @default("WHATSAPP") @db.NVarChar(40)
+  attempts    Int      @default(0)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([phone, purpose, expiresAt])
+  @@index([expiresAt, consumedAt])
+}
+
+model CustomerAuthSession {
+  id          String   @id @default(cuid()) @db.NVarChar(64)
+  userId      String   @db.NVarChar(64)
+  authSubject String   @db.NVarChar(191)
+  tokenHash   String   @unique @db.NVarChar(128)
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, expiresAt])
+  @@index([authSubject])
+  @@index([expiresAt, revokedAt])
 }
 
 model Address {

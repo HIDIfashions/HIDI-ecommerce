@@ -1,1 +1,11 @@
-{"SUPABASE_URL":"https://cxncbuducljauadcuvnu.supabase.co","SUPABASE_PUBLISHABLE_KEY":"sb_publishable_uqLlQZh0bd4lclBg2tyRtQ_wlSTcAwZ"}
+{
+  "SUPABASE_URL": "https://cxncbuducljauadcuvnu.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_uqLlQZh0bd4lclBg2tyRtQ_wlSTcAwZ",
+  "CUSTOMER_AUTH_PROVIDER": "firebase",
+  "FIREBASE_API_KEY": "AIzaSyAl7OF_pLA8WYZQLJy0I1NhHKZL6mk_oEk",
+  "FIREBASE_AUTH_DOMAIN": "hidi-dee0f.firebaseapp.com",
+  "FIREBASE_PROJECT_ID": "hidi-dee0f",
+  "FIREBASE_APP_ID": "1:939712465412:web:ef668400f602e36e81c351",
+  "FIREBASE_MESSAGING_SENDER_ID": "939712465412",
+  "FIREBASE_STORAGE_BUCKET": "hidi-dee0f.firebasestorage.app"
+}

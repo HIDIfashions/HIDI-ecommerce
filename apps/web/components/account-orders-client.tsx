@@ -10,6 +10,7 @@ import { formatPaise } from "@/lib/api";
 import { formatWalletPaise } from "@/lib/wallet-client";
 import { BROWSER_API_URL } from "@/lib/browser-api";
 import {
+  authChannelLabel,
   authConfigured,
   getAccessToken,
   getStoredSession,
@@ -80,7 +81,14 @@ function titleCase(value?: string | null) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function localPhoneDigits(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const local = digits.startsWith("91") && digits.length > 10 ? digits.slice(2) : digits;
+  return local.slice(0, 10);
+}
+
 export function AccountOrdersClient({ view = "overview" }: { view?: "overview" | "orders" }) {
+  const channelLabel = authChannelLabel();
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -133,7 +141,7 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
       const normalized = await sendPhoneOtp(enteredPhone);
       setPhone(normalized);
       setStep("otp");
-      setMessage(`We sent a 6-digit HIDI sign-in code to ${maskedPhone(normalized)}.`);
+      setMessage(`We sent a 6-digit HIDI sign-in code by ${channelLabel} to ${maskedPhone(normalized)}.`);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -174,7 +182,7 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
   if (!authConfigured()) {
     return <div className={styles.empty}>
       <h2>Customer sign-in needs configuration.</h2>
-      <p>Add the HIDI Supabase public URL and publishable key to the frontend environment before testing mobile OTP.</p>
+      <p>Add the HIDI API URL and phone OTP credentials before testing customer sign-in.</p>
     </div>;
   }
 
@@ -185,15 +193,15 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
         <h2>{step === "phone" ? "Your HIDI account." : "Enter your OTP."}</h2>
         <p className={styles.authIntro}>{step === "phone"
           ? "Sign in with your mobile number. No password required."
-          : "Enter the 6-digit code sent to your mobile number."}</p>
+          : `Enter the 6-digit code sent by ${channelLabel}.`}</p>
 
         {step === "phone" ? <form className={styles.authForm} onSubmit={requestOtp}>
           <label htmlFor="account-phone">Mobile number</label>
           <div style={{ display: "flex", gap: 8 }}>
             <span style={{ display: "flex", alignItems: "center", padding: "0 12px", border: "1px solid #d8d3cb", borderRadius: 8 }}>+91</span>
-            <input id="account-phone" type="tel" value={phone.replace(/^\+91/, "")} onChange={(event) => setPhone(event.target.value ?? "")} placeholder="98765 43210" inputMode="numeric" autoComplete="tel" maxLength={10} required />
+            <input id="account-phone" type="tel" value={localPhoneDigits(phone)} onChange={(event) => setPhone(localPhoneDigits(event.target.value ?? ""))} placeholder="98765 43210" inputMode="numeric" autoComplete="tel" maxLength={10} required />
           </div>
-          <button className={`button ${styles.authPrimaryButton}`} disabled={busy}>{busy ? "Sending OTP…" : "Continue"}</button>
+          <button className={`button ${styles.authPrimaryButton}`} disabled={busy || localPhoneDigits(phone).length !== 10}>{busy ? "Sending OTP…" : `Send ${channelLabel} OTP`}</button>
         </form> : <form className={styles.authForm} onSubmit={verifyOtp}>
           <label htmlFor="account-otp">6-digit OTP</label>
           <input id="account-otp" name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="000000" required autoComplete="one-time-code" />
