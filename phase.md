@@ -86,7 +86,7 @@ Verification scope:
 - Full release hardening remains in Phase 8.
 
 ## Phase 7 - Optional growth
-Status: IMPLEMENTED / CI VALIDATION IN PROGRESS / LIVE FEATURES OFF
+Status: FRONTEND COMPLETE / VERIFIED (CI) / LIVE FEATURES OFF
 
 Owner approval to implement: 30 Sep 2026. Screens: H119, H120, H127 (P1).
 Source review: blueprint page 70 and page 74, including rendered screen images.
@@ -104,7 +104,19 @@ Integration boundary:
 - Presentation contracts and synthetic tests are explicitly distinguished from real API schemas/merchant terms. Details: `apps/mobile/docs/phase7.md`.
 - Live activation requires the verified server contracts and commercial/fulfillment approval listed there. No fake user rewards, successful messages or gift-fee charges are generated.
 
-Validation pending: full existing test suite plus Phase 7 model/action/component tests, Metro Android/iOS bundles, Android debug build and iOS simulator build. Do not mark CI verified until both workflow jobs actually complete successfully.
+Verification checked on 30 Sep 2026:
+- Workflow `Mobile Phase 7`, run `36673190391`, attempt 1, overall conclusion `success`.
+- Verified application/test/workflow commit: `3a72c1cd25aa54788bf7917ee21a733e63b607a6`.
+- `android-phase7`, job `109752503463`: dependency installation, TypeScript, all unit/component tests, Metro Android release bundle, Android debug build, test-result upload and debug-APK upload passed.
+- `ios-phase7`, job `109752503718`: dependency installation, Metro iOS release bundle, Ruby dependencies, CocoaPods and iOS simulator build passed.
+- All reported steps in both jobs completed successfully; no failed or skipped steps in the verified run.
+- Downloaded and read the actual Jest JSON artifact: 87/87 tests passed; 11/11 suites passed; 0 failed tests; 0 pending tests.
+- Phase 7 adds 39 passing tests: 22 contract cases, 10 action cases, 7 rendered-component cases. Existing Phase 0-6 tests remain enabled.
+- Artifacts: `phase7-test-results` (11078329459) and `hidi-phase7-android-debug` (11079430911).
+- Initial run `36673037386` found one new test-render-helper typing error. It was fixed without weakening tests; the complete subsequent run above passed.
+- Closure modifies these tracking documents only; application code and verification workflow remain identical to the tested commit.
+
+This completes the gated frontend phase, not customer activation. Live commercial integration and physical-device/visual/accessibility release validation are not claimed by this CI result.
 
 ## Phase 8 - Hardening and release evidence
 Status: NOT STARTED
