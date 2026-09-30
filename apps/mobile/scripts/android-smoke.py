@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Installed release-build checks. No OTP, order, payment, support or cart writes."""
+"""Installed release checks. No OTP, order, payment, support or cart writes."""
 import json, os, pathlib, re, subprocess, sys, time, xml.etree.ElementTree as ET
 OUT = pathlib.Path(os.environ.get('EVIDENCE_DIR', 'evidence/android-smoke')); OUT.mkdir(parents=True, exist_ok=True)
 PKG = 'com.thehidi.app.internal'
@@ -61,10 +61,15 @@ def check_layout(width, scale):
     time.sleep(4); capture(f'layout-{width}dp-font-{scale}')
 
 try:
+    if os.environ.get('ANDROID_API') == '26':
+        # Only the emulator control harness is elevated. The installed APK retains
+        # its normal application UID. API26 shell lacks CHANGE_WIFI_STATE.
+        note = adb('root'); adb('wait-for-device'); time.sleep(2)
+        uid = shell('id', '-u').strip()
+        (OUT / 'emulator-control.txt').write_text(note + '\nHarness uid: ' + uid)
+        if uid != '0': raise AssertionError('API26 emulator network controls require a userdebug root adbd')
     adb('install', '-r', sys.argv[1], timeout=120)
     shell('pm', 'clear', PKG)
-    # Older emulator images can reject clearing a log buffer before logd has used it.
-    # Record that housekeeping result, but never suppress runtime crash validation.
     clear = subprocess.run(['adb', 'logcat', '-c'], capture_output=True, text=True, timeout=30)
     (OUT / 'log-buffer-preparation.txt').write_text(f'exit={clear.returncode}\n{clear.stdout}\n{clear.stderr}')
     (OUT / 'device.txt').write_text(shell('getprop'))
@@ -86,11 +91,14 @@ try:
     shell('settings', 'put', 'system', 'user_rotation', '0'); shell('settings', 'put', 'system', 'font_scale', '1.0'); shell('wm', 'size', 'reset'); shell('wm', 'density', 'reset')
     check('process-death-restoration', lambda: launch()); capture('restored-shell')
     shell('pm', 'clear', PKG)
-    shell('svc', 'wifi', 'disable', check=False); shell('svc', 'data', 'disable', check=False)
+    shell('svc', 'wifi', 'disable'); shell('svc', 'data', 'disable')
+    (OUT / 'offline-connectivity.txt').write_text(shell('dumpsys', 'connectivity'))
     check('offline-cold-launch', lambda: launch())
     check('offline-guest-entry', lambda: tap('Explore HIDI'))
-    time.sleep(20); capture('H106-offline-no-cache')
-    shell('svc', 'wifi', 'enable', check=False); shell('svc', 'data', 'enable', check=False)
+    time.sleep(20); xml = capture('H106-offline-no-cache')
+    if not any(word in xml.lower() for word in ['offline', 'unable to reach', 'connection', 'network']): raise AssertionError('Offline state did not provide recoverable connectivity feedback')
+    results.append({'name': 'offline-recovery-feedback', 'status': 'PASS'})
+    shell('svc', 'wifi', 'enable'); shell('svc', 'data', 'enable')
     launches = []
     for _ in range(5):
         report = launch(); match = re.search(r'TotalTime:\s*(\d+)', report)
