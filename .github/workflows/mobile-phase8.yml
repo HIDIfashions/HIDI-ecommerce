@@ -1,0 +1,56 @@
+name: Mobile Phase 8
+
+on:
+  push:
+    branches: [hidi-mobile-build-from-scratch]
+    paths: ['apps/mobile/**', '.github/workflows/mobile-phase8.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: phase8-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HIDI_MOBILE_ENV: staging
+
+jobs:
+  audit-phase8:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+      - name: Install dependencies and resolve lock
+        run: npm install --no-audit --no-fund
+      - name: Export reviewable source and resolved dependencies
+        run: |
+          mkdir -p evidence
+          git archive --format=tar.gz -o evidence/mobile-source.tar.gz HEAD apps/mobile apps/api/src/auth apps/api/src/checkout apps/api/src/payments apps/api/src/carts apps/api/src/products apps/api/src/account phase.md agent.md build.md .github/workflows/mobile-phase0.yml
+          cp package-lock.json evidence/package-lock.json
+          npm sbom --sbom-format cyclonedx > evidence/sbom.cdx.json
+      - name: Collect dependency audit without discarding its exit status
+        run: |
+          set +e
+          npm audit --json > evidence/npm-audit.json
+          status=$?
+          printf '%s\n' "$status" > evidence/npm-audit.exit-code
+          exit 0
+      - name: Typecheck
+        run: npm run typecheck
+      - name: All phase regression tests
+        run: npm test -- --runInBand --json --outputFile=evidence/tests.json
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-audit
+          path: apps/mobile/evidence/
+          retention-days: 14
+          if-no-files-found: error
