@@ -1,6 +1,5 @@
-name: Mobile Phase 5
+name: Mobile Phase 6
 
-# Phase 5 re-check after account screen type fixes.
 on:
   push:
     branches:
@@ -14,7 +13,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  android-phase5:
+  android-phase6:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -49,7 +48,7 @@ jobs:
       - name: Android debug build
         run: ./android/gradlew -p android assembleDebug
 
-  ios-phase5:
+  ios-phase6:
     runs-on: macos-15
     timeout-minutes: 45
     defaults:
