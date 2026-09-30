@@ -13,7 +13,7 @@ import { HidiButton } from "../src/components/HidiButton";
 import { campaign, circle, gift, NOW, runtime } from "../test-fixtures/growth";
 
 let trees: ReactTestRenderer[] = [];
-async function render(node: React.ReactNode) {
+async function render(node: React.ReactElement) {
   let tree!: ReactTestRenderer;
   await act(async () => { tree = renderer.create(node); }); trees.push(tree); return tree;
 }
