@@ -21,12 +21,15 @@ export function migrationPreviewPolicy(env: PreviewEnvironment = process.env) {
       if (read && /^\/v1\/(health|products|reviews\/products)(\/|$)/.test(path)) return true;
       if (!customerTesting) return false;
 
+      if (read && path === "/v1/auth/config") return true;
+      if (method === "POST" && /^\/v1\/auth\/(otp\/(request|verify)|refresh|logout)$/.test(path)) return true;
+
       // Explicit read-only staff views. Every route still runs AdminGuard and
       // its role permissions. Do not allow all admin GETs: carrier tracking
       // endpoints may synchronize shipment/order state as a side effect.
       if (read && /^\/v1\/admin\/(me|staff|dashboard\/(overview|queue|search)|orders(?:\/[A-Za-z0-9_-]+)?|products(?:\/[A-Za-z0-9_-]+)?|inventory(?:\/receipts|\/[A-Za-z0-9_-]+\/history)?)$/.test(path)) return true;
 
-      // These controllers verify the Supabase bearer token and record ownership.
+      // These controllers verify the bearer token and record ownership.
       if (read && /^\/v1\/(account\/orders(?:\/[A-Za-z0-9_-]+)?|wallet|rewards\/summary|retention\/preferences)$/.test(path)) return true;
 
       // Guest carts are scoped to an unguessable session ID, as in the live store.

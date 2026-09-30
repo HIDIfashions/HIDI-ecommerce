@@ -30,6 +30,22 @@ test("customer preview permits account reads and session-scoped cart lifecycle",
   ]) assert.equal(policy.allows(method, path), true, `${method} ${path}`);
 });
 
+test("customer preview permits only the explicit customer sign-in routes", () => {
+  const policy = migrationPreviewPolicy(validation);
+  for (const method of ["GET", "HEAD"]) assert.equal(policy.allows(method, "/v1/auth/config"), true);
+  for (const path of ["otp/request", "otp/verify", "refresh", "logout"]) {
+    assert.equal(policy.allows("POST", `/v1/auth/${path}`), true);
+    assert.equal(policy.allows("POST", `/v1/auth/${path}?test=true`), true);
+    for (const method of ["GET", "PATCH", "DELETE", "PUT"]) {
+      assert.equal(policy.allows(method, `/v1/auth/${path}`), false);
+    }
+    assert.equal(migrationPreviewPolicy({ MIGRATION_READ_ONLY: "true" }).allows("POST", `/v1/auth/${path}`), false);
+  }
+  for (const path of ["otp/verify/", "otp/verify/../checkout", "otp%2fverify", "admin", "config"]) {
+    assert.equal(policy.allows("POST", `/v1/auth/${path}`), false);
+  }
+});
+
 test("customer preview permits only explicit staff reads behind the existing AdminGuard", () => {
   const policy = migrationPreviewPolicy(validation);
   for (const path of ["me", "staff", "dashboard/overview?from=2026-09-01", "dashboard/queue?kind=returns", "dashboard/search?q=test", "orders", "orders/HIDI-123", "products", "products/options", "products/product-1", "inventory", "inventory/receipts", "inventory/variant-1/history"]) {
