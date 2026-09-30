@@ -76,7 +76,7 @@ export default function HidiDialog({ dialog, onClose }) {
     <dialog ref={ref} className={`hidi-dialog${['navigation', 'search', 'bag'].includes(dialog?.type) ? ' campaign-panel' : ''}`} id="hidi-dialog" aria-labelledby="dialog-title"
       onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={backdrop}>
       <button type="button" className="dialog-close icon-button" aria-label="Close dialog" onClick={onClose}><Icon name="close" /></button>
-      <div className="dialog-brand"><img className="brand-logo" src={asset('images/hidi-logo.png')} width="265" height="139" alt="HIDI — Wear the feeling" /></div>
+      {dialog?.type !== 'search' && <div className="dialog-brand"><img className="brand-logo" src={asset('images/hidi-logo.png')} width="265" height="139" alt="HIDI — Wear the feeling" /></div>}
       <div className="dialog-content" id="dialog-content"><Content dialog={dialog} onClose={onClose} /></div>
     </dialog>
   );

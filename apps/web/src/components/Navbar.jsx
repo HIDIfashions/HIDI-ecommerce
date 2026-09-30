@@ -39,7 +39,7 @@ export default function Navbar() {
         <div className="campaign-header-left">
           <div className="campaign-mobile-tools">
             <button type="button" className="campaign-icon" onClick={openBag} aria-label="Shopping bag"><Icon name="bag" /></button>
-            <button type="button" className="campaign-icon" onClick={() => openNotice('search')} aria-label="Search HIDI collections"><Icon name="search" /></button>
+            <button type="button" className="campaign-icon" onClick={() => openNotice('search')} aria-label="Search HIDI products"><Icon name="search" /></button>
           </div>
         </div>
         <a className="campaign-brand" href={homeHref} onClick={onHome} aria-label="HIDI home">
@@ -48,7 +48,7 @@ export default function Navbar() {
         <div className="campaign-header-right">
           <button type="button" className="campaign-icon campaign-desktop-tool" onClick={openBag} aria-label="Shopping bag"><Icon name="bag" /></button>
           <button type="button" className="campaign-icon" onClick={() => openAuth('signin')} aria-label="My HIDI account"><Icon name="user" /></button>
-          <button type="button" className="campaign-icon campaign-desktop-tool" onClick={() => openNotice('search')} aria-label="Search HIDI collections"><Icon name="search" /></button>
+          <button type="button" className="campaign-icon campaign-desktop-tool" onClick={() => openNotice('search')} aria-label="Search HIDI products"><Icon name="search" /></button>
           <button type="button" className="campaign-menu" aria-label="Open HIDI menu" aria-haspopup="dialog"
             aria-expanded={dialogType === 'navigation'} aria-controls="hidi-dialog" onClick={() => openNotice('navigation')}>
             <Icon name="menu" /><span>Menu</span>

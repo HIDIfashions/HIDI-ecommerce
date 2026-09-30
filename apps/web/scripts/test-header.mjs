@@ -9,7 +9,7 @@ const nav=await read('src/components/Navbar.jsx');
 const hero=await read('src/components/VideoHero.jsx');
 const css=await read('src/styles/immersive-hero.css');
 assert.ok(!app.includes('<AnnouncementBar'), 'Scrolling announcements should not render.');
-for(const name of ['campaign-brand', 'data-header-state', 'Shopping bag', 'My HIDI account', 'Search HIDI collections', 'Open HIDI menu'])assert.ok(nav.includes(name), `Missing header element ${name}`);
+for(const name of ['campaign-brand', 'data-header-state', 'Shopping bag', 'My HIDI account', 'Search HIDI products', 'Open HIDI menu'])assert.ok(nav.includes(name), `Missing header element ${name}`);
 for(const name of ['header-account', 'desktop-nav', 'app-download'])assert.ok(!nav.includes(name), `Old top control still rendered: ${name}`);
 assert.ok(hero.includes('Shop Now') && hero.includes('campaign-shop-button'));
 for(const name of ['hero-copy', 'hero-buttons', 'hero-description', 'SCROLL TO DISCOVER'])assert.ok(!hero.includes(name), `Old hero content: ${name}`);

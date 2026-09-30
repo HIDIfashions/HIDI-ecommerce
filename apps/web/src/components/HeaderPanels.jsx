@@ -1,34 +1,21 @@
 import React, { useState } from 'react';
-import { asset } from '../config.js';
 import { useHidi } from '../context/HidiContext.jsx';
-import { collections } from '../data/collections.js';
 import { collectionRoute } from '../routes.js';
 import Icon from './Icon.jsx';
 
 export function SearchPanel({ onClose }) {
-  const { openCollection, openSearch } = useHidi();
+  const { openSearch } = useHidi();
   const [query, setQuery] = useState('');
-  const normalized = query.trim().toLocaleLowerCase('en-IN');
-  const results = collections.filter((item) => `${item.name} ${item.description} ${item.alt}`.toLocaleLowerCase('en-IN').includes(normalized));
   return <>
-    <p className="eyebrow">FIND YOUR KIND OF HIDI</p>
-    <h2 id="dialog-title">Discover the collections.</h2>
-    <label htmlFor="header-search" className="campaign-search-label">Search products</label>
+    <h2 id="dialog-title" className="sr-only">Search HIDI</h2>
+    <label htmlFor="header-search" className="sr-only">Search products</label>
     <form className="campaign-search-field" action="/search" method="get"
       onSubmit={(event) => { event.preventDefault(); openSearch(query); }}>
       <button type="submit" aria-label="Search HIDI products"><Icon name="search" /></button>
       <input id="header-search" name="q" type="search" value={query} onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search a product, colour or collection" autoComplete="off" maxLength={100}
+        placeholder="Search products" autoComplete="off" maxLength={100}
         onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); onClose(); } }} />
     </form>
-    <p className="campaign-result-count" role="status">{results.length ? `${results.length} collection${results.length === 1 ? '' : 's'} to explore` : 'Press Enter to search HIDI products.'}</p>
-    <div className="campaign-search-results">
-      {results.map((item) => <button type="button" key={item.id} className="campaign-search-result" onClick={() => openCollection(item.id)}>
-        <img src={asset(item.image)} alt="" width="52" height="66" />
-        <span><strong>{item.name}</strong><small>{item.description}</small></span><Icon name="arrow" />
-      </button>)}
-    </div>
-    <p className="campaign-panel-note">Press Enter to search all products, or choose a collection.</p>
   </>;
 }
 
