@@ -59,8 +59,18 @@ Backend gaps surfaced honestly:
 - Local-device adaptations are clearly labeled and do not claim server submission.
 
 ## Phase 6 - Resilience, system states and editorial
-Status: NOT STARTED
-Screens: H103-H118, H121-H122, H125
+Status: IN PROGRESS
+
+Owner approval: granted 30 Sep 2026.
+Screens: H103-H118, H121-H122, H125.
+Scope remains React Native frontend only; existing backend/APIM/provider contracts are unchanged.
+
+Implemented in this phase so far:
+- Loading skeleton, partial load failure and offline states.
+- Generic error, session expired, maintenance, required update and optional update states.
+- Permission explanation, permission declined, link unavailable, rate limit and attachment upload issue states.
+- Editorial story and shop-the-look flows with explicit item selection and no hidden cart additions.
+- Appearance settings and dark appearance preview with persisted local theme preference.
 
 ## Phase 7 - Optional growth
 Status: FEATURE-FLAGGED / NOT STARTED
