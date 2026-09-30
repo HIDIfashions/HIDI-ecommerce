@@ -1,96 +1,12 @@
-name: Mobile Phase 7
-
+name: Mobile Phase 0-7 (superseded)
+# Phase 8 runs every existing test plus installed-app release checks.
+# Kept only as a manual historical pointer; it no longer duplicates all push builds.
 on:
-  push:
-    branches: [hidi-mobile-build-from-scratch]
-    paths:
-      - "apps/mobile/**"
-      - "phase.md"
-      - "agent.md"
-      - "build.md"
-      - ".github/workflows/mobile-phase0.yml"
   workflow_dispatch:
-
 permissions:
   contents: read
-concurrency:
-  group: mobile-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  HIDI_MOBILE_ENV: staging
-
 jobs:
-  android-phase7:
+  phase8-workflow:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
-    defaults:
-      run:
-        working-directory: apps/mobile
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.13.1"
-          cache: npm
-          cache-dependency-path: apps/mobile/package.json
-      - name: Set up Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Unit and component tests
-        run: npm test -- --runInBand --json --outputFile=test-results.json
-      - name: Bundle Android JavaScript
-        run: |
-          mkdir -p /tmp/hidi-phase7/android
-          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output /tmp/hidi-phase7/android/index.android.bundle --assets-dest /tmp/hidi-phase7/android --max-workers 2
-      - name: Android debug build
-        run: ./android/gradlew -p android assembleDebug
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase7-test-results
-          path: apps/mobile/test-results.json
-          if-no-files-found: warn
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: hidi-phase7-android-debug
-          path: apps/mobile/android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
-  ios-phase7:
-    runs-on: macos-15
-    timeout-minutes: 45
-    defaults:
-      run:
-        working-directory: apps/mobile
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.13.1"
-          cache: npm
-          cache-dependency-path: apps/mobile/package.json
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Bundle iOS JavaScript
-        run: |
-          mkdir -p /tmp/hidi-phase7/ios
-          npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output /tmp/hidi-phase7/ios/main.jsbundle --assets-dest /tmp/hidi-phase7/ios --max-workers 2
-      - name: Install Ruby dependencies
-        run: bundle install
-      - name: Install iOS pods
-        run: cd ios && bundle exec pod install
-      - name: iOS simulator build
-        run: xcodebuild -workspace ios/HIDI.xcworkspace -scheme HIDI -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+      - run: echo 'Use Mobile Phase 8 (.github/workflows/mobile-phase8.yml) for full regression and native validation.'

@@ -1,56 +1,225 @@
 name: Mobile Phase 8
-
 on:
   push:
     branches: [hidi-mobile-build-from-scratch]
     paths: ['apps/mobile/**', '.github/workflows/mobile-phase8.yml']
   workflow_dispatch:
-
 permissions:
   contents: read
 concurrency:
   group: phase8-${{ github.ref }}
   cancel-in-progress: true
-
 env:
   HIDI_MOBILE_ENV: staging
 
 jobs:
-  audit-phase8:
+  regression-phase8:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    outputs:
+      tested_sha: ${{ steps.freeze.outputs.tested_sha }}
     defaults:
       run:
         working-directory: apps/mobile
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22.13.1'
-      - name: Install dependencies and resolve lock
-        run: npm install --no-audit --no-fund
-      - name: Export reviewable source and resolved dependencies
+      - name: Resolve dependencies only when no committed lock exists
+        run: |
+          if [ ! -f package-lock.json ]; then npm install --no-audit --no-fund; fi
+          npm ci --no-audit --no-fund
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Full Phase 0-8 unit and component suite
         run: |
           mkdir -p evidence
-          git -C "$GITHUB_WORKSPACE" archive --format=tar.gz -o "$PWD/evidence/mobile-source.tar.gz" HEAD apps/mobile apps/api/src/auth apps/api/src/checkout apps/api/src/payments apps/api/src/carts apps/api/src/products apps/api/src/account phase.md agent.md build.md .github/workflows/mobile-phase0.yml
+          npm test -- --runInBand --json --outputFile=evidence/tests.json
+      - name: Commit only the reviewed dependency lock and preserve exact tested revision
+        id: freeze
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add package-lock.json
+          if ! git diff --cached --quiet; then
+            git config user.name 'HIDI Build Evidence'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'build(mobile): freeze Phase 8 dependency lock [skip ci]'
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
+          fi
+          echo "tested_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Source traceability, credential patterns, lockfile SBOM and release gates
+        run: |
+          node scripts/phase8-evidence.mjs
           cp package-lock.json evidence/package-lock.json
-      - name: Collect dependency audit and SBOM with explicit statuses
+          git -C "$GITHUB_WORKSPACE" archive --format=tar.gz -o "$PWD/evidence/mobile-source.tar.gz" HEAD apps/mobile phase.md agent.md build.md .github/workflows/mobile-phase8.yml
+      - name: Dependency vulnerability gate
         run: |
           set +e
           npm audit --json > evidence/npm-audit.json
-          printf '%s\n' "$?" > evidence/npm-audit.exit-code
-          npm sbom --sbom-format cyclonedx > evidence/sbom.cdx.json
-          printf '%s\n' "$?" > evidence/sbom.exit-code
-          exit 0
-      - name: Typecheck
-        run: npm run typecheck
-      - name: All phase regression tests
-        run: npm test -- --runInBand --json --outputFile=evidence/tests.json
-      - name: Upload audit evidence
+          code=$?
+          printf '%s\n' "$code" > evidence/npm-audit.exit-code
+          exit "$code"
+      - name: Upload regression and audit evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: phase8-audit
+          name: phase8-regression
           path: apps/mobile/evidence/
+          retention-days: 14
+          if-no-files-found: error
+
+  android-build-phase8:
+    needs: regression-phase8
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.regression-phase8.outputs.tested_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci --no-audit --no-fund
+      - name: Build embedded-JS internal release APK and test AAB
+        run: |
+          mkdir -p evidence/android
+          ./android/gradlew -p android :app:assembleRelease :app:bundleRelease -PhidiInternalBuild=true -PreactNativeArchitectures=arm64-v8a,x86_64 --max-workers=2 | tee evidence/android/gradle-build.log
+          ./android/gradlew -p android :app:dependencies --configuration releaseRuntimeClasspath > evidence/android/native-dependencies.txt
+      - name: Sign internal artifacts with an ephemeral test-only key
+        run: |
+          set -euo pipefail
+          TOOLS="$ANDROID_HOME/build-tools/37.0.0"
+          export TEST_KEY_PASS="$(openssl rand -hex 24)"
+          echo "::add-mask::$TEST_KEY_PASS"
+          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/hidi-internal.p12" -storetype PKCS12 -alias hidi-internal -keyalg RSA -keysize 3072 -validity 30 -dname 'CN=HIDI INTERNAL TEST ONLY,OU=Not for production,O=HIDI' -storepass:env TEST_KEY_PASS -keypass:env TEST_KEY_PASS
+          "$TOOLS/zipalign" -P 16 -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk evidence/android/hidi-internal.apk
+          "$TOOLS/apksigner" sign --ks "$RUNNER_TEMP/hidi-internal.p12" --ks-key-alias hidi-internal --ks-pass env:TEST_KEY_PASS --key-pass env:TEST_KEY_PASS evidence/android/hidi-internal.apk
+          "$TOOLS/apksigner" verify --verbose --print-certs evidence/android/hidi-internal.apk > evidence/android/apk-signature.txt
+          "$TOOLS/zipalign" -c -P 16 4 evidence/android/hidi-internal.apk > evidence/android/alignment.txt
+          cp android/app/build/outputs/bundle/release/app-release.aab evidence/android/hidi-internal-test.aab
+          jarsigner -keystore "$RUNNER_TEMP/hidi-internal.p12" -storepass:env TEST_KEY_PASS -keypass:env TEST_KEY_PASS evidence/android/hidi-internal-test.aab hidi-internal
+          jarsigner -verify -verbose -certs evidence/android/hidi-internal-test.aab > evidence/android/aab-signature.txt
+          "$TOOLS/aapt" dump badging evidence/android/hidi-internal.apk > evidence/android/apk-metadata.txt
+          "$TOOLS/aapt" dump permissions evidence/android/hidi-internal.apk > evidence/android/permissions.txt
+          printf '%s\n' '${{ needs.regression-phase8.outputs.tested_sha }}' > evidence/android/source-commit.txt
+          printf '%s\n' 'INTERNAL STAGING ONLY. Ephemeral test key, not Play upload identity. com.thehidi.app.internal. Optional growth off; live release remains blocked.' > evidence/android/READ-ME.txt
+          cp -r android/app/build/outputs/mapping evidence/android/
+          if [ -d android/app/build/generated/sourcemaps ]; then cp -r android/app/build/generated/sourcemaps evidence/android/; fi
+          if [ -d android/app/build/outputs/native-debug-symbols ]; then cp -r android/app/build/outputs/native-debug-symbols evidence/android/; fi
+          (cd evidence/android && sha256sum hidi-internal.apk hidi-internal-test.aab > SHA256SUMS.txt)
+          rm -f "$RUNNER_TEMP/hidi-internal.p12"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase8-android-build
+          path: apps/mobile/evidence/android/
+          if-no-files-found: error
+          retention-days: 14
+
+  android-smoke-phase8:
+    needs: [regression-phase8, android-build-phase8]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [26, 36]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.regression-phase8.outputs.tested_sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: phase8-android-build
+          path: artifacts/android
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Enable hosted Linux virtualization
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Installed release smoke and layout captures
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        env:
+          TESTED_SHA: ${{ needs.regression-phase8.outputs.tested_sha }}
+          ANDROID_API: ${{ matrix.api }}
+          EVIDENCE_DIR: ${{ github.workspace }}/evidence/android-${{ matrix.api }}
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          ram-size: 2048M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: python3 apps/mobile/scripts/android-smoke.py artifacts/android/hidi-internal.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase8-android-smoke-${{ matrix.api }}
+          path: evidence/android-${{ matrix.api }}/
+          retention-days: 14
+          if-no-files-found: error
+
+  ios-phase8:
+    needs: regression-phase8
+    runs-on: macos-15
+    timeout-minutes: 55
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.regression-phase8.outputs.tested_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: bundle install
+      - run: cd ios && bundle exec pod install
+      - name: Release simulator build with embedded JavaScript
+        run: |
+          mkdir -p evidence/ios
+          set -o pipefail
+          xcodebuild -workspace ios/HIDI.xcworkspace -scheme HIDI -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/hidi-ios" CODE_SIGNING_ALLOWED=NO PRODUCT_BUNDLE_IDENTIFIER=com.thehidi.app.internal build > evidence/ios/build.log 2>&1
+          cp ios/Podfile.lock evidence/ios/Podfile.lock
+          printf '%s\n' '${{ needs.regression-phase8.outputs.tested_sha }}' > evidence/ios/source-commit.txt
+      - name: Install, launch, appearance and deep-link smoke
+        env:
+          TESTED_SHA: ${{ needs.regression-phase8.outputs.tested_sha }}
+          EVIDENCE_DIR: evidence/ios/smoke
+        run: python3 scripts/ios-smoke.py "$RUNNER_TEMP/hidi-ios/Build/Products/Release-iphonesimulator/HIDI.app"
+      - name: Package unsigned simulator app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent "$RUNNER_TEMP/hidi-ios/Build/Products/Release-iphonesimulator/HIDI.app" evidence/ios/HIDI-simulator.zip
+          (cd evidence/ios && shasum -a 256 HIDI-simulator.zip > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase8-ios
+          path: apps/mobile/evidence/ios/
           retention-days: 14
           if-no-files-found: error
