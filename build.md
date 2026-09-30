@@ -1,7 +1,7 @@
 # HIDI Mobile - Build Specification
 
 Branch: `hidi-mobile-build-from-scratch`
-Current phase: Phase 5 IN PROGRESS
+Current phase: Phase 5 COMPLETE / VERIFIED
 Scope: React Native frontend only
 
 ## Runtime
@@ -30,6 +30,7 @@ xcodebuild -workspace ios/HIDI.xcworkspace -scheme HIDI -configuration Debug -sd
 - Phase 2: run `36614729523`.
 - Phase 3: run `36628638488`.
 - Phase 4: run `36634182910`.
+- Phase 5: run `36648013506`.
 
 ## Phase 5 implementation evidence
 Implemented frontend scope:
@@ -52,4 +53,4 @@ Unsupported backend capabilities are represented as explicit unavailable or loca
 - guest order access challenge
 
 ## Gate
-Phase 5 CI must pass before Phase 6 begins.
+Phase 5 is verified. Phase 6 may begin only after owner approval.
