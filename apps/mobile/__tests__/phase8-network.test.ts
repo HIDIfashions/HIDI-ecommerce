@@ -3,9 +3,9 @@ import { formatINRPaise } from "../src/models/money";
 import { parseHidiDeepLink } from "../src/navigation/deepLinks";
 import { assertPaymentHandoffAvailable, productionBlockers } from "../src/spec/releaseGates";
 const request = jest.fn();
-const original = global.fetch;
-beforeEach(() => { jest.clearAllMocks(); global.fetch = request; });
-afterAll(() => { global.fetch = original; });
+const original = globalThis.fetch;
+beforeEach(() => { jest.clearAllMocks(); globalThis.fetch = request; });
+afterAll(() => { globalThis.fetch = original; });
 function response(status: number, data: unknown, contentType = "application/json", retryAfter: string | null = null) {
   return { status, ok: status >= 200 && status < 300, headers: { get: (name: string) => name === "content-type" ? contentType : name === "retry-after" ? retryAfter : null }, json: async () => data };
 }

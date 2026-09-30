@@ -17,7 +17,7 @@ it("AT-10 H048 associates a readable label and error with the input", async () =
   expect(tree.root.findAllByProps({ accessibilityRole: "alert" }).length).toBeGreaterThan(0);
 });
 it.each([UpiHandoffScreen, SecureCardCheckoutScreen])("H053/H054 cannot issue a financial write without the provider bridge", async Screen => {
-  const fetchSpy = jest.spyOn(global, "fetch");
+  const fetchSpy = jest.spyOn(globalThis, "fetch");
   const back = jest.fn();
   const tree = await render(<Screen navigation={{ goBack: back, navigate: jest.fn() } as never} route={{} as never} />);
   expect(JSON.stringify(tree.toJSON())).toContain("No order, stock reservation or payment attempt");
