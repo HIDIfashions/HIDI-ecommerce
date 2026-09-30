@@ -39,10 +39,11 @@ Status: COMPLETE / VERIFIED
 Screens: H061-H082, H128-H131. Verified run `36634182910` passed Android typecheck, unit tests, Android debug build, iOS pod install and iOS simulator build.
 
 ## Phase 5 - Account, support and privacy
-Status: IN PROGRESS
+Status: COMPLETE / VERIFIED
 
 Owner approval: granted 30 Sep 2026.
 Screens: H083-H102, H123-H126, H132.
+Verified run `36648013506` passed Android typecheck, unit tests, Android debug build, iOS pod install and iOS simulator build.
 Scope remains React Native frontend only; existing backend/APIM/provider contracts are unchanged.
 
 Implemented in this phase:
