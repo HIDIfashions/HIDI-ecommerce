@@ -74,7 +74,7 @@ export default function HidiDialog({ dialog, onClose }) {
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose();
   };
   return (
-    <dialog ref={ref} className={`hidi-dialog${['navigation', 'search', 'bag'].includes(dialog?.type) ? ' campaign-panel' : ''}`} id="hidi-dialog" aria-labelledby="dialog-title"
+    <dialog ref={ref} className={`hidi-dialog${['navigation', 'search', 'bag'].includes(dialog?.type) ? ' campaign-panel' : ''}${dialog?.type === 'search' ? ' campaign-search-panel' : ''}`} id="hidi-dialog" aria-labelledby="dialog-title"
       onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={backdrop}>
       <button type="button" className="dialog-close icon-button" aria-label="Close dialog" onClick={onClose}><Icon name="close" /></button>
       {dialog?.type !== 'search' && <div className="dialog-brand"><img className="brand-logo" src={asset('images/hidi-logo.png')} width="265" height="139" alt="HIDI — Wear the feeling" /></div>}

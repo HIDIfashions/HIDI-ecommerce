@@ -149,6 +149,42 @@
   .hero.hero--campaign { min-height: 360px; }
   .hero--campaign .campaign-hero-action { bottom: 30px; }
 }
+
+/* Search floats over the page and grows only to fit its field and live results. */
+.hidi-dialog.campaign-panel.campaign-search-panel {
+  --header-height: 88px;
+  inset: calc(var(--header-height) + 12px) clamp(16px, 4.1vw, 84px) auto auto;
+  width: min(560px, calc(100vw - 32px)); height: auto; min-height: 0;
+  max-height: calc(100dvh - var(--header-height) - 32px);
+  padding: 20px; border: 1px solid rgba(255, 255, 255, .55); border-radius: 16px;
+  background: rgba(250, 248, 242, .58);
+  backdrop-filter: blur(20px) saturate(135%); -webkit-backdrop-filter: blur(20px) saturate(135%);
+  box-shadow: 0 16px 48px rgba(29, 17, 10, .18), inset 0 1px 0 rgba(255, 255, 255, .4);
+}
+.campaign-search-panel::backdrop { background: rgba(23, 12, 10, .12); backdrop-filter: none; }
+.campaign-search-panel .dialog-close { right: 12px; top: 24px; width: 44px; height: 44px; }
+.campaign-search-panel .campaign-search-field { margin-right: 48px; gap: 10px; border-color: rgba(96, 33, 36, .4); }
+.campaign-search-panel .campaign-search-field input::placeholder { color: #4f4039; opacity: 1; }
+.campaign-search-panel .campaign-search-field:focus-within { outline-width: 1px; outline-offset: 4px; }
+.campaign-search-panel .dialog-content > .campaign-search-feedback { margin: 16px 0 0; color: #453b33; }
+.campaign-search-panel .campaign-product-results { margin-top: 6px; }
+.campaign-search-panel .campaign-product-results small { color: #453b33; }
+.campaign-search-panel .campaign-product-results a { border-color: rgba(96, 33, 36, .2); }
+.campaign-search-panel .campaign-product-results li:last-child a { border-bottom: 0; }
+@media (max-width: 700px) {
+  .hidi-dialog.campaign-panel.campaign-search-panel {
+    --header-height: 72px;
+    inset: calc(var(--header-height) + 8px) 12px auto;
+    width: calc(100vw - 24px); padding: 14px; border-radius: 12px;
+    max-height: calc(100dvh - var(--header-height) - 24px);
+  }
+  .campaign-search-panel .dialog-close { right: 8px; top: 18px; }
+  .campaign-search-panel .campaign-search-field { margin-right: 44px; gap: 8px; }
+  .campaign-search-panel .campaign-search-submit { padding-inline: 12px; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .hidi-dialog.campaign-panel.campaign-search-panel { background: rgba(250, 248, 242, .92); }
+}
 @media (prefers-reduced-motion: reduce) {
   .campaign-header::before, .campaign-shop-button, .campaign-icon, .campaign-menu { transition: none; transition-duration: 0s !important; }
 }
