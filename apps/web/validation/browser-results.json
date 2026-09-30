@@ -1,0 +1,1036 @@
+{
+  "method": "Chromium rendering of the compiled React snapshot with in-memory local assets; browser URL navigation is restricted. HTTP asset serving checked separately.",
+  "passed": 80,
+  "total": 80,
+  "checks": [
+    {
+      "name": "1920px: no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "view": 1920,
+        "body": 1905,
+        "client": 1920,
+        "top": 0,
+        "height": 1080,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 177.296875,
+        "logoLeft": 886.5,
+        "logoRight": 1018.5,
+        "rightLeft": 1578.296875,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1920px: full-height hero starts at top",
+      "passed": true,
+      "detail": {
+        "view": 1920,
+        "body": 1905,
+        "client": 1920,
+        "top": 0,
+        "height": 1080,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 177.296875,
+        "logoLeft": 886.5,
+        "logoRight": 1018.5,
+        "rightLeft": 1578.296875,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1920px: centred logo and balanced tools",
+      "passed": true,
+      "detail": {
+        "view": 1920,
+        "body": 1905,
+        "client": 1920,
+        "top": 0,
+        "height": 1080,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 177.296875,
+        "logoLeft": 886.5,
+        "logoRight": 1018.5,
+        "rightLeft": 1578.296875,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1920px: transparent header at top",
+      "passed": true,
+      "detail": {
+        "view": 1920,
+        "body": 1905,
+        "client": 1920,
+        "top": 0,
+        "height": 1080,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 177.296875,
+        "logoLeft": 886.5,
+        "logoRight": 1018.5,
+        "rightLeft": 1578.296875,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1920px: CTA visible and centred",
+      "passed": true,
+      "detail": {
+        "view": 1920,
+        "body": 1905,
+        "client": 1920,
+        "top": 0,
+        "height": 1080,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 177.296875,
+        "logoLeft": 886.5,
+        "logoRight": 1018.5,
+        "rightLeft": 1578.296875,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1920px: fixed burgundy header after scroll",
+      "passed": true,
+      "detail": {
+        "state": "solid",
+        "opacity": "1",
+        "top": 0
+      }
+    },
+    {
+      "name": "1920px: burgundy retained scrolling upward",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "1920px: transparency restored at top",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "1440px: no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "view": 1440,
+        "body": 1425,
+        "client": 1440,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 157.609375,
+        "logoLeft": 646.5,
+        "logoRight": 778.5,
+        "rightLeft": 1128.0625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1440px: full-height hero starts at top",
+      "passed": true,
+      "detail": {
+        "view": 1440,
+        "body": 1425,
+        "client": 1440,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 157.609375,
+        "logoLeft": 646.5,
+        "logoRight": 778.5,
+        "rightLeft": 1128.0625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1440px: centred logo and balanced tools",
+      "passed": true,
+      "detail": {
+        "view": 1440,
+        "body": 1425,
+        "client": 1440,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 157.609375,
+        "logoLeft": 646.5,
+        "logoRight": 778.5,
+        "rightLeft": 1128.0625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1440px: transparent header at top",
+      "passed": true,
+      "detail": {
+        "view": 1440,
+        "body": 1425,
+        "client": 1440,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 157.609375,
+        "logoLeft": 646.5,
+        "logoRight": 778.5,
+        "rightLeft": 1128.0625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1440px: CTA visible and centred",
+      "passed": true,
+      "detail": {
+        "view": 1440,
+        "body": 1425,
+        "client": 1440,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 157.609375,
+        "logoLeft": 646.5,
+        "logoRight": 778.5,
+        "rightLeft": 1128.0625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1440px: fixed burgundy header after scroll",
+      "passed": true,
+      "detail": {
+        "state": "solid",
+        "opacity": "1",
+        "top": 0
+      }
+    },
+    {
+      "name": "1440px: burgundy retained scrolling upward",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "1440px: transparency restored at top",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "1024px: no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "view": 1024,
+        "body": 1009,
+        "client": 1024,
+        "top": 0,
+        "height": 768,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 140.546875,
+        "logoLeft": 438.5,
+        "logoRight": 570.5,
+        "rightLeft": 737.890625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1024px: full-height hero starts at top",
+      "passed": true,
+      "detail": {
+        "view": 1024,
+        "body": 1009,
+        "client": 1024,
+        "top": 0,
+        "height": 768,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 140.546875,
+        "logoLeft": 438.5,
+        "logoRight": 570.5,
+        "rightLeft": 737.890625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1024px: centred logo and balanced tools",
+      "passed": true,
+      "detail": {
+        "view": 1024,
+        "body": 1009,
+        "client": 1024,
+        "top": 0,
+        "height": 768,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 140.546875,
+        "logoLeft": 438.5,
+        "logoRight": 570.5,
+        "rightLeft": 737.890625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1024px: transparent header at top",
+      "passed": true,
+      "detail": {
+        "view": 1024,
+        "body": 1009,
+        "client": 1024,
+        "top": 0,
+        "height": 768,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 140.546875,
+        "logoLeft": 438.5,
+        "logoRight": 570.5,
+        "rightLeft": 737.890625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1024px: CTA visible and centred",
+      "passed": true,
+      "detail": {
+        "view": 1024,
+        "body": 1009,
+        "client": 1024,
+        "top": 0,
+        "height": 768,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 140.546875,
+        "logoLeft": 438.5,
+        "logoRight": 570.5,
+        "rightLeft": 737.890625,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "1024px: fixed burgundy header after scroll",
+      "passed": true,
+      "detail": {
+        "state": "solid",
+        "opacity": "1",
+        "top": 0
+      }
+    },
+    {
+      "name": "1024px: burgundy retained scrolling upward",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "1024px: transparency restored at top",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "768px: no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "view": 768,
+        "body": 753,
+        "client": 768,
+        "top": 0,
+        "height": 1024,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 122.578125,
+        "logoLeft": 316.5,
+        "logoRight": 436.5,
+        "rightLeft": 509.328125,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "768px: full-height hero starts at top",
+      "passed": true,
+      "detail": {
+        "view": 768,
+        "body": 753,
+        "client": 768,
+        "top": 0,
+        "height": 1024,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 122.578125,
+        "logoLeft": 316.5,
+        "logoRight": 436.5,
+        "rightLeft": 509.328125,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "768px: centred logo and balanced tools",
+      "passed": true,
+      "detail": {
+        "view": 768,
+        "body": 753,
+        "client": 768,
+        "top": 0,
+        "height": 1024,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 122.578125,
+        "logoLeft": 316.5,
+        "logoRight": 436.5,
+        "rightLeft": 509.328125,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "768px: transparent header at top",
+      "passed": true,
+      "detail": {
+        "view": 768,
+        "body": 753,
+        "client": 768,
+        "top": 0,
+        "height": 1024,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 122.578125,
+        "logoLeft": 316.5,
+        "logoRight": 436.5,
+        "rightLeft": 509.328125,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "768px: CTA visible and centred",
+      "passed": true,
+      "detail": {
+        "view": 768,
+        "body": 753,
+        "client": 768,
+        "top": 0,
+        "height": 1024,
+        "headTop": 0,
+        "headerHeight": 88,
+        "centerError": 0,
+        "leftRight": 122.578125,
+        "logoLeft": 316.5,
+        "logoRight": 436.5,
+        "rightLeft": 509.328125,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "768px: fixed burgundy header after scroll",
+      "passed": true,
+      "detail": {
+        "state": "solid",
+        "opacity": "1",
+        "top": 0
+      }
+    },
+    {
+      "name": "768px: burgundy retained scrolling upward",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "768px: transparency restored at top",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "700px: no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "view": 700,
+        "body": 700,
+        "client": 700,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 302,
+        "logoRight": 398,
+        "rightLeft": 596,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "700px: full-height hero starts at top",
+      "passed": true,
+      "detail": {
+        "view": 700,
+        "body": 700,
+        "client": 700,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 302,
+        "logoRight": 398,
+        "rightLeft": 596,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "700px: centred logo and balanced tools",
+      "passed": true,
+      "detail": {
+        "view": 700,
+        "body": 700,
+        "client": 700,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 302,
+        "logoRight": 398,
+        "rightLeft": 596,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "700px: transparent header at top",
+      "passed": true,
+      "detail": {
+        "view": 700,
+        "body": 700,
+        "client": 700,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 302,
+        "logoRight": 398,
+        "rightLeft": 596,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "700px: CTA visible and centred",
+      "passed": true,
+      "detail": {
+        "view": 700,
+        "body": 700,
+        "client": 700,
+        "top": 0,
+        "height": 900,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 302,
+        "logoRight": 398,
+        "rightLeft": 596,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "700px: fixed burgundy header after scroll",
+      "passed": true,
+      "detail": {
+        "state": "solid",
+        "opacity": "1",
+        "top": 0
+      }
+    },
+    {
+      "name": "700px: burgundy retained scrolling upward",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "700px: transparency restored at top",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "390px: no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "view": 390,
+        "body": 390,
+        "client": 390,
+        "top": 0,
+        "height": 844,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 147,
+        "logoRight": 243,
+        "rightLeft": 286,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "390px: full-height hero starts at top",
+      "passed": true,
+      "detail": {
+        "view": 390,
+        "body": 390,
+        "client": 390,
+        "top": 0,
+        "height": 844,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 147,
+        "logoRight": 243,
+        "rightLeft": 286,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "390px: centred logo and balanced tools",
+      "passed": true,
+      "detail": {
+        "view": 390,
+        "body": 390,
+        "client": 390,
+        "top": 0,
+        "height": 844,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 147,
+        "logoRight": 243,
+        "rightLeft": 286,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "390px: transparent header at top",
+      "passed": true,
+      "detail": {
+        "view": 390,
+        "body": 390,
+        "client": 390,
+        "top": 0,
+        "height": 844,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 147,
+        "logoRight": 243,
+        "rightLeft": 286,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "390px: CTA visible and centred",
+      "passed": true,
+      "detail": {
+        "view": 390,
+        "body": 390,
+        "client": 390,
+        "top": 0,
+        "height": 844,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 147,
+        "logoRight": 243,
+        "rightLeft": 286,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "390px: fixed burgundy header after scroll",
+      "passed": true,
+      "detail": {
+        "state": "solid",
+        "opacity": "1",
+        "top": 0
+      }
+    },
+    {
+      "name": "390px: burgundy retained scrolling upward",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "390px: transparency restored at top",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "320px: no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "view": 320,
+        "body": 320,
+        "client": 320,
+        "top": 0,
+        "height": 700,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 112,
+        "logoRight": 208,
+        "rightLeft": 216,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "320px: full-height hero starts at top",
+      "passed": true,
+      "detail": {
+        "view": 320,
+        "body": 320,
+        "client": 320,
+        "top": 0,
+        "height": 700,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 112,
+        "logoRight": 208,
+        "rightLeft": 216,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "320px: centred logo and balanced tools",
+      "passed": true,
+      "detail": {
+        "view": 320,
+        "body": 320,
+        "client": 320,
+        "top": 0,
+        "height": 700,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 112,
+        "logoRight": 208,
+        "rightLeft": 216,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "320px: transparent header at top",
+      "passed": true,
+      "detail": {
+        "view": 320,
+        "body": 320,
+        "client": 320,
+        "top": 0,
+        "height": 700,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 112,
+        "logoRight": 208,
+        "rightLeft": 216,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "320px: CTA visible and centred",
+      "passed": true,
+      "detail": {
+        "view": 320,
+        "body": 320,
+        "client": 320,
+        "top": 0,
+        "height": 700,
+        "headTop": 0,
+        "headerHeight": 72,
+        "centerError": 0,
+        "leftRight": 104,
+        "logoLeft": 112,
+        "logoRight": 208,
+        "rightLeft": 216,
+        "header": "transparent",
+        "alpha": "0",
+        "shopVisible": true,
+        "shopCenter": 0
+      }
+    },
+    {
+      "name": "320px: fixed burgundy header after scroll",
+      "passed": true,
+      "detail": {
+        "state": "solid",
+        "opacity": "1",
+        "top": 0
+      }
+    },
+    {
+      "name": "320px: burgundy retained scrolling upward",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "320px: transparency restored at top",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Scrolling announcement removed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Old top navigation labels and CTA controls removed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Old hero headline/buttons removed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Only Shop Now is the main visible hero CTA",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Shop Now opens existing signup preview",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Signup preview still leads into category preview",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Return home restores transparent hero",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Profile icon opens sign-in preview",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Escape returns keyboard focus to profile icon",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Search filters existing collections case-insensitively",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Search has honest empty state",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Bag icon opens explicitly labelled preview",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Menu exposes navigation in a dialog",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Menu navigation closes overlay and reaches story",
+      "passed": true,
+      "detail": {
+        "x": 0,
+        "y": 106,
+        "width": 1425,
+        "height": 723
+      }
+    },
+    {
+      "name": "Meet HIDI image remains static",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Updated video decodes and uses matching poster",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Discreet video control pauses playback",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Discreet video control resumes playback",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Opening a dialog pauses background video",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Closing dialog resumes the active hero",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Page-edge stretching remains removed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "No browser JavaScript errors",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "name": "Reduced-motion preference stops auto playback",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Reduced-motion removes header transition",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "javascript_errors": []
+}

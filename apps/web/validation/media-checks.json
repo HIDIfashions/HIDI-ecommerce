@@ -1,0 +1,48 @@
+[
+  {
+    "variant": "desktop",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1920,
+          "height": 1080,
+          "avg_frame_rate": "24/1"
+        }
+      ],
+      "format": {
+        "duration": "20.000000",
+        "size": "17972896"
+      }
+    },
+    "fast_start": true,
+    "silent": true,
+    "poster": "hero-desktop-luminous-first-frame-v1.webp"
+  },
+  {
+    "variant": "mobile",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 720,
+          "height": 1066,
+          "avg_frame_rate": "24/1"
+        }
+      ],
+      "format": {
+        "duration": "10.000000",
+        "size": "843803"
+      }
+    },
+    "fast_start": true,
+    "silent": true,
+    "poster": "hero-mobile-luminous-first-frame-v1.webp"
+  }
+]

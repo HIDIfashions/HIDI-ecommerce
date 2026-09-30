@@ -1,0 +1,190 @@
+/* Focused visual refinements for the user-supplied React ZIP.
+   Scope: navbar controls, story portrait, collection gallery, editorial photo/title,
+   and newsletter field. Existing hero, palettes, copy and footer artwork stay intact. */
+
+/* 1. One composed account control instead of two unrelated buttons. */
+.site-header .header-actions { gap: 15px; }
+.header-account { display: inline-flex; align-items: center; padding: 4px; gap: 2px; border: 1px solid #e8c06f59; border-radius: 6px; background: #36131724; }
+.account-action { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 35px; padding: 6px 15px; border-radius: 3px; font-size: 11px; font-weight: 600; letter-spacing: .025em; white-space: nowrap; transition: background .2s, color .2s; }
+.account-action--signin { color: #f9ece0; }
+.account-action--signin:hover { color: var(--gold); background: #e8c06f0d; }
+.account-action--signup { color: var(--burgundy-deep); background: var(--gold); }
+.account-action--signup:hover { background: #f2d399; }
+.account-action .icon { height: 15px; width: 15px; transition: transform .25s var(--ease); }
+.account-action--signup:hover .icon { transform: translateX(3px); }
+.header-account .account-action:focus-visible { outline-offset: 1px; outline-width: 1px; }
+.site-header .app-download { min-height: 45px; border-color: #e8c06f50; border-radius: 6px; gap: 12px; }
+.store-icons { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; }
+.store-icon { width: 16px; height: 18px; display: block; }
+.store-icon--apple { width: 14px; height: 19px; }
+.store-icons-divider { width: 1px; height: 12px; background: currentColor; opacity: .32; }
+.site-header .app-download:hover { transform: none; }
+.mobile-menu .store-icons { gap: 6px; }
+@media (max-width: 1200px) and (min-width: 1001px) {
+  .site-header .header-inner { gap: 18px; }
+  .site-header .desktop-nav { gap: 22px; }
+  .site-header .header-actions { gap: 10px; }
+  .account-action { padding-inline: 12px; }
+  .site-header .app-download { padding-inline: 13px; }
+}
+@media (max-width: 700px) {
+  .site-header .header-actions { gap: 7px; }
+  .header-account { padding: 3px; gap: 0; border-radius: 5px; }
+  .account-action { min-height: 31px; padding: 5px 10px; font-size: 10px; gap: 5px; }
+  .account-action--signup .icon { display: none; }
+  .site-header .menu-toggle { width: 30px; }
+}
+@media (max-width: 360px) {
+  .site-header .header-inner { width: calc(100% - 24px); gap: 8px; }
+  .site-header .brand-logo { width: 89px; }
+  .site-header .header-actions { gap: 5px; }
+  .account-action { padding-inline: 8px; }
+}
+
+/* 2. Meet HIDI: the portrait and its decorative frame are deliberately static.
+   Only the photograph is opted out; copy and other sections keep their reveals. */
+.meet-art--static,
+.meet-art--static::before,
+.meet-art--static::after,
+.meet-art--static .meet-photo,
+.meet-art--static .meet-photo img,
+.meet-art--static .meet-photo:hover img {
+  animation: none;
+  transition: none;
+  transform: none;
+}
+
+/* 3. HIDI editorial gallery: three fixed portrait windows, NO horizontal track.
+   Larger imagery; transform/opacity-only staggered dissolves; stable frame geometry. */
+.editorial-gallery {
+  --gallery-height: clamp(470px, 36vw, 680px);
+  --gallery-ease: cubic-bezier(.22,.75,.25,1);
+  position: relative; width: min(1740px, calc(100% - 120px)); margin: 46px auto 0;
+  outline-offset: 8px;
+}
+.editorial-frames { display: grid; grid-template-columns: 1fr 1.04fr 1fr; gap: clamp(20px, 2vw, 34px); touch-action: pan-y; user-select: none; align-items: start; }
+.editorial-frame { min-width: 0; position: relative; }
+.editorial-card-button { display: block; width: 100%; text-align: center; }
+.editorial-card-button:focus-visible { outline-offset: 5px; }
+.editorial-image { height: var(--gallery-height); width: 100%; position: relative; overflow: hidden; isolation: isolate; border-radius: 2px; background: #e3d3ba; }
+.editorial-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; pointer-events: none; }
+.editorial-photo--current { z-index: 1; transform: scale(1); transition: transform 1.6s var(--ease); }
+.editorial-photo--outgoing { z-index: 0; }
+.editorial-image::after { content: ''; position: absolute; inset: 72% 0 0; background: linear-gradient(transparent, #301d1826); pointer-events: none; z-index: 2; }
+.editorial-image.is-changing .editorial-photo--current { animation: hidi-gallery-arrive 820ms var(--gallery-ease) var(--frame-delay) both; }
+.editorial-image.is-changing .editorial-photo--outgoing { animation: hidi-gallery-depart 690ms var(--gallery-ease) var(--frame-delay) both; }
+.editorial-image.is-changing[data-direction="previous"] .editorial-photo--current { animation-name: hidi-gallery-arrive-back; }
+.editorial-image-index { position: absolute; top: 16px; left: 17px; z-index: 3; background: #fffdf5e8; color: var(--burgundy-deep); font-size: 8px; letter-spacing: .2em; padding: 6px 9px; line-height: 1.6; pointer-events: none; }
+.editorial-image-action { position: absolute; right: 17px; bottom: 18px; z-index: 3; background: #fffdf5f2; color: var(--burgundy); display: inline-flex; align-items: center; gap: 15px; padding: 11px 16px; font-size: 11px; opacity: 0; transform: translateY(6px); transition: opacity .3s, transform .4s var(--ease); pointer-events: none; }
+.editorial-image-action .icon { width: 18px; height: 18px; }
+.editorial-card-button:hover .editorial-image:not(.is-changing) .editorial-photo--current { transform: scale(1.025); }
+.editorial-card-button:hover .editorial-image-action, .editorial-card-button:focus-visible .editorial-image-action { opacity: 1; transform: translateY(0); }
+.editorial-caption { padding-top: 23px; }
+.editorial-caption h3 { font-family: var(--sans); text-transform: uppercase; font-size: clamp(15px, 1.12vw, 21px); font-weight: 600; letter-spacing: .115em; line-height: 1.4; color: var(--burgundy); }
+.editorial-caption p { color: var(--muted); font-size: 12px; line-height: 1.7; margin-top: 8px; }
+.editorial-caption.is-changing { animation: hidi-gallery-caption 620ms var(--gallery-ease) calc(var(--frame-delay) + 100ms) both; }
+.editorial-arrow { position: absolute; z-index: 4; top: calc(var(--gallery-height) / 2 - 24px); width: 48px; height: 48px; border: 1px solid #d8c8b6; border-radius: 50%; background: #fffefaf2; color: var(--burgundy); display: grid; place-items: center; box-shadow: 0 5px 18px #38251913; transition: color .25s, background .25s, box-shadow .25s; }
+.editorial-arrow--prev { left: -24px; }
+.editorial-arrow--next { right: -24px; }
+.editorial-arrow:hover { background: var(--burgundy); color: var(--cream); box-shadow: 0 5px 18px #38251926; }
+.editorial-arrow .icon { width: 21px; height: 21px; }
+.editorial-controls { display: flex; align-items: center; justify-content: center; gap: 29px; min-height: 48px; margin-top: 28px; }
+.editorial-counter { display: inline-flex; align-items: center; gap: 10px; font-size: 10px; font-weight: 400; letter-spacing: .09em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.editorial-counter strong { font-weight: 600; color: var(--burgundy); }
+.editorial-counter > span { opacity: .5; }
+.editorial-selectors { display: flex; gap: 3px; }
+.editorial-selector { width: 29px; height: 44px; display: grid; place-items: center; }
+.editorial-selector span { width: 22px; height: 2px; background: #c7bbab; transition: background .3s, transform .3s; }
+.editorial-selector.is-active span { background: var(--burgundy); transform: scaleY(2); }
+.editorial-selector:hover span { background: var(--gold-deep); }
+.editorial-gallery .carousel-motion { position: static; min-height: 44px; min-width: 54px; font-size: 11px; gap: 6px; }
+.editorial-gallery .carousel-motion .icon { width: 14px; height: 14px; }
+@keyframes hidi-gallery-arrive {
+  from { opacity: 0; transform: translate3d(0,22px,0) scale(1.04); }
+  to { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+}
+@keyframes hidi-gallery-arrive-back {
+  from { opacity: 0; transform: translate3d(0,-18px,0) scale(1.04); }
+  to { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+}
+@keyframes hidi-gallery-depart {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.025); }
+}
+@keyframes hidi-gallery-caption {
+  from { opacity: .05; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 1000px) and (min-width: 701px) {
+  .editorial-gallery { width: calc(100% - 76px); --gallery-height: clamp(405px, 50vw, 500px); }
+  .editorial-frames { gap: 18px; }
+  .editorial-caption h3 { font-size: 13px; }
+  .editorial-caption p { font-size: 10px; }
+  .editorial-image-index { top: 12px; left: 12px; font-size: 7px; }
+}
+@media (max-width: 700px) {
+  .editorial-gallery { width: min(460px, calc(100% - 44px)); margin-top: 30px; --gallery-height: clamp(420px, 133vw, 600px); }
+  .editorial-frames { grid-template-columns: 1fr; }
+  .editorial-frame:not(.is-featured) { display: none; }
+  .editorial-image { border-radius: 1px; }
+  .editorial-image-index { top: 13px; left: 13px; }
+  .editorial-image-action { opacity: 1; transform: none; bottom: 15px; right: 13px; font-size: 10px; padding: 10px 13px; }
+  .editorial-caption { padding-top: 20px; }
+  .editorial-caption h3 { font-size: 16px; }
+  .editorial-caption p { font-size: 11px; }
+  .editorial-arrow { width: 42px; height: 42px; top: calc(var(--gallery-height) / 2 - 21px); }
+  .editorial-arrow--prev { left: -14px; }
+  .editorial-arrow--next { right: -14px; }
+  .editorial-controls { gap: 15px; margin-top: 16px; }
+  .editorial-counter { gap: 7px; font-size: 9px; }
+  .editorial-selector { width: 24px; }
+  .editorial-selector span { width: 18px; }
+  .editorial-selectors { gap: 1px; }
+  .editorial-gallery .carousel-motion { font-size: 10px; min-width: 48px; }
+}
+@media (max-width: 360px) {
+  .editorial-gallery { width: calc(100% - 36px); --gallery-height: 425px; }
+  .editorial-controls { gap: 11px; }
+}
+
+/* 4. A rectangular editorial photograph and a restrained metallic-gold title. */
+.edit-section .edit-arch { border-radius: 0; }
+.edit-copy h2 .metallic-gold { color: #996722; font-weight: 700; }
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .edit-copy h2 .metallic-gold {
+    display: inline-block;
+    background-image: linear-gradient(112deg, #81511b 0%, #a67528 18%, #cfaa57 29%, #f1d998 35%, #b3873d 41%, #906021 57%, #bb9142 75%, #f1d998 83%, #9b6823 100%);
+    background-size: 230% 100%; background-position: 100% 50%;
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .edit-copy.is-visible .metallic-gold { animation: hidi-gold-light 2.8s .35s ease-out both; }
+}
+@keyframes hidi-gold-light { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+
+/* 5. Styled field-level focus. Browser-owned autofill panels cannot be themed
+   with page CSS; the form requests autocomplete=off without blocking typing. */
+.newsletter .newsletter-field { min-height: 44px; border: 1px solid #e8c06f52; border-radius: 4px; background: #34171b18; transition: border-color .2s, background .2s, box-shadow .2s; }
+.newsletter .newsletter-field:focus-within { border-color: #e8c06fc7; background: #34171b25; box-shadow: 0 0 0 2px #e8c06f14; }
+.newsletter .newsletter-field input { padding: 11px 11px; font-size: 12px; line-height: 1.5; outline: none; box-shadow: none; border: 0; caret-color: #f4d79a; }
+.newsletter .newsletter-field input:focus, .newsletter .newsletter-field input:focus-visible { outline: none; box-shadow: none; }
+.newsletter .newsletter-field button { width: 38px; height: 40px; border-radius: 3px; margin-right: 2px; }
+.newsletter .newsletter-field button:hover { background: #e8c06f14; }
+.newsletter .newsletter-field button:focus-visible { outline: 1px solid var(--gold); outline-offset: -4px; }
+.newsletter .newsletter-field input:-webkit-autofill { -webkit-text-fill-color: #fff8ed; caret-color: #f4d79a; -webkit-box-shadow: 0 0 0 1000px #6b3434 inset; }
+.newsletter .newsletter-field.has-error { border-color: #ffe0d4; }
+.newsletter-error { color: #ffe8df; font-size: 10px; line-height: 1.6; margin-top: 8px; }
+@media (max-width: 700px) {
+  .newsletter .newsletter-field input { font-size: 16px; padding: 10px 8px; }
+  .newsletter .newsletter-field input::placeholder { font-size: 12px; }
+  .newsletter .newsletter-field button { width: 30px; }
+  .newsletter-error { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .editorial-photo--current, .editorial-card-button:hover .editorial-photo--current { transform: none !important; }
+  .editorial-image.is-changing .editorial-photo--outgoing { display: none; }
+  .editorial-image.is-changing .editorial-photo--current, .editorial-caption.is-changing, .edit-copy.is-visible .metallic-gold { animation: none !important; opacity: 1; }
+}
+@media (forced-colors: active) {
+  .edit-copy h2 .metallic-gold { background: none; -webkit-text-fill-color: currentColor; color: CanvasText; }
+  .newsletter .newsletter-field:focus-within { outline: 2px solid Highlight; }
+}

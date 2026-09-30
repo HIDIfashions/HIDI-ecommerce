@@ -1,4 +1,0 @@
-.iconLink, .iconButton { position: relative; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; color: var(--ink); padding: 0; cursor: pointer; flex: 0 0 44px; }
-.icon { width: 21px; height: 21px; stroke-width: 1.65; }
-.count { position: absolute; top: -2px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: var(--ink); color: white; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
-@media (max-width: 640px) { .icon { width: 20px; height: 20px; } }

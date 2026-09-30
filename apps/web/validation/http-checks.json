@@ -1,0 +1,85 @@
+[
+  {
+    "path": "",
+    "status": 200,
+    "type": "text/html; charset=utf-8",
+    "bytes": "1766",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "config.js",
+    "status": 200,
+    "type": "text/javascript; charset=utf-8",
+    "bytes": "838",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "site.webmanifest",
+    "status": 200,
+    "type": "application/manifest+json",
+    "bytes": "492",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "favicon.ico",
+    "status": 200,
+    "type": "image/x-icon",
+    "bytes": "87263",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "hidi-brand-full-20260929-r4-48.png",
+    "status": 200,
+    "type": "image/png",
+    "bytes": "2742",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "app.b69998277d52.js",
+    "status": 200,
+    "type": "text/javascript; charset=utf-8",
+    "bytes": "276554",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "styles.0a0b8bc5466d.css",
+    "status": 200,
+    "type": "text/css; charset=utf-8",
+    "bytes": "71125",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "assets/images/hero-desktop-luminous-first-frame-v1.webp",
+    "status": 200,
+    "type": "image/webp",
+    "bytes": "162924",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "assets/video/hidi-hero-desktop-luminous-v1.mp4",
+    "status": 200,
+    "type": "video/mp4",
+    "bytes": "17972896",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "assets/images/hero-mobile-luminous-first-frame-v1.webp",
+    "status": 200,
+    "type": "image/webp",
+    "bytes": "88302",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "path": "assets/video/hidi-hero-mobile-luminous-v1.mp4",
+    "status": 200,
+    "type": "video/mp4",
+    "bytes": "843803",
+    "cache": "no-store, max-age=0"
+  },
+  {
+    "check": "Video byte-range request",
+    "status": 206,
+    "bytes": 1024,
+    "passed": true
+  }
+]

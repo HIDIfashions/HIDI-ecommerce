@@ -1,0 +1,9 @@
+{
+  "environment": "Chromium mobile touch emulation at 390\u00d7844; in-memory local snapshot",
+  "passed": [
+    "menu opens/closes",
+    "search filters occasion",
+    "profile opens sign-in preview"
+  ],
+  "real_device_tested": false
+}

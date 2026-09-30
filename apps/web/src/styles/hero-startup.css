@@ -1,0 +1,7 @@
+/* Hero startup: the still and video share the exact first-frame crop.
+   Reveal only after the decoder has submitted a real frame. */
+.hero .hero-media { background: #493023; }
+.hero .hero-video { transition: opacity 160ms linear; }
+@media (prefers-reduced-motion: reduce) {
+  .hero .hero-video { transition: none; }
+}
