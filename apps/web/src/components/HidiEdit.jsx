@@ -1,40 +1,24 @@
 import React from 'react';
 import Icon from './Icon.jsx';
-import Reveal from './Reveal.jsx';
 import { asset } from '../config.js';
-import { useHidi } from '../context/HidiContext.jsx';
 
 export default function HidiEdit() {
-  const { openCollection } = useHidi();
   return (
-    <section className="edit-section" id="hidi-edit" aria-labelledby="edit-title">
-    <div className="container edit-panel">
-    <Reveal as="div" className="edit-copy">
-    <p className="pill-label">THE HIDI OCCASION EDIT</p>
-    <h2 id="edit-title">The HIDI<br />
-    <em className="metallic-gold">Golden Hour.</em>
-    </h2>
-    <p className="edit-description">For the celebrations, the togetherness and the photos you’ll keep. Discover Indian wear that feels as special as the moment.</p>
-    <div className="edit-words">
-    <span>Gather.</span>
-    <span>Celebrate.</span>
-    <span>Be you.</span>
-    </div>
-    <button className="button button--burgundy" onClick={() => openCollection('occasion')} type="button">Explore the occasion edit <Icon name="arrow" />
-    </button>
-    <p className="edit-signature">Some moments deserve a little HIDI.</p>
-    </Reveal>
-    <Reveal as="div" className="edit-art">
-    <div className="edit-arch">
-    <img src={asset("images/occasion-set.webp")} alt="Orange embroidered occasion outfit paired with a deep teal dupatta" width="355" height="593" loading="lazy" decoding="async" />
-    </div>
-    <div className="edit-seal">
-    <Icon name="sparkle" />
-    <span>YOUR MOMENT.<br />YOUR HIDI.</span>
-    </div>
-
-    </Reveal>
-    </div>
+    <section className="edit-section edit-section--campaign" id="hidi-edit" aria-labelledby="edit-title">
+      <div className="edit-campaign">
+        <h2 id="edit-title" className="sr-only">Shop HIDI collections</h2>
+        <img
+          src={asset('images/hidi-premium-ai-full-banner-lossless.png')}
+          alt="Four views of a HIDI ivory kurta with blue embroidery in a sunlit courtyard"
+          width="5460"
+          height="2048"
+          loading="lazy"
+          decoding="async"
+        />
+        <a className="button button--burgundy edit-campaign__button" href="/collections/all">
+          Shop now <Icon name="arrow" />
+        </a>
+      </div>
     </section>
   );
 }

@@ -165,7 +165,7 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
 .meet-copy > .text-link { margin-top: 7px; }
 .meet-section--cinematic { padding-block: 0; }
 .meet-section--cinematic .container { width: 100%; max-width: none; }
-.meet-cinematic { position: relative; aspect-ratio: 5460 / 2048; overflow: hidden; border-radius: 0; background: #d7b88c; isolation: isolate; box-shadow: none; }
+.meet-cinematic { position: relative; aspect-ratio: 2046 / 769; overflow: hidden; border-radius: 0; background: #d7b88c; isolation: isolate; box-shadow: none; }
 .meet-cinematic::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, #2d110d66 0%, #2d110d26 30%, #2d110d00 57%), linear-gradient(0deg, #2d110d63 0%, #2d110d00 34%); pointer-events: none; }
 .meet-cinematic > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; }
 .meet-cinematic__content { position: absolute; inset: 0; z-index: 2; display: flex; align-items: flex-end; justify-content: flex-start; padding: clamp(28px, 4vw, 58px); }
@@ -255,6 +255,14 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
 .edit-seal span { text-align: center; font-size: 7px; letter-spacing: .14em; line-height: 1.7; }
 .edit-image-note { position: absolute; bottom: 28px; right: -3px; background: #fdf7ebf7; padding: 14px 20px; color: var(--burgundy); font-size: 13px; line-height: 1.5; box-shadow: 0 7px 20px #32161012; }
 .edit-image-note em { font-family: var(--serif); font-size: 18px; color: var(--rose); }
+.edit-section--campaign { padding: 0; }
+.edit-campaign { position: relative; width: 100%; }
+.edit-campaign > img { display: block; width: 100%; height: auto; aspect-ratio: 5460 / 2048; }
+.edit-campaign__button { position: absolute; left: 32px; bottom: 32px; min-height: 44px; }
+@media (max-width: 700px) {
+  .edit-section.edit-section--campaign { padding: 0; }
+  .edit-campaign__button { left: 12px; bottom: 12px; min-height: 44px; padding-inline: 16px; font-size: 11px; gap: 12px; }
+}
 /* 06 / Brand promises */
 .promises-section { padding-block: 83px 61px; }
 .promises-section h2 { font-size: 44px; }

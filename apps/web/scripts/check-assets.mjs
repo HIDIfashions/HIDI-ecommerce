@@ -38,7 +38,7 @@ const carouselSource = await readFile(path.join(root, 'src/components/RangeCarou
 assert.ok(!carouselSource.includes('hidi-collection-counter'), 'Visible collection counter must remain removed.');
 assert.ok(!carouselSource.includes('hidi-collection-motion'), 'Visible collection play control must remain removed.');
 const portraitSource = await readFile(path.join(root, 'src/components/MeetHidi.jsx'), 'utf8');
-assert.ok(portraitSource.includes('meet-art--static'), 'Meet HIDI portrait must be static.');
+assert.ok(portraitSource.includes('meet-cinematic'), 'Meet HIDI cinematic banner must remain static.');
 for (const token of ['useEffect', 'useRef', 'meet-photo--motion', 'requestAnimationFrame']) {
   assert.ok(!portraitSource.includes(token), `Unexpected portrait motion hook: ${token}`);
 }
