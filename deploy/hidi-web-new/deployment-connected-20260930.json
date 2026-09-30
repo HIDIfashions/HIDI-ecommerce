@@ -1,0 +1,74 @@
+{
+  "deployed_at": "2026-09-30T03:55:15.225252+00:00",
+  "url": "https://thidigk.thehidi.com/",
+  "source_commit": "e553c97ccbed14871883b89728df7f1b6eb14d15",
+  "original_zip_commit": "c3f3a33ed3d860ee129de9a6144215fc554876e8",
+  "azure": {
+    "resource_group": "rg-hidi-prod",
+    "container_app": "hidi-web",
+    "revision": "hidi-web--connected0930e553c97",
+    "health": "Healthy",
+    "image": "acrhidiprod0927.azurecr.io/hidi-web@sha256:d7e71c965d89219ba8fe27c2308971f28a0ee717ddaf21879eb371c46ed55244",
+    "tag": "landing-connected-e553c97-20260930",
+    "config_digest": "sha256:79b2c515181929d750d1ae4b48fc5756809b8f3916a698acb6f5df74cfc4bb55",
+    "app_layer_digest": "sha256:cc736983df165c7aacb9ca74dbff5ab4555c99c37ac981fa7779b8dff1d528ef",
+    "storefront_base": "acrhidiprod0927.azurecr.io/hidi-web@sha256:1bc1614ac79ea6718f94a67d3a2f5525af3a3b228dcf46191c15b75069184a31",
+    "active_revision_mode": "Single",
+    "traffic_percent": 100
+  },
+  "build": {
+    "payload": "hidi-landing-connected-r2-runtime.tar.gz",
+    "payload_sha256": "ee4d40db4c0eab801a1365590efe736f7a44d1f04e34e43d3ff64512ed666ee5",
+    "vite_js": "assets/index-Dc3TjiwS.js",
+    "unchanged_css": "assets/index-B2FGtDW2.css",
+    "static_files": 39
+  },
+  "checks": {
+    "source_tests": "passed",
+    "frontend_route_contracts": 7,
+    "runtime_behavioral_tests": 9,
+    "live_static_checks": 49,
+    "live_wiring_checks": 66,
+    "live_cache_checks": 5,
+    "current_catalogue_products": 16,
+    "browser_flows": [
+      "Shop Now to current catalogue",
+      "Account to Firebase SMS login form",
+      "Bag to current empty cart",
+      "Search sage to one current product",
+      "Storefront home to landing",
+      "Old browser cache refreshed to new landing bundle"
+    ],
+    "live_check_total": 120
+  },
+  "routes": {
+    "account": "/account",
+    "bag": "/cart",
+    "search": "/search?q=<query>",
+    "shop_all": "/collections/all",
+    "new_arrivals": "/collections/new-arrivals",
+    "work_edit": "/collections/work-edit",
+    "everyday": "/collections/everyday",
+    "occasion": "/collections/occasion",
+    "shipping": "/shipping",
+    "returns": "/returns",
+    "contact": "/contact",
+    "payment_support": "/contact#payments",
+    "newsletter": "POST /api/store/marketing/newsletter"
+  },
+  "backend": {
+    "customer_otp_provider": "firebase",
+    "firebase_project": "hidi-dee0f",
+    "database": "hidi-sql-validation",
+    "migration_read_only": true,
+    "customer_testing": true,
+    "api_external_ingress": false
+  },
+  "limitations": [
+    "Live SMS OTP delivery and successful user login were not exercised.",
+    "Newsletter and checkout/payment writes remain restricted by the existing validation guard.",
+    "App-store URLs, social URLs, and approved privacy/terms destinations are not configured."
+  ],
+  "rollback_image": "acrhidiprod0927.azurecr.io/hidi-web@sha256:1fd9dc357230831eb1ba6b8658f4f78e0ee4309ab8bbd01f8a127a73706f41c5"
+}
+
