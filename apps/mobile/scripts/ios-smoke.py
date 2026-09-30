@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Release simulator startup with persistent diagnostics. No financial writes."""
+"""Ad-hoc-signed Release simulator startup with persistent diagnostics; no financial writes."""
 import json, os, pathlib, plistlib, shutil, subprocess, sys, time
 OUT = pathlib.Path(os.environ.get('EVIDENCE_DIR', 'evidence/ios-smoke')).resolve(); OUT.mkdir(parents=True, exist_ok=True)
 PKG = 'com.thehidi.app.internal'; udid = None; results = []
@@ -28,16 +28,25 @@ try:
     info = plistlib.loads((app / 'Info.plist').read_bytes())
     if info.get('CFBundleIdentifier') != PKG: raise AssertionError('Built simulator identity does not match internal app')
     if not (app / 'main.jsbundle').is_file(): raise AssertionError('Release JavaScript bundle is missing')
+    # CODE_SIGNING_ALLOWED=NO produces an unsigned bundle. Modern Simulator
+    # resource validation can refuse its launch storyboard (-67056), before
+    # app code starts. Seal the exact bundle with an AD-HOC signature only.
+    # No Apple identity, certificate, private key, profile or account is used.
+    run('codesign', '--force', '--deep', '--sign', '-', str(app), timeout=180)
+    verified = subprocess.run(['codesign', '--verify', '--deep', '--strict', '--verbose=2', str(app)], capture_output=True, text=True, timeout=120)
+    details = subprocess.run(['codesign', '--display', '--verbose=4', str(app)], capture_output=True, text=True, timeout=60)
+    (OUT / 'simulator-signature.txt').write_text(verified.stdout + verified.stderr + '\n' + details.stdout + details.stderr)
+    if verified.returncode != 0 or details.returncode != 0: raise AssertionError('Ad-hoc simulator bundle signature verification failed')
+    if 'Signature=adhoc' not in details.stderr + details.stdout: raise AssertionError('Unexpected signing identity; this artifact must use ad-hoc simulator signing only')
+    results.append({'name': 'ad-hoc-simulator-resource-signature', 'status': 'PASS'})
     devices = json.loads(sim('list', 'devices', 'available', '-j'))['devices']
     choices = [(runtime, d) for runtime, group in devices.items() for d in group if 'iPhone' in d['name'] and d.get('isAvailable')]
     if not choices: raise AssertionError('No iPhone simulator available on runner')
-    # Prefer an already booted device. Otherwise use the newest available runtime.
     runtime, device = sorted(choices, key=lambda x: (x[1].get('state') == 'Booted', x[0]), reverse=True)[0]
     udid = device['udid']; (OUT / 'device.json').write_text(json.dumps({'runtime': runtime, **device}, indent=2))
     run('open', '-a', 'Simulator', '--args', '-CurrentDeviceUDID', udid, check=False)
     sim('boot', udid, check=False)
     (OUT / 'boot-status.log').write_text(sim('bootstatus', udid, '-b', timeout=660))
-    # First-boot service migration can continue just after the device changes to Booted.
     time.sleep(12)
     sim('install', udid, str(app), timeout=180)
     (OUT / 'launch.log').write_text(launch())
@@ -67,5 +76,5 @@ finally:
             text = logpath.read_text()
             if 'No bundle URL present' in text or 'Unhandled JS Exception' in text:
                 results.append({'name': 'javascript-runtime', 'status': 'FAIL', 'reason': 'JavaScript startup failure in simulator log'})
-    (OUT / 'results.json').write_text(json.dumps({'commit': os.environ.get('TESTED_SHA'), 'platform': 'iOS simulator', 'results': results, 'notClaimed': ['VoiceOver traversal', 'physical device', 'all shopping interactions', '132-screen visual approval']}, indent=2))
+    (OUT / 'results.json').write_text(json.dumps({'commit': os.environ.get('TESTED_SHA'), 'platform': 'iOS simulator', 'signing': 'AD_HOC_SIMULATOR_ONLY', 'results': results, 'notClaimed': ['VoiceOver traversal', 'physical device or TestFlight signing', 'all shopping interactions', '132-screen visual approval']}, indent=2))
 if any(x['status'] == 'FAIL' for x in results): sys.exit(1)
