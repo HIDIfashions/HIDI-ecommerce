@@ -1,0 +1,24 @@
+{
+  "domain": "https://thidigk.thehidi.com/",
+  "resourceGroup": "rg-hidi-prod",
+  "containerApp": "hidi-web",
+  "revision": "hidi-web--landing0930c793633",
+  "health": "Healthy",
+  "runningState": "Running",
+  "image": "acrhidiprod0927.azurecr.io/hidi-web@sha256:1fd9dc357230831eb1ba6b8658f4f78e0ee4309ab8bbd01f8a127a73706f41c5",
+  "tag": "landing-c793633-20260930",
+  "sourceCommitLocal": "c79363394b800a12d2422fd83ff852e4d7cd2db5",
+  "originalZipFiles": 100,
+  "sourceZipMatch": true,
+  "liveSmoke": {
+    "passed": 49,
+    "failed": 0,
+    "files": 39
+  },
+  "heroVideoPlaying": true,
+  "previousImage": "acrhidiprod0927.azurecr.io/hidi-web:500b78d4898e707d38b58f1010167d340948538d",
+  "previousRevision": "hidi-web--0000021",
+  "integrationState": "Original ZIP design-preview flows preserved",
+  "sourceCommitGitHub": "c3f3a33ed3d860ee129de9a6144215fc554876e8",
+  "sourceTreeGitHub": "e0deb25282388f1c28756595d8af938001a01c11"
+}
