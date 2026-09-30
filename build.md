@@ -1,7 +1,7 @@
 # HIDI Mobile - Build Specification
 
 Branch: `hidi-mobile-build-from-scratch`
-Current phase: Phase 6 IN PROGRESS
+Current phase: Phase 6 COMPLETE / VERIFIED (CI)
 Scope: React Native frontend only
 
 ## Runtime
@@ -31,6 +31,7 @@ xcodebuild -workspace ios/HIDI.xcworkspace -scheme HIDI -configuration Debug -sd
 - Phase 3: run `36628638488`.
 - Phase 4: run `36634182910`.
 - Phase 5: run `36648013506`.
+- Phase 6: run `36668877144`, tested commit `eb87147d43599b5368c825163dab0286f7e5aa55`.
 
 ## Phase 5 implementation evidence
 Implemented frontend scope:
@@ -63,5 +64,21 @@ Implemented frontend scope:
 
 Phase 6 uses local/system contracts only where the current mobile gateway has no bootstrap, story, look, update, permission or upload endpoint exposed. The UI does not pretend live server confirmation.
 
+## Phase 6 verification evidence
+Checked on 30 Sep 2026 against the actual GitHub Actions result:
+- Workflow: `Mobile Phase 6`.
+- Run: `36668877144`, attempt 1.
+- Tested commit: `eb87147d43599b5368c825163dab0286f7e5aa55`.
+- Overall status: `completed`; conclusion: `success`.
+- Android job `109739379906` (`android-phase6`): dependency installation, `npm run typecheck`, `npm test -- --runInBand` and `assembleDebug` all passed.
+- iOS job `109739380114` (`ios-phase6`): dependency installation, `bundle install`, `pod install` and simulator `xcodebuild` all passed.
+- Both jobs completed; no failed or skipped steps were reported.
+- No source/test/workflow changes were required to obtain this result. The closure commit changes only `phase.md`, `agent.md` and `build.md`.
+
+Limits of this evidence:
+- A simulator build is compilation, not an executed end-to-end simulator journey.
+- This run does not certify all devices, visual states, accessibility scenarios or live provider integrations.
+- Existing unavailable/local-only capabilities remain unchanged. Release hardening remains in Phase 8.
+
 ## Gate
-Phase 6 CI must pass before Phase 7 begins.
+Phase 6 configured CI checks have passed. Phase 7 remains not started and requires owner approval.

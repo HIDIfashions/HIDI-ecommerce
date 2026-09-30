@@ -59,22 +59,36 @@ Backend gaps surfaced honestly:
 - Local-device adaptations are clearly labeled and do not claim server submission.
 
 ## Phase 6 - Resilience, system states and editorial
-Status: IN PROGRESS
+Status: COMPLETE / VERIFIED (CI)
 
 Owner approval: granted 30 Sep 2026.
 Screens: H103-H118, H121-H122, H125.
 Scope remains React Native frontend only; existing backend/APIM/provider contracts are unchanged.
 
-Implemented in this phase so far:
+Implemented scope recorded for this phase:
 - Loading skeleton, partial load failure and offline states.
 - Generic error, session expired, maintenance, required update and optional update states.
 - Permission explanation, permission declined, link unavailable, rate limit and attachment upload issue states.
 - Editorial story and shop-the-look flows with explicit item selection and no hidden cart additions.
 - Appearance settings and dark appearance preview with persisted local theme preference.
 
+Verification checked on 30 Sep 2026:
+- Workflow: `Mobile Phase 6`, run `36668877144`, attempt 1, overall conclusion `success`.
+- Tested commit: `eb87147d43599b5368c825163dab0286f7e5aa55`.
+- `android-phase6`, job `109739379906`: dependency installation, TypeScript typecheck, unit tests and Android debug build all passed.
+- `ios-phase6`, job `109739380114`: dependency installation, Ruby dependencies, CocoaPods installation and iOS simulator build all passed.
+- Both jobs completed successfully. No failed or skipped steps were reported in this run.
+- No application, test or workflow change was needed during verification; this closure updates documentation only.
+
+Verification scope:
+- This is the configured CI/build verification, not a claim that every device, visual, accessibility or live-provider scenario has been tested.
+- Existing bootstrap, editorial, update and upload capability limitations remain as recorded in `build.md`; passing CI does not create missing backend contracts.
+- Full release hardening remains in Phase 8.
+
 ## Phase 7 - Optional growth
 Status: FEATURE-FLAGGED / NOT STARTED
 Screens: H119, H120, H127
+Owner approval is required before starting Phase 7.
 
 ## Phase 8 - Hardening and release evidence
 Status: NOT STARTED
