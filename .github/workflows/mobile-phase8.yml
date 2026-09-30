@@ -32,15 +32,15 @@ jobs:
       - name: Export reviewable source and resolved dependencies
         run: |
           mkdir -p evidence
-          git archive --format=tar.gz -o evidence/mobile-source.tar.gz HEAD apps/mobile apps/api/src/auth apps/api/src/checkout apps/api/src/payments apps/api/src/carts apps/api/src/products apps/api/src/account phase.md agent.md build.md .github/workflows/mobile-phase0.yml
+          git -C "$GITHUB_WORKSPACE" archive --format=tar.gz -o "$PWD/evidence/mobile-source.tar.gz" HEAD apps/mobile apps/api/src/auth apps/api/src/checkout apps/api/src/payments apps/api/src/carts apps/api/src/products apps/api/src/account phase.md agent.md build.md .github/workflows/mobile-phase0.yml
           cp package-lock.json evidence/package-lock.json
-          npm sbom --sbom-format cyclonedx > evidence/sbom.cdx.json
-      - name: Collect dependency audit without discarding its exit status
+      - name: Collect dependency audit and SBOM with explicit statuses
         run: |
           set +e
           npm audit --json > evidence/npm-audit.json
-          status=$?
-          printf '%s\n' "$status" > evidence/npm-audit.exit-code
+          printf '%s\n' "$?" > evidence/npm-audit.exit-code
+          npm sbom --sbom-format cyclonedx > evidence/sbom.cdx.json
+          printf '%s\n' "$?" > evidence/sbom.exit-code
           exit 0
       - name: Typecheck
         run: npm run typecheck
