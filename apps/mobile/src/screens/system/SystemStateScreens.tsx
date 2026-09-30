@@ -1,310 +1,113 @@
-import React, { useMemo, useState } from "react";
-import { AccessibilityInfo, Linking, Pressable, StyleSheet, View } from "react-native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React, { useEffect, useState } from "react";
+import { Linking, Pressable, StyleSheet, View } from "react-native";
+import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { AppHeader } from "../../components/AppHeader";
 import { HidiButton } from "../../components/HidiButton";
 import { HidiScreen } from "../../components/HidiScreen";
 import { HidiText } from "../../components/HidiText";
 import { MessageCard } from "../../components/MessageCard";
+import { CatalogSkeleton } from "../../components/StateViews";
+import { ProductGrid } from "../../components/ProductGrid";
 import { useHidiTheme } from "../../theme/HidiTheme";
-import { hidiRadius, hidiSpacing } from "../../theme/tokens";
-import { formatINRPaise } from "../../models/product";
-import {
-  appearanceChoices,
-  attachmentUploadIssue,
-  canRequestPermission,
-  linkUnavailableReason,
-  offlinePolicy,
-  partialLoadRecovery,
-  permissionDeclinedCopy,
-  retryAfterMs,
-  shouldShowOptionalUpdate,
-  summarizeLookSelection,
-  updateGate,
-} from "../../models/system";
-import type { AppearancePreference, PermissionFeature } from "../../models/system";
+import { hidiColors } from "../../theme/tokens";
+import { useCatalog } from "../../data/CatalogContext";
+import { appearanceChoices, permissionDeclinedCopy, linkUnavailableReason } from "../../models/system";
+import type { AppearancePreference } from "../../models/system";
 import { systemStorage } from "../../storage/systemStorage";
 import type { RootStackParamList } from "../../navigation/types";
-
 type Props<Name extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, Name>;
-
-type BasicNavigation = { goBack: () => void; navigate: (name: string, params?: unknown) => void; replace: (name: string, params?: unknown) => void };
-
-function safeBack(navigation: Pick<BasicNavigation, "goBack" | "navigate">) {
-  try { navigation.goBack(); } catch { navigation.navigate("MainTabs", { screen: "Home" }); }
+type Navigation = Pick<NativeStackNavigationProp<RootStackParamList>, "goBack" | "navigate" | "canGoBack">;
+function back(navigation: Navigation) { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("MainTabs", { screen: "Home" }); }
+function Shell({ title, testID, navigation, children }: { title: string; testID: string; navigation: Navigation; children: React.ReactNode }) {
+  return <HidiScreen testID={testID} contentStyle={styles.body}><AppHeader title={title} onBack={() => back(navigation)} />{children}</HidiScreen>;
 }
-
-function Shell({ title, testID, navigation, children }: { title: string; testID: string; navigation: Pick<BasicNavigation, "goBack">; children: React.ReactNode }) {
-  return (
-    <HidiScreen testID={testID} contentStyle={styles.body}>
-      <AppHeader title={title} onBack={navigation.goBack} />
-      {children}
-    </HidiScreen>
-  );
-}
-
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  const { colors } = useHidiTheme();
-  return (
-    <View style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
-      <HidiText variant="secondary" style={styles.bold}>{title}</HidiText>
-      {children}
-    </View>
-  );
-}
-
 function QuietLink({ label, onPress }: { label: string; onPress: () => void }) {
   const { colors } = useHidiTheme();
   return <Pressable accessibilityRole="button" onPress={onPress} style={styles.link}><HidiText variant="secondary" style={{ color: colors.action }}>{label}</HidiText></Pressable>;
 }
-
+function CatalogRecovery({ navigation, label = "Retry catalogue" }: { navigation: Navigation; label?: string }) {
+  const catalog = useCatalog(); const [busy, setBusy] = useState(false);
+  async function retry() { setBusy(true); try { await catalog.refresh(); navigation.navigate("MainTabs", { screen: "Home" }); } finally { setBusy(false); } }
+  return <HidiButton label={label} loading={busy} onPress={() => void retry()} />;
+}
 export function LoadingSkeletonScreen({ navigation }: Props<"LoadingSkeleton">) {
-  const { colors } = useHidiTheme();
-  return (
-    <Shell testID="H103" title="Loading" navigation={navigation}>
-      <HidiText variant="title">Preparing your HIDI view.</HidiText>
-      <HidiText variant="secondary" style={{ color: colors.mutedText }}>Skeletons match the final layout and are hidden from accessibility traversal.</HidiText>
-      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.skeletonStack}>
-        {[0, 1, 2].map((item) => <View key={item} style={[styles.skeleton, { backgroundColor: colors.blush }]} />)}
-      </View>
-      <MessageCard>Slow connection? You can safely go back; HIDI will not trap this screen.</MessageCard>
-    </Shell>
-  );
+  return <Shell testID="H103" title="Loading" navigation={navigation}><HidiText variant="title">Loading HIDI.</HidiText><CatalogSkeleton /><QuietLink label="Back to shopping" onPress={() => navigation.navigate("MainTabs", { screen: "Home" })} /></Shell>;
 }
-
 export function PartialLoadFailureScreen({ navigation, route }: Props<"PartialLoadFailure">) {
-  const recovery = partialLoadRecovery(["Editorial edit", "New arrivals"], route.params?.section ?? "Recommended styles", "section-retry-demo");
-  return (
-    <Shell testID="H104" title="Section could not load" navigation={navigation}>
-      <HidiText variant="title">Most of the page is ready.</HidiText>
-      <MessageCard>{recovery.failedSection} could not refresh. Existing content stays visible and only this section will retry.</MessageCard>
-      <Panel title="Loaded content stays in place">
-        {recovery.loadedItems.map((item) => <HidiText key={item} variant="metadata">{item}</HidiText>)}
-      </Panel>
-      <HidiButton label="Retry this section" onPress={() => undefined} />
-    </Shell>
-  );
+  const { state } = useCatalog();
+  return <Shell testID="H104" title="Section could not load" navigation={navigation}>
+    <HidiText variant="title">Part of the page could not refresh.</HidiText>
+    <MessageCard>{route.params?.section ?? "This section"} did not load. Your bag and any existing payment attempt are unchanged.</MessageCard>
+    {state.kind === "content" ? <ProductGrid products={state.data.slice(0, 4)} onOpen={p => navigation.navigate("ProductDeferred", { slug: p.slug })} /> : null}
+    <CatalogRecovery navigation={navigation} />
+  </Shell>;
 }
-
 export function OfflineSavedContentScreen({ navigation }: Props<"OfflineSavedContent">) {
-  const policy = offlinePolicy({ hasSavedContent: true });
-  return (
-    <Shell testID="H105" title="Offline" navigation={navigation}>
-      <HidiText variant="title">You are offline. Saved content is available.</HidiText>
-      <MessageCard>{policy.cachedAvailabilityCopy}</MessageCard>
-      <Panel title="Offline label">
-        <HidiText variant="secondary">Checkout is disabled while offline. Wishlist changes can be queued with a sync status.</HidiText>
-      </Panel>
-      <HidiButton label="Retry connection" onPress={() => undefined} />
-    </Shell>
-  );
+  const { state } = useCatalog(); const available = state.kind === "content" && state.data.length > 0;
+  return <Shell testID="H105" title="Saved catalogue" navigation={navigation}>
+    <HidiText variant="title">{available ? "Browse the last loaded catalogue." : "No saved catalogue is available."}</HidiText>
+    <MessageCard>Saved prices and availability may have changed. Only a fresh online response can confirm a bag update, payment or return.</MessageCard>
+    {state.kind === "content" ? <ProductGrid products={state.data.slice(0, 4)} onOpen={p => navigation.navigate("ProductDeferred", { slug: p.slug })} /> : null}
+    <CatalogRecovery navigation={navigation} label="Retry connection" />
+  </Shell>;
 }
-
 export function OfflineEmptyScreen({ navigation }: Props<"OfflineEmpty">) {
-  return (
-    <Shell testID="H106" title="No connection" navigation={navigation}>
-      <HidiText variant="title">HIDI needs a connection to load this.</HidiText>
-      <MessageCard>Try again when you are online. We will not keep rapidly retrying or ask you to open Settings.</MessageCard>
-      <HidiButton label="Try again" onPress={() => undefined} />
-    </Shell>
-  );
+  return <Shell testID="H106" title="No connection" navigation={navigation}><HidiText variant="title">A connection is needed to load this.</HidiText><MessageCard>No order or payment is retried when you check the catalogue connection.</MessageCard><CatalogRecovery navigation={navigation} label="Try connection again" /></Shell>;
 }
-
 export function GenericErrorScreen({ navigation, route }: Props<"GenericError">) {
-  const requestId = route.params?.requestId ?? "req-local-demo";
-  return (
-    <Shell testID="H107" title="Something went wrong" navigation={navigation}>
-      <HidiText variant="title">Something did not load correctly.</HidiText>
-      <MessageCard>Try again. If you contact support, share reference {requestId}. Technical details and private data are not shown here.</MessageCard>
-      <HidiButton label="Try again" onPress={() => undefined} />
-    </Shell>
-  );
+  const requestId = route.params?.requestId && /^[a-zA-Z0-9_-]{1,100}$/.test(route.params.requestId) ? route.params.requestId : null;
+  return <Shell testID="H107" title="Something went wrong" navigation={navigation}><HidiText variant="title">This view could not load.</HidiText><MessageCard>{requestId ? "Support reference: " + requestId : "No support reference was returned for this issue."} An uncertain payment is not retried from this screen.</MessageCard><HidiButton label="Back to shopping" onPress={() => navigation.navigate("MainTabs", { screen: "Home" })} /><QuietLink label="Contact HIDI" onPress={() => navigation.navigate("ContactHidi")} /></Shell>;
 }
-
-export function SessionExpiredScreen({ navigation }: Props<"SessionExpired">) {
-  return (
-    <Shell testID="H108" title="Verify again" navigation={navigation}>
-      <HidiText variant="title">Your secure session expired.</HidiText>
-      <MessageCard>Public browsing is still available. HIDI will resume only the permitted action after sign-in and will not replay payments.</MessageCard>
-      <HidiButton label="Verify again" onPress={() => navigation.navigate("SignIn", { returnTo: "resume-protected-action" })} />
-    </Shell>
-  );
+export function SessionExpiredScreen({ navigation, route }: Props<"SessionExpired">) {
+  return <Shell testID="H108" title="Verify again" navigation={navigation}><HidiText variant="title">Sign in again to access your account.</HidiText><MessageCard>Public browsing remains available. Signing in never automatically submits a payment, return or cancellation.</MessageCard><HidiButton label="Verify again" onPress={() => navigation.navigate("SignIn", route.params?.returnTo ? { returnTo: route.params.returnTo } : undefined)} /><QuietLink label="Continue browsing" onPress={() => navigation.navigate("MainTabs", { screen: "Home" })} /></Shell>;
 }
-
 export function MaintenanceScreen({ navigation, route }: Props<"Maintenance">) {
-  return (
-    <Shell testID="H109" title="Maintenance" navigation={navigation}>
-      <HidiText variant="title">Some HIDI services are temporarily unavailable.</HidiText>
-      <MessageCard>{route.params?.estimate ? "Expected recovery: " + route.params.estimate : "We will show a recovery time only when it is approved."} Existing-order support remains available through the public contact route.</MessageCard>
-      <HidiButton label="Check again" onPress={() => navigation.navigate("MainTabs", { screen: "Home" })} />
-      <QuietLink label="Contact HIDI" onPress={() => navigation.navigate("ContactHidi")} />
-    </Shell>
-  );
+  return <Shell testID="H109" title="Service unavailable" navigation={navigation}><HidiText variant="title">Some services are temporarily unavailable.</HidiText><MessageCard>{route.params?.estimate ? "Service update: " + route.params.estimate : "No confirmed recovery time is available."} No payment is retried here.</MessageCard><CatalogRecovery navigation={navigation} label="Check catalogue again" /><QuietLink label="Contact HIDI" onPress={() => navigation.navigate("ContactHidi")} /></Shell>;
 }
-
-export function RequiredUpdateScreen({ navigation, route }: Props<"RequiredUpdate">) {
-  const gate = updateGate({ installedVersion: route.params?.installedVersion ?? "1.0.0", minimumVersion: route.params?.minimumVersion ?? "1.0.1", trustedConfig: true });
-  return (
-    <Shell testID="H110" title="Update required" navigation={navigation}>
-      <HidiText variant="title">Update HIDI to continue securely.</HidiText>
-      <MessageCard>Installed version {route.params?.installedVersion ?? "1.0.0"}. Minimum supported version {route.params?.minimumVersion ?? "1.0.1"}. Reason: {gate.reason}.</MessageCard>
-      <HidiButton label="Update HIDI" onPress={() => void Linking.openURL(route.params?.url ?? "https://thehidi.com/app")} />
-    </Shell>
-  );
+export function RequiredUpdateScreen({ navigation }: Props<"RequiredUpdate">) {
+  return <Shell testID="H110" title="App update" navigation={navigation}><HidiText variant="title">Verified update information is unavailable.</HidiText><MessageCard>This build has no approved remote minimum-version or store-link contract. HIDI does not invent an update requirement or send you to an unverified download.</MessageCard><HidiButton label="Back to shopping" onPress={() => navigation.navigate("MainTabs", { screen: "Home" })} /></Shell>;
 }
-
-export function UpdateAvailableScreen({ navigation, route }: Props<"UpdateAvailable">) {
-  const visible = shouldShowOptionalUpdate({ dismissedAt: null });
-  async function dismiss() { await systemStorage.dismissOptionalUpdate(); safeBack(navigation); }
-  return (
-    <Shell testID="H111" title="Update available" navigation={navigation}>
-      <HidiText variant="title">A HIDI update is available.</HidiText>
-      <MessageCard>{visible ? (route.params?.releaseNotes ?? "This update improves reliability and shopping states.") : "You dismissed this update recently."}</MessageCard>
-      <HidiButton label="Update now" onPress={() => void Linking.openURL(route.params?.url ?? "https://thehidi.com/app")} />
-      <QuietLink label="Not now" onPress={() => void dismiss()} />
-    </Shell>
-  );
+export function UpdateAvailableScreen({ navigation }: Props<"UpdateAvailable">) {
+  const [error, setError] = useState("");
+  async function dismiss() { try { await systemStorage.dismissOptionalUpdate(); back(navigation); } catch { setError("This choice could not be saved. You may still go back."); } }
+  return <Shell testID="H111" title="App updates" navigation={navigation}><HidiText variant="title">No verified update notice is available.</HidiText><MessageCard>Release notes and an update destination are shown only when an approved update source provides them.</MessageCard>{error ? <MessageCard tone="error">{error}</MessageCard> : null}<HidiButton label="Not now" onPress={() => void dismiss()} /></Shell>;
 }
-
 export function PermissionExplanationScreen({ navigation, route }: Props<"PermissionExplanation">) {
-  const feature = route.params?.feature ?? "notifications";
-  const allowed = canRequestPermission({ userTriggered: true, firstLaunch: false, feature });
-  return (
-    <Shell testID="H112" title="Permission explanation" navigation={navigation}>
-      <HidiText variant="title">Allow {feature === "photos" ? "photo access" : "notifications"} only when useful.</HidiText>
-      <MessageCard>HIDI asks after a relevant action and keeps a manual alternative. First launch never prompts automatically.</MessageCard>
-      <HidiButton label="Continue" disabled={!allowed} onPress={() => navigation.navigate("AndroidPermissionDialog", { returnTo: route.params?.returnTo })} />
-      <QuietLink label="Not now" onPress={() => safeBack(navigation)} />
-    </Shell>
-  );
+  const photos = route.params?.feature === "photos";
+  return <Shell testID="H112" title="Permission explanation" navigation={navigation}><HidiText variant="title">Choose access only when useful.</HidiText><MessageCard>{photos ? "Photo attachments need the approved photo-picker/upload flow. This build does not yet expose that provider integration." : "Notification delivery needs the approved push provider. Browsing and order lookup do not require notification permission."} HIDI does not request contacts or send an automatic first-launch prompt.</MessageCard><HidiButton label="Continue without it" onPress={() => back(navigation)} /><QuietLink label="Permission settings" onPress={() => navigation.navigate("AndroidPermissionDialog", route.params?.returnTo ? { returnTo: route.params.returnTo } : undefined)} /></Shell>;
 }
-
 export function PermissionDeclinedScreen({ navigation, route }: Props<"PermissionDeclined">) {
-  const feature = (route.params?.feature ?? "notifications") as PermissionFeature;
-  return (
-    <Shell testID="H113" title="Permission declined" navigation={navigation}>
-      <HidiText variant="title">You can continue without it.</HidiText>
-      <MessageCard>{permissionDeclinedCopy(feature)}</MessageCard>
-      <HidiButton label="Continue without it" onPress={() => safeBack(navigation)} />
-    </Shell>
-  );
+  const [error, setError] = useState("");
+  return <Shell testID="H113" title="Permission declined" navigation={navigation}><HidiText variant="title">You can continue without it.</HidiText><MessageCard>{permissionDeclinedCopy(route.params?.feature ?? "notifications")}</MessageCard><HidiButton label="Continue without it" onPress={() => back(navigation)} /><QuietLink label="Open app settings" onPress={() => void Linking.openSettings().catch(() => setError("Settings could not be opened. Use your device Settings app."))} />{error ? <MessageCard tone="error">{error}</MessageCard> : null}</Shell>;
 }
-
 export function LinkUnavailableScreen({ navigation, route }: Props<"LinkUnavailable">) {
-  return (
-    <Shell testID="H114" title="Link unavailable" navigation={navigation}>
-      <HidiText variant="title">This link cannot be opened.</HidiText>
-      <MessageCard>{route.params?.reason ?? linkUnavailableReason({ hostAllowed: true, pathKnown: false, authorized: true })}</MessageCard>
-      <HidiButton label="Explore HIDI" onPress={() => navigation.navigate("MainTabs", { screen: "Home" })} />
-    </Shell>
-  );
+  return <Shell testID="H114" title="Link unavailable" navigation={navigation}><HidiText variant="title">This link cannot be opened.</HidiText><MessageCard>{linkUnavailableReason(route.params?.reason ?? "unknown")}</MessageCard><HidiButton label="Browse HIDI" onPress={() => navigation.navigate("MainTabs", { screen: "Shop" })} /></Shell>;
 }
-
 export function TooManyRequestsScreen({ navigation, route }: Props<"TooManyRequests">) {
-  const retryMs = retryAfterMs(route.params?.retryAfterSeconds ?? 60) ?? 60000;
-  return (
-    <Shell testID="H115" title="Try again soon" navigation={navigation}>
-      <HidiText variant="title">Temporary limit reached.</HidiText>
-      <MessageCard>Try again after {Math.ceil(retryMs / 1000)} seconds. Browsing and support remain available.</MessageCard>
-      <HidiButton label="Try after cooldown" onPress={() => undefined} />
-    </Shell>
-  );
+  const delay = Math.min(1800, Math.max(0, route.params?.retryAfterSeconds ?? 0));
+  const [deadline] = useState(() => Date.now() + delay * 1000); const [now, setNow] = useState(Date.now());
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
+  const remaining = Math.max(0, Math.ceil((deadline - now) / 1000));
+  return <Shell testID="H115" title="Temporary request limit" navigation={navigation}><HidiText variant="title">Please pause before retrying.</HidiText><MessageCard>{remaining ? "Service cooldown: " + remaining + " seconds remaining." : "Return to the original action to check its current status."} No previous write is replayed here.</MessageCard><HidiButton label="Continue browsing" onPress={() => navigation.navigate("MainTabs", { screen: "Home" })} /><QuietLink label="Contact HIDI" onPress={() => navigation.navigate("ContactHidi")} /></Shell>;
 }
-
 export function AttachmentUploadIssueScreen({ navigation, route }: Props<"AttachmentUploadIssue">) {
-  const issue = attachmentUploadIssue({ fileName: route.params?.fileName ?? "photo.jpg", mimeType: "image/jpeg", sizeBytes: route.params?.reason === "too_large" ? 12 * 1024 * 1024 : 1024 });
-  return (
-    <Shell testID="H116" title="Upload issue" navigation={navigation}>
-      <HidiText variant="title">Attachment could not upload.</HidiText>
-      <MessageCard>{issue.fileName}: {issue.reason}</MessageCard>
-      <HidiButton label="Retry upload" disabled={!issue.retryable} onPress={() => safeBack(navigation)} />
-      <QuietLink label="Remove file" onPress={() => safeBack(navigation)} />
-    </Shell>
-  );
+  return <Shell testID="H116" title="Attachment issue" navigation={navigation}><HidiText variant="title">The attachment has not been submitted.</HidiText><MessageCard>{route.params?.fileName ? "Selected file: " + route.params.fileName + ". " : ""}The current build has no approved upload adapter. Returning to the draft does not claim that a file was uploaded or removed.</MessageCard><HidiButton label="Return to draft" onPress={() => back(navigation)} /></Shell>;
 }
-
-export function EditorialStoryScreen({ navigation, route }: Props<"EditorialStory">) {
-  return (
-    <Shell testID="H117" title="Editorial story" navigation={navigation}>
-      <HidiText variant="title">Soft tailoring for everyday movement.</HidiText>
-      <HidiText variant="secondary">Story {route.params?.slug ?? "everyday-edit"} is readable even if products are later removed. Product references re-open live stock and pricing.</HidiText>
-      <Panel title="Partnership label">
-        <HidiText variant="metadata">Promotional partnerships are labeled. No autoplay and no scroll hijacking.</HidiText>
-      </Panel>
-      <HidiButton label="Shop this story" onPress={() => navigation.navigate("ShopTheLook", { lookId: "everyday-edit" })} />
-    </Shell>
-  );
+export function EditorialStoryScreen({ navigation }: Props<"EditorialStory">) {
+  return <Shell testID="H117" title="HIDI stories" navigation={navigation}><HidiText variant="title">This story is not currently published in the app.</HidiText><MessageCard>No approved editorial-content contract is connected. Product descriptions and a synthetic story are not substituted for a published article.</MessageCard><HidiButton label="Explore current styles" onPress={() => navigation.navigate("Listing", { title: "Shop all" })} /></Shell>;
 }
-
 export function ShopTheLookScreen({ navigation }: Props<"ShopTheLook">) {
-  const [selected, setSelected] = useState<string[]>(["kurta"]);
-  const components = useMemo(() => [
-    { id: "kurta", productSlug: "sage-kurta", required: false, available: true, pricePaise: 169900 },
-    { id: "dupatta", productSlug: "tonal-dupatta", required: false, available: true, pricePaise: 79900 },
-    { id: "pants", productSlug: "straight-pants", required: false, available: false, pricePaise: 119900 },
-  ], []);
-  const summary = summarizeLookSelection(components, selected);
-  return (
-    <Shell testID="H118" title="Shop the look" navigation={navigation}>
-      <HidiText variant="title">Choose each piece separately.</HidiText>
-      <MessageCard>No hidden products or quantities are added. Unavailable pieces need your approval before continuing.</MessageCard>
-      {components.map((item) => {
-        const active = selected.includes(item.id);
-        return <QuietLink key={item.id} label={(active ? "Selected · " : "Choose · ") + item.id + " · " + formatINRPaise(item.pricePaise) + (item.available ? "" : " · unavailable")} onPress={() => setSelected((current) => active ? current.filter((id) => id !== item.id) : [...current, item.id])} />;
-      })}
-      <Panel title="Selected total">
-        <HidiText variant="secondary">{formatINRPaise(summary.totalPaise)}</HidiText>
-        {summary.requiresApproval ? <HidiText variant="metadata">Some selected pieces are unavailable. Continue only with available pieces.</HidiText> : null}
-      </Panel>
-      <HidiButton label="Choose pieces" onPress={() => navigation.navigate("VariantPicker", { slug: components.find((item) => summary.selectedIds.includes(item.id))?.productSlug ?? "sage-kurta" })} />
-    </Shell>
-  );
+  const { state } = useCatalog();
+  return <Shell testID="H118" title="Shop the look" navigation={navigation}><HidiText variant="title">No published look is available yet.</HidiText><MessageCard>HIDI has not returned an approved set of look components. These are current catalogue styles, not a fabricated bundle; opening one lets you select its exact size before adding it.</MessageCard>{state.kind === "content" ? <ProductGrid products={state.data.slice(0, 4)} onOpen={p => navigation.navigate("ProductDeferred", { slug: p.slug })} /> : null}<HidiButton label="Browse all styles" onPress={() => navigation.navigate("Listing", { title: "Shop all" })} /></Shell>;
 }
-
 export function AppearanceSettingsScreen({ navigation }: Props<"AppearanceSettings">) {
-  const { preference, setPreference, colors } = useHidiTheme();
-  const [saving, setSaving] = useState<AppearancePreference | null>(null);
-  async function choose(value: AppearancePreference) {
-    setSaving(value);
-    await setPreference(value);
-    setSaving(null);
-  }
-  return (
-    <Shell testID="H121" title="Appearance" navigation={navigation}>
-      <HidiText variant="title">Choose how HIDI looks.</HidiText>
-      <HidiText variant="secondary" style={{ color: colors.mutedText }}>Theme choice persists across launches and follows device text scaling.</HidiText>
-      {appearanceChoices.map((choice) => (
-        <QuietLink key={choice.value} label={(preference === choice.value ? "Selected · " : "Choose · ") + choice.label} onPress={() => void choose(choice.value)} />
-      ))}
-      <Panel title="Preview contrast">
-        <HidiText variant="secondary">Canvas, surface, text and berry actions use semantic tokens rather than color inversion.</HidiText>
-      </Panel>
-      <HidiButton label={saving ? "Saving..." : "Save appearance"} disabled={Boolean(saving)} onPress={() => navigation.navigate("MyHidi")} />
-    </Shell>
-  );
+  const { preference, setPreference } = useHidiTheme(); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  async function choose(value: AppearancePreference) { if (busy) return; setBusy(true); setError(""); try { await setPreference(value); } catch { setError("Appearance could not be saved on this device."); } finally { setBusy(false); } }
+  return <Shell testID="H121" title="Appearance" navigation={navigation}><HidiText variant="title">Choose how HIDI looks.</HidiText>{appearanceChoices.map(choice => <QuietLink key={choice.value} label={(preference === choice.value ? "Selected · " : "Choose · ") + choice.label} onPress={() => void choose(choice.value)} />)}{error ? <MessageCard tone="error">{error}</MessageCard> : null}<HidiButton label="Done" disabled={busy} onPress={() => back(navigation)} /></Shell>;
 }
-
 export function HomeDarkAppearanceScreen({ navigation }: Props<"HomeDarkAppearance">) {
-  const { colors, mode } = useHidiTheme();
-  return (
-    <Shell testID="H122" title="Home / dark appearance" navigation={navigation}>
-      <HidiText variant="title">Dark appearance uses its own HIDI palette.</HidiText>
-      <MessageCard>Current mode: {mode}. Product media stays natural; promotional art does not carry essential text.</MessageCard>
-      <View style={[styles.darkHero, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
-        <HidiText variant="display">Everyday edit</HidiText>
-        <HidiText variant="secondary" style={{ color: colors.mutedText }}>Readable surfaces, distinct berry actions and preserved active tab state.</HidiText>
-      </View>
-      <HidiButton label="Shop the everyday edit" onPress={() => navigation.navigate("Collection", { slug: "everyday-edit", title: "Everyday edit" })} />
-    </Shell>
-  );
+  const { setPreference } = useHidiTheme(); const [error, setError] = useState(""); const dark = hidiColors.dark;
+  async function useDark() { try { await setPreference("dark"); navigation.navigate("MainTabs", { screen: "Home" }); } catch { setError("Dark appearance could not be saved."); } }
+  return <Shell testID="H122" title="Dark appearance preview" navigation={navigation}><View style={[styles.preview, { backgroundColor: dark.canvas, borderColor: dark.border }]}><HidiText variant="title" style={{ color: dark.ink }}>HIDI after dark.</HidiText><HidiText variant="body" style={{ color: dark.ink }}>A preview of the dark canvas and readable text. Product photographs keep their original colours.</HidiText></View>{error ? <MessageCard tone="error">{error}</MessageCard> : null}<HidiButton label="Use dark appearance" onPress={() => void useDark()} /><QuietLink label="Keep current appearance" onPress={() => back(navigation)} /></Shell>;
 }
-
-const styles = StyleSheet.create({
-  body: { gap: hidiSpacing.x4 },
-  bold: { fontWeight: "600" },
-  panel: { borderWidth: StyleSheet.hairlineWidth, borderRadius: hidiRadius.card, padding: hidiSpacing.x4, gap: hidiSpacing.x2 },
-  link: { minHeight: 44, justifyContent: "center" },
-  skeletonStack: { gap: hidiSpacing.x3, marginVertical: hidiSpacing.x2 },
-  skeleton: { height: 84, borderRadius: hidiRadius.card },
-  darkHero: { borderWidth: StyleSheet.hairlineWidth, borderRadius: hidiRadius.sheet, padding: hidiSpacing.x5, gap: hidiSpacing.x3 },
-});
+const styles = StyleSheet.create({ body: { gap: 16, paddingHorizontal: 20, paddingBottom: 36 }, link: { minHeight: 48, justifyContent: "center", paddingVertical: 10 }, preview: { borderWidth: 1, borderRadius: 12, padding: 20, gap: 12 } });

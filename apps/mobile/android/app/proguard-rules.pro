@@ -1,10 +1,6 @@
-# Add project specific ProGuard rules here.
-# By default, the flags in this file are appended to flags specified
-# in /usr/local/Cellar/android-sdk/24.3.3/tools/proguard/proguard-android.txt
-# You can edit the include path and order by changing the proguardFiles
-# directive in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
-
-# Add any project specific keep options here:
+# React Native and linked libraries provide their own consumer rules.
+# Restoration uses a fragment namespace check. Keep fragment names and constructors
+# under R8 optimization; do not disable shrinking or all native obfuscation.
+-keep class com.swmansion.rnscreens.** extends androidx.fragment.app.Fragment {
+    <init>();
+}
