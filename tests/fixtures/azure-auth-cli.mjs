@@ -26,8 +26,11 @@ if (command === 'containerapp show') {
   output(log.includes('"command":"containerapp job start"') ? [{ name: 'auth-execution', properties: { status: mode === 'migration-failed' ? 'Failed' : 'Succeeded' } }] : []);
 } else if (command === 'identity show') {
   output({ id: '/migration-identity', clientId: 'migration-client', principalId: 'migration-principal', name: 'id-hidi-migration' });
-} else if (command === 'sql server ad-admin show') {
-  output({ login: 'Original administrator', sid: 'original-principal' });
+} else if (command === 'sql server ad-admin list') {
+  output(mode === 'missing-admin' ? [] : mode === 'ambiguous-admin' ? [
+    { login: 'Original administrator', sid: 'original-principal' },
+    { login: 'Another administrator', sid: 'another-principal' },
+  ] : [{ login: 'Original administrator', sid: 'original-principal' }]);
 } else if (command === 'containerapp job start') {
   const template = JSON.parse(readFileSync(flag('--yaml'), 'utf8'));
   if (template.containers[0].command[0] !== 'node' || !template.containers[0].args[2].includes('customer_whatsapp_auth')) process.exit(2);

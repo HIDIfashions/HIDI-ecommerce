@@ -48,7 +48,9 @@ try {
     assert(!running.some(e => e.properties.status === 'Running'), 'Existing migration execution is running');
     const identity = az(['identity', 'show', '-g', group, '-n', 'id-hidi-migration']);
     assert(job.identity.userAssignedIdentities[identity.id], 'Existing job must use the migration identity');
-    originalAdmin = az(['sql', 'server', 'ad-admin', 'show', '-g', group, '-s', server]);
+    const administrators = az(['sql', 'server', 'ad-admin', 'list', '-g', group, '-s', server]);
+    assert(Array.isArray(administrators) && administrators.length === 1, 'Exactly one existing SQL administrator must be restorable');
+    originalAdmin = administrators[0];
     assert(originalAdmin.login && originalAdmin.sid, 'Existing SQL administrator must be restorable');
 
     const source = await readFile('deploy/customer-auth-db.mjs', 'utf8');

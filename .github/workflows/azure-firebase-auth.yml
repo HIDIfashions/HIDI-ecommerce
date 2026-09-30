@@ -42,7 +42,7 @@ jobs:
               az containerapp job stop -g rg-hidi-prod -n job-hidi-validation \
                 --job-execution-name "$execution" --only-show-errors -o none || true
             fi
-            current=$(az sql server ad-admin show -g rg-hidi-prod -s sql-hidi-prod-0927 --query sid -o tsv)
+            current=$(az sql server ad-admin list -g rg-hidi-prod -s sql-hidi-prod-0927 --query '[0].sid' -o tsv)
             original=$(jq -r .sid "$state")
             migration=$(jq -r .migrationSid "$state")
             if [[ "$current" == "$migration" ]]; then

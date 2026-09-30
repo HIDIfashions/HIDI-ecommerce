@@ -5,7 +5,7 @@ const { tmpdir } = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-for (const mode of ['preserve', 'new-secret', 'production', 'migration-failed', 'env-only']) {
+for (const mode of ['preserve', 'new-secret', 'production', 'migration-failed', 'env-only', 'missing-admin', 'ambiguous-admin']) {
   test(`Azure Firebase setup ${mode}`, () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'hidi-auth-test-'));
     try {
@@ -23,6 +23,13 @@ for (const mode of ['preserve', 'new-secret', 'production', 'migration-failed', 
       if (mode === 'production') {
         assert.notEqual(result.status, 0);
         assert.deepEqual(commands, ['containerapp show']);
+      } else if (mode === 'missing-admin' || mode === 'ambiguous-admin') {
+        assert.notEqual(result.status, 0);
+        assert(commands.includes('sql server ad-admin list'));
+        assert(!commands.includes('sql server ad-admin update'));
+        assert(!commands.includes('containerapp job start'));
+        assert(!commands.includes('containerapp secret set'));
+        assert(!commands.includes('containerapp update'));
       } else if (mode === 'migration-failed') {
         assert.notEqual(result.status, 0);
         assert.equal(commands.filter(c => c === 'sql server ad-admin update').length, 2, 'Restoration must run even if stopping the job fails');
