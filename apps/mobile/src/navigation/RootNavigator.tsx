@@ -66,6 +66,12 @@ import {
   PoliciesLegalScreen, PrivacyChoicesScreen, SavedPaymentMethodsScreen, ShoppingPreferencesScreen, SignOutScreen,
   SupportConversationScreen, SupportReceivedScreen, VerifyEmailAddressScreen,
 } from "../screens/account/AccountScreens";
+import {
+  AppearanceSettingsScreen, AttachmentUploadIssueScreen, EditorialStoryScreen, GenericErrorScreen, HomeDarkAppearanceScreen,
+  LinkUnavailableScreen, LoadingSkeletonScreen, MaintenanceScreen, OfflineEmptyScreen, OfflineSavedContentScreen,
+  PartialLoadFailureScreen, PermissionDeclinedScreen, PermissionExplanationScreen, RequiredUpdateScreen, SessionExpiredScreen,
+  ShopTheLookScreen, TooManyRequestsScreen, UpdateAvailableScreen,
+} from "../screens/system/SystemStateScreens";
 import { parseHidiDeepLink } from "./deepLinks";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -196,6 +202,24 @@ export default function RootNavigator() {
         <Stack.Screen name="AndroidPermissionDialog" component={AndroidPermissionDialogScreen} />
         <Stack.Screen name="FindGuestOrder" component={FindGuestOrderScreen} />
         <Stack.Screen name="SupportReceived" component={SupportReceivedScreen} />
+        <Stack.Screen name="LoadingSkeleton" component={LoadingSkeletonScreen} />
+        <Stack.Screen name="PartialLoadFailure" component={PartialLoadFailureScreen} />
+        <Stack.Screen name="OfflineSavedContent" component={OfflineSavedContentScreen} />
+        <Stack.Screen name="OfflineEmpty" component={OfflineEmptyScreen} />
+        <Stack.Screen name="GenericError" component={GenericErrorScreen} />
+        <Stack.Screen name="SessionExpired" component={SessionExpiredScreen} />
+        <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
+        <Stack.Screen name="RequiredUpdate" component={RequiredUpdateScreen} />
+        <Stack.Screen name="UpdateAvailable" component={UpdateAvailableScreen} />
+        <Stack.Screen name="PermissionExplanation" component={PermissionExplanationScreen} />
+        <Stack.Screen name="PermissionDeclined" component={PermissionDeclinedScreen} />
+        <Stack.Screen name="LinkUnavailable" component={LinkUnavailableScreen} />
+        <Stack.Screen name="TooManyRequests" component={TooManyRequestsScreen} />
+        <Stack.Screen name="AttachmentUploadIssue" component={AttachmentUploadIssueScreen} />
+        <Stack.Screen name="EditorialStory" component={EditorialStoryScreen} />
+        <Stack.Screen name="ShopTheLook" component={ShopTheLookScreen} />
+        <Stack.Screen name="AppearanceSettings" component={AppearanceSettingsScreen} />
+        <Stack.Screen name="HomeDarkAppearance" component={HomeDarkAppearanceScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
