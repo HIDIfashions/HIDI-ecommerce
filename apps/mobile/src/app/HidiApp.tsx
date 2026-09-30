@@ -7,32 +7,13 @@ import { HidiThemeProvider, useHidiTheme } from "../theme/HidiTheme";
 import { AuthProvider } from "../auth/AuthContext";
 import { CatalogProvider } from "../data/CatalogContext";
 import { CartProvider } from "../data/CartContext";
+import { GrowthProvider } from "../growth/runtime";
 
 enableScreens(true);
-
 function AppChrome() {
   const { mode } = useHidiTheme();
-
-  return (
-    <>
-      <StatusBar barStyle={mode === "dark" ? "light-content" : "dark-content"} />
-      <RootNavigator />
-    </>
-  );
+  return <><StatusBar barStyle={mode === "dark" ? "light-content" : "dark-content"} /><RootNavigator /></>;
 }
-
 export default function HidiApp() {
-  return (
-    <SafeAreaProvider>
-      <HidiThemeProvider>
-        <AuthProvider>
-          <CatalogProvider>
-            <CartProvider>
-              <AppChrome />
-            </CartProvider>
-          </CatalogProvider>
-        </AuthProvider>
-      </HidiThemeProvider>
-    </SafeAreaProvider>
-  );
+  return <SafeAreaProvider><HidiThemeProvider><AuthProvider><CatalogProvider><CartProvider><GrowthProvider><AppChrome /></GrowthProvider></CartProvider></CatalogProvider></AuthProvider></HidiThemeProvider></SafeAreaProvider>;
 }

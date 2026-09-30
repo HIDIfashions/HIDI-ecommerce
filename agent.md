@@ -26,14 +26,17 @@ Build the UI and client-side flows in the HIDI Mobile App Development Blueprint 
 - No first-launch permission prompt.
 
 ## Current checkpoint
-- Phase 0 is complete and verified.
-- Phase 1 H001-H022 is complete and verified.
-- Phase 2 H023-H044 is complete and verified.
-- Phase 3 H045-H060 is complete and verified in run `36628638488`.
-- Phase 4 H061-H082/H128-H131 is complete and verified in run `36634182910`.
-- Phase 5 H083-H102/H123-H126/H132 is complete and verified in run `36648013506`.
-- Phase 6 H103-H118/H121-H122/H125 is complete and CI-verified in run `36668877144` for commit `eb87147d43599b5368c825163dab0286f7e5aa55`.
-- Android typecheck, unit tests and debug build passed; iOS dependencies, CocoaPods and simulator build passed. Both jobs completed successfully with no failed or skipped steps.
-- Phase 6 must keep resilience states honest: cached content is informational, checkout mutations are disabled offline, generic errors must not suggest payment retry, update gates use trusted config, and permission prompts are never shown on first launch.
-- CI verification is not full device, visual, accessibility or live-provider certification. Missing backend capabilities remain explicit; do not describe them as enabled merely because a build passes.
-- Phase 7 remains not started. Do not start it without owner approval.
+- Phases 0, 1 and 2 are complete and verified as recorded in phase.md.
+- Phase 3 verified in run `36628638488`; Phase 4 in `36634182910`; Phase 5 in `36648013506`.
+- Phase 6 verified in run `36668877144` at commit `eb87147d43599b5368c825163dab0286f7e5aa55`.
+- Phase 7 H119/H120/H127 is implemented; CI validation is pending. Do not claim a test/native build passed before reading its result.
+- Optional Phase 7 production gates remain OFF. The existing rewards preview is not a points ledger; do not repurpose it or wallet money. Do not bind proposed blueprint URLs as if they already existed.
+- Frontend adapter/presentation contracts in src/growth are not approved REST schemas. Test fixtures are synthetic and must never be imported into application code.
+- No contacts access, automatic invitation, local reward credit, silent packaging addition, client quote mutation or fake gift save confirmation.
+- Fee changes require explicit reapproval. Unknown writes may only reconcile the existing operation. Gift note and reward-account data must not leak into logs or other users' screens.
+- See apps/mobile/docs/phase7.md for activation prerequisites and source traceability.
+- Keep Phase 6 resilience rules: cache is informational, payment retries are not generic recovery, update gates need trusted config and first launch has no permission prompt.
+- Phase 8 is NOT STARTED; require explicit owner approval after Phase 7 reporting.
+
+## Verification language
+Build/type/unit/component/Metro success is CI evidence, not proof of live-provider readiness or complete physical-device visual/accessibility coverage. Preserve capability limitations and release-hardening work instead of silently marking them solved.

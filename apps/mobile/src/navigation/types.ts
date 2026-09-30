@@ -2,8 +2,10 @@ import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { Filters, SortKey } from "../data/catalog";
 import type { AddressFieldErrors, CheckoutAddress } from "../models/checkout";
 import type { AfterSalesDraft, AfterSalesType } from "../models/order";
+import type { GrowthFeature } from "../growth/contracts";
 
 export type RootStackParamList = {
+  Growth: { feature: GrowthFeature };
   Launch: undefined;
   Welcome: undefined;
   StylePreferences: undefined;
@@ -122,11 +124,4 @@ export type RootStackParamList = {
   AppearanceSettings: undefined;
   HomeDarkAppearance: undefined;
 };
-
-export type RootTabParamList = {
-  Home: undefined;
-  Shop: undefined;
-  Saved: undefined;
-  Bag: undefined;
-  You: undefined;
-};
+export type RootTabParamList = { Home: undefined; Shop: undefined; Saved: undefined; Bag: undefined; You: undefined };

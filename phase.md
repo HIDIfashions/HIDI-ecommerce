@@ -86,9 +86,26 @@ Verification scope:
 - Full release hardening remains in Phase 8.
 
 ## Phase 7 - Optional growth
-Status: FEATURE-FLAGGED / NOT STARTED
-Screens: H119, H120, H127
-Owner approval is required before starting Phase 7.
+Status: IMPLEMENTED / CI VALIDATION IN PROGRESS / LIVE FEATURES OFF
+
+Owner approval to implement: 30 Sep 2026. Screens: H119, H120, H127 (P1).
+Source review: blueprint page 70 and page 74, including rendered screen images.
+
+Delivered frontend:
+- H119 Circle: point buckets, approved eligibility/expiry/reversal terms, expandable activity and duplicate-event protection. Never converts wallet/preview amounts into points or cash.
+- H120 Invite a friend: campaign terms, eligible invitation, expiry gate, native share action, dismissal handling, double-tap prevention and account-scoped revalidation before sharing.
+- H127 Gift note & packaging: exact note, Unicode length check, packaging default off, approved integer-paise fee, unsupported-item state, fee-change review, canonical quote/fulfillment acknowledgement and uncertain-write reconciliation.
+- Feature-off removes all optional entry points; direct navigation is guarded. No service call occurs while the gates are closed.
+- Main account and bag entries, typed navigation, provider, component and action tests are added without backend changes.
+
+Integration boundary:
+- Production flags/capabilities remain false. Code approval is not approval of a points policy, referral reward, packaging price or new backend contract.
+- Existing /rewards/summary is illustrative PREVIEW, not a credited ledger. No reviewed referral or cart gift-options adapter is available.
+- Presentation contracts and synthetic tests are explicitly distinguished from real API schemas/merchant terms. Details: `apps/mobile/docs/phase7.md`.
+- Live activation requires the verified server contracts and commercial/fulfillment approval listed there. No fake user rewards, successful messages or gift-fee charges are generated.
+
+Validation pending: full existing test suite plus Phase 7 model/action/component tests, Metro Android/iOS bundles, Android debug build and iOS simulator build. Do not mark CI verified until both workflow jobs actually complete successfully.
 
 ## Phase 8 - Hardening and release evidence
 Status: NOT STARTED
+Owner approval required. Do not start automatically after Phase 7 CI.
