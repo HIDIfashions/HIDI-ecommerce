@@ -77,19 +77,31 @@
 .campaign-panel .dialog-content { padding: 0; }
 .campaign-panel .dialog-brand img { width: 100px; }
 .campaign-panel .dialog-content h2 { font-size: clamp(32px, 3vw, 43px); margin-top: 10px; }
+.campaign-panel .dialog-content .campaign-menu-title {
+  font-family: var(--sans); font-size: clamp(24px, 2vw, 28px); font-weight: 400;
+  line-height: 1.3; letter-spacing: -.02em; margin: 0;
+}
 .campaign-panel .dialog-close { right: 22px; top: 19px; color: var(--burgundy); }
 .campaign-panel .dialog-close:hover { background: #6021240b; }
 .campaign-panel::backdrop { background: #170c0a77; backdrop-filter: blur(3px); }
 .campaign-panel-nav { margin-top: 32px; }
 .campaign-panel-nav > a {
   display: flex; justify-content: space-between; align-items: center; gap: 18px;
-  font-family: var(--serif); font-size: 25px; line-height: 1.3; color: var(--burgundy);
+  font-family: var(--sans); font-size: 18px; font-weight: 500; line-height: 1.4;
+  letter-spacing: .01em; color: var(--burgundy);
   padding: 19px 0; border-bottom: 1px solid var(--line);
 }
 .campaign-panel-nav > a .icon { width: 20px; height: 20px; }
 .campaign-panel-links { display: grid; gap: 3px; padding-top: 26px; }
-.campaign-panel-links > button { display: flex; align-items: center; gap: 13px; min-height: 45px; text-align: left; font-size: 13px; }
+.campaign-panel-links > button { display: flex; align-items: center; gap: 13px; min-height: 45px; text-align: left; font-size: 15px; line-height: 1.5; }
 .campaign-panel-links .icon { width: 19px; height: 19px; color: var(--burgundy); }
+.campaign-panel-story { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.campaign-panel-story > a {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  min-height: 44px; font-family: var(--sans); font-size: 15px; line-height: 1.5;
+  color: var(--burgundy);
+}
+.campaign-panel-story .icon { width: 18px; height: 18px; }
 .campaign-panel .campaign-search-label { display: block; font-size: 12px; color: var(--burgundy); font-weight: 600; margin-top: 27px; }
 .campaign-search-field { display: flex; align-items: center; gap: 12px; min-height: 52px; border-bottom: 1px solid #a18369; }
 .campaign-search-field .icon { width: 20px; height: 20px; }
