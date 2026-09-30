@@ -61,6 +61,7 @@ export default function HidiDialog({ dialog, onClose }) {
     const opener = document.activeElement;
     if (!node.open) node.showModal();
     document.body.classList.add('dialog-open');
+    node.querySelector('#header-search')?.focus({ preventScroll: true });
     return () => {
       if (node.open) node.close();
       document.body.classList.remove('dialog-open');

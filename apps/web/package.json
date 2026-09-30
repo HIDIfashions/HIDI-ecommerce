@@ -12,7 +12,7 @@
     "offline-preview": "node scripts/preview.mjs",
     "check": "node scripts/check-assets.mjs",
     "clean:cache": "node scripts/clean-cache.mjs",
-    "test": "node scripts/test-motion.mjs && node scripts/test-port-fallback.mjs && node scripts/check-assets.mjs && node scripts/test-header.mjs && node scripts/test-routes.mjs"
+    "test": "node scripts/test-motion.mjs && node scripts/test-port-fallback.mjs && node scripts/check-assets.mjs && node scripts/test-header.mjs && node scripts/test-routes.mjs && node scripts/test-product-search.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

@@ -107,6 +107,21 @@
 .campaign-search-field input { min-width: 0; width: 100%; border: 0; background: transparent; padding: 13px 0; font-size: 14px; color: var(--ink); }
 .campaign-search-field input:focus { outline: none; }
 .campaign-search-field:focus-within { outline: 2px solid var(--gold-deep); outline-offset: 5px; }
+.campaign-search-submit {
+  flex-shrink: 0; min-height: 44px; padding-inline: 16px; background: var(--burgundy);
+  color: var(--paper); font-size: 12px; font-weight: 500; border-radius: 2px;
+}
+.campaign-search-submit:hover { background: var(--burgundy-deep); }
+.campaign-panel .campaign-search-feedback { margin: 22px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
+.campaign-search-feedback > button { color: var(--burgundy); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; }
+.campaign-product-results { list-style: none; margin: 12px 0 0; padding: 0; }
+.campaign-product-results a {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+  column-gap: 16px; min-height: 64px; padding: 14px 0; border-bottom: 1px solid var(--line);
+  color: var(--burgundy); font-size: 15px; line-height: 1.5;
+}
+.campaign-product-results small { grid-column: 1; color: var(--muted); font-size: 12px; }
+.campaign-product-results .icon { grid-column: 2; grid-row: 1 / span 2; width: 18px; height: 18px; }
 
 @media (max-width: 1000px) and (min-width: 701px) {
   .campaign-header-inner { padding-inline: 24px; gap: 15px; }
@@ -128,6 +143,7 @@
   .hero--campaign .campaign-hero-action { bottom: max(65px, 10svh); }
   .campaign-shop-button { min-width: 153px; min-height: 52px; padding: 16px 27px; }
   .hidi-dialog.campaign-panel { padding: 75px 26px 35px; }
+  .campaign-search-field input { font-size: 16px; }
 }
 @media (max-height: 510px) and (min-width: 701px) {
   .hero.hero--campaign { min-height: 360px; }
