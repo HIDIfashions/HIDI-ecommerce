@@ -32,5 +32,6 @@ Build the UI and client-side flows in the HIDI Mobile App Development Blueprint 
 - Phase 3 H045-H060 is complete and verified in run `36628638488`.
 - Phase 4 H061-H082/H128-H131 is complete and verified in run `36634182910`.
 - Phase 5 H083-H102/H123-H126/H132 is complete and verified in run `36648013506`.
-- Phase 5 unsupported account/support/privacy APIs remain explicit. The app does not claim support tickets, privacy exports, deletion, phone changes, email verification, notification sync or guest order access are submitted to the server unless an existing endpoint actually confirms it.
-- Do not start Phase 6 until owner approval after Phase 5 verification.
+- Phase 6 H103-H118/H121-H122/H125 is owner-approved and in progress.
+- Phase 6 must keep resilience states honest: cached content is informational, checkout mutations are disabled offline, generic errors must not suggest payment retry, update gates use trusted config, and permission prompts are never shown on first launch.
+- Do not start Phase 7 until owner approval after Phase 6 verification.
