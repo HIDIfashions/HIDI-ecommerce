@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { createReadStream, existsSync, realpathSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { createReadStream, existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { extname, resolve, sep } from "node:path";
@@ -17,6 +18,16 @@ if (!["http:", "https:"].includes(origin.protocol) || origin.username || origin.
 const hasStorefront = Boolean(configuredOrigin || existsSync(storefrontServer));
 const requestUpstream = origin.protocol === "https:" ? httpsRequest : httpRequest;
 const hopHeaders = ["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"];
+const contentEtags = new Map();
+
+function contentEtag(filePath, stat) {
+  const identity = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+  const cached = contentEtags.get(filePath);
+  if (cached?.identity === identity) return cached.etag;
+  const etag = `"sha256-${createHash("sha256").update(readFileSync(filePath)).digest("hex")}"`;
+  contentEtags.set(filePath, { identity, etag });
+  return etag;
+}
 
 const types = {
   ".avif": "image/avif",
@@ -168,7 +179,9 @@ async function handle(request, response) {
   }
 
   const extension = extname(filePath).toLowerCase();
-  const etag = `"${stat.size.toString(16)}-${stat.mtimeMs.toString(16)}"`;
+  // Reproducible OCI layers use mtime=0. Size+mtime cannot distinguish two
+  // same-size builds, so validators must identify the actual file content.
+  const etag = contentEtag(filePath, stat);
   const modified = stat.mtime.toUTCString();
   const isVersionedBundle = /[/\\]assets[/\\][^/\\]+-[A-Za-z0-9_-]{8,}\.(?:css|js)$/.test(filePath);
   response.setHeader("Content-Type", types[extension] || "application/octet-stream");
@@ -184,7 +197,7 @@ async function handle(request, response) {
 
   const noneMatch = request.headers["if-none-match"];
   if (noneMatch === "*" || noneMatch?.split(",").map(value => value.trim()).includes(etag)
-      || (!noneMatch && request.headers["if-modified-since"]
+      || (!noneMatch && stat.mtimeMs > 0 && request.headers["if-modified-since"]
         && Date.parse(request.headers["if-modified-since"]) >= Math.floor(stat.mtimeMs / 1000) * 1000)) {
     response.writeHead(304);
     return response.end();
@@ -196,7 +209,7 @@ async function handle(request, response) {
   const range = request.headers.range;
   const ifRange = request.headers["if-range"];
   const rangeAllowed = !ifRange || ifRange === etag
-    || Date.parse(ifRange) >= Math.floor(stat.mtimeMs / 1000) * 1000;
+    || (stat.mtimeMs > 0 && Date.parse(ifRange) >= Math.floor(stat.mtimeMs / 1000) * 1000);
   if (range && rangeAllowed && request.method === "GET") {
     // A browser's media requests use a single range; ignore multipart ranges.
     const match = /^bytes=(\d*)-(\d*)$/.exec(range);

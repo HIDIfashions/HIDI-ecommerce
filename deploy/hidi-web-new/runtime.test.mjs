@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { createServer, request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -133,6 +133,43 @@ test("landing root and files retain range and cache semantics", async () => {
   const bundle = await send(proxy.url, "/assets/app-abcdefgh.js");
   assert.equal(bundle.headers["cache-control"], "public, max-age=31536000, immutable");
   assert.equal((await send(proxy.url, "/assets/missing.mp4")).status, 404);
+});
+
+test("same-size reproducible builds have distinct ETags and never reuse zero-mtime date validators", async () => {
+  const oldRoot = join(folder, "old-build");
+  const newRoot = join(folder, "new-build");
+  await mkdir(oldRoot);
+  await mkdir(join(newRoot, "assets/video"), { recursive: true });
+  const oldHtml = "<h1>Original landing</h1>";
+  const newHtml = "<h1>Replaced landing</h1>";
+  assert.equal(Buffer.byteLength(oldHtml), Buffer.byteLength(newHtml));
+  await writeFile(join(oldRoot, "index.html"), oldHtml);
+  await writeFile(join(newRoot, "index.html"), newHtml);
+  await writeFile(join(newRoot, "assets/video/hero.mp4"), "0123456789abcdefghij");
+  for (const file of [join(oldRoot, "index.html"), join(newRoot, "index.html"), join(newRoot, "assets/video/hero.mp4")]) {
+    await utimes(file, 0, 0);
+  }
+  const upstream = `http://127.0.0.1:${fixture.address().port}`;
+  const oldBuild = await launch({ LANDING_DIST_DIR: oldRoot, STOREFRONT_ORIGIN: upstream });
+  const newBuild = await launch({ LANDING_DIST_DIR: newRoot, STOREFRONT_ORIGIN: upstream });
+  const previous = await send(oldBuild.url, "/");
+  const updated = await send(newBuild.url, "/", { headers: { "If-None-Match": previous.headers.etag } });
+  assert.equal(updated.status, 200);
+  assert.equal(updated.body, newHtml);
+  assert.notEqual(previous.headers.etag, updated.headers.etag);
+  assert.equal(updated.headers["last-modified"], "Thu, 01 Jan 1970 00:00:00 GMT");
+  assert.equal((await send(newBuild.url, "/", { headers: { "If-None-Match": updated.headers.etag } })).status, 304);
+  assert.equal((await send(newBuild.url, "/", { headers: { "If-Modified-Since": previous.headers["last-modified"] } })).status, 200);
+  const datedRange = await send(newBuild.url, "/assets/video/hero.mp4", {
+    headers: { Range: "bytes=2-5", "If-Range": previous.headers["last-modified"] },
+  });
+  assert.equal(datedRange.status, 200);
+  assert.equal(datedRange.body, "0123456789abcdefghij");
+  const taggedRange = await send(newBuild.url, "/assets/video/hero.mp4", {
+    headers: { Range: "bytes=2-5", "If-Range": datedRange.headers.etag },
+  });
+  assert.equal(taggedRange.status, 206);
+  assert.equal(taggedRange.body, "2345");
 });
 
 test("commerce routes preserve method, raw URL, body, cookies and original HTTPS host", async () => {
