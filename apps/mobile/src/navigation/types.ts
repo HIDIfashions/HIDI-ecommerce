@@ -103,6 +103,24 @@ export type RootStackParamList = {
   AndroidPermissionDialog: { returnTo?: string } | undefined;
   FindGuestOrder: undefined;
   SupportReceived: { caseId: string; topic: string; orderNumber?: string };
+  LoadingSkeleton: { destination?: string } | undefined;
+  PartialLoadFailure: { section?: string } | undefined;
+  OfflineSavedContent: undefined;
+  OfflineEmpty: undefined;
+  GenericError: { requestId?: string; code?: string; retriable?: boolean } | undefined;
+  SessionExpired: { returnTo?: string } | undefined;
+  Maintenance: { supportUrl?: string; estimate?: string } | undefined;
+  RequiredUpdate: { installedVersion?: string; minimumVersion?: string; url?: string } | undefined;
+  UpdateAvailable: { latestVersion?: string; releaseNotes?: string; url?: string } | undefined;
+  PermissionExplanation: { feature?: "notifications" | "photos"; returnTo?: string } | undefined;
+  PermissionDeclined: { feature?: "notifications" | "photos"; returnTo?: string } | undefined;
+  LinkUnavailable: { reason?: string } | undefined;
+  TooManyRequests: { retryAfterSeconds?: number } | undefined;
+  AttachmentUploadIssue: { fileName?: string; reason?: string; returnTo?: "ReturnEvidence" | "CreateSupportRequest" } | undefined;
+  EditorialStory: { slug?: string } | undefined;
+  ShopTheLook: { lookId?: string } | undefined;
+  AppearanceSettings: undefined;
+  HomeDarkAppearance: undefined;
 };
 
 export type RootTabParamList = {
