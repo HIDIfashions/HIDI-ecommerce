@@ -40,55 +40,57 @@ try {
   assert.equal(envValue(api, 'MIGRATION_CUSTOMER_TESTING')?.value, 'true');
   const image = api.properties.template.containers[0].image;
   assert(/^acrhidiprod0927\.azurecr\.io\/hidi-api:[a-f0-9]{40}$/.test(image));
-  const job = az(['containerapp', 'job', 'show', '-g', group, '-n', jobName]);
-  assert.equal(job.properties.configuration.triggerType, 'Manual');
-  assert.equal(job.properties.template.containers.length, 1);
-  const running = az(['containerapp', 'job', 'execution', 'list', '-g', group, '-n', jobName]);
-  assert(!running.some(e => e.properties.status === 'Running'), 'Existing migration execution is running');
-  const identity = az(['identity', 'show', '-g', group, '-n', 'id-hidi-migration']);
-  assert(job.identity.userAssignedIdentities[identity.id], 'Existing job must use the migration identity');
-  originalAdmin = az(['sql', 'server', 'ad-admin', 'show', '-g', group, '-s', server]);
-  assert(originalAdmin.login && originalAdmin.sid, 'Existing SQL administrator must be restorable');
+  if (!process.argv.includes('--configure-env-only')) {
+    const job = az(['containerapp', 'job', 'show', '-g', group, '-n', jobName]);
+    assert.equal(job.properties.configuration.triggerType, 'Manual');
+    assert.equal(job.properties.template.containers.length, 1);
+    const running = az(['containerapp', 'job', 'execution', 'list', '-g', group, '-n', jobName]);
+    assert(!running.some(e => e.properties.status === 'Running'), 'Existing migration execution is running');
+    const identity = az(['identity', 'show', '-g', group, '-n', 'id-hidi-migration']);
+    assert(job.identity.userAssignedIdentities[identity.id], 'Existing job must use the migration identity');
+    originalAdmin = az(['sql', 'server', 'ad-admin', 'show', '-g', group, '-s', server]);
+    assert(originalAdmin.login && originalAdmin.sid, 'Existing SQL administrator must be restorable');
 
-  const source = await readFile('deploy/customer-auth-db.mjs', 'utf8');
-  const template = structuredClone(job.properties.template);
-  const container = template.containers[0];
-  container.image = image;
-  container.command = ['node'];
-  container.args = ['--input-type=module', '--eval', source];
-  for (const [name, value] of Object.entries({
-    AZURE_CLIENT_ID: identity.clientId,
-    AZURE_SQL_SERVER: envValue(api, 'AZURE_SQL_SERVER')?.value,
-    AZURE_SQL_DATABASE: 'hidi-sql-validation',
-  })) {
-    assert(value, `Missing ${name}`);
-    container.env = container.env.filter(e => e.name !== name);
-    container.env.push({ name, value });
+    const source = await readFile('deploy/customer-auth-db.mjs', 'utf8');
+    const template = structuredClone(job.properties.template);
+    const container = template.containers[0];
+    container.image = image;
+    container.command = ['node'];
+    container.args = ['--input-type=module', '--eval', source];
+    for (const [name, value] of Object.entries({
+      AZURE_CLIENT_ID: identity.clientId,
+      AZURE_SQL_SERVER: envValue(api, 'AZURE_SQL_SERVER')?.value,
+      AZURE_SQL_DATABASE: 'hidi-sql-validation',
+    })) {
+      assert(value, `Missing ${name}`);
+      container.env = container.env.filter(e => e.name !== name);
+      container.env.push({ name, value });
+    }
+    const templatePath = join(work, 'execution.json');
+    await writeFile(templatePath, JSON.stringify(template), { mode: 0o600 });
+    // The existing private job uses a short-lived migration administrator; restore it in finally.
+    await writeFile(recoveryPath, JSON.stringify({ ...originalAdmin, migrationSid: identity.principalId }), { mode: 0o600 });
+    restoreRequired = true;
+    az(['sql', 'server', 'ad-admin', 'update', '-g', group, '-s', server,
+      '--display-name', identity.name, '--object-id', identity.principalId], false);
+    execution = az(['containerapp', 'job', 'start', '-g', group, '-n', jobName, '--yaml', templatePath]).name;
+    assert(execution, 'Migration execution did not start');
+    await writeFile(recoveryPath, JSON.stringify({ ...originalAdmin, migrationSid: identity.principalId, execution }), { mode: 0o600 });
+    console.log(`Auth migration execution: ${execution}`);
+    let status;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const runs = az(['containerapp', 'job', 'execution', 'list', '-g', group, '-n', jobName]);
+      status = runs.find(e => e.name === execution)?.properties.status;
+      if (['Succeeded', 'Failed', 'Stopped'].includes(status)) break;
+      await sleep(10000);
+    }
+    assert.equal(status, 'Succeeded', 'Auth-only migration did not succeed');
+    az(['sql', 'server', 'ad-admin', 'update', '-g', group, '-s', server,
+      '--display-name', originalAdmin.login, '--object-id', originalAdmin.sid], false);
+    restoreRequired = false;
+    await rm(recoveryPath, { force: true });
+    console.log('Auth tables verified; original SQL administrator restored. No customer data imported.');
   }
-  const templatePath = join(work, 'execution.json');
-  await writeFile(templatePath, JSON.stringify(template), { mode: 0o600 });
-  // The existing private job uses a short-lived migration administrator; restore it in finally.
-  await writeFile(recoveryPath, JSON.stringify({ ...originalAdmin, migrationSid: identity.principalId }), { mode: 0o600 });
-  restoreRequired = true;
-  az(['sql', 'server', 'ad-admin', 'update', '-g', group, '-s', server,
-    '--display-name', identity.name, '--object-id', identity.principalId], false);
-  execution = az(['containerapp', 'job', 'start', '-g', group, '-n', jobName, '--yaml', templatePath]).name;
-  assert(execution, 'Migration execution did not start');
-  await writeFile(recoveryPath, JSON.stringify({ ...originalAdmin, migrationSid: identity.principalId, execution }), { mode: 0o600 });
-  console.log(`Auth migration execution: ${execution}`);
-  let status;
-  for (let attempt = 0; attempt < 100; attempt++) {
-    const runs = az(['containerapp', 'job', 'execution', 'list', '-g', group, '-n', jobName]);
-    status = runs.find(e => e.name === execution)?.properties.status;
-    if (['Succeeded', 'Failed', 'Stopped'].includes(status)) break;
-    await sleep(10000);
-  }
-  assert.equal(status, 'Succeeded', 'Auth-only migration did not succeed');
-  az(['sql', 'server', 'ad-admin', 'update', '-g', group, '-s', server,
-    '--display-name', originalAdmin.login, '--object-id', originalAdmin.sid], false);
-  restoreRequired = false;
-  await rm(recoveryPath, { force: true });
-  console.log('Auth tables verified; original SQL administrator restored. No customer data imported.');
 
   const signing = envValue(api, 'HIDI_AUTH_SECRET') ?? envValue(api, 'AUTH_TOKEN_SECRET');
   const envArgs = ['CUSTOMER_OTP_PROVIDER=firebase', 'FIREBASE_PROJECT_ID=hidi-dee0f'];
@@ -117,6 +119,7 @@ try {
   az(['containerapp', 'update', '-g', group, '-n', 'hidi-web', '--set-env-vars', ...webEnv], false);
   await waitReady('hidi-web');
   console.log('Firebase API and web environment configured; both apps ready.');
+  if (process.argv.includes('--configure-env-only')) console.log('Database migration is not applied by environment-only setup.');
 } finally {
   if (restoreRequired) {
     try {

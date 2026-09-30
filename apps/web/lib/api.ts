@@ -14,6 +14,12 @@ function productionApiUrl() {
   return configured;
 }
 
+function browserApiUrl() {
+  const configured = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) || normalizeApiUrl(process.env.API_URL);
+  if (configured.endsWith("/api/store")) return `${window.location.origin}/api/store`;
+  return configured || (process.env.NODE_ENV === "production" ? `${window.location.origin}/api/store` : LOCAL_API_URL);
+}
+
 // Server-rendered storefront pages should talk to the Nest API over the local
 // Codespaces/dev network. NEXT_PUBLIC_API_URL may point at a browser-facing
 // forwarded port, which can be private/authenticated and return an empty
@@ -23,11 +29,7 @@ export const API_URL =
     ? process.env.NODE_ENV === "production"
       ? productionApiUrl()
       : LOCAL_API_URL
-    : normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL) ||
-      normalizeApiUrl(process.env.API_URL) ||
-      (process.env.NODE_ENV === "production"
-        ? `${window.location.origin}/api/store`
-        : LOCAL_API_URL);
+    : browserApiUrl();
 
 export type ApiVariant = {
   id: string;

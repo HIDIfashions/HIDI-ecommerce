@@ -1,4 +1,7 @@
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1").replace(/\/$/, "");
+const CONFIGURED_API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1").replace(/\/$/, "");
+const API_URL = typeof window !== "undefined" && CONFIGURED_API_URL.endsWith("/api/store")
+  ? `${window.location.origin}/api/store`
+  : CONFIGURED_API_URL;
 const STORAGE_KEY = "hidi_supabase_session";
 const FIREBASE_JS_VERSION = "10.14.1";
 const CUSTOMER_AUTH_PROVIDER = (

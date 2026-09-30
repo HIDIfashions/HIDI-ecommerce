@@ -5,7 +5,7 @@ const { tmpdir } = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-for (const mode of ['preserve', 'new-secret', 'production', 'migration-failed']) {
+for (const mode of ['preserve', 'new-secret', 'production', 'migration-failed', 'env-only']) {
   test(`Azure Firebase setup ${mode}`, () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'hidi-auth-test-'));
     try {
@@ -13,7 +13,7 @@ for (const mode of ['preserve', 'new-secret', 'production', 'migration-failed'])
       copyFileSync(path.join(__dirname, 'fixtures/azure-auth-cli.mjs'), cli);
       chmodSync(cli, 0o700);
       const log = path.join(dir, 'calls.jsonl');
-      const result = spawnSync(process.execPath, ['deploy/configure-firebase-auth.mjs'], {
+      const result = spawnSync(process.execPath, ['deploy/configure-firebase-auth.mjs', ...(mode === 'env-only' ? ['--configure-env-only'] : [])], {
         cwd: path.join(__dirname, '..'), encoding: 'utf8',
         env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, RUNNER_TEMP: dir,
           AUTH_SETUP_TEST_MODE: mode, AUTH_SETUP_TEST_LOG: log },
@@ -30,8 +30,9 @@ for (const mode of ['preserve', 'new-secret', 'production', 'migration-failed'])
         assert(!commands.includes('containerapp update'));
       } else {
         assert.equal(result.status, 0, result.stderr);
-        assert.equal(commands.includes('containerapp secret set'), mode === 'new-secret');
-        assert.equal(commands.filter(c => c === 'sql server ad-admin update').length, 2);
+        assert.equal(commands.includes('containerapp secret set'), mode === 'new-secret' || mode === 'env-only');
+        assert.equal(commands.filter(c => c === 'sql server ad-admin update').length, mode === 'env-only' ? 0 : 2);
+        if (mode === 'env-only') assert(!commands.some(c => c.startsWith('containerapp job')), 'Environment-only setup must not need migration-job permissions');
         assert.equal(commands.filter(c => c === 'containerapp update').length, 2);
         assert(!commands.some(c => /create|grant/.test(c)), 'Setup must not create resources or grant roles');
         assert(!result.stdout.includes('secretref:'));
