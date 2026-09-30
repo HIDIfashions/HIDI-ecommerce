@@ -1,3 +1,4 @@
+import { decodeJson } from "../prisma/json.js";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { DelhiveryService } from "../delhivery/delhivery.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -35,7 +36,7 @@ export class AdminService {
       totalPaise: order.totalPaise,
       customerEmail: order.customerEmail,
       customerPhone: order.customerPhone,
-      shippingAddress: order.shippingAddress,
+      shippingAddress: decodeJson(order.shippingAddress),
       payment: order.payments[0]
         ? {
             status: order.payments[0].status,
@@ -122,7 +123,7 @@ export class AdminService {
         amountPaise: event.amountPaise,
         correlationId: event.correlationId,
         source: event.source,
-        metadata: event.metadata,
+        metadata: decodeJson(event.metadata),
         createdAt: event.createdAt,
       })),
     };
@@ -171,8 +172,8 @@ export class AdminService {
         ...(q
           ? {
               OR: [
-                { orderNumber: { contains: q, mode: "insensitive" } },
-                { customerEmail: { contains: q, mode: "insensitive" } },
+                { orderNumber: { contains: q } },
+                { customerEmail: { contains: q } },
                 { customerPhone: { contains: q } },
               ],
             }
@@ -203,7 +204,7 @@ export class AdminService {
     });
     if (!order) throw new NotFoundException("Order not found");
 
-    const address = (order.shippingAddress ?? {}) as any;
+    const address = (decodeJson(order.shippingAddress) ?? {}) as any;
     const pin = String(address.postalCode ?? "").trim();
     return this.delhivery.checkServiceability(pin);
   }
@@ -230,7 +231,7 @@ export class AdminService {
       throw new BadRequestException(`This order already has AWB ${order.shipments[0].awb}`);
     }
 
-    const address = (order.shippingAddress ?? {}) as any;
+    const address = (decodeJson(order.shippingAddress) ?? {}) as any;
     const customerName = [address.firstName, address.lastName].filter(Boolean).join(" ").trim() || "HIDI Customer";
     const fullAddress = [address.line1, address.line2, address.landmark].filter(Boolean).join(", ");
     const pin = String(address.postalCode ?? "").trim();
@@ -468,3 +469,4 @@ export class AdminService {
   }
 
 }
+

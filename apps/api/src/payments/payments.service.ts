@@ -1,3 +1,4 @@
+import { encodeJson } from "../prisma/json.js";
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RazorpayService } from "../razorpay/razorpay.service.js";
@@ -31,7 +32,7 @@ export class PaymentsService {
     if (PAID_STATES.includes(payment.status)) return { success: true, captured: true, orderNumber: payment.order.orderNumber, status: payment.order.status };
     await this.prisma.payment.updateMany({
       where: { id: payment.id, status: { in: ["CREATED", "AUTHORIZED", "FAILED"] } },
-      data: { providerPaymentId: paymentId, method: providerPayment.method ?? null, status: providerPayment.status === "authorized" ? "AUTHORIZED" : "CREATED", rawReference: providerPayment as any },
+      data: { providerPaymentId: paymentId, method: providerPayment.method ?? null, status: providerPayment.status === "authorized" ? "AUTHORIZED" : "CREATED", rawReference: encodeJson(providerPayment) },
     });
     return { success: true, captured: false, orderNumber: payment.order.orderNumber, status: providerPayment.status, message: "Payment is awaiting capture confirmation." };
   }
@@ -57,7 +58,7 @@ export class PaymentsService {
         await this.prisma.$transaction(async (tx) => {
           const updated = await tx.payment.updateMany({
             where: { id: failedPayment.id, status: { in: ["CREATED", "AUTHORIZED"] } },
-            data: { status: "FAILED", providerPaymentId: entity.id ?? null, rawReference: entity as any },
+            data: { status: "FAILED", providerPaymentId: entity.id ?? null, rawReference: encodeJson(entity) },
           });
           if (updated.count > 0) {
             await appendOrderAudit(tx, {
@@ -93,7 +94,7 @@ export class PaymentsService {
     const reference = await this.prisma.payment.findUnique({ where: { id: recordId } });
     if (!reference) throw new NotFoundException("Payment record not found");
     return withSerializableRetry(this.prisma, async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${reference.orderId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${reference.orderId} `;
       const order = await tx.order.findUnique({ where: { id: reference.orderId }, include: { reservations: { orderBy: { variantId: "asc" } } } });
       const payment = await tx.payment.findUnique({ where: { id: recordId } });
       if (!order || !payment || payment.orderId !== order.id || payment.provider !== "RAZORPAY") throw new NotFoundException("HIDI payment order not found");
@@ -104,11 +105,11 @@ export class PaymentsService {
       }
       // Late capture is recorded, but cannot resurrect cancelled/returned orders.
       let reviewRequired = order.status !== "PENDING_PAYMENT" || order.reservations.length === 0;
-      if (order.userId) await tx.$queryRaw`SELECT "id" FROM "WalletAccount" WHERE "userId" = ${order.userId} FOR UPDATE`;
+      if (order.userId) await tx.$queryRaw`SELECT "id" FROM "WalletAccount" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "userId" = ${order.userId} `;
       const now = new Date();
       for (const reservation of order.reservations) {
         const locked = await tx.$queryRaw<Array<{ onHand: number; reserved: number; safetyStock: number }>>`
-          SELECT "onHand", "reserved", "safetyStock" FROM "Inventory" WHERE "variantId" = ${reservation.variantId} FOR UPDATE
+          SELECT "onHand", "reserved", "safetyStock" FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "variantId" = ${reservation.variantId} 
         `;
         const inventory = locked[0];
         if (!inventory || reservation.status !== "ACTIVE" || reservation.expiresAt <= now || inventory.onHand < reservation.quantity || inventory.reserved < reservation.quantity) reviewRequired = true;
@@ -127,7 +128,7 @@ export class PaymentsService {
           await tx.inventoryReservation.update({ where: { id: reservation.id }, data: { status: "RELEASED", releasedAt: now } });
         }
       }
-      await tx.payment.update({ where: { id: payment.id }, data: { providerPaymentId, status: "CAPTURED", method: method ?? null, rawReference: raw ?? undefined } });
+      await tx.payment.update({ where: { id: payment.id }, data: { providerPaymentId, status: "CAPTURED", method: method ?? null, rawReference: raw == null ? undefined : encodeJson(raw) } });
       const status = reviewRequired ? (RETURN_STATES.includes(order.status) || FULFILLED_STATES.includes(order.status) ? order.status : "PAYMENT_REVIEW") : "CONFIRMED";
       await tx.order.update({ where: { id: order.id }, data: { status: status as any } });
 
@@ -190,7 +191,7 @@ export class PaymentsService {
       : null;
 
     return withSerializableRetry(this.prisma, async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${payment.orderId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${payment.orderId} `;
       const current = await tx.payment.findUnique({ where: { id: payment.id } });
       if (!current || current.providerPaymentId !== entity.payment_id || !PAID_STATES.includes(current.status)) throw new ConflictException("Capture must be reconciled before processing this refund");
 
@@ -291,3 +292,4 @@ export class PaymentsService {
     });
   }
 }
+

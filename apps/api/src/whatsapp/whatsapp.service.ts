@@ -1,3 +1,4 @@
+import { encodeJson, decodeJson } from "../prisma/json.js";
 import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -100,7 +101,7 @@ export class WhatsAppService {
   private async setState(id: string, state: string, context: Record<string, unknown> = {}) {
     await this.prisma.whatsAppConversation.update({
       where: { id },
-      data: { state, context: JSON.parse(JSON.stringify(context)) },
+      data: { state, context: encodeJson(context) },
     });
   }
 
@@ -230,7 +231,7 @@ export class WhatsAppService {
       }
 
       if (normalized === "YES") {
-        const context = contextObject(conversation.context);
+        const context = contextObject(decodeJson(conversation.context));
         const variantId = typeof context.variantId === "string" ? context.variantId : "";
         const requestedQuantity = typeof context.quantity === "number" ? context.quantity : 1;
         const variant = await this.prisma.productVariant.findUnique({
@@ -387,3 +388,4 @@ export class WhatsAppService {
     );
   }
 }
+

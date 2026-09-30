@@ -137,7 +137,7 @@ test("guest claim writes repeat both unclaimed ownership and current verified em
   const result = await fixture.service.orders(auth);
   const claim = fixture.calls.find((call) => call.name === "order.updateMany")!;
   assert.deepEqual(claim.args, {
-    where: { id: { in: ["guest-a", "guest-b", "guest-c"] }, userId: null, customerEmail: { equals: auth.email, mode: "insensitive" } },
+    where: { id: { in: ["guest-a", "guest-b", "guest-c"] }, userId: null, customerEmail: { equals: auth.email } },
     data: { userId: owner.id },
   });
   assert.equal(fixture.orders.find((order) => order.id === "guest-a")!.userId, owner.id);
@@ -164,3 +164,4 @@ test("ownsOrder uses wallet-bound local identity and cannot authorize another em
     { orderNumber: "ORDER-OWN", userId: "wallet-owner" }, { orderNumber: "ORDER-OTHER", userId: "wallet-owner" },
   ]);
 });
+

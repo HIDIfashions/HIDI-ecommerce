@@ -1,3 +1,4 @@
+import { uploadProductImage } from "@/lib/azure-blob";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
@@ -195,7 +196,9 @@ export async function POST(
     }
 
     await createUploadTicket(request, variantId, file);
-    const uploaded = await uploadToR2(variantId, file);
+    const uploaded = process.env.MEDIA_STORAGE_PROVIDER === "azure"
+      ? await uploadProductImage(objectKey(variantId, file.type), Buffer.from(await file.arrayBuffer()), file.type)
+      : await uploadToR2(variantId, file);
 
     const response = await saveImageMetadata(request, variantId, {
       url: uploaded.url,
@@ -242,3 +245,4 @@ export async function DELETE(
     );
   }
 }
+

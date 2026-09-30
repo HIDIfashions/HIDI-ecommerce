@@ -1,0 +1,188 @@
+name: Azure migration build
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+  pull_request:
+    branches: [migration/azure-sql-blob]
+permissions:
+  contents: read
+concurrency:
+  group: hidi-azure-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+      API_URL: http://127.0.0.1:4100/v1
+      # Install and every browser suite must use the same job-local binaries.
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/hidi-playwright-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - name: Test storefront, reporting rules and customer safeguards
+        id: frontend_tests
+        continue-on-error: true
+        run: node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
+      - run: pnpm --filter @hidi/api test:customer-experience
+      - run: pnpm --filter @hidi/api build
+      - name: Build and type-check the admin and storefront together
+        run: |
+          export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER="$(jq -r '.CUSTOMER_AUTH_PROVIDER // .NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER // "hidi"' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_API_KEY="$(jq -r '.FIREBASE_API_KEY // .NEXT_PUBLIC_FIREBASE_API_KEY // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$(jq -r '.FIREBASE_AUTH_DOMAIN // .NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_PROJECT_ID="$(jq -r '.FIREBASE_PROJECT_ID // .NEXT_PUBLIC_FIREBASE_PROJECT_ID // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_APP_ID="$(jq -r '.FIREBASE_APP_ID // .NEXT_PUBLIC_FIREBASE_APP_ID // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="$(jq -r '.FIREBASE_MESSAGING_SENDER_ID // .NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="$(jq -r '.FIREBASE_STORAGE_BUCKET // .NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET // ""' deploy/public-auth.json)"
+          pnpm --filter @hidi/web build
+      - name: Install isolated browser-test tooling on this runner
+        run: |
+          npm install --prefix "$RUNNER_TEMP/hidi-browser" --no-save playwright@1.62.1
+          node "$RUNNER_TEMP/hidi-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Verify installed browser engines can launch
+        env:
+          HIDI_PLAYWRIGHT_MODULE: ${{ runner.temp }}/hidi-browser/node_modules/playwright/index.mjs
+        run: |
+          node --input-type=module <<'NODE'
+          import { constants } from 'node:fs';
+          import { access } from 'node:fs/promises';
+          import { pathToFileURL } from 'node:url';
+          const pw = await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
+          for (const engine of ['chromium', 'firefox', 'webkit']) {
+            const executable = pw[engine].executablePath();
+            await access(executable, constants.X_OK);
+            const browser = await pw[engine].launch({ headless: true, timeout: 30000 });
+            try {
+              const page = await browser.newPage();
+              await page.goto('about:blank');
+              console.log(`READY ${engine}: ${executable}`);
+            } finally {
+              await browser.close();
+            }
+          }
+          NODE
+      - name: Test admin UI and BFF with isolated fixtures
+        run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/admin-workspace.browser.mjs
+      - name: Verify homepage section backgrounds in the production build
+        id: background_tests
+        continue-on-error: true
+        run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/homepage-background.browser.mjs
+      - name: Verify editorial storefront across browser engines with isolated commerce
+        run: |
+          HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-storefront.browser.mjs
+          HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-polish.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: editorial-storefront-test-results
+          path: test-results/editorial-storefront
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: homepage-background-test-results
+          path: test-results/homepage-background
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-workspace-test-results
+          path: test-results/admin-workspace
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Enforce all source and background gates after collecting browser evidence
+        if: always()
+        env:
+          FRONTEND_OUTCOME: ${{ steps.frontend_tests.outcome }}
+          BACKGROUND_OUTCOME: ${{ steps.background_tests.outcome }}
+        run: test "$FRONTEND_OUTCOME" = success && test "$BACKGROUND_OUTCOME" = success
+      - name: Package exact source and original public assets
+        run: git archive --format=tar.gz --output=hidi-azure-source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hidi-azure-source
+          path: hidi-azure-source.tar.gz
+          retention-days: 7
+  containers:
+    if: github.event_name == 'push'
+    needs: source-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(contains(github.event.head_commit.message, '[reuse-admin-web-e91db4b]') && '["api"]' || contains(github.event.head_commit.message, '[reuse-admin-api-a1b0ca6]') && '["web"]' || '["api","web"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Build and push immutable application image
+        env:
+          HIDI_APP: ${{ matrix.app }}
+        run: |
+          az acr login --name acrhidiprod0927
+          SUPABASE_URL=$(jq -r .SUPABASE_URL deploy/public-auth.json)
+          SUPABASE_PUBLISHABLE_KEY=$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)
+          CUSTOMER_AUTH_PROVIDER=$(jq -r '.CUSTOMER_AUTH_PROVIDER // .NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER // "hidi"' deploy/public-auth.json)
+          FIREBASE_API_KEY=$(jq -r '.FIREBASE_API_KEY // .NEXT_PUBLIC_FIREBASE_API_KEY // ""' deploy/public-auth.json)
+          FIREBASE_AUTH_DOMAIN=$(jq -r '.FIREBASE_AUTH_DOMAIN // .NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN // ""' deploy/public-auth.json)
+          FIREBASE_PROJECT_ID=$(jq -r '.FIREBASE_PROJECT_ID // .NEXT_PUBLIC_FIREBASE_PROJECT_ID // ""' deploy/public-auth.json)
+          FIREBASE_APP_ID=$(jq -r '.FIREBASE_APP_ID // .NEXT_PUBLIC_FIREBASE_APP_ID // ""' deploy/public-auth.json)
+          FIREBASE_MESSAGING_SENDER_ID=$(jq -r '.FIREBASE_MESSAGING_SENDER_ID // .NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID // ""' deploy/public-auth.json)
+          FIREBASE_STORAGE_BUCKET=$(jq -r '.FIREBASE_STORAGE_BUCKET // .NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET // ""' deploy/public-auth.json)
+          docker build -f "deploy/Dockerfile.$HIDI_APP" \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="$SUPABASE_URL" \
+            --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --build-arg NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER="$CUSTOMER_AUTH_PROVIDER" \
+            --build-arg NEXT_PUBLIC_FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+            --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$FIREBASE_AUTH_DOMAIN" \
+            --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+            --build-arg NEXT_PUBLIC_FIREBASE_APP_ID="$FIREBASE_APP_ID" \
+            --build-arg NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="$FIREBASE_MESSAGING_SENDER_ID" \
+            --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET" \
+            --build-arg NEXT_PUBLIC_WALLET_ENABLED=true \
+            --build-arg NEXT_PUBLIC_API_URL=https://www.thehidi.com/api/store \
+            -t "acrhidiprod0927.azurecr.io/hidi-$HIDI_APP:$GITHUB_SHA" .
+          docker push "acrhidiprod0927.azurecr.io/hidi-$HIDI_APP:$GITHUB_SHA"
+  update-existing-admin:
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-admin]')
+    needs: containers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Update existing apps only; verify or roll back
+        env:
+          API_RELEASE_SHA: ${{ contains(github.event.head_commit.message, '[reuse-admin-api-a1b0ca6]') && 'a1b0ca64e4408894f2ef3fcd27ea339cba4db5d5' || github.sha }}
+          WEB_RELEASE_SHA: ${{ contains(github.event.head_commit.message, '[reuse-admin-web-e91db4b]') && 'e91db4b36578ca1acad759d6f1fe9de659c2152b' || github.sha }}
+        run: bash deploy/update-existing-admin.sh "$API_RELEASE_SHA" "$WEB_RELEASE_SHA"

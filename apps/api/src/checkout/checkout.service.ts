@@ -1,3 +1,4 @@
+import { encodeJson, decodeJson } from "../prisma/json.js";
 import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -181,7 +182,7 @@ export class CheckoutService {
           walletAppliedPaise: walletPaise,
           customerEmail: auth?.email ?? customerEmail,
           customerPhone: auth?.phoneVerified && auth.phone ? auth.phone : customerPhone,
-          shippingAddress,
+          shippingAddress: encodeJson(shippingAddress),
           items: {
             create: cart.items.map((item) => ({
               productId: item.productId,
@@ -223,7 +224,7 @@ export class CheckoutService {
       }
       for (const item of cart.items) {
         const locked = await tx.$queryRaw<Array<{ onHand: number; reserved: number; safetyStock: number }>>`
-          SELECT "onHand", "reserved", "safetyStock" FROM "Inventory" WHERE "variantId" = ${item.variantId} FOR UPDATE
+          SELECT "onHand", "reserved", "safetyStock" FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "variantId" = ${item.variantId} 
         `;
         const inventory = locked[0];
         const available = inventory ? inventory.onHand - inventory.reserved - inventory.safetyStock : 0;
@@ -292,7 +293,7 @@ export class CheckoutService {
       });
       if (providerOrder.amount !== order.totalPaise - order.walletAppliedPaise || providerOrder.currency !== "INR" || !providerOrder.id) throw new ConflictException("Payment provider returned an unexpected order amount");
       const payment = await withSerializableRetry(this.prisma, async (tx) => {
-        await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
+        await tx.$queryRaw`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${order.id} `;
         const pending = await tx.order.findUnique({ where: { id: order.id } });
         if (!pending || pending.status !== "PENDING_PAYMENT" || expiresAt <= new Date()) throw new ConflictException("Checkout expired before payment was ready. Please start a new attempt.");
         const payment = await tx.payment.create({ data: {
@@ -398,7 +399,7 @@ export class CheckoutService {
     }
 
     const payment = order.payments[0] ?? null;
-    const address = order.shippingAddress as any;
+    const address = decodeJson(order.shippingAddress);
 
     return {
       orderNumber: order.orderNumber,
@@ -449,7 +450,7 @@ export class CheckoutService {
 
   async releaseOrder(orderId: string, orderStatus: "CANCELLED" = "CANCELLED") {
     await withSerializableRetry(this.prisma, async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${orderId} `;
       const order = await tx.order.findUnique({ where: { id: orderId } });
       if (!order || order.status !== "PENDING_PAYMENT") return;
       await this.wallet.release(tx, orderId);
@@ -457,7 +458,7 @@ export class CheckoutService {
       const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: "ACTIVE" }, orderBy: { variantId: "asc" } });
       for (const reservation of reservations) {
         const locked = await tx.$queryRaw<Array<{ reserved: number }>>`
-          SELECT "reserved" FROM "Inventory" WHERE "variantId" = ${reservation.variantId} FOR UPDATE
+          SELECT "reserved" FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "variantId" = ${reservation.variantId} 
         `;
         if (locked[0]) {
           await tx.inventory.update({
@@ -521,3 +522,4 @@ export class CheckoutService {
     return `HIDI-${y}${m}${day}-${token}`;
   }
 }
+

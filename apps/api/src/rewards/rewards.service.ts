@@ -31,7 +31,7 @@ export class RewardsService {
         OR: [
           ...(user ? [{ userId: user.id }] : []),
           ...(verifiedPhone ? [{ userId: null, customerPhone: verifiedPhone }] : []),
-          ...(verifiedEmail ? [{ userId: null, customerEmail: { equals: verifiedEmail, mode: "insensitive" as const } }] : []),
+          ...(verifiedEmail ? [{ userId: null, customerEmail: { equals: verifiedEmail } }] : []),
         ],
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -87,3 +87,4 @@ export class RewardsService {
     };
   }
 }
+

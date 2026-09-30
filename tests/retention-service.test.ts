@@ -221,7 +221,7 @@ for (const scenario of [
       assert.equal(result.sendingEnabled, false);
       assert.deepEqual(receivedQuery.where.OR, [
         { userId: "user-1" },
-        { userId: null, customerEmail: { equals: auth.email, mode: "insensitive" } },
+        { userId: null, customerEmail: { equals: auth.email } },
       ]);
       assert.deepEqual(receivedQuery.select, { createdAt: true });
       assert.deepEqual(receivedQuery.where.status.notIn, ["PENDING_PAYMENT", "CANCELLED"]);
@@ -233,3 +233,4 @@ for (const scenario of [
     }
   });
 }
+

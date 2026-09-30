@@ -14,9 +14,10 @@ export async function withSerializableRetry<T>(
     } catch (error) {
       const candidate = error as { code?: string; meta?: { code?: string; driverAdapterError?: { cause?: { originalCode?: string } } } };
       const code = candidate.meta?.code ?? candidate.meta?.driverAdapterError?.cause?.originalCode;
-      const retryable = candidate.code === "P2034" || code === "40001" || code === "40P01";
+      const retryable = candidate.code === "P2034" || code === "40001" || code === "40P01" || String(code) === "1205" || String(code) === "3960";
       if (!retryable || attempt === attempts - 1) throw error;
     }
   }
   throw new Error("Wallet transaction retry exhausted");
 }
+

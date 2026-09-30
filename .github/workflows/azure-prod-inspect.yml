@@ -1,0 +1,68 @@
+name: Azure production inspection
+
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths:
+      - '.github/workflows/azure-prod-inspect.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Inspect existing Azure production state
+        shell: bash
+        run: |
+          set -euo pipefail
+          rg=rg-hidi-prod
+          echo '=== APPS ==='
+          for app in hidi-web hidi-api; do
+            echo "--- $app ---"
+            az containerapp show -g "$rg" -n "$app" --only-show-errors \
+              --query '{name:name,image:properties.template.containers[0].image,latest:properties.latestRevisionName,ready:properties.latestReadyRevisionName,external:properties.configuration.ingress.external,fqdn:properties.configuration.ingress.fqdn,minReplicas:properties.template.scale.minReplicas,maxReplicas:properties.template.scale.maxReplicas,customDomains:properties.configuration.ingress.customDomains[].name}' -o json
+          done
+
+          echo '=== SAFE ENV ==='
+          python3 - <<'PY'
+          import json, subprocess
+          safe = {
+            'AZURE_SQL_DATABASE','MIGRATION_READ_ONLY','MIGRATION_CUSTOMER_TESTING',
+            'DEPLOYMENT_STAGE','API_URL','INTERNAL_API_URL','SITE_URL',
+            'MEDIA_PUBLIC_BASE_URL','WEB_ORIGIN','HIDI_WALLET_ENABLED',
+            'REVIEW_FOLLOWUP_ENABLED','NEXT_PUBLIC_API_URL'
+          }
+          for app in ('hidi-web','hidi-api'):
+            raw=subprocess.check_output([
+              'az','containerapp','show','-g','rg-hidi-prod','-n',app,
+              '--query','properties.template.containers[0].env','-o','json',
+              '--only-show-errors'
+            ], text=True)
+            env=json.loads(raw or '[]')
+            out={}
+            for item in env:
+              name=item.get('name')
+              if name in safe:
+                if 'value' in item:
+                  out[name]=item.get('value')
+                elif 'secretRef' in item:
+                  out[name]='<secretRef>'
+            print(json.dumps({'app':app,'env':out},sort_keys=True))
+          PY
+
+          echo '=== SQL DATABASES ==='
+          az sql db list -g "$rg" -s sql-hidi-prod-0927 --only-show-errors \
+            --query "[?name=='hidi-sql' || name=='hidi-sql-validation'].{name:name,status:status,collation:collation,maxSizeBytes:maxSizeBytes}" -o json
+
+          echo '=== CUSTOM DOMAIN BINDINGS ==='
+          az containerapp hostname list -g "$rg" -n hidi-web --only-show-errors -o json || true
