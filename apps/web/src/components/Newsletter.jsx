@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { config, safeWebUrl } from '../config.js';
+import { newsletterConfirmed, newsletterError } from '../routes.js';
 import { useHidi } from '../context/HidiContext.jsx';
 import Icon from './Icon.jsx';
 
@@ -32,7 +33,7 @@ export default function Newsletter() {
       return;
     }
     setError('');
-    if (!endpoint) { openNotice('newsletter-preview'); return; }
+    if (!endpoint) { openNotice('newsletter-error', newsletterError(null, 503)); return; }
     setBusy(true);
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -43,10 +44,12 @@ export default function Newsletter() {
         body: JSON.stringify({ email: email.trim() }), signal: controller.signal,
       });
       const result = await response.json().catch(() => null);
-      if (!response.ok || result?.success !== true) throw new Error('Subscription not confirmed.');
+      if (!response.ok || !newsletterConfirmed(result)) throw new Error(newsletterError(result, response.status));
       if (mounted.current) { setEmail(''); openNotice('newsletter-success'); }
-    } catch {
-      if (mounted.current) openNotice('newsletter-error');
+    } catch (cause) {
+      if (mounted.current) openNotice('newsletter-error', cause.name === 'AbortError'
+        ? 'The request timed out. Please try again.'
+        : cause.message || newsletterError(null));
     } finally {
       window.clearTimeout(timeoutRef.current);
       if (mounted.current) setBusy(false);
@@ -65,7 +68,7 @@ export default function Newsletter() {
       {error && <p id="newsletter-error" className="newsletter-error" role="alert">{error}</p>}
       <p className="newsletter-note" id="newsletter-note">{endpoint
         ? 'By subscribing, you agree to receive HIDI updates. Unsubscribe at any time.'
-        : 'Preview form. Email delivery is not connected.'}</p>
+        : 'HIDI updates are temporarily unavailable. Please try again later.'}</p>
     </form>
   );
 }

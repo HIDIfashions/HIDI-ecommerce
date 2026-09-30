@@ -6,7 +6,7 @@ import { asset } from '../config.js';
 import { useHidi } from '../context/HidiContext.jsx';
 
 export default function Footer() {
-  const { openAuth, openApp, openPolicy, openSocial, homeHref, onHome } = useHidi();
+  const { openAuth, openCollection, openApp, openPolicy, openSocial, homeHref, onHome } = useHidi();
   return (
     <footer className="site-footer" id="footer">
     <div className="footer-pattern" aria-hidden="true">
@@ -40,17 +40,17 @@ export default function Footer() {
     </div>
     <div className="footer-column">
     <h3>Collections</h3>
-    <button onClick={() => openAuth("signup", "New Arrivals")} type="button">New Arrivals</button>
-    <button onClick={() => openAuth("signup", "Work Edit")} type="button">Work Edit</button>
-    <button onClick={() => openAuth("signup", "Everyday")} type="button">Everyday</button>
-    <button onClick={() => openAuth("signup", "Occasion")} type="button">Occasion</button>
-    <button onClick={() => openAuth("signup", "")} type="button">Shop All</button>
+    <button onClick={() => openCollection('new-arrivals')} type="button">New Arrivals</button>
+    <button onClick={() => openCollection('work-edit')} type="button">Work Edit</button>
+    <button onClick={() => openCollection('everyday')} type="button">Everyday</button>
+    <button onClick={() => openCollection('occasion')} type="button">Occasion</button>
+    <button onClick={() => openCollection()} type="button">Shop All</button>
     </div>
     <div className="footer-column">
     <h3>Discover</h3>
-    <a href="#meet-hidi">Meet HIDI</a>
-    <a href="#our-range">Our range</a>
-    <a href="#hidi-edit">The HIDI edit</a>
+    <a href="/about">Meet HIDI</a>
+    <a href="/collections/all">Our range</a>
+    <a href="/lookbook">The HIDI edit</a>
     <button onClick={() => openAuth("signin", "")} type="button">My account</button>
     </div>
     <div className="footer-column">

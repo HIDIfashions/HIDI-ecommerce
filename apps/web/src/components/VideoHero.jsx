@@ -9,7 +9,7 @@ import { useDocumentVisible, useInView } from '../hooks/useVisibility.js';
  * Source-specific readiness prevents an old decoded frame appearing on resize.
  */
 export default function VideoHero() {
-  const { openAuth, dialogOpen } = useHidi();
+  const { openCollection, dialogOpen } = useHidi();
   const mobile = useMediaQuery('(max-width: 700px)');
   const reduced = useReducedMotion();
   const pageVisible = useDocumentVisible();
@@ -102,7 +102,7 @@ export default function VideoHero() {
       <div className="hero-shade" />
       <h1 id="hero-title" className="sr-only">HIDI — Wear the feeling. Indian wear for work, everyday and occasions.</h1>
       <div className="campaign-hero-action">
-        <button type="button" className="campaign-shop-button" onClick={() => openAuth('signup')}>Shop Now</button>
+        <button type="button" className="campaign-shop-button" onClick={() => openCollection()}>Shop Now</button>
       </div>
     </section>
   );

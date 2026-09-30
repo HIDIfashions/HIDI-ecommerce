@@ -36,7 +36,7 @@ export default function MeetHidi() {
     <span>Your moments</span>
     </div>
     </div>
-    <a className="text-link" href="#our-range">Find your HIDI <Icon name="arrow" />
+    <a className="text-link" href="/collections/all">Find your HIDI <Icon name="arrow" />
     </a>
     </Reveal>
     </div>

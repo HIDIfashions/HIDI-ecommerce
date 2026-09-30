@@ -8,7 +8,7 @@ import Icon from './Icon.jsx';
  * Menu/search/bag reuse the accessible dialog system rather than dead links.
  */
 export default function Navbar() {
-  const { openAuth, openNotice, dialogOpen, dialogType, homeHref, onHome } = useHidi();
+  const { openAuth, openBag, openNotice, dialogOpen, dialogType, homeHref, onHome } = useHidi();
   const [scrolled, setScrolled] = useState(() => window.scrollY > 48);
   const frame = useRef(0);
   useEffect(() => {
@@ -38,7 +38,7 @@ export default function Navbar() {
       <nav className="campaign-header-inner" aria-label="Main navigation">
         <div className="campaign-header-left">
           <div className="campaign-mobile-tools">
-            <button type="button" className="campaign-icon" onClick={() => openNotice('bag')} aria-label="Shopping bag"><Icon name="bag" /></button>
+            <button type="button" className="campaign-icon" onClick={openBag} aria-label="Shopping bag"><Icon name="bag" /></button>
             <button type="button" className="campaign-icon" onClick={() => openNotice('search')} aria-label="Search HIDI collections"><Icon name="search" /></button>
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function Navbar() {
           <img src={asset('images/hidi-logo.png')} width="265" height="139" alt="HIDI — Wear the feeling" />
         </a>
         <div className="campaign-header-right">
-          <button type="button" className="campaign-icon campaign-desktop-tool" onClick={() => openNotice('bag')} aria-label="Shopping bag"><Icon name="bag" /></button>
+          <button type="button" className="campaign-icon campaign-desktop-tool" onClick={openBag} aria-label="Shopping bag"><Icon name="bag" /></button>
           <button type="button" className="campaign-icon" onClick={() => openAuth('signin')} aria-label="My HIDI account"><Icon name="user" /></button>
           <button type="button" className="campaign-icon campaign-desktop-tool" onClick={() => openNotice('search')} aria-label="Search HIDI collections"><Icon name="search" /></button>
           <button type="button" className="campaign-menu" aria-label="Open HIDI menu" aria-haspopup="dialog"

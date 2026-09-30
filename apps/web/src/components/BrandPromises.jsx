@@ -19,7 +19,7 @@ export default function BrandPromises() {
     <Icon name="leaf" />
     <h3>Considered collections</h3>
     <p>Indian wear for work, everyday life and your special moments.</p>
-    <a className="small-link" href="#our-range">Meet your next favourite <Icon name="arrow" />
+    <a className="small-link" href="/collections/all">Meet your next favourite <Icon name="arrow" />
     </a>
     </Reveal>
     <Reveal as="article" className="promise">

@@ -5,7 +5,7 @@ import { asset } from '../config.js';
 import { useHidi } from '../context/HidiContext.jsx';
 
 export default function HidiEdit() {
-  const { openAuth } = useHidi();
+  const { openCollection } = useHidi();
   return (
     <section className="edit-section" id="hidi-edit" aria-labelledby="edit-title">
     <div className="container edit-panel">
@@ -20,7 +20,7 @@ export default function HidiEdit() {
     <span>Celebrate.</span>
     <span>Be you.</span>
     </div>
-    <button className="button button--burgundy" onClick={() => openAuth("signup", "Occasion")} type="button">Explore the occasion edit <Icon name="arrow" />
+    <button className="button button--burgundy" onClick={() => openCollection('occasion')} type="button">Explore the occasion edit <Icon name="arrow" />
     </button>
     <p className="edit-signature">Some moments deserve a little HIDI.</p>
     </Reveal>

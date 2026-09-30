@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Append the tested landing build to an imported Node image, without Docker.
+"""Append the tested landing build to the existing storefront image, without Docker.
 
 Example (run in Azure Cloud Shell after importing the base into the same repo):
   python3 push-hidi-landing-oci.py --registry REGISTRY --payload hidi-landing-runtime.tar.gz \
-      --base hidi-web:node24-base --tag landing-c793633-20260930
+      --base hidi-web:500b78d4898e707d38b58f1010167d340948538d --tag landing-connected-<version>
 
 Tokens stay in process memory and are never printed or written to files.
 """
@@ -84,7 +84,7 @@ def make_layer(payload, directory):
 def make_config(base, diff_id, created):
     config = json.loads(json.dumps(base))
     if config.get("os") != "linux" or config.get("architecture") != "amd64":
-        raise ValueError("The imported Node base must target linux/amd64")
+        raise ValueError("The storefront base must target linux/amd64")
     runtime = config.setdefault("config", {})
     runtime["WorkingDir"] = "/app"
     runtime["Cmd"] = ["node", "server.mjs"]
@@ -97,7 +97,7 @@ def make_config(base, diff_id, created):
     rootfs.setdefault("diff_ids", []).append(diff_id)
     config.setdefault("history", []).append({
         "created": created,
-        "created_by": "HIDI landing runtime: tested Vite dist and Azure static server",
+        "created_by": "HIDI landing runtime: tested Vite dist and same-origin storefront proxy",
     })
     # Container runtime consumes config; stale build-time container metadata is unnecessary.
     config.pop("container", None)
@@ -184,12 +184,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry")
     parser.add_argument("--payload", default="hidi-landing-runtime.tar.gz")
-    parser.add_argument("--base", default="hidi-web:node24-base")
-    parser.add_argument("--tag", default="landing-c793633-20260930")
+    parser.add_argument("--base", default="hidi-web@sha256:1bc1614ac79ea6718f94a67d3a2f5525af3a3b228dcf46191c15b75069184a31")
+    parser.add_argument("--tag", required=True)
     parser.add_argument("--created", default=datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"))
     parser.add_argument("--dry-run-base-config", help="Assemble only with this local base config JSON; no Azure/network calls")
     args = parser.parse_args()
-    repository, base_ref = args.base.rsplit(":", 1)
+    if "@" in args.base:
+        repository, base_ref = args.base.rsplit("@", 1)
+    else:
+        repository, base_ref = args.base.rsplit(":", 1)
     with tempfile.TemporaryDirectory(prefix="hidi-oci-") as directory:
         layer, diff_id, compressed_digest = make_layer(args.payload, directory)
         if args.dry_run_base_config:

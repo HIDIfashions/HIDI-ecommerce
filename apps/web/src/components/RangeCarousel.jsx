@@ -12,7 +12,7 @@ import '../styles/collection-spotlight.css';
 const count = collections.length;
 
 export default function RangeCarousel() {
-  const { openAuth, dialogOpen } = useHidi();
+  const { openCollection, dialogOpen } = useHidi();
   const mobile = useMediaQuery('(max-width: 700px)');
   const reduced = useReducedMotion();
   const documentVisible = useDocumentVisible();
@@ -60,10 +60,10 @@ export default function RangeCarousel() {
     goTo(index);
     setStatus(`${collections[index].name} selected.`);
   };
-  const openCollection = (index) => {
+  const handleCollectionClick = (index) => {
     if (!canOpen()) return;
     setPaused(true);
-    openAuth('signup', collections[index].name);
+    openCollection(collections[index].id);
   };
   const keyboard = (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -99,7 +99,7 @@ export default function RangeCarousel() {
             {collections.map((item, index) => (
               <article key={item.id} className="hidi-collection-card" data-card={index}
                 role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${count}: ${item.name}`}>
-                <button type="button" className="hidi-collection-link" aria-label={`Explore ${item.name}`} onClick={() => openCollection(index)}>
+                <button type="button" className="hidi-collection-link" aria-label={`Explore ${item.name}`} onClick={() => handleCollectionClick(index)}>
                   <div className="hidi-collection-photo">
                     <img src={asset(item.image)} alt={item.alt} width="355" height="593" draggable={false} decoding="async" loading="eager" />
                   </div>
@@ -130,7 +130,7 @@ export default function RangeCarousel() {
         <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{status}</p>
       </div>
       <p className="range-join">A little preview of what’s inside.
-        <button type="button" className="text-link" onClick={() => openAuth('signup')}>Sign up to explore <Icon name="arrow" /></button>
+        <button type="button" className="text-link" onClick={() => openCollection()}>Explore the collections <Icon name="arrow" /></button>
       </p>
     </section>
   );

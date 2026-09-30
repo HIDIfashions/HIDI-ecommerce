@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { config, safeWebUrl } from './config.js';
+import { collectionRoute, searchRoute } from './routes.js';
 import { HidiProvider } from './context/HidiContext.jsx';
 import { usePage } from './hooks/usePage.js';
 import Navbar from './components/Navbar.jsx';
@@ -22,14 +23,14 @@ export default function App() {
   useEffect(() => {
     const categories = page.name === 'categories';
     document.body.classList.toggle('category-page', categories);
-    document.title = categories ? 'Explore HIDI — Category preview' : 'HIDI — Wear the feeling.';
+    document.title = categories ? 'Explore HIDI — Collections' : 'HIDI — Wear the feeling.';
     return () => document.body.classList.remove('category-page');
   }, [page.name]);
 
   const actions = useMemo(() => ({
     dialogOpen: Boolean(dialog),
     dialogType: dialog?.type || null,
-    homeHref: window.location.pathname,
+    homeHref: '/',
     onHome: (event) => {
       if (event && (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0)) return;
       event?.preventDefault();
@@ -37,10 +38,13 @@ export default function App() {
       navigate('landing');
     },
     openAuth: (mode, intent = '') => {
-      const target = safeWebUrl(mode === 'signin' ? config.auth?.signInUrl : config.auth?.signUpUrl);
-      if (target) { window.location.assign(target); return; }
-      setDialog({ type: 'auth', mode, intent });
+      const target = safeWebUrl(mode === 'signin' ? config.auth?.signInUrl : config.auth?.signUpUrl)
+        || safeWebUrl('/account');
+      window.location.assign(target);
     },
+    openCollection: (edit = '') => window.location.assign(safeWebUrl(collectionRoute(edit))),
+    openSearch: (query = '') => window.location.assign(safeWebUrl(searchRoute(query))),
+    openBag: () => window.location.assign(safeWebUrl('/cart')),
     openApp: () => setDialog({ type: 'app' }),
     openPolicy: (kind) => {
       const target = safeWebUrl(config.policies?.[kind]);
@@ -52,8 +56,8 @@ export default function App() {
       if (target) { window.open(target, '_blank', 'noopener,noreferrer'); return; }
       setDialog({ type: 'social', kind });
     },
-    openPayments: () => setDialog({ type: 'payments' }),
-    openNotice: (type) => setDialog({ type }),
+    openPayments: () => window.location.assign(safeWebUrl('/contact#payments')),
+    openNotice: (type, message = '') => setDialog({ type, message }),
     openCategories: (intent = '') => {
       setDialog(null);
       navigate('categories', intent);

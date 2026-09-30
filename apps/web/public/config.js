@@ -1,13 +1,13 @@
 /** Public integration settings. Never place API keys, passwords or tokens here.
- * Empty links keep the honest local preview; no production account is created.
+ * Commerce and API routes are served on the same origin as this landing page.
  */
 window.HIDI_CONFIG = Object.freeze({
-  siteUrl: 'https://thidigk.thehidi.com/',
-  auth: { signInUrl: '', signUpUrl: '' },
+  siteUrl: '/',
+  auth: { signInUrl: '/account', signUpUrl: '/account' },
   app: { androidUrl: '', iosUrl: '' },
-  policies: { shipping: '', returns: '', privacy: '', terms: '', contact: '' },
+  policies: { shipping: '/shipping', returns: '/returns', privacy: '', terms: '', contact: '/contact' },
   socials: { instagram: '', facebook: '', x: '', youtube: '' },
-  newsletterEndpoint: '',
+  newsletterEndpoint: '/api/store/marketing/newsletter',
   // Messages supplied by the brand owner. Confirm the published policies before launch.
   announcement: {
     messages: [
