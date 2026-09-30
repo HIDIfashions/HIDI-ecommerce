@@ -1,7 +1,7 @@
 # HIDI Mobile - Build Specification
 
 Branch: `hidi-mobile-build-from-scratch`
-Current phase: Phase 5 COMPLETE / VERIFIED
+Current phase: Phase 6 IN PROGRESS
 Scope: React Native frontend only
 
 ## Runtime
@@ -52,5 +52,16 @@ Unsupported backend capabilities are represented as explicit unavailable or loca
 - email verification
 - guest order access challenge
 
+## Phase 6 implementation evidence
+Implemented frontend scope:
+- H103-H104 loading skeleton and partial-section failure.
+- H105-H106 offline saved-content and no-content states.
+- H107-H116 generic error, session expiration, maintenance, update gates, permission handling, unavailable link, rate limit and attachment upload recovery.
+- H117-H118 editorial story and shop-the-look with explicit item selection.
+- H121-H122 appearance settings and dark home preview.
+- H125 Android permission dialog remains wired from the extended-flow route.
+
+Phase 6 uses local/system contracts only where the current mobile gateway has no bootstrap, story, look, update, permission or upload endpoint exposed. The UI does not pretend live server confirmation.
+
 ## Gate
-Phase 5 is verified. Phase 6 may begin only after owner approval.
+Phase 6 CI must pass before Phase 7 begins.
