@@ -2,6 +2,12 @@
 
 Branch: `hidi-mobile-build-from-scratch`. React Native frontend only; native Android and iOS projects under `apps/mobile`. Existing backend/APIM/database/providers unchanged. No previous mobile UI code is a design reference. Phase-by-phase owner approval remains required.
 
+## Latest full regression rerun — 30 September 2026
+Owner requested all existing regression tests and the final downloadable APK. Status: **AUTOMATED REGRESSION PIPELINE PASSED / INTERNAL TEST APK DELIVERED**.
+Run `36718880259`, attempt 1, source `70c1ccb7f7e86339fba69fd07f537e958348b6b3`, completed 13:21:47 UTC. All five jobs passed. TypeScript and all 135 tests/17 suites passed, with no failed or pending tests. Android API26 and API36 each passed 15 installed-APK checks; iOS passed five simulator checks. Audits and artifact/binary digest checks passed. No application, dependency, feature-flag, backend/APIM or test-expectation changes were needed. Closing documentation does not change the tested artifact.
+
+Delivered APK: `HIDI-Final-Regression-Test.apk`, 42171987 bytes, SHA-256 `7914877ee892233b1f434943a0e49a151fbb92d73f4d6b51739316e6c6e27fe5`. It is an internal staging build, not a production release. Exact job/artifact evidence: `apps/mobile/docs/final-regression-request.md`. The existing full-release blockers below remain unchanged.
+
 ## Phases 0–7: recorded CI checkpoints
 | Phase | Scope | Recorded verification run |
 | --- | --- | --- |
@@ -21,12 +27,12 @@ Automated technical gate: **PASSED**.
 Overall blueprint release acceptance: **OPEN / BLOCKED — NOT PRODUCTION READY**.
 Owner approval: 30 September 2026.
 Source: blueprint pages 10, 92–95 and 98.
-Verified source: `c787270c66f594f0727000713214f6e39818223c`.
-Successful workflow: `36686275612`, attempt 1, completed 30 September 2026 at 08:10:21 UTC.
-Evidence record: `apps/mobile/docs/phase8-verification.md`.
+Initially verified source: `c787270c66f594f0727000713214f6e39818223c`.
+Initial successful workflow: `36686275612`, attempt 1, completed 30 September 2026 at 08:10:21 UTC.
+Initial evidence record: `apps/mobile/docs/phase8-verification.md`.
 
-### Executed and verified
-All five jobs passed with no failed or skipped steps in this final run: regression-phase8, android-build-phase8, android-smoke-phase8 (26), android-smoke-phase8 (36), and ios-phase8.
+### Executed and verified in the initial Phase 8 gate
+All five jobs passed with no failed or skipped steps in that historical run: regression-phase8, android-build-phase8, android-smoke-phase8 (26), android-smoke-phase8 (36), and ios-phase8.
 
 - TypeScript and all 135 unit/component tests across 17 suites passed; zero failed or pending tests. Existing phases' tests remain enabled.
 - npm ci uses the committed lock. npm audit returned zero known vulnerability findings at execution time. The limited source credential-pattern scan returned no findings. The CycloneDX resolved-npm inventory contains 900 components.
@@ -42,4 +48,4 @@ Payment preparation is blocked before allocating an order or reservation when th
 Live identity/OTP and native payment/reconciliation validation; full local checkout/address account isolation and cross-account authorization checks; missing after-sales/privacy/support capabilities and operational validation; approved merchant policies; physical-device accessibility; approved visual comparisons across the required screen matrix; representative performance and reliability measurements; and production signing/store/rollout approval. Account isolation is outstanding implementation/testing work, not merely external approval. Optional growth stays OFF and new native payment preparation stays blocked.
 
 ## Next checkpoint
-Internal build-and-smoke verification is finished. Continue the explicitly open release-hardening and live-integration ledger in `apps/mobile/docs/phase8.md`. Do not represent all of Phase 8 or the production release as complete, publish to a store, change the existing backend, or enable unsupported capabilities on the strength of CI alone. This closing update changes documentation/evidence only; the delivered binaries remain tied to the verified source above.
+Internal build-and-smoke verification and the requested automated rerun are finished. Continue the explicitly open release-hardening and live-integration ledger in `apps/mobile/docs/phase8.md`. Do not represent all of Phase 8 or the production release as complete, publish to a store, change the existing backend, or enable unsupported capabilities on the strength of CI alone. Closing updates change documentation/evidence only; delivered binaries remain tied to their verified source.
