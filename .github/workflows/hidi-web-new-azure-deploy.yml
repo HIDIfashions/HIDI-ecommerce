@@ -30,6 +30,11 @@ jobs:
     name: Build, publish, and update Azure Container App
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      AZURE_CREDENTIALS_JSON: ${{ secrets.AZURE_CREDENTIALS }}
+      AZURE_CLIENT_ID_VALUE: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID_VALUE: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID_VALUE: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     steps:
       - name: Check out branch
@@ -75,7 +80,28 @@ jobs:
             -C ../../deploy/hidi-web-new server.mjs
           sha256sum hidi-landing-connected-runtime.tar.gz
 
-      - name: Azure login
+      - name: Choose Azure login mode
+        id: azure-auth
+        shell: bash
+        run: |
+          if [ -n "$AZURE_CREDENTIALS_JSON" ]; then
+            echo "mode=credentials" >> "$GITHUB_OUTPUT"
+          elif [ -n "$AZURE_CLIENT_ID_VALUE" ] && [ -n "$AZURE_TENANT_ID_VALUE" ] && [ -n "$AZURE_SUBSCRIPTION_ID_VALUE" ]; then
+            echo "mode=oidc" >> "$GITHUB_OUTPUT"
+          else
+            echo "Azure deployment secrets are missing." >&2
+            echo "Add either AZURE_CREDENTIALS, or AZURE_CLIENT_ID + AZURE_TENANT_ID + AZURE_SUBSCRIPTION_ID." >&2
+            exit 1
+          fi
+
+      - name: Azure login with credentials JSON
+        if: steps.azure-auth.outputs.mode == 'credentials'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure login with OIDC
+        if: steps.azure-auth.outputs.mode == 'oidc'
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
