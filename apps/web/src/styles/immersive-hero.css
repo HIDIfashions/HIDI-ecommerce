@@ -34,16 +34,38 @@
   .campaign-icon:hover { background: #ffffff0b; }
 }
 
-/* The video itself, not a solid header or copy column, fills the opening screen. */
+/* The image transition itself, not a solid header or copy column, fills the opening screen. */
 .hero.hero--campaign {
   height: 100svh; min-height: 480px; max-height: none; width: 100%; margin: 0;
   color: var(--paper); background: #503523;
 }
-.hero--campaign .hero-media { background: #503523; }
-.hero--campaign .hero-media picture { display: block; }
-.hero--campaign .hero-poster, .hero--campaign .hero-video {
-  object-fit: cover; object-position: 50% 50%; filter: none; transform: none;
+.hero--campaign .hero-media.hero-drop-slider {
+  background: #503523; overflow: hidden;
 }
+.hero--campaign .hero-drop-slide {
+  position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+  z-index: 1; transform: translateY(-100%);
+  transition: transform 1.2s cubic-bezier(0.77, 0, 0.175, 1);
+  will-change: transform;
+}
+.hero--campaign .hero-drop-slide.is-current {
+  z-index: 2; transform: translateY(0);
+}
+.hero--campaign .hero-drop-slide.move-down {
+  transform: translateY(100%);
+}
+.hero--campaign .hero-drop-slide.is-next {
+  z-index: 1; transform: translateY(-100%);
+}
+.hero--campaign .hero-drop-slide.is-next.is-active {
+  z-index: 3; transform: translateY(0);
+}
+.hero--campaign .hero-drop-slide img {
+  display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 50%;
+  filter: none; transform: none;
+}
+.hero--campaign .hero-drop-slide--dupatta img { object-position: 50% 44%; }
 /* Soft contrast only at the edges; no old dark left-to-right headline overlay. */
 .hero--campaign .hero-shade {
   pointer-events: none;
@@ -139,7 +161,8 @@
   .campaign-menu span { display: none; }
   .campaign-icon .icon, .campaign-menu .icon { width: 22px; height: 22px; }
   .hero.hero--campaign { height: 100svh; min-height: 480px; }
-  .hero--campaign .hero-poster, .hero--campaign .hero-video { object-position: 50% 45%; }
+  .hero--campaign .hero-drop-slide--banner img { object-position: 50% 50%; }
+  .hero--campaign .hero-drop-slide--dupatta img { object-position: 50% 42%; }
   .hero--campaign .campaign-hero-action { bottom: max(65px, 10svh); }
   .campaign-shop-button { min-width: 153px; min-height: 52px; padding: 16px 27px; }
   .hidi-dialog.campaign-panel { padding: 75px 26px 35px; }
@@ -186,5 +209,6 @@
   .hidi-dialog.campaign-panel.campaign-search-panel { background: rgba(250, 248, 242, .92); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .campaign-header::before, .campaign-shop-button, .campaign-icon, .campaign-menu { transition: none; transition-duration: 0s !important; }
+  .campaign-header::before, .campaign-shop-button, .campaign-icon, .campaign-menu,
+  .hero--campaign .hero-drop-slide { transition: none; transition-duration: 0s !important; }
 }

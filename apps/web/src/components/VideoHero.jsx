@@ -1,103 +1,108 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { asset } from '../config.js';
 import { useHidi } from '../context/HidiContext.jsx';
-import { useMediaQuery, useReducedMotion } from '../hooks/useMediaQuery.js';
+import { useReducedMotion } from '../hooks/useMediaQuery.js';
 import { useDocumentVisible, useInView } from '../hooks/useVisibility.js';
 
-/** Use first-frame posters extracted from the actual, corresponding MP4s.
- * The garden catalogue photograph is NOT the desktop video's loading screen.
- * Source-specific readiness prevents an old decoded frame appearing on resize.
- */
+const HERO_SLIDES = [
+  {
+    desktop: 'images/hidi-premium-ai-full-banner-lossless.png',
+    mobile: 'images/hidi-premium-ai-full-banner-lossless.png',
+    className: 'hero-drop-slide--banner',
+  },
+  {
+    desktop: 'images/hidi-cinematic-dupatta-model.webp',
+    mobile: 'images/hero-portrait.webp',
+    className: 'hero-drop-slide--dupatta',
+  },
+];
+
+const SLIDE_INTERVAL_MS = 3600;
+const SLIDE_TRANSITION_MS = 1200;
+
 export default function VideoHero() {
   const { openCollection, dialogOpen } = useHidi();
-  const mobile = useMediaQuery('(max-width: 700px)');
   const reduced = useReducedMotion();
   const pageVisible = useDocumentVisible();
-  const videoRef = useRef(null);
   const heroRef = useRef(null);
   const heroVisible = useInView(heroRef);
-  const [userPaused, setUserPaused] = useState(() => reduced || Boolean(navigator.connection?.saveData));
-  const [playing, setPlaying] = useState(false);
-  const [readySource, setReadySource] = useState('');
-  const [retry, setRetry] = useState(0);
-  const variant = mobile ? 'mobile' : 'desktop';
-  const source = asset(`video/hidi-hero-${variant}-luminous-v1.mp4`);
-  const poster = asset(`images/hero-${variant}-luminous-first-frame-v1.webp`);
-  const ready = readySource === source;
-  const shouldPlay = !userPaused && heroVisible && pageVisible && !dialogOpen;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [outgoingIndex, setOutgoingIndex] = useState(null);
+  const [incomingIndex, setIncomingIndex] = useState(null);
+  const animating = outgoingIndex !== null && incomingIndex !== null;
+  const canAdvance = HERO_SLIDES.length > 1 && !reduced && heroVisible && pageVisible && !dialogOpen;
 
   useEffect(() => {
-    setUserPaused(reduced || Boolean(navigator.connection?.saveData));
+    if (!canAdvance || animating) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setOutgoingIndex(currentIndex);
+      setIncomingIndex((currentIndex + 1) % HERO_SLIDES.length);
+    }, SLIDE_INTERVAL_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [animating, canAdvance, currentIndex]);
+
+  useEffect(() => {
+    if (!animating || incomingIndex === null) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setCurrentIndex(incomingIndex);
+      setOutgoingIndex(null);
+      setIncomingIndex(null);
+    }, SLIDE_TRANSITION_MS + 120);
+
+    return () => window.clearTimeout(timer);
+  }, [animating, incomingIndex]);
+
+  useEffect(() => {
+    if (!reduced) return;
+    setOutgoingIndex(null);
+    setIncomingIndex(null);
   }, [reduced]);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return undefined;
-    let cancelled = false;
-    let videoFrame = null;
-    let animationFrame = 0;
-    setPlaying(false);
-    const reveal = () => {
-      if (!cancelled && video.readyState >= 2 && video.videoWidth > 0) setReadySource(source);
-    };
-    // Register after data arrives, not before src/load(): loading a new source
-    // can discard an earlier callback. Keep an older-engine paint fallback too.
-    const queueFrame = () => {
-      if (video.readyState < 2) return;
-      if (typeof video.requestVideoFrameCallback === 'function') {
-        if (videoFrame !== null) video.cancelVideoFrameCallback?.(videoFrame);
-        videoFrame = video.requestVideoFrameCallback(() => { videoFrame = null; reveal(); });
-      }
-      window.cancelAnimationFrame(animationFrame);
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = window.requestAnimationFrame(() => {
-          // Fully transparent videos may have compositor callbacks suppressed.
-          // Playback + HAVE_CURRENT_DATA confirms a decoded frame still exists.
-          if (videoFrame === null || !video.paused || video.currentTime > 0) reveal();
-        });
-      });
-    };
-    video.addEventListener('loadeddata', queueFrame);
-    video.addEventListener('playing', queueFrame);
-    if (video.readyState >= 2) queueFrame();
-    return () => {
-      cancelled = true;
-      if (videoFrame !== null) video.cancelVideoFrameCallback?.(videoFrame);
-      window.cancelAnimationFrame(animationFrame);
-      video.removeEventListener('loadeddata', queueFrame);
-      video.removeEventListener('playing', queueFrame);
-    };
-  }, [source, retry]);
+  const finishTransition = (index) => {
+    if (index !== incomingIndex) return;
+    setCurrentIndex(index);
+    setOutgoingIndex(null);
+    setIncomingIndex(null);
+  };
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return undefined;
-    let cancelled = false;
-    if (!shouldPlay) { video.pause(); return undefined; }
-    video.muted = true;
-    video.defaultMuted = true;
-    if (video.getAttribute('src') !== source || video.error) {
-      video.src = source;
-      video.load();
-    }
-    // Failure leaves the matching poster and the existing manual play action.
-    video.play().catch(() => { if (!cancelled) setPlaying(false); });
-    return () => { cancelled = true; video.pause(); };
-  }, [source, shouldPlay, retry]);
+  const slideClassName = (index, slide) => {
+    const classes = ['hero-drop-slide', slide.className];
 
+    if (index === currentIndex && !animating) classes.push('is-current');
+    if (index === outgoingIndex) classes.push('is-current', 'move-down');
+    if (index === incomingIndex) classes.push('is-next', 'is-active');
+    if (index !== currentIndex && index !== outgoingIndex && index !== incomingIndex) classes.push('is-next');
+
+    return classes.join(' ');
+  };
 
   return (
     <section ref={heroRef} className="hero hero--campaign" aria-labelledby="hero-title">
-      <div className="hero-media" aria-hidden="true" data-frame-ready={ready}>
-        <picture>
-          <source media="(max-width: 700px)" srcSet={asset('images/hero-mobile-luminous-first-frame-v1.webp')} />
-          <img className="hero-poster" src={asset('images/hero-desktop-luminous-first-frame-v1.webp')}
-            alt="" width="1920" height="1080" loading="eager" fetchpriority="high" />
-        </picture>
-        <video key={source} ref={videoRef} id="hero-video" className={`hero-video${ready ? ' is-ready' : ''}`}
-          poster={poster} loop muted playsInline preload={shouldPlay ? 'auto' : 'none'} tabIndex={-1}
-          onPlaying={() => setPlaying(true)} onPause={() => setPlaying(false)}
-          onError={() => { setReadySource(''); setPlaying(false); }} />
+      <div className="hero-media hero-drop-slider" aria-hidden="true">
+        {HERO_SLIDES.map((slide, index) => (
+          <picture
+            key={slide.desktop}
+            className={slideClassName(index, slide)}
+            onTransitionEnd={(event) => {
+              if (event.propertyName === 'transform' && event.currentTarget === event.target) {
+                finishTransition(index);
+              }
+            }}
+          >
+            <source media="(max-width: 700px)" srcSet={asset(slide.mobile)} />
+            <img
+              src={asset(slide.desktop)}
+              alt=""
+              width="1920"
+              height="1080"
+              loading="eager"
+              fetchPriority={index === 0 ? 'high' : 'low'}
+            />
+          </picture>
+        ))}
       </div>
       <div className="hero-shade" />
       <h1 id="hero-title" className="sr-only">HIDI — Wear the feeling. Indian wear for work, everyday and occasions.</h1>
