@@ -1,0 +1,141 @@
+name: Deploy HIDI landing to Azure
+
+on:
+  push:
+    branches:
+      - hidi-web-new
+    paths:
+      - apps/web/**
+      - deploy/hidi-web-new/**
+      - .github/workflows/hidi-web-new-azure-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: hidi-web-new-azure-deploy
+  cancel-in-progress: false
+
+env:
+  AZURE_RESOURCE_GROUP: rg-hidi-prod
+  AZURE_CONTAINER_APP: hidi-web
+  ACR_NAME: acrhidiprod0927
+  BASE_IMAGE: hidi-web@sha256:1bc1614ac79ea6718f94a67d3a2f5525af3a3b228dcf46191c15b75069184a31
+  LIVE_URL: https://thidigk.thehidi.com
+
+jobs:
+  deploy:
+    name: Build, publish, and update Azure Container App
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        shell: bash
+        run: |
+          short_sha="${GITHUB_SHA::8}"
+          tag="landing-connected-${short_sha}-${GITHUB_RUN_NUMBER}"
+          revision="landing${short_sha}${GITHUB_RUN_NUMBER}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "revision=${revision:0:63}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install landing dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Run landing source tests
+        working-directory: apps/web
+        run: npm test
+
+      - name: Build landing bundle
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Run deployment runtime tests
+        run: node --test deploy/hidi-web-new/runtime.test.mjs
+
+      - name: Package landing runtime
+        shell: bash
+        run: |
+          tar -czf hidi-landing-connected-runtime.tar.gz \
+            -C apps/web dist \
+            -C ../../deploy/hidi-web-new server.mjs
+          sha256sum hidi-landing-connected-runtime.tar.gz
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Publish landing image to ACR
+        id: publish
+        shell: bash
+        run: |
+          python3 deploy/hidi-web-new/push-hidi-landing-oci.py \
+            --registry "$ACR_NAME" \
+            --payload hidi-landing-connected-runtime.tar.gz \
+            --base "$BASE_IMAGE" \
+            --tag "${{ steps.version.outputs.tag }}" \
+            | tee published-image.json
+
+          digest="$(python3 - <<'PY'
+          import json
+          with open('published-image.json', 'r', encoding='utf-8') as stream:
+              print(json.load(stream)['manifest_digest'])
+          PY
+          )"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "image=${ACR_NAME}.azurecr.io/hidi-web@${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Azure Container App
+        shell: bash
+        run: |
+          az containerapp update \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_CONTAINER_APP" \
+            --image "${{ steps.publish.outputs.image }}" \
+            --revision-suffix "${{ steps.version.outputs.revision }}"
+
+      - name: Wait for healthy revision
+        shell: bash
+        run: |
+          deadline=$((SECONDS + 600))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            state="$(az containerapp revision list \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --name "$AZURE_CONTAINER_APP" \
+              --query "[?contains(name, '${{ steps.version.outputs.revision }}')].properties.healthState | [0]" \
+              --output tsv)"
+            echo "Revision health: ${state:-pending}"
+            if [ "$state" = "Healthy" ]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Revision did not become healthy in time." >&2
+          az containerapp revision list \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_CONTAINER_APP" \
+            --output table
+          exit 1
+
+      - name: Live static smoke test
+        run: python3 deploy/hidi-web-new/smoke.py --url "$LIVE_URL" --dist apps/web/dist
+
+      - name: Live wiring smoke test
+        run: python3 deploy/hidi-web-new/wiring-smoke.py --url "$LIVE_URL"
