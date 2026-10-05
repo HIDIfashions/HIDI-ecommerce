@@ -190,7 +190,6 @@ jobs:
 
   deploy-landing-overlay:
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-landing]')
-    needs: containers
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -254,7 +253,7 @@ jobs:
           python3 landing-source/deploy/hidi-web-new/push-hidi-landing-oci.py \
             --registry "$ACR_NAME" \
             --payload hidi-landing-connected-runtime.tar.gz \
-            --base "hidi-web:$GITHUB_SHA" \
+            --base "hidi-web@sha256:7f5eb87852f81123538990b1b24c0fee94cb30185f661d835587393e6b46e8e6" \
             --tag "$tag" \
             | tee published-image.json
 
