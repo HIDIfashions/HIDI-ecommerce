@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 const runtime = fileURLToPath(new URL("./server.mjs", import.meta.url));
 let folder;
 let fixture;
+let apiFixture;
 let proxy;
 let unavailable;
 let healthy = true;
@@ -115,7 +116,25 @@ before(async () => {
   });
   fixture.listen(0, "127.0.0.1");
   await once(fixture, "listening");
-  proxy = await launch({ STOREFRONT_ORIGIN: `http://127.0.0.1:${fixture.address().port}` });
+
+  apiFixture = createServer(async (incoming, response) => {
+    const chunks = [];
+    for await (const chunk of incoming) chunks.push(chunk);
+    response.writeHead(202, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      url: incoming.url,
+      method: incoming.method,
+      headers: incoming.headers,
+      body: Buffer.concat(chunks).toString(),
+    }));
+  });
+  apiFixture.listen(0, "127.0.0.1");
+  await once(apiFixture, "listening");
+
+  proxy = await launch({
+    STOREFRONT_ORIGIN: `http://127.0.0.1:${fixture.address().port}`,
+    INTERNAL_API_URL: `http://127.0.0.1:${apiFixture.address().port}/v1`,
+  });
   unavailable = await launch({ STOREFRONT_ORIGIN: "" });
 });
 
@@ -127,6 +146,7 @@ after(async () => {
     await exited;
   }));
   if (fixture) await new Promise(resolve => fixture.close(resolve));
+  if (apiFixture) await new Promise(resolve => apiFixture.close(resolve));
   if (folder) await rm(folder, { recursive: true, force: true });
 });
 
@@ -208,6 +228,38 @@ test("commerce routes preserve method, raw URL, body, cookies and original HTTPS
   assert.equal(received.headers["x-request-id"], "flow-1");
   assert.equal(received.headers["x-hop-test"], undefined);
   assert.deepEqual(response.headers["set-cookie"], ["session=fixture; Path=/; Secure; HttpOnly", "csrf=fixture; Path=/; SameSite=Lax"]);
+});
+
+test("provider webhooks on /v1 proxy directly to the API with signatures and raw body", async () => {
+  const getWebhook = await send(proxy.url, "/v1/payments/razorpay/webhook");
+  assert.equal(getWebhook.status, 405);
+  assert.equal(getWebhook.headers.allow, "POST");
+  assert.match(getWebhook.body, /POST only/);
+
+  const body = '{"event":"payment.captured","payload":{"payment":{"entity":{"id":"pay_1"}}}}';
+  const response = await send(proxy.url, "/v1/payments/razorpay/webhook?attempt=1", {
+    method: "POST",
+    body,
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(body),
+      Host: "thidigk.thehidi.com",
+      "X-Forwarded-Proto": "https",
+      "X-Razorpay-Signature": "signed-body",
+      Connection: "keep-alive, x-hop-test",
+      "X-Hop-Test": "remove-me",
+    },
+  });
+  const received = JSON.parse(response.body);
+  assert.equal(response.status, 202);
+  assert.equal(received.url, "/v1/payments/razorpay/webhook?attempt=1");
+  assert.equal(received.method, "POST");
+  assert.equal(received.body, body);
+  assert.equal(received.headers["x-razorpay-signature"], "signed-body");
+  assert.equal(received.headers["x-forwarded-host"], "thidigk.thehidi.com");
+  assert.equal(received.headers["x-forwarded-proto"], "https");
+  assert.equal(received.headers["x-hop-test"], undefined);
+  assert.equal(received.headers.host, `127.0.0.1:${apiFixture.address().port}`);
 });
 
 test("hero control route stays on the landing runtime and public hero config safely falls back", async () => {
