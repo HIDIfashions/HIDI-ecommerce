@@ -68,12 +68,15 @@ For Azure Blob, set the Container App environment to:
 MEDIA_STORAGE_PROVIDER=azure
 AZURE_STORAGE_ACCOUNT=sthidiprod0927
 AZURE_STORAGE_CONTAINER=<hero media container>
-MEDIA_PUBLIC_BASE_URL=https://media.thehidi.com
+MEDIA_PUBLIC_BASE_URL=/api/hidi/hero-asset
 AZURE_CLIENT_ID=<hidi-web managed identity client id>
 ```
 
 The managed identity needs Blob data read/write access on the storage account
-or container. `AZURE_STORAGE_CONTAINER` can also be supplied as
-`MEDIA_STORAGE_CONTAINER`, `AZURE_BLOB_CONTAINER` or `BLOB_CONTAINER`.
+or container. Uploaded hero assets are streamed back through the landing
+runtime at `/api/hidi/hero-asset/brand/hero/media/...`, so the storage account
+can keep public network and anonymous blob access disabled.
+`AZURE_STORAGE_CONTAINER` can also be supplied as `MEDIA_STORAGE_CONTAINER`,
+`AZURE_BLOB_CONTAINER` or `BLOB_CONTAINER`.
 R2 remains supported only when `MEDIA_STORAGE_PROVIDER=r2` and the existing R2
 credentials are present.

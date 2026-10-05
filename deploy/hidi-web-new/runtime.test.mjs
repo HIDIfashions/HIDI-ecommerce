@@ -235,14 +235,30 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
       return;
     }
 
-    if (incoming.method === "GET") {
+    if (incoming.method === "GET" || incoming.method === "HEAD") {
       const saved = blobs.get(incoming.url);
       if (!saved) {
         response.writeHead(404).end("missing");
         return;
       }
-      response.writeHead(200, { "Content-Type": saved.headers["x-ms-blob-content-type"] || "application/octet-stream" });
-      response.end(saved.body);
+      const range = incoming.headers.range || incoming.headers["x-ms-range"];
+      const match = /^bytes=(\d*)-(\d*)$/.exec(range || "");
+      let status = 200;
+      let body = saved.body;
+      const headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Type": saved.headers["x-ms-blob-content-type"] || "application/octet-stream",
+      };
+      if (match) {
+        const start = match[1] ? Number(match[1]) : 0;
+        const end = match[2] ? Number(match[2]) : saved.body.length - 1;
+        body = saved.body.subarray(start, end + 1);
+        status = 206;
+        headers["Content-Range"] = `bytes ${start}-${end}/${saved.body.length}`;
+      }
+      headers["Content-Length"] = body.length;
+      response.writeHead(status, headers);
+      response.end(incoming.method === "HEAD" ? undefined : body);
       return;
     }
 
@@ -264,7 +280,7 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
       AZURE_STORAGE_ACCOUNT: "unitstore",
       AZURE_STORAGE_CONTAINER: "hero",
       AZURE_CLIENT_ID: "client-id-123",
-      MEDIA_PUBLIC_BASE_URL: "https://media.example.test",
+      MEDIA_PUBLIC_BASE_URL: "/api/hidi/hero-asset",
       AZURE_IMDS_ENDPOINT: `${identityUrl}/metadata/identity/oauth2/token`,
       AZURE_STORAGE_BLOB_ENDPOINT: blobUrl,
     });
@@ -285,12 +301,22 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     assert.equal(asset.type, "image");
     assert.equal(asset.mimeType, "image/png");
     assert.equal(asset.originalName, "Launch Banner.png");
-    assert.match(asset.url, /^https:\/\/media\.example\.test\/brand\/hero\/media\/\d{8}\/.+\.png$/);
+    assert.match(asset.url, /^\/api\/hidi\/hero-asset\/brand\/hero\/media\/\d{8}\/.+\.png$/);
     assert.match(asset.storagePath, /^azure:\/\/unitstore\/hero\/brand\/hero\/media\/\d{8}\/.+\.png$/);
 
-    const mediaPath = new URL(asset.url).pathname;
+    const mediaPath = new URL(asset.url, azure.url).pathname.replace("/api/hidi/hero-asset", "");
     assert.equal(blobs.get(`/hero${mediaPath}`).body.toString(), "hero image bytes");
     assert.equal(blobs.get(`/hero${mediaPath}`).headers["x-ms-blob-content-type"], "image/png");
+
+    const proxied = await send(azure.url, asset.url);
+    assert.equal(proxied.status, 200);
+    assert.equal(proxied.headers["content-type"], "image/png");
+    assert.equal(proxied.body, "hero image bytes");
+
+    const ranged = await send(azure.url, asset.url, { headers: { Range: "bytes=0-3" } });
+    assert.equal(ranged.status, 206);
+    assert.equal(ranged.headers["content-range"], "bytes 0-3/16");
+    assert.equal(ranged.body, "hero");
 
     const library = await send(azure.url, "/api/hidi/hero-library");
     assert.equal(library.status, 200, library.body);

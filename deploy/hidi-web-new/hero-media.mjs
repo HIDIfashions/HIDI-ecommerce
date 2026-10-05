@@ -11,6 +11,8 @@ import { pipeline } from "node:stream/promises";
 const CURRENT_KEY = "brand/hero/current.json";
 const PREVIOUS_KEY = "brand/hero/previous.json";
 const LIBRARY_KEY = "brand/hero/library.json";
+const HERO_ASSET_PREFIX = "/api/hidi/hero-asset/";
+const MEDIA_KEY_PREFIX = "brand/hero/media/";
 const DEFAULT_CONTAINER = "hidi-product-media-prod";
 const AZURE_STORAGE_SCOPE = "https://storage.azure.com/";
 const AZURE_BLOB_API_VERSION = "2023-11-03";
@@ -37,6 +39,15 @@ function sendJson(response, status, value) {
     "Content-Length": Buffer.byteLength(body),
   });
   response.end(body);
+}
+
+function sendPlain(response, status, message) {
+  response.writeHead(status, {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Content-Length": Buffer.byteLength(message),
+  });
+  response.end(message);
 }
 
 function cleanBaseUrl(value) {
@@ -353,6 +364,90 @@ async function storagePutJson(key, value) {
   }
 }
 
+function headerCase(name) {
+  return name.split("-").map(part => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`).join("-");
+}
+
+function assetKeyFromPath(pathname) {
+  if (!pathname.startsWith(HERO_ASSET_PREFIX)) return "";
+  const key = pathname.slice(HERO_ASSET_PREFIX.length);
+  if (!key.startsWith(MEDIA_KEY_PREFIX) || key.includes("..")) return "";
+  return key;
+}
+
+function mediaResponseHeaders(headers) {
+  const outgoing = {
+    "Cache-Control": "public, max-age=31536000, immutable",
+    "X-Content-Type-Options": "nosniff",
+    "Accept-Ranges": "bytes",
+  };
+  for (const name of ["content-type", "content-length", "content-range", "etag", "last-modified"]) {
+    const value = headers[name];
+    if (value) outgoing[headerCase(name)] = value;
+  }
+  return outgoing;
+}
+
+async function azureProxyAsset(request, response, key) {
+  const config = azureConfig();
+  const token = await azureAccessToken(config);
+  const url = azureBlobUrl(config, key);
+  const range = headerValue(request.headers.range);
+  const method = request.method === "HEAD" ? "HEAD" : "GET";
+  const transport = url.protocol === "http:" ? httpRequest : httpsRequest;
+
+  return new Promise((resolvePromise, rejectPromise) => {
+    const outgoing = transport({
+      hostname: url.hostname,
+      port: url.port,
+      method,
+      path: `${url.pathname}${url.search}`,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-ms-date": new Date().toUTCString(),
+        "x-ms-version": AZURE_BLOB_API_VERSION,
+        ...(range && /^bytes=\d*-\d*$/.test(range) ? { Range: range, "x-ms-range": range } : {}),
+      },
+      timeout: 90_000,
+    }, incoming => {
+      const status = incoming.statusCode || 502;
+      if (status < 200 || status >= 300) {
+        incoming.resume();
+        incoming.on("end", () => {
+          sendPlain(response, status === 404 ? 404 : 502,
+            status === 404 ? "Hero media not found" : `Hero media storage returned HTTP ${status}`);
+          resolvePromise();
+        });
+        incoming.on("error", rejectPromise);
+        return;
+      }
+
+      response.writeHead(status, mediaResponseHeaders(incoming.headers));
+      if (method === "HEAD") {
+        incoming.resume();
+        incoming.on("end", resolvePromise);
+        incoming.on("error", rejectPromise);
+        response.end();
+        return;
+      }
+      pipeline(incoming, response).then(resolvePromise, rejectPromise);
+    });
+
+    outgoing.on("timeout", () => outgoing.destroy(new Error("Hero media storage timed out")));
+    outgoing.on("error", rejectPromise);
+    outgoing.end();
+  });
+}
+
+async function proxyHeroAsset(request, response, key) {
+  const config = storageConfig();
+  if (config.provider !== "azure") {
+    sendPlain(response, 404, "Hero media not found");
+    return;
+  }
+  await azureProxyAsset(request, response, key);
+}
+
 async function verifyAdmin(request, origin, hasStorefront) {
   if (!hasStorefront) return false;
   try {
@@ -540,6 +635,26 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
         response.end();
       } else {
         sendJson(response, 200, value);
+      }
+      return true;
+    }
+
+    if (pathname.startsWith(HERO_ASSET_PREFIX)) {
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        response.setHeader("Allow", "GET, HEAD");
+        sendPlain(response, 405, "Method not allowed");
+        return true;
+      }
+      const key = assetKeyFromPath(pathname);
+      if (!key) {
+        sendPlain(response, 404, "Hero media not found");
+        return true;
+      }
+      try {
+        await proxyHeroAsset(request, response, key);
+      } catch {
+        if (!response.headersSent) sendPlain(response, 502, "Hero media unavailable");
+        else response.destroy();
       }
       return true;
     }
