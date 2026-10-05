@@ -16,8 +16,15 @@ if (!["http:", "https:"].includes(origin.protocol) || origin.username || origin.
     || origin.pathname !== "/" || origin.search || origin.hash) {
   throw new Error("STOREFRONT_ORIGIN must be a fixed HTTP(S) origin");
 }
+const configuredApiOrigin = process.env.INTERNAL_API_URL || process.env.API_URL || "";
+const apiOrigin = configuredApiOrigin ? new URL(configuredApiOrigin) : null;
+if (apiOrigin && (!["http:", "https:"].includes(apiOrigin.protocol) || apiOrigin.username
+    || apiOrigin.password || apiOrigin.search || apiOrigin.hash)) {
+  throw new Error("INTERNAL_API_URL/API_URL must be a fixed HTTP(S) URL");
+}
 const hasStorefront = Boolean(configuredOrigin || existsSync(storefrontServer));
 const requestUpstream = origin.protocol === "https:" ? httpsRequest : httpRequest;
+const requestApi = apiOrigin?.protocol === "https:" ? httpsRequest : httpRequest;
 const hopHeaders = ["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"];
 const contentEtags = new Map();
 const handleHeroMedia = createHeroMediaHandler({ origin, hasStorefront });
@@ -83,6 +90,49 @@ function injectAdminHeroLink(html) {
     : `${html}${adminHeroMediaLink}`;
 }
 
+function forwardedProto(request) {
+  const value = String(request.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+  return ["http", "https"].includes(value)
+    ? value : request.socket.encrypted ? "https" : "http";
+}
+
+function apiProxyPath(pathname, search = "") {
+  const basePath = apiOrigin.pathname.replace(/\/$/, "");
+  const suffix = pathname === "/v1" ? "" : pathname.slice("/v1".length);
+  const path = basePath.endsWith("/v1") ? `${basePath}${suffix}` : `${basePath}/v1${suffix}`;
+  return `${path || "/"}${search}`;
+}
+
+function proxyApi(request, response, pathname) {
+  if (!apiOrigin) return error(response, 503, "API unavailable");
+  const headers = cleanHeaders(request.headers);
+  headers.host = apiOrigin.host;
+  headers["x-forwarded-host"] = request.headers.host || apiOrigin.host;
+  headers["x-forwarded-proto"] = forwardedProto(request);
+  const url = new URL(request.url || "/", "http://localhost");
+  const upstream = requestApi({
+    protocol: apiOrigin.protocol,
+    hostname: apiOrigin.hostname,
+    port: apiOrigin.port || undefined,
+    method: request.method,
+    path: apiProxyPath(pathname, url.search),
+    headers,
+  }, incoming => {
+    const responseHeaders = cleanHeaders(incoming.headers);
+    response.writeHead(incoming.statusCode || 502, responseHeaders);
+    incoming.on("error", () => response.destroy());
+    response.on("close", () => incoming.destroy());
+    incoming.pipe(response);
+  });
+  upstream.on("error", () => {
+    if (response.headersSent) response.destroy();
+    else error(response, 503, "API unavailable");
+  });
+  request.on("aborted", () => upstream.destroy());
+  response.on("close", () => upstream.destroy());
+  request.pipe(upstream);
+}
+
 function proxy(request, response, pathname = "") {
   if (!hasStorefront) return error(response, 503, "Storefront unavailable");
   const headers = cleanHeaders(request.headers);
@@ -92,9 +142,7 @@ function proxy(request, response, pathname = "") {
   // reach Next so redirects, authentication cookies, and URL generation work.
   headers.host = request.headers.host || origin.host;
   headers["x-forwarded-host"] = request.headers.host || origin.host;
-  const forwardedProto = String(request.headers["x-forwarded-proto"] || "").split(",")[0].trim();
-  headers["x-forwarded-proto"] = ["http", "https"].includes(forwardedProto)
-    ? forwardedProto : request.socket.encrypted ? "https" : "http";
+  headers["x-forwarded-proto"] = forwardedProto(request);
   const upstream = requestUpstream({
     protocol: origin.protocol,
     hostname: origin.hostname,
@@ -216,6 +264,12 @@ async function handle(request, response) {
   }
 
   if (await handleHeroMedia(request, response, pathname)) return;
+
+  if (pathname === "/v1/payments/razorpay/webhook" && (request.method === "GET" || request.method === "HEAD")) {
+    response.setHeader("Allow", "POST");
+    return error(response, 405, "Razorpay webhook accepts POST only");
+  }
+  if (pathname === "/v1" || pathname.startsWith("/v1/")) return proxyApi(request, response, pathname);
 
   // Backend/API paths always win, including accidental static collisions.
   if (pathname === "/api" || pathname.startsWith("/api/")
