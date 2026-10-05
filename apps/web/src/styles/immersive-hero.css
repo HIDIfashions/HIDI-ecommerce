@@ -65,6 +65,12 @@
   object-fit: cover; object-position: 50% 50%;
   filter: none; transform: none;
 }
+.hero--campaign .hero-live-media {
+  position: absolute; inset: 0; z-index: 2; display: block;
+  width: 100%; height: 100%; max-width: none;
+  object-fit: cover;
+  object-position: var(--hero-position-desktop, 50% 50%);
+}
 .hero--campaign .hero-drop-slide--dupatta img { object-position: 50% 44%; }
 /* Soft contrast only at the edges; no old dark left-to-right headline overlay. */
 .hero--campaign .hero-shade {
@@ -164,6 +170,7 @@
   .hero.hero--campaign { height: 100svh; min-height: 480px; }
   .hero--campaign .hero-drop-slide--banner img { object-position: 50% 50%; }
   .hero--campaign .hero-drop-slide--dupatta img { object-position: 50% 42%; }
+  .hero--campaign .hero-live-media { object-position: var(--hero-position-mobile, 50% 50%); }
   .hero--campaign .campaign-hero-action { bottom: max(65px, 10svh); }
   .campaign-shop-button { min-width: 153px; min-height: 52px; padding: 16px 27px; }
   .hidi-dialog.campaign-panel { padding: 68px 22px max(30px, env(safe-area-inset-bottom)); }
