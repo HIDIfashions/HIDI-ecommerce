@@ -224,7 +224,7 @@ test("full wallet refund stages refund evidence then restores tender once; repea
   assert.equal(state.refunds[0].providerRefundId, "wallet-full-refund:order-1");
   assert.equal(state.refunds[0].amountPaise, 0);
   assert.equal(state.refunds[0].status, "PROCESSED");
-  assert.deepEqual(state.order.payments[0].rawReference, { source: "ADMIN_WALLET_FULL_REFUND", reference: "SUPPORT-123", reason: "Customer return inspected" });
+  assert.deepEqual(JSON.parse(state.order.payments[0].rawReference), { source: "ADMIN_WALLET_FULL_REFUND", reference: "SUPPORT-123", reason: "Customer return inspected" });
   assert.match(state.order.notes, /^Original note\nWALLET_REFUND: SUPPORT-123: Customer return inspected$/);
   const writesBeforeRepeat = [...fixture.writeAttempts];
   const second = await fixture.service.refundWalletOnlyOrder("ORDER-1", details);
@@ -309,3 +309,4 @@ test("return hold rollback also reverses its staged earning reversal when order 
   assert.deepEqual(fixture.snapshot(), before);
   assert.equal(fixture.commits(), 0);
 });
+

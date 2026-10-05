@@ -1,5 +1,6 @@
+import { decodeJson } from "../prisma/json.js";
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -62,14 +63,18 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
     if (this.running) return { skipped: true, reason: "already_running" };
     this.running = true;
     let databaseLock = false;
+    const leaseOwner = randomUUID();
 
     try {
       if (!this.enabled()) return { skipped: true, reason: "disabled" };
 
-      const lockRows = await this.prisma.$queryRawUnsafe<Array<{ locked: boolean }>>(
-        "SELECT pg_try_advisory_lock(48273419) AS locked",
-      );
-      databaseLock = Boolean(lockRows[0]?.locked);
+      const lockRows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+        UPDATE [dbo].[BackgroundLease] WITH (UPDLOCK, ROWLOCK)
+        SET [owner] = ${leaseOwner}, [expiresAt] = DATEADD(minute, 30, SYSUTCDATETIME())
+        OUTPUT INSERTED.[id]
+        WHERE [id] = 'review-followup' AND [expiresAt] <= SYSUTCDATETIME()
+      `;
+      databaseLock = lockRows.length === 1;
       if (!databaseLock) return { skipped: true, reason: "another_instance_running" };
 
       const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -171,9 +176,11 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
 
           const response = await fetch("https://api.resend.com/emails", {
             method: "POST",
+            signal: AbortSignal.timeout(15000),
             headers: {
               Authorization: `Bearer ${apiKey}`,
               "Content-Type": "application/json",
+              "Idempotency-Key": `hidi-review-${followUp.id}`,
             },
             body: JSON.stringify({
               from,
@@ -219,9 +226,10 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
       };
     } finally {
       if (databaseLock) {
-        await this.prisma.$queryRawUnsafe(
-          "SELECT pg_advisory_unlock(48273419)",
-        ).catch(() => undefined);
+        await this.prisma.$executeRaw`
+          UPDATE [dbo].[BackgroundLease] SET [owner] = NULL, [expiresAt] = SYSUTCDATETIME()
+          WHERE [id] = 'review-followup' AND [owner] = ${leaseOwner}
+        `.catch(() => undefined);
       }
       this.running = false;
     }
@@ -250,7 +258,7 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private textMessage(order: any, reviewUrl: string) {
-    const address = (order.shippingAddress ?? {}) as Record<string, unknown>;
+    const address = (decodeJson(order.shippingAddress) ?? {}) as Record<string, unknown>;
     const name = typeof address.firstName === "string" && address.firstName.trim()
       ? address.firstName.trim()
       : "there";
@@ -270,7 +278,7 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
   }
 
   private htmlMessage(order: any, reviewUrl: string) {
-    const address = (order.shippingAddress ?? {}) as Record<string, unknown>;
+    const address = (decodeJson(order.shippingAddress) ?? {}) as Record<string, unknown>;
     const name = typeof address.firstName === "string" && address.firstName.trim()
       ? this.escape(address.firstName.trim())
       : "there";
@@ -304,3 +312,4 @@ export class ReviewFollowUpService implements OnModuleInit, OnModuleDestroy {
     }[character] ?? character));
   }
 }
+

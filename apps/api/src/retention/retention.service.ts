@@ -169,7 +169,7 @@ export class RetentionService {
       where: {
         OR: [
           { userId: profile.userId },
-          ...(profile.user.email ? [{ userId: null, customerEmail: { equals: profile.user.email, mode: "insensitive" as const } }] : []),
+          ...(profile.user.email ? [{ userId: null, customerEmail: { equals: profile.user.email } }] : []),
         ],
         status: { notIn: ["PENDING_PAYMENT", "CANCELLED"] },
         createdAt: { gte: new Date(now.getTime() - (EVENT_RETENTION_DAYS + 7) * DAY_MS) },
@@ -199,3 +199,4 @@ export class RetentionService {
     return { ...meta, candidates, nextCursor: profiles.length > 25 ? page[page.length - 1].id : null };
   }
 }
+

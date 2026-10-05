@@ -33,6 +33,10 @@ async function proxy(
   if (authorization) headers.set("authorization", authorization);
   if (contentType) headers.set("content-type", contentType);
   if (accept) headers.set("accept", accept);
+  if (path.join("/") === "payments/razorpay/webhook") {
+    const signature = request.headers.get("x-razorpay-signature");
+    if (signature) headers.set("x-razorpay-signature", signature);
+  }
 
   const method = request.method.toUpperCase();
   const body = method === "GET" || method === "HEAD"
@@ -67,7 +71,7 @@ async function proxy(
 
     return new Response(text, {
       status: response.status,
-      headers: { "content-type": responseType || "application/json" },
+      headers: { "content-type": responseType || "application/json", "Cache-Control": "private, no-store" },
     });
   } catch {
     return NextResponse.json(
@@ -82,3 +86,4 @@ export const POST = proxy;
 export const PATCH = proxy;
 export const PUT = proxy;
 export const DELETE = proxy;
+

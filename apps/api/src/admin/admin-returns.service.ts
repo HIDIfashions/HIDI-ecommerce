@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { InventoryMovementType, type Prisma } from "../generated/prisma/client.js";
+import type { Prisma } from "../generated/prisma/client.js";
+import { InventoryMovementType } from "../prisma/domain-enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RazorpayService } from "../razorpay/razorpay.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
@@ -47,7 +48,7 @@ export class AdminReturnsService {
 
     return withSerializableRetry(this.prisma, async (tx) => {
       const locked = await tx.$queryRaw<Array<{ id: string }>>`
-        SELECT "id" FROM "ReturnRequest" WHERE "id" = ${requestId} FOR UPDATE
+        SELECT "id" FROM "ReturnRequest" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${requestId} 
       `;
       if (!locked[0]) throw new NotFoundException("Return request not found");
 
@@ -70,9 +71,9 @@ export class AdminReturnsService {
           if (!request.requestedVariantId) throw new ConflictException("Exchange replacement variant is missing");
           const rows = await tx.$queryRaw<Array<{ id: string; onHand: number; reserved: number; safetyStock: number }>>`
             SELECT "id", "onHand", "reserved", "safetyStock"
-            FROM "Inventory"
+            FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
             WHERE "variantId" = ${request.requestedVariantId}
-            FOR UPDATE
+            
           `;
           const inventory = rows[0];
           const available = inventory ? inventory.onHand - inventory.reserved - inventory.safetyStock : 0;
@@ -196,9 +197,9 @@ export class AdminReturnsService {
         if (disposition === "RESTOCK") {
           const rows = await tx.$queryRaw<Array<{ id: string; onHand: number }>>`
             SELECT "id", "onHand"
-            FROM "Inventory"
+            FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
             WHERE "variantId" = ${request.orderItem.variantId}
-            FOR UPDATE
+            
           `;
           const inventory = rows[0];
           if (!inventory) throw new ConflictException("Original item inventory is missing");
@@ -265,9 +266,9 @@ export class AdminReturnsService {
 
         const rows = await tx.$queryRaw<Array<{ id: string; onHand: number; reserved: number }>>`
           SELECT "id", "onHand", "reserved"
-          FROM "Inventory"
+          FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
           WHERE "variantId" = ${request.requestedVariantId}
-          FOR UPDATE
+          
         `;
         const inventory = rows[0];
         if (!inventory || inventory.onHand < request.quantity || inventory.reserved < request.quantity) {
@@ -363,7 +364,7 @@ export class AdminReturnsService {
 
     if (request.refundDestination === "WALLET") {
       return withSerializableRetry(this.prisma, async (tx) => {
-        await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WHERE "id" = ${request.id} FOR UPDATE`;
+        await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${request.id} `;
         const current = await tx.returnRequest.findUnique({ where: { id: request.id } });
         if (!current || current.status !== "RECEIVED") throw new ConflictException("Return status changed. Refresh and try again.");
         await this.wallet.creditReturnRefund(tx, request.orderId, request.id, request.refundPaise);
@@ -432,7 +433,7 @@ export class AdminReturnsService {
 
     if (cashShare <= 0) {
       return withSerializableRetry(this.prisma, async (tx) => {
-        await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WHERE "id" = ${request.id} FOR UPDATE`;
+        await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${request.id} `;
         const current = await tx.returnRequest.findUnique({ where: { id: request.id } });
         if (!current || current.status !== "RECEIVED") {
           throw new ConflictException("Return status changed. Refresh and try again.");
@@ -475,7 +476,7 @@ export class AdminReturnsService {
     }
 
     await withSerializableRetry(this.prisma, async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WHERE "id" = ${request.id} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${request.id} `;
       const current = await tx.returnRequest.findUnique({ where: { id: request.id } });
       if (!current || current.status !== "RECEIVED") throw new ConflictException("Return status changed. Refresh and try again.");
       await tx.returnRequest.update({
@@ -613,7 +614,7 @@ export class AdminReturnsService {
 
   private async completeExchange(requestId: string, body: ReturnActionInput, actor: AdminActor) {
     const updated = await withSerializableRetry(this.prisma, async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WHERE "id" = ${requestId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "ReturnRequest" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${requestId} `;
       const request = await tx.returnRequest.findUnique({ where: { id: requestId } });
       if (!request) throw new NotFoundException("Return request not found");
       if (request.type !== "EXCHANGE" || request.status !== "EXCHANGE_SHIPPED") {
@@ -648,7 +649,7 @@ export class AdminReturnsService {
 
   private async releaseExchangeReservation(tx: Prisma.TransactionClient, variantId: string, quantity: number) {
     const rows = await tx.$queryRaw<Array<{ id: string; reserved: number }>>`
-      SELECT "id", "reserved" FROM "Inventory" WHERE "variantId" = ${variantId} FOR UPDATE
+      SELECT "id", "reserved" FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "variantId" = ${variantId} 
     `;
     const inventory = rows[0];
     if (!inventory || inventory.reserved < quantity) throw new ConflictException("Exchange reservation requires reconciliation");
@@ -689,3 +690,4 @@ export class AdminReturnsService {
     return ACTIVE_RETURN_STATUSES;
   }
 }
+

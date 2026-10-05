@@ -1,3 +1,4 @@
+import { decodeJson } from "../prisma/json.js";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -38,7 +39,7 @@ export class ReviewsService {
       throw new BadRequestException("This order is not eligible for review yet");
     }
 
-    const address = (followUp.order.shippingAddress ?? {}) as Record<string, unknown>;
+    const address = (decodeJson(followUp.order.shippingAddress) ?? {}) as Record<string, unknown>;
     const reviewerName = [address.firstName, address.lastName]
       .filter((value) => typeof value === "string" && value.trim())
       .join(" ")
@@ -295,3 +296,4 @@ export class ReviewsService {
     };
   }
 }
+

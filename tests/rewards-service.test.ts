@@ -42,7 +42,7 @@ test("read-only own-account query is bounded and reports truncated estimates", a
     assert.deepEqual(lookup, { where: { email: authUser.email }, select: { id: true } });
     assert.deepEqual(query.where.OR, [
       { userId: "local-user-123" },
-      { userId: null, customerEmail: { equals: authUser.email, mode: "insensitive" } },
+      { userId: null, customerEmail: { equals: authUser.email } },
     ]);
     assert.equal(query.take, 101);
     assert.equal(query.select.payments.take, 21);
@@ -70,7 +70,7 @@ test("unmapped verified customer only matches unclaimed guest orders", async () 
       order: { findMany: async (args: unknown) => { query = args; return []; } },
     } as unknown as PrismaService;
     const result = await new RewardsService(prisma).summary(authUser);
-    assert.deepEqual(query.where.OR, [{ userId: null, customerEmail: { equals: authUser.email, mode: "insensitive" } }]);
+    assert.deepEqual(query.where.OR, [{ userId: null, customerEmail: { equals: authUser.email } }]);
     assert.equal(result.spendablePaise, 0);
     assert.equal(result.coverage.truncated, false);
   } finally {
@@ -111,3 +111,4 @@ test("relation overflow and missing return configuration never become eligible e
     else process.env.HIDI_REWARD_RETURN_WINDOW_DAYS = previousWindow;
   }
 });
+

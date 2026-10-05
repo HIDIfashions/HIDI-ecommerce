@@ -1,3 +1,4 @@
+import { encodeJson } from "../prisma/json.js";
 import type { Prisma } from "../generated/prisma/client.js";
 
 type AuditWriter = {
@@ -39,7 +40,7 @@ export async function appendOrderAudit(db: AuditWriter, input: OrderAuditInput) 
         eventKey: input.eventKey ?? null,
         correlationId: input.correlationId ?? null,
         source: input.source ?? null,
-        metadata: input.metadata ?? undefined,
+        metadata: input.metadata == null ? undefined : encodeJson(input.metadata),
         createdAt: input.createdAt,
       },
     });
@@ -53,3 +54,4 @@ export async function appendOrderAudit(db: AuditWriter, input: OrderAuditInput) 
     throw error;
   }
 }
+

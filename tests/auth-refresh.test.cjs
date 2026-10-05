@@ -15,16 +15,17 @@ const refreshed = (userId = "customer-a", refreshToken = "rotated-refresh") => (
   access_token: "fresh-access", refresh_token: refreshToken, expires_in: 3600, user: { id: userId },
 });
 
-function harness() {
+function harness(env = {}) {
   const storage = new Map([[STORAGE_KEY, JSON.stringify(session())]]);
-  const state = { requests: [], writes: 0, clears: 0, events: 0 };
+  const state = { requests: [], urls: [], writes: 0, clears: 0, events: 0 };
   const exports = {};
   const source = fs.readFileSync(path.join(__dirname, "../apps/web/lib/supabase-auth.ts"), "utf8");
   const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   vm.runInNewContext(output, {
     exports, CustomEvent,
-    process: { env: { NEXT_PUBLIC_SUPABASE_URL: "https://auth.test.invalid", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-public-key" } },
+    process: { env: { NEXT_PUBLIC_SUPABASE_URL: "https://auth.test.invalid", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-public-key", ...env } },
     window: {
+      location: { origin: "https://validation.test.invalid" },
       localStorage: {
         getItem: (key) => storage.get(key) ?? null,
         setItem: (key, value) => { state.writes += 1; storage.set(key, value); },
@@ -32,11 +33,19 @@ function harness() {
       },
       dispatchEvent: () => { state.events += 1; },
     },
-    fetch: () => new Promise((resolve) => { state.requests.push(resolve); }),
+    fetch: (url) => new Promise((resolve) => { state.urls.push(url); state.requests.push(resolve); }),
   });
   function respond(index, payload, ok = true) { state.requests[index]({ ok, json: async () => payload }); }
   return { auth: exports, storage, state, respond };
 }
+
+test("browser refresh uses its own store proxy rather than a baked-in production host", async () => {
+  const h = harness({ NEXT_PUBLIC_API_URL: "https://production.test.invalid/api/store/" });
+  const pending = h.auth.getAccessToken();
+  assert.equal(h.state.urls[0], "https://validation.test.invalid/api/store/auth/refresh");
+  h.respond(0, refreshed());
+  assert.equal(await pending, "fresh-access");
+});
 
 test("a matching refresh rotates the active session", async () => {
   const h = harness();

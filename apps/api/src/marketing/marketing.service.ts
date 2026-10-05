@@ -1,3 +1,4 @@
+import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -16,27 +17,23 @@ export class MarketingService {
       throw new BadRequestException("Enter a valid email address.");
     }
 
-    const id = randomUUID();
-    const sql = `
-      INSERT INTO "NewsletterSubscriber" (
-        "id", "email", "status", "source", "consentVersion", "createdAt", "updatedAt"
-      )
-      VALUES ($1, $2, 'ACTIVE', $3, 'hidi-newsletter-v1', NOW(), NOW())
-      ON CONFLICT ("email") DO UPDATE
-      SET "status" = 'ACTIVE',
-          "source" = EXCLUDED."source",
-          "consentVersion" = EXCLUDED."consentVersion",
-          "updatedAt" = NOW()
-      RETURNING "email", (xmax = 0) AS "created"
-    `;
-    const rows = await this.prisma.$queryRawUnsafe<Array<{ email: string; created: boolean }>>(sql, id, email, source);
+    const result = await withSerializableRetry(this.prisma, async (tx) => {
+      const existing = await tx.newsletterSubscriber.findUnique({ where: { email } });
+      await tx.newsletterSubscriber.upsert({
+        where: { email },
+        create: { id: randomUUID(), email, source, status: "ACTIVE", consentVersion: "hidi-newsletter-v1" },
+        update: { source, status: "ACTIVE", consentVersion: "hidi-newsletter-v1" },
+      });
+      return { email, created: !existing };
+    });
 
     return {
       ok: true,
-      email: rows[0]?.email ?? email,
-      message: rows[0]?.created
+      email: result.email,
+      message: result.created
         ? "You’re in. HIDI updates and rewards news are on the way."
         : "You’re already subscribed to HIDI updates.",
     };
   }
 }
+
