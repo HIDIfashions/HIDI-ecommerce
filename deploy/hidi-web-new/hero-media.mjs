@@ -1,0 +1,535 @@
+import { createHash, createHmac, randomUUID } from "node:crypto";
+import { createReadStream, createWriteStream } from "node:fs";
+import { unlink } from "node:fs/promises";
+import { request as httpsRequest } from "node:https";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
+import { Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+
+const CURRENT_KEY = "brand/hero/current.json";
+const PREVIOUS_KEY = "brand/hero/previous.json";
+const LIBRARY_KEY = "brand/hero/library.json";
+const DEFAULT_BUCKET = "hidi-product-media-prod";
+const MAX_JSON_BYTES = 64 * 1024;
+const MAX_LIBRARY = 30;
+const MEDIA_TYPES = {
+  "image/jpeg": { type: "image", ext: "jpg", maxBytes: 20 * 1024 * 1024 },
+  "image/png": { type: "image", ext: "png", maxBytes: 20 * 1024 * 1024 },
+  "image/webp": { type: "image", ext: "webp", maxBytes: 20 * 1024 * 1024 },
+  "image/avif": { type: "image", ext: "avif", maxBytes: 20 * 1024 * 1024 },
+  "video/mp4": { type: "video", ext: "mp4", maxBytes: 50 * 1024 * 1024 },
+  "video/webm": { type: "video", ext: "webm", maxBytes: 50 * 1024 * 1024 },
+};
+
+function headerValue(value) {
+  return Array.isArray(value) ? value[0] || "" : typeof value === "string" ? value : "";
+}
+
+function sendJson(response, status, value) {
+  const body = JSON.stringify(value);
+  response.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Content-Length": Buffer.byteLength(body),
+  });
+  response.end(body);
+}
+
+function r2Config() {
+  const accountId = (process.env.R2_ACCOUNT_ID || "").trim();
+  const accessKeyId = (process.env.R2_ACCESS_KEY_ID || "").trim();
+  const secretAccessKey = (process.env.R2_SECRET_ACCESS_KEY || "").trim();
+  const bucket = (process.env.R2_BUCKET || DEFAULT_BUCKET).trim();
+  const publicBaseUrl = (process.env.R2_PUBLIC_BASE_URL || "").trim().replace(/\/$/, "");
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicBaseUrl) {
+    throw new Error("Hero media storage is not configured");
+  }
+  return { accountId, accessKeyId, secretAccessKey, bucket, publicBaseUrl };
+}
+
+function sha256Hex(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function hmac(key, value) {
+  return createHmac("sha256", key).update(value).digest();
+}
+
+function hmacHex(key, value) {
+  return createHmac("sha256", key).update(value).digest("hex");
+}
+
+function amzTimestamp(date) {
+  return date.toISOString().replace(/[:-]|\.\d{3}/g, "");
+}
+
+function signingKey(secret, dateStamp) {
+  const dateKey = hmac(`AWS4${secret}`, dateStamp);
+  const regionKey = hmac(dateKey, "auto");
+  const serviceKey = hmac(regionKey, "s3");
+  return hmac(serviceKey, "aws4_request");
+}
+
+function encodeS3Path(bucket, key) {
+  return `/${encodeURIComponent(bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function signedR2Request(method, key, payloadHash, contentType) {
+  const config = r2Config();
+  const now = new Date();
+  const amzDate = amzTimestamp(now);
+  const dateStamp = amzDate.slice(0, 8);
+  const host = `${config.accountId}.r2.cloudflarestorage.com`;
+  const canonicalUri = encodeS3Path(config.bucket, key);
+  const names = contentType
+    ? ["content-type", "host", "x-amz-content-sha256", "x-amz-date"]
+    : ["host", "x-amz-content-sha256", "x-amz-date"];
+  const values = {
+    "content-type": contentType,
+    host,
+    "x-amz-content-sha256": payloadHash,
+    "x-amz-date": amzDate,
+  };
+  const canonicalHeaders = names.map((name) => `${name}:${values[name]}\n`).join("");
+  const signedHeaders = names.join(";");
+  const canonicalRequest = [method, canonicalUri, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
+  const scope = `${dateStamp}/auto/s3/aws4_request`;
+  const stringToSign = ["AWS4-HMAC-SHA256", amzDate, scope, sha256Hex(canonicalRequest)].join("\n");
+  const signature = hmacHex(signingKey(config.secretAccessKey, dateStamp), stringToSign);
+  const authorization = `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  return {
+    config,
+    host,
+    path: canonicalUri,
+    headers: {
+      Authorization: authorization,
+      Host: host,
+      "X-Amz-Content-Sha256": payloadHash,
+      "X-Amz-Date": amzDate,
+      ...(contentType ? { "Content-Type": contentType } : {}),
+    },
+  };
+}
+
+async function r2Request(method, key, { buffer = null, filePath = "", size = 0, payloadHash = "", contentType = "" } = {}) {
+  const body = buffer ? Buffer.from(buffer) : null;
+  const hash = payloadHash || sha256Hex(body || Buffer.alloc(0));
+  const signed = signedR2Request(method, key, hash, contentType);
+  const contentLength = filePath ? size : body ? body.length : 0;
+
+  return new Promise((resolvePromise, rejectPromise) => {
+    const outgoing = httpsRequest({
+      hostname: signed.host,
+      method,
+      path: signed.path,
+      headers: {
+        ...signed.headers,
+        ...(method === "PUT" ? { "Content-Length": contentLength } : {}),
+      },
+      timeout: 90_000,
+    }, incoming => {
+      const chunks = [];
+      let bytes = 0;
+      incoming.on("data", chunk => {
+        bytes += chunk.length;
+        if (bytes <= 1024 * 1024) chunks.push(chunk);
+      });
+      incoming.on("end", () => resolvePromise({
+        status: incoming.statusCode || 502,
+        body: Buffer.concat(chunks),
+      }));
+      incoming.on("error", rejectPromise);
+    });
+
+    outgoing.on("timeout", () => outgoing.destroy(new Error("Hero media storage timed out")));
+    outgoing.on("error", rejectPromise);
+
+    if (filePath) {
+      const stream = createReadStream(filePath);
+      stream.on("error", rejectPromise);
+      stream.pipe(outgoing);
+    } else {
+      outgoing.end(body || undefined);
+    }
+  });
+}
+
+async function r2GetJson(key) {
+  const response = await r2Request("GET", key);
+  if (response.status === 404) return null;
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`Hero media storage returned HTTP ${response.status}`);
+  }
+  try {
+    return JSON.parse(response.body.toString("utf8"));
+  } catch {
+    throw new Error("Hero media configuration is invalid");
+  }
+}
+
+async function r2PutJson(key, value) {
+  const body = Buffer.from(JSON.stringify(value));
+  const response = await r2Request("PUT", key, {
+    buffer: body,
+    contentType: "application/json",
+  });
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`Hero media storage returned HTTP ${response.status}`);
+  }
+}
+
+async function verifyAdmin(request, origin, hasStorefront) {
+  if (!hasStorefront) return false;
+  try {
+    const session = await fetch(new URL("/api/admin/session", origin), {
+      method: "GET",
+      headers: {
+        cookie: headerValue(request.headers.cookie),
+      },
+      redirect: "manual",
+      signal: AbortSignal.timeout(5000),
+    });
+    return session.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function readJsonBody(request) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > MAX_JSON_BYTES) throw new Error("Request is too large");
+    chunks.push(chunk);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  } catch {
+    throw new Error("Request body must be valid JSON");
+  }
+}
+
+function cleanName(value) {
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {}
+  return decoded.replace(/[\r\n\0]/g, "").trim().slice(0, 180) || "hero-media";
+}
+
+function objectKey(mimeType) {
+  const media = MEDIA_TYPES[mimeType];
+  const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  return `brand/hero/media/${day}/${Date.now()}-${randomUUID()}.${media.ext}`;
+}
+
+function publicUrl(config, key) {
+  return `${config.publicBaseUrl}/${key.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+async function receiveUpload(request, maxBytes) {
+  const declared = Number(headerValue(request.headers["content-length"]) || 0);
+  if (Number.isFinite(declared) && declared > maxBytes) throw new Error("UPLOAD_TOO_LARGE");
+
+  const filePath = resolve(
+    tmpdir(),
+    `hidi-hero-${process.pid}-${Date.now()}-${randomUUID()}.upload`,
+  );
+  let size = 0;
+  const hash = createHash("sha256");
+  const meter = new Transform({
+    transform(chunk, _encoding, callback) {
+      size += chunk.length;
+      if (size > maxBytes) return callback(new Error("UPLOAD_TOO_LARGE"));
+      hash.update(chunk);
+      callback(null, chunk);
+    },
+  });
+
+  try {
+    await pipeline(request, meter, createWriteStream(filePath, { flags: "wx" }));
+    if (size < 1) throw new Error("Choose a non-empty media file");
+    return {
+      filePath,
+      size,
+      payloadHash: hash.digest("hex"),
+    };
+  } catch (error) {
+    await unlink(filePath).catch(() => {});
+    throw error;
+  }
+}
+
+function normalizePosition(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  const match = /^(\d{1,3})%\s+(\d{1,3})%$/.exec(text);
+  if (!match) return "50% 50%";
+  const x = Math.max(0, Math.min(100, Number(match[1])));
+  const y = Math.max(0, Math.min(100, Number(match[2])));
+  return `${x}% ${y}%`;
+}
+
+function publicConfig(raw) {
+  if (
+    !raw
+    || raw.active !== true
+    || !["image", "video"].includes(raw.type)
+    || typeof raw.url !== "string"
+  ) {
+    return {
+      version: 1,
+      active: false,
+      source: "bundled",
+    };
+  }
+
+  return {
+    version: 1,
+    active: true,
+    source: "uploaded",
+    assetId: typeof raw.assetId === "string" ? raw.assetId : "",
+    type: raw.type,
+    url: raw.url,
+    originalName: typeof raw.originalName === "string" ? raw.originalName : "",
+    desktopPosition: normalizePosition(raw.desktopPosition),
+    mobilePosition: normalizePosition(raw.mobilePosition),
+    updatedAt: raw.updatedAt || null,
+  };
+}
+
+async function loadLibrary() {
+  const raw = await r2GetJson(LIBRARY_KEY);
+  const assets = Array.isArray(raw?.assets)
+    ? raw.assets.filter(item =>
+      item
+      && typeof item.id === "string"
+      && typeof item.url === "string"
+      && ["image", "video"].includes(item.type)
+    )
+    : [];
+
+  return {
+    version: 1,
+    assets: assets.slice(0, MAX_LIBRARY),
+  };
+}
+
+async function saveCurrent(next) {
+  const current = await r2GetJson(CURRENT_KEY);
+  if (current) await r2PutJson(PREVIOUS_KEY, current);
+  await r2PutJson(CURRENT_KEY, next);
+}
+
+function errorStatus(error) {
+  const message = error instanceof Error ? error.message : "Unable to update hero media";
+  if (message === "UPLOAD_TOO_LARGE") {
+    return [413, "The selected file is too large for a web hero"];
+  }
+  if (/not configured/i.test(message)) return [503, message];
+  if (/valid JSON|Request is too large|Choose a non-empty/i.test(message)) {
+    return [400, message];
+  }
+  return [502, message];
+}
+
+export function createHeroMediaHandler({ origin, hasStorefront }) {
+  return async function handleHeroMedia(request, response, pathname) {
+    if (pathname === "/api/hidi/hero-config") {
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        response.setHeader("Allow", "GET, HEAD");
+        sendJson(response, 405, { message: "Method not allowed" });
+        return true;
+      }
+
+      let value = {
+        version: 1,
+        active: false,
+        source: "bundled",
+      };
+
+      try {
+        value = publicConfig(await r2GetJson(CURRENT_KEY));
+      } catch {}
+
+      if (request.method === "HEAD") {
+        response.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
+        });
+        response.end();
+      } else {
+        sendJson(response, 200, value);
+      }
+      return true;
+    }
+
+    if (!pathname.startsWith("/api/hidi/hero-")) return false;
+
+    if (!(await verifyAdmin(request, origin, hasStorefront))) {
+      sendJson(response, 401, {
+        message: "HIDI Admin sign-in is required",
+      });
+      return true;
+    }
+
+    try {
+      if (pathname === "/api/hidi/hero-library" && request.method === "GET") {
+        const [library, current, previous] = await Promise.all([
+          loadLibrary(),
+          r2GetJson(CURRENT_KEY),
+          r2GetJson(PREVIOUS_KEY),
+        ]);
+
+        sendJson(response, 200, {
+          ...library,
+          current: publicConfig(current),
+          previous: publicConfig(previous),
+        });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/hero-upload" && request.method === "POST") {
+        const mimeType = headerValue(request.headers["content-type"])
+          .split(";")[0]
+          .trim()
+          .toLowerCase();
+        const policy = MEDIA_TYPES[mimeType];
+
+        if (!policy) {
+          sendJson(response, 400, {
+            message: "Use JPEG, PNG, WebP, AVIF, MP4 or WebM",
+          });
+          return true;
+        }
+
+        const config = r2Config();
+        const originalName = cleanName(
+          headerValue(request.headers["x-hidi-filename"]),
+        );
+        const uploaded = await receiveUpload(request, policy.maxBytes);
+        const key = objectKey(mimeType);
+
+        try {
+          const stored = await r2Request("PUT", key, {
+            filePath: uploaded.filePath,
+            size: uploaded.size,
+            payloadHash: uploaded.payloadHash,
+            contentType: mimeType,
+          });
+
+          if (stored.status < 200 || stored.status >= 300) {
+            throw new Error(`Hero media storage returned HTTP ${stored.status}`);
+          }
+        } finally {
+          await unlink(uploaded.filePath).catch(() => {});
+        }
+
+        const asset = {
+          id: randomUUID(),
+          type: policy.type,
+          mimeType,
+          url: publicUrl(config, key),
+          storagePath: `r2://${config.bucket}/${key}`,
+          originalName,
+          sizeBytes: uploaded.size,
+          createdAt: new Date().toISOString(),
+        };
+
+        const library = await loadLibrary();
+        library.assets = [
+          asset,
+          ...library.assets.filter(item => item.id !== asset.id),
+        ].slice(0, MAX_LIBRARY);
+        await r2PutJson(LIBRARY_KEY, library);
+
+        sendJson(response, 201, { asset });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/hero-publish" && request.method === "POST") {
+        const body = await readJsonBody(request);
+        const library = await loadLibrary();
+        const asset = library.assets.find(item => item.id === body.assetId);
+
+        if (!asset) {
+          sendJson(response, 400, {
+            message: "Choose a hero asset from the media library",
+          });
+          return true;
+        }
+
+        const next = {
+          version: 1,
+          active: true,
+          assetId: asset.id,
+          type: asset.type,
+          url: asset.url,
+          originalName: asset.originalName,
+          desktopPosition: normalizePosition(body.desktopPosition),
+          mobilePosition: normalizePosition(body.mobilePosition),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await saveCurrent(next);
+        sendJson(response, 200, {
+          current: publicConfig(next),
+        });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/hero-reset" && request.method === "POST") {
+        const next = {
+          version: 1,
+          active: false,
+          source: "bundled",
+          updatedAt: new Date().toISOString(),
+        };
+
+        await saveCurrent(next);
+        sendJson(response, 200, {
+          current: publicConfig(next),
+        });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/hero-restore" && request.method === "POST") {
+        const previous = await r2GetJson(PREVIOUS_KEY);
+
+        if (!previous) {
+          sendJson(response, 404, {
+            message: "There is no previous hero to restore yet",
+          });
+          return true;
+        }
+
+        const current = await r2GetJson(CURRENT_KEY);
+        const restored = {
+          ...previous,
+          updatedAt: new Date().toISOString(),
+        };
+        await r2PutJson(CURRENT_KEY, restored);
+        if (current) await r2PutJson(PREVIOUS_KEY, current);
+
+        sendJson(response, 200, {
+          current: publicConfig(restored),
+        });
+        return true;
+      }
+
+      response.setHeader(
+        "Allow",
+        pathname.endsWith("library") ? "GET" : "POST",
+      );
+      sendJson(response, 405, {
+        message: "Method not allowed",
+      });
+      return true;
+    } catch (error) {
+      const [status, message] = errorStatus(error);
+      sendJson(response, status, { message });
+      return true;
+    }
+  };
+}
