@@ -22,7 +22,7 @@ env:
   AZURE_RESOURCE_GROUP: rg-hidi-prod
   AZURE_CONTAINER_APP: hidi-web
   ACR_NAME: acrhidiprod0927
-  BASE_IMAGE: hidi-web@sha256:1bc1614ac79ea6718f94a67d3a2f5525af3a3b228dcf46191c15b75069184a31
+  BASE_IMAGE: hidi-web@sha256:7f5eb87852f81123538990b1b24c0fee94cb30185f661d835587393e6b46e8e6
   LIVE_URL: https://thidigk.thehidi.com
 
 jobs:
@@ -30,12 +30,6 @@ jobs:
     name: Build, publish, and update Azure Container App
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      AZURE_CREDENTIALS_JSON: ${{ secrets.AZURE_CREDENTIALS }}
-      AZURE_CLIENT_ID_VALUE: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID_VALUE: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID_VALUE: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
@@ -80,33 +74,12 @@ jobs:
             -C ../../deploy/hidi-web-new server.mjs
           sha256sum hidi-landing-connected-runtime.tar.gz
 
-      - name: Choose Azure login mode
-        id: azure-auth
-        shell: bash
-        run: |
-          if [ -n "$AZURE_CREDENTIALS_JSON" ]; then
-            echo "mode=credentials" >> "$GITHUB_OUTPUT"
-          elif [ -n "$AZURE_CLIENT_ID_VALUE" ] && [ -n "$AZURE_TENANT_ID_VALUE" ] && [ -n "$AZURE_SUBSCRIPTION_ID_VALUE" ]; then
-            echo "mode=oidc" >> "$GITHUB_OUTPUT"
-          else
-            echo "Azure deployment secrets are missing." >&2
-            echo "Add either AZURE_CREDENTIALS, or AZURE_CLIENT_ID + AZURE_TENANT_ID + AZURE_SUBSCRIPTION_ID." >&2
-            exit 1
-          fi
-
-      - name: Azure login with credentials JSON
-        if: steps.azure-auth.outputs.mode == 'credentials'
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       - name: Azure login with OIDC
-        if: steps.azure-auth.outputs.mode == 'oidc'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
 
       - name: Publish landing image to ACR
         id: publish
