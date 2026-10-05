@@ -71,7 +71,7 @@ jobs:
         run: |
           tar -czf hidi-landing-connected-runtime.tar.gz \
             -C apps/web dist \
-            -C ../../deploy/hidi-web-new server.mjs
+            -C ../../deploy/hidi-web-new server.mjs hero-media.mjs
           sha256sum hidi-landing-connected-runtime.tar.gz
 
       - name: Azure login with OIDC
