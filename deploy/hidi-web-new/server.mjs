@@ -5,6 +5,7 @@ import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { extname, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
+import { createHeroMediaHandler } from "./hero-media.mjs";
 
 const root = resolve(process.env.LANDING_DIST_DIR || resolve(process.cwd(), "dist"));
 const port = Number(process.env.PORT || 3000);
@@ -19,6 +20,7 @@ const hasStorefront = Boolean(configuredOrigin || existsSync(storefrontServer));
 const requestUpstream = origin.protocol === "https:" ? httpsRequest : httpRequest;
 const hopHeaders = ["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"];
 const contentEtags = new Map();
+const handleHeroMedia = createHeroMediaHandler({ origin, hasStorefront });
 
 function contentEtag(filePath, stat) {
   const identity = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
@@ -151,12 +153,15 @@ async function handle(request, response) {
     return response.end(request.method === "HEAD" ? undefined : body);
   }
 
+  if (await handleHeroMedia(request, response, pathname)) return;
+
   // Backend/API paths always win, including accidental static collisions.
   if (pathname === "/api" || pathname.startsWith("/api/")
       || pathname === "/_next" || pathname.startsWith("/_next/")) return proxy(request, response);
   if (request.method !== "GET" && request.method !== "HEAD") return proxy(request, response);
 
-  let filePath = resolve(root, `.${pathname === "/" ? "/index.html" : pathname}`);
+  const landingPath = pathname === "/admin/hero-media" ? "/hero-control.html" : pathname;
+  let filePath = resolve(root, `.${landingPath === "/" ? "/index.html" : landingPath}`);
   if (!filePath.startsWith(`${root}${sep}`)) {
     return error(response, 403, "Forbidden");
   }
