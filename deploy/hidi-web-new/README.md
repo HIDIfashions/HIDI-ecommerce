@@ -8,9 +8,12 @@ storefront routes. The original unmodified ZIP remains at commit
 The runtime keeps the existing Azure Next.js storefront image and appends the
 landing build. `server.mjs` serves `/` and landing assets on port 3000 and starts
 Next.js on loopback port 3001. Other routes, including `/api/store`, `/_next`,
-product media, account, and admin, stream through to that storefront. Backend
-identity, API connectivity, cookies, and authentication remain in that image
-and the existing Container App environment.
+product media, account, and admin, stream through to that storefront. Provider
+webhooks and backend callbacks can use the public `/v1/...` API path; the
+landing runtime forwards those requests directly to `INTERNAL_API_URL`/`API_URL`
+so signature headers and raw bodies are preserved. Backend identity, API
+connectivity, cookies, and authentication remain in that image and the existing
+Container App environment.
 
 Validate and build from the repository root:
 
@@ -60,6 +63,15 @@ checkout/payment writes remain restricted by that backend configuration.
 Connecting a button does not change those restrictions. Privacy/terms pages,
 app-store destinations, and social links are unavailable until verified URLs
 or approved content are supplied.
+
+Razorpay webhooks should be configured as:
+
+```text
+https://thidigk.thehidi.com/v1/payments/razorpay/webhook
+```
+
+Opening that URL in a browser uses `GET`, so the runtime returns `405` by
+design. Razorpay must call it with `POST` and `x-razorpay-signature`.
 
 Hero media uploads are served by the landing runtime at `/admin/hero-media`.
 Proxied `/admin` HTML pages also receive a direct **Hero Media** entry so the
