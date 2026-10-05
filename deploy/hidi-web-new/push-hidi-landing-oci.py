@@ -59,7 +59,7 @@ def make_layer(payload, directory):
                 continue
             if name.startswith("/") or ".." in parts or "\\" in name:
                 raise ValueError("Unsafe payload path")
-            if name != "server.mjs" and name != "dist" and not name.startswith("dist/"):
+            if name not in {"server.mjs", "hero-media.mjs", "dist"} and not name.startswith("dist/"):
                 raise ValueError("Unexpected payload file: " + name)
             if not entry.isfile() and not entry.isdir():
                 raise ValueError("Payload must contain only regular files and directories")
