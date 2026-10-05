@@ -186,3 +186,117 @@ jobs:
           API_RELEASE_SHA: ${{ contains(github.event.head_commit.message, '[reuse-admin-api-a1b0ca6]') && 'a1b0ca64e4408894f2ef3fcd27ea339cba4db5d5' || github.sha }}
           WEB_RELEASE_SHA: ${{ contains(github.event.head_commit.message, '[reuse-admin-web-e91db4b]') && 'e91db4b36578ca1acad759d6f1fe9de659c2152b' || github.sha }}
         run: bash deploy/update-existing-admin.sh "$API_RELEASE_SHA" "$WEB_RELEASE_SHA"
+
+
+  deploy-landing-overlay:
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-landing]')
+    needs: containers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AZURE_RESOURCE_GROUP: rg-hidi-prod
+      AZURE_CONTAINER_APP: hidi-web
+      ACR_NAME: acrhidiprod0927
+      LIVE_URL: https://thidigk.thehidi.com
+    steps:
+      - name: Check out deployment branch
+        uses: actions/checkout@v4
+
+      - name: Check out latest HIDI landing source
+        uses: actions/checkout@v4
+        with:
+          ref: hidi-web-new
+          path: landing-source
+
+      - name: Set up Node for landing build
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: landing-source/apps/web/package-lock.json
+
+      - name: Install and test landing
+        working-directory: landing-source/apps/web
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      - name: Test combined landing/storefront runtime
+        run: node --test landing-source/deploy/hidi-web-new/runtime.test.mjs
+
+      - name: Package landing runtime
+        shell: bash
+        run: |
+          (
+            cd landing-source
+            tar -czf ../hidi-landing-connected-runtime.tar.gz \
+              -C apps/web dist \
+              -C ../../deploy/hidi-web-new server.mjs
+          )
+          sha256sum hidi-landing-connected-runtime.tar.gz
+
+      - name: Azure login with authorized OIDC identity
+        uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+
+      - name: Publish landing over Firebase-enabled storefront
+        id: publish
+        shell: bash
+        run: |
+          tag="landing-firebase-${GITHUB_SHA::8}-${GITHUB_RUN_NUMBER}"
+          python3 landing-source/deploy/hidi-web-new/push-hidi-landing-oci.py \
+            --registry "$ACR_NAME" \
+            --payload hidi-landing-connected-runtime.tar.gz \
+            --base "hidi-web:$GITHUB_SHA" \
+            --tag "$tag" \
+            | tee published-image.json
+
+          digest="$(python3 - <<'PY'
+          import json
+          with open('published-image.json', 'r', encoding='utf-8') as stream:
+              print(json.load(stream)['manifest_digest'])
+          PY
+          )"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "image=${ACR_NAME}.azurecr.io/hidi-web@${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Azure storefront container
+        shell: bash
+        run: |
+          revision="firebase${GITHUB_SHA::8}${GITHUB_RUN_NUMBER}"
+          az containerapp update \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_CONTAINER_APP" \
+            --image "${{ steps.publish.outputs.image }}" \
+            --revision-suffix "${revision:0:63}"
+
+      - name: Wait for healthy revision
+        shell: bash
+        run: |
+          deadline=$((SECONDS + 600))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            state="$(az containerapp revision list \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --name "$AZURE_CONTAINER_APP" \
+              --query "[0].properties.healthState" \
+              --output tsv)"
+            echo "Latest revision health: ${state:-pending}"
+            if [ "$state" = "Healthy" ]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Updated storefront revision did not become healthy in time." >&2
+          exit 1
+
+      - name: Verify landing and Firebase account wiring
+        run: |
+          python3 landing-source/deploy/hidi-web-new/smoke.py --url "$LIVE_URL" --dist landing-source/apps/web/dist
+          python3 landing-source/deploy/hidi-web-new/wiring-smoke.py --url "$LIVE_URL"
