@@ -88,6 +88,16 @@ before(async () => {
       response.writeHead(307, { Location: "https://thidigk.thehidi.com/account" }).end();
       return;
     }
+    if (incoming.url === "/admin" || incoming.url === "/admin/products") {
+      const body = "<!doctype html><html><body><nav>Admin Portal</nav><main>Products</main></body></html>";
+      response.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Length": Buffer.byteLength(body),
+        ETag: '"admin-fixture"',
+      });
+      response.end(body);
+      return;
+    }
     if (incoming.url === "/api/stream") {
       response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
       response.write("data: first\n\n");
@@ -208,6 +218,20 @@ test("hero control route stays on the landing runtime and public hero config saf
   assert.equal(config.status, 200);
   assert.equal(config.headers["cache-control"], "no-store");
   assert.equal(JSON.parse(config.body).active, false);
+});
+
+test("proxied admin portal pages expose the hero media control link", async () => {
+  const admin = await send(proxy.url, "/admin/products", { headers: { "Accept-Encoding": "gzip" } });
+  assert.equal(admin.status, 200);
+  assert.match(admin.body, /Admin Portal/);
+  assert.match(admin.body, /data-hidi-hero-media-link="true"/);
+  assert.match(admin.body, /href="\/admin\/hero-media"/);
+  assert.equal(admin.headers.etag, undefined);
+  assert.equal(admin.headers["content-length"], String(Buffer.byteLength(admin.body)));
+
+  const api = await send(proxy.url, "/api/admin/session");
+  assert.equal(api.status, 200);
+  assert.doesNotMatch(api.body, /data-hidi-hero-media-link/);
 });
 
 test("hero media stores uploads and live config in Azure Blob with managed identity", async () => {

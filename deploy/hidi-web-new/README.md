@@ -62,6 +62,8 @@ app-store destinations, and social links are unavailable until verified URLs
 or approved content are supplied.
 
 Hero media uploads are served by the landing runtime at `/admin/hero-media`.
+Proxied `/admin` HTML pages also receive a direct **Hero Media** entry so the
+control page is discoverable from the existing admin portal.
 For Azure Blob, set the Container App environment to:
 
 ```bash

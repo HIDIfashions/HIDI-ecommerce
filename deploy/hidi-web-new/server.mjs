@@ -21,6 +21,11 @@ const requestUpstream = origin.protocol === "https:" ? httpsRequest : httpReques
 const hopHeaders = ["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"];
 const contentEtags = new Map();
 const handleHeroMedia = createHeroMediaHandler({ origin, hasStorefront });
+const adminHtmlInjectionLimit = Number(process.env.ADMIN_HTML_INJECTION_MAX_BYTES || 2 * 1024 * 1024);
+const adminHeroMediaLink = `
+<a data-hidi-hero-media-link="true" href="/admin/hero-media" aria-label="Open HIDI hero media admin"
+  style="position:fixed;right:18px;bottom:18px;z-index:2147483647;padding:10px 14px;border-radius:999px;background:#602124;color:#fff;text-decoration:none;font:600 13px Arial,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.18)">Hero Media</a>
+`;
 
 function contentEtag(filePath, stat) {
   const identity = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
@@ -65,9 +70,24 @@ function cleanHeaders(headers) {
   return clean;
 }
 
-function proxy(request, response) {
+function shouldInjectAdminHeroLink(request, pathname) {
+  return request.method === "GET"
+    && pathname !== "/admin/hero-media"
+    && (pathname === "/admin" || pathname.startsWith("/admin/"));
+}
+
+function injectAdminHeroLink(html) {
+  if (html.includes("data-hidi-hero-media-link") || html.includes("/admin/hero-media")) return html;
+  return /<\/body>/i.test(html)
+    ? html.replace(/<\/body>/i, `${adminHeroMediaLink}</body>`)
+    : `${html}${adminHeroMediaLink}`;
+}
+
+function proxy(request, response, pathname = "") {
   if (!hasStorefront) return error(response, 503, "Storefront unavailable");
   const headers = cleanHeaders(request.headers);
+  const injectHeroLink = shouldInjectAdminHeroLink(request, pathname);
+  if (injectHeroLink) delete headers["accept-encoding"];
   // The fixed origin selects the destination. The public host/protocol still
   // reach Next so redirects, authentication cookies, and URL generation work.
   headers.host = request.headers.host || origin.host;
@@ -83,10 +103,52 @@ function proxy(request, response) {
     path: request.url,
     headers,
   }, incoming => {
-    response.writeHead(incoming.statusCode || 502, cleanHeaders(incoming.headers));
+    const responseHeaders = cleanHeaders(incoming.headers);
+    const status = incoming.statusCode || 502;
+    const contentType = String(responseHeaders["content-type"] || "");
+    const canInject = injectHeroLink
+      && status >= 200 && status < 300
+      && /\btext\/html\b/i.test(contentType)
+      && !responseHeaders["content-encoding"];
+    if (!canInject) {
+      response.writeHead(status, responseHeaders);
+      incoming.on("error", () => response.destroy());
+      response.on("close", () => incoming.destroy());
+      incoming.pipe(response);
+      return;
+    }
+
+    const chunks = [];
+    let size = 0;
+    let streaming = false;
     incoming.on("error", () => response.destroy());
     response.on("close", () => incoming.destroy());
-    incoming.pipe(response);
+    incoming.on("data", chunk => {
+      if (streaming) {
+        response.write(chunk);
+        return;
+      }
+      chunks.push(chunk);
+      size += chunk.length;
+      if (size > adminHtmlInjectionLimit) {
+        streaming = true;
+        response.writeHead(status, responseHeaders);
+        for (const part of chunks) response.write(part);
+        chunks.length = 0;
+      }
+    });
+    incoming.on("end", () => {
+      if (streaming) {
+        response.end();
+        return;
+      }
+      delete responseHeaders["content-length"];
+      delete responseHeaders.etag;
+      const body = Buffer.from(injectAdminHeroLink(Buffer.concat(chunks).toString("utf8")));
+      responseHeaders["content-length"] = String(body.length);
+      response.writeHead(status, responseHeaders);
+      response.end(body);
+    });
   });
   upstream.on("error", () => {
     if (response.headersSent) response.destroy();
@@ -157,8 +219,8 @@ async function handle(request, response) {
 
   // Backend/API paths always win, including accidental static collisions.
   if (pathname === "/api" || pathname.startsWith("/api/")
-      || pathname === "/_next" || pathname.startsWith("/_next/")) return proxy(request, response);
-  if (request.method !== "GET" && request.method !== "HEAD") return proxy(request, response);
+      || pathname === "/_next" || pathname.startsWith("/_next/")) return proxy(request, response, pathname);
+  if (request.method !== "GET" && request.method !== "HEAD") return proxy(request, response, pathname);
 
   const landingPath = pathname === "/admin/hero-media" ? "/hero-control.html" : pathname;
   let filePath = resolve(root, `.${landingPath === "/" ? "/index.html" : landingPath}`);
@@ -180,7 +242,7 @@ async function handle(request, response) {
     if (pathname.startsWith("/assets/") || pathname === "/config.js") {
       return error(response, 404, "Not found");
     }
-    return proxy(request, response);
+    return proxy(request, response, pathname);
   }
 
   const extension = extname(filePath).toLowerCase();
