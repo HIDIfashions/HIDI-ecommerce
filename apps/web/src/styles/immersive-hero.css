@@ -34,12 +34,12 @@
   .campaign-icon:hover { background: #ffffff0b; }
 }
 
-/* The image transition itself, not a solid header or copy column, fills the opening screen. */
+/* The responsive video itself, not a solid header or copy column, fills the opening screen. */
 .hero.hero--campaign {
   height: 100svh; min-height: 480px; max-height: none; width: 100%; margin: 0;
   color: var(--paper); background: #503523;
 }
-.hero--campaign .hero-media.hero-drop-slider {
+.hero--campaign .hero-media {
   background: #503523; overflow: hidden;
 }
 .hero--campaign .hero-drop-slide {
@@ -64,6 +64,11 @@
   display: block; width: 100%; height: 100%;
   object-fit: cover; object-position: 50% 50%;
   filter: none; transform: none;
+}
+.hero--campaign .hero-poster,
+.hero--campaign .hero-video {
+  display: block; width: 100%; height: 100%;
+  object-position: 60% 42%;
 }
 .hero--campaign .hero-live-media {
   position: absolute; inset: 0; z-index: 2; display: block;
@@ -170,6 +175,8 @@
   .hero.hero--campaign { height: 100svh; min-height: 480px; }
   .hero--campaign .hero-drop-slide--banner img { object-position: 50% 50%; }
   .hero--campaign .hero-drop-slide--dupatta img { object-position: 50% 42%; }
+  .hero--campaign .hero-poster,
+  .hero--campaign .hero-video { object-position: 50% 45%; }
   .hero--campaign .hero-live-media { object-position: var(--hero-position-mobile, 50% 50%); }
   .hero--campaign .campaign-hero-action { bottom: max(65px, 10svh); }
   .campaign-shop-button { min-width: 153px; min-height: 52px; padding: 16px 27px; }

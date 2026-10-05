@@ -1,37 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { asset, safeWebUrl } from '../config.js';
 import { useHidi } from '../context/HidiContext.jsx';
-import { useReducedMotion } from '../hooks/useMediaQuery.js';
+import { useMediaQuery, useReducedMotion } from '../hooks/useMediaQuery.js';
 import { useDocumentVisible, useInView } from '../hooks/useVisibility.js';
 
-const HERO_SLIDES = [
-  {
-    desktop: 'images/hidi-premium-ai-full-banner-lossless.png',
-    mobile: 'images/hidi-premium-ai-full-banner-lossless.png',
-    className: 'hero-drop-slide--banner',
-  },
-  {
-    desktop: 'images/hidi-cinematic-dupatta-model.webp',
-    mobile: 'images/hero-portrait.webp',
-    className: 'hero-drop-slide--dupatta',
-  },
-];
-
-const SLIDE_INTERVAL_MS = 3600;
-const SLIDE_TRANSITION_MS = 1200;
+function saveDataEnabled() {
+  return typeof navigator !== 'undefined' && Boolean(navigator.connection?.saveData);
+}
 
 export default function VideoHero() {
   const { openCollection, dialogOpen } = useHidi();
+  const mobile = useMediaQuery('(max-width: 700px)');
   const reduced = useReducedMotion();
   const pageVisible = useDocumentVisible();
+  const videoRef = useRef(null);
   const heroRef = useRef(null);
   const heroVisible = useInView(heroRef);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [userPaused, setUserPaused] = useState(() => reduced || saveDataEnabled());
+  const [readySource, setReadySource] = useState('');
   const [liveHero, setLiveHero] = useState(null);
-  const [outgoingIndex, setOutgoingIndex] = useState(null);
-  const [incomingIndex, setIncomingIndex] = useState(null);
-  const animating = outgoingIndex !== null && incomingIndex !== null;
-  const canAdvance = !liveHero && HERO_SLIDES.length > 1 && !reduced && heroVisible && pageVisible && !dialogOpen;
+  const variant = mobile ? 'mobile' : 'desktop';
+  const source = asset(`video/hidi-hero-${variant}-luminous-v1.mp4`);
+  const poster = asset(`images/hero-${variant}-luminous-first-frame-v1.webp`);
+  const ready = readySource === source;
+  const shouldPlay = !liveHero && !userPaused && heroVisible && pageVisible && !dialogOpen;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -53,55 +45,82 @@ export default function VideoHero() {
   }, []);
 
   useEffect(() => {
-    if (!canAdvance || animating) return undefined;
-
-    const timer = window.setTimeout(() => {
-      setOutgoingIndex(currentIndex);
-      setIncomingIndex((currentIndex + 1) % HERO_SLIDES.length);
-    }, SLIDE_INTERVAL_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [animating, canAdvance, currentIndex]);
-
-  useEffect(() => {
-    if (!animating || incomingIndex === null) return undefined;
-
-    const timer = window.setTimeout(() => {
-      setCurrentIndex(incomingIndex);
-      setOutgoingIndex(null);
-      setIncomingIndex(null);
-    }, SLIDE_TRANSITION_MS + 120);
-
-    return () => window.clearTimeout(timer);
-  }, [animating, incomingIndex]);
-
-  useEffect(() => {
-    if (!reduced) return;
-    setOutgoingIndex(null);
-    setIncomingIndex(null);
+    setUserPaused(reduced || saveDataEnabled());
   }, [reduced]);
 
-  const finishTransition = (index) => {
-    if (index !== incomingIndex) return;
-    setCurrentIndex(index);
-    setOutgoingIndex(null);
-    setIncomingIndex(null);
-  };
+  useEffect(() => {
+    if (liveHero) return undefined;
+    const video = videoRef.current;
+    if (!video) return undefined;
 
-  const slideClassName = (index, slide) => {
-    const classes = ['hero-drop-slide', slide.className];
+    let cancelled = false;
+    let videoFrame = null;
+    let animationFrame = 0;
 
-    if (index === currentIndex && !animating) classes.push('is-current');
-    if (index === outgoingIndex) classes.push('is-current', 'move-down');
-    if (index === incomingIndex) classes.push('is-next', 'is-active');
-    if (index !== currentIndex && index !== outgoingIndex && index !== incomingIndex) classes.push('is-next');
+    const reveal = () => {
+      if (!cancelled && video.readyState >= 2 && video.videoWidth > 0) setReadySource(source);
+    };
 
-    return classes.join(' ');
-  };
+    const queueFrame = () => {
+      if (video.readyState < 2) return;
+      if (typeof video.requestVideoFrameCallback === 'function') {
+        if (videoFrame !== null) video.cancelVideoFrameCallback?.(videoFrame);
+        videoFrame = video.requestVideoFrameCallback(() => {
+          videoFrame = null;
+          reveal();
+        });
+      }
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = window.requestAnimationFrame(() => {
+          if (videoFrame === null || !video.paused || video.currentTime > 0) reveal();
+        });
+      });
+    };
+
+    video.addEventListener('loadeddata', queueFrame);
+    video.addEventListener('playing', queueFrame);
+    if (video.readyState >= 2) queueFrame();
+
+    return () => {
+      cancelled = true;
+      if (videoFrame !== null) video.cancelVideoFrameCallback?.(videoFrame);
+      window.cancelAnimationFrame(animationFrame);
+      video.removeEventListener('loadeddata', queueFrame);
+      video.removeEventListener('playing', queueFrame);
+    };
+  }, [liveHero, source]);
+
+  useEffect(() => {
+    if (liveHero) return undefined;
+    const video = videoRef.current;
+    if (!video) return undefined;
+
+    let cancelled = false;
+    if (!shouldPlay) {
+      video.pause();
+      return undefined;
+    }
+
+    video.muted = true;
+    video.defaultMuted = true;
+    if (video.getAttribute('src') !== source || video.error) {
+      video.src = source;
+      video.load();
+    }
+    video.play().catch(() => {
+      if (!cancelled) setReadySource('');
+    });
+
+    return () => {
+      cancelled = true;
+      video.pause();
+    };
+  }, [liveHero, shouldPlay, source]);
 
   return (
     <section ref={heroRef} className="hero hero--campaign" aria-labelledby="hero-title">
-      <div className="hero-media hero-drop-slider" aria-hidden="true">
+      <div className="hero-media" aria-hidden="true" data-frame-ready={ready || undefined}>
         {liveHero ? (liveHero.type === 'video' ?
           <video
             className="hero-live-media"
@@ -123,27 +142,38 @@ export default function VideoHero() {
             onError={() => setLiveHero(null)}
             style={{ '--hero-position-desktop': liveHero.desktopPosition, '--hero-position-mobile': liveHero.mobilePosition }}
           />
-        ) : HERO_SLIDES.map((slide, index) => (
-          <picture
-            key={slide.desktop}
-            className={slideClassName(index, slide)}
-            onTransitionEnd={(event) => {
-              if (event.propertyName === 'transform' && event.currentTarget === event.target) {
-                finishTransition(index);
-              }
-            }}
-          >
-            <source media="(max-width: 700px)" srcSet={asset(slide.mobile)} />
-            <img
-              src={asset(slide.desktop)}
-              alt=""
-              width="1920"
-              height="1080"
-              loading="eager"
-              fetchPriority={index === 0 ? 'high' : 'low'}
+        ) : (
+          <>
+            <picture>
+              <source media="(max-width: 700px)" srcSet={asset('images/hero-mobile-luminous-first-frame-v1.webp')} />
+              <img
+                className="hero-poster"
+                src={asset('images/hero-desktop-luminous-first-frame-v1.webp')}
+                alt=""
+                width="1920"
+                height="1080"
+                loading="eager"
+                fetchPriority="high"
+              />
+            </picture>
+            <video
+              key={source}
+              ref={videoRef}
+              id="hero-video"
+              className={`hero-video${ready ? ' is-ready' : ''}`}
+              poster={poster}
+              loop
+              muted
+              playsInline
+              preload={shouldPlay ? 'auto' : 'none'}
+              tabIndex={-1}
+              onError={() => {
+                setReadySource('');
+                setUserPaused(true);
+              }}
             />
-          </picture>
-        ))}
+          </>
+        )}
       </div>
       <div className="hero-shade" />
       <h1 id="hero-title" className="sr-only">HIDI — Wear the feeling. Indian wear for work, everyday and occasions.</h1>
