@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: hidi-azure-${{ github.ref }}-${{ contains(github.event.head_commit.message, '[deploy-landing]') && 'landing' || 'standard' }}
+  group: hidi-azure-${{ github.ref }}-${{ contains(github.event.head_commit.message, '[deploy-landing]') && github.sha || 'standard' }}
   cancel-in-progress: false
 jobs:
   source-and-test:
