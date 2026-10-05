@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { unlink } from "node:fs/promises";
+import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -10,7 +11,9 @@ import { pipeline } from "node:stream/promises";
 const CURRENT_KEY = "brand/hero/current.json";
 const PREVIOUS_KEY = "brand/hero/previous.json";
 const LIBRARY_KEY = "brand/hero/library.json";
-const DEFAULT_BUCKET = "hidi-product-media-prod";
+const DEFAULT_CONTAINER = "hidi-product-media-prod";
+const AZURE_STORAGE_SCOPE = "https://storage.azure.com/";
+const AZURE_BLOB_API_VERSION = "2023-11-03";
 const MAX_JSON_BYTES = 64 * 1024;
 const MAX_LIBRARY = 30;
 const MEDIA_TYPES = {
@@ -36,16 +39,59 @@ function sendJson(response, status, value) {
   response.end(body);
 }
 
+function cleanBaseUrl(value) {
+  return (value || "").trim().replace(/\/$/, "");
+}
+
 function r2Config() {
   const accountId = (process.env.R2_ACCOUNT_ID || "").trim();
   const accessKeyId = (process.env.R2_ACCESS_KEY_ID || "").trim();
   const secretAccessKey = (process.env.R2_SECRET_ACCESS_KEY || "").trim();
-  const bucket = (process.env.R2_BUCKET || DEFAULT_BUCKET).trim();
-  const publicBaseUrl = (process.env.R2_PUBLIC_BASE_URL || "").trim().replace(/\/$/, "");
+  const bucket = (process.env.R2_BUCKET || DEFAULT_CONTAINER).trim();
+  const publicBaseUrl = cleanBaseUrl(process.env.R2_PUBLIC_BASE_URL || process.env.MEDIA_PUBLIC_BASE_URL);
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicBaseUrl) {
     throw new Error("Hero media storage is not configured");
   }
-  return { accountId, accessKeyId, secretAccessKey, bucket, publicBaseUrl };
+  return { provider: "r2", accountId, accessKeyId, secretAccessKey, bucket, publicBaseUrl };
+}
+
+function azureConfig() {
+  const account = (process.env.AZURE_STORAGE_ACCOUNT || "").trim();
+  const container = (
+    process.env.AZURE_STORAGE_CONTAINER
+    || process.env.MEDIA_STORAGE_CONTAINER
+    || process.env.AZURE_BLOB_CONTAINER
+    || process.env.BLOB_CONTAINER
+    || process.env.R2_BUCKET
+    || DEFAULT_CONTAINER
+  ).trim();
+  const publicBaseUrl = cleanBaseUrl(
+    process.env.MEDIA_PUBLIC_BASE_URL
+    || process.env.AZURE_MEDIA_PUBLIC_BASE_URL
+    || process.env.R2_PUBLIC_BASE_URL,
+  );
+  const blobEndpoint = cleanBaseUrl(
+    process.env.AZURE_STORAGE_BLOB_ENDPOINT
+    || `https://${account}.blob.core.windows.net`,
+  );
+  const clientId = (
+    process.env.AZURE_CLIENT_ID
+    || process.env.MANAGED_IDENTITY_CLIENT_ID
+    || ""
+  ).trim();
+
+  if (!account || !container || !publicBaseUrl || !blobEndpoint) {
+    throw new Error("Hero media storage is not configured");
+  }
+
+  return { provider: "azure", account, container, publicBaseUrl, blobEndpoint, clientId };
+}
+
+function storageConfig() {
+  const provider = (process.env.MEDIA_STORAGE_PROVIDER || "").trim().toLowerCase();
+  if (provider === "azure" || provider === "azblob" || provider === "blob") return azureConfig();
+  if (provider === "r2" || provider === "cloudflare") return r2Config();
+  return process.env.AZURE_STORAGE_ACCOUNT ? azureConfig() : r2Config();
 }
 
 function sha256Hex(value) {
@@ -155,8 +201,136 @@ async function r2Request(method, key, { buffer = null, filePath = "", size = 0, 
   });
 }
 
-async function r2GetJson(key) {
-  const response = await r2Request("GET", key);
+let azureTokenCache = null;
+
+function tokenExpiryMillis(value, expiresIn) {
+  const text = typeof value === "string" ? value.trim() : "";
+  const numeric = Number(text || value);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return numeric > 10_000_000_000 ? numeric : numeric * 1000;
+  }
+  const parsed = Date.parse(text);
+  if (Number.isFinite(parsed)) return parsed;
+  const seconds = Number(expiresIn);
+  return Date.now() + (Number.isFinite(seconds) && seconds > 0 ? seconds : 3600) * 1000;
+}
+
+async function azureAccessToken(config) {
+  const now = Date.now();
+  if (azureTokenCache && azureTokenCache.expiresAt - now > 120_000) {
+    return azureTokenCache.token;
+  }
+
+  const injectedToken = (process.env.AZURE_STORAGE_ACCESS_TOKEN || "").trim();
+  if (injectedToken) {
+    const token = injectedToken;
+    azureTokenCache = { token, expiresAt: now + 3600 * 1000 };
+    return token;
+  }
+
+  let url;
+  const headers = {};
+  if (process.env.IDENTITY_ENDPOINT && process.env.IDENTITY_HEADER) {
+    url = new URL(process.env.IDENTITY_ENDPOINT);
+    url.searchParams.set("api-version", "2019-08-01");
+    url.searchParams.set("resource", AZURE_STORAGE_SCOPE);
+    if (config.clientId) url.searchParams.set("client_id", config.clientId);
+    headers["X-IDENTITY-HEADER"] = process.env.IDENTITY_HEADER;
+  } else {
+    url = new URL(process.env.AZURE_IMDS_ENDPOINT || "http://169.254.169.254/metadata/identity/oauth2/token");
+    url.searchParams.set("api-version", "2018-02-01");
+    url.searchParams.set("resource", AZURE_STORAGE_SCOPE);
+    if (config.clientId) url.searchParams.set("client_id", config.clientId);
+    headers.Metadata = "true";
+  }
+
+  const response = await fetch(url, {
+    headers,
+    signal: AbortSignal.timeout(10_000),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || typeof body.access_token !== "string") {
+    throw new Error(`Azure managed identity returned HTTP ${response.status}`);
+  }
+
+  azureTokenCache = {
+    token: body.access_token,
+    expiresAt: tokenExpiryMillis(body.expires_on, body.expires_in),
+  };
+  return azureTokenCache.token;
+}
+
+function encodedBlobPath(config, key) {
+  return `/${encodeURIComponent(config.container)}/${key.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function azureBlobUrl(config, key) {
+  const base = new URL(config.blobEndpoint.endsWith("/") ? config.blobEndpoint : `${config.blobEndpoint}/`);
+  const prefix = base.pathname === "/" ? "" : base.pathname.replace(/\/$/, "");
+  base.pathname = `${prefix}${encodedBlobPath(config, key)}`;
+  return base;
+}
+
+async function azureRequest(method, key, { buffer = null, filePath = "", size = 0, contentType = "" } = {}) {
+  const config = azureConfig();
+  const token = await azureAccessToken(config);
+  const url = azureBlobUrl(config, key);
+  const body = buffer ? Buffer.from(buffer) : null;
+  const contentLength = filePath ? size : body ? body.length : 0;
+  const transport = url.protocol === "http:" ? httpRequest : httpsRequest;
+
+  return new Promise((resolvePromise, rejectPromise) => {
+    const outgoing = transport({
+      hostname: url.hostname,
+      port: url.port,
+      method,
+      path: `${url.pathname}${url.search}`,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-ms-date": new Date().toUTCString(),
+        "x-ms-version": AZURE_BLOB_API_VERSION,
+        ...(method === "PUT" ? {
+          "Content-Length": contentLength,
+          "x-ms-blob-type": "BlockBlob",
+          ...(contentType ? { "Content-Type": contentType, "x-ms-blob-content-type": contentType } : {}),
+        } : {}),
+      },
+      timeout: 90_000,
+    }, incoming => {
+      const chunks = [];
+      let bytes = 0;
+      incoming.on("data", chunk => {
+        bytes += chunk.length;
+        if (bytes <= 1024 * 1024) chunks.push(chunk);
+      });
+      incoming.on("end", () => resolvePromise({
+        status: incoming.statusCode || 502,
+        body: Buffer.concat(chunks),
+      }));
+      incoming.on("error", rejectPromise);
+    });
+
+    outgoing.on("timeout", () => outgoing.destroy(new Error("Hero media storage timed out")));
+    outgoing.on("error", rejectPromise);
+
+    if (filePath) {
+      const stream = createReadStream(filePath);
+      stream.on("error", rejectPromise);
+      stream.pipe(outgoing);
+    } else {
+      outgoing.end(body || undefined);
+    }
+  });
+}
+
+async function storageRequest(method, key, options = {}) {
+  return storageConfig().provider === "azure"
+    ? azureRequest(method, key, options)
+    : r2Request(method, key, options);
+}
+
+async function storageGetJson(key) {
+  const response = await storageRequest("GET", key);
   if (response.status === 404) return null;
   if (response.status < 200 || response.status >= 300) {
     throw new Error(`Hero media storage returned HTTP ${response.status}`);
@@ -168,9 +342,9 @@ async function r2GetJson(key) {
   }
 }
 
-async function r2PutJson(key, value) {
+async function storagePutJson(key, value) {
   const body = Buffer.from(JSON.stringify(value));
-  const response = await r2Request("PUT", key, {
+  const response = await storageRequest("PUT", key, {
     buffer: body,
     contentType: "application/json",
   });
@@ -227,6 +401,11 @@ function objectKey(mimeType) {
 
 function publicUrl(config, key) {
   return `${config.publicBaseUrl}/${key.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function storagePath(config, key) {
+  if (config.provider === "azure") return `azure://${config.account}/${config.container}/${key}`;
+  return `r2://${config.bucket}/${key}`;
 }
 
 async function receiveUpload(request, maxBytes) {
@@ -300,7 +479,7 @@ function publicConfig(raw) {
 }
 
 async function loadLibrary() {
-  const raw = await r2GetJson(LIBRARY_KEY);
+  const raw = await storageGetJson(LIBRARY_KEY);
   const assets = Array.isArray(raw?.assets)
     ? raw.assets.filter(item =>
       item
@@ -317,9 +496,9 @@ async function loadLibrary() {
 }
 
 async function saveCurrent(next) {
-  const current = await r2GetJson(CURRENT_KEY);
-  if (current) await r2PutJson(PREVIOUS_KEY, current);
-  await r2PutJson(CURRENT_KEY, next);
+  const current = await storageGetJson(CURRENT_KEY);
+  if (current) await storagePutJson(PREVIOUS_KEY, current);
+  await storagePutJson(CURRENT_KEY, next);
 }
 
 function errorStatus(error) {
@@ -350,7 +529,7 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
       };
 
       try {
-        value = publicConfig(await r2GetJson(CURRENT_KEY));
+        value = publicConfig(await storageGetJson(CURRENT_KEY));
       } catch {}
 
       if (request.method === "HEAD") {
@@ -378,8 +557,8 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
       if (pathname === "/api/hidi/hero-library" && request.method === "GET") {
         const [library, current, previous] = await Promise.all([
           loadLibrary(),
-          r2GetJson(CURRENT_KEY),
-          r2GetJson(PREVIOUS_KEY),
+          storageGetJson(CURRENT_KEY),
+          storageGetJson(PREVIOUS_KEY),
         ]);
 
         sendJson(response, 200, {
@@ -404,7 +583,7 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
           return true;
         }
 
-        const config = r2Config();
+        const config = storageConfig();
         const originalName = cleanName(
           headerValue(request.headers["x-hidi-filename"]),
         );
@@ -412,7 +591,7 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
         const key = objectKey(mimeType);
 
         try {
-          const stored = await r2Request("PUT", key, {
+          const stored = await storageRequest("PUT", key, {
             filePath: uploaded.filePath,
             size: uploaded.size,
             payloadHash: uploaded.payloadHash,
@@ -431,7 +610,7 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
           type: policy.type,
           mimeType,
           url: publicUrl(config, key),
-          storagePath: `r2://${config.bucket}/${key}`,
+          storagePath: storagePath(config, key),
           originalName,
           sizeBytes: uploaded.size,
           createdAt: new Date().toISOString(),
@@ -442,7 +621,7 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
           asset,
           ...library.assets.filter(item => item.id !== asset.id),
         ].slice(0, MAX_LIBRARY);
-        await r2PutJson(LIBRARY_KEY, library);
+        await storagePutJson(LIBRARY_KEY, library);
 
         sendJson(response, 201, { asset });
         return true;
@@ -495,7 +674,7 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
       }
 
       if (pathname === "/api/hidi/hero-restore" && request.method === "POST") {
-        const previous = await r2GetJson(PREVIOUS_KEY);
+        const previous = await storageGetJson(PREVIOUS_KEY);
 
         if (!previous) {
           sendJson(response, 404, {
@@ -504,13 +683,13 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
           return true;
         }
 
-        const current = await r2GetJson(CURRENT_KEY);
+        const current = await storageGetJson(CURRENT_KEY);
         const restored = {
           ...previous,
           updatedAt: new Date().toISOString(),
         };
-        await r2PutJson(CURRENT_KEY, restored);
-        if (current) await r2PutJson(PREVIOUS_KEY, current);
+        await storagePutJson(CURRENT_KEY, restored);
+        if (current) await storagePutJson(PREVIOUS_KEY, current);
 
         sendJson(response, 200, {
           current: publicConfig(restored),

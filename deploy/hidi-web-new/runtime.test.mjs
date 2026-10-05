@@ -55,6 +55,12 @@ async function launch(extra = {}) {
   return { child, url, stderr: () => stderr };
 }
 
+async function listen(server) {
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  return `http://127.0.0.1:${server.address().port}`;
+}
+
 before(async () => {
   folder = await mkdtemp(join(tmpdir(), "hidi-combined-runtime-"));
   await mkdir(join(folder, "dist/assets/video"), { recursive: true });
@@ -202,6 +208,129 @@ test("hero control route stays on the landing runtime and public hero config saf
   assert.equal(config.status, 200);
   assert.equal(config.headers["cache-control"], "no-store");
   assert.equal(JSON.parse(config.body).active, false);
+});
+
+test("hero media stores uploads and live config in Azure Blob with managed identity", async () => {
+  const tokenRequests = [];
+  const blobRequests = [];
+  const blobs = new Map();
+
+  const identity = createServer((incoming, response) => {
+    tokenRequests.push({ url: incoming.url, headers: incoming.headers });
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      access_token: "unit-managed-identity-token",
+      expires_on: String(Math.floor(Date.now() / 1000) + 3600),
+    }));
+  });
+
+  const blob = createServer(async (incoming, response) => {
+    const chunks = [];
+    for await (const chunk of incoming) chunks.push(chunk);
+    const body = Buffer.concat(chunks);
+    blobRequests.push({ method: incoming.method, url: incoming.url, headers: incoming.headers, body });
+
+    if (incoming.headers.authorization !== "Bearer unit-managed-identity-token") {
+      response.writeHead(401).end("missing bearer");
+      return;
+    }
+
+    if (incoming.method === "GET") {
+      const saved = blobs.get(incoming.url);
+      if (!saved) {
+        response.writeHead(404).end("missing");
+        return;
+      }
+      response.writeHead(200, { "Content-Type": saved.headers["x-ms-blob-content-type"] || "application/octet-stream" });
+      response.end(saved.body);
+      return;
+    }
+
+    if (incoming.method === "PUT") {
+      blobs.set(incoming.url, { headers: incoming.headers, body });
+      response.writeHead(201).end();
+      return;
+    }
+
+    response.writeHead(405).end();
+  });
+
+  const identityUrl = await listen(identity);
+  const blobUrl = await listen(blob);
+  try {
+    const azure = await launch({
+      STOREFRONT_ORIGIN: `http://127.0.0.1:${fixture.address().port}`,
+      MEDIA_STORAGE_PROVIDER: "azure",
+      AZURE_STORAGE_ACCOUNT: "unitstore",
+      AZURE_STORAGE_CONTAINER: "hero",
+      AZURE_CLIENT_ID: "client-id-123",
+      MEDIA_PUBLIC_BASE_URL: "https://media.example.test",
+      AZURE_IMDS_ENDPOINT: `${identityUrl}/metadata/identity/oauth2/token`,
+      AZURE_STORAGE_BLOB_ENDPOINT: blobUrl,
+    });
+
+    const media = Buffer.from("hero image bytes");
+    const uploaded = await send(azure.url, "/api/hidi/hero-upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "image/png",
+        "Content-Length": media.length,
+        "X-HIDI-Filename": encodeURIComponent("Launch Banner.png"),
+        Cookie: "session=fixture",
+      },
+      body: media,
+    });
+    assert.equal(uploaded.status, 201, uploaded.body);
+    const asset = JSON.parse(uploaded.body).asset;
+    assert.equal(asset.type, "image");
+    assert.equal(asset.mimeType, "image/png");
+    assert.equal(asset.originalName, "Launch Banner.png");
+    assert.match(asset.url, /^https:\/\/media\.example\.test\/brand\/hero\/media\/\d{8}\/.+\.png$/);
+    assert.match(asset.storagePath, /^azure:\/\/unitstore\/hero\/brand\/hero\/media\/\d{8}\/.+\.png$/);
+
+    const mediaPath = new URL(asset.url).pathname;
+    assert.equal(blobs.get(`/hero${mediaPath}`).body.toString(), "hero image bytes");
+    assert.equal(blobs.get(`/hero${mediaPath}`).headers["x-ms-blob-content-type"], "image/png");
+
+    const library = await send(azure.url, "/api/hidi/hero-library");
+    assert.equal(library.status, 200, library.body);
+    assert.equal(JSON.parse(library.body).assets[0].id, asset.id);
+
+    const publishBody = JSON.stringify({
+      assetId: asset.id,
+      desktopPosition: "38% 42%",
+      mobilePosition: "51% 24%",
+    });
+    const published = await send(azure.url, "/api/hidi/hero-publish", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(publishBody),
+        Cookie: "session=fixture",
+      },
+      body: publishBody,
+    });
+    assert.equal(published.status, 200, published.body);
+    assert.equal(JSON.parse(published.body).current.desktopPosition, "38% 42%");
+
+    const config = await send(azure.url, "/api/hidi/hero-config");
+    assert.equal(config.status, 200);
+    const live = JSON.parse(config.body);
+    assert.equal(live.active, true);
+    assert.equal(live.assetId, asset.id);
+    assert.equal(live.mobilePosition, "51% 24%");
+
+    assert.equal(tokenRequests.length, 1);
+    assert.match(tokenRequests[0].url, /resource=https%3A%2F%2Fstorage\.azure\.com%2F/);
+    assert.match(tokenRequests[0].url, /client_id=client-id-123/);
+    assert.equal(tokenRequests[0].headers.metadata, "true");
+    assert.ok(blobRequests.every(item => item.headers["x-ms-version"]));
+  } finally {
+    await Promise.all([
+      new Promise(resolve => identity.close(resolve)),
+      new Promise(resolve => blob.close(resolve)),
+    ]);
+  }
 });
 
 test("Next assets and API beat static collisions; genuine deep links retain upstream responses", async () => {
