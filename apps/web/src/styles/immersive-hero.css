@@ -160,13 +160,57 @@
   .campaign-menu { width: 44px; padding: 0; }
   .campaign-menu span { display: none; }
   .campaign-icon .icon, .campaign-menu .icon { width: 22px; height: 22px; }
+  .campaign-icon, .campaign-menu { touch-action: manipulation; }
   .hero.hero--campaign { height: 100svh; min-height: 480px; }
   .hero--campaign .hero-drop-slide--banner img { object-position: 50% 50%; }
   .hero--campaign .hero-drop-slide--dupatta img { object-position: 50% 42%; }
   .hero--campaign .campaign-hero-action { bottom: max(65px, 10svh); }
   .campaign-shop-button { min-width: 153px; min-height: 52px; padding: 16px 27px; }
-  .hidi-dialog.campaign-panel { padding: 75px 26px 35px; }
+  .hidi-dialog.campaign-panel { padding: 68px 22px max(30px, env(safe-area-inset-bottom)); }
+
+  /* Mobile navigation follows the HIDI header/footer palette instead of the
+     light desktop drawer. Search remains the separate glass panel below. */
+  .hidi-dialog.campaign-panel.campaign-nav-panel {
+    background: linear-gradient(155deg, #602124 0%, #561d21 56%, #49191d 100%);
+    color: #fffefb;
+  }
+  .campaign-nav-panel .dialog-brand { margin-bottom: 18px; }
+  .campaign-nav-panel .dialog-brand img { width: 92px; }
+  .campaign-nav-panel .dialog-close {
+    top: max(14px, env(safe-area-inset-top)); right: 12px; color: var(--gold);
+  }
+  .campaign-nav-panel .dialog-close:hover { background: #ffffff0d; }
+  .campaign-nav-panel .dialog-content .campaign-menu-title {
+    color: #fff7ee; font-size: 20px; line-height: 1.25; letter-spacing: -.015em;
+  }
+  .campaign-nav-panel .campaign-panel-nav { margin-top: 20px; }
+  .campaign-nav-panel .campaign-panel-nav > a {
+    padding: 12px 0; border-bottom: 0; color: #fff7ee;
+    font-size: 15px; font-weight: 500;
+  }
+  .campaign-nav-panel .campaign-panel-nav > a .icon { color: var(--gold); }
+  .campaign-nav-panel .campaign-panel-links {
+    gap: 0; padding-top: 16px; border-top: 1px solid #e8c06f26;
+  }
+  .campaign-nav-panel .campaign-panel-links > button {
+    min-height: 42px; color: #f7ece4; font-size: 13px;
+  }
+  .campaign-nav-panel .campaign-panel-links .icon { color: var(--gold); }
+  .campaign-nav-panel .campaign-panel-story {
+    margin-top: 14px; padding-top: 10px; border-top: 0;
+  }
+  .campaign-nav-panel .campaign-panel-story > a {
+    min-height: 42px; color: #f7ece4; font-size: 13px;
+  }
+  .campaign-nav-panel .campaign-panel-story .icon { color: var(--gold); }
   .campaign-search-field input { font-size: 16px; }
+}
+@media (max-width: 360px) {
+  .campaign-header-inner { padding-inline: 10px; gap: 4px; }
+  .campaign-brand, .campaign-brand img { width: 88px; }
+  .campaign-icon, .campaign-menu { min-width: 40px; width: 40px; height: 44px; }
+  .campaign-icon .icon, .campaign-menu .icon { width: 21px; height: 21px; }
+  .hidi-dialog.campaign-panel { padding-inline: 18px; }
 }
 @media (max-height: 510px) and (min-width: 701px) {
   .hero.hero--campaign { min-height: 360px; }
