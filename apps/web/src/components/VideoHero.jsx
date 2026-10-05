@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { asset } from '../config.js';
+import { asset, safeWebUrl } from '../config.js';
 import { useHidi } from '../context/HidiContext.jsx';
 import { useReducedMotion } from '../hooks/useMediaQuery.js';
 import { useDocumentVisible, useInView } from '../hooks/useVisibility.js';
@@ -27,10 +27,30 @@ export default function VideoHero() {
   const heroRef = useRef(null);
   const heroVisible = useInView(heroRef);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [liveHero, setLiveHero] = useState(null);
   const [outgoingIndex, setOutgoingIndex] = useState(null);
   const [incomingIndex, setIncomingIndex] = useState(null);
   const animating = outgoingIndex !== null && incomingIndex !== null;
-  const canAdvance = HERO_SLIDES.length > 1 && !reduced && heroVisible && pageVisible && !dialogOpen;
+  const canAdvance = !liveHero && HERO_SLIDES.length > 1 && !reduced && heroVisible && pageVisible && !dialogOpen;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/hidi/hero-config', { cache: 'no-store', signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((value) => {
+        if (!value?.active || !['image', 'video'].includes(value.type)) return;
+        const url = safeWebUrl(value.url);
+        if (!url) return;
+        setLiveHero({
+          type: value.type,
+          url,
+          desktopPosition: typeof value.desktopPosition === 'string' ? value.desktopPosition : '50% 50%',
+          mobilePosition: typeof value.mobilePosition === 'string' ? value.mobilePosition : '50% 50%',
+        });
+      })
+      .catch((error) => { if (error?.name !== 'AbortError') setLiveHero(null); });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (!canAdvance || animating) return undefined;
@@ -82,7 +102,28 @@ export default function VideoHero() {
   return (
     <section ref={heroRef} className="hero hero--campaign" aria-labelledby="hero-title">
       <div className="hero-media hero-drop-slider" aria-hidden="true">
-        {HERO_SLIDES.map((slide, index) => (
+        {liveHero ? (liveHero.type === 'video' ?
+          <video
+            className="hero-live-media"
+            src={liveHero.url}
+            autoPlay={!reduced}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            onError={() => setLiveHero(null)}
+            style={{ '--hero-position-desktop': liveHero.desktopPosition, '--hero-position-mobile': liveHero.mobilePosition }}
+          /> :
+          <img
+            className="hero-live-media"
+            src={liveHero.url}
+            alt=""
+            loading="eager"
+            fetchPriority="high"
+            onError={() => setLiveHero(null)}
+            style={{ '--hero-position-desktop': liveHero.desktopPosition, '--hero-position-mobile': liveHero.mobilePosition }}
+          />
+        ) : HERO_SLIDES.map((slide, index) => (
           <picture
             key={slide.desktop}
             className={slideClassName(index, slide)}
