@@ -276,23 +276,40 @@ jobs:
             --image "${{ steps.publish.outputs.image }}" \
             --revision-suffix "${revision:0:63}"
 
-      - name: Wait for healthy revision
+      - name: Wait for the new revision to become ready
         shell: bash
         run: |
+          target_revision="$(az containerapp show \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_CONTAINER_APP" \
+            --query "properties.latestRevisionName" \
+            --output tsv)"
+          echo "Target revision: $target_revision"
           deadline=$((SECONDS + 600))
           while [ "$SECONDS" -lt "$deadline" ]; do
-            state="$(az containerapp revision list \
+            state="$(az containerapp revision show \
               --resource-group "$AZURE_RESOURCE_GROUP" \
               --name "$AZURE_CONTAINER_APP" \
-              --query "[0].properties.healthState" \
+              --revision "$target_revision" \
+              --query "properties.healthState" \
+              --output tsv 2>/dev/null || true)"
+            ready="$(az containerapp show \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --name "$AZURE_CONTAINER_APP" \
+              --query "properties.latestReadyRevisionName" \
               --output tsv)"
-            echo "Latest revision health: ${state:-pending}"
-            if [ "$state" = "Healthy" ]; then
+            echo "Target health: ${state:-pending}; latest ready: ${ready:-none}"
+            if [ "$state" = "Healthy" ] && [ "$ready" = "$target_revision" ]; then
+              sleep 10
               exit 0
             fi
             sleep 15
           done
-          echo "Updated storefront revision did not become healthy in time." >&2
+          echo "Updated storefront revision did not become the ready revision in time." >&2
+          az containerapp revision list \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_CONTAINER_APP" \
+            --output table
           exit 1
 
       - name: Verify landing and Firebase account wiring
