@@ -181,16 +181,16 @@
   }
   .campaign-nav-panel .dialog-close:hover { background: #ffffff0d; }
   .campaign-nav-panel .dialog-content .campaign-menu-title {
-    color: #fff7ee; font-size: 20px; line-height: 1.25; letter-spacing: -.015em;
+    color: #fff7ee; font-size: 18px; line-height: 1.25; letter-spacing: -.01em;
   }
-  .campaign-nav-panel .campaign-panel-nav { margin-top: 20px; }
+  .campaign-nav-panel .campaign-panel-nav { margin-top: 16px; }
   .campaign-nav-panel .campaign-panel-nav > a {
-    padding: 12px 0; border-bottom: 0; color: #fff7ee;
+    padding: 11px 0; border-bottom: 0; color: #fff7ee;
     font-size: 15px; font-weight: 500;
   }
   .campaign-nav-panel .campaign-panel-nav > a .icon { color: var(--gold); }
   .campaign-nav-panel .campaign-panel-links {
-    gap: 0; padding-top: 16px; border-top: 1px solid #e8c06f26;
+    gap: 0; padding-top: 12px; border-top: 0;
   }
   .campaign-nav-panel .campaign-panel-links > button {
     min-height: 42px; color: #f7ece4; font-size: 13px;
@@ -203,6 +203,11 @@
     min-height: 42px; color: #f7ece4; font-size: 13px;
   }
   .campaign-nav-panel .campaign-panel-story .icon { color: var(--gold); }
+  .campaign-nav-panel {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .campaign-nav-panel::-webkit-scrollbar { width: 0; height: 0; display: none; }
   .campaign-search-field input { font-size: 16px; }
 }
 @media (max-width: 360px) {
