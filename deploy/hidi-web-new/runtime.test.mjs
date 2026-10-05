@@ -61,6 +61,7 @@ before(async () => {
   await mkdir(join(folder, "dist/api"), { recursive: true });
   await mkdir(join(folder, "dist/_next"), { recursive: true });
   await writeFile(join(folder, "dist/index.html"), "<h1>Original landing</h1>");
+  await writeFile(join(folder, "dist/hero-control.html"), "<h1>Hero Media Control</h1>");
   await writeFile(join(folder, "dist/assets/video/hero.mp4"), "0123456789abcdefghij");
   await writeFile(join(folder, "dist/assets/app-abcdefgh.js"), "console.log('landing');");
   await writeFile(join(folder, "dist/api/collision"), "wrong API static response");
@@ -191,6 +192,16 @@ test("commerce routes preserve method, raw URL, body, cookies and original HTTPS
   assert.equal(received.headers["x-request-id"], "flow-1");
   assert.equal(received.headers["x-hop-test"], undefined);
   assert.deepEqual(response.headers["set-cookie"], ["session=fixture; Path=/; Secure; HttpOnly", "csrf=fixture; Path=/; SameSite=Lax"]);
+});
+
+test("hero control route stays on the landing runtime and public hero config safely falls back", async () => {
+  const control = await send(proxy.url, "/admin/hero-media");
+  assert.equal(control.status, 200);
+  assert.match(control.body, /Hero Media Control/);
+  const config = await send(proxy.url, "/api/hidi/hero-config");
+  assert.equal(config.status, 200);
+  assert.equal(config.headers["cache-control"], "no-store");
+  assert.equal(JSON.parse(config.body).active, false);
 });
 
 test("Next assets and API beat static collisions; genuine deep links retain upstream responses", async () => {
