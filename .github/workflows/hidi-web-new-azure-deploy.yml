@@ -77,7 +77,7 @@ jobs:
       - name: Azure login with OIDC
         uses: azure/login@v2
         with:
-          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          client-id: a7268f6e-28ba-45ce-afcc-98f5d74dad9a
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
 
