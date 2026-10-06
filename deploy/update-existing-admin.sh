@@ -49,12 +49,18 @@ for app in hidi-api hidi-web; do
     jq -e '.traffic | length == 1 and .[0].weight == 100 and (.[0].label == null)' "$work/$app.json" >/dev/null || { echo "Existing canary/label traffic for $app needs a dedicated rollout; no apps changed."; exit 3; }
   fi
   prior_image=$(jq -r .image "$work/$app.json")
-  prefix="$registry/$app:"
-  [[ "$prior_image" == "$prefix"* ]] || { echo "Unknown image registry for $app; no apps changed."; exit 3; }
-  prior_sha=${prior_image#"$prefix"}
-  desired_image=$(target_image "$app")
-  desired_sha=${desired_image#"$prefix"}
-  [[ "$prior_sha" =~ ^[0-9a-f]{40}$ ]] && git merge-base --is-ancestor "$prior_sha" "$desired_sha" || { echo "Refusing to overwrite newer or unrelated $app code; no apps changed."; exit 3; }
+  tag_prefix="$registry/$app:"
+  digest_prefix="$registry/$app@sha256:"
+  if [[ "$prior_image" == "$tag_prefix"* ]]; then
+    prior_sha=${prior_image#"$tag_prefix"}
+    desired_image=$(target_image "$app")
+    desired_sha=${desired_image#"$tag_prefix"}
+    [[ "$prior_sha" =~ ^[0-9a-f]{40}$ ]] && git merge-base --is-ancestor "$prior_sha" "$desired_sha" || { echo "Refusing to overwrite newer or unrelated $app code; no apps changed."; exit 3; }
+  elif [[ "$app" == hidi-web && "$prior_image" == "$digest_prefix"* ]]; then
+    echo "Existing $app uses an ACR digest image; rollback image captured."
+  else
+    echo "Unknown image registry for $app; no apps changed."; exit 3
+  fi
   echo "Existing $app verified. Image: $prior_image"
 done
 trap rollback ERR
