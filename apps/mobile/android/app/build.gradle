@@ -1,0 +1,35 @@
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+react {
+    autolinkLibrariesWithApp()
+    extraPackagerArgs = ["--max-workers", "2"]
+}
+android {
+    ndkVersion rootProject.ext.ndkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdk rootProject.ext.compileSdkVersion
+    namespace "com.thehidi.app"
+    defaultConfig {
+        applicationId project.findProperty("hidiInternalBuild") == "true" ? "com.thehidi.premium.internal" : "com.thehidi.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 2
+        versionName "1.0.0"
+    }
+    buildTypes {
+        debug { }
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            ndk { debugSymbolLevel "SYMBOL_TABLE" }
+        }
+    }
+}
+dependencies {
+    implementation("com.facebook.react:react-android")
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    if (!hermesEnabled.toBoolean()) throw new GradleException("HIDI release validation requires Hermes")
+    implementation("com.facebook.react:hermes-android")
+}

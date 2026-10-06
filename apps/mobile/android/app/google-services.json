@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "939712465412",
+    "project_id": "hidi-dee0f",
+    "storage_bucket": "hidi-dee0f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:939712465412:android:a5fb469b13ed0ba081c351",
+        "android_client_info": {
+          "package_name": "com.thehidi.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmFRW_05oW5ruVE6zqlLEv5hxGuqKPGXU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

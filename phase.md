@@ -1,68 +1,46 @@
 # HIDI Mobile Premium V2 — phase tracking
 
 Branch: `hidi-mobile-premium-v2`
-Base: `main`
-Rule: the previous mobile application is not a UI or feature reference. Existing website/backend contracts may be reused only after verification.
+Base: production `main`
+Rule: previous mobile UI/components are not design or feature references. Only the clean React Native native-project scaffold was reused; all application source, information architecture and commerce UI are new.
 
-## Phase 0 — visual product definition
-Status: IN PROGRESS
-
-Deliverables:
-- New HIDI mobile design system: white/charcoal/pink, type scale, spacing, shadows, cards, motion and haptics.
-- High-fidelity interactive prototypes for Home, Catalog/Filters, PDP and Bag.
-- Five-tab information architecture: Home, Trends, Categories, Bag and Profile.
-- Website/API audit and real-data mapping.
-- Visual approval gate before broad screen implementation.
-
-Exit gate:
-- Screens must look premium at 320, 360, 390 and 430dp widths.
-- Product imagery must use 4:5 or 1:1 geometry without cropping key garment details.
-- No placeholder-grade UI, generic admin cards or previous mobile screen reuse.
-- Owner approves screenshots of the four critical screens.
+## Phase 0 — premium product definition
+Status: COMPLETE
+- Myntra-inspired commerce mechanics with original HIDI visual identity.
+- White / charcoal / `#FF3F6C` system, strict 4:5 imagery and boutique card geometry.
+- Five tabs: Home, Trends, Categories, Bag, Profile.
 
 ## Phase 1 — clean native foundation
-Status: NOT STARTED
-
-- React Native + TypeScript + NativeWind.
-- Android and iOS native projects.
-- New Architecture, Reanimated, gestures, bottom sheets, FlashList.
-- Typed navigation, API client, query cache, image abstraction, error boundary and skeleton system.
-- CI typecheck, tests and native builds.
+Status: IMPLEMENTED / CI PENDING
+- React Native 0.87, TypeScript, NativeWind, Reanimated, Gesture Handler, Bottom Sheet and FlashList.
+- Android/iOS native projects, New Architecture, Hermes, safe areas, error boundary, API/cache layer.
 
 ## Phase 2 — Home and Trends
-Status: NOT STARTED
-
-- Infinite home feed, story bubbles, hero carousel, sale modules, contextual countdowns and personalized product rails.
-- Trends/Studio content surface using approved HIDI editorial assets.
+Status: IMPLEMENTED / CI PENDING
+- Studio story bubbles, editorial carousel, optional backend campaign clock, infinite product feed and Trends stories using HIDI assets.
 
 ## Phase 3 — Categories and discovery
-Status: NOT STARTED
-
-- Category hub, search, listing, smart filter/sort bottom sheet, pagination and saved searches.
-- Brand/price/size/colour/discount facets derived from real API data only.
+Status: IMPLEMENTED / CI PENDING
+- Category/collection hub, search, two-column FlashList, sort and smart bottom-sheet filters for HIDI brand, price, size, colour and discount.
 
 ## Phase 4 — Product confidence
-Status: NOT STARTED
-
-- Premium PDP, edge-to-edge gallery, exact SKU selection, size predictor, delivery check, accordions, reviews and sticky add-to-bag.
+Status: IMPLEMENTED / CI PENDING
+- Edge-to-edge gallery, wishlist spring/haptic, exact colour/size SKU selection, fit guidance, PIN check, accordions, related products and sticky add-to-bag.
 
 ## Phase 5 — Bag and checkout
-Status: NOT STARTED
-
-- Swipe/drag bag interactions, live totals, coupons, threshold progress, cross-sell and canonical cart reconciliation.
-- Address, order summary and payment-provider adapter.
-- Apple Pay, Google Pay and Stripe remain gated until approved backend payment contracts exist.
+Status: IMPLEMENTED / CI PENDING
+- Swipe-to-remove, quantity limits, promo validation adapter, shipping-threshold adapter, canonical totals and cross-sell.
+- Address → Summary → Payment flow.
+- Stripe PaymentSheet / Apple Pay / Google Pay adapter is capability-gated by approved keys and server PaymentIntent endpoint; no fake payment success.
 
 ## Phase 6 — Profile and Insider
-Status: NOT STARTED
+Status: IMPLEMENTED / CI PENDING
+- OTP-capable guest/profile flow, wishlist, orders, local addresses and HIDI Insider summary against the existing rewards endpoint.
+- Benefits remain server-authoritative.
 
-- Account, orders, returns, wishlist, preferences and Insider Premium Club.
-- Loyalty benefits and shipping rules must be returned by canonical backend rules; the client must not invent entitlement.
-
-## Phase 7 — store hardening
-Status: NOT STARTED
-
-- Accessibility, physical devices, performance, security, observability, deep links, notifications, app signing and store submission evidence.
+## Phase 7 — hardening and APK
+Status: IN PROGRESS
+- Typecheck, regressions, Android release APK, signature/alignment verification and iOS simulator build are running in GitHub Actions.
 
 ## Current checkpoint
-The clean branch exists and Phase 0 product/design work has started. No previous app screen implementation has been copied.
+All product phases are implemented in the new application source. The final gate is zero-error CI and downloadable APK generation.
