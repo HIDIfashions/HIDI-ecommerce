@@ -592,6 +592,61 @@ function proxyApi(request, response, pathname) {
   request.pipe(upstream);
 }
 
+function proxySitemap(request, response) {
+  if (!hasStorefront) return error(response, 503, "Storefront unavailable");
+  const headers = cleanHeaders(request.headers);
+  delete headers["accept-encoding"];
+  headers.host = request.headers.host || origin.host;
+  headers["x-forwarded-host"] = request.headers.host || origin.host;
+  headers["x-forwarded-proto"] = forwardedProto(request);
+
+  const upstream = requestUpstream({
+    protocol: origin.protocol,
+    hostname: origin.hostname,
+    port: origin.port || undefined,
+    method: request.method,
+    path: request.url,
+    headers,
+  }, incoming => {
+    const responseHeaders = cleanHeaders(incoming.headers);
+    const status = incoming.statusCode || 502;
+    if (request.method === "HEAD") {
+      responseHeaders["cache-control"] = "public, max-age=300";
+      response.writeHead(status, responseHeaders);
+      incoming.resume();
+      response.end();
+      return;
+    }
+
+    const chunks = [];
+    let size = 0;
+    incoming.on("data", chunk => {
+      size += chunk.length;
+      if (size <= 5 * 1024 * 1024) chunks.push(chunk);
+    });
+    incoming.on("end", () => {
+      if (size > 5 * 1024 * 1024) return error(response, 502, "Sitemap is unexpectedly large");
+      let body = Buffer.concat(chunks).toString("utf8");
+      body = body.replace(/(<loc>)https?:\/\/[^/<]+/gi, "$1" + primarySiteOrigin);
+      const output = Buffer.from(body);
+      delete responseHeaders["content-encoding"];
+      delete responseHeaders.etag;
+      responseHeaders["content-type"] = responseHeaders["content-type"] || "application/xml; charset=utf-8";
+      responseHeaders["cache-control"] = "public, max-age=300";
+      responseHeaders["content-length"] = String(output.length);
+      response.writeHead(status, responseHeaders);
+      response.end(output);
+    });
+  });
+  upstream.on("error", () => {
+    if (response.headersSent) response.destroy();
+    else error(response, 503, "Storefront unavailable");
+  });
+  request.on("aborted", () => upstream.destroy());
+  response.on("close", () => upstream.destroy());
+  request.pipe(upstream);
+}
+
 function proxy(request, response, pathname = "") {
   if (!hasStorefront) return error(response, 503, "Storefront unavailable");
   const headers = cleanHeaders(request.headers);
@@ -745,6 +800,15 @@ async function handle(request, response) {
       return error(response, 405, "Method not allowed");
     }
     return sendRobots(request, response);
+  }
+
+  if (pathname === "/sitemap.xml") {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      response.setHeader("Allow", "GET, HEAD");
+      return error(response, 405, "Method not allowed");
+    }
+    if (!isProductionRequest(request)) return error(response, 404, "Not found");
+    return proxySitemap(request, response);
   }
 
   if (pathname === "/v1/payments/razorpay/webhook" && (request.method === "GET" || request.method === "HEAD")) {
