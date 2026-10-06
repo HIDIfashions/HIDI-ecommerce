@@ -15,6 +15,7 @@ let apiFixture;
 let proxy;
 let unavailable;
 let healthy = true;
+let collectionPerfHits = 0;
 const processes = [];
 
 function send(base, path, options = {}) {
@@ -101,6 +102,16 @@ before(async () => {
     }
     if (incoming.url === "/products/demo") {
       const body = '<!doctype html><html><head><link rel="canonical" href="https://thidigk.thehidi.com/products/demo"><meta property="og:url" content="https://thidigk.thehidi.com/products/demo"><meta name="robots" content="index, follow"></head><body><main>Demo product</main></body></html>';
+      response.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Length": Buffer.byteLength(body),
+      });
+      response.end(body);
+      return;
+    }
+    if (incoming.url === "/collections/perf") {
+      collectionPerfHits += 1;
+      const body = '<!doctype html><html><head><title>Perf collection</title></head><body><main>Collection</main></body></html>';
       response.writeHead(200, {
         "Content-Type": "text/html; charset=utf-8",
         "Content-Length": Buffer.byteLength(body),
@@ -328,6 +339,36 @@ test("analytics configuration is public-safe and disabled on preview", async () 
   assert.equal(preview.status, 200);
   assert.equal(preview.headers["cache-control"], "no-store");
   assert.equal(JSON.parse(preview.body).enabled, false);
+});
+
+test("Search Console verification is injected only for production when configured", async () => {
+  const verified = await launch({
+    STOREFRONT_ORIGIN: `http://127.0.0.1:${fixture.address().port}`,
+    GOOGLE_SITE_VERIFICATION: "google-verification-token_1234567890",
+  });
+  const production = await send(verified.url, "/products/demo", { headers: { Host: "thehidi.com" } });
+  assert.match(production.body, /name="google-site-verification"/);
+  assert.match(production.body, /google-verification-token_1234567890/);
+  const preview = await send(verified.url, "/products/demo", { headers: { Host: "thidigk.thehidi.com" } });
+  assert.doesNotMatch(preview.body, /google-site-verification/);
+});
+
+test("anonymous collection HTML uses a short in-process cache and cookie requests bypass it", async () => {
+  collectionPerfHits = 0;
+  const first = await send(proxy.url, "/collections/perf", { headers: { Host: "thidigk.thehidi.com" } });
+  assert.equal(first.status, 200);
+  assert.equal(first.headers["x-hidi-cache"], "MISS");
+  const second = await send(proxy.url, "/collections/perf", { headers: { Host: "thidigk.thehidi.com" } });
+  assert.equal(second.status, 200);
+  assert.equal(second.headers["x-hidi-cache"], "HIT");
+  assert.equal(collectionPerfHits, 1);
+
+  const personalised = await send(proxy.url, "/collections/perf", {
+    headers: { Host: "thidigk.thehidi.com", Cookie: "hidi-session=customer" },
+  });
+  assert.equal(personalised.status, 200);
+  assert.equal(personalised.headers["x-hidi-cache"], undefined);
+  assert.equal(collectionPerfHits, 2);
 });
 
 test("proxied admin portal pages expose the hero media control link", async () => {
