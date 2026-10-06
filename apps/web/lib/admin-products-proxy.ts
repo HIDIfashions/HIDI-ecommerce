@@ -39,8 +39,11 @@ export async function proxyProducts(request: NextRequest, suffix = "") {
   }
   try {
     const target = new URL(`${API_URL}/admin/products${suffix}`);
-    if (!suffix && !write) for (const parameter of ["q", "status", "page"]) {
-      const value = request.nextUrl.searchParams.get(parameter); if (value !== null) target.searchParams.set(parameter, value);
+    if (!write) {
+      const parameters = suffix === "/price-tags" ? ["q", "status", "stock", "productId"] : (!suffix ? ["q", "status", "page"] : []);
+      for (const parameter of parameters) {
+        const value = request.nextUrl.searchParams.get(parameter); if (value !== null) target.searchParams.set(parameter, value);
+      }
     }
     const response = await fetch(target, {
       method: request.method, cache: "no-store", signal: AbortSignal.timeout(25000),
