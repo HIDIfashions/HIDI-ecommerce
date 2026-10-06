@@ -182,11 +182,14 @@ after(async () => {
 test("landing root and files retain range and cache semantics", async () => {
   const root = await send(proxy.url, "/?campaign=launch");
   assert.equal(root.status, 200);
-  assert.equal(root.body, "<h1>Original landing</h1>");
+  assert.match(root.body, /<h1>Original landing<\/h1>/);
+  assert.match(root.body, /rel="canonical" href="https:\/\/thehidi\.com\//);
+  assert.match(root.body, /name="robots" content="noindex, nofollow, noarchive"/);
+  assert.equal(root.headers["x-robots-tag"], "noindex, nofollow, noarchive");
   assert.equal(root.headers["cache-control"], "no-cache");
   const head = await send(proxy.url, "/", { method: "HEAD" });
   assert.equal(head.body, "");
-  assert.equal(head.headers["content-length"], String(root.body.length));
+  assert.equal(head.headers["content-length"], String(Buffer.byteLength(root.body)));
   const video = await send(proxy.url, "/assets/video/hero.mp4", { headers: { Range: "bytes=2-5" } });
   assert.equal(video.status, 206);
   assert.equal(video.body, "2345");
@@ -351,6 +354,10 @@ test("Search Console verification is injected only for production when configure
   assert.match(production.body, /google-verification-token_1234567890/);
   const preview = await send(verified.url, "/products/demo", { headers: { Host: "thidigk.thehidi.com" } });
   assert.doesNotMatch(preview.body, /google-site-verification/);
+  const productionHome = await send(verified.url, "/", { headers: { Host: "thehidi.com" } });
+  assert.match(productionHome.body, /name="google-site-verification"/);
+  assert.match(productionHome.body, /google-verification-token_1234567890/);
+  assert.doesNotMatch(productionHome.body, /noindex, nofollow/);
 });
 
 test("anonymous collection HTML uses a short in-process cache and cookie requests bypass it", async () => {
