@@ -53,6 +53,10 @@ for (const file of ['public/hidi-brand-full-20260929-r4-32.png', 'public/hidi-br
   'public/hidi-brand-full-20260929-r4.ico', 'public/site.webmanifest']) await access(path.join(root, file));
 const entry = await readFile(path.join(root, 'index.html'), 'utf8');
 assert.ok(entry.includes('hidi-brand-full-20260929-r4-48.png'), 'Current full-logo path missing.');
+assert.ok(entry.includes('https://thehidi.com/'), 'Production canonical URL missing from landing metadata.');
+assert.ok(entry.includes('og:title') && entry.includes('twitter:card'), 'Social sharing metadata missing.');
+assert.ok(!entry.includes('noindex, nofollow'), 'Production landing HTML must not ship a hard-coded noindex directive.');
+await access(path.join(root, 'public/hidi-analytics.js'));
 const settings = await readFile(path.join(root, 'vite.config.js'), 'utf8');
 assert.ok(settings.includes('port: 5188') && settings.includes('strictPort: false'), 'Automatic development-port fallback missing.');
 const appSource = await readFile(path.join(root, 'src/App.jsx'), 'utf8');
