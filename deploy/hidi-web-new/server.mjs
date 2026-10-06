@@ -145,6 +145,25 @@ const storefrontLayerFix = `
     .product-page {
       padding-bottom: 42px !important;
     }
+
+    /* Bag polish: keep the final summary clear of the sticky checkout CTA. */
+    .cart-page {
+      padding-bottom: 150px !important;
+    }
+    .cart-page .order-summary {
+      margin-bottom: 18px !important;
+    }
+    .cart-page .order-summary .fine-print {
+      margin-top: 8px !important;
+      padding-bottom: 6px !important;
+    }
+
+    /* Keep the bag count fully inside the mobile header instead of clipping
+       into the announcement strip. */
+    .site-header [class*="count"] {
+      top: 2px !important;
+      right: 0 !important;
+    }
     .pdp-info .delivery-box {
       margin-top: 18px !important;
       padding: 18px 0 !important;
