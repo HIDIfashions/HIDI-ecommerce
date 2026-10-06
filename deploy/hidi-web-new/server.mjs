@@ -33,6 +33,21 @@ const adminHeroMediaLink = `
 <a data-hidi-hero-media-link="true" href="/admin/hero-media" aria-label="Open HIDI hero media admin"
   style="position:fixed;right:18px;bottom:18px;z-index:2147483647;padding:10px 14px;border-radius:999px;background:#602124;color:#fff;text-decoration:none;font:600 13px Arial,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.18)">Hero Media</a>
 `;
+const storefrontLayerFix = `
+<style data-hidi-storefront-layer-fix="true">
+  .announcement {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2147483000 !important;
+    isolation: isolate !important;
+  }
+  .site-header {
+    position: sticky !important;
+    z-index: 2147482999 !important;
+    isolation: isolate !important;
+  }
+</style>
+`;
 
 function contentEtag(filePath, stat) {
   const identity = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
@@ -90,6 +105,22 @@ function injectAdminHeroLink(html) {
     : `${html}${adminHeroMediaLink}`;
 }
 
+function shouldInjectStorefrontLayerFix(request, pathname) {
+  return request.method === "GET"
+    && !pathname.startsWith("/api/")
+    && pathname !== "/api"
+    && !pathname.startsWith("/_next/")
+    && pathname !== "/_next"
+    && pathname !== "/admin/hero-media";
+}
+
+function injectStorefrontLayerFix(html) {
+  if (html.includes("data-hidi-storefront-layer-fix")) return html;
+  return /<\/head>/i.test(html)
+    ? html.replace(/<\/head>/i, `${storefrontLayerFix}</head>`)
+    : `${storefrontLayerFix}${html}`;
+}
+
 function forwardedProto(request) {
   const value = String(request.headers["x-forwarded-proto"] || "").split(",")[0].trim();
   return ["http", "https"].includes(value)
@@ -137,7 +168,8 @@ function proxy(request, response, pathname = "") {
   if (!hasStorefront) return error(response, 503, "Storefront unavailable");
   const headers = cleanHeaders(request.headers);
   const injectHeroLink = shouldInjectAdminHeroLink(request, pathname);
-  if (injectHeroLink) delete headers["accept-encoding"];
+  const injectLayerFix = shouldInjectStorefrontLayerFix(request, pathname);
+  if (injectHeroLink || injectLayerFix) delete headers["accept-encoding"];
   // The fixed origin selects the destination. The public host/protocol still
   // reach Next so redirects, authentication cookies, and URL generation work.
   headers.host = request.headers.host || origin.host;
@@ -154,7 +186,7 @@ function proxy(request, response, pathname = "") {
     const responseHeaders = cleanHeaders(incoming.headers);
     const status = incoming.statusCode || 502;
     const contentType = String(responseHeaders["content-type"] || "");
-    const canInject = injectHeroLink
+    const canInject = (injectHeroLink || injectLayerFix)
       && status >= 200 && status < 300
       && /\btext\/html\b/i.test(contentType)
       && !responseHeaders["content-encoding"];
@@ -192,7 +224,10 @@ function proxy(request, response, pathname = "") {
       }
       delete responseHeaders["content-length"];
       delete responseHeaders.etag;
-      const body = Buffer.from(injectAdminHeroLink(Buffer.concat(chunks).toString("utf8")));
+      let html = Buffer.concat(chunks).toString("utf8");
+      if (injectLayerFix) html = injectStorefrontLayerFix(html);
+      if (injectHeroLink) html = injectAdminHeroLink(html);
+      const body = Buffer.from(html);
       responseHeaders["content-length"] = String(body.length);
       response.writeHead(status, responseHeaders);
       response.end(body);
