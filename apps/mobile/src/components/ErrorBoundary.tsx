@@ -1,8 +1,9 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
+type Props = { children?: React.ReactNode };
 type State = { error: Error | null };
-export class ErrorBoundary extends React.Component<React.PropsWithChildren<Record<string, never>>, State> {
+export class ErrorBoundary extends React.Component<Props, State> {
   state: State = { error: null };
   static getDerivedStateFromError(error: Error) { return { error }; }
   render() {
