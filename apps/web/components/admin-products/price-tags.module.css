@@ -62,3 +62,15 @@
 .previewNote { margin: 15px 0 0; color: #6f665a; font-size: 11px; line-height: 1.5; text-align: center; }
 @media (max-width: 1150px) { .workspace { grid-template-columns: 1fr; } .previewPanel { position: static; } .previewTag { width: 250px; } }
 @media (max-width: 780px) { .filters { grid-template-columns: 1fr 1fr; } .searchForm { grid-column: 1 / -1; } .summary { grid-template-columns: 1fr 1fr; } .summary > div:nth-child(3) { border-left: 0; border-top: 1px solid #ddd7ce; } .summary > div:nth-child(4) { border-top: 1px solid #ddd7ce; } .selectionBar, .finalActions { align-items: stretch; flex-direction: column; } .detailsGrid, .presets { grid-template-columns: 1fr; } .address { grid-column: auto; } }
+
+
+.sizeFilter { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0 4px; padding: 14px 16px; border: 1px solid #ddd7ce; }
+.sizeFilter legend { padding: 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #5f564a; }
+.sizeFilter button { min-height: 34px; padding: 8px 12px; }
+.sizeFilter button[data-active="true"] { background: #24231f; color: #fff; border-color: #24231f; }
+.sizeFilter small { flex: 1 1 260px; color: #756c5f; font-size: 11px; line-height: 1.4; }
+
+@media (max-width: 780px) {
+  .sizeFilter { align-items: stretch; }
+  .sizeFilter small { flex-basis: 100%; }
+}
