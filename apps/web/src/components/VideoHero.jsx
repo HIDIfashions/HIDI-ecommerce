@@ -19,11 +19,12 @@ export default function VideoHero() {
   const [userPaused, setUserPaused] = useState(() => reduced || saveDataEnabled());
   const [readySource, setReadySource] = useState('');
   const [liveHero, setLiveHero] = useState(null);
+  const [videoAllowed, setVideoAllowed] = useState(false);
   const variant = mobile ? 'mobile' : 'desktop';
   const source = asset(`video/hidi-hero-${variant}-luminous-v1.mp4`);
   const poster = asset(`images/hero-${variant}-luminous-first-frame-v1.webp`);
   const ready = readySource === source;
-  const shouldPlay = !liveHero && !userPaused && heroVisible && pageVisible && !dialogOpen;
+  const shouldPlay = videoAllowed && !liveHero && !userPaused && heroVisible && pageVisible && !dialogOpen;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -47,6 +48,31 @@ export default function VideoHero() {
   useEffect(() => {
     setUserPaused(reduced || saveDataEnabled());
   }, [reduced]);
+
+  useEffect(() => {
+    if (liveHero || reduced || saveDataEnabled()) {
+      setVideoAllowed(false);
+      return undefined;
+    }
+
+    setVideoAllowed(false);
+    let idleId = null;
+    const delay = mobile ? 300 : 1200;
+    const timer = window.setTimeout(() => {
+      if (typeof window.requestIdleCallback === 'function') {
+        idleId = window.requestIdleCallback(() => setVideoAllowed(true), { timeout: 900 });
+      } else {
+        setVideoAllowed(true);
+      }
+    }, delay);
+
+    return () => {
+      window.clearTimeout(timer);
+      if (idleId !== null && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+    };
+  }, [liveHero, mobile, reduced]);
 
   useEffect(() => {
     if (liveHero) return undefined;
