@@ -49,8 +49,7 @@ const storefrontLayerFix = `
     isolation: isolate !important;
   }
 
-  /* Product-card Quick Add: make the selected size unmistakable and match the
-     approved HIDI mulberry header colour. */
+  /* Quick Add selected size. */
   section[role="dialog"] [role="group"][aria-label^="Size for "] button[aria-pressed="true"] {
     background: #591d20 !important;
     border-color: #591d20 !important;
@@ -60,7 +59,153 @@ const storefrontLayerFix = `
   section[role="dialog"] [role="group"][aria-label^="Size for "] button[aria-pressed="true"] span {
     color: #fff8ef !important;
   }
+
+  /* PDP selected size: same visual language as the HIDI header / Quick Add. */
+  .product-page .sizes button[aria-pressed="true"] {
+    background: #591d20 !important;
+    border-color: #591d20 !important;
+    color: #fff8ef !important;
+    box-shadow: inset 0 0 0 1px rgba(213, 162, 77, .34) !important;
+  }
+
+  @media (max-width: 620px) {
+    .product-page .pdp-grid {
+      position: relative !important;
+    }
+    .product-page .pdp-info {
+      padding-top: 16px !important;
+    }
+    .product-page .pdp-info > .eyebrow {
+      margin-bottom: 5px !important;
+    }
+    .product-page .pdp-info h1 {
+      margin-bottom: 5px !important;
+    }
+    .product-page .pdp-price {
+      margin: 13px 0 15px !important;
+    }
+    .product-page .size-row-title {
+      margin-top: 20px !important;
+    }
+
+    .hidi-pdp-gallery-controls {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: var(--hidi-pdp-gallery-mid, 280px);
+      z-index: 24;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      pointer-events: none;
+      transform: translateY(-50%);
+    }
+    .hidi-pdp-gallery-control {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(89, 29, 32, .16);
+      border-radius: 50%;
+      background: rgba(255, 248, 239, .94);
+      color: #591d20;
+      box-shadow: 0 6px 18px rgba(45, 24, 18, .16);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      pointer-events: auto;
+      cursor: pointer;
+      font: 500 27px/1 Arial, sans-serif;
+      transition: opacity .18s ease, transform .18s ease, background .18s ease;
+    }
+    .hidi-pdp-gallery-control:not(:disabled):active {
+      transform: scale(.96);
+      background: #fff8ef;
+    }
+    .hidi-pdp-gallery-control:disabled {
+      opacity: .24;
+      cursor: default;
+    }
+  }
+  @media (min-width: 621px) {
+    .hidi-pdp-gallery-controls { display: none !important; }
+  }
 </style>
+<script data-hidi-pdp-gallery-controls="true">
+(() => {
+  const enhance = () => {
+    const gallery = document.querySelector(".product-page .pdp-gallery");
+    if (!gallery || gallery.dataset.hidiArrows === "true") return;
+    const grid = gallery.closest(".pdp-grid");
+    if (!grid) return;
+    const slides = Array.from(gallery.querySelectorAll(".pdp-image"));
+    if (slides.length < 2) return;
+
+    gallery.dataset.hidiArrows = "true";
+
+    const controls = document.createElement("div");
+    controls.className = "hidi-pdp-gallery-controls";
+    controls.setAttribute("aria-label", "Product image navigation");
+
+    const make = (direction, label, symbol) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "hidi-pdp-gallery-control";
+      button.setAttribute("aria-label", label);
+      button.textContent = symbol;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const first = slides[0];
+        const gap = Number.parseFloat(getComputedStyle(gallery).gap || "0") || 0;
+        const step = (first?.getBoundingClientRect().width || gallery.clientWidth) + gap;
+        gallery.scrollBy({ left: direction * step, behavior: "smooth" });
+      });
+      return button;
+    };
+
+    const previous = make(-1, "Previous product image", "‹");
+    const next = make(1, "Next product image", "›");
+    controls.append(previous, next);
+    grid.appendChild(controls);
+
+    const updatePosition = () => {
+      const first = slides[0];
+      if (!first) return;
+      grid.style.setProperty(
+        "--hidi-pdp-gallery-mid",
+        `${gallery.offsetTop + first.offsetHeight / 2}px`,
+      );
+    };
+
+    const updateState = () => {
+      const max = Math.max(0, gallery.scrollWidth - gallery.clientWidth);
+      previous.disabled = gallery.scrollLeft <= 8;
+      next.disabled = gallery.scrollLeft >= max - 8;
+    };
+
+    updatePosition();
+    updateState();
+    gallery.addEventListener("scroll", updateState, { passive: true });
+
+    const observer = new ResizeObserver(() => {
+      updatePosition();
+      updateState();
+    });
+    observer.observe(gallery);
+    slides.forEach((slide) => observer.observe(slide));
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", enhance, { once: true });
+  } else {
+    enhance();
+  }
+
+  const observer = new MutationObserver(enhance);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
 `;
 
 function contentEtag(filePath, stat) {
