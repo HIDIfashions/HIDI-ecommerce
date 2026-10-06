@@ -99,6 +99,24 @@ before(async () => {
       response.end(body);
       return;
     }
+    if (incoming.url === "/products/demo") {
+      const body = '<!doctype html><html><head><link rel="canonical" href="https://thidigk.thehidi.com/products/demo"><meta property="og:url" content="https://thidigk.thehidi.com/products/demo"><meta name="robots" content="index, follow"></head><body><main>Demo product</main></body></html>';
+      response.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Length": Buffer.byteLength(body),
+      });
+      response.end(body);
+      return;
+    }
+    if (incoming.url === "/sitemap.xml") {
+      const body = '<?xml version="1.0" encoding="UTF-8"?><urlset><url><loc>https://thidigk.thehidi.com/</loc></url><url><loc>https://thidigk.thehidi.com/products/demo</loc></url></urlset>';
+      response.writeHead(200, {
+        "Content-Type": "application/xml; charset=utf-8",
+        "Content-Length": Buffer.byteLength(body),
+      });
+      response.end(body);
+      return;
+    }
     if (incoming.url === "/api/stream") {
       response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
       response.write("data: first\n\n");
@@ -270,6 +288,46 @@ test("hero control route stays on the landing runtime and public hero config saf
   assert.equal(config.status, 200);
   assert.equal(config.headers["cache-control"], "no-store");
   assert.equal(JSON.parse(config.body).active, false);
+});
+
+test("preview stays noindex while production requests receive canonical SEO metadata", async () => {
+  const preview = await send(proxy.url, "/products/demo", { headers: { Host: "thidigk.thehidi.com" } });
+  assert.equal(preview.status, 200);
+  assert.match(preview.headers["x-robots-tag"], /noindex/);
+  assert.match(preview.body, /rel="canonical" href="https:\/\/thehidi\.com\/products\/demo"/);
+  assert.match(preview.body, /name="robots" content="noindex, nofollow, noarchive"/);
+  assert.match(preview.body, /src="\/hidi-analytics\.js"/);
+  assert.doesNotMatch(preview.body, /canonical" href="https:\/\/thidigk/);
+
+  const production = await send(proxy.url, "/products/demo", { headers: { Host: "thehidi.com" } });
+  assert.equal(production.status, 200);
+  assert.equal(production.headers["x-robots-tag"], undefined);
+  assert.match(production.body, /rel="canonical" href="https:\/\/thehidi\.com\/products\/demo"/);
+  assert.match(production.body, /name="robots" content="index, follow/);
+});
+
+test("robots and sitemap isolate preview while publishing production URLs", async () => {
+  const previewRobots = await send(proxy.url, "/robots.txt", { headers: { Host: "thidigk.thehidi.com" } });
+  assert.equal(previewRobots.status, 200);
+  assert.match(previewRobots.body, /Disallow: \/$/m);
+  assert.equal((await send(proxy.url, "/sitemap.xml", { headers: { Host: "thidigk.thehidi.com" } })).status, 404);
+
+  const productionRobots = await send(proxy.url, "/robots.txt", { headers: { Host: "thehidi.com" } });
+  assert.equal(productionRobots.status, 200);
+  assert.match(productionRobots.body, /Sitemap: https:\/\/thehidi\.com\/sitemap\.xml/);
+  assert.match(productionRobots.body, /Disallow: \/checkout/);
+
+  const sitemap = await send(proxy.url, "/sitemap.xml", { headers: { Host: "thehidi.com" } });
+  assert.equal(sitemap.status, 200);
+  assert.match(sitemap.body, /<loc>https:\/\/thehidi\.com\/products\/demo<\/loc>/);
+  assert.doesNotMatch(sitemap.body, /thidigk\.thehidi\.com/);
+});
+
+test("analytics configuration is public-safe and disabled on preview", async () => {
+  const preview = await send(proxy.url, "/api/hidi/analytics-config", { headers: { Host: "thidigk.thehidi.com" } });
+  assert.equal(preview.status, 200);
+  assert.equal(preview.headers["cache-control"], "no-store");
+  assert.equal(JSON.parse(preview.body).enabled, false);
 });
 
 test("proxied admin portal pages expose the hero media control link", async () => {
