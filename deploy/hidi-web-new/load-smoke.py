@@ -13,7 +13,7 @@ DEFAULT_PATHS = [
     "/collections/all",
     "/collections/new-arrivals",
     "/search?q=kurta",
-    "/products/aara-sage-work-kurta",
+    "/about",
 ]
 
 def percentile(values, pct):
