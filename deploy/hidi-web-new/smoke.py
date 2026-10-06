@@ -165,6 +165,19 @@ def main():
             relative = path.relative_to(dist).as_posix()
             status, headers, _ = fetch(asset_url(relative), method="HEAD")
             require(status == 200, "HTTP {}".format(status))
+            if path.suffix.lower() == ".html":
+                content_type = headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+                require(content_type == "text/html", "HTML HEAD response has unexpected Content-Type " + content_type)
+                get_status, _, live_body = fetch(
+                    asset_url(relative),
+                    limit=max(path.stat().st_size * 2, 65536),
+                )
+                require(get_status == 200, "HTML GET returned HTTP {}".format(get_status))
+                content_length = headers.get("Content-Length")
+                if content_length is not None:
+                    require(int(content_length) == len(live_body),
+                            "HTML HEAD Content-Length {} differs from live GET {}".format(content_length, len(live_body)))
+                return
             verify_headers(headers, path, path.stat().st_size)
 
         with ThreadPoolExecutor(max_workers=6) as pool:
