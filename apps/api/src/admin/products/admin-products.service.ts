@@ -28,6 +28,14 @@ function fields(data: ProductFields) {
   return { name, categoryId, shortDescription, description, fabric, care };
 }
 function versionTime(previous: Date) { return new Date(Math.max(Date.now(), previous.getTime() + 1)); }
+function internalBarcode(variantId: string) {
+  const token = variantId.replace(/[^a-zA-Z0-9]/g, "").slice(-12).toUpperCase().padStart(12, "0");
+  return `H${token}`;
+}
+function barcodeSuffix(query: string) {
+  const normalized = query.trim().toUpperCase();
+  return /^H[A-Z0-9]{12}$/.test(normalized) ? normalized.slice(1).toLowerCase() : null;
+}
 
 @Injectable()
 export class AdminProductsService {
@@ -58,13 +66,16 @@ export class AdminProductsService {
     if (status && !["ALL", "DRAFT", "ACTIVE", "ARCHIVED"].includes(status)) throw new BadRequestException("Invalid status filter.");
     const page = Number(pageValue ?? "1");
     if (!Number.isInteger(page) || page < 1 || page > 10000) throw new BadRequestException("Invalid page.");
+    const search: Prisma.ProductWhereInput[] = query ? [
+      { name: { contains: query } },
+      { slug: { contains: query } },
+      { variants: { some: { sku: { contains: query } } } },
+    ] : [];
+    const suffix = barcodeSuffix(query);
+    if (suffix) search.push({ variants: { some: { id: { endsWith: suffix } } } });
     const where: Prisma.ProductWhereInput = {
       ...(status && status !== "ALL" ? { status: status as "DRAFT" | "ACTIVE" | "ARCHIVED" } : {}),
-      ...(query ? { OR: [
-        { name: { contains: query } },
-        { slug: { contains: query } },
-        { variants: { some: { sku: { contains: query } } } },
-      ] } : {}),
+      ...(query ? { OR: search } : {}),
     };
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({ where, include: detailInclude, skip: (page - 1) * 20, take: 20, orderBy: [{ updatedAt: "desc" }, { id: "asc" }] }),
@@ -79,6 +90,83 @@ export class AdminProductsService {
         imageUrl: p.images[0]?.url ?? p.variants.find(v => v.images.length)?.images[0]?.url ?? null,
         minPricePaise: p.variants.length ? Math.min(...p.variants.map(v => v.pricePaise)) : null,
       })),
+    };
+  }
+
+  async priceTags(q?: string, status?: string, stock?: string, productIdValue?: string) {
+    const query = input(v => text(v, "Search", 160), q) ?? "";
+    if (status && !["ALL", "DRAFT", "ACTIVE", "ARCHIVED"].includes(status)) throw new BadRequestException("Invalid status filter.");
+    if (stock && !["ALL", "IN_STOCK"].includes(stock)) throw new BadRequestException("Invalid stock filter.");
+    const productId = productIdValue ? id(productIdValue) : undefined;
+    const productFilter: Prisma.ProductWhereInput = {
+      ...(status && status !== "ALL" ? { status: status as "DRAFT" | "ACTIVE" | "ARCHIVED" } : {}),
+    };
+    const search: Prisma.ProductVariantWhereInput[] = query ? [
+      { sku: { contains: query } },
+      { color: { contains: query } },
+      { size: { contains: query } },
+      { product: { is: { name: { contains: query } } } },
+      { product: { is: { slug: { contains: query } } } },
+    ] : [];
+    const suffix = barcodeSuffix(query);
+    if (suffix) search.push({ id: { endsWith: suffix } });
+
+    const rows = await this.prisma.productVariant.findMany({
+      where: {
+        active: true,
+        ...(productId ? { productId } : {}),
+        ...(stock === "IN_STOCK" ? { inventory: { is: { onHand: { gt: 0 } } } } : {}),
+        product: { is: productFilter },
+        ...(query ? { OR: search } : {}),
+      },
+      select: {
+        id: true, productId: true, sku: true, size: true, color: true,
+        pricePaise: true, mrpPaise: true,
+        bustMm: true, waistMm: true, hipMm: true, shoulderMm: true,
+        sleeveLengthMm: true, garmentLengthMm: true,
+        inventory: { select: { onHand: true, reserved: true } },
+        product: { select: {
+          name: true, status: true, fabric: true, care: true,
+          category: { select: { name: true } },
+        } },
+      },
+      orderBy: [{ productId: "asc" }, { color: "asc" }, { size: "asc" }, { sku: "asc" }],
+      take: 5001,
+    });
+    const truncated = rows.length > 5000;
+    const items = rows.slice(0, 5000).map(row => ({
+      productId: row.productId,
+      productName: row.product.name,
+      productStatus: row.product.status,
+      category: row.product.category?.name ?? null,
+      fabric: row.product.fabric,
+      care: row.product.care,
+      variantId: row.id,
+      barcode: internalBarcode(row.id),
+      sku: row.sku,
+      size: row.size,
+      color: row.color,
+      pricePaise: row.pricePaise,
+      mrpPaise: row.mrpPaise,
+      onHand: row.inventory?.onHand ?? 0,
+      reserved: row.inventory?.reserved ?? 0,
+      bustMm: row.bustMm,
+      waistMm: row.waistMm,
+      hipMm: row.hipMm,
+      shoulderMm: row.shoulderMm,
+      sleeveLengthMm: row.sleeveLengthMm,
+      garmentLengthMm: row.garmentLengthMm,
+    }));
+    items.sort((left, right) => left.productName.localeCompare(right.productName, "en", { sensitivity: "base" })
+      || left.color.localeCompare(right.color, "en", { sensitivity: "base" })
+      || left.size.localeCompare(right.size, "en", { numeric: true, sensitivity: "base" })
+      || left.sku.localeCompare(right.sku));
+    return {
+      items,
+      total: items.length,
+      productCount: new Set(items.map(item => item.productId)).size,
+      totalOnHand: items.reduce((sum, item) => sum + item.onHand, 0),
+      truncated,
     };
   }
 
@@ -241,4 +329,3 @@ export class AdminProductsService {
 }
 // Shape for the narrow metadata comparison used by idempotent create.
 const fieldsResult = { name: "", categoryId: null as string | null, shortDescription: null as string | null, description: null as string | null, fabric: null as string | null, care: null as string | null };
-
