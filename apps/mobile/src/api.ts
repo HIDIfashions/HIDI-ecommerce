@@ -53,7 +53,6 @@ export const commerceApi = {
   insider: (accessToken: string) => request<InsiderSummary>("/rewards/summary", { accessToken }),
   orders: (accessToken: string) => request<unknown[]>("/account/orders", { accessToken }),
   validatePromo: (code: string, sessionId: string) => request<{ valid: boolean; message?: string; discountPaise?: number }>("/promotions/validate", { method: "POST", body: JSON.stringify({ code, sessionId }) }),
-  createStripeSheet: (payload: unknown, accessToken?: string) => request<{ paymentIntent: string; ephemeralKey?: string; customer?: string }>("/checkout/stripe/payment-sheet", { method: "POST", body: JSON.stringify(payload), accessToken, timeoutMs: 25000 }),
 };
 
 function authHeaders() { return { apikey: supabasePublishableKey, Authorization: "Bearer " + supabasePublishableKey, "Content-Type": "application/json" }; }

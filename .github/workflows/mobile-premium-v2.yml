@@ -32,6 +32,30 @@ jobs:
           node-version: '22.13.1'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Enforce payment-provider gate
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const guardedFiles = [
+            'package.json',
+            'src/app/PremiumApp.tsx',
+            'src/screens/CheckoutScreens.tsx',
+            'src/config.ts',
+            'src/api.ts',
+          ];
+          const forbidden = /@stripe\/stripe-react-native|StripeProvider|useStripe|createStripeSheet|stripePublishableKey|appleMerchantId/;
+          for (const file of guardedFiles) {
+            const source = fs.readFileSync(file, 'utf8');
+            if (forbidden.test(source)) {
+              throw new Error(`Unapproved native payment integration found in ${file}`);
+            }
+          }
+          const checkout = fs.readFileSync('src/screens/CheckoutScreens.tsx', 'utf8');
+          if (!checkout.includes('Secure payment is not configured.')) {
+            throw new Error('The internal-build payment safety state is missing.');
+          }
+          console.log('Payment provider gate passed.');
+          NODE
       - name: TypeScript
         run: npm run typecheck
       - name: Unit regressions
@@ -65,19 +89,27 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Build release APK
         run: ./android/gradlew -p android :app:assembleRelease -PhidiInternalBuild=true -PreactNativeArchitectures=arm64-v8a,x86_64 --max-workers=2
-      - name: Sign internal APK
+      - name: Sign and validate internal APK
         run: |
           set -euo pipefail
           mkdir -p output
-          TOOLS="$ANDROID_HOME/build-tools/37.0.0"
+          TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          INPUT_APK="$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | sort | head -n 1)"
+          test -n "$TOOLS"
+          test -x "$TOOLS/zipalign"
+          test -x "$TOOLS/apksigner"
+          test -x "$TOOLS/aapt"
+          test -f "$INPUT_APK"
           export KEY_PASS="$(openssl rand -hex 24)"
           echo "::add-mask::$KEY_PASS"
           keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/hidi-premium-v2.p12" -storetype PKCS12 -alias hidi-premium-v2 -keyalg RSA -keysize 3072 -validity 30 -dname 'CN=HIDI PREMIUM V2 INTERNAL,OU=Test Only,O=HIDI' -storepass:env KEY_PASS -keypass:env KEY_PASS
-          "$TOOLS/zipalign" -P 16 -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk output/HIDI-Premium-V2.apk
+          "$TOOLS/zipalign" -P 16 -f 4 "$INPUT_APK" output/HIDI-Premium-V2.apk
           "$TOOLS/apksigner" sign --ks "$RUNNER_TEMP/hidi-premium-v2.p12" --ks-key-alias hidi-premium-v2 --ks-pass env:KEY_PASS --key-pass env:KEY_PASS output/HIDI-Premium-V2.apk
           "$TOOLS/apksigner" verify --verbose --print-certs output/HIDI-Premium-V2.apk > output/signature.txt
           "$TOOLS/zipalign" -c -P 16 4 output/HIDI-Premium-V2.apk > output/alignment.txt
           "$TOOLS/aapt" dump badging output/HIDI-Premium-V2.apk > output/metadata.txt
+          grep -Fq "package: name='com.thehidi.premium.internal'" output/metadata.txt
+          unzip -t output/HIDI-Premium-V2.apk > output/archive-integrity.txt
           sha256sum output/HIDI-Premium-V2.apk > output/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:

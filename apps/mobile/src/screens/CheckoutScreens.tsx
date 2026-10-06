@@ -1,13 +1,11 @@
-import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { useStripe } from "@stripe/stripe-react-native";
+import React, { useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Check, CreditCard, MapPin, Plus, ShieldCheck, Smartphone } from "lucide-react-native";
+import { Check, MapPin, Plus, ShieldCheck } from "lucide-react-native";
 import type { RootStackParamList } from "../navigation/types";
 import type { Address } from "../domain";
 import { money } from "../domain";
 import { commerceApi } from "../api";
-import { stripePublishableKey } from "../config";
 import { BrandHeader } from "../components/Chrome";
 import { Field, PrimaryButton, SecondaryButton } from "../components/Primitives";
 import { useCommerce } from "../store";
@@ -31,15 +29,8 @@ export function CheckoutSummaryScreen({ navigation, route }: SummaryProps) {
 }
 
 type PaymentProps = NativeStackScreenProps<RootStackParamList, "CheckoutPayment">;
-export function CheckoutPaymentScreen(props: PaymentProps) {
-  return stripePublishableKey ? <ConfiguredPaymentScreen {...props} /> : <UnavailablePaymentScreen {...props} />;
-}
-function UnavailablePaymentScreen({ navigation }: PaymentProps) {
-  return <View className="flex-1 bg-white"><BrandHeader navigation={navigation} title="PAYMENT" /><View className="flex-1 px-5 pt-10"><View className="h-16 w-16 items-center justify-center rounded-full bg-pink-50"><ShieldCheck size={30} color={colors.accent} /></View><Text className="mt-6 text-3xl font-black text-ink">Secure payment is not configured.</Text><Text className="mt-3 text-base leading-6 text-muted">Apple Pay, Google Pay and Stripe PaymentSheet require approved public keys, a server-created PaymentIntent and webhook reconciliation. No order or payment attempt has been created.</Text><View className="mt-8"><SecondaryButton label="Back to order summary" onPress={navigation.goBack} /></View></View></View>;
-}
-function ConfiguredPaymentScreen({ navigation, route }: PaymentProps) {
-  const store = useCommerce(); const address = store.addresses.find(item => item.id === route.params.addressId); const { initPaymentSheet, presentPaymentSheet } = useStripe(); const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
-  const amount = useMemo(() => store.cart?.subtotalPaise ?? 0, [store.cart?.subtotalPaise]);
-  async function pay() { if (!store.cart || !address) return; setBusy(true); setMessage(""); try { const sheet = await commerceApi.createStripeSheet({ sessionId: store.cart.sessionId, addressId: address.id, amountPaise: amount }, store.auth?.access_token); const init = await initPaymentSheet({ merchantDisplayName: "HIDI", paymentIntentClientSecret: sheet.paymentIntent, customerId: sheet.customer, customerEphemeralKeySecret: sheet.ephemeralKey, applePay: { merchantCountryCode: "IN" }, googlePay: { merchantCountryCode: "IN", testEnv: true }, returnURL: "hidi://payment-return" }); if (init.error) throw new Error(init.error.message); const result = await presentPaymentSheet(); if (result.error) throw new Error(result.error.message); setMessage("PaymentSheet completed. Final order status must be confirmed by the HIDI server before success is shown."); } catch (error) { setMessage(error instanceof Error ? error.message : "Payment could not be started."); } finally { setBusy(false); } }
-  return <View className="flex-1 bg-white"><BrandHeader navigation={navigation} title="PAYMENT" /><ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}><View className="mb-6 flex-row items-center gap-3"><View className="h-9 w-9 items-center justify-center rounded-full bg-accent"><Text className="font-black text-white">3</Text></View><Text className="text-xl font-black text-ink">Choose secure payment</Text></View><View className="rounded-card border border-line p-5"><View className="flex-row items-center gap-4"><Smartphone size={25} color={colors.ink} /><View className="flex-1"><Text className="font-black text-ink">Apple Pay / Google Pay / Cards</Text><Text className="mt-1 text-sm leading-5 text-muted">Available methods are determined by Stripe PaymentSheet and your device.</Text></View></View></View><View className="mt-5 rounded-card bg-soft p-4"><View className="flex-row justify-between"><Text className="text-muted">Current bag subtotal</Text><Text className="text-lg font-black text-ink">{money(amount)}</Text></View><Text className="mt-2 text-xs leading-5 text-muted">The server must return the final payable amount and PaymentIntent. The app does not calculate or override taxes.</Text></View><View className="mt-7"><PrimaryButton label="OPEN SECURE PAYMENT SHEET" loading={busy} onPress={() => void pay()} /></View>{message ? <Text className="mt-4 text-sm leading-6 text-muted">{message}</Text> : null}<View className="mt-6 flex-row items-center gap-3"><CreditCard size={21} color={colors.success} /><Text className="flex-1 text-sm leading-5 text-ink">HIDI never asks for your UPI PIN, CVV or bank password inside its own form.</Text></View></ScrollView></View>;
+export function CheckoutPaymentScreen({ navigation }: PaymentProps) {
+  const store = useCommerce();
+  const amount = store.cart?.subtotalPaise ?? 0;
+  return <View className="flex-1 bg-white"><BrandHeader navigation={navigation} title="PAYMENT" /><View className="flex-1 px-5 pt-10"><View className="h-16 w-16 items-center justify-center rounded-full bg-pink-50"><ShieldCheck size={30} color={colors.accent} /></View><Text className="mt-6 text-3xl font-black text-ink">Secure payment is not configured.</Text><Text className="mt-3 text-base leading-6 text-muted">Address selection, delivery validation and order summary are ready. Payment will be enabled only after an approved mobile payment provider, production keys, merchant identifiers and redirect or deep-link handling are configured.</Text><View className="mt-6 rounded-card bg-soft p-4"><View className="flex-row justify-between"><Text className="text-muted">Current bag subtotal</Text><Text className="text-lg font-black text-ink">{money(amount)}</Text></View><Text className="mt-2 text-xs leading-5 text-muted">No payment attempt or order has been created from this screen.</Text></View><View className="mt-8"><SecondaryButton label="Back to order summary" onPress={() => navigation.goBack()} /></View></View></View>;
 }

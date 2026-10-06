@@ -6,8 +6,6 @@ export const publicOrigin = environment === "production" ? "https://thehidi.com"
 export const apiBaseUrl = publicOrigin + "/api/store";
 export const supabaseUrl = String(process.env.HIDI_SUPABASE_URL ?? "").trim();
 export const supabasePublishableKey = String(process.env.HIDI_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
-export const stripePublishableKey = String(process.env.HIDI_STRIPE_PUBLISHABLE_KEY ?? "").trim();
-export const appleMerchantId = String(process.env.HIDI_APPLE_MERCHANT_ID ?? "merchant.com.thehidi.app").trim();
 const threshold = Number(process.env.HIDI_FREE_SHIPPING_THRESHOLD_PAISE ?? 0);
 export const freeShippingThresholdPaise = Number.isSafeInteger(threshold) && threshold > 0 ? threshold : 0;
 export const requestTimeoutMs = 15000;
