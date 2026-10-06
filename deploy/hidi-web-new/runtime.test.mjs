@@ -224,13 +224,14 @@ test("same-size reproducible builds have distinct ETags and never reuse zero-mti
   const previous = await send(oldBuild.url, "/");
   const updated = await send(newBuild.url, "/", { headers: { "If-None-Match": previous.headers.etag } });
   assert.equal(updated.status, 200);
-  assert.equal(updated.body, newHtml);
+  assert.match(updated.body, /<h1>Replaced landing<\/h1>/);
+  assert.match(updated.body, /name="robots" content="noindex, nofollow, noarchive"/);
   assert.notEqual(previous.headers.etag, updated.headers.etag);
-  assert.equal(updated.headers["last-modified"], "Thu, 01 Jan 1970 00:00:00 GMT");
+  assert.equal(updated.headers["last-modified"], undefined);
   assert.equal((await send(newBuild.url, "/", { headers: { "If-None-Match": updated.headers.etag } })).status, 304);
-  assert.equal((await send(newBuild.url, "/", { headers: { "If-Modified-Since": previous.headers["last-modified"] } })).status, 200);
+  assert.equal((await send(newBuild.url, "/", { headers: { "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT" } })).status, 200);
   const datedRange = await send(newBuild.url, "/assets/video/hero.mp4", {
-    headers: { Range: "bytes=2-5", "If-Range": previous.headers["last-modified"] },
+    headers: { Range: "bytes=2-5", "If-Range": "Thu, 01 Jan 1970 00:00:00 GMT" },
   });
   assert.equal(datedRange.status, 200);
   assert.equal(datedRange.body, "0123456789abcdefghij");
