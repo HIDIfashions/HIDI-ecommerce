@@ -130,6 +130,46 @@ const storefrontLayerFix = `
   @media (min-width: 621px) {
     .hidi-pdp-gallery-controls { display: none !important; }
   }
+
+  /* Lower PDP trust + discovery hierarchy. */
+  #reviews details summary {
+    background: #591d20 !important;
+    border-color: #591d20 !important;
+    color: #fff8ef !important;
+  }
+  #reviews details summary:hover {
+    background: #69282a !important;
+  }
+
+  @media (max-width: 620px) {
+    .product-page {
+      padding-bottom: 42px !important;
+    }
+    .pdp-info .delivery-box {
+      margin-top: 18px !important;
+      padding: 18px 0 !important;
+    }
+    .pdp-info .delivery-box > div {
+      min-height: 48px;
+    }
+    .pdp-info details summary {
+      min-height: 56px;
+    }
+    #reviews {
+      margin: 42px 0 28px !important;
+      padding-top: 28px !important;
+    }
+    #reviews > div:first-child {
+      margin-bottom: 20px !important;
+    }
+    .pdp-related,
+    .pdp-recent {
+      margin-top: 44px !important;
+    }
+    .pdp-related-grid {
+      row-gap: 38px !important;
+    }
+  }
 </style>
 <script data-hidi-pdp-gallery-controls="true">
 (() => {
@@ -202,7 +242,65 @@ const storefrontLayerFix = `
     enhance();
   }
 
-  const observer = new MutationObserver(enhance);
+  const polishLowerPdp = () => {
+    const page = document.querySelector(".product-page");
+    if (!page) return;
+
+    /* Conversion flow: delivery first, then product facts / accordions. */
+    const delivery = page.querySelector(".delivery-box");
+    const quality = page.querySelector('section[aria-label="Product quality and fit summary"]');
+    if (delivery && quality && delivery.parentElement === quality.parentElement
+        && delivery.nextElementSibling !== quality) {
+      quality.parentElement.insertBefore(delivery, quality);
+    }
+
+    /* Trust before diversion: reviews directly after the main PDP grid. */
+    const grid = page.querySelector(".pdp-grid");
+    const reviews = page.querySelector("#reviews");
+    if (grid && reviews && grid.nextElementSibling !== reviews) {
+      grid.insertAdjacentElement("afterend", reviews);
+    }
+
+    /* Do not advertise a dead WhatsApp action during launch. */
+    const disabledWhatsApp = page.querySelector('button[aria-haspopup="dialog"][disabled]');
+    if (disabledWhatsApp) {
+      disabledWhatsApp.hidden = true;
+      const actionRow = disabledWhatsApp.parentElement;
+      if (actionRow) actionRow.style.gridTemplateColumns = "1fr";
+      const describedBy = disabledWhatsApp.getAttribute("aria-describedby");
+      if (describedBy) {
+        const note = document.getElementById(describedBy);
+        if (note) note.hidden = true;
+      }
+    }
+
+    /* Replace internal catalogue-warning language with customer copy. */
+    page.querySelectorAll("p").forEach((paragraph) => {
+      const text = (paragraph.textContent || "").trim();
+      if (text.includes("Not specified. Do not infer included items from photography.")) {
+        paragraph.innerHTML = paragraph.innerHTML.replace(
+          "Not specified. Do not infer included items from photography.",
+          "Not specified for this style yet."
+        );
+      }
+      if (text.includes("Included pieces are not specified for this style yet. Photography alone does not confirm the contents.")) {
+        paragraph.textContent = "Set contents are not specified for this style yet.";
+      }
+    });
+  };
+
+  const runEnhancements = () => {
+    enhance();
+    polishLowerPdp();
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runEnhancements, { once: true });
+  } else {
+    polishLowerPdp();
+  }
+
+  const observer = new MutationObserver(runEnhancements);
   observer.observe(document.documentElement, { childList: true, subtree: true });
 })();
 </script>
