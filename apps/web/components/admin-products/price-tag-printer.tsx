@@ -88,10 +88,6 @@ function measurements(item: PriceTagVariant) {
   });
 }
 
-function hasMetricSize(item: PriceTagVariant) {
-  return measurements(item).length > 0;
-}
-
 function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (character) => ({
     "&": "&amp;",
@@ -345,10 +341,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
   }), [quantities, visibleItems]);
   const selectedTags = selectedLines.reduce((sum, line) => sum + line.quantity, 0);
   const selectedSkus = selectedLines.length;
-  const selectedMissingMetrics = selectedLines.filter((line) => !hasMetricSize(line.item));
-  const selectedMissingMetricPreview = selectedMissingMetrics.slice(0, 12);
-  const selectedMissingMetricRemainder = selectedMissingMetrics.length - selectedMissingMetricPreview.length;
-  const missingMetrics = visibleItems.filter((item) => !hasMetricSize(item)).length;
+  const measuredSkus = visibleItems.filter((item) => measurements(item).length > 0).length;
   const businessErrors = useMemo(() => validateBusiness(details), [details]);
   const previewItem = selectedLines[0]?.item ?? visibleItems[0];
 
@@ -383,11 +376,6 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
     if (!lines.length) throw new Error("Select at least one SKU and quantity.");
     const total = lines.reduce((sum, line) => sum + line.quantity, 0);
     if (total > MAX_PRINT_TAGS) throw new Error(`A single print job can contain at most ${MAX_PRINT_TAGS.toLocaleString("en-IN")} tags.`);
-    const missing = lines.filter((line) => !hasMetricSize(line.item));
-    if (missing.length) {
-      const names = [...new Set(missing.slice(0, 3).map((line) => `${line.item.productName} / ${line.item.size}`))].join(", ");
-      throw new Error(`${missing.length} selected SKU${missing.length === 1 ? " is" : "s are"} missing metric garment measurements (${names}). Add a bust, waist, hip, shoulder, sleeve or garment-length value before printing.`);
-    }
     const legal = validateBusiness(details);
     if (legal.length) throw new Error(`Complete the saved tag details before printing: ${legal.join(", ")}.`);
     if (total > 1000 && !window.confirm(`This will send ${total.toLocaleString("en-IN")} individual tags to the printer. Continue?`)) return;
@@ -469,7 +457,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
             <div><strong>{loading ? "—" : result.productCount}</strong><span>Products</span></div>
             <div><strong>{loading ? "—" : visibleItems.length}</strong><span>SKUs in size view</span></div>
             <div><strong>{loading ? "—" : visibleOnHand.toLocaleString("en-IN")}</strong><span>Pieces in size view</span></div>
-            <div data-warning={missingMetrics > 0}><strong>{loading ? "—" : missingMetrics}</strong><span>Need metric size</span></div>
+            <div><strong>{loading ? "—" : measuredSkus}</strong><span>With measurements</span></div>
           </div>
 
           <div className={styles.selectionBar}>
@@ -488,16 +476,15 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
               <tbody>{visibleItems.map((item) => {
                 const quantity = quantities[item.variantId] ?? 0;
                 const metric = measurements(item);
-                const missing = metric.length === 0;
-                return <tr key={item.variantId} data-invalid={missing}>
+                return <tr key={item.variantId}>
                   <td><input className={styles.checkbox} type="checkbox" aria-label={`Select ${item.sku}`} checked={quantity > 0} onChange={(event: ChangeEvent<HTMLInputElement>) => setQuantity(item.variantId, event.target.checked ? Math.max(1, item.onHand) : 0)} /></td>
                   <td><div className={styles.productCell}><strong>{item.productName}</strong><small>{item.sku}</small><small>Barcode {item.barcode}</small></div></td>
                   <td>{item.color}</td>
-                  <td><strong>{item.size}</strong>{missing ? <small className={styles.missing}>Metric measurement required</small> : <small>{metric.join(" · ")}</small>}</td>
+                  <td><strong>{item.size}</strong>{metric.length > 0 && <small>{metric.join(" · ")}</small>}</td>
                   <td>{formatMoney(item.mrpPaise)}</td>
                   <td><strong>{item.onHand}</strong><small>{item.reserved} reserved</small></td>
                   <td><input className={styles.quantity} type="number" min={0} max={MAX_SKU_QUANTITY} inputMode="numeric" value={quantity || ""} placeholder="0" aria-label={`Labels for ${item.sku}`} onChange={(event: ChangeEvent<HTMLInputElement>) => setQuantity(item.variantId, Number(event.target.value))} /></td>
-                  <td><Link href={`/admin/products/${encodeURIComponent(item.productId)}`}>{missing ? "Add size →" : "Edit →"}</Link></td>
+                  <td><Link href={`/admin/products/${encodeURIComponent(item.productId)}`}>Edit →</Link></td>
                 </tr>;
               })}</tbody>
             </table>
@@ -521,17 +508,6 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
           <div className={base.sectionTitle}><span>03</span><div><h2>Tag size & print</h2><p>The output is vector-based for sharp 300-DPI thermal-transfer printing. One tag is sent per physical page.</p></div></div>
           <div className={styles.presets}>{(Object.keys(PRESETS) as PresetKey[]).map((key) => <label key={key} data-active={preset === key}><input type="radio" name="tag-preset" value={key} checked={preset === key} onChange={() => setPreset(key)} /><strong>{PRESETS[key].label}</strong><small>{PRESETS[key].note}</small></label>)}</div>
           <div className={styles.printChecklist}><strong>Printer dialog settings</strong><span>Thermal printer · Actual size / 100% · Margins none · Headers and footers off · Correct media size loaded</span></div>
-          {selectedMissingMetrics.length > 0 && <div className={`${base.error} ${styles.missingMetricAlert}`} role="alert">
-            <strong>{selectedMissingMetrics.length} selected SKU{selectedMissingMetrics.length === 1 ? " is" : "s are"} missing metric garment measurements.</strong>
-            <span>Printing is blocked until each selected SKU has at least one verified value: bust, waist, hip, shoulder, sleeve or garment length.</span>
-            <ul>
-              {selectedMissingMetricPreview.map(({ item }) => <li key={item.variantId}>
-                <div><strong>{item.productName}</strong><small>{item.sku} · Size {item.size} · {item.color}</small></div>
-                <Link href={`/admin/products/${encodeURIComponent(item.productId)}`}>Add measurement →</Link>
-              </li>)}
-            </ul>
-            {selectedMissingMetricRemainder > 0 && <small>And {selectedMissingMetricRemainder} more selected SKU{selectedMissingMetricRemainder === 1 ? "" : "s"} after these. Narrow the size filter or fix the listed products first.</small>}
-          </div>}
           <div className={styles.finalActions}>
             <div><strong>{selectedTags.toLocaleString("en-IN")} tags ready</strong><small>Maximum {MAX_PRINT_TAGS.toLocaleString("en-IN")} tags per job.</small></div>
             <button className={base.primary} type="button" onClick={() => void printSelected()} disabled={printing || loading || selectedTags === 0}>{printing ? "Preparing print…" : "Print selected tags"}</button>
