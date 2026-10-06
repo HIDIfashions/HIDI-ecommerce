@@ -174,7 +174,7 @@ const storefrontLayerFix = `
       if (!first) return;
       grid.style.setProperty(
         "--hidi-pdp-gallery-mid",
-        `${gallery.offsetTop + first.offsetHeight / 2}px`,
+        String(gallery.offsetTop + first.offsetHeight / 2) + "px",
       );
     };
 
