@@ -33,6 +33,7 @@ const DETAILS_STORAGE_KEY = "hidi.price-tags.business-details.v1";
 const PRESET_STORAGE_KEY = "hidi.price-tags.preset.v1";
 const MAX_PRINT_TAGS = 5000;
 const MAX_SKU_QUANTITY = 5000;
+const STANDARD_SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL", "5XL", "6XL"] as const;
 const DEFAULT_DETAILS: BusinessDetails = {
   legalName: "",
   address: "",
@@ -55,6 +56,15 @@ const inr = new Intl.NumberFormat("en-IN", {
 
 function formatMoney(paise: number) {
   return inr.format(paise / 100);
+}
+
+function compareSizes(left: string, right: string) {
+  const a = STANDARD_SIZE_ORDER.indexOf(left.toUpperCase() as typeof STANDARD_SIZE_ORDER[number]);
+  const b = STANDARD_SIZE_ORDER.indexOf(right.toUpperCase() as typeof STANDARD_SIZE_ORDER[number]);
+  if (a >= 0 && b >= 0) return a - b;
+  if (a >= 0) return -1;
+  if (b >= 0) return 1;
+  return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
 }
 
 function cm(value: number | null) {
@@ -259,6 +269,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ProductFilter>(initialProductId ? "ALL" : "ACTIVE");
   const [stock, setStock] = useState<StockFilter>("IN_STOCK");
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [reload, setReload] = useState(0);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -322,16 +333,22 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
     return () => { active = false; };
   }, [initialProductId, query, reload, status, stock]);
 
-  const selectedLines = useMemo<PrintLine[]>(() => result.items.flatMap((item) => {
+  const availableSizes = useMemo(() => [...new Set(result.items.map((item) => item.size))].sort(compareSizes), [result.items]);
+  const visibleItems = useMemo(
+    () => selectedSizes.length ? result.items.filter((item) => selectedSizes.includes(item.size)) : result.items,
+    [result.items, selectedSizes],
+  );
+  const visibleOnHand = visibleItems.reduce((sum, item) => sum + item.onHand, 0);
+  const selectedLines = useMemo<PrintLine[]>(() => visibleItems.flatMap((item) => {
     const quantity = quantities[item.variantId] ?? 0;
     return quantity > 0 ? [{ item, quantity }] : [];
-  }), [quantities, result.items]);
+  }), [quantities, visibleItems]);
   const selectedTags = selectedLines.reduce((sum, line) => sum + line.quantity, 0);
   const selectedSkus = selectedLines.length;
   const selectedMissingMetrics = selectedLines.filter((line) => !hasMetricSize(line.item));
-  const missingMetrics = result.items.filter((item) => !hasMetricSize(item)).length;
+  const missingMetrics = visibleItems.filter((item) => !hasMetricSize(item)).length;
   const businessErrors = useMemo(() => validateBusiness(details), [details]);
-  const previewItem = selectedLines[0]?.item ?? result.items[0];
+  const previewItem = selectedLines[0]?.item ?? visibleItems[0];
 
   function setQuantity(variantId: string, rawValue: number) {
     const value = Number.isFinite(rawValue) ? Math.min(MAX_SKU_QUANTITY, Math.max(0, Math.trunc(rawValue))) : 0;
@@ -343,14 +360,20 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
     });
   }
 
+  function toggleSize(size: string) {
+    setSelectedSizes((previous) => previous.includes(size)
+      ? previous.filter((value) => value !== size)
+      : [...previous, size].sort(compareSizes));
+  }
+
   function selectStockQuantities() {
     const next: Record<string, number> = {};
-    for (const item of result.items) if (item.onHand > 0) next[item.variantId] = Math.min(item.onHand, MAX_SKU_QUANTITY);
+    for (const item of visibleItems) if (item.onHand > 0) next[item.variantId] = Math.min(item.onHand, MAX_SKU_QUANTITY);
     setQuantities(next);
   }
 
   function selectOneEach() {
-    setQuantities(Object.fromEntries(result.items.map((item) => [item.variantId, 1])));
+    setQuantities(Object.fromEntries(visibleItems.map((item) => [item.variantId, 1])));
   }
 
   async function performPrint(lines: PrintLine[], label: string, truncated = false) {
@@ -389,8 +412,10 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
     try {
       const params = new URLSearchParams({ status: "ACTIVE", stock: "IN_STOCK" });
       const all = await productApi<PriceTagList>(`/price-tags?${params}`);
-      const lines = all.items.filter((item) => item.onHand > 0).map((item) => ({ item, quantity: Math.min(item.onHand, MAX_SKU_QUANTITY) }));
-      await performPrint(lines, "All active in-stock products", all.truncated);
+      const sizeScoped = selectedSizes.length ? all.items.filter((item) => selectedSizes.includes(item.size)) : all.items;
+      const lines = sizeScoped.filter((item) => item.onHand > 0).map((item) => ({ item, quantity: Math.min(item.onHand, MAX_SKU_QUANTITY) }));
+      const sizeLabel = selectedSizes.length ? ` · sizes ${selectedSizes.join(", ")}` : "";
+      await performPrint(lines, `All active in-stock products${sizeLabel}`, all.truncated);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to prepare all stock tags."); }
     finally { setPrinting(false); }
   }
@@ -428,10 +453,20 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
             <button type="button" onClick={() => setReload((value) => value + 1)} disabled={loading}>Refresh</button>
           </div>
 
+          <fieldset className={styles.sizeFilter}>
+            <legend>Sizes to print</legend>
+            <button type="button" data-active={selectedSizes.length === 0} aria-pressed={selectedSizes.length === 0} onClick={() => setSelectedSizes([])}>All sizes</button>
+            {availableSizes.map((size) => {
+              const active = selectedSizes.includes(size);
+              return <button key={size} type="button" data-active={active} aria-pressed={active} onClick={() => toggleSize(size)}>{size}</button>;
+            })}
+            <small>{selectedSizes.length ? `Only ${selectedSizes.join(", ")} will be included in selection and bulk printing.` : "All available sizes are included."}</small>
+          </fieldset>
+
           <div className={styles.summary} aria-live="polite">
             <div><strong>{loading ? "—" : result.productCount}</strong><span>Products</span></div>
-            <div><strong>{loading ? "—" : result.total}</strong><span>SKUs</span></div>
-            <div><strong>{loading ? "—" : result.totalOnHand.toLocaleString("en-IN")}</strong><span>Pieces on hand</span></div>
+            <div><strong>{loading ? "—" : visibleItems.length}</strong><span>SKUs in size view</span></div>
+            <div><strong>{loading ? "—" : visibleOnHand.toLocaleString("en-IN")}</strong><span>Pieces in size view</span></div>
             <div data-warning={missingMetrics > 0}><strong>{loading ? "—" : missingMetrics}</strong><span>Need metric size</span></div>
           </div>
 
@@ -445,10 +480,10 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
           </div>
 
           {result.truncated && <div className={base.error}>The response was capped at 5,000 SKUs. Narrow the search before printing.</div>}
-          {loading ? <div className={styles.loading}>Loading printable SKUs…</div> : result.items.length === 0 ? <div className={base.empty}>No SKUs match this view. Adjust the product status, stock filter or search.</div> : <div className={base.tableWrap}>
+          {loading ? <div className={styles.loading}>Loading printable SKUs…</div> : visibleItems.length === 0 ? <div className={base.empty}>No SKUs match the selected sizes and filters. Choose another size or adjust the product/stock filters.</div> : <div className={base.tableWrap}>
             <table className={`${base.table} ${styles.table}`}>
               <thead><tr><th>Select</th><th>Product / codes</th><th>Colour</th><th>Size & metric</th><th>MRP</th><th>Stock</th><th>Labels</th><th /></tr></thead>
-              <tbody>{result.items.map((item) => {
+              <tbody>{visibleItems.map((item) => {
                 const quantity = quantities[item.variantId] ?? 0;
                 const metric = measurements(item);
                 const missing = metric.length === 0;
