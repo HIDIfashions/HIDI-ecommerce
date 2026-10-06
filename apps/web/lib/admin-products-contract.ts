@@ -21,6 +21,17 @@ export type ProductSummary = Pick<ProductRecord, "id" | "name" | "slug" | "statu
   category: string | null; variantCount: number; onHand: number; imageUrl: string | null; minPricePaise: number | null;
 };
 export type ProductList = { items: ProductSummary[]; total: number; page: number; pageSize: number };
+export type PriceTagVariant = {
+  productId: string; productName: string; productStatus: ProductState; category: string | null;
+  fabric: string | null; care: string | null;
+  variantId: string; barcode: string; sku: string; size: string; color: string;
+  pricePaise: number; mrpPaise: number; onHand: number; reserved: number;
+  bustMm: number | null; waistMm: number | null; hipMm: number | null;
+  shoulderMm: number | null; sleeveLengthMm: number | null; garmentLengthMm: number | null;
+};
+export type PriceTagList = {
+  items: PriceTagVariant[]; total: number; productCount: number; totalOnHand: number; truncated: boolean;
+};
 export type ReceiveVariant = { variantId: string; productName: string; sku: string; color: string; size: string; onHand: number; imageUrl: string | null; photoCount: number };
 export function receiveVariants(product: ProductRecord): ReceiveVariant[] {
   return product.variants.filter(v => v.active).map(v => ({
