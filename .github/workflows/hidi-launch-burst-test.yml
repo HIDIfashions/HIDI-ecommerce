@@ -1,0 +1,33 @@
+name: HIDI launch burst test
+
+on:
+  push:
+    branches:
+      - hidi-web-new
+    paths:
+      - .github/workflows/hidi-launch-burst-test.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hidi-launch-burst-test
+  cancel-in-progress: false
+
+jobs:
+  burst:
+    name: Read-only storefront burst
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Run launch burst
+        run: |
+          python3 deploy/hidi-web-new/load-smoke.py \
+            --url https://thidigk.thehidi.com \
+            --requests 500 \
+            --concurrency 20 \
+            --p95-ms 5000
