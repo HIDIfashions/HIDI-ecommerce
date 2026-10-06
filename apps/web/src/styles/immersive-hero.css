@@ -139,7 +139,7 @@
 .campaign-search-field .icon { width: 20px; height: 20px; }
 .campaign-search-field input { min-width: 0; width: 100%; border: 0; background: transparent; padding: 13px 0; font-size: 14px; color: var(--ink); }
 .campaign-search-field input:focus { outline: none; }
-.campaign-search-field:focus-within { outline: 2px solid var(--gold-deep); outline-offset: 5px; }
+.campaign-search-field:focus-within { outline: 0; box-shadow: none; }
 .campaign-search-submit {
   flex-shrink: 0; min-height: 44px; padding-inline: 16px; background: var(--burgundy);
   color: var(--paper); font-size: 12px; font-weight: 500; border-radius: 2px;
@@ -277,7 +277,7 @@
 .campaign-search-panel .dialog-close { right: 12px; top: 24px; width: 44px; height: 44px; }
 .campaign-search-panel .campaign-search-field { margin-right: 48px; gap: 10px; }
 .campaign-search-panel .campaign-search-field input::placeholder { color: #4f4039; opacity: 1; }
-.campaign-search-panel .campaign-search-field:focus-within { outline-width: 1px; outline-offset: 4px; }
+.campaign-search-panel .campaign-search-field:focus-within { outline: 0; box-shadow: none; }
 .campaign-search-panel .dialog-content > .campaign-search-feedback { margin: 16px 0 0; color: #453b33; }
 .campaign-search-panel .campaign-product-results { margin-top: 6px; }
 .campaign-search-panel .campaign-product-results small { color: #453b33; }
