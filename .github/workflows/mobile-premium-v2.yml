@@ -90,6 +90,9 @@ jobs:
     needs: quality
     runs-on: macos-15
     timeout-minutes: 60
+    env:
+      USE_FRAMEWORKS: dynamic
+      RCT_NEW_ARCH_ENABLED: '1'
     defaults:
       run:
         working-directory: apps/mobile
