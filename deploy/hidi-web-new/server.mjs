@@ -27,6 +27,9 @@ const requestUpstream = origin.protocol === "https:" ? httpsRequest : httpReques
 const requestApi = apiOrigin?.protocol === "https:" ? httpsRequest : httpRequest;
 const hopHeaders = ["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"];
 const contentEtags = new Map();
+const publicHtmlCache = new Map();
+const publicHtmlCacheTtlMs = Math.max(0, Number(process.env.PUBLIC_HTML_CACHE_TTL_MS || 15000));
+const publicHtmlCacheMaxEntries = Math.max(10, Number(process.env.PUBLIC_HTML_CACHE_MAX_ENTRIES || 120));
 const handleHeroMedia = createHeroMediaHandler({ origin, hasStorefront });
 const adminHtmlInjectionLimit = Number(process.env.ADMIN_HTML_INJECTION_MAX_BYTES || 2 * 1024 * 1024);
 const primarySiteOrigin = "https://thehidi.com";
@@ -434,6 +437,11 @@ function canonicalFor(pathname) {
   return new URL(pathname || "/", primarySiteOrigin).toString();
 }
 
+function googleSiteVerification() {
+  const value = String(process.env.GOOGLE_SITE_VERIFICATION || "").trim();
+  return /^[A-Za-z0-9_-]{10,200}$/.test(value) ? value : "";
+}
+
 function analyticsConfig(request) {
   const ga = String(process.env.GA4_MEASUREMENT_ID || process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID || "").trim();
   const meta = String(process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "").trim();
@@ -508,10 +516,14 @@ function injectSeo(html, request, pathname) {
   const analytics = pathname.startsWith("/admin/")
     ? ""
     : '<script defer src="/hidi-analytics.js" data-hidi-analytics="1"></script>';
+  const verification = isProductionRequest(request) && googleSiteVerification()
+    ? '<meta name="google-site-verification" content="' + googleSiteVerification() + '" />'
+    : "";
   const tags = [
     '<link rel="canonical" href="' + canonical + '" />',
     '<meta property="og:url" content="' + canonical + '" />',
     '<meta name="robots" content="' + robots + '" />',
+    verification,
     analytics,
   ].filter(Boolean).join("\n");
 
@@ -647,8 +659,56 @@ function proxySitemap(request, response) {
   request.pipe(upstream);
 }
 
+
+function shouldCachePublicHtml(request, pathname) {
+  if (publicHtmlCacheTtlMs <= 0 || request.method !== "GET") return false;
+  if (request.headers.authorization || request.headers.cookie || request.headers.range) return false;
+  if (request.headers["if-none-match"] || request.headers["if-modified-since"]) return false;
+  return pathname === "/about"
+    || pathname === "/shipping"
+    || pathname === "/returns"
+    || pathname === "/search"
+    || pathname === "/collections"
+    || pathname.startsWith("/collections/");
+}
+
+function publicHtmlCacheKey(request) {
+  return requestHost(request) + "|" + String(request.url || "/");
+}
+
+function readPublicHtmlCache(key) {
+  const entry = publicHtmlCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    publicHtmlCache.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function writePublicHtmlCache(key, value) {
+  if (publicHtmlCache.size >= publicHtmlCacheMaxEntries) {
+    const first = publicHtmlCache.keys().next().value;
+    if (first !== undefined) publicHtmlCache.delete(first);
+  }
+  publicHtmlCache.set(key, {
+    ...value,
+    expiresAt: Date.now() + publicHtmlCacheTtlMs,
+  });
+}
+
 function proxy(request, response, pathname = "") {
   if (!hasStorefront) return error(response, 503, "Storefront unavailable");
+  const cacheable = shouldCachePublicHtml(request, pathname);
+  const cacheKey = cacheable ? publicHtmlCacheKey(request) : "";
+  const cached = cacheable ? readPublicHtmlCache(cacheKey) : null;
+  if (cached) {
+    const cachedHeaders = { ...cached.headers, "x-hidi-cache": "HIT" };
+    response.writeHead(cached.status, cachedHeaders);
+    response.end(cached.body);
+    return;
+  }
+
   const headers = cleanHeaders(request.headers);
   const injectHeroLink = shouldInjectAdminHeroLink(request, pathname);
   const injectLayerFix = shouldInjectStorefrontLayerFix(request, pathname);
@@ -715,6 +775,17 @@ function proxy(request, response, pathname = "") {
       const body = Buffer.from(html);
       responseHeaders["content-length"] = String(body.length);
       if (shouldNoIndex(request, pathname)) responseHeaders["x-robots-tag"] = "noindex, nofollow, noarchive";
+
+      if (cacheable && status === 200 && !responseHeaders["set-cookie"]) {
+        const cachedHeaders = { ...responseHeaders };
+        delete cachedHeaders.date;
+        delete cachedHeaders["transfer-encoding"];
+        delete cachedHeaders.connection;
+        cachedHeaders["x-hidi-cache"] = "MISS";
+        writePublicHtmlCache(cacheKey, { status, headers: cachedHeaders, body });
+        responseHeaders["x-hidi-cache"] = "MISS";
+      }
+
       response.writeHead(status, responseHeaders);
       response.end(body);
     });
