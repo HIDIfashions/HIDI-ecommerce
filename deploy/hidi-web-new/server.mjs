@@ -511,7 +511,9 @@ function injectSeo(html, request, pathname) {
   html = html
     .replace(/<link\b[^>]*\brel=["']canonical["'][^>]*>\s*/gi, "")
     .replace(/<meta\b[^>]*\bname=["']robots["'][^>]*>\s*/gi, "")
-    .replace(/<meta\b[^>]*\bproperty=["']og:url["'][^>]*>\s*/gi, "");
+    .replace(/<meta\b[^>]*\bproperty=["']og:url["'][^>]*>\s*/gi, "")
+    .replace(/<meta\b[^>]*\bname=["']google-site-verification["'][^>]*>\s*/gi, "")
+    .replace(/<script\b[^>]*\bsrc=["'][^"']*hidi-analytics\.js["'][^>]*><\/script>\s*/gi, "");
 
   const analytics = pathname.startsWith("/admin/")
     ? ""
@@ -917,6 +919,29 @@ async function handle(request, response) {
   }
 
   const extension = extname(filePath).toLowerCase();
+
+  if (extension === ".html" && (request.method === "GET" || request.method === "HEAD")) {
+    let html = readFileSync(filePath, "utf8");
+    html = injectSeo(html, request, pathname);
+    const body = Buffer.from(html);
+    const etag = `"sha256-${createHash("sha256").update(body).digest("hex")}"`;
+    response.setHeader("Content-Type", "text/html; charset=utf-8");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Cache-Control", "no-cache");
+    response.setHeader("ETag", etag);
+    response.setHeader("Content-Length", String(body.length));
+    if (shouldNoIndex(request, pathname)) {
+      response.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+    }
+    const noneMatch = request.headers["if-none-match"];
+    if (noneMatch === "*" || noneMatch?.split(",").map(value => value.trim()).includes(etag)) {
+      response.writeHead(304);
+      return response.end();
+    }
+    response.writeHead(200);
+    return response.end(request.method === "HEAD" ? undefined : body);
+  }
+
   // Reproducible OCI layers use mtime=0. Size+mtime cannot distinguish two
   // same-size builds, so validators must identify the actual file content.
   const etag = contentEtag(filePath, stat);
