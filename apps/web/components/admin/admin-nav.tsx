@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 const ITEMS = [
   { label: "Orders", href: "/admin/orders" },
   { label: "Products", href: "/admin/products" },
+  { label: "Price Tags", href: "/admin/products/price-tags" },
   { label: "Imports", href: "/admin/import" },
   { label: "Inventory", href: "/admin/inventory" },
   { label: "Receive stock", href: "/admin/inventory/receive" },
@@ -35,13 +36,15 @@ export function AdminNav() {
         const active =
           item.href === "/admin/orders"
             ? pathname.startsWith("/admin/orders")
-            : item.href === "/admin/products"
-              ? pathname.startsWith("/admin/products")
-              : item.href === "/admin/customers"
-                ? pathname.startsWith("/admin/customers")
-                : item.href === "/admin/staff"
-                  ? pathname.startsWith("/admin/staff")
-                  : pathname === item.href;
+            : item.href === "/admin/products/price-tags"
+              ? pathname.startsWith("/admin/products/price-tags")
+              : item.href === "/admin/products"
+                ? pathname.startsWith("/admin/products") && !pathname.startsWith("/admin/products/price-tags")
+                : item.href === "/admin/customers"
+                  ? pathname.startsWith("/admin/customers")
+                  : item.href === "/admin/staff"
+                    ? pathname.startsWith("/admin/staff")
+                    : pathname === item.href;
 
         return active ? (
           <strong key={item.href}>{item.label}</strong>
