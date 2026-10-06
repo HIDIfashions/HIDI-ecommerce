@@ -164,6 +164,32 @@ const storefrontLayerFix = `
       top: 2px !important;
       right: 0 !important;
     }
+
+    /* Checkout: preserve HIDI styling during browser autofill and keep the
+       final fields / validation feedback clear of the fixed pay CTA. */
+    .checkout-page {
+      padding-bottom: 158px !important;
+    }
+    .checkout-page .checkout-form {
+      padding-bottom: 22px !important;
+    }
+    .checkout-page .checkout-field input,
+    .checkout-page .checkout-form > .form-error {
+      scroll-margin-bottom: 108px;
+    }
+    .checkout-page input:-webkit-autofill,
+    .checkout-page input:-webkit-autofill:hover,
+    .checkout-page input:-webkit-autofill:focus,
+    .checkout-page input:-webkit-autofill:active {
+      -webkit-text-fill-color: #34271f !important;
+      caret-color: #34271f !important;
+      -webkit-box-shadow: 0 0 0 1000px #fbf6f2 inset !important;
+      box-shadow: 0 0 0 1000px #fbf6f2 inset !important;
+      transition: background-color 9999s ease-out 0s !important;
+    }
+    .checkout-page .checkout-pay-button {
+      padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    }
     .pdp-info .delivery-box {
       margin-top: 18px !important;
       padding: 18px 0 !important;
@@ -308,15 +334,30 @@ const storefrontLayerFix = `
     });
   };
 
+  const polishCheckout = () => {
+    const page = document.querySelector(".checkout-page");
+    if (!page) return;
+
+    const phone = page.querySelector('input[name="phone"][type="tel"]');
+    if (phone) {
+      phone.setAttribute("pattern", "(?:\\+?91[ -]?)?[6-9][0-9]{9}");
+      phone.setAttribute("title", "Enter a valid Indian mobile number (10 digits, optionally with +91).");
+      phone.setAttribute("placeholder", "+91 98765 43210");
+      phone.setAttribute("maxlength", "14");
+    }
+  };
+
   const runEnhancements = () => {
     enhance();
     polishLowerPdp();
+    polishCheckout();
   };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", runEnhancements, { once: true });
   } else {
     polishLowerPdp();
+    polishCheckout();
   }
 
   const observer = new MutationObserver(runEnhancements);
