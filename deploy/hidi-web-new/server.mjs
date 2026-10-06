@@ -35,16 +35,30 @@ const adminHeroMediaLink = `
 `;
 const storefrontLayerFix = `
 <style data-hidi-storefront-layer-fix="true">
-  .announcement {
+  /* Keep the real mobile announcement ticker and header above catalogue cards,
+     while still allowing drawers / quick-add modals to sit above both. */
+  [role="region"][aria-label="HIDI shopping services"] {
     position: sticky !important;
     top: 0 !important;
-    z-index: 2147483000 !important;
+    z-index: 1001 !important;
     isolation: isolate !important;
   }
   .site-header {
     position: sticky !important;
-    z-index: 2147482999 !important;
+    z-index: 1000 !important;
     isolation: isolate !important;
+  }
+
+  /* Product-card Quick Add: make the selected size unmistakable and match the
+     approved HIDI mulberry header colour. */
+  section[role="dialog"] [role="group"][aria-label^="Size for "] button[aria-pressed="true"] {
+    background: #591d20 !important;
+    border-color: #591d20 !important;
+    color: #fff8ef !important;
+    box-shadow: inset 0 0 0 1px rgba(213, 162, 77, .34) !important;
+  }
+  section[role="dialog"] [role="group"][aria-label^="Size for "] button[aria-pressed="true"] span {
+    color: #fff8ef !important;
   }
 </style>
 `;
