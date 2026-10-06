@@ -29,6 +29,8 @@ const hopHeaders = ["connection", "keep-alive", "proxy-authenticate", "proxy-aut
 const contentEtags = new Map();
 const handleHeroMedia = createHeroMediaHandler({ origin, hasStorefront });
 const adminHtmlInjectionLimit = Number(process.env.ADMIN_HTML_INJECTION_MAX_BYTES || 2 * 1024 * 1024);
+const primarySiteOrigin = "https://thehidi.com";
+const productionHosts = new Set(["thehidi.com", "www.thehidi.com"]);
 const adminHeroMediaLink = `
 <a data-hidi-hero-media-link="true" href="/admin/hero-media" aria-label="Open HIDI hero media admin"
   style="position:fixed;right:18px;bottom:18px;z-index:2147483647;padding:10px 14px;border-radius:999px;background:#602124;color:#fff;text-decoration:none;font:600 13px Arial,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.18)">Hero Media</a>
@@ -409,6 +411,115 @@ function cleanHeaders(headers) {
   return clean;
 }
 
+function requestHost(request) {
+  const forwarded = String(request.headers["x-forwarded-host"] || "").split(",")[0].trim();
+  const raw = forwarded || String(request.headers.host || "").trim();
+  return raw.replace(/^\[/, "").replace(/\]$/, "").split(":")[0].toLowerCase();
+}
+
+function isProductionRequest(request) {
+  return productionHosts.has(requestHost(request));
+}
+
+function privateSeoPath(pathname) {
+  return ["/admin", "/account", "/cart", "/checkout", "/order-confirmed", "/wishlist", "/search", "/review"]
+    .some(prefix => pathname === prefix || pathname.startsWith(prefix + "/"));
+}
+
+function shouldNoIndex(request, pathname) {
+  return !isProductionRequest(request) || privateSeoPath(pathname);
+}
+
+function canonicalFor(pathname) {
+  return new URL(pathname || "/", primarySiteOrigin).toString();
+}
+
+function analyticsConfig(request) {
+  const ga = String(process.env.GA4_MEASUREMENT_ID || process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID || "").trim();
+  const meta = String(process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "").trim();
+  const ga4MeasurementId = /^G-[A-Z0-9]+$/i.test(ga) ? ga.toUpperCase() : "";
+  const metaPixelId = /^\d{5,32}$/.test(meta) ? meta : "";
+  return {
+    enabled: isProductionRequest(request) && Boolean(ga4MeasurementId || metaPixelId),
+    ga4MeasurementId: ga4MeasurementId || null,
+    metaPixelId: metaPixelId || null,
+  };
+}
+
+function sendJson(response, status, value, method = "GET") {
+  const body = JSON.stringify(value);
+  response.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Content-Length": Buffer.byteLength(body),
+  });
+  response.end(method === "HEAD" ? undefined : body);
+}
+
+function sendRobots(request, response) {
+  const production = isProductionRequest(request);
+  const body = production
+    ? [
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /api/",
+        "Disallow: /admin/",
+        "Disallow: /account/",
+        "Disallow: /cart",
+        "Disallow: /checkout",
+        "Disallow: /order-confirmed",
+        "Disallow: /search",
+        "Disallow: /wishlist",
+        "Disallow: /review/",
+        "Sitemap: https://thehidi.com/sitemap.xml",
+        "Host: https://thehidi.com",
+        "",
+      ].join("\n")
+    : "User-agent: *\nDisallow: /\n";
+  response.writeHead(200, {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "no-cache",
+    "X-Robots-Tag": production ? "index, follow" : "noindex, nofollow, noarchive",
+    "Content-Length": Buffer.byteLength(body),
+  });
+  response.end(request.method === "HEAD" ? undefined : body);
+}
+
+function shouldInjectSeo(request, pathname) {
+  return request.method === "GET"
+    && pathname !== "/admin/hero-media"
+    && !pathname.startsWith("/api/")
+    && pathname !== "/api"
+    && !pathname.startsWith("/_next/")
+    && pathname !== "/_next";
+}
+
+function injectSeo(html, request, pathname) {
+  const canonical = canonicalFor(pathname);
+  const robots = shouldNoIndex(request, pathname)
+    ? "noindex, nofollow, noarchive"
+    : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
+
+  html = html
+    .replace(/<link\b[^>]*\brel=["']canonical["'][^>]*>\s*/gi, "")
+    .replace(/<meta\b[^>]*\bname=["']robots["'][^>]*>\s*/gi, "")
+    .replace(/<meta\b[^>]*\bproperty=["']og:url["'][^>]*>\s*/gi, "");
+
+  const analytics = pathname.startsWith("/admin/")
+    ? ""
+    : '<script defer src="/hidi-analytics.js" data-hidi-analytics="1"></script>';
+  const tags = [
+    '<link rel="canonical" href="' + canonical + '" />',
+    '<meta property="og:url" content="' + canonical + '" />',
+    '<meta name="robots" content="' + robots + '" />',
+    analytics,
+  ].filter(Boolean).join("\n");
+
+  return /<\/head>/i.test(html)
+    ? html.replace(/<\/head>/i, tags + "\n</head>")
+    : tags + html;
+}
+
 function shouldInjectAdminHeroLink(request, pathname) {
   return request.method === "GET"
     && pathname !== "/admin/hero-media"
@@ -486,7 +597,8 @@ function proxy(request, response, pathname = "") {
   const headers = cleanHeaders(request.headers);
   const injectHeroLink = shouldInjectAdminHeroLink(request, pathname);
   const injectLayerFix = shouldInjectStorefrontLayerFix(request, pathname);
-  if (injectHeroLink || injectLayerFix) delete headers["accept-encoding"];
+  const injectSeoTags = shouldInjectSeo(request, pathname);
+  if (injectHeroLink || injectLayerFix || injectSeoTags) delete headers["accept-encoding"];
   // The fixed origin selects the destination. The public host/protocol still
   // reach Next so redirects, authentication cookies, and URL generation work.
   headers.host = request.headers.host || origin.host;
@@ -503,7 +615,7 @@ function proxy(request, response, pathname = "") {
     const responseHeaders = cleanHeaders(incoming.headers);
     const status = incoming.statusCode || 502;
     const contentType = String(responseHeaders["content-type"] || "");
-    const canInject = (injectHeroLink || injectLayerFix)
+    const canInject = (injectHeroLink || injectLayerFix || injectSeoTags)
       && status >= 200 && status < 300
       && /\btext\/html\b/i.test(contentType)
       && !responseHeaders["content-encoding"];
@@ -543,9 +655,11 @@ function proxy(request, response, pathname = "") {
       delete responseHeaders.etag;
       let html = Buffer.concat(chunks).toString("utf8");
       if (injectLayerFix) html = injectStorefrontLayerFix(html);
+      if (injectSeoTags) html = injectSeo(html, request, pathname);
       if (injectHeroLink) html = injectAdminHeroLink(html);
       const body = Buffer.from(html);
       responseHeaders["content-length"] = String(body.length);
+      if (shouldNoIndex(request, pathname)) responseHeaders["x-robots-tag"] = "noindex, nofollow, noarchive";
       response.writeHead(status, responseHeaders);
       response.end(body);
     });
@@ -617,6 +731,22 @@ async function handle(request, response) {
 
   if (await handleHeroMedia(request, response, pathname)) return;
 
+  if (pathname === "/api/hidi/analytics-config") {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      response.setHeader("Allow", "GET, HEAD");
+      return error(response, 405, "Method not allowed");
+    }
+    return sendJson(response, 200, analyticsConfig(request), request.method);
+  }
+
+  if (pathname === "/robots.txt") {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      response.setHeader("Allow", "GET, HEAD");
+      return error(response, 405, "Method not allowed");
+    }
+    return sendRobots(request, response);
+  }
+
   if (pathname === "/v1/payments/razorpay/webhook" && (request.method === "GET" || request.method === "HEAD")) {
     response.setHeader("Allow", "POST");
     return error(response, 405, "Razorpay webhook accepts POST only");
@@ -667,6 +797,10 @@ async function handle(request, response) {
     : [".html", ".json", ".webmanifest"].includes(extension) || pathname === "/config.js"
       ? "no-cache"
       : "public, max-age=300");
+
+  if (extension === ".html" && shouldNoIndex(request, pathname)) {
+    response.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+  }
 
   const noneMatch = request.headers["if-none-match"];
   if (noneMatch === "*" || noneMatch?.split(",").map(value => value.trim()).includes(etag)
