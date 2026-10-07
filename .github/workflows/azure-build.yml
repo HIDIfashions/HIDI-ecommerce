@@ -253,7 +253,7 @@ jobs:
           python3 landing-source/deploy/hidi-web-new/push-hidi-landing-oci.py \
             --registry "$ACR_NAME" \
             --payload hidi-landing-connected-runtime.tar.gz \
-            --base "hidi-web@sha256:7f5eb87852f81123538990b1b24c0fee94cb30185f661d835587393e6b46e8e6" \
+            --base "hidi-web@sha256:3d7fd43acc59f9731783bd995e3401f069645e37138ca664cd810cfd13969352" \
             --tag "$tag" \
             | tee published-image.json
 
