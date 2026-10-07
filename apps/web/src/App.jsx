@@ -6,7 +6,6 @@ import { usePage } from './hooks/usePage.js';
 import Navbar from './components/Navbar.jsx';
 import { useSmoothPageScroll } from './hooks/useSmoothPageScroll.js';
 import VideoHero from './components/VideoHero.jsx';
-import AnanyaTopPicks from './components/AnanyaTopPicks.jsx';
 import MeetHidi from './components/MeetHidi.jsx';
 import RangeCarousel from './components/RangeCarousel.jsx';
 import HidiEdit from './components/HidiEdit.jsx';
@@ -72,7 +71,6 @@ export default function App() {
         <Navbar />
         <main id="main" tabIndex={-1}>
           <VideoHero />
-          <AnanyaTopPicks />
           <MeetHidi />
           <RangeCarousel />
           <HidiEdit />

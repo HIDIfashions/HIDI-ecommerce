@@ -143,109 +143,7 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
 .video-toggle { width: 40px; height: 40px; border: 1px solid #f7e4bd80; border-radius: 50%; background: #15191026; }
 .video-toggle .icon { width: 16px; height: 16px; }
 .video-toggle:hover { background: #f7e4bd20; }
-/* 03 / Ananya's Top Picks */
-.ananya-picks {
-  background: var(--cream);
-  padding: clamp(44px, 5vw, 82px) 0 clamp(48px, 5.8vw, 92px);
-  overflow: clip;
-}
-.ananya-picks__heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 28px;
-  margin-bottom: clamp(26px, 3.4vw, 46px);
-}
-.ananya-picks__heading h2 {
-  color: var(--burgundy);
-  font-size: clamp(38px, 4.2vw, 68px);
-}
-.ananya-picks__rail {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: clamp(232px, 23vw, 362px);
-  gap: clamp(14px, 1.7vw, 26px);
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scroll-snap-type: x mandatory;
-  padding: 0 max(22px, calc((100vw - 1280px) / 2)) 8px;
-  scrollbar-width: none;
-}
-.ananya-picks__rail::-webkit-scrollbar { display: none; }
-.ananya-pick-card {
-  position: relative;
-  min-width: 0;
-  aspect-ratio: 2 / 3;
-  overflow: hidden;
-  background: #eadfce;
-  scroll-snap-align: start;
-  box-shadow: 0 16px 40px rgba(58, 33, 24, .08);
-}
-.ananya-pick-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-  transition: transform 900ms var(--ease);
-}
-.ananya-pick-card::after {
-  content: '';
-  position: absolute;
-  inset: 58% 0 0;
-  background: linear-gradient(transparent, rgba(39, 20, 15, .5));
-  pointer-events: none;
-}
-.ananya-pick-card__caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1;
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 20px;
-  color: var(--paper);
-}
-.ananya-pick-card__caption span {
-  font-size: 10px;
-  letter-spacing: .18em;
-  color: #f4d792;
-}
-.ananya-pick-card__caption h3 {
-  max-width: 185px;
-  text-align: right;
-  font-size: 13px;
-  line-height: 1.35;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-@media (hover: hover) {
-  .ananya-pick-card:hover img { transform: scale(1.035); }
-}
-@media (max-width: 700px) {
-  .ananya-picks { padding-block: 40px 52px; }
-  .ananya-picks__heading {
-    display: block;
-    margin-bottom: 24px;
-  }
-  .ananya-picks__heading h2 {
-    margin-top: 7px;
-    font-size: 42px;
-  }
-  .ananya-picks__rail {
-    grid-auto-columns: min(72vw, 310px);
-    gap: 14px;
-    padding-inline: 22px;
-  }
-  .ananya-pick-card__caption { padding: 16px; }
-  .ananya-pick-card__caption h3 { font-size: 11px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ananya-pick-card img { transition: none; }
-}
-/* 04 / Meet HIDI */
+/* 03 / Meet HIDI */
 .meet-section { background: var(--cream); }
 .meet-grid { display: grid; grid-template-columns: 1fr 1.04fr; gap: 120px; align-items: center; }
 .meet-art { position: relative; margin-left: 26px; padding: 0 0 32px; width: 410px; max-width: 100%; }
@@ -272,7 +170,7 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
 .meet-cinematic > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; }
 .meet-cinematic__content { position: absolute; inset: 0; z-index: 2; display: flex; align-items: flex-end; justify-content: flex-start; padding: clamp(28px, 4vw, 58px); }
 .meet-cinematic__button { min-width: 150px; box-shadow: 0 12px 34px #2f120f24; }
-/* 05 / Runway carousel — larger high centre, shorter flanks, clipped outer cards. */
+/* 04 / Runway carousel — larger high centre, shorter flanks, clipped outer cards. */
 .range-section { background: var(--linen); padding: 67px 0 42px; overflow: clip; }
 .section-heading { text-align: center; }
 .section-heading .eyebrow { margin-bottom: 13px; }
