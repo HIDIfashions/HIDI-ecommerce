@@ -1,8 +1,17 @@
 /** Keep migrated images on this storefront's private-Blob media proxy. */
+const STOREFRONT_MEDIA_HOSTS = new Set([
+  "thehidi.com",
+  "www.thehidi.com",
+  "hidiindia.com",
+  "www.hidiindia.com",
+  "thidigk.thehidi.com",
+  "azure-preview.thehidi.com",
+]);
+
 export function productImageSource(source: string): string {
   try {
     const url = new URL(source);
-    if (url.protocol === "https:" && ["thehidi.com", "www.thehidi.com", "thidigk.thehidi.com", "azure-preview.thehidi.com"].includes(url.hostname) && url.pathname.startsWith("/media/products/")) {
+    if (url.protocol === "https:" && STOREFRONT_MEDIA_HOSTS.has(url.hostname.toLowerCase()) && url.pathname.startsWith("/media/products/")) {
       return url.pathname + url.search;
     }
   } catch {
