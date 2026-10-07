@@ -1,12 +1,19 @@
 import type { ApiProduct } from "./api";
 
+const INDEXABLE_PRODUCTION_HOSTS = new Set([
+  "thehidi.com",
+  "www.thehidi.com",
+  "hidiindia.com",
+  "www.hidiindia.com",
+]);
+
 export function isSearchIndexingEnabled(env: Record<string, string | undefined> = process.env): boolean {
   // Launch is explicit. A validation/preview deployment can never opt in.
   if (env.DEPLOYMENT_STAGE === "validation" || env.VERCEL_ENV === "preview") return false;
   if (env.ALLOW_PUBLIC_DOMAIN !== "true") return false;
   try {
     const url = new URL(env.SITE_URL || env.NEXT_PUBLIC_SITE_URL || "");
-    return url.protocol === "https:" && ["thehidi.com", "www.thehidi.com"].includes(url.hostname);
+    return url.protocol === "https:" && INDEXABLE_PRODUCTION_HOSTS.has(url.hostname.toLowerCase());
   } catch {
     return false;
   }
