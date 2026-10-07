@@ -411,7 +411,46 @@ function cleanHeaders(headers) {
   const clean = { ...headers };
   const connectionHeaders = typeof clean.connection === "string" ? clean.connection.split(",") : [];
   for (const name of [...hopHeaders, ...connectionHeaders]) delete clean[name.trim().toLowerCase()];
+  delete clean.server;
+  delete clean["x-powered-by"];
   return clean;
+}
+
+function sensitivePath(pathname) {
+  return [
+    "/admin",
+    "/account",
+    "/cart",
+    "/checkout",
+    "/order-confirmed",
+    "/wishlist",
+    "/review",
+    "/api/admin",
+    "/api/store/session",
+    "/v1/admin",
+    "/v1/account",
+    "/v1/carts",
+    "/v1/checkout",
+    "/v1/payments",
+    "/v1/returns",
+    "/v1/wallet",
+  ].some(prefix => pathname === prefix || pathname.startsWith(prefix + "/"));
+}
+
+function applySecurityHeaders(headers, request, pathname) {
+  headers["x-content-type-options"] = "nosniff";
+  headers["referrer-policy"] = "strict-origin-when-cross-origin";
+  headers["x-frame-options"] = "DENY";
+  headers["content-security-policy"] = "frame-ancestors 'none'; base-uri 'self'; object-src 'none'";
+  headers["x-permitted-cross-domain-policies"] = "none";
+  if (forwardedProto(request) === "https") {
+    headers["strict-transport-security"] = "max-age=31536000";
+  }
+  if (sensitivePath(pathname)) {
+    headers["cache-control"] = "no-store, max-age=0";
+    headers.pragma = "no-cache";
+  }
+  return headers;
 }
 
 function requestHost(request) {
@@ -591,7 +630,7 @@ function proxyApi(request, response, pathname) {
     path: apiProxyPath(pathname, url.search),
     headers,
   }, incoming => {
-    const responseHeaders = cleanHeaders(incoming.headers);
+    const responseHeaders = applySecurityHeaders(cleanHeaders(incoming.headers), request, pathname);
     response.writeHead(incoming.statusCode || 502, responseHeaders);
     incoming.on("error", () => response.destroy());
     response.on("close", () => incoming.destroy());
@@ -622,7 +661,7 @@ function proxySitemap(request, response) {
     path: request.url,
     headers,
   }, incoming => {
-    const responseHeaders = cleanHeaders(incoming.headers);
+    const responseHeaders = applySecurityHeaders(cleanHeaders(incoming.headers), request, "/sitemap.xml");
     const status = incoming.statusCode || 502;
     if (request.method === "HEAD") {
       responseHeaders["cache-control"] = "public, max-age=300";
@@ -705,7 +744,7 @@ function proxy(request, response, pathname = "") {
   const cacheKey = cacheable ? publicHtmlCacheKey(request) : "";
   const cached = cacheable ? readPublicHtmlCache(cacheKey) : null;
   if (cached) {
-    const cachedHeaders = { ...cached.headers, "x-hidi-cache": "HIT" };
+    const cachedHeaders = applySecurityHeaders({ ...cached.headers, "x-hidi-cache": "HIT" }, request, pathname);
     response.writeHead(cached.status, cachedHeaders);
     response.end(cached.body);
     return;
@@ -729,7 +768,7 @@ function proxy(request, response, pathname = "") {
     path: request.url,
     headers,
   }, incoming => {
-    const responseHeaders = cleanHeaders(incoming.headers);
+    const responseHeaders = applySecurityHeaders(cleanHeaders(incoming.headers), request, pathname);
     const status = incoming.statusCode || 502;
     const contentType = String(responseHeaders["content-type"] || "");
     const canInject = (injectHeroLink || injectLayerFix || injectSeoTags)
@@ -925,9 +964,11 @@ async function handle(request, response) {
     html = injectSeo(html, request, pathname);
     const body = Buffer.from(html);
     const etag = `"sha256-${createHash("sha256").update(body).digest("hex")}"`;
-    response.setHeader("Content-Type", "text/html; charset=utf-8");
-    response.setHeader("X-Content-Type-Options", "nosniff");
-    response.setHeader("Cache-Control", "no-cache");
+    const staticHtmlHeaders = applySecurityHeaders({
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-cache",
+    }, request, pathname);
+    for (const [name, value] of Object.entries(staticHtmlHeaders)) response.setHeader(name, value);
     response.setHeader("ETag", etag);
     response.setHeader("Content-Length", String(body.length));
     if (shouldNoIndex(request, pathname)) {
@@ -948,7 +989,8 @@ async function handle(request, response) {
   const modified = stat.mtime.toUTCString();
   const isVersionedBundle = /[/\\]assets[/\\][^/\\]+-[A-Za-z0-9_-]{8,}\.(?:css|js)$/.test(filePath);
   response.setHeader("Content-Type", types[extension] || "application/octet-stream");
-  response.setHeader("X-Content-Type-Options", "nosniff");
+  const staticSecurityHeaders = applySecurityHeaders({}, request, pathname);
+  for (const [name, value] of Object.entries(staticSecurityHeaders)) response.setHeader(name, value);
   response.setHeader("Accept-Ranges", "bytes");
   response.setHeader("ETag", etag);
   response.setHeader("Last-Modified", modified);
