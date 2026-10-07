@@ -105,6 +105,8 @@ before(async () => {
       response.writeHead(200, {
         "Content-Type": "text/html; charset=utf-8",
         "Content-Length": Buffer.byteLength(body),
+        "Server": "unit-storefront",
+        "X-Powered-By": "unit-framework",
       });
       response.end(body);
       return;
@@ -343,6 +345,64 @@ test("analytics configuration is public-safe and disabled on preview", async () 
   assert.equal(preview.status, 200);
   assert.equal(preview.headers["cache-control"], "no-store");
   assert.equal(JSON.parse(preview.body).enabled, false);
+});
+
+test("security headers protect storefront pages and private routes do not cache", async () => {
+  const publicPage = await send(proxy.url, "/products/demo", {
+    headers: {
+      Host: "thehidi.com",
+      "X-Forwarded-Proto": "https",
+    },
+  });
+  assert.equal(publicPage.status, 200);
+  assert.equal(publicPage.headers["x-content-type-options"], "nosniff");
+  assert.equal(publicPage.headers["x-frame-options"], "DENY");
+  assert.equal(publicPage.headers["referrer-policy"], "strict-origin-when-cross-origin");
+  assert.match(publicPage.headers["content-security-policy"], /frame-ancestors 'none'/);
+  assert.equal(publicPage.headers["x-permitted-cross-domain-policies"], "none");
+  assert.equal(publicPage.headers["strict-transport-security"], "max-age=31536000");
+  assert.equal(publicPage.headers.server, undefined);
+  assert.equal(publicPage.headers["x-powered-by"], undefined);
+  assert.notEqual(publicPage.headers["cache-control"], "no-store, max-age=0");
+
+  const privatePage = await send(proxy.url, "/api/admin/session", {
+    headers: {
+      Host: "thehidi.com",
+      "X-Forwarded-Proto": "https",
+    },
+  });
+  assert.equal(privatePage.status, 200);
+  assert.equal(privatePage.headers["cache-control"], "no-store, max-age=0");
+  assert.equal(privatePage.headers.pragma, "no-cache");
+  assert.equal(privatePage.headers["x-frame-options"], "DENY");
+
+  const checkoutPayload = "{}";
+  const checkoutApi = await send(proxy.url, "/v1/checkout/prepare", {
+    method: "POST",
+    body: checkoutPayload,
+    headers: {
+      Host: "thehidi.com",
+      "X-Forwarded-Proto": "https",
+      "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(checkoutPayload),
+    },
+  });
+  assert.equal(checkoutApi.status, 202);
+  assert.equal(checkoutApi.headers["cache-control"], "no-store, max-age=0");
+  assert.equal(checkoutApi.headers["strict-transport-security"], "max-age=31536000");
+});
+
+test("static landing HTML receives the same anti-framing and HTTPS headers", async () => {
+  const landing = await send(proxy.url, "/", {
+    headers: {
+      Host: "thehidi.com",
+      "X-Forwarded-Proto": "https",
+    },
+  });
+  assert.equal(landing.status, 200);
+  assert.equal(landing.headers["x-frame-options"], "DENY");
+  assert.match(landing.headers["content-security-policy"], /object-src 'none'/);
+  assert.equal(landing.headers["strict-transport-security"], "max-age=31536000");
 });
 
 test("Search Console verification is injected only for production when configured", async () => {
