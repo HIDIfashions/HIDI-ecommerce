@@ -78,10 +78,15 @@ test('forms and utility controls expose assistive status and labels', () => {
   matches(source('components/delivery-check.tsx'), [/aria-label="Delivery PIN code"/, /aria-label="Check delivery PIN code"/, /role="status"/]); matches(source('components/collection-browser.module.css'), [/min-height: 44px/, /width: 18px/, /height: 18px/]);
 });
 test('SEO foundation exposes canonical metadata, sitemap and crawl controls', () => {
-  matches(source('app/layout.tsx'), [/metadataBase: site/, /summary_large_image/, /"@type": "Organization"/, /"@type": "WebSite"/]); assert.match(source('app/page.tsx'), /alternates: \{ canonical: "\/" \}/);
+  matches(source('app/layout.tsx'), [/metadataBase: site/, /summary_large_image/, /"@type": "Organization"/, /"@type": "WebSite"/, /GOOGLE_SITE_VERIFICATION/, /NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION/, /<AnalyticsTags/]); assert.match(source('app/page.tsx'), /alternates: \{ canonical: "\/" \}/);
   const robots = source('app/robots.ts'); matches(robots, [/sitemap: absoluteUrl\("\/sitemap\.xml"\)/, /"\/api"/, /"\/admin"/]); assert.doesNotMatch(robots, /"\/checkout"/);
   matches(source('app/sitemap.ts'), [/\/collections\/new-arrivals/, /\/about/, /\/shipping/, /\/returns/, /\/products\/\$\{encodeURIComponent\(product\.slug\)\}/]);
-  const site = source('lib/site-url.ts'); matches(site, [/process\.env\.SITE_URL/, /VERCEL_PROJECT_PRODUCTION_URL/]); assert.ok(site.includes('replace(/</g, "\\\\u003c")'), 'JSON-LD must escape less-than characters');
+  const site = source('lib/site-url.ts'); matches(site, [/process\.env\.HIDI_PRIMARY_DOMAIN/, /process\.env\.SITE_URL/, /VERCEL_PROJECT_PRODUCTION_URL/]); assert.ok(site.includes('replace(/</g, "\\\\u003c")'), 'JSON-LD must escape less-than characters');
+});
+test('analytics and browser security hardening stay environment gated', () => {
+  matches(source('components/analytics-tags.tsx'), [/NEXT_PUBLIC_GA_MEASUREMENT_ID|gaMeasurementId/, /googletagmanager\.com\/gtag\/js/, /connect\.facebook\.net\/en_US\/fbevents\.js/, /firstPageView/, /PageView/]);
+  const layout = source('app/layout.tsx'); matches(layout, [/isSearchIndexingEnabled\(\)/, /NEXT_PUBLIC_META_PIXEL_ID/, /NEXT_PUBLIC_FACEBOOK_PIXEL_ID/]);
+  const nextConfig = source('next.config.ts'); matches(nextConfig, [/X-Content-Type-Options/, /X-Frame-Options/, /Referrer-Policy/, /Permissions-Policy/, /Cross-Origin-Opener-Policy/, /Strict-Transport-Security/]); assert.doesNotMatch(nextConfig, /Content-Security-Policy/);
 });
 test('product and collection pages publish search metadata and structured data', () => {
   matches(source('app/products/[slug]/page.tsx'), [/generateMetadata/, /alternates: \{ canonical \}/, /"@type": "Product"/, /offers: productOffers\(product, canonicalUrl\)/, /"@type": "BreadcrumbList"/, /aggregateRating/, /cache\(getProduct\)/]);
