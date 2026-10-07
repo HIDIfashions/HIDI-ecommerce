@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { LayoutDashboard, ShoppingBag, Truck, RotateCcw, BarChart3, Package, Warehouse, PackagePlus, Upload, Users, ShieldCheck, Search, Menu, X, LogOut, ArrowUpRight } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Truck, RotateCcw, BarChart3, Package, Tags, Warehouse, PackagePlus, Upload, Users, ShieldCheck, Search, Menu, X, LogOut, ArrowUpRight } from 'lucide-react';
 import { adminFetch, refreshAdminSession, type Staff } from './admin-client';
 import { AdminSearch } from './admin-search';
 import styles from './admin-workspace.module.css';
@@ -15,6 +15,7 @@ const links = [
   { href: '/admin/returns', name: 'Returns & exchanges', icon: RotateCcw, group: 'Workspace', order: true },
   { href: '/admin/reports', name: 'Sales & reports', icon: BarChart3, group: 'Workspace', order: true },
   { href: '/admin/products', name: 'Products', icon: Package, group: 'Manage', order: false },
+  { href: '/admin/products/price-tags', name: 'Price tags', icon: Tags, group: 'Manage', order: false },
   { href: '/admin/inventory', name: 'Inventory', icon: Warehouse, group: 'Manage', order: false },
   { href: '/admin/inventory/receive', name: 'Receive stock', icon: PackagePlus, group: 'Manage', order: false, write: true },
   { href: '/admin/import', name: 'Bulk imports', icon: Upload, group: 'Manage', order: false, catalogWrite: true },
