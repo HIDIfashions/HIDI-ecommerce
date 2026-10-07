@@ -142,3 +142,9 @@ test('BFF has an explicit resource allowlist and no public cache or browser secr
   assert(source.includes('hasOwnProperty.call(routes, resource)')); assert(source.includes('private, no-store'));
   assert(!source.includes('NEXT_PUBLIC_ADMIN')); assert(source.includes('AbortSignal.timeout(20000)'));
 });
+test('admin workspace exposes product operations, including price-tag printing', () => {
+  const source = fs.readFileSync(path.join(root, 'apps/web/components/admin/admin-workspace.tsx'), 'utf8');
+  assert(source.includes("href: '/admin/products/price-tags'"));
+  assert(source.includes("name: 'Price tags'"));
+  assert(!source.match(/href: '\/admin\/products\/price-tags'[^\n]+catalogWrite/));
+});
