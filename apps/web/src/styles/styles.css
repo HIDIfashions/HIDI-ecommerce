@@ -172,13 +172,13 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
 .meet-values > div { display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--burgundy); }
 .meet-values .icon { width: 23px; height: 23px; stroke-width: 1.1; }
 .meet-copy > .text-link { margin-top: 7px; }
-.meet-section--cinematic { min-height: calc(var(--pick-count, 5) * 100svh); margin-top: -1px; padding-block: 0; background: var(--cream); }
+.meet-section--cinematic { min-height: calc(var(--pick-count, 5) * 100svh); margin-top: clamp(28px, 3vw, 52px); padding-block: 0; background: var(--cream); }
 .meet-section--cinematic .container { position: sticky; top: 0; display: grid; align-items: stretch; width: 100%; min-height: 100svh; max-width: none; padding-block: 0; }
 .meet-cinematic { position: relative; display: grid; grid-template-columns: minmax(210px, .42fr) minmax(660px, 1.58fr); align-items: center; gap: clamp(18px, 3vw, 54px); min-height: 100svh; padding-inline: clamp(32px, 4.2vw, 74px); overflow: hidden; isolation: isolate; background: radial-gradient(circle at 73% 45%, color-mix(in srgb, var(--pick-accent) 30%, transparent) 0%, transparent 36%), linear-gradient(112deg, #fffdf8 0%, #fbf1e5 45%, #efe1d5 100%); border-top: 0; border-bottom: 1px solid #eadfd4; transition: background 700ms var(--ease); }
 .meet-cinematic::before { content: ''; position: absolute; inset: 7% 2% 5% 34%; z-index: 0; transform: skewX(-8deg); background: linear-gradient(115deg, #ffffff54, color-mix(in srgb, var(--pick-accent) 20%, transparent), #fffdf88f); border: 1px solid #ffffffb8; box-shadow: 0 42px 110px #3b18131c; pointer-events: none; }
 .meet-cinematic::after { content: ''; position: absolute; inset: 7% 2% 5% 34%; z-index: 1; transform: skewX(-8deg) translateX(-78%); background: linear-gradient(100deg, transparent 0 42%, #fffdf8d8 50%, transparent 58% 100%); opacity: 0; pointer-events: none; animation: meetPanelFlash 4.2s ease-in-out infinite; }
 .meet-cinematic__content { position: relative; z-index: 4; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; align-self: stretch; padding: 0 0 clamp(54px, 7vw, 104px) clamp(2px, .8vw, 10px); }
-.meet-cinematic__label { position: absolute; top: clamp(24px, 3.5vw, 52px); left: 50%; z-index: 7; display: inline-flex; align-items: center; gap: 10px; min-height: 34px; margin: 0; color: var(--burgundy); background: #fffbf4cc; border: 1px solid #e8d8c0; border-radius: 999px; padding: 9px 14px; backdrop-filter: blur(18px); box-shadow: 0 18px 60px #3b18130c; font-size: 10px; font-weight: 700; letter-spacing: .16em; line-height: 1; text-transform: uppercase; transform: translateX(-50%); }
+.meet-cinematic__label { position: absolute; top: clamp(24px, 3.5vw, 52px); left: clamp(32px, 4.2vw, 74px); z-index: 7; display: inline-flex; align-items: center; gap: 10px; min-height: 34px; margin: 0; color: var(--burgundy); background: #fffbf4cc; border: 1px solid #e8d8c0; border-radius: 999px; padding: 9px 14px; backdrop-filter: blur(18px); box-shadow: 0 18px 60px #3b18130c; font-size: 10px; font-weight: 700; letter-spacing: .16em; line-height: 1; text-transform: uppercase; }
 .meet-cinematic__label::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 5px #e9be6230; }
 .meet-cinematic__button { min-width: 162px; margin-top: 0; border-radius: 999px; box-shadow: 0 16px 42px #3719131c; }
 .meet-cinematic__stage { position: relative; z-index: 2; height: 100%; min-height: clamp(600px, 76svh, 850px); overflow: visible; }
@@ -522,7 +522,7 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
   .meet-cinematic::before { inset: 32% -20% 5% 12%; }
   .meet-cinematic::after { inset: 32% -20% 5% 12%; }
   .meet-cinematic__content { align-self: auto; padding: 82px 2px 0; }
-  .meet-cinematic__label { top: 21px; min-height: 30px; padding: 8px 12px; font-size: 8px; letter-spacing: .13em; }
+  .meet-cinematic__label { top: 21px; left: 18px; min-height: 30px; padding: 8px 12px; font-size: 8px; letter-spacing: .13em; }
   .meet-cinematic__button { width: auto; min-width: 136px; margin-top: 0; }
   .meet-cinematic__stage { min-height: 506px; margin-top: -11px; }
   .meet-cinematic__prism { inset: 10% -14% 2% 8%; }
