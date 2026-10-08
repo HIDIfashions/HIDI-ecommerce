@@ -104,6 +104,50 @@ test("retry fingerprint changes with account, cart, wallet or delivery but not o
   assert.equal(client.checkoutFingerprint({ ...base, details: { city: "Hyderabad", email: "a@example.test" } }), key);
 });
 
+function walletBalanceHarness({ enabled = true, userId = null } = {}) {
+  const react = {
+    useState(initial) { return [typeof initial === "function" ? initial() : initial, () => {}]; },
+    useRef(initial) { return { current: initial }; },
+    useCallback(fn) { return fn; },
+    useEffect() {},
+  };
+  const jsx = (type, props, key) => typeof type === "function" ? type(props ?? {}) : ({ type, props: props ?? {}, key });
+  const component = loadModule("apps/web/components/wallet-balance.tsx", {
+    react, "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
+    "next/link": "Link",
+    "lucide-react": { WalletCards: (props) => jsx("WalletCards", props), ArrowUpRight: (props) => jsx("ArrowUpRight", props) },
+    "@/lib/wallet-client": {
+      walletEnabled: enabled,
+      walletAccountId: () => userId,
+      getWalletSummary: async () => summary(),
+      formatWalletPaise: (paise) => `₹${(paise / 100).toFixed(2)}`,
+      WALLET_UPDATED_EVENT: "hidi-wallet-updated",
+    },
+    "./wallet.module.css": new Proxy({}, { get: (_, key) => key }),
+  });
+  return component;
+}
+
+function hasText(node, text) {
+  if (node == null) return false;
+  if (typeof node === "string") return node.includes(text);
+  if (Array.isArray(node)) return node.some((child) => hasText(child, text));
+  if (typeof node === "object") return hasText(node.props?.children, text);
+  return false;
+}
+
+test("full rewards page shows helpful empty states while compact wallet stays hidden", () => {
+  const signedOut = walletBalanceHarness({ enabled: true, userId: null }).WalletBalance({ showSignedOut: true });
+  assert.ok(hasText(signedOut, "Sign in to view your HIDI rewards."));
+  assert.ok(hasText(signedOut, "Sign in to My HIDI"));
+
+  const disabled = walletBalanceHarness({ enabled: false, userId: null }).WalletBalance({ showSignedOut: true });
+  assert.ok(hasText(disabled, "Rewards are getting ready."));
+
+  const compact = walletBalanceHarness({ enabled: true, userId: null }).WalletBalance({ compact: true, showSignedOut: true });
+  assert.equal(compact, null);
+});
+
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } = {}) {
