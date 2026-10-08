@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import Icon from './Icon.jsx';
 import { asset } from '../config.js';
 
@@ -6,117 +6,85 @@ const topPicks = [
   {
     name: 'Orange embroidered kurta set',
     image: 'images/ananya-top-picks/ananya-orange.webp',
-    accent: '#f05a25',
     tone: 'Festive orange',
+    price: 'From ₹3,490',
+    detail: 'A bright occasion-ready set with full-body styling.',
   },
   {
     name: 'Pink embroidered dupatta set',
     image: 'images/ananya-top-picks/ananya-pink.webp',
-    accent: '#ef8fb3',
     tone: 'Soft occasion',
+    price: 'From ₹3,290',
+    detail: 'Soft pink embroidery with a polished dupatta finish.',
   },
   {
     name: 'Maroon festive kurta set',
     image: 'images/ananya-top-picks/ananya-maroon.webp',
-    accent: '#8e1d3d',
     tone: 'Evening rich',
+    price: 'From ₹3,690',
+    detail: 'Deep festive colour for dinners, family plans and celebrations.',
   },
   {
     name: 'Black embellished kurta set',
     image: 'images/ananya-top-picks/ananya-black.webp',
-    accent: '#262c31',
     tone: 'Quiet statement',
+    price: 'From ₹3,790',
+    detail: 'A sharper evening look with easy repeat-wear appeal.',
   },
   {
     name: 'Olive green embroidered set',
     image: 'images/ananya-top-picks/ananya-green.webp',
-    accent: '#58662f',
     tone: 'Everyday luxe',
+    price: 'From ₹3,390',
+    detail: 'Calm colour, clean shape and enough detail for everyday plans.',
   },
 ];
 
+const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+
 export default function MeetHidi() {
-  const sectionRef = useRef(null);
-  const activeIndexRef = useRef(0);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [previousIndex, setPreviousIndex] = useState(null);
-  const activePick = topPicks[activeIndex];
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return undefined;
-
-    let frameId = 0;
-
-    const syncPickToScroll = () => {
-      frameId = 0;
-      const scrollableDistance = Math.max(1, section.offsetHeight - window.innerHeight);
-      const sectionTop = section.getBoundingClientRect().top;
-      const progress = Math.min(Math.max(-sectionTop / scrollableDistance, 0), 1);
-      const nextIndex = Math.min(topPicks.length - 1, Math.floor(progress * topPicks.length));
-
-      if (nextIndex === activeIndexRef.current) return;
-      setPreviousIndex(activeIndexRef.current);
-      activeIndexRef.current = nextIndex;
-      setActiveIndex(nextIndex);
-    };
-
-    const requestSync = () => {
-      if (frameId) return;
-      frameId = window.requestAnimationFrame(syncPickToScroll);
-    };
-
-    syncPickToScroll();
-    window.addEventListener('scroll', requestSync, { passive: true });
-    window.addEventListener('resize', requestSync);
-
-    return () => {
-      window.removeEventListener('scroll', requestSync);
-      window.removeEventListener('resize', requestSync);
-      if (frameId) window.cancelAnimationFrame(frameId);
-    };
-  }, []);
-
   return (
-    <section ref={sectionRef} className="meet-section meet-section--cinematic" id="meet-hidi" aria-labelledby="meet-title" style={{ '--pick-count': topPicks.length }}>
-    <div className="container">
-    <div className="meet-cinematic" style={{ '--pick-accent': activePick.accent }}>
-    <p className="meet-cinematic__label">Ananya's pick</p>
-    <div className="meet-cinematic__content">
-    <h2 id="meet-title" className="sr-only">Ananya's pick</h2>
-    <a className="button button--gold meet-cinematic__button" href="/collections/all">Shop now <Icon name="arrow" />
-    </a>
-    </div>
-    <div className="meet-cinematic__stage" aria-live="polite">
-    <div className="meet-cinematic__prism" aria-hidden="true" />
-    <div className="meet-cinematic__tone" aria-hidden="true">
-    <span>{activePick.tone}</span>
-    <strong>{String(activeIndex + 1).padStart(2, '0')}</strong>
-    </div>
-    {topPicks.map((pick, index) => {
-      const isActive = index === activeIndex;
-      const isLeaving = index === previousIndex && index !== activeIndex;
-      const slideState = isActive ? 'active' : isLeaving ? 'leaving' : 'waiting';
-
-      return (
-        <div className={`meet-cinematic__slide is-${slideState}`} key={pick.name} style={{ '--pick-accent': pick.accent }} aria-hidden={!isActive}>
-        <img className="meet-cinematic__ghost" src={asset(pick.image)} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
-        <img className="meet-cinematic__model" src={asset(pick.image)} alt={pick.name} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+    <section className="meet-section ananya-shop-section" id="meet-hidi" aria-labelledby="meet-title">
+      <div className="container">
+        <div className="ananya-shop-header">
+          <div>
+            <p className="eyebrow">Ananya's pick</p>
+            <h2 id="meet-title">Shop her edit.</h2>
+          </div>
+          <p>Full outfit photos, quick fit context and a clear path to the collection. Premium, but ready to buy.</p>
+          <a className="text-link" href="/collections/all">View all looks <Icon name="arrow" /></a>
         </div>
-      );
-    })}
-    </div>
-    <div className="meet-cinematic__scroll" aria-hidden="true">
-    <span className="meet-cinematic__count">{String(activeIndex + 1).padStart(2, '0')} / {String(topPicks.length).padStart(2, '0')}</span>
-    <span className="meet-cinematic__scroll-track">
-    {topPicks.map((pick, index) => (
-      <span className={`meet-cinematic__step ${index === activeIndex ? 'is-active' : ''}`} key={pick.name} />
-    ))}
-    </span>
-    <span className="meet-cinematic__scroll-copy">Scroll down</span>
-    </div>
-    </div>
-    </div>
+        <div className="ananya-product-grid" aria-label="Ananya's HIDI picks">
+          {topPicks.map((pick, index) => (
+            <article className={`ananya-product-card${index === 0 ? ' ananya-product-card--feature' : ''}`} key={pick.name}>
+              <a className="ananya-product-card__photo" href="/collections/all" aria-label={`Shop ${pick.name}`}>
+                <img
+                  src={asset(pick.image)}
+                  alt={pick.name}
+                  width="900"
+                  height="1350"
+                  loading={index < 2 ? 'eager' : 'lazy'}
+                  decoding="async"
+                />
+                <span>{pick.tone}</span>
+              </a>
+              <div className="ananya-product-card__body">
+                <div>
+                  <h3>{pick.name}</h3>
+                  <p>{pick.detail}</p>
+                </div>
+                <strong>{pick.price}</strong>
+                <div className="ananya-size-row" aria-label={`Available sizes for ${pick.name}`}>
+                  {sizes.map((size) => <span key={size}>{size}</span>)}
+                </div>
+                <a className="ananya-product-card__cta" href="/collections/all">
+                  Shop this look <Icon name="arrow" />
+                </a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }

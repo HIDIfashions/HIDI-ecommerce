@@ -1,8 +1,11 @@
 /* HIDI immersive header + campaign hero.
    Scoped overrides only: the carousel, story, editorial and footer are untouched. */
-.hidi-page { --header-height: 88px; --announcement-height: 0px; }
+.hidi-page { --header-height: 88px; --announcement-height: 34px; }
+.hidi-page .announcement-bar {
+  position: fixed; inset: 0 0 auto; z-index: 48;
+}
 .campaign-header {
-  position: fixed; inset: 0 0 auto; width: 100%; height: var(--header-height);
+  position: fixed; inset: var(--announcement-height) 0 auto; width: 100%; height: var(--header-height);
   background: transparent; border: 0; color: #fffefb; z-index: 45; isolation: isolate;
 }
 .campaign-header::before {
@@ -15,10 +18,22 @@
   width: 100%; height: 100%; padding-inline: clamp(24px, 4.1vw, 84px);
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 20px;
 }
-.campaign-header-left { justify-self: start; display: flex; align-items: center; }
+.campaign-header-left { justify-self: start; display: flex; align-items: center; min-width: 0; }
 .campaign-header-right { justify-self: end; display: flex; align-items: center; gap: clamp(5px, .7vw, 15px); }
 .campaign-brand { display: flex; align-items: center; justify-content: center; width: 132px; line-height: 1; }
 .campaign-brand img { width: 132px; height: auto; display: block; filter: drop-shadow(0 1px 5px #12090922); }
+.campaign-nav-links { display: flex; align-items: center; gap: clamp(16px, 1.65vw, 30px); min-width: 0; }
+.campaign-nav-links a,
+.campaign-pick-link {
+  position: relative; color: #fff7ec; font-size: 11px; font-weight: 700; line-height: 1.4;
+  letter-spacing: .105em; text-transform: uppercase; white-space: nowrap;
+  text-shadow: 0 1px 16px rgba(22, 10, 7, .22);
+}
+.campaign-nav-links a::after,
+.campaign-pick-link::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -8px; height: 1px;
+  background: var(--gold); transform: scaleX(0); transform-origin: left; transition: transform 180ms ease;
+}
 .campaign-icon, .campaign-menu {
   color: inherit; display: inline-flex; align-items: center; justify-content: center;
   min-width: 44px; height: 44px; padding: 0; border: 0; border-radius: 2px;
@@ -32,6 +47,10 @@
 @media (hover: hover) {
   .campaign-icon:hover, .campaign-menu:hover { color: #f1d496; }
   .campaign-icon:hover { background: #ffffff0b; }
+  .campaign-nav-links a:hover::after,
+  .campaign-pick-link:hover::after { transform: scaleX(1); }
+  .campaign-nav-links a:hover,
+  .campaign-pick-link:hover { color: var(--gold); }
 }
 
 /* The responsive video itself, not a solid header or copy column, fills the opening screen. */
@@ -80,11 +99,57 @@
 /* Soft contrast only at the edges; no old dark left-to-right headline overlay. */
 .hero--campaign .hero-shade {
   pointer-events: none;
-  background: linear-gradient(180deg, #140f0b66 0%, #140f0b29 12%, transparent 25%, transparent 72%, #110d0910 85%, #110d0930 100%);
+  background:
+    linear-gradient(90deg, #140f0b78 0%, #140f0b3a 32%, transparent 62%),
+    linear-gradient(180deg, #140f0b66 0%, #140f0b29 12%, transparent 25%, transparent 72%, #110d0910 85%, #110d0930 100%);
 }
 .hero--campaign .campaign-hero-action {
   position: absolute; left: 50%; bottom: max(66px, 8.5svh); transform: translateX(-50%);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px;
+  width: min(560px, calc(100% - 32px)); text-align: center;
+}
+.campaign-hero-copy {
+  position: absolute; left: clamp(28px, 5.2vw, 88px); bottom: max(132px, 18svh);
+  z-index: 2; width: min(420px, calc(100% - 56px)); color: #fffaf1;
+  text-shadow: 0 3px 24px rgba(16, 8, 5, .36);
+}
+.campaign-hero-copy p {
+  color: var(--gold); font-size: 10px; font-weight: 750; letter-spacing: .18em;
+  line-height: 1.5; text-transform: uppercase; margin-bottom: 15px;
+}
+.campaign-hero-copy h2 {
+  color: #fffdf5; font-family: var(--serif); font-size: clamp(42px, 5.2vw, 76px);
+  line-height: .98; letter-spacing: -.045em; max-width: 370px;
+}
+.campaign-hero-copy span {
+  display: block; max-width: 330px; margin-top: 18px; color: #fff3e6;
+  font-size: 14px; line-height: 1.7;
+}
+.campaign-hero-preview {
+  position: absolute; right: clamp(26px, 4.5vw, 78px); bottom: max(84px, 12svh); z-index: 2;
+  display: grid; grid-template-columns: repeat(3, minmax(74px, 1fr)); gap: 10px; width: min(342px, 31vw);
+}
+.campaign-hero-preview__item {
+  position: relative; display: block; aspect-ratio: .68; overflow: hidden; border-radius: 4px;
+  border: 1px solid rgba(255, 250, 244, .42); background: #efe1d5;
+  box-shadow: 0 18px 54px rgba(20, 9, 5, .22);
+}
+.campaign-hero-preview__item:nth-child(2) { transform: translateY(-18px); }
+.campaign-hero-preview__item img {
+  width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%;
+  transition: transform 800ms var(--ease), filter 800ms var(--ease);
+}
+.campaign-hero-preview__item::after {
+  content: ''; position: absolute; inset: 62% 0 0; background: linear-gradient(transparent, #2b151126);
+}
+.campaign-hero-preview__item:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+@media (hover: hover) {
+  .campaign-hero-preview__item:hover img { transform: scale(1.04); filter: saturate(1.05); }
+}
+.campaign-hero-value {
+  max-width: 430px; color: #fffaf1; font-size: 11px; line-height: 1.45; font-weight: 650;
+  letter-spacing: .12em; text-transform: uppercase; text-shadow: 0 2px 18px rgba(14, 8, 5, .44);
+  opacity: .92;
 }
 .campaign-shop-button {
   min-width: 166px; min-height: 54px; display: inline-flex; align-items: center; justify-content: center;
@@ -160,10 +225,15 @@
   .campaign-header-inner { padding-inline: 24px; gap: 15px; }
   .campaign-header-right { gap: 4px; }
   .campaign-brand, .campaign-brand img { width: 120px; }
+  .campaign-nav-links { gap: 14px; }
+  .campaign-nav-links a { font-size: 9px; letter-spacing: .07em; }
+  .campaign-pick-link { display: none; }
+  .campaign-hero-preview { width: min(270px, 28vw); }
 }
 @media (max-width: 700px) {
-  .hidi-page { --header-height: 72px; }
+  .hidi-page { --header-height: 72px; --announcement-height: 32px; }
   .campaign-header-inner { padding-inline: 16px; gap: 8px; }
+  .campaign-nav-links, .campaign-pick-link { display: none; }
   .campaign-desktop-tool { display: none; }
   .campaign-mobile-tools { display: flex; align-items: center; }
   .campaign-brand, .campaign-brand img { width: 96px; }
@@ -178,7 +248,19 @@
   .hero--campaign .hero-poster,
   .hero--campaign .hero-video { object-position: 50% 45%; }
   .hero--campaign .hero-live-media { object-position: var(--hero-position-mobile, 50% 50%); }
-  .hero--campaign .campaign-hero-action { bottom: max(65px, 10svh); }
+  .campaign-hero-copy {
+    left: 18px; right: 18px; bottom: max(152px, 23svh); width: auto;
+  }
+  .campaign-hero-copy p { margin-bottom: 11px; font-size: 8px; letter-spacing: .14em; }
+  .campaign-hero-copy h2 { max-width: 270px; font-size: clamp(38px, 12vw, 54px); }
+  .campaign-hero-copy span { max-width: 280px; margin-top: 13px; font-size: 12px; line-height: 1.6; }
+  .campaign-hero-preview {
+    right: 16px; bottom: max(88px, 13svh); width: min(188px, 50vw); gap: 6px;
+  }
+  .campaign-hero-preview__item { border-radius: 3px; }
+  .campaign-hero-preview__item:nth-child(2) { transform: translateY(-10px); }
+  .hero--campaign .campaign-hero-action { bottom: max(65px, 10svh); gap: 9px; width: min(360px, calc(100% - 28px)); }
+  .campaign-hero-value { max-width: 290px; font-size: 9px; letter-spacing: .09em; }
   .campaign-shop-button { min-width: 153px; min-height: 52px; padding: 16px 27px; }
   .hidi-dialog.campaign-panel { padding: 68px 22px max(30px, env(safe-area-inset-bottom)); }
 

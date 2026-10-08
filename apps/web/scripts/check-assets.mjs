@@ -38,9 +38,9 @@ const carouselSource = await readFile(path.join(root, 'src/components/RangeCarou
 assert.ok(!carouselSource.includes('hidi-collection-counter'), 'Visible collection counter must remain removed.');
 assert.ok(!carouselSource.includes('hidi-collection-motion'), 'Visible collection play control must remain removed.');
 const portraitSource = await readFile(path.join(root, 'src/components/MeetHidi.jsx'), 'utf8');
-assert.ok(portraitSource.includes('meet-cinematic'), 'Meet HIDI cinematic banner missing.');
-assert.ok(portraitSource.includes('meet-cinematic__scroll'), 'Ananya picks must use the scroll-driven control.');
-assert.ok(portraitSource.includes('--pick-count'), 'Ananya scroll section must preserve the sticky scroll runway.');
+assert.ok(portraitSource.includes('ananya-product-grid'), 'Ananya shoppable product grid missing.');
+assert.ok(portraitSource.includes('Shop her edit.'), 'Ananya section heading missing.');
+assert.ok(portraitSource.includes('Shop this look'), 'Ananya product CTA missing.');
 for (const token of ['Glasshouse edit', 'Shop the edit', 'meet-cinematic__next', 'chevronLeft', 'chevronRight']) {
   assert.ok(!portraitSource.includes(token), `Unexpected Ananya pick artifact: ${token}`);
 }

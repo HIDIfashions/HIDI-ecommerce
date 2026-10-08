@@ -1,7 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { asset } from '../config.js';
 import { useHidi } from '../context/HidiContext.jsx';
+import { collectionRoute } from '../routes.js';
 import Icon from './Icon.jsx';
+
+const shopLinks = [
+  { label: 'Shop all', href: collectionRoute() },
+  { label: 'New arrivals', href: collectionRoute('new-arrivals') },
+  { label: 'Work edit', href: collectionRoute('work-edit') },
+  { label: 'Occasion', href: collectionRoute('occasion') },
+];
 
 /** Fixed, overlay header: transparent at the top, HIDI burgundy after scrolling.
  * Its height never changes, so the page and the centre logo cannot jump.
@@ -37,6 +45,9 @@ export default function Navbar() {
       data-header-state={solid ? 'solid' : 'transparent'}>
       <nav className="campaign-header-inner" aria-label="Main navigation">
         <div className="campaign-header-left">
+          <div className="campaign-nav-links" aria-label="Shop HIDI edits">
+            {shopLinks.map((link) => <a href={link.href} key={link.label}>{link.label}</a>)}
+          </div>
           <div className="campaign-mobile-tools">
             <button type="button" className="campaign-icon" onClick={openBag} aria-label="Shopping bag"><Icon name="bag" /></button>
             <button type="button" className="campaign-icon" onClick={() => openNotice('search')} aria-label="Search HIDI products"><Icon name="search" /></button>
@@ -46,6 +57,7 @@ export default function Navbar() {
           <img src={asset('images/hidi-logo.png')} width="265" height="139" alt="HIDI — Wear the feeling" />
         </a>
         <div className="campaign-header-right">
+          <a className="campaign-pick-link" href="#meet-hidi">Ananya's pick</a>
           <button type="button" className="campaign-icon campaign-desktop-tool" onClick={openBag} aria-label="Shopping bag"><Icon name="bag" /></button>
           <button type="button" className="campaign-icon" onClick={() => openAuth('signin')} aria-label="My HIDI account"><Icon name="user" /></button>
           <button type="button" className="campaign-icon campaign-desktop-tool" onClick={() => openNotice('search')} aria-label="Search HIDI products"><Icon name="search" /></button>

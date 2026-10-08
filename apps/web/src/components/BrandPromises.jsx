@@ -3,17 +3,35 @@ import Icon from './Icon.jsx';
 import Reveal from './Reveal.jsx';
 import { useHidi } from '../context/HidiContext.jsx';
 
+const trustHighlights = [
+  { icon: 'bag', title: 'Secure checkout', detail: 'UPI, cards and wallet-friendly payment options.' },
+  { icon: 'icon15', title: '7-day exchanges', detail: 'Clear return and exchange guidance before you buy.' },
+  { icon: 'leaf', title: 'Fit-first edits', detail: 'Indian wear selected for work, everyday and occasions.' },
+  { icon: 'icon16', title: 'WhatsApp help', detail: 'Support for fit questions, order help and updates.' },
+];
+
 export default function BrandPromises() {
   const { openPolicy, openPayments } = useHidi();
   return (
     <section className="promises-section section-space" id="our-promises" aria-labelledby="promises-title">
     <div className="container">
     <Reveal as="div" className="section-heading">
-    <p className="eyebrow">THE LITTLE THINGS MATTER</p>
-    <h2 id="promises-title">A little more <em>care.</em>
+    <p className="eyebrow">WHY SHOP HIDI</p>
+    <h2 id="promises-title">A sharper reason to <em>trust.</em>
     </h2>
-    <p>Considered choices. Clear information. A helping hand.</p>
+    <p>Clear checkout, practical support and edit-led Indian wear.</p>
     </Reveal>
+    <div className="trust-strip" aria-label="HIDI shopping assurances">
+    {trustHighlights.map((item) => (
+      <Reveal as="div" className="trust-strip__item" key={item.title}>
+      <Icon name={item.icon} />
+      <div>
+      <strong>{item.title}</strong>
+      <span>{item.detail}</span>
+      </div>
+      </Reveal>
+    ))}
+    </div>
     <div className="promises-grid">
     <Reveal as="article" className="promise">
     <Icon name="leaf" />
