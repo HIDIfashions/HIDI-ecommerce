@@ -38,9 +38,11 @@ const carouselSource = await readFile(path.join(root, 'src/components/RangeCarou
 assert.ok(!carouselSource.includes('hidi-collection-counter'), 'Visible collection counter must remain removed.');
 assert.ok(!carouselSource.includes('hidi-collection-motion'), 'Visible collection play control must remain removed.');
 const portraitSource = await readFile(path.join(root, 'src/components/MeetHidi.jsx'), 'utf8');
-assert.ok(portraitSource.includes('meet-cinematic'), 'Meet HIDI cinematic banner must remain static.');
-for (const token of ['useEffect', 'useRef', 'meet-photo--motion', 'requestAnimationFrame']) {
-  assert.ok(!portraitSource.includes(token), `Unexpected portrait motion hook: ${token}`);
+assert.ok(portraitSource.includes('meet-cinematic'), 'Meet HIDI cinematic banner missing.');
+assert.ok(portraitSource.includes('meet-cinematic__scroll'), 'Ananya picks must use the scroll-driven control.');
+assert.ok(portraitSource.includes('--pick-count'), 'Ananya scroll section must preserve the sticky scroll runway.');
+for (const token of ['Glasshouse edit', 'Shop the edit', 'meet-cinematic__next', 'chevronLeft', 'chevronRight']) {
+  assert.ok(!portraitSource.includes(token), `Unexpected Ananya pick artifact: ${token}`);
 }
 for (const file of ['public/favicon.ico', 'public/favicon.svg', 'public/favicon.png',
   'public/assets/images/favicon.svg', 'public/apple-touch-icon.png',

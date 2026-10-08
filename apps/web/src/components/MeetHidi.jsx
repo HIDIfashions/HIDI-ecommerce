@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import { asset } from '../config.js';
 
@@ -7,49 +7,92 @@ const topPicks = [
     name: 'Orange embroidered kurta set',
     image: 'images/ananya-top-picks/ananya-orange.webp',
     accent: '#f05a25',
+    tone: 'Festive orange',
   },
   {
     name: 'Pink embroidered dupatta set',
     image: 'images/ananya-top-picks/ananya-pink.webp',
     accent: '#ef8fb3',
+    tone: 'Soft occasion',
   },
   {
     name: 'Maroon festive kurta set',
     image: 'images/ananya-top-picks/ananya-maroon.webp',
     accent: '#8e1d3d',
+    tone: 'Evening rich',
   },
   {
     name: 'Black embellished kurta set',
     image: 'images/ananya-top-picks/ananya-black.webp',
     accent: '#262c31',
+    tone: 'Quiet statement',
   },
   {
     name: 'Olive green embroidered set',
     image: 'images/ananya-top-picks/ananya-green.webp',
     accent: '#58662f',
+    tone: 'Everyday luxe',
   },
 ];
 
 export default function MeetHidi() {
+  const sectionRef = useRef(null);
+  const activeIndexRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [previousIndex, setPreviousIndex] = useState(null);
+  const activePick = topPicks[activeIndex];
 
-  const showNextPick = () => {
-    setPreviousIndex(activeIndex);
-    setActiveIndex((activeIndex + 1) % topPicks.length);
-  };
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return undefined;
+
+    let frameId = 0;
+
+    const syncPickToScroll = () => {
+      frameId = 0;
+      const scrollableDistance = Math.max(1, section.offsetHeight - window.innerHeight);
+      const sectionTop = section.getBoundingClientRect().top;
+      const progress = Math.min(Math.max(-sectionTop / scrollableDistance, 0), 1);
+      const nextIndex = Math.min(topPicks.length - 1, Math.floor(progress * topPicks.length));
+
+      if (nextIndex === activeIndexRef.current) return;
+      setPreviousIndex(activeIndexRef.current);
+      activeIndexRef.current = nextIndex;
+      setActiveIndex(nextIndex);
+    };
+
+    const requestSync = () => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(syncPickToScroll);
+    };
+
+    syncPickToScroll();
+    window.addEventListener('scroll', requestSync, { passive: true });
+    window.addEventListener('resize', requestSync);
+
+    return () => {
+      window.removeEventListener('scroll', requestSync);
+      window.removeEventListener('resize', requestSync);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, []);
 
   return (
-    <section className="meet-section meet-section--cinematic" id="meet-hidi" aria-labelledby="meet-title">
+    <section ref={sectionRef} className="meet-section meet-section--cinematic" id="meet-hidi" aria-labelledby="meet-title" style={{ '--pick-count': topPicks.length }}>
     <div className="container">
-    <div className="meet-cinematic">
+    <div className="meet-cinematic" style={{ '--pick-accent': activePick.accent }}>
+    <p className="meet-cinematic__label">Ananya's pick</p>
     <div className="meet-cinematic__content">
-    <p className="eyebrow">Curated edit</p>
-    <h2 id="meet-title">Ananya's Top Picks</h2>
+    <h2 id="meet-title" className="sr-only">Ananya's pick</h2>
     <a className="button button--gold meet-cinematic__button" href="/collections/all">Shop now <Icon name="arrow" />
     </a>
     </div>
     <div className="meet-cinematic__stage" aria-live="polite">
+    <div className="meet-cinematic__prism" aria-hidden="true" />
+    <div className="meet-cinematic__tone" aria-hidden="true">
+    <span>{activePick.tone}</span>
+    <strong>{String(activeIndex + 1).padStart(2, '0')}</strong>
+    </div>
     {topPicks.map((pick, index) => {
       const isActive = index === activeIndex;
       const isLeaving = index === previousIndex && index !== activeIndex;
@@ -57,17 +100,20 @@ export default function MeetHidi() {
 
       return (
         <div className={`meet-cinematic__slide is-${slideState}`} key={pick.name} style={{ '--pick-accent': pick.accent }} aria-hidden={!isActive}>
-        <img className="meet-cinematic__glow" src={asset(pick.image)} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+        <img className="meet-cinematic__ghost" src={asset(pick.image)} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
         <img className="meet-cinematic__model" src={asset(pick.image)} alt={pick.name} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
         </div>
       );
     })}
     </div>
-    <div className="meet-cinematic__controls">
+    <div className="meet-cinematic__scroll" aria-hidden="true">
     <span className="meet-cinematic__count">{String(activeIndex + 1).padStart(2, '0')} / {String(topPicks.length).padStart(2, '0')}</span>
-    <button className="meet-cinematic__next" type="button" onClick={showNextPick} aria-label="Show next Ananya pick">
-    <Icon name="down" />
-    </button>
+    <span className="meet-cinematic__scroll-track">
+    {topPicks.map((pick, index) => (
+      <span className={`meet-cinematic__step ${index === activeIndex ? 'is-active' : ''}`} key={pick.name} />
+    ))}
+    </span>
+    <span className="meet-cinematic__scroll-copy">Scroll down</span>
     </div>
     </div>
     </div>
