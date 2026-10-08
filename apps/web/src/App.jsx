@@ -7,9 +7,7 @@ import { usePage } from './hooks/usePage.js';
 import Navbar from './components/Navbar.jsx';
 import { useSmoothPageScroll } from './hooks/useSmoothPageScroll.js';
 import VideoHero from './components/VideoHero.jsx';
-import MeetHidi from './components/MeetHidi.jsx';
-import RangeCarousel from './components/RangeCarousel.jsx';
-import HidiEdit from './components/HidiEdit.jsx';
+import MyntraAppExperience from './components/MyntraAppExperience.jsx';
 import BrandPromises from './components/BrandPromises.jsx';
 import Footer from './components/Footer.jsx';
 import HidiDialog from './components/HidiDialog.jsx';
@@ -45,6 +43,7 @@ export default function App() {
     },
     openCollection: (edit = '') => window.location.assign(safeWebUrl(collectionRoute(edit))),
     openSearch: (query = '') => window.location.assign(safeWebUrl(searchRoute(query))),
+    openWishlist: () => window.location.assign(safeWebUrl('/wishlist')),
     openBag: () => window.location.assign(safeWebUrl('/cart')),
     openApp: () => setDialog({ type: 'app' }),
     openPolicy: (kind) => {
@@ -73,9 +72,7 @@ export default function App() {
           <Navbar />
           <main id="main" tabIndex={-1}>
             <VideoHero />
-            <MeetHidi />
-            <RangeCarousel />
-            <HidiEdit />
+            <MyntraAppExperience />
             <BrandPromises />
           </main>
           <Footer />

@@ -8,7 +8,7 @@ import Icon from './Icon.jsx';
  * Menu/search/bag reuse the accessible dialog system rather than dead links.
  */
 export default function Navbar() {
-  const { openAuth, openBag, openNotice, dialogOpen, dialogType, homeHref, onHome } = useHidi();
+  const { openAuth, openBag, openWishlist, openNotice, dialogOpen, dialogType, homeHref, onHome } = useHidi();
   const [scrolled, setScrolled] = useState(() => window.scrollY > 48);
   const frame = useRef(0);
   useEffect(() => {
@@ -46,6 +46,7 @@ export default function Navbar() {
           <img src={asset('images/hidi-logo.png')} width="265" height="139" alt="HIDI — Wear the feeling" />
         </a>
         <div className="campaign-header-right">
+          <button type="button" className="campaign-icon campaign-desktop-tool" onClick={openWishlist} aria-label="Wishlist"><Icon name="heart" /></button>
           <button type="button" className="campaign-icon campaign-desktop-tool" onClick={openBag} aria-label="Shopping bag"><Icon name="bag" /></button>
           <button type="button" className="campaign-icon" onClick={() => openAuth('signin')} aria-label="My HIDI account"><Icon name="user" /></button>
           <button type="button" className="campaign-icon campaign-desktop-tool" onClick={() => openNotice('search')} aria-label="Search HIDI products"><Icon name="search" /></button>
