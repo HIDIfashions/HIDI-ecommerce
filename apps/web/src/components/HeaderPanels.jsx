@@ -60,14 +60,10 @@ export function SearchPanel({ onClose }) {
 export function NavigationPanel() {
   const { openAuth, openApp, openPolicy } = useHidi();
   return <>
-    <h2 id="dialog-title" className="campaign-menu-title">Shop HIDI.</h2>
+    <h2 id="dialog-title" className="campaign-menu-title">The world of HIDI.</h2>
     <nav className="campaign-panel-nav" aria-label="Explore HIDI">
-      <a href={collectionRoute()}>Shop all <Icon name="arrow" /></a>
-      <a href={collectionRoute('new-arrivals')}>New arrivals <Icon name="arrow" /></a>
-      <a href={collectionRoute('work-edit')}>Work edit <Icon name="arrow" /></a>
-      <a href={collectionRoute('occasion')}>Occasion <Icon name="arrow" /></a>
-      <a href={collectionRoute('everyday')}>Everyday <Icon name="arrow" /></a>
-      <a href="#meet-hidi">Ananya's pick <Icon name="arrow" /></a>
+      <a href={collectionRoute()}>Our Collections <Icon name="arrow" /></a>
+      <a href={collectionRoute('occasion')}>Occasion Collection <Icon name="arrow" /></a>
     </nav>
     <div className="campaign-panel-links">
       <button type="button" onClick={() => openAuth('signin')}><Icon name="user" /> My account</button>

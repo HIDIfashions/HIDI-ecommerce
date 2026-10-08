@@ -8,12 +8,6 @@ function saveDataEnabled() {
   return typeof navigator !== 'undefined' && Boolean(navigator.connection?.saveData);
 }
 
-const heroLookPreviews = [
-  { src: 'images/ananya-top-picks/ananya-orange.webp', alt: 'Orange embroidered HIDI kurta set' },
-  { src: 'images/ananya-top-picks/ananya-pink.webp', alt: 'Pink embroidered HIDI dupatta set' },
-  { src: 'images/ananya-top-picks/ananya-maroon.webp', alt: 'Maroon festive HIDI kurta set' },
-];
-
 export default function VideoHero() {
   const { openCollection, dialogOpen } = useHidi();
   const mobile = useMediaQuery('(max-width: 700px)');
@@ -209,28 +203,8 @@ export default function VideoHero() {
       </div>
       <div className="hero-shade" />
       <h1 id="hero-title" className="sr-only">HIDI — Wear the feeling. Indian wear for work, everyday and occasions.</h1>
-      <div className="campaign-hero-copy">
-        <p>The HIDI festive edit</p>
-        <h2>Indian wear made for now.</h2>
-        <span>Full looks for work, everyday plans and occasions, styled with Ananya's picks.</span>
-      </div>
-      <div className="campaign-hero-preview" aria-label="Featured HIDI looks">
-        {heroLookPreviews.map((look, index) => (
-          <a href="/collections/all" className="campaign-hero-preview__item" key={look.src}>
-            <img
-              src={asset(look.src)}
-              alt={look.alt}
-              width="900"
-              height="1350"
-              loading={index === 0 ? 'eager' : 'lazy'}
-              decoding="async"
-            />
-          </a>
-        ))}
-      </div>
       <div className="campaign-hero-action">
-        <p className="campaign-hero-value">Indian wear for work, everyday and occasions.</p>
-        <button type="button" className="campaign-shop-button" onClick={() => openCollection()}>Shop now</button>
+        <button type="button" className="campaign-shop-button" onClick={() => openCollection()}>Shop Now</button>
       </div>
     </section>
   );

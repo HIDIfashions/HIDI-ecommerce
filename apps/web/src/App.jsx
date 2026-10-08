@@ -3,7 +3,6 @@ import { config, safeWebUrl } from './config.js';
 import { collectionRoute, searchRoute } from './routes.js';
 import { HidiProvider } from './context/HidiContext.jsx';
 import { usePage } from './hooks/usePage.js';
-import AnnouncementBar from './components/AnnouncementBar.jsx';
 import Navbar from './components/Navbar.jsx';
 import { useSmoothPageScroll } from './hooks/useSmoothPageScroll.js';
 import VideoHero from './components/VideoHero.jsx';
@@ -69,7 +68,6 @@ export default function App() {
     <HidiProvider value={actions}>
       <a className="skip-link" href="#main">Skip to content</a>
       {page.name === 'categories' ? <CategoriesPage selectedEdit={page.edit} /> : <div className="hidi-page">
-        <AnnouncementBar />
         <Navbar />
         <main id="main" tabIndex={-1}>
           <VideoHero />
