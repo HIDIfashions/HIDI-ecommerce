@@ -17,8 +17,10 @@
 }
 .campaign-header-left { justify-self: start; display: flex; align-items: center; }
 .campaign-header-right { justify-self: end; display: flex; align-items: center; gap: clamp(5px, .7vw, 15px); }
-.campaign-brand { display: flex; align-items: center; justify-content: center; width: 132px; line-height: 1; }
-.campaign-brand img { width: 132px; height: auto; display: block; filter: drop-shadow(0 1px 5px #12090922); }
+.campaign-brand { display: flex; align-items: center; justify-content: center; width: 132px; line-height: 1; overflow: hidden; }
+.campaign-brand img { width: 132px; height: auto; display: block; clip-path: inset(1px); transform: translateZ(0) scale(1.025); transform-origin: center; filter: drop-shadow(0 1px 5px #12090922); }
+.campaign-brand:focus-visible { outline: 0; }
+.campaign-brand:focus-visible img { filter: drop-shadow(0 1px 5px #12090922) drop-shadow(0 0 10px #fff8dc99); }
 .campaign-icon, .campaign-menu {
   color: inherit; display: inline-flex; align-items: center; justify-content: center;
   min-width: 44px; height: 44px; padding: 0; border: 0; border-radius: 2px;
