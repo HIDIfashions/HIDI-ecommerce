@@ -85,9 +85,49 @@ const historyLabels: Record<string, string> = {
   RETURN_REFUND: "Return refund credited",
 };
 
-export function WalletBalance({ compact = false }: { compact?: boolean }) {
+function WalletEmptyState({ title, body, actionHref, actionLabel }: { title: string; body: string; actionHref?: string; actionLabel?: string }) {
+  return <section className={`${styles.panel} ${styles.emptyPanel}`} aria-labelledby="wallet-empty-title">
+    <div className={styles.heading}>
+      <span className={styles.eyebrow}><WalletCards size={18} strokeWidth={1.8} aria-hidden="true" /> HIDI REWARDS</span>
+      <h2 id="wallet-empty-title">{title}</h2>
+    </div>
+    <p className={styles.note}>{body}</p>
+    {actionHref && actionLabel ? <div className={styles.emptyActions}>
+      <Link className="button button-dark" href={actionHref}>{actionLabel}</Link>
+      <Link className={styles.textButton} href="/collections/new-arrivals">Continue shopping</Link>
+    </div> : null}
+  </section>;
+}
+
+export function WalletBalance({ compact = false, showSignedOut = false }: { compact?: boolean; showSignedOut?: boolean }) {
   const { userId, summary, loading, error, unavailable, refresh } = useWalletSummary();
-  if (!walletEnabled || !userId || (unavailable && !summary)) return null;
+  if (!walletEnabled) {
+    if (compact || !showSignedOut) return null;
+    return <WalletEmptyState
+      title="Rewards are getting ready."
+      body="HIDI rewards will appear here once the wallet programme is active. You can continue shopping and checking out securely."
+      actionHref="/collections/new-arrivals"
+      actionLabel="Shop new arrivals"
+    />;
+  }
+  if (!userId) {
+    if (compact || !showSignedOut) return null;
+    return <WalletEmptyState
+      title="Sign in to view your HIDI rewards."
+      body="Use your verified mobile number to see your available balance, pending rewards and wallet activity."
+      actionHref="/account"
+      actionLabel="Sign in to My HIDI"
+    />;
+  }
+  if (unavailable && !summary) {
+    if (compact || !showSignedOut) return null;
+    return <WalletEmptyState
+      title="Rewards are not available for this account yet."
+      body="Eligible rewards appear here after a signed-in checkout and the return window closes."
+      actionHref="/collections/new-arrivals"
+      actionLabel="Shop new arrivals"
+    />;
+  }
 
   if (compact) {
     return <section className={`${styles.panel} ${styles.compactPanel}`} aria-labelledby="wallet-compact-title" aria-busy={loading}>
