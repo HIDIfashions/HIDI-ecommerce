@@ -33,6 +33,19 @@
 .balances small { font-size: var(--type-meta); line-height: 1.6; opacity: .8; }
 .rule, .note { font-size: var(--type-meta); color: var(--muted); line-height: 1.75; margin: 16px 0 0; }
 .empty { font-size: var(--type-ui); margin: 20px 0 0; }
+.emptyPanel {
+  max-width: 760px;
+}
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+.emptyActions .textButton {
+  color: #541d1f;
+}
 .history { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 18px; }
 .history h3 { display: flex; align-items: center; gap: 8px; font-family: var(--font-sans); font-size: var(--type-title); }
 .history ul { list-style: none; padding: 0; margin: 0; }
