@@ -22,7 +22,8 @@ env:
   AZURE_RESOURCE_GROUP: rg-hidi-prod
   AZURE_CONTAINER_APP: hidi-web
   ACR_NAME: acrhidiprod0927
-  BASE_IMAGE: hidi-web@sha256:7f5eb87852f81123538990b1b24c0fee94cb30185f661d835587393e6b46e8e6
+  # Landing deploys only add the Vite landing layer; keep the base on the current full Next/admin storefront image.
+  BASE_IMAGE: hidi-web:fb664ca85ecf13e69166942acbfef7cbe9372d41
   LIVE_URL: https://thidigk.thehidi.com
 
 jobs:
