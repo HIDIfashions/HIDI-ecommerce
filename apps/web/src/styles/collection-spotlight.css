@@ -41,6 +41,7 @@
 .hidi-collection-gallery.is-moving .hidi-collection-card,
 .hidi-collection-gallery.is-dragging .hidi-collection-card { will-change: transform, opacity; }
 .hidi-collection-card[data-depth="hidden"] { pointer-events: none; }
+.hidi-collection-card[data-hovered="true"] { z-index: 1250 !important; }
 .hidi-collection-link {
   position: relative;
   display: block;
@@ -57,6 +58,9 @@
   position: relative;
   background: #e6d3bc;
   box-shadow: 0 10px 24px -11px #4d291d55;
+  transform-origin: center center;
+  transition: transform .32s var(--ease), box-shadow .32s var(--ease), filter .32s var(--ease);
+  will-change: transform;
   /* Keep the shadow fixed so motion only updates transform and opacity. */
 }
 
@@ -64,6 +68,7 @@
   width: 100%; height: 100%; max-width: none;
   object-fit: cover; object-position: 50% 8%;
   pointer-events: none;
+  transition: transform .32s var(--ease), filter .32s var(--ease);
 }
 .hidi-collection-caption {
   position: relative;
@@ -74,6 +79,23 @@
   padding: 20px 6px 0;
   min-height: 62px;
   text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity .24s var(--ease), transform .24s var(--ease);
+}
+.hidi-collection-card[data-depth="active"] .hidi-collection-caption,
+.hidi-collection-link:focus-visible .hidi-collection-caption {
+  opacity: 1;
+  transform: translateY(0);
+}
+.hidi-collection-gallery[data-hovering-card="true"] .hidi-collection-caption {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.hidi-collection-gallery[data-hovering-card="true"] .hidi-collection-card[data-hovered="true"] .hidi-collection-caption {
+  opacity: 1;
+  transform: translateY(0);
 }
 .hidi-collection-caption h3 {
   font-family: var(--sans);
@@ -100,8 +122,15 @@
 .hidi-collection-arrow--next { right: 3.2%; }
 .hidi-collection-arrow .icon { width: 24px; height: 24px; }
 @media (hover: hover) and (pointer: fine) {
+  .hidi-collection-stage { overflow: visible; }
   .hidi-collection-arrow:hover { color: #fffaf0; background: var(--burgundy); }
-  .hidi-collection-link:hover .hidi-collection-caption h3 { color: var(--gold-deep); }
+  .hidi-collection-card[data-hovered="true"] .hidi-collection-photo {
+    transform: scale(1.5);
+    box-shadow: 0 34px 76px -28px #3c201b70;
+    filter: saturate(1.04) contrast(1.03);
+  }
+  .hidi-collection-card[data-hovered="true"] .hidi-collection-photo img { transform: scale(1.01); }
+  .hidi-collection-card[data-hovered="true"] .hidi-collection-caption h3 { color: var(--gold-deep); }
 }
 .hidi-collection-controls { display: flex; justify-content: center; align-items: center; min-height: 44px; margin-top: 0; }
 .hidi-collection-dots { display: flex; align-items: center; gap: 0; }

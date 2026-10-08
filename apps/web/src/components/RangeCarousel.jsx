@@ -20,6 +20,7 @@ export default function RangeCarousel() {
   const visible = useInView(section, .08);
   const [paused, setPaused] = useState(() => mobile || reduced);
   const [hovered, setHovered] = useState(false);
+  const [hoveredCard, setHoveredCard] = useState(null);
   const [focused, setFocused] = useState(false);
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState('');
@@ -89,18 +90,22 @@ export default function RangeCarousel() {
       <div ref={galleryRef} id="range-carousel" className="hidi-collection-gallery"
         role="region" tabIndex={0} aria-roledescription="carousel" aria-label="HIDI collection previews" aria-describedby="collection-keyboard-help"
         data-active-index={active} data-transitioning={moving} data-motion="smooth-rolling-gallery"
+        data-hovering-card={hoveredCard !== null ? 'true' : 'false'}
         onKeyDown={keyboard}
         onMouseEnter={() => { if (window.matchMedia('(hover: hover)').matches) setHovered(true); }}
-        onMouseLeave={() => setHovered(false)}
+        onMouseLeave={() => { setHovered(false); setHoveredCard(null); }}
         onFocus={() => setFocused(true)}
         onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
         <div ref={stageRef} className="hidi-collection-stage">
           <div className="hidi-collection-track">
             {collections.map((item, index) => (
               <article key={item.id} className="hidi-collection-card" data-card={index}
+                data-hovered={hoveredCard === index ? 'true' : undefined}
                 role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${count}: ${item.name}`}>
                 <button type="button" className="hidi-collection-link" aria-label={`Explore ${item.name}`} onClick={() => handleCollectionClick(index)}>
-                  <div className="hidi-collection-photo">
+                  <div className="hidi-collection-photo"
+                    onMouseEnter={() => { if (window.matchMedia('(hover: hover)').matches) setHoveredCard(index); }}
+                    onMouseLeave={() => setHoveredCard(null)}>
                     <img src={asset(item.image)} alt={item.alt} width="355" height="593" draggable={false} decoding="async" loading="eager" />
                   </div>
                   <div className="hidi-collection-caption">
