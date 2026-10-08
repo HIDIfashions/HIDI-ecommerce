@@ -11,7 +11,7 @@ export default function RewardsPage() {
         <h1>Thoughtful shopping, rewarded.</h1>
         <p>Your available balance, pending rewards and wallet activity live here.</p>
       </header>
-      <WalletBalance />
+      <WalletBalance showSignedOut />
     </main>
   );
 }
