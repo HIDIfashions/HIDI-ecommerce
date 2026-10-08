@@ -8,6 +8,40 @@ html { scroll-padding-top: calc(var(--hidi-header-height, 105px) + 24px); }
 #main-content :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { font-size: max(16px, 1rem); }
 .product-page :is(.sizes button, .colour-options button, .delivery-box button) { min-height: 48px; min-width: 48px; }
 .product-page .delivery-box input { min-height: 48px; min-width: 0; }
+.product-page .delivery-box > div {
+  align-items: stretch;
+  overflow: hidden;
+  border-color: var(--line);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.product-page .delivery-box > div:focus-within {
+  border-color: var(--hidi-mulberry-clay, #591d20);
+  box-shadow: 0 0 0 1px var(--hidi-mulberry-clay, #591d20);
+}
+#main-content .product-page .delivery-box input {
+  flex: 1 1 auto;
+  width: 100%;
+  outline: 0;
+}
+#main-content .product-page .delivery-box input:focus-visible {
+  outline: 0;
+}
+#main-content .product-page .delivery-box button {
+  flex: 0 0 auto;
+  border-left: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+#main-content .product-page .delivery-box button:is(:hover, :focus, :active) {
+  border-left-color: var(--hidi-mulberry-clay, #591d20);
+  background-color: var(--hidi-mulberry-clay, #591d20);
+  color: var(--hidi-ivory-text, #fff8ef);
+  outline: 0;
+}
+#main-content .product-page .delivery-box button:disabled {
+  cursor: wait;
+}
 @media (max-width: 1000px) {
   /* No campaign face is hidden beneath the navigation on phone or tablet. */
   .site-header[data-home="true"] { margin-bottom: 0; }
