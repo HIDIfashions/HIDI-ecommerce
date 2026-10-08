@@ -70,6 +70,7 @@ before(async () => {
   await mkdir(join(folder, "dist/_next"), { recursive: true });
   await writeFile(join(folder, "dist/index.html"), "<h1>Original landing</h1>");
   await writeFile(join(folder, "dist/hero-control.html"), "<h1>Hero Media Control</h1>");
+  await writeFile(join(folder, "dist/landing-media-control.html"), "<h1>Landing Media Control</h1>");
   await writeFile(join(folder, "dist/assets/video/hero.mp4"), "0123456789abcdefghij");
   await writeFile(join(folder, "dist/assets/app-abcdefgh.js"), "console.log('landing');");
   await writeFile(join(folder, "dist/api/collision"), "wrong API static response");
@@ -297,14 +298,21 @@ test("provider webhooks on /v1 proxy directly to the API with signatures and raw
   assert.equal(received.headers.host, `127.0.0.1:${apiFixture.address().port}`);
 });
 
-test("hero control route stays on the landing runtime and public hero config safely falls back", async () => {
+test("media control routes stay on the landing runtime and public media config safely falls back", async () => {
   const control = await send(proxy.url, "/admin/hero-media");
   assert.equal(control.status, 200);
   assert.match(control.body, /Hero Media Control/);
+  const landingControl = await send(proxy.url, "/admin/landing-media");
+  assert.equal(landingControl.status, 200);
+  assert.match(landingControl.body, /Landing Media Control/);
   const config = await send(proxy.url, "/api/hidi/hero-config");
   assert.equal(config.status, 200);
   assert.equal(config.headers["cache-control"], "no-store");
   assert.equal(JSON.parse(config.body).active, false);
+  const landingConfig = await send(proxy.url, "/api/hidi/landing-media-config");
+  assert.equal(landingConfig.status, 200);
+  assert.equal(landingConfig.headers["cache-control"], "no-store");
+  assert.equal(JSON.parse(landingConfig.body).slots["range-occasion"].active, false);
 });
 
 test("preview stays noindex while production requests receive canonical SEO metadata", async () => {
@@ -439,18 +447,18 @@ test("anonymous collection HTML uses a short in-process cache and cookie request
   assert.equal(collectionPerfHits, 2);
 });
 
-test("proxied admin portal pages expose the hero media control link", async () => {
+test("proxied admin portal pages expose the landing media control link", async () => {
   const admin = await send(proxy.url, "/admin/products", { headers: { "Accept-Encoding": "gzip" } });
   assert.equal(admin.status, 200);
   assert.match(admin.body, /Admin Portal/);
-  assert.match(admin.body, /data-hidi-hero-media-link="true"/);
-  assert.match(admin.body, /href="\/admin\/hero-media"/);
+  assert.match(admin.body, /data-hidi-landing-media-link="true"/);
+  assert.match(admin.body, /href="\/admin\/landing-media"/);
   assert.equal(admin.headers.etag, undefined);
   assert.equal(admin.headers["content-length"], String(Buffer.byteLength(admin.body)));
 
   const api = await send(proxy.url, "/api/admin/session");
   assert.equal(api.status, 200);
-  assert.doesNotMatch(api.body, /data-hidi-hero-media-link/);
+  assert.doesNotMatch(api.body, /data-hidi-landing-media-link/);
 });
 
 test("hero media stores uploads and live config in Azure Blob with managed identity", async () => {
@@ -588,6 +596,54 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     assert.equal(live.active, true);
     assert.equal(live.assetId, asset.id);
     assert.equal(live.mobilePosition, "51% 24%");
+
+    const landingMedia = Buffer.from("landing image bytes");
+    const landingUploaded = await send(azure.url, "/api/hidi/landing-media-upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "image/webp",
+        "Content-Length": landingMedia.length,
+        "X-HIDI-Filename": encodeURIComponent("Range Occasion.webp"),
+        Cookie: "session=fixture",
+      },
+      body: landingMedia,
+    });
+    assert.equal(landingUploaded.status, 201, landingUploaded.body);
+    const landingAsset = JSON.parse(landingUploaded.body).asset;
+    assert.equal(landingAsset.type, "image");
+    assert.match(landingAsset.url, /^\/api\/hidi\/hero-asset\/brand\/landing-media\/media\/\d{8}\/.+\.webp$/);
+    assert.match(landingAsset.storagePath, /^azure:\/\/unitstore\/hero\/brand\/landing-media\/media\/\d{8}\/.+\.webp$/);
+
+    const landingMediaPath = new URL(landingAsset.url, azure.url).pathname.replace("/api/hidi/hero-asset", "");
+    assert.equal(blobs.get(`/hero${landingMediaPath}`).body.toString(), "landing image bytes");
+    assert.equal((await send(azure.url, landingAsset.url)).body, "landing image bytes");
+
+    const landingPublishBody = JSON.stringify({
+      slotId: "range-occasion",
+      assetId: landingAsset.id,
+      desktopPosition: "42% 38%",
+      mobilePosition: "50% 22%",
+      fitMode: "contain",
+      altText: "Orange range card",
+    });
+    const landingPublished = await send(azure.url, "/api/hidi/landing-media-publish", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(landingPublishBody),
+        Cookie: "session=fixture",
+      },
+      body: landingPublishBody,
+    });
+    assert.equal(landingPublished.status, 200, landingPublished.body);
+
+    const landingLive = await send(azure.url, "/api/hidi/landing-media-config");
+    assert.equal(landingLive.status, 200);
+    const liveSlot = JSON.parse(landingLive.body).slots["range-occasion"];
+    assert.equal(liveSlot.active, true);
+    assert.equal(liveSlot.assetId, landingAsset.id);
+    assert.equal(liveSlot.fitMode, "contain");
+    assert.equal(liveSlot.altText, "Orange range card");
 
     assert.equal(tokenRequests.length, 1);
     assert.match(tokenRequests[0].url, /resource=https%3A%2F%2Fstorage\.azure\.com%2F/);

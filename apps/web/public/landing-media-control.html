@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HIDI Landing Media</title>
+<style>
+:root{--wine:#602124;--wine2:#49191d;--gold:#e8c06f;--paper:#fffefb;--ink:#392c28;--muted:#74645c;--line:#ded1c6;--soft:#f4f0e9;font-family:Arial,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--soft);color:var(--ink)}button,input,select,textarea{font:inherit}button{cursor:pointer}img,video{display:block;max-width:100%}
+.top{background:linear-gradient(110deg,var(--wine),var(--wine2));color:#fff;padding:18px 24px;display:flex;justify-content:space-between;align-items:center}.top img{width:92px}.top a{color:var(--gold);font-size:13px;text-decoration:none}
+.wrap{width:min(1360px,calc(100% - 48px));margin:28px auto 60px}.heading{display:flex;justify-content:space-between;align-items:end;gap:18px;margin-bottom:22px}.heading h1{margin:0;font-family:Georgia,serif;font-weight:400;font-size:clamp(30px,4vw,48px);color:var(--wine)}.heading p,.hint{color:var(--muted);font-size:12px;line-height:1.6}.status{font-size:12px;padding:8px 12px;border:1px solid var(--line);border-radius:99px;background:#fff;white-space:nowrap}
+.layout{display:grid;grid-template-columns:minmax(280px,330px) minmax(0,1fr);gap:22px;align-items:start}.card{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 10px 30px #392c2810}.card h2{margin:0 0 14px;color:var(--wine);font-size:18px}.card h3{margin:0;color:var(--wine);font-size:15px}
+.slots{display:grid;gap:9px;max-height:calc(100vh - 190px);overflow:auto;padding-right:3px}.slot{width:100%;min-width:0;display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:11px;padding:9px;border:1px solid var(--line);border-radius:12px;background:#fff;text-align:left;color:var(--ink)}.slot.is-active{border-color:var(--wine);box-shadow:0 0 0 2px #60212410}.slot.is-live .badge{background:#f8ecd0;color:#4b211c}.slot-thumb{width:54px;aspect-ratio:4/5;border-radius:8px;overflow:hidden;background:#241817}.slot-thumb.hero{aspect-ratio:1.35}.slot-thumb.banner{aspect-ratio:1.9}.slot-thumb img,.slot-thumb video{width:100%;height:100%;object-fit:cover}.slot-title{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.slot-group{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em}.badge{font-size:10px;border-radius:99px;padding:4px 7px;background:#eee7df;color:var(--muted)}
+.workspace{display:grid;gap:18px;min-width:0}.work-grid{display:grid;grid-template-columns:minmax(300px,.92fr) minmax(360px,1.08fr);gap:18px;align-items:start}.upload{border:1px dashed #b99d87;border-radius:12px;padding:16px;background:#fbf8f3}.upload input{width:100%;min-width:0}.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}label{font-size:12px;color:var(--muted)}select,textarea{width:100%;min-width:0;margin-top:6px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}textarea{resize:vertical;min-height:70px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}.btn{flex:1 1 150px;border:1px solid var(--wine);border-radius:8px;padding:11px 15px;background:var(--wine);color:#fff;text-align:center}.btn.secondary{background:#fff;color:var(--wine)}.btn.gold{background:var(--gold);border-color:var(--gold);color:#431b1d}.btn:disabled{opacity:.45;cursor:not-allowed}.message{min-height:20px;margin-top:10px;font-size:12px;color:var(--wine)}
+.previews{display:grid;grid-template-columns:minmax(0,1fr) minmax(104px,150px);gap:12px;align-items:start;max-width:100%}.preview{position:relative;width:100%;min-width:0;overflow:hidden;border-radius:12px;background:#251716;border:1px solid #d7c7ba}.preview.hero.desktop{aspect-ratio:16/9}.preview.hero.mobile{aspect-ratio:9/16}.preview.portrait{aspect-ratio:4/5}.preview.carousel{aspect-ratio:355/593}.preview.banner.desktop{aspect-ratio:21/8}.preview.banner.mobile{aspect-ratio:4/5}.preview img,.preview video{position:absolute;inset:0;width:100%;height:100%;object-fit:var(--fit,cover);object-position:var(--pos,50% 50%)}.preview span{position:absolute;left:8px;bottom:8px;background:#0008;color:#fff;font-size:10px;padding:4px 7px;border-radius:20px}
+.library{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.asset{min-width:0;display:grid;grid-template-rows:auto 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}.asset.is-selected{outline:2px solid var(--gold)}.asset-media{aspect-ratio:16/10;background:#241817}.asset-media img,.asset-media video{width:100%;height:100%;object-fit:cover}.asset-body{display:grid;gap:6px;padding:10px}.asset-name{font-size:12px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.asset-meta{font-size:10px;color:var(--muted)}.asset button{width:100%;padding:8px;border:1px solid var(--wine);background:#fff;color:var(--wine);border-radius:7px}
+.signin{text-align:center;padding:28px}.signin a{display:inline-block;margin-top:12px;padding:11px 15px;background:var(--wine);color:#fff;border-radius:8px;text-decoration:none}
+@media(max-width:1120px){.work-grid{grid-template-columns:1fr}.previews{grid-template-columns:minmax(0,1fr) minmax(104px,140px)}}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.slots{max-height:none}.library{grid-template-columns:repeat(2,minmax(0,1fr))}.heading{align-items:flex-start;flex-direction:column}.wrap{width:min(100% - 20px,1180px);margin-top:14px}.top{padding:14px 16px}}
+@media(max-width:560px){.row,.previews,.library{grid-template-columns:1fr}.btn{flex-basis:100%}}
+</style>
+</head>
+<body>
+<header class="top"><img src="/assets/images/hidi-logo.png" alt="HIDI"><a href="/" target="_blank" rel="noopener">Open storefront</a></header>
+<main class="wrap">
+<div class="heading"><div><h1>Landing Media</h1><p>Manage hero, Ananya picks, range carousel photos and the shop banner with slot-level previews.</p></div><div id="status" class="status">Checking admin session...</div></div>
+<div id="signin" class="card signin" hidden><strong>HIDI Admin sign-in required</strong><p class="hint">Sign in with your normal HIDI admin account, then return here.</p><a href="/admin/sign-in">Go to Admin Sign-in</a></div>
+<div id="workspace" class="layout" hidden>
+<section class="card"><h2>Media slots</h2><div id="slots" class="slots"></div></section>
+<div class="workspace">
+<div class="work-grid">
+<section class="card">
+<h2 id="slotTitle">Select a slot</h2>
+<p id="slotHelp" class="hint"></p>
+<div class="upload"><input id="file" type="file"><p class="hint" id="uploadHint">Images are optimized before upload. Hero also accepts MP4/WebM.</p></div>
+<div class="row">
+<label>Desktop focal point<select id="desktopPos"><option value="50% 50%">Center</option><option value="50% 22%">Top</option><option value="50% 78%">Bottom</option><option value="34% 50%">Left</option><option value="66% 50%">Right</option><option value="42% 38%">Upper left</option><option value="58% 38%">Upper right</option></select></label>
+<label>Mobile focal point<select id="mobilePos"><option value="50% 50%">Center</option><option value="50% 22%">Top</option><option value="50% 78%">Bottom</option><option value="34% 50%">Left</option><option value="66% 50%">Right</option><option value="42% 38%">Upper left</option><option value="58% 38%">Upper right</option></select></label>
+</div>
+<div class="row">
+<label>UX image treatment<select id="fitMode"><option value="cover">Premium crop - fills the slot</option><option value="contain">Full photo - no crop</option></select></label>
+<label>Alt text<textarea id="altText" maxlength="220" placeholder="Short description for accessibility"></textarea></label>
+</div>
+<div class="actions"><button id="upload" class="btn gold" disabled>Upload to library</button><button id="publish" class="btn" disabled>Make selected live</button><button id="restore" class="btn secondary">Restore previous</button><button id="reset" class="btn secondary">Use built-in media</button></div>
+<div id="message" class="message"></div>
+</section>
+<section class="card"><h2>Slot preview</h2><div class="previews"><div id="desktopPreview" class="preview"><span>Desktop</span></div><div id="mobilePreview" class="preview"><span>Mobile</span></div></div><p class="hint">Preview uses the slot shape and the selected focal point/treatment before publishing.</p></section>
+</div>
+<section class="card"><h2 id="libraryTitle">Media library</h2><div id="library" class="library"></div><p id="empty" class="hint">No media uploaded yet.</p></section>
+</div>
+</div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const demoMode = new URLSearchParams(location.search).has("demo") && ["127.0.0.1","localhost"].includes(location.hostname);
+const imageAccept = "image/jpeg,image/png,image/webp,image/avif";
+const heroAccept = imageAccept + ",video/mp4,video/webm";
+const slots = [
+  { id:"hero", group:"Hero", name:"Homepage hero media", type:"hero", preview:"hero", accept:heroAccept, fallback:{ type:"video", url:"/assets/video/hidi-hero-desktop-luminous-v1.mp4", originalName:"Built-in cinematic hero" }, help:"Main first-screen video/photo. Supports image or video and keeps desktop/mobile focal points." },
+  { id:"ananya-orange", group:"Ananya", name:"Ananya pick 01", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-orange.webp", originalName:"Built-in orange pick" }, help:"First Ananya scroll image. Best as a full outfit portrait." },
+  { id:"ananya-pink", group:"Ananya", name:"Ananya pick 02", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-pink.webp", originalName:"Built-in pink pick" }, help:"Second Ananya scroll image. Best as a full outfit portrait." },
+  { id:"ananya-maroon", group:"Ananya", name:"Ananya pick 03", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-maroon.webp", originalName:"Built-in maroon pick" }, help:"Third Ananya scroll image. Best as a full outfit portrait." },
+  { id:"ananya-black", group:"Ananya", name:"Ananya pick 04", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-black.webp", originalName:"Built-in black pick" }, help:"Fourth Ananya scroll image. Best as a full outfit portrait." },
+  { id:"ananya-green", group:"Ananya", name:"Ananya pick 05", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-green.webp", originalName:"Built-in green pick" }, help:"Fifth Ananya scroll image. Best as a full outfit portrait." },
+  { id:"range-occasion", group:"Range", name:"Range 01 - Occasion", preview:"carousel", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/occasion-set.webp", originalName:"Built-in occasion card" }, help:"Circular range carousel card. Use a tall product photo with breathing room." },
+  { id:"range-new-arrivals", group:"Range", name:"Range 02 - New arrivals", preview:"carousel", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/peach-set.webp", originalName:"Built-in new arrivals card" }, help:"Circular range carousel card. Use a tall product photo with breathing room." },
+  { id:"range-work-edit", group:"Range", name:"Range 03 - Work edit", preview:"carousel", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/cream-set.webp", originalName:"Built-in work edit card" }, help:"Circular range carousel card. Use a tall product photo with breathing room." },
+  { id:"range-everyday", group:"Range", name:"Range 04 - Everyday", preview:"carousel", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/burgundy-set.webp", originalName:"Built-in everyday card" }, help:"Circular range carousel card. Use a tall product photo with breathing room." },
+  { id:"range-shop-all", group:"Range", name:"Range 05 - Shop all", preview:"carousel", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/hero-portrait.webp", originalName:"Built-in shop all card" }, help:"Circular range carousel card. Use a tall product photo with breathing room." },
+  { id:"hidi-edit-banner", group:"Banner", name:"Shop HIDI banner", preview:"banner", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/hidi-premium-ai-full-banner-lossless.png", originalName:"Built-in shop banner" }, help:"Wide shop banner below the range carousel. Use a clean horizontal composition." },
+];
+
+let heroLibrary = [], landingLibrary = [], heroCurrent = null, heroPrevious = null, landingCurrent = { slots:{} }, landingPrevious = { slots:{} };
+let selectedSlot = slots[0], selected = null, prepared = null, previewUrl = "";
+
+function say(text, error=false) { $("message").textContent = text; $("message").style.color = error ? "#9b2424" : "#602124"; }
+function isHero(slot=selectedSlot) { return slot.id === "hero"; }
+function libraryFor(slot=selectedSlot) { return isHero(slot) ? heroLibrary : landingLibrary; }
+function liveFor(slot=selectedSlot) {
+  return isHero(slot) ? (heroCurrent?.active ? heroCurrent : null) : (landingCurrent?.slots?.[slot.id]?.active ? landingCurrent.slots[slot.id] : null);
+}
+function assetForPreview(slot=selectedSlot) {
+  return selected || liveFor(slot) || slot.fallback;
+}
+function node(asset, position, fit) {
+  const el = document.createElement(asset?.type === "video" ? "video" : "img");
+  el.src = asset?.url || "";
+  if (asset?.type === "video") { el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true; }
+  el.style.objectPosition = position || "50% 50%";
+  el.style.objectFit = fit || "cover";
+  return el;
+}
+function setPreviewClass(host, slot, side) {
+  host.className = "preview " + slot.preview + " " + side;
+}
+function renderPreview() {
+  const asset = assetForPreview();
+  const fit = isHero() ? "cover" : $("fitMode").value;
+  for (const [id, side, pos] of [["desktopPreview","desktop",$("desktopPos").value],["mobilePreview","mobile",$("mobilePos").value]]) {
+    const host = $(id);
+    setPreviewClass(host, selectedSlot, side);
+    host.querySelectorAll("img,video").forEach(item => item.remove());
+    host.prepend(node(asset, pos, fit));
+  }
+}
+function slotThumb(slot) {
+  const media = liveFor(slot) || slot.fallback;
+  const box = document.createElement("div");
+  box.className = "slot-thumb " + (slot.preview === "hero" ? "hero" : slot.preview === "banner" ? "banner" : "");
+  box.appendChild(node(media, "50% 50%", "cover"));
+  return box;
+}
+function renderSlots() {
+  const host = $("slots");
+  host.innerHTML = "";
+  for (const slot of slots) {
+    const live = liveFor(slot);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "slot" + (slot.id === selectedSlot.id ? " is-active" : "") + (live ? " is-live" : "");
+    button.appendChild(slotThumb(slot));
+    const copy = document.createElement("div");
+    copy.innerHTML = `<div class="slot-group">${slot.group}</div><div class="slot-title"></div>`;
+    copy.querySelector(".slot-title").textContent = slot.name;
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = live ? "Live" : "Built-in";
+    button.append(copy, badge);
+    button.onclick = () => selectSlot(slot.id);
+    host.appendChild(button);
+  }
+}
+function renderLibrary() {
+  const host = $("library");
+  const library = libraryFor();
+  host.innerHTML = "";
+  $("empty").hidden = library.length > 0;
+  $("libraryTitle").textContent = isHero() ? "Hero media library" : "Landing photo library";
+  for (const asset of library) {
+    const card = document.createElement("div");
+    card.className = "asset" + (selected?.id === asset.id ? " is-selected" : "");
+    const media = document.createElement("div");
+    media.className = "asset-media";
+    media.appendChild(node(asset, "50% 50%", "cover"));
+    const body = document.createElement("div");
+    body.className = "asset-body";
+    const name = document.createElement("div");
+    name.className = "asset-name";
+    name.textContent = asset.originalName || "HIDI media";
+    const meta = document.createElement("div");
+    meta.className = "asset-meta";
+    meta.textContent = (asset.type === "video" ? "Video" : "Image") + " - " + Math.round((asset.sizeBytes || 0) / 1024 / 1024 * 10) / 10 + " MB";
+    const btn = document.createElement("button");
+    btn.textContent = selected?.id === asset.id ? "Selected" : "Select";
+    btn.onclick = () => { selected = asset; prepared = null; $("publish").disabled = demoMode ? true : false; renderPreview(); renderLibrary(); say("Selected " + (asset.originalName || "media") + ". Check preview, then publish."); };
+    body.append(name, meta, btn);
+    card.append(media, body);
+    host.appendChild(card);
+  }
+}
+function setFieldsFromCurrent(slot) {
+  const live = liveFor(slot);
+  $("desktopPos").value = live?.desktopPosition || "50% 50%";
+  $("mobilePos").value = live?.mobilePosition || "50% 50%";
+  $("fitMode").value = live?.fitMode || "cover";
+  $("fitMode").disabled = isHero(slot);
+  $("altText").value = live?.altText || "";
+  $("altText").disabled = isHero(slot);
+  $("file").accept = slot.accept;
+  $("slotTitle").textContent = slot.name;
+  $("slotHelp").textContent = slot.help;
+  $("uploadHint").textContent = isHero(slot) ? "Hero accepts JPEG, PNG, WebP, AVIF, MP4 or WebM." : "Landing slots accept JPEG, PNG, WebP or AVIF. Large images are resized in the browser.";
+}
+function selectSlot(id) {
+  selectedSlot = slots.find(slot => slot.id === id) || slots[0];
+  const live = liveFor(selectedSlot);
+  selected = live?.assetId ? libraryFor(selectedSlot).find(asset => asset.id === live.assetId) || live : null;
+  prepared = null;
+  $("file").value = "";
+  $("upload").disabled = true;
+  $("publish").disabled = demoMode || !selected?.id;
+  setFieldsFromCurrent(selectedSlot);
+  renderSlots();
+  renderPreview();
+  renderLibrary();
+  say(demoMode ? "Local demo preview only. Live publish is available after admin sign-in." : "");
+}
+async function optimise(file) {
+  if (!file.type.startsWith("image/") || file.type === "image/avif" || !window.createImageBitmap) return file;
+  try {
+    const image = await createImageBitmap(file);
+    const max = 2560;
+    if (Math.max(image.width, image.height) <= max && file.size <= 6 * 1024 * 1024) { image.close(); return file; }
+    const scale = Math.min(1, max / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(image.width * scale);
+    canvas.height = Math.round(image.height * scale);
+    canvas.getContext("2d", { alpha:false }).drawImage(image, 0, 0, canvas.width, canvas.height);
+    image.close();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", .9));
+    return blob ? new File([blob], file.name.replace(/\.[^.]+$/, "") + ".webp", { type:"image/webp" }) : file;
+  } catch { return file; }
+}
+async function load() {
+  if (!demoMode) {
+    const session = await fetch("/api/admin/session", { cache:"no-store" });
+    if (!session.ok) { $("signin").hidden = false; $("status").textContent = "Signed out"; return; }
+  }
+  $("workspace").hidden = false;
+  $("status").textContent = demoMode ? "Local demo preview" : "Admin verified";
+  if (demoMode) {
+    landingLibrary = slots.filter(slot => !isHero(slot)).map(slot => ({ ...slot.fallback, id: "demo-" + slot.id, sizeBytes: 0 }));
+    heroLibrary = [{ ...slots[0].fallback, id:"demo-hero", sizeBytes: 0 }];
+    selectSlot("hero");
+    return;
+  }
+  const [heroRes, landingRes] = await Promise.all([
+    fetch("/api/hidi/hero-library", { cache:"no-store" }),
+    fetch("/api/hidi/landing-media-library", { cache:"no-store" }),
+  ]);
+  const heroData = await heroRes.json().catch(() => ({}));
+  const landingData = await landingRes.json().catch(() => ({}));
+  if (heroRes.ok) { heroLibrary = heroData.assets || []; heroCurrent = heroData.current || null; heroPrevious = heroData.previous || null; }
+  if (landingRes.ok) { landingLibrary = landingData.assets || []; landingCurrent = landingData.current || { slots:{} }; landingPrevious = landingData.previous || { slots:{} }; }
+  if (!heroRes.ok || !landingRes.ok) say((heroData.message || landingData.message || "Some media storage is unavailable"), true);
+  selectSlot("hero");
+}
+$("file").onchange = async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  prepared = await optimise(file);
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = URL.createObjectURL(prepared);
+  selected = { id:"local-preview", type:prepared.type.startsWith("video/") ? "video" : "image", url:previewUrl, originalName:prepared.name, sizeBytes:prepared.size };
+  $("upload").disabled = false;
+  $("publish").disabled = true;
+  renderPreview();
+  renderLibrary();
+  say(prepared !== file ? "Image optimized and ready to upload." : "Ready to upload.");
+};
+for (const id of ["desktopPos","mobilePos","fitMode"]) $(id).onchange = renderPreview;
+$("altText").oninput = () => {};
+$("upload").onclick = () => {
+  if (!prepared) return;
+  if (demoMode) {
+    const asset = { ...selected, id:"demo-upload-" + Date.now() };
+    if (isHero()) heroLibrary = [asset, ...heroLibrary]; else landingLibrary = [asset, ...landingLibrary];
+    selected = asset; prepared = null; $("file").value = ""; $("upload").disabled = true; renderLibrary(); renderSlots(); say("Added to local preview library. Publish is disabled in demo mode.");
+    return;
+  }
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", isHero() ? "/api/hidi/hero-upload" : "/api/hidi/landing-media-upload");
+  xhr.setRequestHeader("Content-Type", prepared.type);
+  xhr.setRequestHeader("X-HIDI-Filename", encodeURIComponent(prepared.name));
+  $("upload").disabled = true;
+  xhr.onload = () => {
+    try {
+      const body = JSON.parse(xhr.responseText || "{}");
+      if (xhr.status < 200 || xhr.status >= 300) throw new Error(body.message || "Upload failed");
+      if (isHero()) heroLibrary = [body.asset, ...heroLibrary]; else landingLibrary = [body.asset, ...landingLibrary];
+      selected = body.asset; prepared = null; $("file").value = ""; $("publish").disabled = false; renderLibrary(); renderSlots(); renderPreview(); say("Uploaded. Preview it, then make selected live.");
+    } catch (error) { say(error.message, true); $("upload").disabled = false; }
+  };
+  xhr.onerror = () => { say("Upload failed. Please try again.", true); $("upload").disabled = false; };
+  xhr.send(prepared);
+};
+$("publish").onclick = async () => {
+  if (!selected?.id || demoMode) return;
+  const endpoint = isHero() ? "/api/hidi/hero-publish" : "/api/hidi/landing-media-publish";
+  const body = isHero()
+    ? { assetId:selected.id, desktopPosition:$("desktopPos").value, mobilePosition:$("mobilePos").value }
+    : { slotId:selectedSlot.id, assetId:selected.id, desktopPosition:$("desktopPos").value, mobilePosition:$("mobilePos").value, fitMode:$("fitMode").value, altText:$("altText").value };
+  const res = await fetch(endpoint, { method:"POST", headers:{ "content-type":"application/json" }, body:JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return say(data.message || "Unable to publish", true);
+  if (isHero()) heroCurrent = data.current; else landingCurrent.slots[selectedSlot.id] = data.current;
+  renderSlots(); renderPreview(); renderLibrary(); say("Published. New visitors will see this slot immediately.");
+};
+$("reset").onclick = async () => {
+  if (demoMode) return say("Demo preview only. Nothing live was changed.", true);
+  const endpoint = isHero() ? "/api/hidi/hero-reset" : "/api/hidi/landing-media-reset";
+  const res = await fetch(endpoint, { method:"POST", headers:{ "content-type":"application/json" }, body:isHero() ? undefined : JSON.stringify({ slotId:selectedSlot.id }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return say(data.message || "Unable to reset", true);
+  if (isHero()) heroCurrent = data.current; else landingCurrent.slots[selectedSlot.id] = data.current;
+  selected = null; $("publish").disabled = true; setFieldsFromCurrent(selectedSlot); renderSlots(); renderPreview(); renderLibrary(); say("Built-in media restored for this slot.");
+};
+$("restore").onclick = async () => {
+  if (demoMode) return say("Demo preview only. Nothing live was changed.", true);
+  const endpoint = isHero() ? "/api/hidi/hero-restore" : "/api/hidi/landing-media-restore";
+  const res = await fetch(endpoint, { method:"POST", headers:{ "content-type":"application/json" }, body:isHero() ? undefined : JSON.stringify({ slotId:selectedSlot.id }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return say(data.message || "No previous media available", true);
+  if (isHero()) heroCurrent = data.current; else landingCurrent.slots[selectedSlot.id] = data.current;
+  setFieldsFromCurrent(selectedSlot); selected = liveFor(selectedSlot)?.assetId ? libraryFor().find(asset => asset.id === liveFor(selectedSlot).assetId) || liveFor(selectedSlot) : null; $("publish").disabled = !selected?.id; renderSlots(); renderPreview(); renderLibrary(); say("Previous media restored.");
+};
+load().catch(() => { $("signin").hidden = false; $("status").textContent = "Unable to verify admin"; });
+</script>
+</body>
+</html>

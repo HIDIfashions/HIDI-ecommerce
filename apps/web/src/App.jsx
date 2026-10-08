@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { config, safeWebUrl } from './config.js';
 import { collectionRoute, searchRoute } from './routes.js';
 import { HidiProvider } from './context/HidiContext.jsx';
+import { LandingMediaProvider } from './context/LandingMediaContext.jsx';
 import { usePage } from './hooks/usePage.js';
 import Navbar from './components/Navbar.jsx';
 import { useSmoothPageScroll } from './hooks/useSmoothPageScroll.js';
@@ -66,19 +67,21 @@ export default function App() {
 
   return (
     <HidiProvider value={actions}>
-      <a className="skip-link" href="#main">Skip to content</a>
-      {page.name === 'categories' ? <CategoriesPage selectedEdit={page.edit} /> : <div className="hidi-page">
-        <Navbar />
-        <main id="main" tabIndex={-1}>
-          <VideoHero />
-          <MeetHidi />
-          <RangeCarousel />
-          <HidiEdit />
-          <BrandPromises />
-        </main>
-        <Footer />
-      </div>}
-      <HidiDialog dialog={dialog} onClose={closeDialog} />
+      <LandingMediaProvider>
+        <a className="skip-link" href="#main">Skip to content</a>
+        {page.name === 'categories' ? <CategoriesPage selectedEdit={page.edit} /> : <div className="hidi-page">
+          <Navbar />
+          <main id="main" tabIndex={-1}>
+            <VideoHero />
+            <MeetHidi />
+            <RangeCarousel />
+            <HidiEdit />
+            <BrandPromises />
+          </main>
+          <Footer />
+        </div>}
+        <HidiDialog dialog={dialog} onClose={closeDialog} />
+      </LandingMediaProvider>
     </HidiProvider>
   );
 }

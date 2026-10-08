@@ -1,34 +1,39 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
-import { asset } from '../config.js';
+import { landingImageProps, useLandingMedia } from '../context/LandingMediaContext.jsx';
 
 const topPicks = [
   {
     name: 'Orange embroidered kurta set',
+    slotId: 'ananya-orange',
     image: 'images/ananya-top-picks/ananya-orange.webp',
     accent: '#f05a25',
     tone: 'Festive orange',
   },
   {
     name: 'Pink embroidered dupatta set',
+    slotId: 'ananya-pink',
     image: 'images/ananya-top-picks/ananya-pink.webp',
     accent: '#ef8fb3',
     tone: 'Soft occasion',
   },
   {
     name: 'Maroon festive kurta set',
+    slotId: 'ananya-maroon',
     image: 'images/ananya-top-picks/ananya-maroon.webp',
     accent: '#8e1d3d',
     tone: 'Evening rich',
   },
   {
     name: 'Black embellished kurta set',
+    slotId: 'ananya-black',
     image: 'images/ananya-top-picks/ananya-black.webp',
     accent: '#262c31',
     tone: 'Quiet statement',
   },
   {
     name: 'Olive green embroidered set',
+    slotId: 'ananya-green',
     image: 'images/ananya-top-picks/ananya-green.webp',
     accent: '#58662f',
     tone: 'Everyday luxe',
@@ -36,6 +41,7 @@ const topPicks = [
 ];
 
 export default function MeetHidi() {
+  const landingMedia = useLandingMedia();
   const sectionRef = useRef(null);
   const activeIndexRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -97,11 +103,12 @@ export default function MeetHidi() {
       const isActive = index === activeIndex;
       const isLeaving = index === previousIndex && index !== activeIndex;
       const slideState = isActive ? 'active' : isLeaving ? 'leaving' : 'waiting';
+      const image = landingImageProps(landingMedia, pick.slotId, pick.image, pick.name);
 
       return (
         <div className={`meet-cinematic__slide is-${slideState}`} key={pick.name} style={{ '--pick-accent': pick.accent }} aria-hidden={!isActive}>
-        <img className="meet-cinematic__ghost" src={asset(pick.image)} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
-        <img className="meet-cinematic__model" src={asset(pick.image)} alt={pick.name} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+        <img className="meet-cinematic__ghost" {...image} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+        <img className="meet-cinematic__model" {...image} alt={image.alt || pick.name} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
         </div>
       );
     })}

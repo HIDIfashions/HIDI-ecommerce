@@ -13,7 +13,8 @@ test('campaign uses the full-resolution PNG master', async () => {
 
 test('occasion section is replaced by a minimal shoppable campaign', async () => {
   const source = await readFile(new URL('src/components/HidiEdit.jsx', root), 'utf8');
-  assert.ok(source.includes("asset('images/hidi-premium-ai-full-banner-lossless.png')"));
+  assert.ok(source.includes("'hidi-edit-banner'"));
+  assert.ok(source.includes("'images/hidi-premium-ai-full-banner-lossless.png'"));
   assert.match(source, /width="5460"\s+height="2048"/);
   assert.match(source, /id="edit-title" className="sr-only"/);
   assert.match(source, /href="\/collections\/all"/);

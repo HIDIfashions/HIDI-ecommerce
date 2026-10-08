@@ -11,13 +11,32 @@ import { pipeline } from "node:stream/promises";
 const CURRENT_KEY = "brand/hero/current.json";
 const PREVIOUS_KEY = "brand/hero/previous.json";
 const LIBRARY_KEY = "brand/hero/library.json";
+const LANDING_CURRENT_KEY = "brand/landing-media/current.json";
+const LANDING_PREVIOUS_KEY = "brand/landing-media/previous.json";
+const LANDING_LIBRARY_KEY = "brand/landing-media/library.json";
 const HERO_ASSET_PREFIX = "/api/hidi/hero-asset/";
 const MEDIA_KEY_PREFIX = "brand/hero/media/";
+const LANDING_MEDIA_KEY_PREFIX = "brand/landing-media/media/";
+const ALLOWED_MEDIA_KEY_PREFIXES = [MEDIA_KEY_PREFIX, LANDING_MEDIA_KEY_PREFIX];
 const DEFAULT_CONTAINER = "hidi-product-media-prod";
 const AZURE_STORAGE_SCOPE = "https://storage.azure.com/";
 const AZURE_BLOB_API_VERSION = "2023-11-03";
 const MAX_JSON_BYTES = 64 * 1024;
 const MAX_LIBRARY = 30;
+const MAX_LANDING_LIBRARY = 80;
+const LANDING_SLOT_IDS = new Set([
+  "ananya-orange",
+  "ananya-pink",
+  "ananya-maroon",
+  "ananya-black",
+  "ananya-green",
+  "range-occasion",
+  "range-new-arrivals",
+  "range-work-edit",
+  "range-everyday",
+  "range-shop-all",
+  "hidi-edit-banner",
+]);
 const MEDIA_TYPES = {
   "image/jpeg": { type: "image", ext: "jpg", maxBytes: 20 * 1024 * 1024 },
   "image/png": { type: "image", ext: "png", maxBytes: 20 * 1024 * 1024 },
@@ -26,6 +45,9 @@ const MEDIA_TYPES = {
   "video/mp4": { type: "video", ext: "mp4", maxBytes: 50 * 1024 * 1024 },
   "video/webm": { type: "video", ext: "webm", maxBytes: 50 * 1024 * 1024 },
 };
+const LANDING_MEDIA_TYPES = Object.fromEntries(
+  Object.entries(MEDIA_TYPES).filter(([, policy]) => policy.type === "image"),
+);
 
 function headerValue(value) {
   return Array.isArray(value) ? value[0] || "" : typeof value === "string" ? value : "";
@@ -371,7 +393,7 @@ function headerCase(name) {
 function assetKeyFromPath(pathname) {
   if (!pathname.startsWith(HERO_ASSET_PREFIX)) return "";
   const key = pathname.slice(HERO_ASSET_PREFIX.length);
-  if (!key.startsWith(MEDIA_KEY_PREFIX) || key.includes("..")) return "";
+  if (!ALLOWED_MEDIA_KEY_PREFIXES.some(prefix => key.startsWith(prefix)) || key.includes("..")) return "";
   return key;
 }
 
@@ -488,10 +510,10 @@ function cleanName(value) {
   return decoded.replace(/[\r\n\0]/g, "").trim().slice(0, 180) || "hero-media";
 }
 
-function objectKey(mimeType) {
+function objectKey(mimeType, prefix = MEDIA_KEY_PREFIX) {
   const media = MEDIA_TYPES[mimeType];
   const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
-  return `brand/hero/media/${day}/${Date.now()}-${randomUUID()}.${media.ext}`;
+  return `${prefix}${day}/${Date.now()}-${randomUUID()}.${media.ext}`;
 }
 
 function publicUrl(config, key) {
@@ -545,6 +567,15 @@ function normalizePosition(value) {
   return `${x}% ${y}%`;
 }
 
+function normalizeFitMode(value) {
+  return value === "contain" ? "contain" : "cover";
+}
+
+function cleanSlotId(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return LANDING_SLOT_IDS.has(text) ? text : "";
+}
+
 function publicConfig(raw) {
   if (
     !raw
@@ -573,6 +604,46 @@ function publicConfig(raw) {
   };
 }
 
+function publicLandingSlot(raw) {
+  if (
+    !raw
+    || raw.active !== true
+    || raw.type !== "image"
+    || typeof raw.url !== "string"
+  ) {
+    return {
+      version: 1,
+      active: false,
+      source: "bundled",
+    };
+  }
+
+  return {
+    version: 1,
+    active: true,
+    source: "uploaded",
+    assetId: typeof raw.assetId === "string" ? raw.assetId : "",
+    type: "image",
+    url: raw.url,
+    originalName: typeof raw.originalName === "string" ? raw.originalName : "",
+    altText: typeof raw.altText === "string" ? raw.altText : "",
+    desktopPosition: normalizePosition(raw.desktopPosition),
+    mobilePosition: normalizePosition(raw.mobilePosition),
+    fitMode: normalizeFitMode(raw.fitMode),
+    updatedAt: raw.updatedAt || null,
+  };
+}
+
+function publicLandingConfig(raw) {
+  const sourceSlots = raw?.slots && typeof raw.slots === "object" ? raw.slots : {};
+  const slots = {};
+  for (const id of LANDING_SLOT_IDS) slots[id] = publicLandingSlot(sourceSlots[id]);
+  return {
+    version: 1,
+    slots,
+  };
+}
+
 async function loadLibrary() {
   const raw = await storageGetJson(LIBRARY_KEY);
   const assets = Array.isArray(raw?.assets)
@@ -590,10 +661,52 @@ async function loadLibrary() {
   };
 }
 
+async function loadLandingLibrary() {
+  const raw = await storageGetJson(LANDING_LIBRARY_KEY);
+  const assets = Array.isArray(raw?.assets)
+    ? raw.assets.filter(item =>
+      item
+      && typeof item.id === "string"
+      && typeof item.url === "string"
+      && item.type === "image"
+    )
+    : [];
+
+  return {
+    version: 1,
+    assets: assets.slice(0, MAX_LANDING_LIBRARY),
+  };
+}
+
 async function saveCurrent(next) {
   const current = await storageGetJson(CURRENT_KEY);
   if (current) await storagePutJson(PREVIOUS_KEY, current);
   await storagePutJson(CURRENT_KEY, next);
+}
+
+async function saveLandingSlot(slotId, next) {
+  const current = await storageGetJson(LANDING_CURRENT_KEY);
+  const previous = await storageGetJson(LANDING_PREVIOUS_KEY);
+  const currentSlots = current?.slots && typeof current.slots === "object" ? current.slots : {};
+  const previousSlots = previous?.slots && typeof previous.slots === "object" ? previous.slots : {};
+
+  const nextPrevious = {
+    version: 1,
+    slots: {
+      ...previousSlots,
+      ...(currentSlots[slotId] ? { [slotId]: currentSlots[slotId] } : {}),
+    },
+  };
+  const nextCurrent = {
+    version: 1,
+    slots: {
+      ...currentSlots,
+      [slotId]: next,
+    },
+  };
+
+  await storagePutJson(LANDING_PREVIOUS_KEY, nextPrevious);
+  await storagePutJson(LANDING_CURRENT_KEY, nextCurrent);
 }
 
 function errorStatus(error) {
@@ -639,6 +752,30 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
       return true;
     }
 
+    if (pathname === "/api/hidi/landing-media-config") {
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        response.setHeader("Allow", "GET, HEAD");
+        sendJson(response, 405, { message: "Method not allowed" });
+        return true;
+      }
+
+      let value = publicLandingConfig(null);
+      try {
+        value = publicLandingConfig(await storageGetJson(LANDING_CURRENT_KEY));
+      } catch {}
+
+      if (request.method === "HEAD") {
+        response.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
+        });
+        response.end();
+      } else {
+        sendJson(response, 200, value);
+      }
+      return true;
+    }
+
     if (pathname.startsWith(HERO_ASSET_PREFIX)) {
       if (request.method !== "GET" && request.method !== "HEAD") {
         response.setHeader("Allow", "GET, HEAD");
@@ -659,7 +796,9 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
       return true;
     }
 
-    if (!pathname.startsWith("/api/hidi/hero-")) return false;
+    const isHeroAdminPath = pathname.startsWith("/api/hidi/hero-");
+    const isLandingAdminPath = pathname.startsWith("/api/hidi/landing-media-");
+    if (!isHeroAdminPath && !isLandingAdminPath) return false;
 
     if (!(await verifyAdmin(request, origin, hasStorefront))) {
       sendJson(response, 401, {
@@ -680,6 +819,171 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
           ...library,
           current: publicConfig(current),
           previous: publicConfig(previous),
+        });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/landing-media-library" && request.method === "GET") {
+        const [library, current, previous] = await Promise.all([
+          loadLandingLibrary(),
+          storageGetJson(LANDING_CURRENT_KEY),
+          storageGetJson(LANDING_PREVIOUS_KEY),
+        ]);
+
+        sendJson(response, 200, {
+          ...library,
+          current: publicLandingConfig(current),
+          previous: publicLandingConfig(previous),
+        });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/landing-media-upload" && request.method === "POST") {
+        const mimeType = headerValue(request.headers["content-type"])
+          .split(";")[0]
+          .trim()
+          .toLowerCase();
+        const policy = LANDING_MEDIA_TYPES[mimeType];
+
+        if (!policy) {
+          sendJson(response, 400, {
+            message: "Use JPEG, PNG, WebP or AVIF for landing photo slots",
+          });
+          return true;
+        }
+
+        const config = storageConfig();
+        const originalName = cleanName(
+          headerValue(request.headers["x-hidi-filename"]),
+        );
+        const uploaded = await receiveUpload(request, policy.maxBytes);
+        const key = objectKey(mimeType, LANDING_MEDIA_KEY_PREFIX);
+
+        try {
+          const stored = await storageRequest("PUT", key, {
+            filePath: uploaded.filePath,
+            size: uploaded.size,
+            payloadHash: uploaded.payloadHash,
+            contentType: mimeType,
+          });
+
+          if (stored.status < 200 || stored.status >= 300) {
+            throw new Error(`Hero media storage returned HTTP ${stored.status}`);
+          }
+        } finally {
+          await unlink(uploaded.filePath).catch(() => {});
+        }
+
+        const asset = {
+          id: randomUUID(),
+          type: "image",
+          mimeType,
+          url: publicUrl(config, key),
+          storagePath: storagePath(config, key),
+          originalName,
+          sizeBytes: uploaded.size,
+          createdAt: new Date().toISOString(),
+        };
+
+        const library = await loadLandingLibrary();
+        library.assets = [
+          asset,
+          ...library.assets.filter(item => item.id !== asset.id),
+        ].slice(0, MAX_LANDING_LIBRARY);
+        await storagePutJson(LANDING_LIBRARY_KEY, library);
+
+        sendJson(response, 201, { asset });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/landing-media-publish" && request.method === "POST") {
+        const body = await readJsonBody(request);
+        const slotId = cleanSlotId(body.slotId);
+        if (!slotId) {
+          sendJson(response, 400, {
+            message: "Choose a valid landing media slot",
+          });
+          return true;
+        }
+
+        const library = await loadLandingLibrary();
+        const asset = library.assets.find(item => item.id === body.assetId);
+
+        if (!asset) {
+          sendJson(response, 400, {
+            message: "Choose a photo from the landing media library",
+          });
+          return true;
+        }
+
+        const next = {
+          version: 1,
+          active: true,
+          slotId,
+          assetId: asset.id,
+          type: "image",
+          url: asset.url,
+          originalName: asset.originalName,
+          altText: typeof body.altText === "string" ? body.altText.trim().slice(0, 220) : "",
+          desktopPosition: normalizePosition(body.desktopPosition),
+          mobilePosition: normalizePosition(body.mobilePosition),
+          fitMode: normalizeFitMode(body.fitMode),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await saveLandingSlot(slotId, next);
+        sendJson(response, 200, {
+          current: publicLandingSlot(next),
+        });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/landing-media-reset" && request.method === "POST") {
+        const body = await readJsonBody(request);
+        const slotId = cleanSlotId(body.slotId);
+        if (!slotId) {
+          sendJson(response, 400, {
+            message: "Choose a valid landing media slot",
+          });
+          return true;
+        }
+
+        const next = {
+          version: 1,
+          active: false,
+          source: "bundled",
+          updatedAt: new Date().toISOString(),
+        };
+
+        await saveLandingSlot(slotId, next);
+        sendJson(response, 200, {
+          current: publicLandingSlot(next),
+        });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/landing-media-restore" && request.method === "POST") {
+        const body = await readJsonBody(request);
+        const slotId = cleanSlotId(body.slotId);
+        const previous = await storageGetJson(LANDING_PREVIOUS_KEY);
+        const previousSlots = previous?.slots && typeof previous.slots === "object" ? previous.slots : {};
+        const slot = slotId ? previousSlots[slotId] : null;
+
+        if (!slot) {
+          sendJson(response, 404, {
+            message: "There is no previous media for this slot yet",
+          });
+          return true;
+        }
+
+        const restored = {
+          ...slot,
+          updatedAt: new Date().toISOString(),
+        };
+        await saveLandingSlot(slotId, restored);
+
+        sendJson(response, 200, {
+          current: publicLandingSlot(restored),
         });
         return true;
       }

@@ -34,9 +34,9 @@ const handleHeroMedia = createHeroMediaHandler({ origin, hasStorefront });
 const adminHtmlInjectionLimit = Number(process.env.ADMIN_HTML_INJECTION_MAX_BYTES || 2 * 1024 * 1024);
 const primarySiteOrigin = "https://thehidi.com";
 const productionHosts = new Set(["thehidi.com", "www.thehidi.com"]);
-const adminHeroMediaLink = `
-<a data-hidi-hero-media-link="true" href="/admin/hero-media" aria-label="Open HIDI hero media admin"
-  style="position:fixed;right:18px;bottom:18px;z-index:2147483647;padding:10px 14px;border-radius:999px;background:#602124;color:#fff;text-decoration:none;font:600 13px Arial,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.18)">Hero Media</a>
+const adminLandingMediaLink = `
+<a data-hidi-landing-media-link="true" href="/admin/landing-media" aria-label="Open HIDI landing media admin"
+  style="position:fixed;right:18px;bottom:18px;z-index:2147483647;padding:10px 14px;border-radius:999px;background:#602124;color:#fff;text-decoration:none;font:600 13px Arial,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.18)">Landing Media</a>
 `;
 const storefrontLayerFix = `
 <style data-hidi-storefront-layer-fix="true">
@@ -535,6 +535,7 @@ function sendRobots(request, response) {
 function shouldInjectSeo(request, pathname) {
   return request.method === "GET"
     && pathname !== "/admin/hero-media"
+    && pathname !== "/admin/landing-media"
     && !pathname.startsWith("/api/")
     && pathname !== "/api"
     && !pathname.startsWith("/_next/")
@@ -573,17 +574,18 @@ function injectSeo(html, request, pathname) {
     : tags + html;
 }
 
-function shouldInjectAdminHeroLink(request, pathname) {
+function shouldInjectAdminLandingLink(request, pathname) {
   return request.method === "GET"
     && pathname !== "/admin/hero-media"
+    && pathname !== "/admin/landing-media"
     && (pathname === "/admin" || pathname.startsWith("/admin/"));
 }
 
-function injectAdminHeroLink(html) {
-  if (html.includes("data-hidi-hero-media-link") || html.includes("/admin/hero-media")) return html;
+function injectAdminLandingLink(html) {
+  if (html.includes("data-hidi-landing-media-link") || html.includes("/admin/landing-media")) return html;
   return /<\/body>/i.test(html)
-    ? html.replace(/<\/body>/i, `${adminHeroMediaLink}</body>`)
-    : `${html}${adminHeroMediaLink}`;
+    ? html.replace(/<\/body>/i, `${adminLandingMediaLink}</body>`)
+    : `${html}${adminLandingMediaLink}`;
 }
 
 function shouldInjectStorefrontLayerFix(request, pathname) {
@@ -592,7 +594,8 @@ function shouldInjectStorefrontLayerFix(request, pathname) {
     && pathname !== "/api"
     && !pathname.startsWith("/_next/")
     && pathname !== "/_next"
-    && pathname !== "/admin/hero-media";
+    && pathname !== "/admin/hero-media"
+    && pathname !== "/admin/landing-media";
 }
 
 function injectStorefrontLayerFix(html) {
@@ -751,10 +754,10 @@ function proxy(request, response, pathname = "") {
   }
 
   const headers = cleanHeaders(request.headers);
-  const injectHeroLink = shouldInjectAdminHeroLink(request, pathname);
+  const injectLandingLink = shouldInjectAdminLandingLink(request, pathname);
   const injectLayerFix = shouldInjectStorefrontLayerFix(request, pathname);
   const injectSeoTags = shouldInjectSeo(request, pathname);
-  if (injectHeroLink || injectLayerFix || injectSeoTags) delete headers["accept-encoding"];
+  if (injectLandingLink || injectLayerFix || injectSeoTags) delete headers["accept-encoding"];
   // The fixed origin selects the destination. The public host/protocol still
   // reach Next so redirects, authentication cookies, and URL generation work.
   headers.host = request.headers.host || origin.host;
@@ -771,7 +774,7 @@ function proxy(request, response, pathname = "") {
     const responseHeaders = applySecurityHeaders(cleanHeaders(incoming.headers), request, pathname);
     const status = incoming.statusCode || 502;
     const contentType = String(responseHeaders["content-type"] || "");
-    const canInject = (injectHeroLink || injectLayerFix || injectSeoTags)
+    const canInject = (injectLandingLink || injectLayerFix || injectSeoTags)
       && status >= 200 && status < 300
       && /\btext\/html\b/i.test(contentType)
       && !responseHeaders["content-encoding"];
@@ -812,7 +815,7 @@ function proxy(request, response, pathname = "") {
       let html = Buffer.concat(chunks).toString("utf8");
       if (injectLayerFix) html = injectStorefrontLayerFix(html);
       if (injectSeoTags) html = injectSeo(html, request, pathname);
-      if (injectHeroLink) html = injectAdminHeroLink(html);
+      if (injectLandingLink) html = injectAdminLandingLink(html);
       const body = Buffer.from(html);
       responseHeaders["content-length"] = String(body.length);
       if (shouldNoIndex(request, pathname)) responseHeaders["x-robots-tag"] = "noindex, nofollow, noarchive";
@@ -934,7 +937,11 @@ async function handle(request, response) {
       || pathname === "/_next" || pathname.startsWith("/_next/")) return proxy(request, response, pathname);
   if (request.method !== "GET" && request.method !== "HEAD") return proxy(request, response, pathname);
 
-  const landingPath = pathname === "/admin/hero-media" ? "/hero-control.html" : pathname;
+  const landingPath = pathname === "/admin/hero-media"
+    ? "/hero-control.html"
+    : pathname === "/admin/landing-media"
+      ? "/landing-media-control.html"
+      : pathname;
   let filePath = resolve(root, `.${landingPath === "/" ? "/index.html" : landingPath}`);
   if (!filePath.startsWith(`${root}${sep}`)) {
     return error(response, 403, "Forbidden");

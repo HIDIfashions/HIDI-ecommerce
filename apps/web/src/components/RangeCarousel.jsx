@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { asset, config } from '../config.js';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { config } from '../config.js';
 import { collections } from '../data/collections.js';
 import { useHidi } from '../context/HidiContext.jsx';
+import { landingImageProps, useLandingMedia } from '../context/LandingMediaContext.jsx';
 import { useMediaQuery, useReducedMotion } from '../hooks/useMediaQuery.js';
 import { useDocumentVisible, useInView } from '../hooks/useVisibility.js';
 import { useRollingCarousel } from '../hooks/useRollingCarousel.js';
@@ -12,6 +13,7 @@ import '../styles/collection-spotlight.css';
 const count = collections.length;
 
 export default function RangeCarousel() {
+  const landingMedia = useLandingMedia();
   const { openCollection, dialogOpen } = useHidi();
   const mobile = useMediaQuery('(max-width: 700px)');
   const reduced = useReducedMotion();
@@ -28,6 +30,10 @@ export default function RangeCarousel() {
   const { galleryRef, stageRef, active, moving, dragging, move, goTo, canOpen } = useRollingCarousel({
     count, initialIndex: count > 1 ? 1 : 0, reduced, onInteraction,
   });
+  const resolvedCollections = useMemo(() => collections.map((item) => ({
+    ...item,
+    imageProps: landingImageProps(landingMedia, `range-${item.id}`, item.image, item.alt),
+  })), [landingMedia]);
 
   useEffect(() => { setPaused(mobile || reduced); }, [mobile, reduced]);
   useEffect(() => {
@@ -35,17 +41,17 @@ export default function RangeCarousel() {
     let cancelled = false;
     // Decode each photograph before autoplay starts; the first turn never waits
     // for an image fetch or decode. The DOM contains only five real cards.
-    Promise.all(collections.map((item) => new Promise((resolve) => {
+    Promise.all(resolvedCollections.map((item) => new Promise((resolve) => {
       const image = new Image();
       image.onload = () => {
         if (image.decode) image.decode().catch(() => {}).then(resolve);
         else resolve();
       };
       image.onerror = resolve;
-      image.src = asset(item.image);
+      image.src = item.imageProps.src;
     }))).then(() => { if (!cancelled) setReady(true); });
     return () => { cancelled = true; };
-  }, [visible]);
+  }, [resolvedCollections, visible]);
 
   useEffect(() => {
     if (!ready || paused || reduced || hovered || focused || dragging || moving || !visible || !documentVisible || dialogOpen) return undefined;
@@ -98,7 +104,7 @@ export default function RangeCarousel() {
         onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
         <div ref={stageRef} className="hidi-collection-stage">
           <div className="hidi-collection-track">
-            {collections.map((item, index) => (
+            {resolvedCollections.map((item, index) => (
               <article key={item.id} className="hidi-collection-card" data-card={index}
                 data-hovered={hoveredCard === index ? 'true' : undefined}
                 role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${count}: ${item.name}`}>
@@ -106,7 +112,7 @@ export default function RangeCarousel() {
                   <div className="hidi-collection-photo"
                     onMouseEnter={() => { if (window.matchMedia('(hover: hover)').matches) setHoveredCard(index); }}
                     onMouseLeave={() => setHoveredCard(null)}>
-                    <img src={asset(item.image)} alt={item.alt} width="355" height="593" draggable={false} decoding="async" loading="eager" />
+                    <img {...item.imageProps} alt={item.imageProps.alt || item.alt} width="355" height="593" draggable={false} decoding="async" loading="eager" />
                   </div>
                   <div className="hidi-collection-caption">
                     <h3>{item.name}</h3>
@@ -126,7 +132,7 @@ export default function RangeCarousel() {
             {paused ? 'Resume automatic collection rotation' : 'Pause automatic collection rotation'}
           </button>
           <div className="hidi-collection-dots" role="group" aria-label="Choose a collection">
-            {collections.map((item, index) => <button key={item.id} type="button"
+            {resolvedCollections.map((item, index) => <button key={item.id} type="button"
               className={`hidi-collection-dot${active === index ? ' is-active' : ''}`}
               aria-label={`Show ${item.name}`} aria-pressed={active === index} onClick={() => select(index)}><span /></button>)}
           </div>

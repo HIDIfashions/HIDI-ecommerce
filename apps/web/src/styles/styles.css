@@ -38,6 +38,15 @@ button { color: inherit; border: 0; background: none; padding: 0; cursor: pointe
 button:disabled { cursor: not-allowed; opacity: .55; }
 img, video { display: block; max-width: 100%; }
 img { height: auto; }
+img[data-landing-media-slot] {
+  object-fit: var(--landing-media-fit, cover);
+  object-position: var(--landing-media-desktop-position, 50% 50%);
+}
+@media (max-width: 700px) {
+  img[data-landing-media-slot] {
+    object-position: var(--landing-media-mobile-position, var(--landing-media-desktop-position, 50% 50%));
+  }
+}
 svg { flex-shrink: 0; }
 button, a, input { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 5px; }

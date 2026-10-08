@@ -73,9 +73,10 @@ https://thidigk.thehidi.com/v1/payments/razorpay/webhook
 Opening that URL in a browser uses `GET`, so the runtime returns `405` by
 design. Razorpay must call it with `POST` and `x-razorpay-signature`.
 
-Hero media uploads are served by the landing runtime at `/admin/hero-media`.
-Proxied `/admin` HTML pages also receive a direct **Hero Media** entry so the
-control page is discoverable from the existing admin portal.
+Landing media uploads are served by the landing runtime at `/admin/landing-media`.
+The older hero-only tool remains available at `/admin/hero-media`. Proxied
+`/admin` HTML pages receive a direct **Landing Media** entry so the control page
+is discoverable from the existing admin portal.
 For Azure Blob, set the Container App environment to:
 
 ```bash
@@ -87,9 +88,10 @@ AZURE_CLIENT_ID=<hidi-web managed identity client id>
 ```
 
 The managed identity needs Blob data read/write access on the storage account
-or container. Uploaded hero assets are streamed back through the landing
-runtime at `/api/hidi/hero-asset/brand/hero/media/...`, so the storage account
-can keep public network and anonymous blob access disabled.
+or container. Uploaded hero and landing assets are streamed back through the
+landing runtime at `/api/hidi/hero-asset/brand/hero/media/...` and
+`/api/hidi/hero-asset/brand/landing-media/media/...`, so the storage account can
+keep public network and anonymous blob access disabled.
 `AZURE_STORAGE_CONTAINER` can also be supplied as `MEDIA_STORAGE_CONTAINER`,
 `AZURE_BLOB_CONTAINER` or `BLOB_CONTAINER`.
 R2 remains supported only when `MEDIA_STORAGE_PROVIDER=r2` and the existing R2
