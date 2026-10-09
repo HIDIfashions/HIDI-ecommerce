@@ -17,7 +17,7 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: 77fc52d6b80b7ebfb12c23cec307d523d864856e
+      HERO_SOURCE_SHA: 786558b6fccbf5f13aab30c8e027394dca23df98
       HERO_BASE_SHA: 91b55b213da13f438443c70e2ea1b2caa6b98d26
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: 77fc52d6b80b7ebfb12c23cec307d523d864856e
+          ref: 786558b6fccbf5f13aab30c8e027394dca23df98
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
           (cd hero-source && node --test deploy/hidi-web-new/runtime.test.mjs)
           python3 - <<'PYCODE'
           import subprocess
-          changed=subprocess.check_output(['git','diff','--name-only','91b55b213da13f438443c70e2ea1b2caa6b98d26','77fc52d6b80b7ebfb12c23cec307d523d864856e','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
+          changed=subprocess.check_output(['git','diff','--name-only','91b55b213da13f438443c70e2ea1b2caa6b98d26','786558b6fccbf5f13aab30c8e027394dca23df98','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
           assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/styles/styles.css'}, changed
           print('PASS: only the requested Ananya photo layout changed')
           PYCODE
