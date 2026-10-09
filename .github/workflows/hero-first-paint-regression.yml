@@ -11,9 +11,6 @@ jobs:
   regression:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/hero-browsers
-      HIDI_PLAYWRIGHT_MODULE: ${{ runner.temp }}/hero-browser/node_modules/playwright/index.mjs
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,6 +20,10 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
+      - name: Configure isolated browser tooling
+        run: |
+          echo "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/hero-browsers" >> "$GITHUB_ENV"
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/hero-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
       - name: Check scope against pre-change backup
         run: |
           python3 - <<'PY'
