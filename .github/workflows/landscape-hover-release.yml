@@ -17,7 +17,7 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: 73d3f254fd62433ec90c50a69849396f093cdfa7
+      HERO_SOURCE_SHA: 15ef87ca599a223545150d15692cc4f2e829ef54
       HERO_BASE_SHA: 8949557590453040662a50b8b04c80c95277cdbe
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: 73d3f254fd62433ec90c50a69849396f093cdfa7
+          ref: 15ef87ca599a223545150d15692cc4f2e829ef54
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
           (cd hero-source && node --test deploy/hidi-web-new/runtime.test.mjs)
           python3 - <<'PYCODE'
           import subprocess
-          changed=subprocess.check_output(['git','diff','--name-only','8949557590453040662a50b8b04c80c95277cdbe','73d3f254fd62433ec90c50a69849396f093cdfa7','--','apps/web/src','apps/web/index.html','apps/web/public/hero-control.html','apps/web/public/landing-media-control.html','deploy/hidi-web-new/hero-media.mjs'],cwd='hero-source',text=True).splitlines()
+          changed=subprocess.check_output(['git','diff','--name-only','8949557590453040662a50b8b04c80c95277cdbe','15ef87ca599a223545150d15692cc4f2e829ef54','--','apps/web/src','apps/web/index.html','apps/web/public/hero-control.html','apps/web/public/landing-media-control.html','deploy/hidi-web-new/hero-media.mjs'],cwd='hero-source',text=True).splitlines()
           assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/components/VideoHero.jsx','apps/web/src/components/MediaSequenceControls.jsx','apps/web/src/hooks/useMediaSequence.js','apps/web/src/context/LandingMediaContext.jsx','apps/web/src/styles/styles.css','apps/web/public/hero-control.html','apps/web/public/landing-media-control.html','deploy/hidi-web-new/hero-media.mjs'}, changed
           print('PASS: only the requested hero/Ananya media controls and layouts changed')
           PYCODE
