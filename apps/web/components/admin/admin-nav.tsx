@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 
 const ITEMS = [
   { label: "Orders", href: "/admin/orders" },
-  { label: "Packing Scanner", href: "/admin/orders/packing" },
   { label: "Products", href: "/admin/products" },
   { label: "Price Tags", href: "/admin/products/price-tags" },
   { label: "Imports", href: "/admin/import" },
@@ -35,19 +34,17 @@ export function AdminNav() {
     <nav aria-label="Admin navigation">
       {items.map((item) => {
         const active =
-          item.href === "/admin/orders/packing"
-            ? pathname.startsWith("/admin/orders/packing")
-            : item.href === "/admin/orders"
-              ? pathname.startsWith("/admin/orders") && !pathname.startsWith("/admin/orders/packing")
-              : item.href === "/admin/products/price-tags"
-                ? pathname.startsWith("/admin/products/price-tags")
-                : item.href === "/admin/products"
-                  ? pathname.startsWith("/admin/products") && !pathname.startsWith("/admin/products/price-tags")
-                  : item.href === "/admin/customers"
-                    ? pathname.startsWith("/admin/customers")
-                    : item.href === "/admin/staff"
-                      ? pathname.startsWith("/admin/staff")
-                      : pathname === item.href;
+          item.href === "/admin/orders"
+            ? pathname.startsWith("/admin/orders")
+            : item.href === "/admin/products/price-tags"
+              ? pathname.startsWith("/admin/products/price-tags")
+              : item.href === "/admin/products"
+                ? pathname.startsWith("/admin/products") && !pathname.startsWith("/admin/products/price-tags")
+                : item.href === "/admin/customers"
+                  ? pathname.startsWith("/admin/customers")
+                  : item.href === "/admin/staff"
+                    ? pathname.startsWith("/admin/staff")
+                    : pathname === item.href;
 
         return active ? (
           <strong key={item.href}>{item.label}</strong>
