@@ -19,30 +19,68 @@ export default function VideoHero() {
   const [userPaused, setUserPaused] = useState(() => reduced || saveDataEnabled());
   const [readySource, setReadySource] = useState('');
   const [liveHero, setLiveHero] = useState(null);
+  // Pending is NOT a request to display the previous built-in campaign.
+  const [heroConfigStatus, setHeroConfigStatus] = useState('loading');
+  const [liveReadySource, setLiveReadySource] = useState('');
   const [videoAllowed, setVideoAllowed] = useState(false);
   const variant = mobile ? 'mobile' : 'desktop';
   const source = asset(`video/hidi-hero-${variant}-luminous-v1.mp4`);
   const poster = asset(`images/hero-${variant}-luminous-first-frame-v1.webp`);
-  const ready = readySource === source;
-  const shouldPlay = videoAllowed && !liveHero && !userPaused && heroVisible && pageVisible && !dialogOpen;
+  const showBundled = heroConfigStatus === 'bundled';
+  const liveReady = Boolean(liveHero && liveReadySource === liveHero.url);
+  const ready = showBundled && readySource === source;
+  const shouldPlay = showBundled && videoAllowed && !userPaused && heroVisible && pageVisible && !dialogOpen;
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetch('/api/hidi/hero-config', { cache: 'no-store', signal: controller.signal })
-      .then((response) => response.ok ? response.json() : null)
-      .then((value) => {
-        if (!value?.active || !['image', 'video'].includes(value.type)) return;
-        const url = safeWebUrl(value.url);
-        if (!url) return;
+    let disposed = false;
+    let controller;
+    let timeout;
+    let retryTimer;
+    let attempts = 0;
+
+    const loadSelection = async () => {
+      attempts += 1;
+      controller = new AbortController();
+      timeout = window.setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch('/api/hidi/hero-config', {
+          cache: 'no-store', signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('Hero configuration unavailable');
+        const value = await response.json();
+        if (disposed) return;
+        if (value?.active === false && value?.source === 'bundled') {
+          setHeroConfigStatus('bundled');
+          return;
+        }
+        const url = value?.active === true && ['image', 'video'].includes(value.type)
+          ? safeWebUrl(value.url) : '';
+        if (!url) throw new Error('Invalid hero configuration');
+        setLiveReadySource('');
         setLiveHero({
           type: value.type,
           url,
           desktopPosition: typeof value.desktopPosition === 'string' ? value.desktopPosition : '50% 50%',
           mobilePosition: typeof value.mobilePosition === 'string' ? value.mobilePosition : '50% 50%',
         });
-      })
-      .catch((error) => { if (error?.name !== 'AbortError') setLiveHero(null); });
-    return () => controller.abort();
+        setHeroConfigStatus('uploaded');
+      } catch {
+        if (disposed) return;
+        // A temporary error must never reveal the earlier campaign.
+        if (attempts < 3) retryTimer = window.setTimeout(loadSelection, attempts * 500);
+        else setHeroConfigStatus('error');
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    };
+
+    void loadSelection();
+    return () => {
+      disposed = true;
+      window.clearTimeout(timeout);
+      window.clearTimeout(retryTimer);
+      controller?.abort();
+    };
   }, []);
 
   useEffect(() => {
@@ -50,7 +88,7 @@ export default function VideoHero() {
   }, [reduced]);
 
   useEffect(() => {
-    if (liveHero || reduced || saveDataEnabled()) {
+    if (!showBundled || reduced || saveDataEnabled()) {
       setVideoAllowed(false);
       return undefined;
     }
@@ -72,10 +110,10 @@ export default function VideoHero() {
         window.cancelIdleCallback(idleId);
       }
     };
-  }, [liveHero, mobile, reduced]);
+  }, [showBundled, mobile, reduced]);
 
   useEffect(() => {
-    if (liveHero) return undefined;
+    if (!showBundled) return undefined;
     const video = videoRef.current;
     if (!video) return undefined;
 
@@ -115,10 +153,10 @@ export default function VideoHero() {
       video.removeEventListener('loadeddata', queueFrame);
       video.removeEventListener('playing', queueFrame);
     };
-  }, [liveHero, source]);
+  }, [showBundled, source]);
 
   useEffect(() => {
-    if (liveHero) return undefined;
+    if (!showBundled) return undefined;
     const video = videoRef.current;
     if (!video) return undefined;
 
@@ -142,33 +180,49 @@ export default function VideoHero() {
       cancelled = true;
       video.pause();
     };
-  }, [liveHero, shouldPlay, source]);
+  }, [showBundled, shouldPlay, source]);
+
+  const revealLiveVideo = (event) => {
+    const video = event.currentTarget;
+    if (video.readyState >= 2 && video.videoWidth > 0) setLiveReadySource(liveHero.url);
+  };
 
   return (
-    <section ref={heroRef} className="hero hero--campaign" aria-labelledby="hero-title">
-      <div className="hero-media" aria-hidden="true" data-frame-ready={ready || undefined}>
-        {liveHero ? (liveHero.type === 'video' ?
+    <section ref={heroRef} className="hero hero--campaign" aria-labelledby="hero-title" aria-busy={heroConfigStatus === 'loading'}>
+      <div className="hero-media" aria-hidden="true" data-hero-config-status={heroConfigStatus} data-frame-ready={ready || liveReady || undefined}>
+        {heroConfigStatus === 'uploaded' && liveHero ? (liveHero.type === 'video' ?
           <video
+            key={liveHero.url}
             className="hero-live-media"
             src={liveHero.url}
             autoPlay={!reduced}
             muted
             loop
             playsInline
-            preload="metadata"
-            onError={() => setLiveHero(null)}
-            style={{ '--hero-position-desktop': liveHero.desktopPosition, '--hero-position-mobile': liveHero.mobilePosition }}
+            preload="auto"
+            onLoadedData={revealLiveVideo}
+            onCanPlay={revealLiveVideo}
+            onError={() => setHeroConfigStatus('error')}
+            style={{ visibility: liveReady ? 'visible' : 'hidden', '--hero-position-desktop': liveHero.desktopPosition, '--hero-position-mobile': liveHero.mobilePosition }}
           /> :
           <img
+            key={liveHero.url}
             className="hero-live-media"
             src={liveHero.url}
             alt=""
             loading="eager"
             fetchPriority="high"
-            onError={() => setLiveHero(null)}
-            style={{ '--hero-position-desktop': liveHero.desktopPosition, '--hero-position-mobile': liveHero.mobilePosition }}
+            onLoad={(event) => {
+              const image = event.currentTarget;
+              const selectedUrl = liveHero.url;
+              const show = () => { if (image.isConnected && image.naturalWidth > 0) setLiveReadySource(selectedUrl); };
+              if (typeof image.decode === 'function') image.decode().then(show).catch(() => { if (image.isConnected) setHeroConfigStatus('error'); });
+              else show();
+            }}
+            onError={() => setHeroConfigStatus('error')}
+            style={{ visibility: liveReady ? 'visible' : 'hidden', '--hero-position-desktop': liveHero.desktopPosition, '--hero-position-mobile': liveHero.mobilePosition }}
           />
-        ) : (
+        ) : showBundled ? (
           <>
             <picture>
               <source media="(max-width: 700px)" srcSet={asset('images/hero-mobile-luminous-first-frame-v1.webp')} />
@@ -199,7 +253,7 @@ export default function VideoHero() {
               }}
             />
           </>
-        )}
+        ) : null}
       </div>
       <div className="hero-shade" />
       <h1 id="hero-title" className="sr-only">HIDI — Wear the feeling. Indian wear for work, everyday and occasions.</h1>
