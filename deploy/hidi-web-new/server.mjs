@@ -35,8 +35,27 @@ const adminHtmlInjectionLimit = Number(process.env.ADMIN_HTML_INJECTION_MAX_BYTE
 const primarySiteOrigin = "https://thehidi.com";
 const productionHosts = new Set(["thehidi.com", "www.thehidi.com"]);
 const adminLandingMediaLink = `
-<a data-hidi-landing-media-link="true" href="/admin/landing-media" aria-label="Open HIDI landing media admin"
-  style="position:fixed;right:18px;bottom:18px;z-index:2147483647;padding:10px 14px;border-radius:999px;background:#602124;color:#fff;text-decoration:none;font:600 13px Arial,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.18)">Landing Media</a>
+<script data-hidi-landing-media-link="true">
+(() => {
+  const addMediaTab = () => {
+    const nav = document.querySelector('nav[aria-label="Admin navigation"]');
+    if (!nav || nav.querySelector('[data-hidi-media-tab="true"]')) return;
+    const link = document.createElement('a');
+    link.href = '/admin/landing-media';
+    link.textContent = 'Media Upload';
+    link.dataset.hidiMediaTab = 'true';
+    link.setAttribute('aria-label', 'Open HIDI landing media upload');
+    nav.appendChild(link);
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', addMediaTab, { once: true });
+  } else {
+    addMediaTab();
+  }
+  const observer = new MutationObserver(addMediaTab);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
 `;
 const storefrontLayerFix = `
 <style data-hidi-storefront-layer-fix="true">
