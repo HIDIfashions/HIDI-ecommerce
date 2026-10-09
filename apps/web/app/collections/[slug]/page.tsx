@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const labels: Record<string, { title: string; copy: string }> = {
   all: { title: "Shop All", copy: "Explore the complete HIDI edit in one place." },
   "new-arrivals": { title: "New Arrivals", copy: "Fresh HIDI pieces, added in small considered edits." },
-  "work-edit": { title: "Work Edit", copy: "Polished Indian wear for meetings, commutes and everything after." },
+  "work-edit": { title: "Workwear Edit", copy: "Polished Indian wear for meetings, commutes and everything after." },
   everyday: { title: "Everyday", copy: "Easy silhouettes designed to earn their place in your weekly rotation." },
   occasion: { title: "Occasion", copy: "Elevated colour and detail, without the noise." },
 };

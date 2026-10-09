@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight, Share2, X } from "lucide-react";
+import { Check, Heart, LoaderCircle, ShoppingBag, ArrowUpRight, Share2, X, Plus } from "lucide-react";
 import type { ApiProduct, ApiVariant } from "@/lib/api";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
 import { cardPrice, money, validColourHex, variantsForColour } from "@/lib/product-card-utils";
@@ -251,8 +251,10 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false, 
         disabled={!canBuy || busy}
         onClick={() => setMobileQuickOpen(true)}
         aria-label={`Quick add — ${product.name}`}
+        title={soldOut ? "Sold out" : "Quick add"}
+        aria-haspopup="dialog"
       >
-        {soldOut ? "Sold out" : "Quick add"}
+        {soldOut ? "Sold out" : <Plus size={22} strokeWidth={1.5} aria-hidden="true" />}
       </button>
 
     </div>

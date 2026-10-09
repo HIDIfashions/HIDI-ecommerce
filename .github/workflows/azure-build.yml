@@ -35,6 +35,8 @@ jobs:
         run: node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
       - run: pnpm --filter @hidi/api test:customer-experience
       - run: pnpm --filter @hidi/api build
+      - name: Verify release guards and rollback without cloud mutations
+        run: python3 tests/shopping-ux-deploy.test.py
       - name: Build and type-check the admin and storefront together
         run: |
           export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"
@@ -49,7 +51,7 @@ jobs:
           pnpm --filter @hidi/web build
       - name: Install isolated browser-test tooling on this runner
         run: |
-          npm install --prefix "$RUNNER_TEMP/hidi-browser" --no-save playwright@1.62.1
+          npm install --prefix "$RUNNER_TEMP/hidi-browser" --no-save playwright@1.56.1
           node "$RUNNER_TEMP/hidi-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
       - name: Verify installed browser engines can launch
         env:
@@ -186,6 +188,77 @@ jobs:
           API_RELEASE_SHA: ${{ contains(github.event.head_commit.message, '[reuse-admin-api-a1b0ca6]') && 'a1b0ca64e4408894f2ef3fcd27ea339cba4db5d5' || github.sha }}
           WEB_RELEASE_SHA: ${{ contains(github.event.head_commit.message, '[reuse-admin-web-e91db4b]') && 'e91db4b36578ca1acad759d6f1fe9de659c2152b' || github.sha }}
         run: bash deploy/update-existing-admin.sh "$API_RELEASE_SHA" "$WEB_RELEASE_SHA"
+
+  deploy-shopping-ux:
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-shopping-ux]')
+    needs: containers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read the exact tested landing release
+        run: |
+          landing_ref="$(jq -r .landing_ref deploy/shopping-ux-release.json)"
+          [[ "$landing_ref" =~ ^[0-9a-f]{40}$ ]]
+          echo "HIDI_LANDING_REF=$landing_ref" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HIDI_LANDING_REF }}
+          path: landing-source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: landing-source/apps/web/package-lock.json
+      - name: Test and build the pinned homepage and runtime
+        working-directory: landing-source
+        run: |
+          cd apps/web
+          npm ci
+          npm test
+          npm run build
+          cd ../..
+          node --test deploy/hidi-web-new/runtime.test.mjs
+      - name: Package the homepage and existing admin tools
+        working-directory: landing-source
+        run: |
+          tar -czf ../hidi-shopping-landing.tar.gz -C apps/web dist -C ../../deploy/hidi-web-new server.mjs hero-media.mjs
+      - name: Verify the pinned homepage in Chromium, Firefox and WebKit
+        working-directory: landing-source/apps/web
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/hidi-shopping-browsers
+        run: |
+          npm install --prefix "$RUNNER_TEMP/hidi-shopping-browser" --no-save playwright@1.56.1
+          node "$RUNNER_TEMP/hidi-shopping-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+          HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-shopping-browser/node_modules/playwright/index.mjs" HIDI_BROWSER_ENGINES=chromium,firefox,webkit node scripts/test-responsive.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Publish homepage over the new tested storefront
+        id: publish
+        run: |
+          python3 landing-source/deploy/hidi-web-new/push-hidi-landing-oci.py \
+            --registry acrhidiprod0927 --payload hidi-shopping-landing.tar.gz \
+            --base "hidi-web:$GITHUB_SHA" --tag "shopping-ux-${GITHUB_SHA::8}-${GITHUB_RUN_NUMBER}" | tee published-image.json
+          digest="$(jq -r .manifest_digest published-image.json)"
+          echo "image=acrhidiprod0927.azurecr.io/hidi-web@$digest" >> "$GITHUB_OUTPUT"
+      - name: Update existing API and combined web with guarded rollback
+        run: bash deploy/update-shopping-ux.sh "$GITHUB_SHA" '${{ steps.publish.outputs.image }}'
+      - name: Save rollback images and revision references
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shopping-ux-rollback-${{ github.sha }}
+          path: ${{ runner.temp }}/hidi-shopping-ux-state
+          if-no-files-found: ignore
+          retention-days: 30
 
 
   deploy-landing-overlay:

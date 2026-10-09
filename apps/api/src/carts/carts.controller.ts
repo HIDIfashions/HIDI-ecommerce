@@ -22,8 +22,9 @@ export class CartsController {
   update(
     @Param("sessionId") sessionId: string,
     @Param("itemId") itemId: string,
-    @Body() body: { quantity?: number },
+    @Body() body: { quantity?: number; variantId?: string },
   ) {
+    if (body.variantId !== undefined) return this.carts.changeSize(sessionId, itemId, body.variantId, body.quantity);
     return this.carts.updateItem(sessionId, itemId, body.quantity ?? 1);
   }
 

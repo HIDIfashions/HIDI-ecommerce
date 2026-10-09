@@ -34,6 +34,6 @@ export function matchesProductSearch(product: ApiProduct, query: string): boolea
   const words = normalizeSearch(query.slice(0, 160)).split(" ").filter(Boolean);
   if (!words.length) return false;
   const haystack = normalizeSearch([product.name, product.shortDescription, product.description, product.fabric,
-    product.category?.name, ...product.collections.map(c => c.name), ...product.variants.flatMap(v => [v.color, v.size, v.sku])].filter(Boolean).join(" "));
+    product.category?.name, ...product.collections.flatMap(c => c.slug === "work-edit" ? [c.name, "Workwear Edit"] : [c.name]), ...product.variants.flatMap(v => [v.color, v.size, v.sku])].filter(Boolean).join(" "));
   return words.every(word => haystack.includes(word));
 }

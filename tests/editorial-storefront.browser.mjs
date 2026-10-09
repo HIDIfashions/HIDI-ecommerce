@@ -9,6 +9,7 @@ import { runQualityChecks } from './storefront-quality.browser.mjs';
 const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
 const output = resolve('test-results/editorial-storefront'); await mkdir(output, {recursive:true});
 const port=3107, apiPort=4107, base=`http://127.0.0.1:${port}`;
+const requestedCases=new Set((process.env.HIDI_BROWSER_CASES||'').split(',').filter(Boolean));
 const folders=['ira-beige-office-kurta-set','myra-peach-comfort-kurta-set','kiara-wine-festive-kurta-set','nivya-olive-work-kurta','rhea-mint-daily-kurta','anika-ivory-embroidered-set'];
 const products=folders.map((slug,i)=>({
   id:`fixture-${i}`,slug,name:i===0?'Ira everyday kurta':i===5?'Anika embroidered occasion set with a deliberately long product name':`HIDI editorial piece ${i+1}`,
@@ -51,7 +52,20 @@ const upstream=createServer(async(req,res)=>{
       }
       const current=basket(session),item=current.items.find(i=>i.id===cart[2]);if(!item)return send(404,{message:'Not found'});
       if(req.method==='DELETE')carts.set(session,current.items.filter(i=>i.id!==item.id));
-      if(req.method==='PATCH'){item.quantity=body.quantity;item.lineTotalPaise=body.quantity*item.variant.pricePaise;}
+      if(req.method==='PATCH'){
+        if(body.variantId){
+          await delay(150);
+          if(cartMode==='conflict')return send(409,{message:'Selected size is no longer available.'});
+          if(cartMode==='server')return send(500,{message:'Fixture uncertain update'});
+          if(cartMode==='rate')return send(429,{message:'Too many requests'});
+          if(cartMode==='malformed')return send(200,{accepted:true});
+          const product=products.find(p=>p.id===item.product.id),variant=product?.variants.find(v=>v.id===body.variantId&&v.color===item.variant.color);
+          if(!variant||variant.available<body.quantity)return send(409,{message:'Selected size is unavailable.'});
+          const existing=current.items.find(i=>i.id!==item.id&&i.variant.id===variant.id);
+          if(existing){existing.quantity+=body.quantity;existing.lineTotalPaise=existing.quantity*variant.pricePaise;carts.set(session,current.items.filter(i=>i.id!==item.id));}
+          else {item.variant={...variant};item.quantity=body.quantity;item.lineTotalPaise=body.quantity*variant.pricePaise;}
+        }else {item.quantity=body.quantity;item.lineTotalPaise=body.quantity*item.variant.pricePaise;}
+      }
       return send(200,basket(session));
     }
     if(route==='/marketing/newsletter'&&req.method==='POST')return send(200,{message:'You are on the HIDI list. Thank you for joining.'});
@@ -65,12 +79,13 @@ server.stdout.on('data',b=>{serverLog+=b;});server.stderr.on('data',b=>{serverLo
 async function until(check,label,timeout=8000){const start=Date.now();while(!(await check())){if(Date.now()-start>timeout)throw new Error(`Timed out: ${label}`);await delay(50);}}
 async function fontAudit(page,engine,label){
   await page.evaluate(()=>document.fonts.ready);
-  const values=await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(el=>{const style=getComputedStyle(el),box=el.getBoundingClientRect();return !el.closest('[aria-hidden="true"],.sr-only,script,style')&&style.display!=='none'&&style.visibility!=='hidden'&&box.width>0&&box.height>0&&[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());}).map(el=>{const style=getComputedStyle(el);return{section:el.closest('[data-section]')?.getAttribute('data-section')||(el.closest('.site-header')?'header':el.closest('.footer')?'footer':el.closest('[role="dialog"],dialog')?'dialog':'global'),tag:el.tagName,text:el.textContent.trim().replace(/\s+/g,' ').slice(0,140),family:style.fontFamily,size:style.fontSize,weight:style.fontWeight,lineHeight:style.lineHeight,spacing:style.letterSpacing,color:style.color};}));
+  const values=await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(el=>{const style=getComputedStyle(el),box=el.getBoundingClientRect();return !el.closest('[aria-hidden="true"],.sr-only,.cart-status,script,style')&&style.display!=='none'&&style.visibility!=='hidden'&&box.width>0&&box.height>0&&[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());}).map(el=>{const style=getComputedStyle(el);return{section:el.closest('[data-section]')?.getAttribute('data-section')||(el.closest('.site-header')?'header':el.closest('.footer')?'footer':el.closest('[role="dialog"],dialog')?'dialog':'global'),tag:el.tagName,text:el.textContent.trim().replace(/\s+/g,' ').slice(0,140),family:style.fontFamily,size:style.fontSize,weight:style.fontWeight,lineHeight:style.lineHeight,spacing:style.letterSpacing,color:style.color};}));
   typography.push(...values.map(v=>({engine,viewport:page.viewportSize().width,state:label,...v})));
   for(const value of values){assert.match(value.family,/Helvetica Neue|Segoe UI|Arial/,`${value.section}: ${value.text}`);assert(parseFloat(value.size)>=11,`Unreadable type: ${JSON.stringify(value)}`);}
   for(const input of await page.locator('input:not([type="checkbox"]):not([type="radio"]):visible,select:visible,textarea:visible').all())assert(await input.evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=16),'Text fields must remain at least 16px');
 }
 async function scenario(browser,engine,id,title,work,options={}){
+  if(requestedCases.size&&!requestedCases.has(id))return;
   const {startPath='/',...contextOptions}=options;
   assert(typeof startPath==='string'&&startPath.startsWith('/')&&!startPath.startsWith('//'),'Only isolated same-origin entry routes are allowed');
   const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce',...contextOptions});
@@ -128,7 +143,7 @@ try{
       await page.getByRole('button',{name:'Pause announcements',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Play announcements'}).getAttribute('aria-pressed'),'true');await until(()=>page.locator('video').count().then(n=>n===0),'unavailable video removed');assert.equal(await page.locator('[data-motion]').getAttribute('data-video-playing'),'false');
     },{reducedMotion:'no-preference'});
     await scenario(browser,engine,'SRCH-01','Search suggestions, thumbnails, typed results, no-match state and focus restoration',async page=>{
-      await page.getByRole('button',{name:'Search',exact:true}).click();const search=page.getByRole('dialog',{name:'Search HIDI',exact:true});await search.waitFor();await until(()=>search.locator('[aria-label="Discover HIDI products"] a').count().then(n=>n===4),'discovery thumbnails');assert.equal(await search.getByRole('navigation',{name:'Suggested searches'}).getByRole('link').count(),4);
+      await page.getByRole('button',{name:'Search',exact:true}).click();const search=page.getByRole('dialog',{name:'Search HIDI',exact:true});await search.waitFor();await until(()=>search.locator('[aria-label="Discover HIDI products"] a').count().then(n=>n===4),'discovery thumbnails');assert.equal(await search.getByRole('navigation',{name:'Suggested searches'}).getByRole('link').count(),4);assert.equal(await search.getByRole('link',{name:'Workwear Edit',exact:true}).getAttribute('href'),'/collections/work-edit');
       await search.getByRole('searchbox',{name:'Search HIDI products'}).fill('Ira');await until(()=>search.locator('#hidi-search-results a').count().then(n=>n===1),'matching result');await fontAudit(page,engine,'search-dialog');await page.screenshot({path:resolve(output,`${engine}-search.png`)});
       await search.getByRole('searchbox',{name:'Search HIDI products'}).fill('zz-no-match-zz');await search.getByRole('status').filter({hasText:'No HIDI pieces matched'}).waitFor();await page.keyboard.press('Escape');await search.waitFor({state:'hidden'});await until(()=>page.getByRole('button',{name:'Search',exact:true}).evaluate(el=>el===document.activeElement),'search focus return');
     });
@@ -154,6 +169,65 @@ try{
       await card(page).getByRole('button',{name:'Quick add',exact:true}).tap();const dialog=page.getByRole('dialog',{name:'Ira everyday kurta',exact:true});await dialog.getByRole('button',{name:'M',exact:true}).tap();await dialog.getByRole('button',{name:'Add to bag',exact:true}).tap();await dialog.getByRole('status').filter({hasText:'added to your bag'}).waitFor();await fontAudit(page,engine,'mobile-quick-add');await page.screenshot({path:resolve(output,`${engine}-mobile-quick-add.png`)});
       await dialog.getByRole('link',{name:'View shopping bag'}).tap();await page.waitForURL('**/cart');await page.getByRole('button',{name:'Increase size M quantity'}).tap();await until(()=>page.locator('.cart-group-heading p').innerText().then(v=>v.includes('Qty 2')),'quantity increase');assert.match(await page.locator('.order-summary').innerText(),/₹2,998/);await page.getByRole('button',{name:'Decrease size M quantity'}).tap();await until(()=>page.locator('.cart-group-heading p').innerText().then(v=>v.includes('Qty 1')),'quantity decrease');await fontAudit(page,engine,'mobile-bag');await page.getByRole('button',{name:'Remove size M from bag'}).tap();await page.getByRole('heading',{name:'Your bag is waiting.'}).waitFor();
     },{viewport:{width:390,height:844},hasTouch:true});
+    await scenario(browser,engine,'RESP-01','Catalogue header clears measured announcements while scrolling and plus remains accessible',async page=>{
+      for(const width of [320,390,768,1440]){
+        await page.setViewportSize({width,height:844});await page.evaluate(()=>scrollTo(0,600));await delay(150);
+        const bounds=await page.evaluate(()=>{const header=document.querySelector('.site-header'),ticker=document.querySelector('[aria-label="HIDI shopping services"]'),h=header.getBoundingClientRect(),t=ticker.getBoundingClientRect();return{top:h.top,bottom:h.bottom,tickerBottom:t.bottom,width:innerWidth,scrollWidth:document.documentElement.scrollWidth};});
+        assert(bounds.top>=bounds.tickerBottom-1,`Clipped header at ${width}: ${JSON.stringify(bounds)}`);assert(bounds.bottom<180);assert(bounds.scrollWidth<=width+1);
+        const plus=page.getByRole('button',{name:/Quick add.*Ira everyday kurta/});assert.equal(await plus.locator('svg').count(),1);
+        assert(await plus.evaluate(el=>{const r=el.getBoundingClientRect();return r.width>=44&&r.height>=44;}));
+        await fontAudit(page,engine,`catalogue-scrolled-${width}`);
+        if(width===390)await page.screenshot({path:resolve(output,`${engine}-catalogue-header-mobile.png`)});
+      }
+      await page.setViewportSize({width:1440,height:1000});await page.getByRole('button',{name:/Quick add.*Ira everyday kurta/}).click();await page.getByRole('dialog').filter({hasText:'Ira everyday kurta'}).waitFor();await page.keyboard.press('Escape');
+    },{startPath:'/collections/all'});
+    for(const mode of ['ok','conflict','merge'])await scenario(browser,engine,`EDIT-${mode}`,'Cart size edit updates price, preserves failed edits and merges an existing size',async page=>{
+      const productCard=page.locator('[data-editorial-product="myra-peach-comfort-kurta-set"]');
+      await productCard.getByRole('button',{name:'Quick add',exact:true}).click();const dialog=page.getByRole('dialog',{name:'HIDI editorial piece 2',exact:true});
+      await dialog.getByRole('button',{name:'M',exact:true}).click();await dialog.getByRole('button',{name:'Add to bag',exact:true}).click();await dialog.getByRole('status').filter({hasText:'added to your bag'}).waitFor();
+      if(mode==='merge'){await dialog.getByRole('button',{name:'L',exact:true}).click();await dialog.getByRole('button',{name:'Add to bag',exact:true}).click();await dialog.getByRole('status').filter({hasText:'L · Ivory added'}).waitFor();}
+      await dialog.getByRole('link',{name:'View shopping bag'}).click();await page.waitForURL('**/cart');
+      const edit=page.getByRole('button',{name:'Edit size M for HIDI editorial piece 2'});await edit.click();const sizes=page.getByRole('group',{name:'Size for HIDI editorial piece 2'});await sizes.getByRole('button',{name:'L',exact:true}).click();
+      assert.match(await page.locator('.cart-items').innerText(),/Item total ₹1,799/);cartMode=mode==='conflict'?'conflict':'ok';const before=writes.length;
+      await page.getByRole('button',{name:'Save size'}).evaluate(el=>{el.click();el.click();el.click();});
+      if(mode==='conflict'){await page.getByRole('alert').filter({hasText:'no longer available'}).waitFor();assert.match(await page.locator('.cart-variant-label').innerText(),/Size M/);await page.getByRole('button',{name:'Cancel',exact:true}).click();await until(()=>edit.evaluate(el=>el===document.activeElement),'cart edit focus return');}
+      else {await page.getByRole('status').filter({hasText:'Size updated in your bag.'}).waitFor();await page.getByRole('button',{name:'Edit size L for HIDI editorial piece 2'}).waitFor();assert.equal(await page.locator('.cart-variant-row').count(),1);assert.match(await page.locator('.order-summary').innerText(),mode==='merge'?/₹3,598/:/₹1,799/);}
+      assert.equal(writes.length-before,1);assert.deepEqual(writes.at(-1).body,{quantity:1,variantId:'v-1-l'});await fontAudit(page,engine,`cart-edit-${mode}`);if(mode==='ok')await page.screenshot({path:resolve(output,`${engine}-cart-size-edit-mobile.png`),fullPage:true});
+    },{viewport:{width:390,height:844},hasTouch:true});
+    await scenario(browser,engine,'EDIT-unavailable','Unavailable cart sizes stay disabled and Cancel makes no write',async page=>{
+      const dialog=await openAdd(page);await dialog.getByRole('button',{name:'M',exact:true}).click();await dialog.getByRole('button',{name:'Add to bag',exact:true}).click();await dialog.getByRole('status').filter({hasText:'added to your bag'}).waitFor();await dialog.getByRole('link',{name:'View shopping bag'}).click();await page.waitForURL('**/cart');const before=writes.length;
+      await page.getByRole('button',{name:'Edit size M for Ira everyday kurta'}).click();const sizes=page.getByRole('group',{name:'Size for Ira everyday kurta'});assert(await sizes.getByRole('button',{name:'L',exact:true}).isDisabled());assert.equal(await sizes.getByRole('button',{name:'XL',exact:true}).count(),0);await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(writes.length,before);
+    });
+    for(const mode of ['server','rate','malformed','network'])await scenario(browser,engine,`EDIT-${mode}`,'Failed size update preserves the last confirmed bag and never retries a write',async page=>{
+      const productCard=page.locator('[data-editorial-product="myra-peach-comfort-kurta-set"]');
+      await productCard.getByRole('button',{name:'Quick add',exact:true}).click();const dialog=page.getByRole('dialog',{name:'HIDI editorial piece 2',exact:true});
+      await dialog.getByRole('button',{name:'M',exact:true}).click();await dialog.getByRole('button',{name:'Add to bag',exact:true}).click();await dialog.getByRole('status').filter({hasText:'added to your bag'}).waitFor();await dialog.getByRole('link',{name:'View shopping bag'}).click();await page.waitForURL('**/cart');
+      await page.getByRole('button',{name:'Edit size M for HIDI editorial piece 2'}).click();await page.getByRole('group',{name:'Size for HIDI editorial piece 2'}).getByRole('button',{name:'L',exact:true}).click();
+      let attempts=0;if(mode==='network')await page.route('**/api/store/carts/*/items/*',route=>{attempts++;return route.abort('failed');});else cartMode=mode;
+      const before=writes.length;await page.getByRole('button',{name:'Save size'}).click();const alert=page.locator('.form-error[role="alert"]');await alert.waitFor();assert.match(await alert.innerText(),mode==='rate'?/Please wait a moment/:/Check your bag before trying again/);
+      await delay(250);assert.equal(mode==='network'?attempts:writes.length-before,1);assert.match(await page.locator('.cart-variant-label').innerText(),/Size M/);assert.match(await page.locator('.order-summary').innerText(),/₹1,499/);assert.equal(await page.locator('.cart-status').textContent(),'');
+      await page.getByRole('button',{name:'Cancel',exact:true}).click();assert(await page.getByRole('button',{name:'Edit size M for HIDI editorial piece 2'}).isEnabled());
+    },{viewport:{width:390,height:844},hasTouch:true});
+    await scenario(browser,engine,'EDIT-load-retry','Size lookup failure can be retried or cancelled without changing the bag',async page=>{
+      const dialog=await openAdd(page);await dialog.getByRole('button',{name:'M',exact:true}).click();await dialog.getByRole('button',{name:'Add to bag',exact:true}).click();await dialog.getByRole('status').filter({hasText:'added to your bag'}).waitFor();await dialog.getByRole('link',{name:'View shopping bag'}).click();await page.waitForURL('**/cart');const before=writes.length;
+      let failed=true;await page.route('**/api/store/products/ira-beige-office-kurta-set',route=>failed?route.fulfill({status:503,contentType:'application/json',body:'{"message":"Unavailable"}'}):route.continue());await page.getByRole('button',{name:'Edit size M for Ira everyday kurta'}).click();await page.locator('.cart-items [role="alert"]').waitFor();failed=false;await page.getByRole('button',{name:'Try again',exact:true}).click();await page.getByRole('group',{name:'Size for Ira everyday kurta'}).waitFor();await fontAudit(page,engine,'cart-editor-open');assert(await page.getByRole('button',{name:'Save size'}).isDisabled());await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(writes.length,before);
+    });
+    if(engine==='chromium')await scenario(browser,engine,'ZOOM-pinch','Native two-finger pinch works on PDP and catalogue without zooming or locking the page',async(page,context)=>{
+      const cdp=await context.newCDPSession(page);
+      const pinch=async(viewport,label)=>{
+        const box=await viewport.boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2;
+        const points=d=>[{id:1,x:x-d,y,radiusX:2,radiusY:2},{id:2,x:x+d,y,radiusX:2,radiusY:2}];
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points(45)});
+        for(const d of [55,65,75,85,95])await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points(d)});
+        await until(()=>label.innerText().then(text=>parseInt(text)>150),'pinch zooms in');assert.equal(await page.evaluate(()=>visualViewport.scale),1);
+        for(const d of [85,65,45,35,25])await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points(d)});
+        await until(()=>label.innerText().then(text=>text==='100%'),'pinch zooms out');await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points(45)});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points(70)});await until(()=>label.innerText().then(text=>parseInt(text)>120),'second pinch begins');await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await page.keyboard.press('-');assert.equal(await label.innerText(),'100%','Cancelled touch releases the gesture and keyboard zoom still works');
+        await page.getByRole('button',{name:'Zoom in',exact:true}).click();assert.equal(await label.innerText(),'180%');await page.keyboard.press('-');assert.equal(await label.innerText(),'100%');
+      };
+      await page.getByRole('button',{name:/Inspect HIDI editorial portrait/}).first().tap();await pinch(page.locator('div[class*="viewport"]').first(),page.locator('[class*="zoomLabel"]').first());await page.getByRole('button',{name:'Close image viewer'}).tap();
+      await page.goto(base+'/collections/all');await page.getByRole('button',{name:/Expand HIDI editorial portrait/}).first().tap();await pinch(page.locator('dialog[open] div[class*="largePhoto"]').first(),page.locator('dialog[open] [class*="zoomLabel"]').first());await page.getByRole('button',{name:'Close enlarged photo'}).tap();assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
+    },{startPath:'/products/ira-beige-office-kurta-set',viewport:{width:390,height:844},hasTouch:true});
     await scenario(browser,engine,'WISH-01','Wishlist toggles and survives a settled full reload without changing cart',async page=>{
       const before=writes.length;await card(page).getByRole('button',{name:/Add to wishlist/}).click();await card(page).getByRole('button',{name:/Remove from wishlist/}).waitFor();
       // Settle Next prefetch before unloading. Do not suppress WebKit page errors.
@@ -181,4 +255,4 @@ try{
   const keys=['engine','viewport','state','section','tag','text','family','size','weight','lineHeight','spacing','color'],csvValue=v=>'"'+String(v??'').replaceAll('"','""')+'"';
   await writeFile(resolve(output,'typography.csv'),keys.join(',')+'\n'+typography.map(v=>keys.map(k=>csvValue(v[k])).join(',')).join('\n'));await writeFile(resolve(output,'next-server.log'),serverLog);
 }
-const failed=results.filter(r=>r.status==='FAIL');console.log(`${results.length-failed.length}/${results.length} browser cases passed; ${typography.length} computed text-style observations.`);assert.equal(failed.length,0,failed.map(r=>`${r.engine} ${r.id}: ${r.error}`).join('\n'));
+const failed=results.filter(r=>r.status==='FAIL');assert(results.length>0,'At least one browser case must run');console.log(`${results.length-failed.length}/${results.length} browser cases passed; ${typography.length} computed text-style observations.`);assert.equal(failed.length,0,failed.map(r=>`${r.engine} ${r.id}: ${r.error}`).join('\n'));

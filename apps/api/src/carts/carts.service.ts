@@ -109,6 +109,42 @@ export class CartsService {
     return this.get(sessionId);
   }
 
+  async changeSize(sessionId: string, itemId: string, variantId: string, quantity?: number) {
+    this.validateSession(sessionId);
+    if (typeof variantId !== "string" || !variantId) throw new BadRequestException("variantId is required");
+    // Validate and replace in one transaction: a failed edit must keep the old size.
+    await this.prisma.$transaction(async (tx) => {
+      const item = await tx.cartItem.findFirst({
+        where: { id: itemId, cart: { sessionId } },
+        include: { variant: true },
+      });
+      if (!item) throw new NotFoundException("Cart item not found");
+      const nextQuantity = quantity ?? item.quantity;
+      if (!Number.isInteger(nextQuantity) || nextQuantity < 1 || nextQuantity > 10) throw new BadRequestException("Quantity must be between 1 and 10");
+      const target = await tx.productVariant.findUnique({
+        where: { id: variantId }, include: { product: true, inventory: true },
+      });
+      if (!target || !target.active || target.product.status !== "ACTIVE"
+          || target.productId !== item.productId || target.color !== item.variant.color) {
+        throw new BadRequestException("Choose an available size for this product and colour");
+      }
+      if (!target.inventory) throw new BadRequestException("Inventory is unavailable");
+      const existing = target.id === item.variantId ? null : await tx.cartItem.findUnique({
+        where: { cartId_variantId: { cartId: item.cartId, variantId: target.id } },
+      });
+      const totalQuantity = nextQuantity + (existing?.quantity ?? 0);
+      const available = Math.max(0, target.inventory.onHand - target.inventory.reserved - target.inventory.safetyStock);
+      if (totalQuantity > 10 || totalQuantity > available) throw new BadRequestException("Selected size does not have enough stock for your bag");
+      if (existing) {
+        await tx.cartItem.update({ where: { id: existing.id }, data: { quantity: totalQuantity, unitPricePaise: target.pricePaise } });
+        await tx.cartItem.delete({ where: { id: item.id } });
+      } else {
+        await tx.cartItem.update({ where: { id: item.id }, data: { variantId: target.id, quantity: nextQuantity, unitPricePaise: target.pricePaise } });
+      }
+    }, { isolationLevel: "Serializable" });
+    return this.get(sessionId);
+  }
+
   async removeItem(sessionId: string, itemId: string) {
     this.validateSession(sessionId);
     const item = await this.prisma.cartItem.findFirst({ where: { id: itemId, cart: { sessionId } } });

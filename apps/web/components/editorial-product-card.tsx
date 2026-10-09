@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { Heart, X, Check, LoaderCircle } from "lucide-react";
+import { Heart, X, Check, LoaderCircle, Plus } from "lucide-react";
 import type { ApiProduct } from "@/lib/api";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
 import { cardPrice, money, variantsForColour } from "@/lib/product-card-utils";
@@ -59,7 +59,7 @@ export function EditorialProductCard({ product }: { product: ApiProduct }) {
         {detail && detail.url !== images[0]?.url && <EditorialDetailImage key={detail.url} src={detail.url} sizes="(max-width: 760px) calc(50vw - 24px), (max-width: 1504px) calc(33.333vw - 37.333px), 464px" className={styles.detailImage} />}
       </Link>
       <button type="button" className={styles.heart} aria-label={`${saved ? "Remove from" : "Add to"} wishlist — ${product.name}`} aria-pressed={saved} disabled={!ready} onClick={toggleWishlist}><Heart size={19} strokeWidth={1.4} fill={saved ? "currentColor" : "none"} aria-hidden="true" /></button>
-      {soldOut ? <span className={styles.soldOut}>Sold out</span> : <button ref={trigger} type="button" className={styles.quickAdd} aria-haspopup="dialog" aria-controls={`${id}-quick-add`} onClick={showQuickAdd} disabled={busy}>Quick add</button>}
+      {soldOut ? <span className={styles.soldOut}>Sold out</span> : <button ref={trigger} type="button" className={styles.quickAdd} aria-label="Quick add" title={`Quick add ${product.name}`} aria-haspopup="dialog" aria-controls={`${id}-quick-add`} onClick={showQuickAdd} disabled={busy}><Plus size={22} strokeWidth={1.5} aria-hidden="true" /></button>}
     </div>
     <div className={styles.meta}><h3 id={`${id}-name`} title={product.name}><Link href={href}>{product.name}</Link></h3><p className={styles.price}>{price.from ? "From " : ""}{money(price.pricePaise)} {price.mrpPaise && <del aria-label={`Original price ${money(price.mrpPaise)}`}>{money(price.mrpPaise)}</del>}</p></div>
     {!open && error && <p role="alert" className={styles.feedback}>{error}</p>}

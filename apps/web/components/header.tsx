@@ -12,7 +12,7 @@ import { focusFirst, trapFocus } from "@/lib/focus-management";
 
 const mobileLinks = [
   ["New Arrivals", "/collections/new-arrivals"],
-  ["Work Edit", "/collections/work-edit"],
+  ["Workwear Edit", "/collections/work-edit"],
   ["Everyday", "/collections/everyday"],
   ["Occasion", "/collections/occasion"],
   ["Shop All", "/collections/all"],
@@ -98,13 +98,16 @@ export function Header() {
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
+    const announcement = document.querySelector<HTMLElement>('[aria-label="HIDI shopping services"][role="region"]');
     const update = () => {
       setScrolled(window.scrollY > 24);
       document.documentElement.style.setProperty("--hidi-header-height", `${header.getBoundingClientRect().height}px`);
+      document.documentElement.style.setProperty("--hidi-announcement-height", `${announcement?.getBoundingClientRect().height ?? 0}px`);
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(header);
+    if (announcement) observer.observe(announcement);
     window.addEventListener("scroll", update, { passive: true });
     return () => { observer.disconnect(); window.removeEventListener("scroll", update); };
   }, [pathname]);

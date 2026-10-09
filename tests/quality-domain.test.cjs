@@ -52,6 +52,13 @@ test('product-level sold-out flag cannot be bypassed by stale variant counts', (
 test('matchingVariants retains exact SKU identifiers and does not select a size', () => assert.deepEqual(Array.from(matchingVariants(a,{...base,colors:['Wine']}),v=>v.id),['a-xl']));
 test('overlay and full search accept reversed multiword queries', () => {assert(matchesProductSearch(a,'wine kurta'));assert(matchesProductSearch(a,'kurta wine'));assert(!matchesProductSearch(b,'kurta peach'));});
 test('search handles case, punctuation, repeated spaces and accent folding', () => {for(const q of ['AARA cafe','café   kurta','WORK-EDIT','Kurta, Ivory'])assert(matchesProductSearch(a,q),q);});
+test('Workwear Edit search retains the original Work Edit catalogue name and route', () => {
+ const workwear = {...a, collections:[{slug:'work-edit',name:'Work Edit'}]};
+ const original = JSON.stringify(workwear);
+ for(const query of ['Workwear Edit','workwear','Work Edit'])assert(matchesProductSearch(workwear,query),query);
+ assert.equal(JSON.stringify(workwear),original);
+ assert(!matchesProductSearch({...a,collections:[{slug:'everyday',name:'Everyday'}]},'workwear'));
+});
 test('empty and punctuation-only search never matches the entire store', () => {for(const q of ['', '   ', '***'])assert.equal(matchesProductSearch(a,q),false);});
 test('SKU search works without a product name', () => assert(matchesProductSearch(a,'HIDI a-xl')));
 test('unknown price/sort controls do not mutate or discard catalogue', () => assert.deepEqual(ids(filterCatalogue(products,{...base,sort:'unrecognized'})),ids(products)));

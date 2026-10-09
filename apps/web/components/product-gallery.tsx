@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
 import { CatalogImage } from "./catalog-image";
 import styles from "./product-gallery.module.css";
 import { focusFirst, trapFocus } from "@/lib/focus-management";
+import { useImageZoom } from "./use-image-zoom";
 
 type GalleryImage = {
   id?: string;
@@ -20,30 +21,13 @@ type ProductGalleryProps = {
   images: GalleryImage[];
 };
 
-type Point = { x: number; y: number };
-
-const ZOOM_LEVELS = [1, 1.8, 2.6, 3.4, 4.2] as const;
-
 export function ProductGallery({ productName, images }: ProductGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [zoomIndex, setZoomIndex] = useState(0);
-  const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ pointerId: number; x: number; y: number } | null>(null);
-  const swipe = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const { zoom, pan, dragging, reset: resetView, zoomIn, zoomOut, handlers } = useImageZoom(direction => direction === 1 ? next() : previous());
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
 
   const selected = selectedIndex === null ? null : images[selectedIndex];
-  const zoom = ZOOM_LEVELS[zoomIndex];
-
-  function resetView() {
-    setZoomIndex(0);
-    setPan({ x: 0, y: 0 });
-    setDragging(false);
-    drag.current = null;
-    swipe.current = null;
-  }
 
   function open(index: number, opener?: HTMLButtonElement | null) {
     if (!images[index]?.url) return;
@@ -82,66 +66,6 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
       return current;
     });
     resetView();
-  }
-
-  function zoomIn() {
-    setZoomIndex((current) => Math.min(current + 1, ZOOM_LEVELS.length - 1));
-  }
-
-  function zoomOut() {
-    setZoomIndex((current) => {
-      const target = Math.max(0, current - 1);
-      if (target === 0) setPan({ x: 0, y: 0 });
-      return target;
-    });
-  }
-
-  function pointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (!event.isPrimary) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    if (zoom <= 1) {
-      swipe.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-      return;
-    }
-    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-    setDragging(true);
-  }
-
-  function pointerMove(event: React.PointerEvent<HTMLDivElement>) {
-    const start = drag.current;
-    if (!start || start.pointerId !== event.pointerId || zoom <= 1) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-    setPan((current) => ({ x: current.x + dx, y: current.y + dy }));
-  }
-
-  function pointerUp(event: React.PointerEvent<HTMLDivElement>) {
-    const swipeStart = swipe.current;
-    if (zoom <= 1 && swipeStart?.pointerId === event.pointerId) {
-      const dx = event.clientX - swipeStart.x;
-      const dy = event.clientY - swipeStart.y;
-      swipe.current = null;
-      if (Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-        if (dx < 0) next();
-        else previous();
-      }
-      return;
-    }
-    if (drag.current?.pointerId === event.pointerId) drag.current = null;
-    setDragging(false);
-  }
-
-  function pointerCancel(event: React.PointerEvent<HTMLDivElement>) {
-    if (swipe.current?.pointerId === event.pointerId) swipe.current = null;
-    if (drag.current?.pointerId === event.pointerId) drag.current = null;
-    setDragging(false);
-  }
-
-  function wheel(event: React.WheelEvent<HTMLDivElement>) {
-    event.preventDefault();
-    if (event.deltaY < 0) zoomIn();
-    else zoomOut();
   }
 
   useEffect(() => {
@@ -259,26 +183,18 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
           }}
         >
           <div className={styles.topBar}>
-            <button type="button" className={styles.zoomButton} onClick={zoomOut} disabled={zoomIndex === 0} aria-label="Zoom out">
+            <button type="button" className={styles.zoomButton} onClick={zoomOut} disabled={zoom <= 1} aria-label="Zoom out">
               <Minus size={18} />
             </button>
             <span className={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
-            <button type="button" className={styles.zoomButton} onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1} aria-label="Zoom in">
+            <button type="button" className={styles.zoomButton} onClick={zoomIn} disabled={zoom >= 4.2} aria-label="Zoom in">
               <Plus size={18} />
             </button>
           </div>
 
           <div
             className={`${styles.viewport} ${dragging ? styles.viewportDragging : ""}`}
-            onPointerDown={pointerDown}
-            onPointerMove={pointerMove}
-            onPointerUp={pointerUp}
-            onPointerCancel={pointerCancel}
-            onWheel={wheel}
-            onDoubleClick={() => {
-              if (zoomIndex === 0) setZoomIndex(2);
-              else resetView();
-            }}
+            {...handlers}
             title={zoom > 1 ? "Drag to inspect stitching details" : "Double-click or use + to zoom"}
           >
             <div

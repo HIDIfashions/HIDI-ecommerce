@@ -13,7 +13,7 @@ const PRODUCT_INFORMATION: Record<string, ProductInformation> = {
   "aara-sage-work-kurta": {
     productType: "Straight Kurta",
     fitDetail: "Straight fit with minimal thread detailing",
-    edit: "Work Edit / New Arrivals",
+    edit: "Workwear Edit / New Arrivals",
   },
   "sana-sand-kurta-set": {
     productType: "Kurta Set",
@@ -23,22 +23,22 @@ const PRODUCT_INFORMATION: Record<string, ProductInformation> = {
   "mahira-indigo-kurta-set": {
     productType: "Kurta Set",
     fitDetail: "Straight tailored fit with subtle neckline detailing",
-    edit: "Work Edit / New Arrivals",
+    edit: "Workwear Edit / New Arrivals",
   },
   "ira-beige-office-kurta-set": {
     productType: "Office Kurta Set",
     fitDetail: "Straight fit with minimal surface detailing",
-    edit: "Work Edit",
+    edit: "Workwear Edit",
   },
   "nivya-olive-work-kurta": {
     productType: "Work Kurta",
     fitDetail: "Straight fit with fine tonal embroidery",
-    edit: "Work Edit",
+    edit: "Workwear Edit",
   },
   "tara-dusty-rose-straight-kurta": {
     productType: "Straight Kurta",
     fitDetail: "Straight fit with minimal neckline detail",
-    edit: "Work Edit",
+    edit: "Workwear Edit",
   },
   "diya-blue-everyday-kurta": {
     productType: "Everyday Kurta",

@@ -14,7 +14,7 @@ import styles from "./home.module.css";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 const edits = [
-  { eyebrow: "THE WORK EDIT", title: "Quiet confidence.", href: "/collections/work-edit", image: "/products/ira-beige-office-kurta-set/01-main.png", detail: "/products/ira-beige-office-kurta-set/03-detail.png" },
+  { eyebrow: "WORKWEAR EDIT", title: "Quiet confidence.", href: "/collections/work-edit", image: "/products/ira-beige-office-kurta-set/01-main.png", detail: "/products/ira-beige-office-kurta-set/03-detail.png" },
   { eyebrow: "EVERYDAY", title: "Ease, beautifully considered.", href: "/collections/everyday", image: "/products/myra-peach-comfort-kurta-set/01-main.png", detail: "/products/myra-peach-comfort-kurta-set/03-detail.png" },
   { eyebrow: "OCCASION", title: "Presence, without excess.", href: "/collections/occasion", image: "/products/kiara-wine-festive-kurta-set/01-main.png", detail: "/products/kiara-wine-festive-kurta-set/03-detail.png" },
 ] as const;

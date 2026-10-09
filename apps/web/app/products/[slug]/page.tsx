@@ -81,7 +81,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getRelatedProducts(product.slug, 4),
   ]);
 
-  const collection = product.collections[0] ?? { slug: "new-arrivals", name: "New Arrivals" };
+  const sourceCollection = product.collections[0] ?? { slug: "new-arrivals", name: "New Arrivals" };
+  const collection = sourceCollection.slug === "work-edit" ? { ...sourceCollection, name: "Workwear Edit" } : sourceCollection;
 
   const canonicalUrl = absoluteUrl(`/products/${encodeURIComponent(product.slug)}`);
   const schemaImages = product.images

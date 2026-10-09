@@ -42,7 +42,7 @@ export default function AboutPage() {
           </p>
           <div className={styles.actions}>
             <Link href="/collections/work-edit" className={styles.primaryButton}>
-              Shop Work Edit
+              Shop Workwear Edit
             </Link>
             <Link href="/collections/everyday" className={styles.secondaryButton}>
               Explore Everyday

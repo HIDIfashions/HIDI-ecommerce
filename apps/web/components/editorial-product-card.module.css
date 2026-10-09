@@ -4,7 +4,9 @@
 .primaryImage { transition: transform 650ms ease; }
 .detailImage { position: absolute; inset: 0; opacity: 0; transition: opacity 450ms ease; }
 .heart { position: absolute; right: 8px; top: 8px; display: grid; place-items: center; width: 44px; height: 44px; border: 0; background: var(--hidi-page-bg); color: var(--hidi-mulberry-clay, #591d20); cursor: pointer; }
-.quickAdd { position: absolute; inset: auto 0 0; width: 100%; min-height: 44px; border: 0; border-top: 1px solid var(--line); padding: 12px; background: var(--hidi-page-bg); color: var(--ink); cursor: pointer; font-family: var(--font-sans); font-size: var(--type-ui); letter-spacing: .08em; transition: transform 250ms ease, opacity 250ms ease; }
+.quickAdd { position: absolute; right: 8px; bottom: 8px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: var(--hidi-page-bg); color: var(--ink); cursor: pointer; }
+.quickAdd:focus-visible { outline: 2px solid var(--hidi-mulberry-clay, #591d20); outline-offset: 3px; }
+.quickAdd:disabled { opacity: .5; cursor: not-allowed; }
 .soldOut { position: absolute; bottom: 12px; left: 12px; padding: 5px 9px; color: var(--ink); background: var(--hidi-page-bg); font-size: var(--type-meta); }
 .meta { padding-top: 15px; }
 .meta h3, .price { font-family: var(--font-sans); font-size: var(--type-ui); font-weight: 400; line-height: 1.5; margin: 0; }
@@ -32,6 +34,6 @@
 .feedback svg { vertical-align: middle; }
 .feedback[role="alert"] { color: var(--hidi-mulberry-clay, #591d20); }
 .bagLink { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--type-ui); }
-@media (hover: hover) and (pointer: fine) { .quickAdd { opacity: 0; transform: translateY(100%); } .card:hover .quickAdd, .card:focus-within .quickAdd { opacity: 1; transform: translateY(0); } .imageLink:hover .detailImage, .imageLink:focus-visible .detailImage { opacity: 1; } .imageLink:hover .primaryImage { transform: scale(1.025); } }
+@media (hover: hover) and (pointer: fine) { .imageLink:hover .detailImage, .imageLink:focus-visible .detailImage { opacity: 1; } .imageLink:hover .primaryImage { transform: scale(1.025); } }
 @media (max-width: 760px) { .meta { padding-top: 10px; } .heart { right: 3px; top: 3px; } .quickAdd { opacity: 1; transform: none; } .dialog { width: 100%; max-width: none; max-height: calc(100dvh - 20px); margin: auto 0 0; padding: 20px 20px max(20px, env(safe-area-inset-bottom)); border-bottom: 0; } }
 @media (prefers-reduced-motion: reduce) { .primaryImage, .detailImage, .quickAdd { transition: none; } }

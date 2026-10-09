@@ -4,14 +4,14 @@ import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } fro
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { canOptimizeProductImage, productImageSource } from "@/lib/product-image";
-import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { ChevronLeft, ChevronRight, Expand, Minus, Plus, Play, X } from "lucide-react";
 import { buildCardMedia, swipeStep, wrapMediaIndex } from "@/lib/product-card-media-utils";
 import type { CardImage, CardMedia, CardVideo } from "@/lib/product-card-media-utils";
 import styles from "./product-card-media.module.css";
+import { useImageZoom } from "./use-image-zoom";
 
 const VIDEO_PLAY_EVENT = "hidi-card-video-play";
-const CARD_ZOOM_LEVELS = [1, 1.8, 2.6, 3.4, 4.2] as const;
 const EMPTY_VIDEOS: readonly CardVideo[] = [];
 const DEFAULT_INTERVAL = 1400;
 
@@ -356,7 +356,6 @@ function Gallery({
   const expandButton = useRef<HTMLButtonElement>(null);
   const gesture = useRef<{ x: number; y: number; id: number } | null>(null);
   const suppressedClickUntil = useRef(0);
-  const zoomDrag = useRef<{ x: number; y: number; id: number } | null>(null);
 
   const [index, setIndex] = useState(0);
   const [hover, setHover] = useState(false);
@@ -367,14 +366,11 @@ function Gallery({
   const [preloadIndex, setPreloadIndex] = useState<number | null>(null);
   const [preloadReady, setPreloadReady] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
-  const [zoomIndex, setZoomIndex] = useState(0);
-  const [zoomPan, setZoomPan] = useState({ x: 0, y: 0 });
-  const [zoomDragging, setZoomDragging] = useState(false);
+  const { zoom, pan: zoomPan, dragging: zoomDragging, reset: resetExpandedView, zoomIn, zoomOut, handlers: zoomHandlers } = useImageZoom();
 
   const active = items[index];
   const preload = preloadIndex !== null ? items[preloadIndex] : undefined;
   const interval = Number.isFinite(intervalMs) ? Math.max(1000, intervalMs) : DEFAULT_INTERVAL;
-  const zoom = CARD_ZOOM_LEVELS[zoomIndex];
 
   const imageIndexes = useMemo(
     () => items.flatMap((item, itemIndex) => item.kind === "image" ? [itemIndex] : []),
@@ -470,28 +466,17 @@ function Gallery({
       }
       if (event.key === "+" || event.key === "=") {
         event.preventDefault();
-        setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1));
+        zoomIn();
       }
       if (event.key === "-") {
         event.preventDefault();
-        setZoomIndex((current) => {
-          const target = Math.max(0, current - 1);
-          if (target === 0) setZoomPan({ x: 0, y: 0 });
-          return target;
-        });
+        zoomOut();
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [expanded, index, imageIndexes]);
-
-  function resetExpandedView() {
-    setZoomIndex(0);
-    setZoomPan({ x: 0, y: 0 });
-    setZoomDragging(false);
-    zoomDrag.current = null;
-  }
 
   function stepExpanded(step: -1 | 1) {
     if (!imageIndexes.length) return;
@@ -505,40 +490,6 @@ function Gallery({
     const targetItem = items[target];
     if (targetItem) {
       setAnnouncement(`Photo ${target + 1} of ${items.length}: ${targetItem.label}`);
-    }
-  }
-
-  function lightboxPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (zoom <= 1 || !event.isPrimary) return;
-    zoomDrag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setZoomDragging(true);
-  }
-
-  function lightboxPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const start = zoomDrag.current;
-    if (!start || start.id !== event.pointerId || zoom <= 1) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    zoomDrag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
-    setZoomPan((current) => ({ x: current.x + dx, y: current.y + dy }));
-  }
-
-  function lightboxPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
-    if (zoomDrag.current?.id === event.pointerId) zoomDrag.current = null;
-    setZoomDragging(false);
-  }
-
-  function lightboxWheel(event: ReactWheelEvent<HTMLDivElement>) {
-    event.preventDefault();
-    if (event.deltaY < 0) {
-      setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1));
-    } else {
-      setZoomIndex((current) => {
-        const target = Math.max(0, current - 1);
-        if (target === 0) setZoomPan({ x: 0, y: 0 });
-        return target;
-      });
     }
   }
 
@@ -710,12 +661,8 @@ function Gallery({
               <button
                 type="button"
                 className={styles.zoomButton}
-                onClick={() => setZoomIndex((current) => {
-                  const target = Math.max(0, current - 1);
-                  if (target === 0) setZoomPan({ x: 0, y: 0 });
-                  return target;
-                })}
-                disabled={zoomIndex === 0}
+                onClick={zoomOut}
+                disabled={zoom <= 1}
                 aria-label="Zoom out"
               >
                 <Minus size={18} />
@@ -724,8 +671,8 @@ function Gallery({
               <button
                 type="button"
                 className={styles.zoomButton}
-                onClick={() => setZoomIndex((current) => Math.min(current + 1, CARD_ZOOM_LEVELS.length - 1))}
-                disabled={zoomIndex === CARD_ZOOM_LEVELS.length - 1}
+                onClick={zoomIn}
+                disabled={zoom >= 4.2}
                 aria-label="Zoom in"
               >
                 <Plus size={18} />
@@ -734,15 +681,7 @@ function Gallery({
 
             <div
               className={`${styles.largePhoto} ${zoomDragging ? styles.largePhotoDragging : ""}`}
-              onPointerDown={lightboxPointerDown}
-              onPointerMove={lightboxPointerMove}
-              onPointerUp={lightboxPointerUp}
-              onPointerCancel={lightboxPointerUp}
-              onWheel={lightboxWheel}
-              onDoubleClick={() => {
-                if (zoomIndex === 0) setZoomIndex(2);
-                else resetExpandedView();
-              }}
+              {...zoomHandlers}
               title={zoom > 1 ? "Drag to inspect stitching details" : "Double-click or use + to zoom"}
             >
               <div

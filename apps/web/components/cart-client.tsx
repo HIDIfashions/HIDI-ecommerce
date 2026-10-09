@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CatalogImage } from "@/components/catalog-image";
 import { formatPaise } from "@/lib/api";
 import { getCartSession } from "@/lib/cart-session";
+import { CartSizeEditor } from "./cart-size-editor";
 
 import { BROWSER_API_URL } from "@/lib/browser-api";
 const API = BROWSER_API_URL;
@@ -22,6 +23,21 @@ type Cart = {
   itemCount: number;
   items: CartItem[];
 };
+
+function isCart(value: unknown): value is Cart {
+  if (!value || typeof value !== "object") return false;
+  const data = value as Cart;
+  if (!Array.isArray(data.items) || !Number.isSafeInteger(data.itemCount) || data.itemCount < 0
+      || !Number.isSafeInteger(data.subtotalPaise) || data.subtotalPaise < 0) return false;
+  if (!data.items.every(item => item && typeof item.id === "string"
+      && Number.isInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 10
+      && Number.isSafeInteger(item.lineTotalPaise) && item.lineTotalPaise >= 0
+      && item.product && [item.product.id, item.product.slug, item.product.name].every(field => typeof field === "string")
+      && item.variant && [item.variant.id, item.variant.size, item.variant.color].every(field => typeof field === "string")
+      && Number.isInteger(item.variant.available) && item.variant.available >= 0)) return false;
+  return data.items.reduce((sum, item) => sum + item.quantity, 0) === data.itemCount
+    && data.items.reduce((sum, item) => sum + item.lineTotalPaise, 0) === data.subtotalPaise;
+}
 
 type CartGroup = {
   key: string;
@@ -62,6 +78,17 @@ export function CartClient() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [editingId, setEditingId] = useState("");
+  const [notice, setNotice] = useState("");
+  const mutating = useRef(false);
+  const editButton = useRef<HTMLButtonElement | null>(null);
+  function closeEditor() {
+    setEditingId("");
+    window.requestAnimationFrame(() => {
+      const target = editButton.current?.isConnected ? editButton.current : document.querySelector<HTMLButtonElement>('.cart-edit');
+      target?.focus({ preventScroll: true });
+    });
+  }
 
   async function load() {
     setError("");
@@ -69,31 +96,45 @@ export function CartClient() {
       const response = await fetch(`${API}/carts/${getCartSession()}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message ?? "Unable to load bag");
+      if (!isCart(data)) throw new Error("Unable to confirm your bag. Please try again.");
       setCart(data);
     } catch (e: any) { setError(e.message); }
   }
   useEffect(() => { load(); }, []);
 
-  async function mutate(itemId: string, method: "PATCH" | "DELETE", quantity?: number) {
-    setBusy(itemId); setError("");
+  async function mutate(itemId: string, method: "PATCH" | "DELETE", quantity?: number, variantId?: string): Promise<boolean> {
+    if (mutating.current) return false;
+    mutating.current = true;
+    setBusy(itemId); setError(""); setNotice("");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20000);
+    const uncertain = "We couldn’t confirm the update. Check your bag before trying again.";
     try {
-      const options: RequestInit = { method };
+      const options: RequestInit = { method, signal: controller.signal, cache: "no-store" };
 
       if (method === "PATCH") {
         options.headers = { "Content-Type": "application/json" };
-        options.body = JSON.stringify({ quantity });
+        options.body = JSON.stringify({ quantity, ...(variantId ? { variantId } : {}) });
       }
 
-      const response = await fetch(
-        `${API}/carts/${getCartSession()}/items/${itemId}`,
-        options,
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.message ?? "Unable to update bag");
+      let response: Response;
+      try { response = await fetch(`${API}/carts/${getCartSession()}/items/${itemId}`, options); }
+      catch { throw new Error(uncertain); }
+      let data: any;
+      try { data = await response.json(); } catch { throw new Error(uncertain); }
+      if (!response.ok) {
+        const message = typeof data?.message === "string" ? data.message
+          : Array.isArray(data?.message) ? data.message.filter((entry: unknown) => typeof entry === "string").join(" ") : "Unable to update bag";
+        throw new Error(response.status >= 500 ? uncertain
+          : response.status === 429 ? "Please wait a moment before updating your bag." : message);
+      }
+      if (!isCart(data)) throw new Error(uncertain);
       setCart(data);
       window.dispatchEvent(new CustomEvent("hidi-cart-updated", { detail: data.itemCount }));
-    } catch (e: any) { setError(e.message); }
-    finally { setBusy(""); }
+      if (variantId) { setNotice("Size updated in your bag."); closeEditor(); }
+      return true;
+    } catch (e: any) { setError(e.message); return false; }
+    finally { window.clearTimeout(timeout); mutating.current = false; setBusy(""); }
   }
 
   if (!cart) return error ? (
@@ -109,7 +150,8 @@ export function CartClient() {
   const complimentaryShipping = cart.subtotalPaise >= 149900;
 
   return <>
-    {error && <p className="form-error">{error}</p>}
+    {error && <p className="form-error" role="alert">{error}</p>}
+    <p role="status" className="cart-status">{notice}</p>
     <div className="cart-layout">
       <section className="cart-items">
         {groups.map((group) => (
@@ -146,7 +188,7 @@ export function CartClient() {
                     </div>
                     <div className="cart-actions">
                       <button
-                        disabled={busy === item.id}
+                        disabled={Boolean(busy)}
                         onClick={() => item.quantity === 1
                           ? mutate(item.id, "DELETE")
                           : mutate(item.id, "PATCH", item.quantity - 1)}
@@ -155,12 +197,14 @@ export function CartClient() {
                       >−</button>
                       <span>{item.quantity}</span>
                       <button
-                        disabled={busy === item.id || item.quantity >= Math.min(10, item.variant.available)}
+                        disabled={Boolean(busy) || item.quantity >= Math.min(10, item.variant.available)}
                         onClick={() => mutate(item.id, "PATCH", item.quantity + 1)}
                         aria-label={`Increase size ${item.variant.size} quantity`}
                       >+</button>
-                      <button className="remove" disabled={busy === item.id} onClick={() => mutate(item.id, "DELETE")}>Remove</button>
+                      <button type="button" className="remove cart-edit" disabled={Boolean(busy)} aria-label={`Edit size ${item.variant.size} for ${group.product.name}`} aria-expanded={editingId === item.id} onClick={event => { editButton.current = event.currentTarget; setError(""); setEditingId(editingId === item.id ? "" : item.id); }}>Edit</button>
+                      <button className="remove" disabled={Boolean(busy)} onClick={() => mutate(item.id, "DELETE")}>Remove</button>
                     </div>
+                    {editingId === item.id && <CartSizeEditor key={item.id} slug={group.product.slug} name={group.product.name} colour={item.variant.color} currentVariantId={item.variant.id} quantity={item.quantity} quantities={Object.fromEntries(cart.items.map(entry => [entry.variant.id, entry.quantity]))} busy={Boolean(busy)} onCancel={closeEditor} onSave={variantId => mutate(item.id, "PATCH", item.quantity, variantId)} />}
                   </div>
                 ))}
               </div>
@@ -173,7 +217,7 @@ export function CartClient() {
         <div><span>Subtotal</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
         <div><span>Shipping</span><span>{complimentaryShipping ? "Complimentary" : "Calculated at checkout"}</span></div>
         <div className="summary-total"><span>Total</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
-        <Link className="button button-dark cart-checkout-button" href="/checkout">Continue to checkout</Link>
+        <Link className="button button-dark cart-checkout-button" href="/checkout" aria-disabled={Boolean(busy)} onClick={event => { if (mutating.current) event.preventDefault(); }}>Continue to checkout</Link>
         <p className="fine-print">Secure checkout · UPI · Cards · Net banking</p>
       </aside>
     </div>
@@ -183,7 +227,7 @@ export function CartClient() {
         <span>Subtotal · {cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}</span>
         <strong>{formatPaise(cart.subtotalPaise)}</strong>
       </div>
-      <Link href="/checkout">Checkout</Link>
+      <Link href="/checkout" aria-disabled={Boolean(busy)} onClick={event => { if (mutating.current) event.preventDefault(); }}>Checkout</Link>
     </div>
   </>;
 }
