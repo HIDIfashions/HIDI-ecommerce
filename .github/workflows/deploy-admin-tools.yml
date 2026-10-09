@@ -1,0 +1,89 @@
+name: Deploy admin tools overlay
+
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-admin-tools:
+    if: contains(github.event.head_commit.message, '[deploy-admin-tools]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RG: rg-hidi-prod
+      APP: hidi-web
+      ACR: acrhidiprod0927
+      BASE_IMAGE: hidi-web@sha256:53a948e73f072d56b7aa3b23901a2898b4b39b925a115720ad4c32c3ba00a5e0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: hidi-web-new
+          path: landing-source
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Validate admin-only runtime files
+        run: |
+          node --check landing-source/deploy/hidi-web-new/server.mjs
+          node --check landing-source/deploy/hidi-web-new/hero-media.mjs
+          test -s landing-source/apps/web/public/landing-media-control.html
+          test -s landing-source/apps/web/public/packing-scanner-control.html
+      - name: Package admin-only overlay
+        run: |
+          rm -rf admin-overlay
+          mkdir -p admin-overlay/dist
+          cp landing-source/deploy/hidi-web-new/server.mjs admin-overlay/server.mjs
+          cp landing-source/deploy/hidi-web-new/hero-media.mjs admin-overlay/hero-media.mjs
+          cp landing-source/apps/web/public/landing-media-control.html admin-overlay/dist/landing-media-control.html
+          cp landing-source/apps/web/public/packing-scanner-control.html admin-overlay/dist/packing-scanner-control.html
+          tar -czf hidi-admin-tools-runtime.tar.gz -C admin-overlay server.mjs hero-media.mjs dist
+      - name: Publish admin-only overlay image
+        id: publish
+        run: |
+          tag="admin-tools-${GITHUB_SHA::8}-${GITHUB_RUN_NUMBER}"
+          python3 landing-source/deploy/hidi-web-new/push-hidi-landing-oci.py \
+            --registry "$ACR" \
+            --payload hidi-admin-tools-runtime.tar.gz \
+            --base "$BASE_IMAGE" \
+            --tag "$tag" \
+            --runtime-only | tee published-image.json
+          digest="$(python3 - <<'PY'
+          import json
+          with open('published-image.json', 'r', encoding='utf-8') as stream:
+              print(json.load(stream)['manifest_digest'])
+          PY
+          )"
+          echo "image=${ACR}.azurecr.io/hidi-web@${digest}" >> "$GITHUB_OUTPUT"
+      - name: Update hidi-web with admin-only overlay
+        run: |
+          set -euo pipefail
+          revision="admintools${GITHUB_SHA::8}${GITHUB_RUN_NUMBER}"
+          az containerapp update -g "$RG" -n "$APP" --image "${{ steps.publish.outputs.image }}" --revision-suffix "${revision:0:63}" >/tmp/admin-tools.json
+          target="$(az containerapp show -g "$RG" -n "$APP" --query properties.latestRevisionName -o tsv)"
+          deadline=$((SECONDS + 600))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            health="$(az containerapp revision show -g "$RG" -n "$APP" --revision "$target" --query properties.healthState -o tsv 2>/dev/null || true)"
+            ready="$(az containerapp show -g "$RG" -n "$APP" --query properties.latestReadyRevisionName -o tsv)"
+            echo "revision=$target health=${health:-pending} ready=${ready:-none}"
+            if [ "$health" = "Healthy" ] && [ "$ready" = "$target" ]; then exit 0; fi
+            sleep 15
+          done
+          exit 1
+      - name: Verify public page and admin tool boundaries
+        run: |
+          set -euo pipefail
+          curl -fsSI --max-time 30 https://thidigk.thehidi.com/ >/dev/null
+          for path in /admin/landing-media /admin/packing-scanner; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "https://thidigk.thehidi.com$path")"
+            case "$code" in 200|301|302|303|307|308|401|403) ;; *) echo "Unexpected $path HTTP $code" >&2; exit 1 ;; esac
+          done
+          echo "Admin tools overlay healthy. Customer storefront base image was not rebuilt."
