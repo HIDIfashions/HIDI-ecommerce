@@ -164,18 +164,90 @@ class ExplicitActivationPins(unittest.TestCase):
             self.assertRegex(workflow, 'echo "' + name + r'=\$RUNNER_TEMP/[^\n]+" >> "\$GITHUB_ENV"')
 
 
+class BrowserStageGate(unittest.TestCase):
+    SUITES = [
+        ("admin-workspace.browser.mjs", "chromium"),
+        ("admin-workspace.browser.mjs", "firefox"),
+        ("admin-workspace.browser.mjs", "webkit"),
+        ("editorial-storefront.browser.mjs", ""),
+        ("editorial-polish.browser.mjs", ""),
+        ("auth-otp-resend.browser.mjs", ""),
+    ]
+
+    def run_browser_stage(self, failure=""):
+        workflow = (ROOT / ".github/workflows/account-otp-release.yml").read_text()
+        match = re.search(r"      - name: Run fresh admin, shopping and OTP browser fixtures in all three engines\n        run: \|\n(.*?)      - uses: azure/login@v2", workflow, re.S)
+        self.assertIsNotNone(match)
+        script = "\n".join(line[10:] for line in match.group(1).splitlines())
+        with tempfile.TemporaryDirectory(prefix="hidi-browser-stage-") as directory:
+            root = Path(directory)
+            binary = root / "bin"; binary.mkdir()
+            record = root / "calls.jsonl"
+            fake = "#!" + sys.executable + "\n" + """
+import json,os,sys
+from pathlib import Path
+tool=Path(sys.argv[0]).name
+args=sys.argv[1:]
+suite='npm-install' if tool=='npm' else 'browser-install' if args[0].endswith('/cli.js') else Path(args[0]).name
+engine=os.environ.get('HIDI_BROWSER_ENGINE','') if suite=='admin-workspace.browser.mjs' else ''
+with open(os.environ['HIDI_BROWSER_RECORD'],'a') as output:
+    output.write(json.dumps({'suite':suite,'engine':engine,'engines':os.environ.get('HIDI_BROWSER_ENGINES',''),'args':args})+'\\n')
+target=suite+(':'+engine if engine else '')
+sys.exit(1 if target==os.environ.get('HIDI_BROWSER_FAIL_TARGET') else 0)
+"""
+            for tool in ["npm", "node"]:
+                target = binary / tool; target.write_text(fake); target.chmod(0o755)
+            env = {**os.environ, "PATH": str(binary) + os.pathsep + os.environ["PATH"], "RUNNER_TEMP": str(root), "HIDI_BROWSER_RECORD": str(record), "HIDI_BROWSER_FAIL_TARGET": failure}
+            env.pop("HIDI_BROWSER_ENGINE", None); env.pop("HIDI_BROWSER_ENGINES", None)
+            result = subprocess.run(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script], env=env, capture_output=True, text=True, timeout=30)
+            calls = [json.loads(line) for line in record.read_text().splitlines()] if record.exists() else []
+            return result, calls
+
+    def assert_all_suites(self, calls):
+        self.assertEqual([(call["suite"], call["engine"]) for call in calls[2:]], self.SUITES)
+        for call in calls[5:]: self.assertEqual(call["engines"], "chromium,firefox,webkit")
+        self.assertIn("--with-deps", calls[1]["args"])
+        self.assertEqual(calls[1]["args"][-3:], ["chromium", "firefox", "webkit"])
+
+    def test_success_requires_every_mandatory_browser_suite(self):
+        result, calls = self.run_browser_stage()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assert_all_suites(calls)
+
+    def test_each_suite_failure_collects_remaining_evidence_and_blocks_azure(self):
+        for suite, engine in self.SUITES:
+            target = suite + (":" + engine if engine else "")
+            with self.subTest(failure=target):
+                result, calls = self.run_browser_stage(target)
+                self.assertNotEqual(result.returncode, 0)
+                self.assert_all_suites(calls)
+
+    def test_install_prerequisite_failure_stops_before_browser_suites(self):
+        for target, expected in [("npm-install", ["npm-install"]), ("browser-install", ["npm-install", "browser-install"])]:
+            with self.subTest(failure=target):
+                result, calls = self.run_browser_stage(target)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual([call["suite"] for call in calls], expected)
+
+
 class AdminFixtureNavigation(unittest.TestCase):
-    def test_document_navigation_settles_prefetch_without_filtering_page_errors(self):
+    def helpers(self):
         source = (ROOT / "tests/admin-workspace.browser.mjs").read_text()
         helpers = []
-        for name in ["settledGoto", "settledReload"]:
-            match = re.search(r"async function " + name + r"\([^\n]+\) \{\n.*?^\}", source, re.S | re.M)
+        for name in ["trackFixtureNetwork", "settleFixtureNetwork", "settledGoto", "settledReload"]:
+            match = re.search(r"(?:async )?function " + name + r"\([^\n]+\) \{\n.*?^\}", source, re.S | re.M)
             self.assertIsNotNone(match)
             helpers.append(match.group(0))
-        script = "\n".join(helpers) + "\n" + """
+        return source, helpers
+
+    def test_document_navigation_settles_prefetch_without_filtering_page_errors(self):
+        source, helpers = self.helpers()
+        script = "const fixtureNetworkStates=new WeakMap();\n" + "\n".join(helpers) + "\n" + """
 import assert from 'node:assert/strict';
+let now=0;Date.now=()=>now;const sleep=async milliseconds=>{now+=milliseconds;};
 const events=[];
 const page={url:()=> 'http://127.0.0.1:3100/admin',
+  on:()=>{},
   waitForLoadState:async (state,options)=>{assert.equal(state,'networkidle');assert(options.timeout>0);events.push('settled');},
   goto:async (url,options)=>{assert.equal(options.waitUntil,'networkidle');assert(options.timeout>0);events.push('goto:'+url);},
   reload:async options=>{assert.equal(options.waitUntil,'networkidle');assert(options.timeout>0);events.push('reload');}};
@@ -191,6 +263,31 @@ assert.deepEqual(events,['settled','goto:http://127.0.0.1:3100/admin/returns','s
         self.assertIn("assert.deepEqual(errors, [])", source)
         self.assertIn("assert.deepEqual(mobile.errors, [])", source)
         self.assertIn("errors.push(error.message)", source)
+
+    def test_cached_networkidle_does_not_skip_late_drawer_prefetches(self):
+        source, helpers = self.helpers()
+        script = "const fixtureNetworkStates=new WeakMap();\n" + "\n".join(helpers) + "\n" + """
+import assert from 'node:assert/strict';
+let now=0,finished=false,started=false;Date.now=()=>now;
+const listeners=new Map();
+const request={url:()=> 'http://127.0.0.1:3100/admin/import?_rsc=fixture'};
+const page={on:(name,callback)=>listeners.set(name,callback),waitForLoadState:async()=>{}};
+const sleep=async milliseconds=>{
+  now+=milliseconds;
+  if(now>=100&&!started){started=true;listeners.get('request')(request);}
+  if(now>=350&&!finished){finished=true;listeners.get('requestfinished')(request);}
+};
+await settleFixtureNetwork(page);
+assert(started&&finished,'A cached lifecycle cannot skip requests scheduled after the drawer is shown');
+assert(now>=850,'The drawer transition waits for completion and a fresh quiet interval');
+"""
+        result = subprocess.run(["node", "--input-type=module"], input=script, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        start = source.index("await mobile.page.getByRole('button', { name: 'Open navigation' }).click()")
+        end = source.index("await settledGoto(mobile.page, base + '/admin/orders')", start)
+        transition = source[start:end]
+        self.assertRegex(transition, r"Admin navigation' \}\)\.waitFor\(\);\s+await settleFixtureNetwork\(mobile.page\);\s+await mobile.page.keyboard.press\('Escape'\)")
+        self.assertRegex(transition, r"waitFor\(\{ state: 'hidden' \}\);\s+await settleFixtureNetwork\(mobile.page\)")
 
 
 class AccountRollout(unittest.TestCase):

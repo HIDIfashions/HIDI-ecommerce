@@ -20,9 +20,9 @@ permissions:
 # pins and carry [deploy-account-otp] before default-branch dispatch registration.
 # Ordinary source merges do not deploy; there are no previous-image defaults.
 env:
-  PUSH_REVIEWED_SOURCE: '31eb9c83c6ac06b6e49224e3a7f115c1b4db7489'
-  PUSH_EXPECTED_WEB: 'acrhidiprod0927.azurecr.io/hidi-web@sha256:e388b7f6c160d7ce7543649591d704f7e99c29ea5a86d2cf070acb5ca016e999'
-  PUSH_EXPECTED_API: 'acrhidiprod0927.azurecr.io/hidi-api@sha256:89e6d010f2a4f9dcaea14451926f3512aec3ad5f079d110475ccc8c13b4a0448'
+  PUSH_REVIEWED_SOURCE: ''
+  PUSH_EXPECTED_WEB: ''
+  PUSH_EXPECTED_API: ''
 concurrency:
   group: hidi-msg91-guarded-release
   cancel-in-progress: false
@@ -105,14 +105,17 @@ jobs:
           pnpm --filter @hidi/web build
       - name: Run fresh admin, shopping and OTP browser fixtures in all three engines
         run: |
+          set -euo pipefail
           npm install --prefix "$RUNNER_TEMP/account-otp-browser" --no-save playwright@1.56.1
           node "$RUNNER_TEMP/account-otp-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+          failed=0
           for engine in chromium firefox webkit; do
-            HIDI_BROWSER_ENGINE="$engine" node tests/admin-workspace.browser.mjs
+            HIDI_BROWSER_ENGINE="$engine" node tests/admin-workspace.browser.mjs || failed=1
           done
-          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-storefront.browser.mjs
-          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-polish.browser.mjs
-          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/auth-otp-resend.browser.mjs
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-storefront.browser.mjs || failed=1
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-polish.browser.mjs || failed=1
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/auth-otp-resend.browser.mjs || failed=1
+          exit "$failed"
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af

@@ -50,14 +50,36 @@ async function fixtureContext(options = {}) {
 }
 async function waitText(page, text) { await page.getByText(text, { exact: false }).first().waitFor({ timeout: 15000 }); }
 async function noOverflow(page) { const sizes = await page.evaluate(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth })); assert(sizes.scroll <= sizes.viewport + 1, JSON.stringify(sizes)); }
-// Settle Next RSC prefetch before fixture-driven document unloads. WebKit reports
-// an aborted same-origin prefetch as a page error; keep those assertions strict.
+// A document's networkidle lifecycle can remain cached after new link prefetches.
+// Track current requests and require a fresh quiet interval before fixture-driven
+// unloads or hiding the mobile drawer. All application page errors remain fatal.
+const fixtureNetworkStates = new WeakMap();
+function trackFixtureNetwork(page) {
+  let state = fixtureNetworkStates.get(page);
+  if (state) return state;
+  state = { pending: new Set(), lastActivity: Date.now() };
+  fixtureNetworkStates.set(page, state);
+  page.on('request', request => { state.pending.add(request); state.lastActivity = Date.now(); });
+  const finished = request => { state.pending.delete(request); state.lastActivity = Date.now(); };
+  page.on('requestfinished', finished);
+  page.on('requestfailed', finished);
+  return state;
+}
+async function settleFixtureNetwork(page) {
+  const state = trackFixtureNetwork(page), started = Date.now();
+  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  while (state.pending.size || Date.now() - Math.max(started, state.lastActivity) < 500) {
+    assert(Date.now() - started < 15000, 'Fixture network did not settle: ' + [...state.pending].map(request => request.url()).join(', '));
+    await sleep(50);
+  }
+}
 async function settledGoto(page, url) {
-  if (page.url() !== 'about:blank') await page.waitForLoadState('networkidle', { timeout: 15000 });
+  trackFixtureNetwork(page);
+  if (page.url() !== 'about:blank') await settleFixtureNetwork(page);
   return page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 }
 async function settledReload(page) {
-  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  await settleFixtureNetwork(page);
   return page.reload({ waitUntil: 'networkidle', timeout: 30000 });
 }
 try {
@@ -102,7 +124,12 @@ try {
   assert(!catalog.state.calls.some(url => /dashboard\/(overview|queue)/.test(url))); await catalog.context.close(); passed('catalogue role has no order dashboard or team controls');
   const mobile = await fixtureContext({ viewport: { width: 390, height: 844 } }); await settledGoto(mobile.page, base + '/admin'); await waitText(mobile.page, 'Booked order value'); await noOverflow(mobile.page);
   await mobile.page.screenshot({ path: resolve(output, 'mobile-overview.png'), fullPage: true });
-  await mobile.page.getByRole('button', { name: 'Open navigation' }).click(); await mobile.page.getByRole('dialog', { name: 'Admin navigation' }).waitFor(); await mobile.page.keyboard.press('Escape');
+  await mobile.page.getByRole('button', { name: 'Open navigation' }).click();
+  await mobile.page.getByRole('dialog', { name: 'Admin navigation' }).waitFor();
+  await settleFixtureNetwork(mobile.page);
+  await mobile.page.keyboard.press('Escape');
+  await mobile.page.getByRole('dialog', { name: 'Admin navigation' }).waitFor({ state: 'hidden' });
+  await settleFixtureNetwork(mobile.page);
   assert.equal(await mobile.page.getByRole('dialog', { name: 'Admin navigation' }).count(), 0);
   await settledGoto(mobile.page, base + '/admin/orders'); await waitText(mobile.page, 'HIDI-CI-1042'); await noOverflow(mobile.page); assert.deepEqual(mobile.errors, []); await mobile.context.close(); passed('390px mobile layout, navigation dialog and contained table overflow');
   console.log(`${passes} browser checks passed. Isolated UI fixtures only; not a live order lifecycle certification.`);
