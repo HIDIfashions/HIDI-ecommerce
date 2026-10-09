@@ -39,9 +39,7 @@ assert.ok(!carouselSource.includes('hidi-collection-counter'), 'Visible collecti
 assert.ok(!carouselSource.includes('hidi-collection-motion'), 'Visible collection play control must remain removed.');
 const portraitSource = await readFile(path.join(root, 'src/components/MeetHidi.jsx'), 'utf8');
 assert.ok(portraitSource.includes('meet-cinematic'), 'Meet HIDI cinematic banner missing.');
-assert.ok(portraitSource.includes('meet-cinematic__scroll'), 'Ananya picks must use the scroll-driven control.');
-assert.ok(portraitSource.includes('--pick-count'), 'Ananya scroll section must preserve the sticky scroll runway.');
-for (const token of ['Glasshouse edit', 'Shop the edit', 'meet-cinematic__next', 'chevronLeft', 'chevronRight']) {
+for (const token of ['Glasshouse edit', 'Shop the edit', 'meet-cinematic__next', 'chevronLeft', 'chevronRight', 'meet-cinematic__scroll', 'meet-cinematic__count', 'meet-cinematic__pick-control']) {
   assert.ok(!portraitSource.includes(token), `Unexpected Ananya pick artifact: ${token}`);
 }
 for (const file of ['public/favicon.ico', 'public/favicon.svg', 'public/favicon.png',

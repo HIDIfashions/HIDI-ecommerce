@@ -704,6 +704,8 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
 }
 
 /* Uploaded landscape photography fills the screen beneath the header. */
+.meet-section--single { min-height: 0; }
+.meet-section--single .container { position: relative; top: auto; min-height: 0; }
 .meet-cinematic--photo { display: block; height: calc(100svh - var(--header-height)); min-height: 0; padding: 0; background: var(--cream); --ananya-photo-fit: cover; }
 .meet-cinematic--photo::before, .meet-cinematic--photo::after, .meet-cinematic--photo .meet-cinematic__prism, .meet-cinematic--photo .meet-cinematic__slide::before { display: none; }
 .meet-cinematic--photo .meet-cinematic__stage { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; }

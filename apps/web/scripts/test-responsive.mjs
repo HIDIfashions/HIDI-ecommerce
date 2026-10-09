@@ -25,10 +25,10 @@ try {
         await page.goto(base); await page.locator('.meet-cinematic').waitFor();
         const measure = await page.evaluate(() => { const section = document.querySelector('.meet-section--cinematic'); return { height: section.offsetHeight, viewport: innerHeight, position: getComputedStyle(section.querySelector('.container')).position, scrollWidth: document.documentElement.scrollWidth, width: innerWidth }; });
         assert(measure.scrollWidth <= width + 1, `No horizontal overflow at ${width}`);
+        assert.equal(measure.position, 'relative'); assert(measure.height <= measure.viewport, 'Single photo has no pinned slideshow runway');
+        assert.equal(await page.locator('.meet-cinematic__model').count(), 1);
+        assert.equal(await page.locator('.meet-cinematic__scroll, .meet-cinematic__pick-control, .meet-cinematic__count').count(), 0);
         if (width < 800) {
-          assert.notEqual(measure.position, 'sticky'); assert(measure.height < measure.viewport * 1.6, 'Touch section no longer consumes five screens');
-          const picks = page.locator('.meet-cinematic__pick-control'); assert.equal(await picks.count(), 5);
-          await picks.nth(3).click(); assert.equal(await picks.nth(3).getAttribute('aria-pressed'), 'true');
           await page.locator('.meet-cinematic').scrollIntoViewIfNeeded();
           if (engine === 'chromium') {
             const cdp = await context.newCDPSession(page);
@@ -40,16 +40,16 @@ try {
           }
           await page.locator('.site-footer').scrollIntoViewIfNeeded();
           assert(await page.evaluate(() => scrollY) > measure.height, 'Footer is reachable');
-        } else {
-          assert.equal(measure.position, 'sticky'); assert(measure.height >= measure.viewport * 5 - 1, 'Desktop pick sequence is preserved');
         }
+        await page.locator('.site-footer').scrollIntoViewIfNeeded();
+        assert(await page.locator('.site-footer').isVisible(), 'Footer is reachable after the single photo');
         const subscribe = page.getByRole('button', { name: 'Subscribe to HIDI updates' });
         assert.equal(await subscribe.innerText(), 'Subscribe');
         const button = await subscribe.evaluate(el => { const box = el.getBoundingClientRect(), style = getComputedStyle(el); return { width: box.width, height: box.height, background: style.backgroundColor, family: style.fontFamily, spacing: style.letterSpacing }; });
         assert(button.width >= 90 && button.height >= 44); assert.notEqual(button.background, 'rgba(0, 0, 0, 0)'); assert.match(button.family, /Arial|Helvetica|Segoe UI/); assert.equal(button.spacing, 'normal');
         assert.equal(await page.getByRole('button', { name: 'Workwear Edit', exact: true }).count(), 1);
         if (width === 390 || width === 1440) { await page.locator('.meet-cinematic').scrollIntoViewIfNeeded(); await page.screenshot({ path: resolve(output, `${engine}-picks-${width}.png`) }); await page.locator('.site-footer').scrollIntoViewIfNeeded(); await page.screenshot({ path: resolve(output, `${engine}-footer-${width}.png`) }); }
-        assert.deepEqual(errors, []); await context.close(); console.log(`PASS ${engine} homepage ${width}px: scrolling, picks, newsletter, collection label`);
+        assert.deepEqual(errors, []); await context.close(); console.log(`PASS ${engine} homepage ${width}px: normal scrolling, single photo, newsletter, collection label`);
       }
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
       const page = await context.newPage();
@@ -65,10 +65,11 @@ try {
         const dialog=page.getByRole('dialog');await dialog.waitFor();assert.equal(requests-before,1);assert.match(await dialog.innerText(),mode==='success'?/subscription has been confirmed/:/Not quite there yet/);assert.equal(await email.inputValue(),mode==='success'?'':'fixture@example.invalid');await page.keyboard.press('Escape');
       }
       console.log(`PASS ${engine} newsletter: invalid email, server failure, malformed response, success, loading states`);
-      await page.locator('.meet-cinematic').scrollIntoViewIfNeeded();const picks=page.locator('.meet-cinematic__pick-control');await page.locator('.site-header').click({position:{x:5,y:5}});await page.locator('.meet-cinematic').scrollIntoViewIfNeeded();
-      const initial=await page.locator('.meet-cinematic__count').innerText();await page.waitForFunction(text=>document.querySelector('.meet-cinematic__count').textContent!==text,initial,{timeout:7000});
-      await picks.nth(2).focus();await page.keyboard.press('Enter');assert.equal(await picks.nth(2).getAttribute('aria-pressed'),'true');await delay(4200);assert.equal(await picks.nth(2).getAttribute('aria-pressed'),'true');
-      assert.deepEqual(errors,[]);console.log(`PASS ${engine} touch picks: visible autoplay and pause during keyboard interaction`);await context.close();
+      await page.locator('.meet-cinematic').scrollIntoViewIfNeeded();
+      const image=page.locator('.meet-cinematic__model'),initial=await image.getAttribute('src');
+      await delay(4200);assert.equal(await image.getAttribute('src'),initial,'Selected photo remains static');
+      assert.equal(await page.locator('.meet-cinematic__scroll, .meet-cinematic__pick-control, .meet-cinematic__count').count(),0);
+      assert.deepEqual(errors,[]);console.log(`PASS ${engine} single photo remains static without slideshow controls`);await context.close();
     } finally { await browser.close(); }
   }
 } finally {
