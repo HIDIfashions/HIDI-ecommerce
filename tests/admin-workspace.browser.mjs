@@ -50,6 +50,16 @@ async function fixtureContext(options = {}) {
 }
 async function waitText(page, text) { await page.getByText(text, { exact: false }).first().waitFor({ timeout: 15000 }); }
 async function noOverflow(page) { const sizes = await page.evaluate(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth })); assert(sizes.scroll <= sizes.viewport + 1, JSON.stringify(sizes)); }
+// Settle Next RSC prefetch before fixture-driven document unloads. WebKit reports
+// an aborted same-origin prefetch as a page error; keep those assertions strict.
+async function settledGoto(page, url) {
+  if (page.url() !== 'about:blank') await page.waitForLoadState('networkidle', { timeout: 15000 });
+  return page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+}
+async function settledReload(page) {
+  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  return page.reload({ waitUntil: 'networkidle', timeout: 30000 });
+}
 try {
   let ready = false;
   for (let i = 0; i < 90; i++) { if (server.exitCode !== null) throw new Error('Next.js exited: ' + log.slice(-2000)); try { const r = await fetch(base + '/admin', { signal: AbortSignal.timeout(2000) }); if (r.ok) { ready = true; break; } } catch {} await sleep(1000); }
@@ -66,9 +76,9 @@ try {
   }
   passed('real Next.js BFF denies missing and forged sessions; forwards only allowed filters');
   browser = await pw[engine].launch({ headless: true });
-  const signedOut = await browser.newPage(); await signedOut.goto(base + '/admin'); await waitText(signedOut, 'Secure staff access'); assert.equal(await signedOut.getByRole('heading', { name: 'Overview', exact: true }).count(), 0); await signedOut.close(); passed('signed-out workspace does not render operational data');
+  const signedOut = await browser.newPage(); await settledGoto(signedOut, base + '/admin'); await waitText(signedOut, 'Secure staff access'); assert.equal(await signedOut.getByRole('heading', { name: 'Overview', exact: true }).count(), 0); await signedOut.close(); passed('signed-out workspace does not render operational data');
   const { page, context, state, errors } = await fixtureContext();
-  await page.goto(base + '/admin'); await waitText(page, 'Booked order value'); await noOverflow(page);
+  await settledGoto(page, base + '/admin'); await waitText(page, 'Booked order value'); await noOverflow(page);
   assert(await page.getByText('₹5,998.00', { exact: true }).count() >= 1);
   await page.screenshot({ path: resolve(output, 'desktop-overview.png'), fullPage: true });
   await page.getByRole('button', { name: '7 days', exact: true }).click(); await waitText(page, 'Booked order value');
@@ -80,21 +90,21 @@ try {
   await page.screenshot({ path: resolve(output, 'global-search.png') });
   await page.getByRole('combobox').press('Enter');
   await page.waitForURL(url => url.pathname === '/admin/orders' && url.searchParams.get('q') === '9999999999', { timeout: 15000 }); await waitText(page, 'HIDI-CI-1042'); passed('global search keyboard navigation opens customer order results');
-  await page.goto(base + '/admin/deliveries'); await waitText(page, 'HIDI-CI-1042'); await noOverflow(page);
+  await settledGoto(page, base + '/admin/deliveries'); await waitText(page, 'HIDI-CI-1042'); await noOverflow(page);
   await page.getByRole('button', { name: /Next/ }).click(); await page.waitForURL(url => url.searchParams.get('page') === '2'); await waitText(page, 'HIDI-CI-1042');
   await page.screenshot({ path: resolve(output, 'desktop-deliveries.png'), fullPage: true }); passed('delivery queue pagination and carrier fallback');
-  await page.goto(base + '/admin/returns'); await waitText(page, 'CI fixture size mismatch'); passed('item-level return queue renders reason, quantity and order link');
-  state.mode = 'empty'; await page.goto(base + '/admin'); await waitText(page, 'No qualifying orders in this period'); passed('empty reporting state shows zeroes, never sample data');
-  state.mode = 'error'; await page.reload(); await waitText(page, 'This view could not be loaded.'); assert.equal(await page.getByText('Booked order value', { exact: true }).count(), 0); passed('outage is visibly distinct from zero sales');
+  await settledGoto(page, base + '/admin/returns'); await waitText(page, 'CI fixture size mismatch'); passed('item-level return queue renders reason, quantity and order link');
+  state.mode = 'empty'; await settledGoto(page, base + '/admin'); await waitText(page, 'No qualifying orders in this period'); passed('empty reporting state shows zeroes, never sample data');
+  state.mode = 'error'; await settledReload(page); await waitText(page, 'This view could not be loaded.'); assert.equal(await page.getByText('Booked order value', { exact: true }).count(), 0); passed('outage is visibly distinct from zero sales');
   assert.deepEqual(errors, []); await context.close();
-  const catalog = await fixtureContext({ role: 'CATALOG' }); await catalog.page.goto(base + '/admin'); await waitText(catalog.page, 'Access is limited to your role');
+  const catalog = await fixtureContext({ role: 'CATALOG' }); await settledGoto(catalog.page, base + '/admin'); await waitText(catalog.page, 'Access is limited to your role');
   assert.equal(await catalog.page.getByRole('link', { name: 'Orders', exact: true }).count(), 0); assert.equal(await catalog.page.getByRole('link', { name: 'Team & access', exact: true }).count(), 0);
   assert(!catalog.state.calls.some(url => /dashboard\/(overview|queue)/.test(url))); await catalog.context.close(); passed('catalogue role has no order dashboard or team controls');
-  const mobile = await fixtureContext({ viewport: { width: 390, height: 844 } }); await mobile.page.goto(base + '/admin'); await waitText(mobile.page, 'Booked order value'); await noOverflow(mobile.page);
+  const mobile = await fixtureContext({ viewport: { width: 390, height: 844 } }); await settledGoto(mobile.page, base + '/admin'); await waitText(mobile.page, 'Booked order value'); await noOverflow(mobile.page);
   await mobile.page.screenshot({ path: resolve(output, 'mobile-overview.png'), fullPage: true });
   await mobile.page.getByRole('button', { name: 'Open navigation' }).click(); await mobile.page.getByRole('dialog', { name: 'Admin navigation' }).waitFor(); await mobile.page.keyboard.press('Escape');
   assert.equal(await mobile.page.getByRole('dialog', { name: 'Admin navigation' }).count(), 0);
-  await mobile.page.goto(base + '/admin/orders'); await waitText(mobile.page, 'HIDI-CI-1042'); await noOverflow(mobile.page); assert.deepEqual(mobile.errors, []); await mobile.context.close(); passed('390px mobile layout, navigation dialog and contained table overflow');
+  await settledGoto(mobile.page, base + '/admin/orders'); await waitText(mobile.page, 'HIDI-CI-1042'); await noOverflow(mobile.page); assert.deepEqual(mobile.errors, []); await mobile.context.close(); passed('390px mobile layout, navigation dialog and contained table overflow');
   console.log(`${passes} browser checks passed. Isolated UI fixtures only; not a live order lifecycle certification.`);
   await writeFile(resolve(output, 'result.txt'), `${passes} browser checks passed. No live data changes or cloud resources.\n`);
 } catch (error) {

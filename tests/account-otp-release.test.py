@@ -164,6 +164,35 @@ class ExplicitActivationPins(unittest.TestCase):
             self.assertRegex(workflow, 'echo "' + name + r'=\$RUNNER_TEMP/[^\n]+" >> "\$GITHUB_ENV"')
 
 
+class AdminFixtureNavigation(unittest.TestCase):
+    def test_document_navigation_settles_prefetch_without_filtering_page_errors(self):
+        source = (ROOT / "tests/admin-workspace.browser.mjs").read_text()
+        helpers = []
+        for name in ["settledGoto", "settledReload"]:
+            match = re.search(r"async function " + name + r"\([^\n]+\) \{\n.*?^\}", source, re.S | re.M)
+            self.assertIsNotNone(match)
+            helpers.append(match.group(0))
+        script = "\n".join(helpers) + "\n" + """
+import assert from 'node:assert/strict';
+const events=[];
+const page={url:()=> 'http://127.0.0.1:3100/admin',
+  waitForLoadState:async (state,options)=>{assert.equal(state,'networkidle');assert(options.timeout>0);events.push('settled');},
+  goto:async (url,options)=>{assert.equal(options.waitUntil,'networkidle');assert(options.timeout>0);events.push('goto:'+url);},
+  reload:async options=>{assert.equal(options.waitUntil,'networkidle');assert(options.timeout>0);events.push('reload');}};
+await settledGoto(page,'http://127.0.0.1:3100/admin/returns');
+await settledReload(page);
+assert.deepEqual(events,['settled','goto:http://127.0.0.1:3100/admin/returns','settled','reload']);
+"""
+        result = subprocess.run(["node", "--input-type=module"], input=script, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        without_helpers = source
+        for helper in helpers: without_helpers = without_helpers.replace(helper, "")
+        self.assertNotRegex(without_helpers, r"\b\w+(?:\.page)?\.(?:goto|reload)\(", "Fixture forced document navigation must use the settled helpers")
+        self.assertIn("assert.deepEqual(errors, [])", source)
+        self.assertIn("assert.deepEqual(mobile.errors, [])", source)
+        self.assertIn("errors.push(error.message)", source)
+
+
 class AccountRollout(unittest.TestCase):
     def run_release(self, scenario):
         with tempfile.TemporaryDirectory(prefix="hidi-account-release-") as directory:
