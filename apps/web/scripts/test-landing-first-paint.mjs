@@ -98,6 +98,7 @@ async function runCase(browser, engine, width, scenario) {
         assert.deepEqual(oldRequests, [], 'Slow selected-image responses do not reveal the original photos');
       }
       mediaGate.release();
+      await page.locator('#hidi-edit').scrollIntoViewIfNeeded();
       if (scenario !== 'broken-image') await page.waitForFunction(() => [...document.querySelectorAll('#our-range img, #meet-hidi img, #hidi-edit img')].every(image => image.complete && image.naturalWidth > 0));
       if (['legacy', 'list', 'retry'].includes(scenario)) {
         version = 2; attempts = 0; configGate = deferred(); mediaGate = deferred();
@@ -106,6 +107,8 @@ async function runCase(browser, engine, width, scenario) {
         await delay(250);
         assert.equal(await page.locator(mediaSelector).count(), 0, 'Reload does not show the previously selected set');
         configGate.release(); mediaGate.release();
+        await page.waitForFunction(() => document.querySelector('#hidi-edit')?.dataset.landingConfigStatus === 'ready');
+        await page.locator('#hidi-edit').scrollIntoViewIfNeeded();
         await page.waitForFunction(() => { const images = [...document.querySelectorAll('#our-range img, #meet-hidi img, #hidi-edit img')]; return images.length === 7 && images.every(image => image.src.includes('/v2/') && image.complete && image.naturalWidth > 0); });
         assert.equal(attempts, scenario === 'retry' ? 2 : 1);
       }
@@ -120,6 +123,7 @@ async function runCase(browser, engine, width, scenario) {
     reports.push({ id, result: 'passed', attempts, oldMediaRequests: oldRequests.length });
     console.log(`PASS ${id}: section order, selection loading and reload boundaries`);
   } catch (error) {
+    console.error('LANDING STATE ' + JSON.stringify(await page.evaluate(() => ({status:document.querySelector('#our-range')?.dataset.landingConfigStatus, images:[...document.querySelectorAll('#our-range img,#meet-hidi img,#hidi-edit img')].map(image=>({src:image.getAttribute('src'),complete:image.complete,width:image.naturalWidth,loading:image.loading}))}))));
     await page.screenshot({ path: resolve(output, id + '-failure.png'), animations: 'disabled' });
     await writeFile(resolve(output, 'partial-report.json'), JSON.stringify(reports, null, 2));
     throw error;
