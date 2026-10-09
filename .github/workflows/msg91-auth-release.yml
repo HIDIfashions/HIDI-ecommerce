@@ -24,9 +24,10 @@ jobs:
     # when this workflow has not yet been registered on the default branch.
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[deploy-msg91-auth]')
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     permissions:
       contents: read
+      actions: read
       id-token: write
     env:
       BASE_SOURCE: 36fe22c09dd060606b3a531433ccb24e04ce62b7
@@ -49,6 +50,11 @@ jobs:
             assert re.fullmatch('acrhidiprod0927.azurecr.io/hidi-'+app+r'(?:@sha256:[0-9a-f]{64}|:[0-9a-f]{40})',os.environ[key]), 'Expected immutable HIDI images'
           validate_source(os.environ['BASE_SOURCE'],os.environ['GITHUB_SHA'])
           PY
+      - name: Check exact previous browser evidence for a packaging-only follow-up
+        id: browser_evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 deploy/check-msg91-browser-evidence.py
       - uses: pnpm/action-setup@v4
         with:
           version: 10.15.1
@@ -63,6 +69,7 @@ jobs:
           node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
           pnpm --filter @hidi/api test:customer-experience
           python3 tests/msg91-image-preservation.test.py
+          python3 tests/msg91-browser-evidence.test.py
           python3 tests/msg91-rollout.test.py
       - name: Build the compiled auth service and complete current Next storefront
         run: |
@@ -79,6 +86,7 @@ jobs:
           export NEXT_PUBLIC_WALLET_ENABLED=true
           pnpm --filter @hidi/web build
       - name: Verify current admin and shopping UI in isolated browser fixtures
+        if: steps.browser_evidence.outputs.reuse != 'true'
         run: |
           npm install --prefix "$RUNNER_TEMP/sms-browser" --no-save playwright@1.56.1
           node "$RUNNER_TEMP/sms-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
@@ -86,6 +94,11 @@ jobs:
           node tests/admin-workspace.browser.mjs
           HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-storefront.browser.mjs
           HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-polish.browser.mjs
+      - name: Install fresh Chromium for the composed candidate packaging test
+        if: steps.browser_evidence.outputs.reuse == 'true'
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sms-browser" --no-save playwright@1.56.1
+          node "$RUNNER_TEMP/sms-browser/node_modules/playwright/cli.js" install --with-deps chromium
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af

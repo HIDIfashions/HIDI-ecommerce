@@ -58,6 +58,18 @@ def extract(image, root):
         docker("rm", cid)
 
 
+def copy_web_overlay(standalone, static, overlay):
+    web = standalone / "apps/web"
+    assert (web / "server.js").is_file() and (web / ".next").is_dir(), "Missing standalone web build"
+    target = overlay / "apps/web"
+    target.mkdir(parents=True, exist_ok=True)
+    # Keep the live dependency tree, packages, public assets and outer runtime.
+    # The exact-source guard already requires unchanged dependencies and config.
+    shutil.copytree(web / ".next", target / ".next", symlinks=True, dirs_exist_ok=True)
+    shutil.copyfile(web / "server.js", target / "server.js")
+    shutil.copytree(static, target / ".next/static", symlinks=True, dirs_exist_ok=True)
+
+
 def compose(args):
     validate_image(args.base, args.app)
     work = Path(args.work).resolve()
@@ -72,11 +84,7 @@ def compose(args):
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, dest)
     else:
-        standalone = Path("apps/web/.next/standalone")
-        assert (standalone / "apps/web/server.js").is_file(), "Missing standalone web build"
-        shutil.copytree(standalone, overlay, symlinks=True, dirs_exist_ok=True)
-        shutil.copytree("apps/web/.next/static", overlay / "apps/web/.next/static", dirs_exist_ok=True)
-        # Do not copy public files or landing/runtime overlays. The existing image owns them.
+        copy_web_overlay(Path("apps/web/.next/standalone"), Path("apps/web/.next/static"), overlay)
     (work / "Dockerfile").write_text("FROM " + args.base + "\nCOPY --chown=node:node overlay/ /app/\n")
     subprocess.run(["docker", "build", "--pull=false", "-t", args.tag, str(work)], check=True)
     extract(args.tag, candidate)
