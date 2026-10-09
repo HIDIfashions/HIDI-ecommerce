@@ -1,0 +1,65 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
+
+def hidiStartUrl = project.findProperty("HIDI_START_URL") ?: "https://thidigk.thehidi.com/"
+def hidiApiUrl = project.findProperty("HIDI_API_URL") ?: "https://hidi-ecommerce-api-96rn-beige.vercel.app/v1"
+
+android {
+    namespace 'com.thehidi.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.thehidi.app'
+        minSdk 26
+        targetSdk 36
+        versionCode 20
+        versionName '2.0.0'
+        buildConfigField "String", "HIDI_START_URL", "\"${hidiStartUrl}\""
+        buildConfigField "String", "HIDI_API_URL", "\"${hidiApiUrl}\""
+    }
+
+    buildFeatures {
+        compose true
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.activity:activity-compose:1.13.0'
+    implementation 'androidx.compose.ui:ui:1.11.1'
+    implementation 'androidx.compose.ui:ui-tooling-preview:1.11.1'
+    implementation 'androidx.compose.foundation:foundation:1.11.1'
+    implementation 'androidx.compose.animation:animation:1.11.1'
+    implementation 'androidx.compose.material3:material3:1.4.0'
+    implementation 'androidx.compose.material:material-icons-extended:1.7.8'
+
+    implementation 'io.coil-kt.coil3:coil-compose:3.5.0'
+    implementation 'io.coil-kt.coil3:coil-network-okhttp:3.5.0'
+
+    debugImplementation 'androidx.compose.ui:ui-tooling:1.11.1'
+}
