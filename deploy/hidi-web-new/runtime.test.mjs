@@ -661,6 +661,58 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     assert.equal(liveSlot.fitMode, "contain");
     assert.equal(liveSlot.altText, "Orange range card");
 
+    const post = async (path, value) => {
+      const body=JSON.stringify(value);
+      return send(azure.url,path,{method:"POST",headers:{"Content-Type":"application/json","Content-Length":Buffer.byteLength(body),Cookie:"session=fixture"},body});
+    };
+    const upload = async (path, mime, name) => {
+      const result=await send(azure.url,path,{method:"POST",headers:{"Content-Type":mime,"X-HIDI-Filename":encodeURIComponent(name),Cookie:"session=fixture"},body:Buffer.from(name)});
+      assert.equal(result.status,201,result.body);return JSON.parse(result.body).asset;
+    };
+    const secondHero=await upload("/api/hidi/hero-upload","video/mp4","Second hero.mp4");
+    const heroList={items:[{assetId:secondHero.id,desktopPosition:"38% 42%",mobilePosition:"66% 50%"},{assetId:asset.id,desktopPosition:"50% 22%"}],autoPlay:false,intervalSeconds:3};
+    assert.equal((await post("/api/hidi/hero-publish",heroList)).status,200);
+    const publishedList=JSON.parse((await send(azure.url,"/api/hidi/hero-config")).body);
+    assert.deepEqual(publishedList.items.map(item=>item.assetId),[secondHero.id,asset.id]);
+    assert.equal(publishedList.type,"video");assert.equal(publishedList.url,secondHero.url);
+    assert.equal(publishedList.autoPlay,false);assert.equal(publishedList.items[1].desktopPosition,"50% 22%");
+    for(const items of [[],Array(21).fill({assetId:asset.id}),[{assetId:asset.id},{assetId:asset.id}],[{assetId:"unknown"}]]) {
+      const rejected=await post("/api/hidi/hero-publish",{items});assert.equal(rejected.status,400,rejected.body);
+      assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/hero-config")).body),publishedList);
+    }
+    assert.equal((await post("/api/hidi/hero-reset",{})).status,200);
+    assert.equal(JSON.parse((await send(azure.url,"/api/hidi/hero-config")).body).active,false);
+    assert.equal((await post("/api/hidi/hero-restore",{})).status,200);
+    assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/hero-config")).body).items,publishedList.items);
+
+    // Migrate the existing single photo only when an admin publishes a new list.
+    assert.equal((await post("/api/hidi/landing-media-publish",{slotId:"ananya-green",assetId:landingAsset.id,desktopPosition:"58% 38%"})).status,200);
+    const photos=[landingAsset];
+    for(let i=2;i<=5;i++) photos.push(await upload("/api/hidi/landing-media-upload","image/webp",`Ananya ${i}.webp`));
+    const photoOrder=[photos[4],photos[0],photos[2],photos[1],photos[3]];
+    const ananyaList={items:photoOrder.map((item,index)=>({assetId:item.id,desktopPosition:index===0?"101% 120%":"58% 38%",mobilePosition:"66% 50%",fitMode:index===1?"contain":"cover",altText:`Ananya full outfit ${index+1}`})),autoPlay:true,intervalSeconds:999};
+    assert.equal((await post("/api/hidi/landing-media-ananya-publish",ananyaList)).status,200);
+    const listConfig=JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body);
+    assert.deepEqual(listConfig.ananya.items.map(item=>item.assetId),photoOrder.map(item=>item.id));
+    assert.equal(listConfig.ananya.items[0].desktopPosition,"100% 100%");
+    assert.equal(listConfig.ananya.items[1].fitMode,"contain");assert.equal(listConfig.ananya.intervalSeconds,30);
+    assert.equal(listConfig.slots["range-occasion"].assetId,landingAsset.id);
+    assert(!JSON.stringify(listConfig.ananya).includes("storagePath"),"Public config excludes private storage details");
+    assert.equal((await post("/api/hidi/landing-media-ananya-publish",{items:[{assetId:asset.id}]})).status,400,"Hero library cannot be used as Ananya photos");
+    assert.equal((await post("/api/hidi/landing-media-publish",{slotId:"range-occasion",assetId:photos[1].id})).status,200);
+    assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya,listConfig.ananya,"Editing another slot preserves the photo list");
+    assert.equal((await post("/api/hidi/landing-media-restore",{slotId:"range-occasion"})).status,200);
+    assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya,listConfig.ananya,"Restoring another slot preserves the photo list");
+    assert.equal((await post("/api/hidi/landing-media-ananya-restore",{})).status,200);
+    const restoredLegacy=JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body);
+    assert.deepEqual(restoredLegacy.ananya.items.map(item=>item.assetId),[landingAsset.id],"Previous single photo is restorable");
+    assert.equal((await post("/api/hidi/landing-media-ananya-restore",{})).status,200);
+    assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya.items,listConfig.ananya.items);
+    assert.equal((await post("/api/hidi/landing-media-ananya-reset",{})).status,200);
+    assert.equal(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya.active,false);
+    assert.equal((await post("/api/hidi/landing-media-ananya-restore",{})).status,200);
+    assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya.items,listConfig.ananya.items);
+
     assert.equal(tokenRequests.length, 1);
     assert.match(tokenRequests[0].url, /resource=https%3A%2F%2Fstorage\.azure\.com%2F/);
     assert.match(tokenRequests[0].url, /client_id=client-id-123/);
@@ -672,6 +724,18 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
       new Promise(resolve => blob.close(resolve)),
     ]);
   }
+});
+
+test("media lists and libraries require an authenticated admin", async () => {
+  const denied=createServer((request,response)=>response.writeHead(401).end());
+  const origin=await listen(denied);
+  try {
+    const web=await launch({STOREFRONT_ORIGIN:origin});
+    for(const path of ["/api/hidi/hero-publish","/api/hidi/hero-reset","/api/hidi/hero-restore","/api/hidi/landing-media-ananya-publish","/api/hidi/landing-media-ananya-reset","/api/hidi/landing-media-ananya-restore"])
+      assert.equal((await send(web.url,path,{method:"POST",body:"{}"})).status,401,path);
+    for(const path of ["/api/hidi/hero-library","/api/hidi/landing-media-library"])
+      assert.equal((await send(web.url,path)).status,401,path);
+  } finally { await new Promise(resolve=>denied.close(resolve)); }
 });
 
 test("Next assets and API beat static collisions; genuine deep links retain upstream responses", async () => {

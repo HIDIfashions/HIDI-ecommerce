@@ -43,6 +43,11 @@ export function LandingMediaProvider({ children }) {
             if (clean) next[id] = clean;
           }
         }
+        if (value?.ananya) {
+          next.ananya = { active: value.ananya.active === true, autoPlay: value.ananya.autoPlay === true,
+            intervalSeconds: Math.max(3, Math.min(30, Number(value.ananya.intervalSeconds) || 6)),
+            items: (Array.isArray(value.ananya.items) ? value.ananya.items : []).map(item => cleanSlot({ ...item, active: true })).filter(Boolean).slice(0, 20) };
+        }
         setSlots(next);
       })
       .catch((error) => {

@@ -25,7 +25,7 @@ try {
         await page.goto(base); await page.locator('.meet-cinematic').waitFor();
         const measure = await page.evaluate(() => { const section = document.querySelector('.meet-section--cinematic'); return { height: section.offsetHeight, viewport: innerHeight, position: getComputedStyle(section.querySelector('.container')).position, scrollWidth: document.documentElement.scrollWidth, width: innerWidth }; });
         assert(measure.scrollWidth <= width + 1, `No horizontal overflow at ${width}`);
-        assert.equal(measure.position, 'relative'); assert(measure.height <= measure.viewport, 'Single photo has no pinned slideshow runway');
+        assert.equal(measure.position, 'relative'); assert(measure.height <= measure.viewport + 120, 'Photo and heading have no pinned slideshow runway');
         assert.equal(await page.locator('.meet-cinematic__model').count(), 1);
         assert.equal(await page.locator('.meet-cinematic__scroll, .meet-cinematic__pick-control, .meet-cinematic__count').count(), 0);
         if (width < 800) {

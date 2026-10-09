@@ -19,21 +19,29 @@
 @media(max-width:1120px){.work-grid{grid-template-columns:1fr}.previews{grid-template-columns:minmax(0,1fr) minmax(104px,140px)}}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.slots{max-height:none}.library{grid-template-columns:repeat(2,minmax(0,1fr))}.heading{align-items:flex-start;flex-direction:column}.wrap{width:min(100% - 20px,1180px);margin-top:14px}.top{padding:14px 16px}}
 @media(max-width:560px){.row,.previews,.library{grid-template-columns:1fr}.btn{flex-basis:100%}}
+.sequence-list{display:grid;gap:8px;margin-bottom:12px}.sequence-item{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:9px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:9px;background:#fff}.sequence-item.is-selected{border-color:var(--wine)}.sequence-item img,.sequence-item video{width:44px;height:44px;object-fit:cover;border-radius:5px}.sequence-name{min-width:0;font-size:12px;color:var(--wine);border:0;background:none;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px 0}.sequence-actions{display:flex;gap:2px}.sequence-actions button{width:36px;min-height:44px;border:1px solid var(--line);background:#fff;border-radius:6px;color:var(--wine)}.sequence-actions button:disabled{opacity:.35}.rotation-option{display:flex;align-items:center;gap:8px;min-height:44px}.rotation-option input{width:18px;height:18px}.preview-heading{text-align:center;padding:14px 8px;background:var(--soft);color:var(--wine);font:24px Georgia,serif;margin-bottom:12px}.preview.ananya.desktop{aspect-ratio:16/10;background:#fffaf2}.preview.ananya.mobile{aspect-ratio:9/16;background:#fffaf2}[hidden]{display:none!important}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--wine);outline-offset:2px}
 </style>
 </head>
 <body>
 <header class="top"><img src="/assets/images/hidi-logo.png" alt="HIDI"><a href="/" target="_blank" rel="noopener">Open storefront</a></header>
 <main class="wrap">
-<div class="heading"><div><h1>Landing Media</h1><p>Manage hero, Ananya picks, range carousel photos and the shop banner with slot-level previews.</p></div><div id="status" class="status">Checking admin session...</div></div>
+<div class="heading"><div><h1>Landing Media</h1><p>Manage the main hero and Ananya photo lists, range carousel photos and the shop banner.</p></div><div id="status" class="status">Checking admin session...</div></div>
 <div id="signin" class="card signin" hidden><strong>HIDI Admin sign-in required</strong><p class="hint">Sign in with your normal HIDI admin account, then return here.</p><a href="/admin/sign-in">Go to Admin Sign-in</a></div>
 <div id="workspace" class="layout" hidden>
 <section class="card"><h2>Media slots</h2><div id="slots" class="slots"></div></section>
 <div class="workspace">
 <div class="work-grid">
 <section class="card">
-<h2 id="slotTitle">Select a slot</h2>
+<h2 id="slotTitle">Select a section</h2>
+<div id="sequenceEditor" hidden>
+<p class="hint">Add media from the library, arrange the order, then publish the list. Removing an item from this list keeps the uploaded file in your library.</p>
+<div id="sequence" class="sequence-list"></div>
+<p id="draftStatus" class="hint" role="status"></p>
+<div class="row"><label class="rotation-option"><input id="autoPlay" type="checkbox"> Automatic rotation</label><label>Seconds per photo<select id="intervalSeconds"><option value="3">3 seconds</option><option value="5">5 seconds</option><option value="6">6 seconds</option><option value="8">8 seconds</option><option value="10">10 seconds</option><option value="15">15 seconds</option><option value="30">30 seconds</option></select></label></div>
+<p id="rotationHint" class="hint"></p>
+</div>
 <p id="slotHelp" class="hint"></p>
-<div class="upload"><input id="file" type="file"><p class="hint" id="uploadHint">Images are optimized before upload. Hero also accepts MP4/WebM.</p></div>
+<div class="upload"><input id="file" type="file" multiple><p class="hint" id="uploadHint">Images are optimized before upload. Hero also accepts MP4/WebM.</p></div>
 <div class="row">
 <label>Desktop focal point<select id="desktopPos"><option value="50% 50%">Center</option><option value="50% 22%">Top</option><option value="50% 78%">Bottom</option><option value="34% 50%">Left</option><option value="66% 50%">Right</option><option value="42% 38%">Upper left</option><option value="58% 38%">Upper right</option></select></label>
 <label>Mobile focal point<select id="mobilePos"><option value="50% 50%">Center</option><option value="50% 22%">Top</option><option value="50% 78%">Bottom</option><option value="34% 50%">Left</option><option value="66% 50%">Right</option><option value="42% 38%">Upper left</option><option value="58% 38%">Upper right</option></select></label>
@@ -43,9 +51,9 @@
 <label>Alt text<textarea id="altText" maxlength="220" placeholder="Short description for accessibility"></textarea></label>
 </div>
 <div class="actions"><button id="upload" class="btn gold" disabled>Upload to library</button><button id="publish" class="btn" disabled>Make selected live</button><button id="restore" class="btn secondary">Restore previous</button><button id="reset" class="btn secondary">Use built-in media</button></div>
-<div id="message" class="message"></div>
+<div id="uploadProgress" class="hint" role="status"></div><div id="message" class="message" role="status"></div>
 </section>
-<section class="card"><h2>Slot preview</h2><div class="previews"><div id="desktopPreview" class="preview"><span>Desktop</span></div><div id="mobilePreview" class="preview"><span>Mobile</span></div></div><p class="hint">Preview uses the slot shape and the selected focal point/treatment before publishing.</p></section>
+<section class="card"><h2>Media preview</h2><div id="previewHeading" class="preview-heading" hidden>Ananya’s Pick</div><div class="previews"><div id="desktopPreview" class="preview"><span>Desktop</span></div><div id="mobilePreview" class="preview"><span>Mobile</span></div></div><p class="hint">Preview uses the slot shape and the selected focal point/treatment before publishing.</p></section>
 </div>
 <section class="card"><h2 id="libraryTitle">Media library</h2><div id="library" class="library"></div><p id="empty" class="hint">No media uploaded yet.</p></section>
 </div>
@@ -57,12 +65,8 @@ const demoMode = new URLSearchParams(location.search).has("demo") && ["127.0.0.1
 const imageAccept = "image/jpeg,image/png,image/webp,image/avif";
 const heroAccept = imageAccept + ",video/mp4,video/webm";
 const slots = [
-  { id:"hero", group:"Hero", name:"Homepage hero media", type:"hero", preview:"hero", accept:heroAccept, fallback:{ type:"video", url:"/assets/video/hidi-hero-desktop-luminous-v1.mp4", originalName:"Built-in cinematic hero" }, help:"Main first-screen video/photo. Supports image or video and keeps desktop/mobile focal points." },
-  { id:"ananya-orange", group:"Ananya", name:"Ananya pick 01", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-orange.webp", originalName:"Built-in orange pick" }, help:"First Ananya scroll image. Best as a full outfit portrait." },
-  { id:"ananya-pink", group:"Ananya", name:"Ananya pick 02", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-pink.webp", originalName:"Built-in pink pick" }, help:"Second Ananya scroll image. Best as a full outfit portrait." },
-  { id:"ananya-maroon", group:"Ananya", name:"Ananya pick 03", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-maroon.webp", originalName:"Built-in maroon pick" }, help:"Third Ananya scroll image. Best as a full outfit portrait." },
-  { id:"ananya-black", group:"Ananya", name:"Ananya pick 04", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-black.webp", originalName:"Built-in black pick" }, help:"Fourth Ananya scroll image. Best as a full outfit portrait." },
-  { id:"ananya-green", group:"Ananya", name:"Ananya pick 05", preview:"portrait", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-green.webp", originalName:"Built-in green pick" }, help:"Fifth Ananya scroll image. Best as a full outfit portrait." },
+  { id:"hero", group:"Hero", name:"Homepage hero media", type:"hero", preview:"hero", accept:heroAccept, fallback:{ type:"video", url:"/assets/video/hidi-hero-desktop-luminous-v1.mp4", originalName:"Built-in cinematic hero" }, help:"Main first-screen media. Add up to 20 videos or images, arrange the order and choose automatic rotation." },
+  { id:"ananya", group:"Ananya", name:"Ananya's Pick photos", preview:"ananya", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/ananya-top-picks/ananya-green.webp", originalName:"Built-in Ananya photo" }, help:"One full-page photo at a time below the Ananya’s Pick heading. Add up to 20 images and arrange the order." },
   { id:"range-occasion", group:"Range", name:"Range 01 - Occasion", preview:"carousel", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/occasion-set.webp", originalName:"Built-in occasion card" }, help:"Circular range carousel card. Use a tall product photo with breathing room." },
   { id:"range-new-arrivals", group:"Range", name:"Range 02 - New arrivals", preview:"carousel", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/peach-set.webp", originalName:"Built-in new arrivals card" }, help:"Circular range carousel card. Use a tall product photo with breathing room." },
   { id:"range-work-edit", group:"Range", name:"Range 03 - Work edit", preview:"carousel", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/cream-set.webp", originalName:"Built-in work edit card" }, help:"Circular range carousel card. Use a tall product photo with breathing room." },
@@ -71,231 +75,194 @@ const slots = [
   { id:"hidi-edit-banner", group:"Banner", name:"Shop HIDI banner", preview:"banner", accept:imageAccept, fallback:{ type:"image", url:"/assets/images/hidi-premium-ai-full-banner-lossless.png", originalName:"Built-in shop banner" }, help:"Wide shop banner below the range carousel. Use a clean horizontal composition." },
 ];
 
-let heroLibrary = [], landingLibrary = [], heroCurrent = null, heroPrevious = null, landingCurrent = { slots:{} }, landingPrevious = { slots:{} };
-let selectedSlot = slots[0], selected = null, prepared = null, previewUrl = "";
+let heroLibrary = [], landingLibrary = [], heroCurrent = null, landingCurrent = { slots:{} };
+let selectedSlot = slots[0], selected = null, prepared = [], previewUrl = "", busy = false;
+const drafts = new Map();
 
 function say(text, error=false) { $("message").textContent = text; $("message").style.color = error ? "#9b2424" : "#602124"; }
 function isHero(slot=selectedSlot) { return slot.id === "hero"; }
+function isSequence(slot=selectedSlot) { return ["hero","ananya"].includes(slot.id); }
 function libraryFor(slot=selectedSlot) { return isHero(slot) ? heroLibrary : landingLibrary; }
 function liveFor(slot=selectedSlot) {
-  return isHero(slot) ? (heroCurrent?.active ? heroCurrent : null) : (landingCurrent?.slots?.[slot.id]?.active ? landingCurrent.slots[slot.id] : null);
+  if (isHero(slot)) return heroCurrent?.active ? heroCurrent : null;
+  if (slot.id === "ananya") {
+    if (landingCurrent.ananya) return landingCurrent.ananya.active ? landingCurrent.ananya : null;
+    const legacy = landingCurrent.slots?.["ananya-green"];
+    return legacy?.active ? { ...legacy, items:[legacy], autoPlay:false, intervalSeconds:6 } : null;
+  }
+  return landingCurrent.slots?.[slot.id]?.active ? landingCurrent.slots[slot.id] : null;
 }
-function assetForPreview(slot=selectedSlot) {
-  return selected || liveFor(slot) || slot.fallback;
+function draftFor(slot=selectedSlot) {
+  if (!drafts.has(slot.id)) {
+    const current = liveFor(slot);
+    drafts.set(slot.id, { items: current?.active ? (current.items || [current]).map(item => ({ ...item, id:item.assetId || item.id })) : [], autoPlay:current?.autoPlay ?? isHero(slot), intervalSeconds:current?.intervalSeconds || 6, dirty:false });
+  }
+  return drafts.get(slot.id);
 }
-function node(asset, position, fit) {
+function node(asset, position="50% 50%", fit="cover", play=false) {
   const el = document.createElement(asset?.type === "video" ? "video" : "img");
   el.src = asset?.url || "";
-  if (asset?.type === "video") { el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true; }
-  el.style.objectPosition = position || "50% 50%";
-  el.style.objectFit = fit || "cover";
+  if (asset?.type === "video") { el.muted=true; el.loop=true; el.autoplay=play; el.playsInline=true; el.preload=play ? "auto" : "metadata"; }
+  else { el.alt=asset?.altText || ""; el.loading=play ? "eager" : "lazy"; }
+  el.style.objectPosition=position; el.style.objectFit=fit;
   return el;
 }
-function setPreviewClass(host, slot, side) {
-  host.className = "preview " + slot.preview + " " + side;
+function setPosition(id, position) {
+  const select=$(id), value=position || "50% 50%";
+  if (![...select.options].some(option=>option.value===value)) select.add(new Option(value,value));
+  select.value=value;
 }
+function setFields(asset) {
+  setPosition("desktopPos",asset?.desktopPosition);
+  setPosition("mobilePos",asset?.mobilePosition);
+  $("fitMode").value=asset?.fitMode || "cover";
+  $("altText").value=asset?.altText || "";
+}
+function settings() { return { desktopPosition:$("desktopPos").value, mobilePosition:$("mobilePos").value, fitMode:$("fitMode").value, altText:$("altText").value }; }
 function renderPreview() {
-  const asset = assetForPreview();
-  const fit = isHero() ? "cover" : $("fitMode").value;
-  for (const [id, side, pos] of [["desktopPreview","desktop",$("desktopPos").value],["mobilePreview","mobile",$("mobilePos").value]]) {
-    const host = $(id);
-    setPreviewClass(host, selectedSlot, side);
-    host.querySelectorAll("img,video").forEach(item => item.remove());
-    host.prepend(node(asset, pos, fit));
+  const asset=selected || liveFor() || selectedSlot.fallback;
+  $("previewHeading").hidden=selectedSlot.id!=="ananya";
+  for (const [id,side,pos] of [["desktopPreview","desktop",$("desktopPos").value],["mobilePreview","mobile",$("mobilePos").value]]) {
+    const host=$(id); host.className="preview "+selectedSlot.preview+" "+side;
+    host.querySelectorAll("img,video").forEach(el=>el.remove());
+    const media=node(asset,pos,isHero() ? "cover" : $("fitMode").value,true);
+    if (selectedSlot.id==="ananya" && asset.type!=="video") media.onload=()=>{media.style.objectFit=side==="desktop" && media.naturalWidth>=media.naturalHeight && $("fitMode").value!=="contain" ? "cover" : "contain";};
+    host.prepend(media);
   }
-}
-function slotThumb(slot) {
-  const media = liveFor(slot) || slot.fallback;
-  const box = document.createElement("div");
-  box.className = "slot-thumb " + (slot.preview === "hero" ? "hero" : slot.preview === "banner" ? "banner" : "");
-  box.appendChild(node(media, "50% 50%", "cover"));
-  return box;
 }
 function renderSlots() {
-  const host = $("slots");
-  host.innerHTML = "";
+  const host=$("slots"); host.replaceChildren();
   for (const slot of slots) {
-    const live = liveFor(slot);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "slot" + (slot.id === selectedSlot.id ? " is-active" : "") + (live ? " is-live" : "");
-    button.appendChild(slotThumb(slot));
-    const copy = document.createElement("div");
-    copy.innerHTML = `<div class="slot-group">${slot.group}</div><div class="slot-title"></div>`;
-    copy.querySelector(".slot-title").textContent = slot.name;
-    const badge = document.createElement("span");
-    badge.className = "badge";
-    badge.textContent = live ? "Live" : "Built-in";
-    button.append(copy, badge);
-    button.onclick = () => selectSlot(slot.id);
-    host.appendChild(button);
+    const live=liveFor(slot), button=document.createElement("button"); button.type="button";button.disabled=busy;
+    button.className="slot"+(slot.id===selectedSlot.id ? " is-active" : "")+(live ? " is-live" : "");
+    const thumb=document.createElement("div");thumb.className="slot-thumb "+(isSequence(slot) ? "hero" : slot.preview==="banner" ? "banner" : "");thumb.append(node(live || slot.fallback));
+    const copy=document.createElement("div"),group=document.createElement("div"),name=document.createElement("div");group.className="slot-group";group.textContent=slot.group;name.className="slot-title";name.textContent=slot.name;copy.append(group,name);
+    const badge=document.createElement("span");badge.className="badge";badge.textContent=live ? (isSequence(slot) ? (live.items?.length || 1)+" live" : "Live") : "Built-in";
+    button.append(thumb,copy,badge);button.onclick=()=>selectSlot(slot.id);host.append(button);
   }
+}
+function updateButtons() {
+  $("upload").disabled=busy || !prepared.length;
+  $("publish").textContent=isSequence() ? "Publish media list" : "Make selected live";
+  $("publish").disabled=busy || demoMode || (isSequence() ? !draftFor().items.length : !selected?.id || selected.id==="local-preview");
+  for (const id of ["file","restore","reset","desktopPos","mobilePos","fitMode","altText","autoPlay","intervalSeconds"]) $(id).disabled=busy || (["fitMode","altText"].includes(id) && isHero());
+  $("upload").textContent=prepared.length>1 ? "Upload "+prepared.length+" files" : "Upload to library";
+  $("workspace").setAttribute("aria-busy",String(busy));
+}
+function selectAsset(asset) { selected=asset;setFields(asset);renderPreview();renderSequence();renderLibrary();updateButtons(); }
+function dirty() { if (isSequence()) {draftFor().dirty=true;$("draftStatus").textContent="Draft changes — publish the list to update the storefront.";}updateButtons(); }
+function addToList(asset) {
+  const draft=draftFor();
+  if (draft.items.some(item=>item.id===asset.id)) return;
+  if (draft.items.length>=20) throw new Error("This list has 20 items. Remove an item before adding another.");
+  draft.items.push({...asset,...settings(),assetId:asset.id});draft.dirty=true;
+}
+function renderSequence() {
+  $("sequenceEditor").hidden=!isSequence();
+  if (!isSequence()) return;
+  const draft=draftFor(),host=$("sequence");host.replaceChildren();
+  $("autoPlay").checked=draft.autoPlay;$("intervalSeconds").value=String(draft.intervalSeconds);
+  $("rotationHint").textContent=isHero() ? "Photos use this duration. Videos play to the end before the next item. Visitors can pause or browse manually." : "Visitors can browse or swipe. Vertical page scrolling stays normal. Automatic rotation pauses during interaction.";
+  $("draftStatus").textContent=draft.dirty ? "Draft changes — publish the list to update the storefront." : draft.items.length ? draft.items.length+" item(s) in the published list." : "Add images or videos from the library to start your list.";
+  draft.items.forEach((item,index)=>{
+    const row=document.createElement("div");row.className="sequence-item"+(selected?.id===item.id ? " is-selected" : "");row.append(node(item));
+    const name=document.createElement("button");name.type="button";name.className="sequence-name";name.textContent=(index+1)+". "+(item.originalName || "Media");name.disabled=busy;name.onclick=()=>selectAsset(item);
+    const actions=document.createElement("div");actions.className="sequence-actions";
+    for (const [text,label,disabled,action] of [["↑","Move item "+(index+1)+" up",index===0,()=>{[draft.items[index-1],draft.items[index]]=[draft.items[index],draft.items[index-1]];}],["↓","Move item "+(index+1)+" down",index===draft.items.length-1,()=>{[draft.items[index+1],draft.items[index]]=[draft.items[index],draft.items[index+1]];}],["×","Remove item "+(index+1),false,()=>{draft.items.splice(index,1);if(selected?.id===item.id){selected=draft.items[0] || null;setFields(selected);}}]]) {
+      const button=document.createElement("button");button.type="button";button.textContent=text;button.setAttribute("aria-label",label);button.disabled=busy || disabled;button.onclick=()=>{action();dirty();renderSequence();renderLibrary();renderPreview();};actions.append(button);
+    }
+    row.append(name,actions);host.append(row);
+  });
 }
 function renderLibrary() {
-  const host = $("library");
-  const library = libraryFor();
-  host.innerHTML = "";
-  $("empty").hidden = library.length > 0;
-  $("libraryTitle").textContent = isHero() ? "Hero media library" : "Landing photo library";
+  const host=$("library"),library=libraryFor();host.replaceChildren();$("empty").hidden=library.length>0;$("libraryTitle").textContent=isHero() ? "Hero media library" : "Landing photo library";
   for (const asset of library) {
-    const card = document.createElement("div");
-    card.className = "asset" + (selected?.id === asset.id ? " is-selected" : "");
-    const media = document.createElement("div");
-    media.className = "asset-media";
-    media.appendChild(node(asset, "50% 50%", "cover"));
-    const body = document.createElement("div");
-    body.className = "asset-body";
-    const name = document.createElement("div");
-    name.className = "asset-name";
-    name.textContent = asset.originalName || "HIDI media";
-    const meta = document.createElement("div");
-    meta.className = "asset-meta";
-    meta.textContent = (asset.type === "video" ? "Video" : "Image") + " - " + Math.round((asset.sizeBytes || 0) / 1024 / 1024 * 10) / 10 + " MB";
-    const btn = document.createElement("button");
-    btn.textContent = selected?.id === asset.id ? "Selected" : "Select";
-    btn.onclick = () => { selected = asset; prepared = null; $("publish").disabled = demoMode ? true : false; renderPreview(); renderLibrary(); say("Selected " + (asset.originalName || "media") + ". Check preview, then publish."); };
-    body.append(name, meta, btn);
-    card.append(media, body);
-    host.appendChild(card);
+    const card=document.createElement("div");card.className="asset"+(selected?.id===asset.id ? " is-selected" : "");
+    const media=document.createElement("div");media.className="asset-media";media.append(node(asset));
+    const body=document.createElement("div");body.className="asset-body";
+    const name=document.createElement("div");name.className="asset-name";name.textContent=asset.originalName || "HIDI media";
+    const meta=document.createElement("div");meta.className="asset-meta";meta.textContent=(asset.type==="video" ? "Video" : "Image")+" · "+Math.round((asset.sizeBytes || 0)/1024/1024*10)/10+" MB";
+    const preview=document.createElement("button");preview.type="button";preview.textContent="Preview";preview.disabled=busy;preview.onclick=()=>selectAsset(draftFor().items.find(item=>item.id===asset.id) || asset);
+    body.append(name,meta,preview);
+    if (isSequence()) {
+      const add=document.createElement("button"),included=draftFor().items.some(item=>item.id===asset.id);add.type="button";add.textContent=included ? "In list" : "Add to list";add.disabled=busy || included || draftFor().items.length>=20;add.onclick=()=>{try{selectAsset(asset);addToList(asset);dirty();renderSequence();renderLibrary();say("Added to the draft list. Publish when ready.");}catch(error){say(error.message,true);}};body.append(add);
+    }
+    card.append(media,body);host.append(card);
   }
-}
-function setFieldsFromCurrent(slot) {
-  const live = liveFor(slot);
-  $("desktopPos").value = live?.desktopPosition || "50% 50%";
-  $("mobilePos").value = live?.mobilePosition || "50% 50%";
-  $("fitMode").value = live?.fitMode || "cover";
-  $("fitMode").disabled = isHero(slot);
-  $("altText").value = live?.altText || "";
-  $("altText").disabled = isHero(slot);
-  $("file").accept = slot.accept;
-  $("slotTitle").textContent = slot.name;
-  $("slotHelp").textContent = slot.help;
-  $("uploadHint").textContent = isHero(slot) ? "Hero accepts JPEG, PNG, WebP, AVIF, MP4 or WebM." : "Landing slots accept JPEG, PNG, WebP or AVIF. Large images are resized in the browser.";
 }
 function selectSlot(id) {
-  selectedSlot = slots.find(slot => slot.id === id) || slots[0];
-  const live = liveFor(selectedSlot);
-  selected = live?.assetId ? libraryFor(selectedSlot).find(asset => asset.id === live.assetId) || live : null;
-  prepared = null;
-  $("file").value = "";
-  $("upload").disabled = true;
-  $("publish").disabled = demoMode || !selected?.id;
-  setFieldsFromCurrent(selectedSlot);
-  renderSlots();
-  renderPreview();
-  renderLibrary();
-  say(demoMode ? "Local demo preview only. Live publish is available after admin sign-in." : "");
+  if (busy) return;
+  selectedSlot=slots.find(slot=>slot.id===id) || slots[0];
+  const live=liveFor(),draft=draftFor();selected=isSequence() ? draft.items[0] || null : live?.assetId ? libraryFor().find(asset=>asset.id===live.assetId) || {...live,id:live.assetId} : null;
+  prepared=[];$("file").value="";$("file").multiple=isSequence();$("file").accept=selectedSlot.accept;
+  $("slotTitle").textContent=selectedSlot.name;$("slotHelp").textContent=selectedSlot.help;
+  $("uploadHint").textContent=isHero() ? "Select multiple JPEG, PNG, WebP, AVIF, MP4 or WebM files. Images are optimized; videos keep original quality." : isSequence() ? "Select multiple photos. Uploads are added to your draft list; publish when ready." : "Select one JPEG, PNG, WebP or AVIF photo. Large images are resized in the browser.";
+  setFields(selected);renderSlots();renderSequence();renderPreview();renderLibrary();updateButtons();say(demoMode ? "Local demo only. Nothing live will change." : "");
 }
 async function optimise(file) {
-  if (!file.type.startsWith("image/") || file.type === "image/avif" || !window.createImageBitmap) return file;
+  if (!file.type.startsWith("image/") || file.type==="image/avif" || !window.createImageBitmap) return file;
   try {
-    const image = await createImageBitmap(file);
-    const max = 2560;
-    if (Math.max(image.width, image.height) <= max && file.size <= 6 * 1024 * 1024) { image.close(); return file; }
-    const scale = Math.min(1, max / Math.max(image.width, image.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(image.width * scale);
-    canvas.height = Math.round(image.height * scale);
-    canvas.getContext("2d", { alpha:false }).drawImage(image, 0, 0, canvas.width, canvas.height);
-    image.close();
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", .9));
-    return blob ? new File([blob], file.name.replace(/\.[^.]+$/, "") + ".webp", { type:"image/webp" }) : file;
-  } catch { return file; }
+    const image=await createImageBitmap(file),max=2560;
+    if (Math.max(image.width,image.height)<=max && file.size<=6*1024*1024) {image.close();return file;}
+    const scale=Math.min(1,max/Math.max(image.width,image.height)),canvas=document.createElement("canvas");canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);canvas.getContext("2d",{alpha:false}).drawImage(image,0,0,canvas.width,canvas.height);image.close();
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",.9));return blob ? new File([blob],file.name.replace(/\.[^.]+$/,"")+".webp",{type:"image/webp"}) : file;
+  } catch {return file;}
 }
+async function operation(action) { if (busy) return;busy=true;updateButtons();renderSlots();renderSequence();renderLibrary();try{await action();}catch(error){say(error.message || "Unable to update media",true);}finally{busy=false;updateButtons();renderSlots();renderSequence();renderLibrary();} }
+async function request(endpoint,body) {
+  const res=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:body ? JSON.stringify(body) : undefined});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.message || "Unable to update media");return data;
+}
+function updateCurrent(current) { if (isHero()) heroCurrent=current;else if(selectedSlot.id==="ananya") landingCurrent.ananya=current;else landingCurrent.slots[selectedSlot.id]=current;drafts.delete(selectedSlot.id);const draft=draftFor();selected=isSequence() ? draft.items[0] || null : current?.active ? {...current,id:current.assetId} : null;setFields(selected);renderPreview(); }
 async function load() {
-  if (!demoMode) {
-    const session = await fetch("/api/admin/session", { cache:"no-store" });
-    if (!session.ok) { $("signin").hidden = false; $("status").textContent = "Signed out"; return; }
+  if (!demoMode) {const session=await fetch("/api/admin/session",{cache:"no-store"});if(!session.ok){$("signin").hidden=false;$("status").textContent="Signed out";return;}}
+  $("workspace").hidden=false;$("status").textContent=demoMode ? "Local demo preview" : "Admin verified";
+  if (demoMode) {landingLibrary=slots.filter(slot=>!isHero(slot)).map(slot=>({...slot.fallback,id:"demo-"+slot.id,sizeBytes:0}));heroLibrary=[{...slots[0].fallback,id:"demo-hero",sizeBytes:0}];}
+  else {
+    const [heroRes,landingRes]=await Promise.all([fetch("/api/hidi/hero-library",{cache:"no-store"}),fetch("/api/hidi/landing-media-library",{cache:"no-store"})]);const heroData=await heroRes.json().catch(()=>({})),landingData=await landingRes.json().catch(()=>({}));
+    if (!heroRes.ok || !landingRes.ok) throw new Error(heroData.message || landingData.message || "Media storage is unavailable");
+    heroLibrary=heroData.assets || [];heroCurrent=heroData.current || null;landingLibrary=landingData.assets || [];landingCurrent=landingData.current || {slots:{}};
   }
-  $("workspace").hidden = false;
-  $("status").textContent = demoMode ? "Local demo preview" : "Admin verified";
-  if (demoMode) {
-    landingLibrary = slots.filter(slot => !isHero(slot)).map(slot => ({ ...slot.fallback, id: "demo-" + slot.id, sizeBytes: 0 }));
-    heroLibrary = [{ ...slots[0].fallback, id:"demo-hero", sizeBytes: 0 }];
-    selectSlot("hero");
-    return;
-  }
-  const [heroRes, landingRes] = await Promise.all([
-    fetch("/api/hidi/hero-library", { cache:"no-store" }),
-    fetch("/api/hidi/landing-media-library", { cache:"no-store" }),
-  ]);
-  const heroData = await heroRes.json().catch(() => ({}));
-  const landingData = await landingRes.json().catch(() => ({}));
-  if (heroRes.ok) { heroLibrary = heroData.assets || []; heroCurrent = heroData.current || null; heroPrevious = heroData.previous || null; }
-  if (landingRes.ok) { landingLibrary = landingData.assets || []; landingCurrent = landingData.current || { slots:{} }; landingPrevious = landingData.previous || { slots:{} }; }
-  if (!heroRes.ok || !landingRes.ok) say((heroData.message || landingData.message || "Some media storage is unavailable"), true);
-  selectSlot("hero");
+  selectSlot(new URLSearchParams(location.search).get("section") || "hero");
 }
-$("file").onchange = async event => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  prepared = await optimise(file);
+$("file").onchange=()=>operation(async()=>{
+  const files=[...$("file").files];prepared=[];
+  if (files.length>20) throw new Error("Select up to 20 files per upload.");
+  if (files.some(file=>!selectedSlot.accept.split(",").includes(file.type))) throw new Error("Choose a supported media type for this section.");
+  for(const file of files) prepared.push(await optimise(file));
   if (previewUrl) URL.revokeObjectURL(previewUrl);
-  previewUrl = URL.createObjectURL(prepared);
-  selected = { id:"local-preview", type:prepared.type.startsWith("video/") ? "video" : "image", url:previewUrl, originalName:prepared.name, sizeBytes:prepared.size };
-  $("upload").disabled = false;
-  $("publish").disabled = true;
-  renderPreview();
-  renderLibrary();
-  say(prepared !== file ? "Image optimized and ready to upload." : "Ready to upload.");
-};
-for (const id of ["desktopPos","mobilePos","fitMode"]) $(id).onchange = renderPreview;
-$("altText").oninput = () => {};
-$("upload").onclick = () => {
-  if (!prepared) return;
-  if (demoMode) {
-    const asset = { ...selected, id:"demo-upload-" + Date.now() };
-    if (isHero()) heroLibrary = [asset, ...heroLibrary]; else landingLibrary = [asset, ...landingLibrary];
-    selected = asset; prepared = null; $("file").value = ""; $("upload").disabled = true; renderLibrary(); renderSlots(); say("Added to local preview library. Publish is disabled in demo mode.");
-    return;
+  if(prepared[0]){previewUrl=URL.createObjectURL(prepared[0]);selected={id:"local-preview",type:prepared[0].type.startsWith("video/") ? "video" : "image",url:previewUrl,originalName:prepared[0].name};setFields(selected);renderPreview();}
+  say(prepared.length+" file(s) ready to upload.");
+});
+for(const id of ["desktopPos","mobilePos","fitMode","altText"]) $(id).addEventListener(id==="altText" ? "input" : "change",()=>{if(isSequence()){const item=draftFor().items.find(item=>item.id===selected?.id);if(item)Object.assign(item,settings());dirty();}renderPreview();});
+$("autoPlay").onchange=()=>{draftFor().autoPlay=$("autoPlay").checked;dirty();};$("intervalSeconds").onchange=()=>{draftFor().intervalSeconds=Number($("intervalSeconds").value);dirty();};
+function uploadFile(file) { return new Promise((resolve,reject)=>{
+  const xhr=new XMLHttpRequest();xhr.open("POST",isHero() ? "/api/hidi/hero-upload" : "/api/hidi/landing-media-upload");xhr.setRequestHeader("Content-Type",file.type);xhr.setRequestHeader("X-HIDI-Filename",encodeURIComponent(file.name));
+  xhr.upload.onprogress=event=>{if(event.lengthComputable)$("uploadProgress").textContent="Uploading "+file.name+" · "+Math.round(event.loaded/event.total*100)+"%";};
+  xhr.onload=()=>{try{const data=JSON.parse(xhr.responseText || "{}");if(xhr.status<200 || xhr.status>=300)throw new Error(data.message || "Upload failed");resolve(data.asset);}catch(error){reject(error);}};xhr.onerror=()=>reject(new Error("Upload failed. Completed files are saved; retry the remaining files."));xhr.send(file);
+}); }
+$("upload").onclick=()=>operation(async()=>{
+  if(!prepared.length)return;
+  if(isSequence() && draftFor().items.length+prepared.length>20)throw new Error("This list supports 20 items. Remove some draft items before uploading this batch.");
+  let count=0;
+  while(prepared.length){const file=prepared[0],asset=demoMode ? {id:"demo-upload-"+Date.now()+"-"+count,type:file.type.startsWith("video/") ? "video" : "image",url:URL.createObjectURL(file),originalName:file.name,sizeBytes:file.size} : await uploadFile(file);
+    if(isHero())heroLibrary=[asset,...heroLibrary];else landingLibrary=[asset,...landingLibrary];
+    selected=asset;setFields(asset);if(isSequence())addToList(asset);prepared.shift();count++;renderSequence();renderLibrary();
   }
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", isHero() ? "/api/hidi/hero-upload" : "/api/hidi/landing-media-upload");
-  xhr.setRequestHeader("Content-Type", prepared.type);
-  xhr.setRequestHeader("X-HIDI-Filename", encodeURIComponent(prepared.name));
-  $("upload").disabled = true;
-  xhr.onload = () => {
-    try {
-      const body = JSON.parse(xhr.responseText || "{}");
-      if (xhr.status < 200 || xhr.status >= 300) throw new Error(body.message || "Upload failed");
-      if (isHero()) heroLibrary = [body.asset, ...heroLibrary]; else landingLibrary = [body.asset, ...landingLibrary];
-      selected = body.asset; prepared = null; $("file").value = ""; $("publish").disabled = false; renderLibrary(); renderSlots(); renderPreview(); say("Uploaded. Preview it, then make selected live.");
-    } catch (error) { say(error.message, true); $("upload").disabled = false; }
-  };
-  xhr.onerror = () => { say("Upload failed. Please try again.", true); $("upload").disabled = false; };
-  xhr.send(prepared);
-};
-$("publish").onclick = async () => {
-  if (!selected?.id || demoMode) return;
-  const endpoint = isHero() ? "/api/hidi/hero-publish" : "/api/hidi/landing-media-publish";
-  const body = isHero()
-    ? { assetId:selected.id, desktopPosition:$("desktopPos").value, mobilePosition:$("mobilePos").value }
-    : { slotId:selectedSlot.id, assetId:selected.id, desktopPosition:$("desktopPos").value, mobilePosition:$("mobilePos").value, fitMode:$("fitMode").value, altText:$("altText").value };
-  const res = await fetch(endpoint, { method:"POST", headers:{ "content-type":"application/json" }, body:JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) return say(data.message || "Unable to publish", true);
-  if (isHero()) heroCurrent = data.current; else landingCurrent.slots[selectedSlot.id] = data.current;
-  renderSlots(); renderPreview(); renderLibrary(); say("Published. New visitors will see this slot immediately.");
-};
-$("reset").onclick = async () => {
-  if (demoMode) return say("Demo preview only. Nothing live was changed.", true);
-  const endpoint = isHero() ? "/api/hidi/hero-reset" : "/api/hidi/landing-media-reset";
-  const res = await fetch(endpoint, { method:"POST", headers:{ "content-type":"application/json" }, body:isHero() ? undefined : JSON.stringify({ slotId:selectedSlot.id }) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) return say(data.message || "Unable to reset", true);
-  if (isHero()) heroCurrent = data.current; else landingCurrent.slots[selectedSlot.id] = data.current;
-  selected = null; $("publish").disabled = true; setFieldsFromCurrent(selectedSlot); renderSlots(); renderPreview(); renderLibrary(); say("Built-in media restored for this slot.");
-};
-$("restore").onclick = async () => {
-  if (demoMode) return say("Demo preview only. Nothing live was changed.", true);
-  const endpoint = isHero() ? "/api/hidi/hero-restore" : "/api/hidi/landing-media-restore";
-  const res = await fetch(endpoint, { method:"POST", headers:{ "content-type":"application/json" }, body:isHero() ? undefined : JSON.stringify({ slotId:selectedSlot.id }) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) return say(data.message || "No previous media available", true);
-  if (isHero()) heroCurrent = data.current; else landingCurrent.slots[selectedSlot.id] = data.current;
-  setFieldsFromCurrent(selectedSlot); selected = liveFor(selectedSlot)?.assetId ? libraryFor().find(asset => asset.id === liveFor(selectedSlot).assetId) || liveFor(selectedSlot) : null; $("publish").disabled = !selected?.id; renderSlots(); renderPreview(); renderLibrary(); say("Previous media restored.");
-};
-load().catch(() => { $("signin").hidden = false; $("status").textContent = "Unable to verify admin"; });
+  $("file").value="";$("uploadProgress").textContent=count+" file(s) uploaded.";renderPreview();say(demoMode ? "Added to demo only. Nothing live changed." : isSequence() ? "Files saved and added to the draft. Publish the list when ready." : "Uploaded. Preview, then make selected live.");
+});
+$("publish").onclick=()=>operation(async()=>{
+  if(demoMode)throw new Error("Demo only. Nothing live changed.");
+  let endpoint,body;
+  if(isSequence()) {const draft=draftFor();endpoint=isHero() ? "/api/hidi/hero-publish" : "/api/hidi/landing-media-ananya-publish";body={items:draft.items.map(item=>({...item,assetId:item.id})),autoPlay:draft.autoPlay,intervalSeconds:draft.intervalSeconds};}
+  else {if(!selected?.id)return;endpoint="/api/hidi/landing-media-publish";body={slotId:selectedSlot.id,assetId:selected.id,...settings()};}
+  const data=await request(endpoint,body);updateCurrent(data.current);say("Published. The storefront now uses this media "+(isSequence() ? "list." : "slot."));
+});
+for(const action of ["reset","restore"]) $(action).onclick=()=>operation(async()=>{
+  if(demoMode)throw new Error("Demo only. Nothing live changed.");
+  const endpoint=isHero() ? "/api/hidi/hero-"+action : selectedSlot.id==="ananya" ? "/api/hidi/landing-media-ananya-"+action : "/api/hidi/landing-media-"+action;
+  const data=await request(endpoint,isSequence() ? undefined : {slotId:selectedSlot.id});updateCurrent(data.current);say(action==="restore" ? "Previous media list restored." : "Built-in media restored for this section.");
+});
+load().catch(error=>{$("status").textContent="Media unavailable";say(error.message,true);});
 </script>
 </body>
 </html>

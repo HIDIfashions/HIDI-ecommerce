@@ -71,8 +71,11 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
         assert(Math.abs(geometry.width - geometry.pageWidth) <= 1 && Math.abs(geometry.canvasLeft) <= 1, `Photo spans the available page width: ${JSON.stringify(geometry)}`);
         assert(geometry.canvasHeight <= height && geometry.canvasHeight >= height * .6, 'Photo fills the space below the header');
         assert.equal(geometry.position, 'relative', 'Photo scrolls with the page rather than pinning');
-        assert(geometry.sectionHeight <= height, 'No multi-screen slideshow runway');
-        const controls = await page.locator('.meet-cinematic').evaluate(el => ['.meet-cinematic__content','.meet-cinematic__label'].map(selector=>{const canvas=el.getBoundingClientRect(),box=el.querySelector(selector).getBoundingClientRect();return {selector,left:box.left-canvas.left,right:box.right-canvas.right,top:box.top-canvas.top,bottom:box.bottom-canvas.bottom};}));
+        assert(geometry.sectionHeight <= height + 120, 'No multi-screen slideshow runway');
+        const divider = await page.evaluate(() => {const heading=document.querySelector('.ananya-section-heading').getBoundingClientRect(),hero=document.querySelector('.hero').getBoundingClientRect(),photo=document.querySelector('.meet-cinematic').getBoundingClientRect();return {headingTop:heading.top,headingBottom:heading.bottom,heroBottom:hero.bottom,photoTop:photo.top};});
+        assert(divider.headingTop >= divider.heroBottom - 1 && divider.headingBottom <= divider.photoTop + 1, 'Ananya heading separates the main hero and photo');
+        assert.equal(await page.locator('.meet-cinematic__label').count(),0,'Heading is above the photo, not overlaid');
+        const controls = await page.locator('.meet-cinematic').evaluate(el => ['.meet-cinematic__content'].map(selector=>{const canvas=el.getBoundingClientRect(),box=el.querySelector(selector).getBoundingClientRect();return {selector,left:box.left-canvas.left,right:box.right-canvas.right,top:box.top-canvas.top,bottom:box.bottom-canvas.bottom};}));
         assert(controls.every(box=>box.left>=0 && box.right<=1 && box.top>=0 && box.bottom<=1), 'Ananya label and Shop now stay inside the photo');
         assert.equal(await page.locator('.meet-cinematic__button').getAttribute('href'), '/collections/all');
         assert(geometry.scrollWidth <= width + 1, 'No horizontal scrolling');

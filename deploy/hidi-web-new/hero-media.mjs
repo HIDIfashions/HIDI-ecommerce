@@ -22,8 +22,9 @@ const DEFAULT_CONTAINER = "hidi-product-media-prod";
 const AZURE_STORAGE_SCOPE = "https://storage.azure.com/";
 const AZURE_BLOB_API_VERSION = "2023-11-03";
 const MAX_JSON_BYTES = 64 * 1024;
-const MAX_LIBRARY = 30;
-const MAX_LANDING_LIBRARY = 80;
+const MAX_LIBRARY = 200;
+const MAX_SEQUENCE = 20;
+const MAX_LANDING_LIBRARY = 200;
 const LANDING_SLOT_IDS = new Set([
   "ananya-orange",
   "ananya-pink",
@@ -576,32 +577,42 @@ function cleanSlotId(value) {
   return LANDING_SLOT_IDS.has(text) ? text : "";
 }
 
-function publicConfig(raw) {
-  if (
-    !raw
-    || raw.active !== true
-    || !["image", "video"].includes(raw.type)
-    || typeof raw.url !== "string"
-  ) {
-    return {
-      version: 1,
-      active: false,
-      source: "bundled",
-    };
-  }
+function sequenceSettings(raw, fallbackAutoplay = false) {
+  return { autoPlay: typeof raw?.autoPlay === "boolean" ? raw.autoPlay : fallbackAutoplay,
+    intervalSeconds: Math.max(3, Math.min(30, Number(raw?.intervalSeconds) || 6)) };
+}
 
-  return {
-    version: 1,
-    active: true,
-    source: "uploaded",
-    assetId: typeof raw.assetId === "string" ? raw.assetId : "",
-    type: raw.type,
-    url: raw.url,
+function publicMediaItem(raw, imagesOnly = false) {
+  if (!raw || !["image", ...(imagesOnly ? [] : ["video"])].includes(raw.type) || typeof raw.url !== "string" || !raw.url) return null;
+  return { assetId: typeof raw.assetId === "string" ? raw.assetId : "", type: raw.type, url: raw.url,
     originalName: typeof raw.originalName === "string" ? raw.originalName : "",
-    desktopPosition: normalizePosition(raw.desktopPosition),
-    mobilePosition: normalizePosition(raw.mobilePosition),
-    updatedAt: raw.updatedAt || null,
-  };
+    altText: typeof raw.altText === "string" ? raw.altText : "",
+    desktopPosition: normalizePosition(raw.desktopPosition), mobilePosition: normalizePosition(raw.mobilePosition), fitMode: normalizeFitMode(raw.fitMode) };
+}
+
+function publicSequence(raw, imagesOnly = false) {
+  if (raw?.active !== true) return { version: 1, active: false, source: "bundled", items: [], ...sequenceSettings(raw) };
+  const items = (Array.isArray(raw.items) ? raw.items : [raw]).map(item => publicMediaItem(item, imagesOnly)).filter(Boolean).slice(0, MAX_SEQUENCE);
+  if (!items.length) return { version: 1, active: false, source: "bundled", items: [], ...sequenceSettings(raw) };
+  return { version: 1, active: true, source: "uploaded", ...items[0], items, ...sequenceSettings(raw, !imagesOnly), updatedAt: raw.updatedAt || null };
+}
+
+function publicConfig(raw) { return publicSequence(raw); }
+
+function requestedSequence(body, library, imagesOnly = false) {
+  if (!body || typeof body !== "object") throw new Error("Choose media from this section's library");
+  const requested = Array.isArray(body.items) ? body.items : [body];
+  if (!requested.length || requested.length > MAX_SEQUENCE) throw new Error("Choose between 1 and 20 media items");
+  const used = new Set();
+  const items = requested.map(item => {
+    const asset = library.assets.find(asset => asset.id === item?.assetId);
+    if (!asset || (imagesOnly && asset.type !== "image")) throw new Error("Choose media from this section's library");
+    if (used.has(asset.id)) throw new Error("Choose each media item only once");
+    used.add(asset.id);
+    return { ...publicMediaItem({ ...asset, assetId: asset.id, desktopPosition: item.desktopPosition, mobilePosition: item.mobilePosition,
+      fitMode: item.fitMode, altText: typeof item.altText === "string" ? item.altText.trim().slice(0, 220) : "" }, imagesOnly) };
+  });
+  return { version: 1, active: true, ...items[0], items, ...sequenceSettings(body, !imagesOnly), updatedAt: new Date().toISOString() };
 }
 
 function publicLandingSlot(raw) {
@@ -641,6 +652,7 @@ function publicLandingConfig(raw) {
   return {
     version: 1,
     slots,
+    ananya: raw?.ananya ? publicSequence(raw.ananya, true) : null,
   };
 }
 
@@ -691,6 +703,7 @@ async function saveLandingSlot(slotId, next) {
   const previousSlots = previous?.slots && typeof previous.slots === "object" ? previous.slots : {};
 
   const nextPrevious = {
+    ...previous,
     version: 1,
     slots: {
       ...previousSlots,
@@ -698,6 +711,7 @@ async function saveLandingSlot(slotId, next) {
     },
   };
   const nextCurrent = {
+    ...current,
     version: 1,
     slots: {
       ...currentSlots,
@@ -709,13 +723,22 @@ async function saveLandingSlot(slotId, next) {
   await storagePutJson(LANDING_CURRENT_KEY, nextCurrent);
 }
 
+async function saveAnanya(next) {
+  const current = await storageGetJson(LANDING_CURRENT_KEY);
+  const previous = await storageGetJson(LANDING_PREVIOUS_KEY);
+  const legacy = current?.slots?.["ananya-green"];
+  const before = current?.ananya || (legacy?.active ? { ...legacy, items: [legacy], autoPlay: false, intervalSeconds: 6 } : { active: false });
+  await storagePutJson(LANDING_PREVIOUS_KEY, { ...previous, version: 1, ananya: before });
+  await storagePutJson(LANDING_CURRENT_KEY, { ...current, version: 1, slots: current?.slots || {}, ananya: next });
+}
+
 function errorStatus(error) {
   const message = error instanceof Error ? error.message : "Unable to update hero media";
   if (message === "UPLOAD_TOO_LARGE") {
     return [413, "The selected file is too large for a web hero"];
   }
   if (/not configured/i.test(message)) return [503, message];
-  if (/valid JSON|Request is too large|Choose a non-empty/i.test(message)) {
+  if (/valid JSON|Request is too large|Choose a non-empty|Choose between|Choose media|Choose each/i.test(message)) {
     return [400, message];
   }
   return [502, message];
@@ -835,6 +858,27 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
           current: publicLandingConfig(current),
           previous: publicLandingConfig(previous),
         });
+        return true;
+      }
+
+      if (pathname === "/api/hidi/landing-media-ananya-publish" && request.method === "POST") {
+        const next = requestedSequence(await readJsonBody(request), await loadLandingLibrary(), true);
+        await saveAnanya(next);
+        sendJson(response, 200, { current: publicSequence(next, true) });
+        return true;
+      }
+      if (pathname === "/api/hidi/landing-media-ananya-reset" && request.method === "POST") {
+        const next = { version: 1, active: false, source: "bundled", updatedAt: new Date().toISOString() };
+        await saveAnanya(next);
+        sendJson(response, 200, { current: publicSequence(next, true) });
+        return true;
+      }
+      if (pathname === "/api/hidi/landing-media-ananya-restore" && request.method === "POST") {
+        const previous = await storageGetJson(LANDING_PREVIOUS_KEY);
+        if (!previous?.ananya) { sendJson(response, 404, { message: "There is no previous Ananya photo list yet" }); return true; }
+        const restored = { ...previous.ananya, updatedAt: new Date().toISOString() };
+        await saveAnanya(restored);
+        sendJson(response, 200, { current: publicSequence(restored, true) });
         return true;
       }
 
@@ -1048,32 +1092,9 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
 
       if (pathname === "/api/hidi/hero-publish" && request.method === "POST") {
         const body = await readJsonBody(request);
-        const library = await loadLibrary();
-        const asset = library.assets.find(item => item.id === body.assetId);
-
-        if (!asset) {
-          sendJson(response, 400, {
-            message: "Choose a hero asset from the media library",
-          });
-          return true;
-        }
-
-        const next = {
-          version: 1,
-          active: true,
-          assetId: asset.id,
-          type: asset.type,
-          url: asset.url,
-          originalName: asset.originalName,
-          desktopPosition: normalizePosition(body.desktopPosition),
-          mobilePosition: normalizePosition(body.mobilePosition),
-          updatedAt: new Date().toISOString(),
-        };
-
+        const next = requestedSequence(body, await loadLibrary());
         await saveCurrent(next);
-        sendJson(response, 200, {
-          current: publicConfig(next),
-        });
+        sendJson(response, 200, { current: publicConfig(next) });
         return true;
       }
 
