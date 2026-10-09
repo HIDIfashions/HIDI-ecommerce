@@ -12,6 +12,7 @@ const reports = [];
 for (const engine of ['chromium', 'firefox', 'webkit']) {
   const browser = await pw[engine].launch({ headless: true, ...(engine === 'firefox' ? { firefoxUserPrefs: { 'ui.primaryPointerCapabilities': 6, 'ui.allPointerCapabilities': 6 } } : {}) });
   try {
+    for (const fixture of process.env.HIDI_LAYOUT_LIVE === '1' ? ['live'] : ['portrait', 'landscape']) {
     for (const [width, height, touch] of [[320,844,true],[390,844,true],[768,1024,true],[844,390,true],[1440,900,false],[1920,1080,false]]) {
       const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, reducedMotion: 'reduce' });
       const page = await context.newPage();
@@ -22,7 +23,7 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
         if (process.env.HIDI_LAYOUT_LIVE === '1') return ['GET','HEAD'].includes(route.request().method()) ? route.continue() : route.abort();
         if (url.origin !== new URL(base).origin) return route.abort();
         if (url.pathname.startsWith('/api/')) {
-          const slots=Object.fromEntries(['orange','pink','maroon','black','green'].map(color=>[`ananya-${color}`,{active:true,type:'image',url:new URL(`/assets/images/ananya-top-picks/ananya-${color}.webp`,base).href,fitMode:'cover',desktopPosition:'50% 50%',mobilePosition:'50% 50%'}]));
+          const slots=Object.fromEntries(['orange','pink','maroon','black','green'].map(color=>[`ananya-${color}`,{active:true,type:'image',url:new URL(fixture === 'landscape' ? '/assets/images/hero-landscape.webp' : `/assets/images/ananya-top-picks/ananya-${color}.webp`,base).href,fitMode:'cover',desktopPosition:'50% 50%',mobilePosition:'50% 50%'}]));
           return route.fulfill({ contentType:'application/json', body:JSON.stringify({version:1,slots,items:[],products:[],active:false,source:'bundled'}) });
         }
         return route.continue();
@@ -48,27 +49,45 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
           await page.waitForFunction(index => document.querySelector('.meet-cinematic__count')?.textContent.startsWith(String(index + 1).padStart(2,'0')), pick);
           await page.waitForFunction(() => { const image=document.querySelector('.meet-cinematic__slide.is-active img'); return image?.complete && image.naturalWidth > 0; });
           await page.locator('.meet-cinematic__slide.is-active img').evaluate(async image => { await image.decode(); await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))); });
+          await page.waitForFunction(() => { const image = document.querySelector('.meet-cinematic__slide.is-active img'); const photo = image.hasAttribute('data-landing-media-slot') && image.naturalWidth >= image.naturalHeight; return (image.dataset.ananyaLayout === 'photo') === photo && document.querySelector('.meet-cinematic').classList.contains('meet-cinematic--photo') === photo; });
           const geometry = await page.evaluate(() => {
             const canvas = document.querySelector('.meet-cinematic').getBoundingClientRect();
             const image = document.querySelector('.meet-cinematic__slide.is-active img');
             const rect = image.getBoundingClientRect(), css = getComputedStyle(image);
             const contentWidth = rect.width - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
             const contentHeight = rect.height - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom);
-            const scale = Math.min(contentWidth / image.naturalWidth, contentHeight / image.naturalHeight);
+            const scale = (css.objectFit === 'cover' ? Math.max : Math.min)(contentWidth / image.naturalWidth, contentHeight / image.naturalHeight);
             return { fit:css.objectFit, transform:css.transform, width:rect.width, canvasWidth:canvas.width,
+              photo:image.dataset.ananyaLayout === 'photo', fullPage:document.querySelector('.meet-cinematic').classList.contains('meet-cinematic--photo'), naturalWidth:image.naturalWidth,naturalHeight:image.naturalHeight,
+              padding:parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)+parseFloat(css.paddingLeft)+parseFloat(css.paddingRight), canvasLeft:canvas.left,
+              prism:getComputedStyle(document.querySelector('.meet-cinematic__prism')).display,
+              panel:getComputedStyle(document.querySelector('.meet-cinematic'),'::before').display,
               imageWidth:image.naturalWidth*scale, imageHeight:image.naturalHeight*scale, contentWidth, contentHeight,
               left:rect.left-canvas.left, right:rect.right-canvas.right, top:rect.top-canvas.top, bottom:rect.bottom-canvas.bottom,
               scrollWidth:document.documentElement.scrollWidth, viewport:innerWidth, canvasHeight:canvas.height, viewportHeight:innerHeight };
           });
-          assert.equal(geometry.fit, 'contain', 'Full outfit without stretching/cropping');
+          const expectedPhoto = fixture === 'landscape' || (fixture === 'live' && geometry.photo);
+          assert.equal(geometry.photo, expectedPhoto, 'Landscape upload is detected from its actual dimensions');
+          assert.equal(geometry.fullPage, expectedPhoto, 'Active landscape upload uses the full-page layout');
+          assert.equal(geometry.fit, expectedPhoto && width > height ? 'cover' : 'contain', 'Landscape fills the screen; portraits retain the complete outfit');
           assert.equal(geometry.transform, 'none', 'Main model is not reflected or shifted out of frame');
           assert(geometry.left >= -1 && geometry.right <= 1 && geometry.top >= -1 && geometry.bottom <= 1, `Model inside canvas: ${JSON.stringify(geometry)}`);
           assert(geometry.contentWidth > 0 && geometry.contentHeight > 0);
-          assert(geometry.imageWidth <= geometry.contentWidth + 1 && geometry.imageHeight <= geometry.contentHeight + 1);
+          if (geometry.fit === 'cover') assert(geometry.imageWidth >= geometry.contentWidth - 1 && geometry.imageHeight >= geometry.contentHeight - 1, 'Photo covers the full screen without empty sides');
+          else assert(geometry.imageWidth <= geometry.contentWidth + 1 && geometry.imageHeight <= geometry.contentHeight + 1);
+          if (expectedPhoto) {
+            assert.equal(geometry.padding, 0, 'No inset photo frame');
+            assert.equal(geometry.prism, 'none', 'No decorative prism around full-page photography');
+            assert.equal(geometry.panel, 'none', 'No side panel around full-page photography');
+            assert(Math.abs(geometry.width - width) <= 1 && Math.abs(geometry.canvasLeft) <= 1, 'Photo spans the full page width');
+            assert(geometry.canvasHeight <= height && geometry.canvasHeight >= height * .6, 'Photo fills the space below the header');
+            const controls = await page.locator('.meet-cinematic').evaluate(el => ['.meet-cinematic__content','.meet-cinematic__label','.meet-cinematic__tone','.meet-cinematic__scroll'].map(selector=>{const canvas=el.getBoundingClientRect(),box=el.querySelector(selector).getBoundingClientRect();return {selector,left:box.left-canvas.left,right:box.right-canvas.right,top:box.top-canvas.top,bottom:box.bottom-canvas.bottom};}));
+            assert(controls.every(box=>box.left>=0 && box.right<=1 && box.top>=0 && box.bottom<=1), 'Label, Shop now and controls stay inside the photo');
+          }
           assert(geometry.scrollWidth <= width + 1, 'No horizontal scrolling');
           if (width > height) assert(geometry.canvasHeight <= height, 'Landscape canvas fits one viewport');
-          if (pick === 0 || pick === 4) await page.screenshot({ path:resolve(output,`${engine}-${width}x${height}-pick${pick+1}.png`), animations:'disabled' });
-          reports.push({ engine,width,height,pick:pick+1,result:'passed',geometry });
+          if (pick === 0 || pick === 4) await page.screenshot({ path:resolve(output,`${fixture}-${engine}-${width}x${height}-pick${pick+1}.png`), animations:'disabled' });
+          reports.push({ fixture,engine,width,height,pick:pick+1,result:'passed',geometry });
         }
         await page.locator('.hidi-collection-gallery').scrollIntoViewIfNeeded();
         if (!touch) {
@@ -88,7 +107,7 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
               imageTransform:getComputedStyle(card.querySelector('img')).transform})));
             assert.equal(state.filter(card=>Number(card.opacity)>.9).length,1,'Only hovered caption is visible');
             assert(state.filter(card=>card.hovered==='true').every(card=>card.imageTransform==='none'),'No extra image magnification');
-            reports.push({engine,width,height,hoverDepth:depth,scale:1.1,result:'passed'});
+            reports.push({fixture,engine,width,height,hoverDepth:depth,scale:1.1,result:'passed'});
           }
           await page.mouse.move(0,0);
           await page.waitForFunction(() => [...document.querySelectorAll('.hidi-collection-caption')].filter(el=>Number(getComputedStyle(el).opacity)>.9).length===1);
@@ -98,14 +117,15 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
         await page.locator('.site-footer').scrollIntoViewIfNeeded();
         assert(await page.locator('.site-footer').isVisible(),'Footer remains reachable');
         assert.deepEqual(errors, [], 'No uncaught page errors');
-        console.log(`PASS ${engine} ${width}x${height}: all looks fit, no mirror, caption/hover and scrolling preserved`);
+        console.log(`PASS ${fixture} ${engine} ${width}x${height}: photo width, full outfit fit, no mirror, caption/hover and scrolling preserved`);
       } catch(error) {
         const state=await page.evaluate(()=>({hover:matchMedia('(hover: hover)').matches,fine:matchMedia('(pointer: fine)').matches,scrollY,hovering:document.querySelector('.hidi-collection-gallery')?.dataset.hoveringCard,cards:[...document.querySelectorAll('.hidi-collection-card')].map(card=>({depth:card.dataset.depth,hovered:card.dataset.hovered,photoTransform:getComputedStyle(card.querySelector('.hidi-collection-photo')).transform,caption:getComputedStyle(card.querySelector('.hidi-collection-caption')).opacity}))}));
         console.error('LAYOUT FAILURE '+engine+' '+width+' '+JSON.stringify(state));
-        await page.screenshot({path:resolve(output,`${engine}-${width}x${height}-failure.png`),animations:'disabled'});
+        await page.screenshot({path:resolve(output,`${fixture}-${engine}-${width}x${height}-failure.png`),animations:'disabled'});
         await writeFile(resolve(output,'partial-report.json'),JSON.stringify(reports,null,2));
         throw error;
       } finally { await context.close(); }
+    }
     }
   } finally { await browser.close(); }
 }

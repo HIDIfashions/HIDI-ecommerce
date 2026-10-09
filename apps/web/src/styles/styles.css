@@ -702,3 +702,25 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
   .meet-cinematic__tone span { display: none; }
   .meet-cinematic__scroll { right: 12px; bottom: 8px; padding: 4px 10px; }
 }
+
+/* Uploaded landscape photography fills the screen beneath the header. */
+.meet-cinematic--photo { display: block; height: calc(100svh - var(--header-height)); min-height: 0; padding: 0; background: var(--cream); --ananya-photo-fit: cover; }
+.meet-cinematic--photo::before, .meet-cinematic--photo::after, .meet-cinematic--photo .meet-cinematic__prism, .meet-cinematic--photo .meet-cinematic__slide::before { display: none; }
+.meet-cinematic--photo .meet-cinematic__stage { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; }
+.meet-cinematic--photo .meet-cinematic__model { width: 100%; height: 100%; padding: 0; filter: none; }
+.meet-cinematic--photo .meet-cinematic__content { position: absolute; left: clamp(20px, 4.2vw, 74px); bottom: clamp(20px, 3.5vw, 54px); z-index: 7; padding: 0; }
+.meet-cinematic--photo .meet-cinematic__label { top: clamp(16px, 2.5vw, 40px); left: clamp(20px, 4.2vw, 74px); }
+.meet-cinematic--photo .meet-cinematic__tone { top: clamp(16px, 2.5vw, 40px); right: clamp(20px, 3.6vw, 58px); }
+@media (orientation: portrait) {
+  .meet-cinematic--photo { --ananya-photo-fit: contain; }
+}
+@media (max-width: 700px), (pointer: coarse) {
+  .meet-cinematic--photo .meet-cinematic__content { left: 16px; bottom: 72px; }
+  .meet-cinematic--photo .meet-cinematic__label { left: 16px; font-size: 10px; }
+  .meet-cinematic--photo .meet-cinematic__scroll { right: 16px; bottom: 16px; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .meet-cinematic--photo .meet-cinematic__content { left: 20px; bottom: 16px; }
+  .meet-cinematic--photo .meet-cinematic__label { top: 12px; left: 20px; }
+  .meet-cinematic--photo .meet-cinematic__tone { top: 12px; right: 16px; }
+}

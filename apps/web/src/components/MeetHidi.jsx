@@ -49,11 +49,13 @@ export default function MeetHidi() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [previousIndex, setPreviousIndex] = useState(null);
   const [interacting, setInteracting] = useState(false);
+  const [landscapeSources, setLandscapeSources] = useState({});
   const touchLayout = useMediaQuery('(max-width: 700px), (pointer: coarse)');
   const reducedMotion = useReducedMotion();
   const visible = useInView(sectionRef);
   const documentVisible = useDocumentVisible();
   const activePick = topPicks[activeIndex];
+  const fullPagePhoto = landscapeSources[activePick.slotId] === landingMedia[activePick.slotId]?.url && Boolean(landingMedia[activePick.slotId]);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -105,7 +107,7 @@ export default function MeetHidi() {
   return (
     <section ref={sectionRef} className="meet-section meet-section--cinematic" id="meet-hidi" aria-labelledby="meet-title" style={{ '--pick-count': topPicks.length }}>
     <div className="container">
-    <div className="meet-cinematic" style={{ '--pick-accent': activePick.accent }}>
+    <div className={`meet-cinematic${fullPagePhoto ? ' meet-cinematic--photo' : ''}`} style={{ '--pick-accent': activePick.accent }}>
     <p className="meet-cinematic__label">Ananya's pick</p>
     <div className="meet-cinematic__content">
     <h2 id="meet-title" className="sr-only">Ananya's pick</h2>
@@ -123,10 +125,16 @@ export default function MeetHidi() {
       const isLeaving = index === previousIndex && index !== activeIndex;
       const slideState = isActive ? 'active' : isLeaving ? 'leaving' : 'waiting';
       const image = landingImageProps(landingMedia, pick.slotId, pick.image, pick.name);
+      const isLandscapePhoto = landscapeSources[pick.slotId] === image.src;
 
       return (
         <div className={`meet-cinematic__slide is-${slideState}`} key={pick.name} style={{ '--pick-accent': pick.accent }} aria-hidden={!isActive}>
-        <img className="meet-cinematic__model" {...image} style={{ ...image.style, objectFit: 'contain' }} alt={image.alt || pick.name} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+        <img className="meet-cinematic__model" {...image} data-ananya-layout={isLandscapePhoto ? 'photo' : 'portrait'} style={{ ...image.style, objectFit: isLandscapePhoto ? 'var(--ananya-photo-fit, cover)' : 'contain' }} alt={image.alt || pick.name} loading={index === 0 || isActive ? 'eager' : 'lazy'} decoding="async" onLoad={event => {
+          const element = event.currentTarget;
+          if (image['data-landing-media-slot'] && element.naturalWidth >= element.naturalHeight && element.naturalHeight > 0) {
+            setLandscapeSources(current => current[pick.slotId] === image.src ? current : { ...current, [pick.slotId]: image.src });
+          }
+        }} />
         </div>
       );
     })}
