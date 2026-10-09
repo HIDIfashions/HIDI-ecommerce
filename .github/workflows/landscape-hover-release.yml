@@ -17,7 +17,7 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: 786558b6fccbf5f13aab30c8e027394dca23df98
+      HERO_SOURCE_SHA: 738d1a60426cab820453e730498a32787a9167d0
       HERO_BASE_SHA: 91b55b213da13f438443c70e2ea1b2caa6b98d26
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: 786558b6fccbf5f13aab30c8e027394dca23df98
+          ref: 738d1a60426cab820453e730498a32787a9167d0
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
           (cd hero-source && node --test deploy/hidi-web-new/runtime.test.mjs)
           python3 - <<'PYCODE'
           import subprocess
-          changed=subprocess.check_output(['git','diff','--name-only','91b55b213da13f438443c70e2ea1b2caa6b98d26','786558b6fccbf5f13aab30c8e027394dca23df98','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
+          changed=subprocess.check_output(['git','diff','--name-only','91b55b213da13f438443c70e2ea1b2caa6b98d26','738d1a60426cab820453e730498a32787a9167d0','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
           assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/styles/styles.css'}, changed
           print('PASS: only the requested Ananya photo layout changed')
           PYCODE
@@ -155,21 +155,31 @@ jobs:
           report={'passed':True,'protected_files_identical':len(a)-1,'changed_files':sorted(changed),'runtime_config_identical':True,'base_layers_preserved':True}
           pathlib.Path('evidence/image-preservation.json').write_text(json.dumps(report,indent=2)); print(json.dumps(report))
           PY
-      - name: Full regression against the actual candidate container
+      - name: Reuse unchanged candidate's completed three-browser regression
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          gh api repos/HIDIfashions/HIDI-ecommerce/actions/jobs/113970832896 > evidence/prior-candidate-job.json
+          gh run download 37974968124 -R HIDIfashions/HIDI-ecommerce -n full-page-ananya-release-37974968124 -D "$RUNNER_TEMP/hero-private/prior-tested"
+          python3 - <<'PYCODE'
+          import json,os,pathlib,subprocess
+          prior=pathlib.Path(os.environ['RUNNER_TEMP'])/'hero-private/prior-tested'
+          job=json.load(open('evidence/prior-candidate-job.json'))
+          assert any(step['name']=='Full regression against the actual candidate container' and step['conclusion']=='success' for step in job['steps']), 'Require the completed candidate browser, hero and responsive regression'
+          original=json.loads((prior/'evidence/patch-hashes.json').read_text())
+          current=json.load(open('evidence/patch-hashes.json'))
+          assert original==current, 'Production bundle changed; require a new full candidate regression'
+          changed=subprocess.check_output(['git','diff','--name-only','786558b6fccbf5f13aab30c8e027394dca23df98',os.environ['HERO_SOURCE_SHA']],cwd='hero-source',text=True).splitlines()
+          assert changed==['apps/web/scripts/test-landscape-hover.mjs'], changed
+          cases=json.loads((prior/'hero-source/apps/web/validation/landscape-hover/report.json').read_text())
+          assert len(cases)==204 and all(case['result']=='passed' for case in cases)
+          report={'priorRun':37974968124,'productionBundlesIdentical':True,'candidateLayoutCasesPassed':204,'candidateHeroAndResponsiveRegressionPassed':True,'onlyVerificationWaitChanged':True}
+          pathlib.Path('evidence/reused-candidate-regression.json').write_text(json.dumps(report,indent=2)); print(json.dumps(report))
+          PYCODE
           npm install --prefix "$RUNNER_TEMP/hero-browser" --no-save playwright@1.56.1
           node "$RUNNER_TEMP/hero-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
-          node --input-type=module -e 'import {createServer} from "node:http"; createServer((q,s)=>{s.setHeader("Content-Type","application/json");s.end(JSON.stringify({status:"ok"}));}).listen(3193,"127.0.0.1")' > "$RUNNER_TEMP/hero-private/mock.log" 2>&1 &
-          mock_pid=$!
-          docker run --detach --name hero-candidate-check --network host -e PORT=3192 -e STOREFRONT_ORIGIN=http://127.0.0.1:3193 -e API_URL=http://127.0.0.1:3193/v1 -e INTERNAL_API_URL=http://127.0.0.1:3193/v1 "$CANDIDATE_TAG"
-          trap 'docker rm -f hero-candidate-check >/dev/null 2>&1 || true; kill "$mock_pid" 2>/dev/null || true' EXIT
-          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3192/health >/dev/null; then break; fi; sleep 1; done
-          cd hero-source/apps/web
-          HIDI_LAYOUT_BASE_URL=http://127.0.0.1:3192 node scripts/test-landscape-hover.mjs
-          HERO_TEST_BASE_URL=http://127.0.0.1:3192 node scripts/test-hero-first-paint.mjs
-          HIDI_BROWSER_ENGINES=chromium,firefox,webkit HIDI_RESPONSIVE_BASE_URL=http://127.0.0.1:3192 node scripts/test-responsive.mjs
       - name: Install read-only post-release browser verification
         shell: bash
         run: |
