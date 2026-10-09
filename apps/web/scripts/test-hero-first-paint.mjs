@@ -89,8 +89,7 @@ async function runCase(browser, engine, width, scenario) {
     if (scenario === 'bundled') {
       mediaGate.release();
       await page.waitForFunction(() => document.querySelector('.hero-media')?.dataset.heroConfigStatus === 'bundled');
-      await page.locator('.hero-poster').waitFor();
-      assert(await page.locator('.hero-poster').evaluate(img => img.complete && img.naturalWidth > 0));
+      await page.waitForFunction(() => { const img = document.querySelector('.hero-poster'); return img?.complete && img.naturalWidth > 0; });
       assert(await page.locator('#hero-video').count() === 1);
     } else if (scenario === 'http-error' || scenario === 'invalid') {
       await page.waitForFunction(() => document.querySelector('.hero-media')?.dataset.heroConfigStatus === 'error');
@@ -104,8 +103,8 @@ async function runCase(browser, engine, width, scenario) {
         await page.waitForFunction(() => document.querySelector('.hero-media')?.dataset.heroConfigStatus === 'error');
       } else {
         await page.waitForFunction(() => document.querySelector('.hero-media')?.dataset.frameReady === 'true');
+        await page.waitForFunction(() => { const el = document.querySelector('.hero-live-media'); return el && getComputedStyle(el).visibility === 'visible'; });
         assert.equal(await page.locator('.hero-live-media').getAttribute('src'), new URL(selectedUrl, base).href);
-        assert.equal(await page.locator('.hero-live-media').evaluate(el => getComputedStyle(el).visibility), 'visible');
         assert.equal(await page.locator('.hero-live-media').evaluate(el => getComputedStyle(el).objectPosition), width < 700 ? '66% 50%' : '34% 50%');
         if (scenario === 'retry') assert.equal(attempts, 2);
         if (scenario === 'reduced-video') {
@@ -127,8 +126,14 @@ async function runCase(browser, engine, width, scenario) {
     reports.push({ id, result: 'passed', attempts, oldRequests: oldRequests.length });
     console.log(`PASS ${id}`);
   } catch (error) {
-    reports.push({ id, result: 'failed', message: error.message });
-    console.error(`FAIL ${id}: ${error.stack}`);
+    const state = await page.evaluate(() => {
+      const el = document.querySelector('.hero-live-media');
+      return { hero: document.querySelector('.hero-media')?.outerHTML, visibility: el && getComputedStyle(el).visibility,
+        mediaError: el?.error?.message, readyState: el?.readyState, networkState: el?.networkState,
+        h264: document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"') };
+    }).catch(() => ({}));
+    reports.push({ id, result: 'failed', message: error.message, state });
+    console.error(`FAIL ${id}: ${error.stack}\n${JSON.stringify(state)}`);
   } finally {
     configGate.release(); mediaGate.release();
     await context.close();
@@ -139,8 +144,10 @@ try {
   let ready = false;
   for (let i = 0; i < 100; i++) { try { ready = (await fetch(base)).ok; } catch {} if (ready) break; await delay(100); }
   assert(ready, 'Built homepage must be reachable');
-  for (const engine of (process.env.HERO_EXPECT_LEGACY === '1' ? ['chromium'] : ['chromium', 'firefox', 'webkit'])) {
-    const browser = await pw[engine].launch({ headless: true });
+  for (const engine of (process.env.HERO_EXPECT_LEGACY === '1' ? ['chromium'] : ['chrome', 'firefox', 'webkit'])) {
+    // Stock Chrome includes the licensed MP4 codecs used by the real uploaded videos.
+    const browser = engine === 'chrome' ? await pw.chromium.launch({ channel: 'chrome', headless: true })
+      : await pw[engine].launch({ headless: true });
     try {
       for (const width of (process.env.HERO_EXPECT_LEGACY === '1' ? [1440] : [390, 1440])) {
         for (const scenario of (process.env.HERO_EXPECT_LEGACY === '1' ? ['image']
