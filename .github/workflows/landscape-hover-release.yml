@@ -17,7 +17,7 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: 9105ad51ed84829e3c359df765a0c1ce8f9e6ebd
+      HERO_SOURCE_SHA: d36b32d690ea530ff7d179004577eb22928f765c
       HERO_BASE_SHA: 96171c234534e4b6657faa45e9a0c96f553f840b
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: 9105ad51ed84829e3c359df765a0c1ce8f9e6ebd
+          ref: d36b32d690ea530ff7d179004577eb22928f765c
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
           (cd hero-source && node --test deploy/hidi-web-new/runtime.test.mjs)
           python3 - <<'PYCODE'
           import subprocess
-          changed=subprocess.check_output(['git','diff','--name-only','96171c234534e4b6657faa45e9a0c96f553f840b','9105ad51ed84829e3c359df765a0c1ce8f9e6ebd','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
+          changed=subprocess.check_output(['git','diff','--name-only','96171c234534e4b6657faa45e9a0c96f553f840b','d36b32d690ea530ff7d179004577eb22928f765c','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
           assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/styles/styles.css','apps/web/src/styles/collection-spotlight.css'}, changed
           print('PASS: only the two requested homepage sections changed')
           PYCODE
@@ -167,9 +167,9 @@ jobs:
           trap 'docker rm -f hero-candidate-check >/dev/null 2>&1 || true; kill "$mock_pid" 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3192/health >/dev/null; then break; fi; sleep 1; done
           cd hero-source/apps/web
+          HIDI_LAYOUT_BASE_URL=http://127.0.0.1:3192 node scripts/test-landscape-hover.mjs
           HERO_TEST_BASE_URL=http://127.0.0.1:3192 node scripts/test-hero-first-paint.mjs
           HIDI_BROWSER_ENGINES=chromium,firefox,webkit HIDI_RESPONSIVE_BASE_URL=http://127.0.0.1:3192 node scripts/test-responsive.mjs
-          HIDI_LAYOUT_BASE_URL=http://127.0.0.1:3192 node scripts/test-landscape-hover.mjs
       - name: Install read-only post-release browser verification
         shell: bash
         run: |
