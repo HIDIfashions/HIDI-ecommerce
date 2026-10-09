@@ -34,8 +34,8 @@ try{
      const hero=await page.locator('[data-section="hero"]').boundingBox();assert(hero.height>=560&&hero.height<=640,'Phone hero remains compact');
      await page.locator('[data-section="featured"]').scrollIntoViewIfNeeded();assert.equal(await page.locator('[data-deferred-detail] img').count(),0,'Touch scrolling must not request hidden detail media');
      await first.getByRole('button',{name:'Quick add',exact:true}).tap();const dialog=page.locator('dialog[open]');await dialog.getByRole('heading').waitFor();assert.equal(await dialog.getByRole('button',{name:'Add to bag',exact:true}).isDisabled(),true);
-     await page.screenshot({path:resolve(output,`${engine}-phone-quick-add.png`)});await dialog.getByRole('button',{name:'Close quick add',exact:true}).tap();await until(()=>page.locator('[data-editorial-product] dialog h2').count().then(n=>n===0),'modal content cleanup');
-     await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:resolve(output,`${engine}-phone-home.png`)});
+     await page.screenshot({timeout:30000,path:resolve(output,`${engine}-phone-quick-add.png`)});await dialog.getByRole('button',{name:'Close quick add',exact:true}).tap();await until(()=>page.locator('[data-editorial-product] dialog h2').count().then(n=>n===0),'modal content cleanup');
+     await page.evaluate(()=>scrollTo(0,0));await page.screenshot({timeout:30000,path:resolve(output,`${engine}-phone-home.png`)});
     }else{
      const edit=page.locator('[data-section="edits"] a').first();await edit.hover();
      if(mode==='save-data'){await sleep(200);assert.equal(await page.locator('[data-deferred-detail] img').count(),0,'Save-Data must suppress decorative image loads');}
@@ -43,7 +43,7 @@ try{
       await until(()=>edit.locator('[data-detail-ready="true"] img').count().then(n=>n===1),'hover detail decoded');assert.equal(await edit.locator('[data-deferred-detail]').evaluate(el=>getComputedStyle(el).opacity),'1');
       await page.mouse.move(0,0);assert.equal(await edit.locator('[data-deferred-detail]').evaluate(el=>getComputedStyle(el).opacity),'0');
       await page.getByRole('button',{name:'Search',exact:true}).click();const search=page.getByRole('dialog',{name:'Search HIDI',exact:true});const discovery=search.locator('[aria-label="Discover HIDI products"]');await discovery.waitFor();assert.equal(await discovery.evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),2);
-      await page.screenshot({path:resolve(output,`${engine}-search.png`)});await search.getByRole('button',{name:'Close search'}).click();
+      await page.screenshot({timeout:30000,path:resolve(output,`${engine}-search.png`)});await search.getByRole('button',{name:'Close search'}).click();
      }
      await page.evaluate(()=>scrollTo(0,900));await page.locator('.site-header .wordmark').click();assert(await page.evaluate(()=>scrollY<2),'Reduced-motion logo scroll must be immediate');
     }
