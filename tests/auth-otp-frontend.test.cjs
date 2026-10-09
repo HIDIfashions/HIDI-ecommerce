@@ -14,7 +14,7 @@ function harness(responses, env = {}, options = {}) {
     signOut: async () => { firebaseCalls.push({ operation: "signOut" }); },
     signInWithPhoneNumber: async phone => {
       firebaseCalls.push({ operation: "send", phone });
-      if (options.firebaseError) throw new Error("Firebase unavailable");
+      if (options.firebaseError || options.firebaseErrors?.shift()) throw new Error("Firebase unavailable");
       return { confirm: async code => {
         firebaseCalls.push({ operation: "verify", code });
         return { user: { getIdToken: async () => "test-firebase-id-token" } };
@@ -45,7 +45,7 @@ function harness(responses, env = {}, options = {}) {
       const response = responses.shift();
       assert.ok(response, `Unexpected request: ${url}`);
       if (response instanceof Error) throw response;
-      return { ok: response.ok !== false, json: async () => response.body };
+      return { ok: response.ok !== false, status: response.status ?? (response.ok === false ? 400 : 200), json: async () => response.body };
     },
   });
   return { auth: exports, calls, storage, firebaseCalls };
@@ -174,4 +174,76 @@ test("verification keeps the provider that issued the pending OTP across a runti
   await h.auth.verifyPhoneOtp("9999999999", "123456");
   assert.equal(h.calls[3].url, "https://store.test.invalid/api/store/auth/otp/verify");
   assert.equal(JSON.parse(h.calls[3].init.body).otp, "123456");
+});
+
+const firebaseConfig = { body: { phoneOtp: true, channel: "FIREBASE", provider: "firebase" } };
+const firebaseDirective = { body: { phone: "+919999999999", channel: "FIREBASE", provider: "firebase", clientHandled: true, retryAfterSeconds: 60 } };
+const customerSession = { body: { access_token: "hidi_at_test", refresh_token: "hidi_rt_test", expires_in: 3600, user: { id: "customer-1" } } };
+
+test("primary Firebase requires server send authorization before using the SDK", async () => {
+  const h = harness([firebaseConfig, firebaseDirective, customerSession], firebaseEnv, { firebase: true });
+  assert.equal(await h.auth.sendPhoneOtp("9999999999"), "+919999999999");
+  assert.equal(h.calls[1].url, "https://store.test.invalid/api/store/auth/otp/request");
+  assert.deepEqual(JSON.parse(h.calls[1].init.body), { phone: "+919999999999" });
+  assert.equal(h.firebaseCalls[0].operation, "send");
+  await h.auth.verifyPhoneOtp("9999999999", "123456");
+  assert.deepEqual(JSON.parse(h.calls[2].init.body), { provider: "firebase", idToken: "test-firebase-id-token" });
+});
+
+test("server throttle applies to primary Firebase and exposes its retry deadline", async () => {
+  const h = harness([firebaseConfig, { ok: false, status: 429, body: { message: "Please wait", retryAfterSeconds: 89.2 } }], firebaseEnv, { firebase: true });
+  await assert.rejects(h.auth.sendPhoneOtp("9999999999"), error => error.message === "Please wait" && error.retryAfterSeconds === 90);
+  assert.equal(h.firebaseCalls.length, 0);
+});
+
+for (const body of [
+  { ...firebaseDirective.body, phone: "+918888888888" },
+  { ...firebaseDirective.body, fallback: true },
+  { ...firebaseDirective.body, clientHandled: false },
+]) {
+  test(`primary Firebase rejects mismatched send directives: ${JSON.stringify(body)}`, async () => {
+    const h = harness([firebaseConfig, { body }], firebaseEnv, { firebase: true });
+    await assert.rejects(h.auth.sendPhoneOtp("9999999999"), /settings changed/);
+    assert.equal(h.firebaseCalls.length, 0);
+  });
+}
+
+test("a failed resend retains the issuer proof and can verify the previous code", async () => {
+  const h = harness([whatsappConfig, sent, firebaseConfig,
+    { ok: false, status: 429, body: { message: "Please wait", retryAfterSeconds: 60 } }, customerSession,
+  ], firebaseEnv, { firebase: true });
+  await h.auth.sendPhoneOtp("9999999999");
+  await assert.rejects(h.auth.sendPhoneOtp("9999999999"), error => error.retryAfterSeconds === 60);
+  await h.auth.verifyPhoneOtp("9999999999", "123456");
+  assert.deepEqual(JSON.parse(h.calls[4].init.body), { phone: "+919999999999", otp: "123456" });
+  assert.equal(h.firebaseCalls.length, 0);
+});
+
+test("a successful resend refreshes runtime settings and replaces the issuing provider", async () => {
+  const h = harness([whatsappConfig, sent, firebaseConfig, firebaseDirective, customerSession], firebaseEnv, { firebase: true });
+  await h.auth.sendPhoneOtp("9999999999");
+  await h.auth.sendPhoneOtp("9999999999");
+  assert.equal(h.calls.filter(call => call.url.endsWith("/auth/config")).length, 2);
+  await h.auth.verifyPhoneOtp("9999999999", "654321");
+  assert.deepEqual(JSON.parse(h.calls[4].init.body), { provider: "firebase", idToken: "test-firebase-id-token" });
+});
+
+test("Firebase SDK resend failure preserves the prior confirmation", async () => {
+  const h = harness([firebaseConfig, firebaseDirective, firebaseConfig, firebaseDirective, customerSession], firebaseEnv, { firebase: true, firebaseErrors: [false, true] });
+  await h.auth.sendPhoneOtp("9999999999");
+  await assert.rejects(h.auth.sendPhoneOtp("9999999999"), /Unable to send/);
+  await h.auth.verifyPhoneOtp("9999999999", "123456");
+  assert.deepEqual(JSON.parse(h.calls[4].init.body), { provider: "firebase", idToken: "test-firebase-id-token" });
+  assert.equal(h.firebaseCalls.filter(call => call.operation === "verify").length, 1);
+});
+
+test("invalid retry metadata and non-throttle responses do not set a retry deadline", async () => {
+  for (const response of [
+    { ok: false, status: 429, body: { message: "Please wait", retryAfterSeconds: "invalid" } },
+    { ok: false, status: 429, body: { message: "Please wait", retryAfterSeconds: -1 } },
+    { ok: false, status: 503, body: { message: "Unavailable", retryAfterSeconds: 60 } },
+  ]) {
+    const h = harness([whatsappConfig, response]);
+    await assert.rejects(h.auth.sendPhoneOtp("9999999999"), error => error.retryAfterSeconds === undefined);
+  }
 });

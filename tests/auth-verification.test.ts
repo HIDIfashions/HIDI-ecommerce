@@ -204,31 +204,41 @@ function mockHidiOtpAuth(t: TestContext, overrides: Record<string, string | unde
   const otps: any[] = [];
   const sessions: any[] = [];
   const users = new Map<string, any>();
+  const matchesOtp = (row: any, where: any) =>
+    (!where.id || (typeof where.id === "string" ? row.id === where.id : row.id !== where.id.not)) &&
+    (!where.phone || row.phone === where.phone) &&
+    (!where.purpose || (typeof where.purpose === "string" ? row.purpose === where.purpose : where.purpose.in.includes(row.purpose))) &&
+    (!("consumedAt" in where) || row.consumedAt === where.consumedAt) &&
+    (!where.attempts?.lt || row.attempts < where.attempts.lt) &&
+    (!where.expiresAt?.gt || row.expiresAt > where.expiresAt.gt) &&
+    (!where.createdAt?.gte || row.createdAt >= where.createdAt.gte);
+  let transactionTail = Promise.resolve();
   const prisma: any = {
+    __otps: otps,
+    __transactionOptions: [] as any[],
     customerAuthOtp: {
-      count: async () => 0,
+      count: async ({ where }: any) => otps.filter((row) => matchesOtp(row, where)).length,
       create: async ({ data }: any) => {
         const row = { id: `otp-${otps.length + 1}`, attempts: 0, consumedAt: null, createdAt: new Date(), ...data };
         otps.push(row);
         return row;
       },
-      findFirst: async ({ where }: any) => [...otps].reverse().find((row) =>
-        row.phone === where.phone &&
-        row.purpose === where.purpose &&
-        row.consumedAt === null &&
-        row.expiresAt > where.expiresAt.gt
-      ) ?? null,
+      findFirst: async ({ where, orderBy }: any) => [...otps].reverse()
+        .filter((row) => matchesOtp(row, where))
+        .sort((a, b) => orderBy?.createdAt === "asc"
+          ? a.createdAt.getTime() - b.createdAt.getTime()
+          : b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null,
       update: async ({ where, data }: any) => {
         const row = otps.find((entry) => entry.id === where.id);
-        if (data.attempts?.increment) row.attempts += data.attempts.increment;
-        if ("consumedAt" in data) row.consumedAt = data.consumedAt;
+        const { attempts, ...values } = data;
+        if (attempts?.increment) row.attempts += attempts.increment;
+        Object.assign(row, values);
         return row;
       },
       updateMany: async ({ where, data }: any) => {
-        const row = otps.find((entry) => entry.id === where.id && entry.consumedAt === where.consumedAt);
-        if (!row) return { count: 0 };
-        Object.assign(row, data);
-        return { count: 1 };
+        const matched = otps.filter((row) => matchesOtp(row, where));
+        matched.forEach((row) => Object.assign(row, data));
+        return { count: matched.length };
       },
     },
     customerAuthSession: {
@@ -264,7 +274,17 @@ function mockHidiOtpAuth(t: TestContext, overrides: Record<string, string | unde
     },
     walletAccount: { findUnique: async () => null },
     retentionProfile: { findUnique: async () => null },
-    $transaction: async (callback: any) => callback(prisma),
+    $transaction: async (callback: any, options: any) => {
+      prisma.__transactionOptions.push(options);
+      const previous = transactionTail;
+      let release!: () => void;
+      transactionTail = new Promise<void>((resolve) => { release = resolve; });
+      await previous;
+      const snapshot = otps.map((row) => ({ ...row }));
+      try { return await callback(prisma); }
+      catch (error) { otps.splice(0, otps.length, ...snapshot); throw error; }
+      finally { release(); }
+    },
   };
   return new SupabaseAuthService(prisma);
 }
@@ -443,6 +463,7 @@ test("failed MSG91 send invalidates its code before authorising Firebase fallbac
   });
   assert.deepEqual(await service.requestPhoneOtp({ phone: "9000812818" }), {
     phone: "+919000812818", channel: "FIREBASE", provider: "firebase", clientHandled: true, fallback: true,
+    retryAfterSeconds: 60,
   });
   await assert.rejects(service.verifyPhoneOtp({ phone: "9000812818", otp: code }), { name: "UnauthorizedException" });
 });
@@ -502,6 +523,178 @@ test("SMS OTP cannot be verified after its five-minute expiry", async (t) => {
   await assert.rejects(service.verifyPhoneOtp({ phone: requested.phone, otp: requested.devOtp }), { name: "UnauthorizedException" });
 });
 
+for (const [name, overrides, channel] of [
+  ["MSG91 SMS", { CUSTOMER_OTP_PROVIDER: "msg91" }, "SMS"],
+  ["primary Firebase", { CUSTOMER_OTP_PROVIDER: "firebase", FIREBASE_PROJECT_ID: "hidi-test" }, "FIREBASE"],
+  ["unconfigured MSG91 fallback", {
+    CUSTOMER_OTP_PROVIDER: "msg91", CUSTOMER_OTP_FALLBACK_PROVIDER: "firebase",
+    FIREBASE_PROJECT_ID: "hidi-test", MSG91_AUTHKEY: undefined, MSG91_SMS_OTP_TEMPLATE_ID: undefined,
+    HIDI_AUTH_DEV_OTP: "false",
+  }, "FIREBASE"],
+] as const) {
+  test(`${name} authorizations enforce the server cooldown at the exact 60-second boundary`, async (t) => {
+    t.mock.timers.enable({ apis: ["Date"], now: Date.UTC(2026, 9, 9) });
+    const service = mockHidiOtpAuth(t, overrides);
+    const first = await service.requestPhoneOtp({ phone: "9999999999" });
+    assert.equal(first.channel, channel);
+    assert.equal(first.retryAfterSeconds, 60);
+    const retry = async (seconds: number) => {
+      await assert.rejects(service.requestPhoneOtp({ phone: "9999999999" }), (error: any) => {
+        assert.equal(error.getStatus(), 429);
+        assert.equal(error.getResponse().retryAfterSeconds, seconds);
+        return true;
+      });
+    };
+    await retry(60);
+    t.mock.timers.tick(59_999);
+    await retry(1);
+    t.mock.timers.tick(1);
+    assert.equal((await service.requestPhoneOtp({ phone: "9999999999" })).channel, channel);
+    const prisma = (service as any).prisma;
+    assert.equal(prisma.__otps.length, 2);
+    assert(prisma.__transactionOptions.every((options: any) => options?.isolationLevel === "Serializable"));
+  });
+}
+
+for (const provider of ["msg91", "firebase"]) {
+  test(`${provider} preserves the five-request sliding 15-minute limit after old codes are consumed`, async (t) => {
+    t.mock.timers.enable({ apis: ["Date"], now: Date.UTC(2026, 9, 9) });
+    const service = mockHidiOtpAuth(t, { CUSTOMER_OTP_PROVIDER: provider, FIREBASE_PROJECT_ID: "hidi-test" });
+    for (let index = 0; index < 5; index++) {
+      const sent = await service.requestPhoneOtp({ phone: "9999999999" });
+      if (provider === "msg91") await service.verifyPhoneOtp({ phone: sent.phone, otp: (sent as any).devOtp });
+      t.mock.timers.tick(60_000);
+    }
+    await assert.rejects(service.requestPhoneOtp({ phone: "9999999999" }), (error: any) => {
+      assert.equal(error.getStatus(), 429);
+      assert.equal(error.getResponse().retryAfterSeconds, 600);
+      return true;
+    });
+    t.mock.timers.tick(600_001);
+    assert.equal((await service.requestPhoneOtp({ phone: "9999999999" })).retryAfterSeconds, 60);
+  });
+}
+
+test("concurrent requests reserve only one send and expose retry metadata to the other caller", async (t) => {
+  const service = mockHidiOtpAuth(t, { CUSTOMER_OTP_PROVIDER: "msg91" });
+  const results = await Promise.allSettled([
+    service.requestPhoneOtp({ phone: "9999999999" }),
+    service.requestPhoneOtp({ phone: "9999999999" }),
+  ]);
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  const rejected = results.find((result) => result.status === "rejected") as PromiseRejectedResult;
+  assert.equal(rejected.reason.getStatus(), 429);
+  assert.equal(rejected.reason.getResponse().retryAfterSeconds, 60);
+  assert.equal((service as any).prisma.__otps.length, 1);
+});
+
+test("successful resend supersedes older codes and consumed latest codes cannot resurrect legacy challenges", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.UTC(2026, 9, 9) });
+  const service = mockHidiOtpAuth(t, { CUSTOMER_OTP_PROVIDER: "msg91" });
+  const first = await service.requestPhoneOtp({ phone: "9999999999" }) as any;
+  t.mock.timers.tick(60_000);
+  const latest = await service.requestPhoneOtp({ phone: first.phone }) as any;
+  const prisma = (service as any).prisma;
+  assert(prisma.__otps[0].consumedAt);
+  await assert.rejects(service.verifyPhoneOtp({ phone: first.phone, otp: first.devOtp }), { name: "UnauthorizedException" });
+  await service.verifyPhoneOtp({ phone: latest.phone, otp: latest.devOtp });
+  // Older unconsumed records can exist from releases before resend invalidation.
+  prisma.__otps[0].consumedAt = null;
+  await assert.rejects(service.verifyPhoneOtp({ phone: first.phone, otp: first.devOtp }), { name: "UnauthorizedException" });
+});
+
+test("an expired latest challenge cannot revive an older unconsumed legacy code", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.UTC(2026, 9, 9) });
+  const service = mockHidiOtpAuth(t, { CUSTOMER_OTP_PROVIDER: "msg91" });
+  const first = await service.requestPhoneOtp({ phone: "9999999999" }) as any;
+  t.mock.timers.tick(60_000);
+  await service.requestPhoneOtp({ phone: first.phone });
+  const prisma = (service as any).prisma;
+  prisma.__otps[0].consumedAt = null;
+  prisma.__otps[1].expiresAt = new Date(Date.now() - 1);
+  await assert.rejects(service.verifyPhoneOtp({ phone: first.phone, otp: first.devOtp }), { name: "UnauthorizedException" });
+});
+
+test("concurrent verification consumes a delivered challenge only once", async (t) => {
+  const service = mockHidiOtpAuth(t, { CUSTOMER_OTP_PROVIDER: "msg91" });
+  const sent = await service.requestPhoneOtp({ phone: "9999999999" }) as any;
+  const outcomes = await Promise.allSettled([
+    service.verifyPhoneOtp({ phone: sent.phone, otp: sent.devOtp }),
+    service.verifyPhoneOtp({ phone: sent.phone, otp: sent.devOtp }),
+  ]);
+  assert.equal(outcomes.filter((result) => result.status === "fulfilled").length, 1);
+  const rejected = outcomes.find((result) => result.status === "rejected") as PromiseRejectedResult;
+  assert.equal(rejected.reason.name, "UnauthorizedException");
+});
+
+test("a failed resend counts toward cooldown but preserves the previously delivered code", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.UTC(2026, 9, 9) });
+  const service = mockHidiOtpAuth(t, {
+    CUSTOMER_OTP_PROVIDER: "msg91", CUSTOMER_OTP_FALLBACK_PROVIDER: "none",
+    MSG91_AUTHKEY: "private-test-key", MSG91_SMS_OTP_TEMPLATE_ID: "test-template",
+  });
+  const first = await service.requestPhoneOtp({ phone: "9999999999" }) as any;
+  t.mock.timers.tick(60_000);
+  process.env.HIDI_AUTH_DEV_OTP = "false";
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ type: "error" })));
+  await assert.rejects(service.requestPhoneOtp({ phone: first.phone }), /Unable to send SMS OTP/);
+  await assert.rejects(service.requestPhoneOtp({ phone: first.phone }), (error: any) => {
+    assert.equal(error.getStatus(), 429);
+    assert.equal(error.getResponse().retryAfterSeconds, 60);
+    return true;
+  });
+  assert.equal((service as any).prisma.__otps[1].purpose, "SIGN_IN_REQUEST");
+  await service.verifyPhoneOtp({ phone: first.phone, otp: first.devOtp });
+});
+
+test("SQL publication failure rolls back supersession without triggering a Firebase send", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.UTC(2026, 9, 9) });
+  const service = mockHidiOtpAuth(t, {
+    CUSTOMER_OTP_PROVIDER: "msg91", CUSTOMER_OTP_FALLBACK_PROVIDER: "firebase", FIREBASE_PROJECT_ID: "hidi-test",
+  });
+  const first = await service.requestPhoneOtp({ phone: "9999999999" }) as any;
+  t.mock.timers.tick(60_000);
+  const prisma = (service as any).prisma;
+  const update = prisma.customerAuthOtp.update;
+  t.mock.method(prisma.customerAuthOtp, "update", async (args: any) => {
+    if (args.data.purpose === "SIGN_IN") throw new Error("database unavailable");
+    return update(args);
+  });
+  await assert.rejects(service.requestPhoneOtp({ phone: first.phone }), /database unavailable/);
+  assert.equal(prisma.__otps[0].consumedAt, null);
+  assert.equal(prisma.__otps[1].purpose, "SIGN_IN_REQUEST");
+  await service.verifyPhoneOtp({ phone: first.phone, otp: first.devOtp });
+});
+
+test("a late provider acknowledgement cannot replace a newer successfully delivered code", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.UTC(2026, 9, 9) });
+  const service = mockHidiOtpAuth(t, {
+    CUSTOMER_OTP_PROVIDER: "msg91", HIDI_AUTH_DEV_OTP: "false", HIDI_AUTH_DEV_OTP_RESPONSE: "false",
+    MSG91_AUTHKEY: "private-test-key", MSG91_SMS_OTP_TEMPLATE_ID: "test-template",
+  });
+  let releaseFirst!: (response: Response) => void;
+  let firstStarted!: () => void;
+  const started = new Promise<void>((resolve) => { firstStarted = resolve; });
+  const codes: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string | URL | Request) => {
+    codes.push(new URL(String(url)).searchParams.get("otp")!);
+    if (codes.length === 1) {
+      firstStarted();
+      return new Promise<Response>((resolve) => { releaseFirst = resolve; });
+    }
+    return new Response(JSON.stringify({ type: "success" }));
+  });
+  const first = service.requestPhoneOtp({ phone: "9999999999" });
+  const firstOutcome = assert.rejects(first, /newer code was requested/);
+  await started;
+  t.mock.timers.tick(60_000);
+  await service.requestPhoneOtp({ phone: "9999999999" });
+  releaseFirst(new Response(JSON.stringify({ type: "success" })));
+  await firstOutcome;
+  await service.verifyPhoneOtp({ phone: "9999999999", otp: codes[1] });
+  await assert.rejects(service.verifyPhoneOtp({ phone: "9999999999", otp: codes[0] }), { name: "UnauthorizedException" });
+});
+
 test("Firebase phone verification creates a HIDI customer session", async (t) => {
   const previousProvider = process.env.CUSTOMER_OTP_PROVIDER;
   const previousProjectId = process.env.FIREBASE_PROJECT_ID;
@@ -537,7 +730,11 @@ test("Firebase phone verification creates a HIDI customer session", async (t) =>
     firebase: { sign_in_provider: "phone" },
   });
 
+  process.env.CUSTOMER_OTP_PROVIDER = "msg91";
+  const previousCode = await service.requestPhoneOtp({ phone: "7093709353" }) as any;
+  process.env.CUSTOMER_OTP_PROVIDER = "firebase";
   const session = await service.verifyPhoneOtp({ provider: "firebase", idToken });
+  await assert.rejects(service.verifyPhoneOtp({ phone: previousCode.phone, otp: previousCode.devOtp }), { name: "UnauthorizedException" });
   assert.match(session.access_token, /^hidi_at_/);
   assert.match(session.refresh_token, /^hidi_rt_/);
   assert.deepEqual(session.user, { id: "user-1", email: null, phone: "+917093709353" });
