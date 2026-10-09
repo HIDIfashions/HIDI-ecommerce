@@ -1,4 +1,4 @@
-name: Single Ananya photo guarded release
+name: Hero and Ananya media lists guarded release
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -17,8 +17,8 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: 8949557590453040662a50b8b04c80c95277cdbe
-      HERO_BASE_SHA: 738d1a60426cab820453e730498a32787a9167d0
+      HERO_SOURCE_SHA: 5f727fbb69180abb0e877cdbae25376e49493fe2
+      HERO_BASE_SHA: 8949557590453040662a50b8b04c80c95277cdbe
     steps:
       - uses: actions/checkout@v4
       - name: Require prior storefront and admin commerce regression
@@ -36,12 +36,12 @@ jobs:
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: 8949557590453040662a50b8b04c80c95277cdbe
+          ref: 5f727fbb69180abb0e877cdbae25376e49493fe2
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
         with:
-          ref: 738d1a60426cab820453e730498a32787a9167d0
+          ref: 8949557590453040662a50b8b04c80c95277cdbe
           path: hero-before
       - uses: actions/setup-node@v4
         with:
@@ -55,9 +55,9 @@ jobs:
           (cd hero-source && node --test deploy/hidi-web-new/runtime.test.mjs)
           python3 - <<'PYCODE'
           import subprocess
-          changed=subprocess.check_output(['git','diff','--name-only','738d1a60426cab820453e730498a32787a9167d0','8949557590453040662a50b8b04c80c95277cdbe','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
-          assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/styles/styles.css'}, changed
-          print('PASS: only the requested Ananya photo layout changed')
+          changed=subprocess.check_output(['git','diff','--name-only','8949557590453040662a50b8b04c80c95277cdbe','5f727fbb69180abb0e877cdbae25376e49493fe2','--','apps/web/src','apps/web/index.html','apps/web/public/hero-control.html','apps/web/public/landing-media-control.html','deploy/hidi-web-new/hero-media.mjs'],cwd='hero-source',text=True).splitlines()
+          assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/components/VideoHero.jsx','apps/web/src/components/MediaSequenceControls.jsx','apps/web/src/hooks/useMediaSequence.js','apps/web/src/context/LandingMediaContext.jsx','apps/web/src/styles/styles.css','apps/web/public/hero-control.html','apps/web/public/landing-media-control.html','deploy/hidi-web-new/hero-media.mjs'}, changed
+          print('PASS: only the requested hero/Ananya media controls and layouts changed')
           PYCODE
           echo "PLAYWRIGHT_BROWSERS_PATH=$GITHUB_WORKSPACE/.cache/hidi-layout-browsers" >> "$GITHUB_ENV"
           echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/hero-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
@@ -95,7 +95,7 @@ jobs:
           PY
           az acr login --name "$ACR" --only-show-errors
           docker pull "$OLD_WEB"
-          backup="$ACR.azurecr.io/hidi-web:backup-single-ananya-photo-${GITHUB_RUN_ID}"
+          backup="$ACR.azurecr.io/hidi-web:backup-media-lists-${GITHUB_RUN_ID}"
           docker tag "$OLD_WEB" "$backup"
           docker push "$backup"
           echo "$backup" > evidence/backup-tag.txt
@@ -117,17 +117,24 @@ jobs:
           assert all(actual.get(k)==v for k,v in before.items()), 'Current live landing does not match the backed-up source'
           delta=[k for k,v in after.items() if before.get(k)!=v]
           assert 'index.html' in delta
-          assert all(k=='index.html' or re.fullmatch(r'assets/[A-Za-z0-9_-]+\.(?:js|css)',k) for k in delta), delta
-          assert 3 <= len(delta) <= 7, delta
+          assert all(k in {'index.html','hero-control.html','landing-media-control.html'} or re.fullmatch(r'assets/[A-Za-z0-9_-]+\.(?:js|css)',k) for k in delta), delta
+          assert len(delta)==5 and {'index.html','hero-control.html','landing-media-control.html'}.issubset(delta), delta
           for k in delta:
-            if k!='index.html': assert k not in before, 'Do not overwrite an already-cached bundle URL'
+            if k not in {'index.html','hero-control.html','landing-media-control.html'}: assert k not in before, 'Do not overwrite an already-cached bundle URL'
             dest=pathlib.Path('hero-patch/overlay')/k; dest.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(candidate/k,dest)
-          pathlib.Path('hero-patch/Dockerfile').write_text('FROM '+os.environ['OLD_WEB']+'\nCOPY --chown=node:node overlay/ /app/dist/\n')
+          module=pathlib.Path('hero-source/deploy/hidi-web-new/hero-media.mjs')
+          oldmodule=pathlib.Path('hero-before/deploy/hidi-web-new/hero-media.mjs')
+          livemodule=pathlib.Path(os.environ['RUNNER_TEMP'])/'hero-private/base-app/hero-media.mjs'
+          assert sha(oldmodule)==sha(livemodule), 'Live media runtime differs from the pinned baseline; stop instead of dropping changes'
+          pathlib.Path('hero-patch/runtime').mkdir(parents=True,exist_ok=True)
+          shutil.copyfile(module,'hero-patch/runtime/hero-media.mjs')
+          pathlib.Path('evidence/media-module-hashes.json').write_text(json.dumps({'before':sha(oldmodule),'after':sha(module)},indent=2))
+          pathlib.Path('hero-patch/Dockerfile').write_text('FROM '+os.environ['OLD_WEB']+'\nCOPY --chown=node:node overlay/ /app/dist/\nCOPY --chown=node:node runtime/hero-media.mjs /app/hero-media.mjs\n')
           pathlib.Path('evidence/patch-files.json').write_text(json.dumps(delta,indent=2))
           pathlib.Path('evidence/patch-hashes.json').write_text(json.dumps({k:after[k] for k in delta},indent=2))
           print('Only these files will change: '+json.dumps(delta))
           PY
-          image="$ACR.azurecr.io/hidi-web:single-ananya-photo-${GITHUB_RUN_ID}"
+          image="$ACR.azurecr.io/hidi-web:media-lists-${GITHUB_RUN_ID}"
           docker build --pull=false -t "$image" hero-patch
           echo "CANDIDATE_TAG=$image" >> "$GITHUB_ENV"
           cid="$(docker create "$image")"
@@ -146,7 +153,7 @@ jobs:
               elif p.is_file(): result[key]=['file',hashlib.sha256(p.read_bytes()).hexdigest()]
             return result
           a=fingerprints(root/'base-app'); b=fingerprints(root/'candidate-app')
-          allowed={'dist/'+p for p in json.load(open('evidence/patch-files.json'))}
+          allowed={'dist/'+p for p in json.load(open('evidence/patch-files.json'))}|{'hero-media.mjs'}
           changed={k for k in set(a)|set(b) if a.get(k)!=b.get(k)}
           assert changed==allowed, 'Unexpected runtime/admin/commerce/media change: '+str(changed-allowed)
           configs=json.loads((root/'image-configs.json').read_text()); old,new=configs
@@ -167,6 +174,7 @@ jobs:
           trap 'docker rm -f hero-candidate-check >/dev/null 2>&1 || true; kill "$mock_pid" 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3192/health >/dev/null; then break; fi; sleep 1; done
           cd hero-source/apps/web
+          HIDI_SEQUENCE_BASE_URL=http://127.0.0.1:3192 node scripts/test-media-sequences.mjs
           HIDI_LAYOUT_BASE_URL=http://127.0.0.1:3192 node scripts/test-landscape-hover.mjs
           HERO_TEST_BASE_URL=http://127.0.0.1:3192 node scripts/test-hero-first-paint.mjs
           HIDI_BROWSER_ENGINES=chromium,firefox,webkit HIDI_RESPONSIVE_BASE_URL=http://127.0.0.1:3192 node scripts/test-responsive.mjs
@@ -223,7 +231,7 @@ jobs:
               if(path==='/health') {assert.equal(r.status,200); const health=await r.json(); assert.equal(health.status,'ok');}
               else await r.body?.cancel();
             }
-            for(const path of ['/api/admin/session','/api/hidi/packing-plan?order=HIDI-READONLY-NOT-AN-ORDER']) {
+            for(const path of ['/api/admin/session','/api/hidi/hero-library','/api/hidi/landing-media-library','/api/hidi/landing-media-ananya-publish','/api/hidi/packing-plan?order=HIDI-READONLY-NOT-AN-ORDER']) {
               const r=await fetch(base+path,{redirect:'manual',signal:AbortSignal.timeout(30000)});
               assert([401,403].includes(r.status),'Admin API authentication boundary changed: '+path);
               report.push({base,path,status:r.status}); await r.body?.cancel();
@@ -234,7 +242,13 @@ jobs:
             const selection={base,selectedType:config.type,selectedUrl:config.url};
             const previous=baseline.find(item=>item.base===base && item.selectedUrl);
             if(previous) assert.deepEqual(selection,previous,'Existing uploaded media selection must remain unchanged');
-            report.push(selection); await save();
+            report.push(selection);
+            const landingResponse=await fetch(base+'/api/hidi/landing-media-config',{signal:AbortSignal.timeout(30000)});
+            assert(landingResponse.ok); const landing=await landingResponse.json();
+            const landingSelection={base,probe:'landing-selections',slots:landing.slots,ananya:landing.ananya||null};
+            const oldLanding=baseline.find(item=>item.base===base && item.probe==='landing-selections');
+            if(oldLanding) assert.deepEqual(landingSelection,oldLanding,'Published landing media changed during the code-only rollout');
+            report.push(landingSelection); await save();
           }
           if(!before) {
             const browser=await pw.chromium.launch({channel:'chrome',headless:true});
@@ -349,12 +363,12 @@ jobs:
           PY
           updated=0
           trap - ERR
-          echo 'DEPLOYMENT COMPLETE: single full-page Ananya photo healthy; API, media and protected storefront/admin files retained.'
+          echo 'DEPLOYMENT COMPLETE: hero and Ananya media lists healthy; API, media and protected storefront/admin files retained.'
       - name: Preserve release evidence without credentials or raw container files
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: single-ananya-photo-release-${{ github.run_id }}
+          name: media-lists-release-${{ github.run_id }}
           path: |
             evidence
             hero-source/apps/web/validation
