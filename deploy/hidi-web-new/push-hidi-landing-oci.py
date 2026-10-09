@@ -42,7 +42,7 @@ def digest_file(path):
     return "sha256:" + h.hexdigest()
 
 
-def make_layer(payload, directory):
+def make_layer(payload, directory, runtime_only=False):
     raw = pathlib.Path(directory) / "landing-layer.tar"
     compressed = pathlib.Path(directory) / "landing-layer.tar.gz"
     with tarfile.open(payload, "r:gz") as source, tarfile.open(raw, "w", format=tarfile.PAX_FORMAT) as target:
@@ -73,8 +73,8 @@ def make_layer(payload, directory):
             target.addfile(item, source.extractfile(entry) if entry.isfile() else None)
             found_server |= name == "server.mjs"
             found_index |= name == "dist/index.html"
-        if not found_server or not found_index:
-            raise ValueError("Payload requires server.mjs and dist/index.html")
+        if not found_server or (not runtime_only and not found_index):
+            raise ValueError("Payload requires server.mjs" + ("" if runtime_only else " and dist/index.html"))
     with open(raw, "rb") as src, open(compressed, "wb") as dst:
         with gzip.GzipFile(filename="", mode="wb", fileobj=dst, mtime=0) as zipped:
             shutil.copyfileobj(src, zipped)
@@ -188,13 +188,14 @@ def main():
     parser.add_argument("--tag", required=True)
     parser.add_argument("--created", default=datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"))
     parser.add_argument("--dry-run-base-config", help="Assemble only with this local base config JSON; no Azure/network calls")
+    parser.add_argument("--runtime-only", action="store_true", help="Overlay only server runtime files without requiring landing dist/index.html")
     args = parser.parse_args()
     if "@" in args.base:
         repository, base_ref = args.base.rsplit("@", 1)
     else:
         repository, base_ref = args.base.rsplit(":", 1)
     with tempfile.TemporaryDirectory(prefix="hidi-oci-") as directory:
-        layer, diff_id, compressed_digest = make_layer(args.payload, directory)
+        layer, diff_id, compressed_digest = make_layer(args.payload, directory, args.runtime_only)
         if args.dry_run_base_config:
             base = json.loads(pathlib.Path(args.dry_run_base_config).read_text())
             config = encoded(make_config(base, diff_id, args.created))
