@@ -67,10 +67,12 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
         }
         await page.locator('.hidi-collection-gallery').scrollIntoViewIfNeeded();
         if (!touch) {
-          const cards = page.locator('.hidi-collection-card');
+          console.log('HOVER CAPABILITIES '+engine+' '+width+' '+JSON.stringify(await page.evaluate(()=>({hover:matchMedia('(hover: hover)').matches,fine:matchMedia('(pointer: fine)').matches,coarse:matchMedia('(pointer: coarse)').matches}))));
           for (const depth of ['active','near']) {
             const card = page.locator(`.hidi-collection-card[data-depth="${depth}"]`).first();
-            await card.locator('.hidi-collection-photo').hover({ position:{x:10,y:20} });
+            const bounds=await card.locator('.hidi-collection-photo').boundingBox();
+            console.log('HOVER START '+engine+' '+width+' '+depth+' '+JSON.stringify(bounds));
+            await card.locator('.hidi-collection-photo').hover({ position:{x:10,y:bounds.height / 2} });
             await page.waitForFunction(() => {
               const image=document.querySelector('[data-hovered="true"] .hidi-collection-photo');
               return image && Math.abs(new DOMMatrix(getComputedStyle(image).transform).a-1.1)<.001;
@@ -91,6 +93,12 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
         assert(await page.locator('.site-footer').isVisible(),'Footer remains reachable');
         assert.deepEqual(errors, [], 'No uncaught page errors');
         console.log(`PASS ${engine} ${width}x${height}: all looks fit, no mirror, caption/hover and scrolling preserved`);
+      } catch(error) {
+        const state=await page.evaluate(()=>({hover:matchMedia('(hover: hover)').matches,fine:matchMedia('(pointer: fine)').matches,scrollY,hovering:document.querySelector('.hidi-collection-gallery')?.dataset.hoveringCard,cards:[...document.querySelectorAll('.hidi-collection-card')].map(card=>({depth:card.dataset.depth,hovered:card.dataset.hovered,photoTransform:getComputedStyle(card.querySelector('.hidi-collection-photo')).transform,caption:getComputedStyle(card.querySelector('.hidi-collection-caption')).opacity}))}));
+        console.error('LAYOUT FAILURE '+engine+' '+width+' '+JSON.stringify(state));
+        await page.screenshot({path:resolve(output,`${engine}-${width}x${height}-failure.png`),animations:'disabled'});
+        await writeFile(resolve(output,'partial-report.json'),JSON.stringify(reports,null,2));
+        throw error;
       } finally { await context.close(); }
     }
   } finally { await browser.close(); }
