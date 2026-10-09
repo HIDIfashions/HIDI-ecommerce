@@ -1,0 +1,35 @@
+name: Integrate scoped guest-checkout phone verification
+on:
+  push:
+    branches: [feature/guest-checkout-phone-otp-20260929]
+    paths:
+      - .github/workflows/integrate-checkout-phone-once.yml
+      - scripts/integrate-checkout-phone-once.py
+permissions:
+  contents: read
+jobs:
+  integrate:
+    if: github.ref == 'refs/heads/feature/guest-checkout-phone-otp-20260929'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Integrate only hash-guarded source on this isolated branch
+        run: |
+          python3 scripts/integrate-checkout-phone-once.py
+          git diff --check
+          node --test tests/checkout-phone-contracts.test.cjs
+      - name: Commit integrated source and remove one-time transport helpers
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/azure-build.yml apps/api apps/web tests
+          git rm .github/workflows/integrate-checkout-phone-once.yml scripts/integrate-checkout-phone-once.py
+          git commit -m 'Integrate guest checkout phone verification behind explicit activation gate'
+          git push origin HEAD:feature/guest-checkout-phone-otp-20260929
+          git rev-parse HEAD
