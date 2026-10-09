@@ -17,7 +17,7 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: d36b32d690ea530ff7d179004577eb22928f765c
+      HERO_SOURCE_SHA: 23da195aab00454e8074a59b824af8a121594c15
       HERO_BASE_SHA: 96171c234534e4b6657faa45e9a0c96f553f840b
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: d36b32d690ea530ff7d179004577eb22928f765c
+          ref: 23da195aab00454e8074a59b824af8a121594c15
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
           (cd hero-source && node --test deploy/hidi-web-new/runtime.test.mjs)
           python3 - <<'PYCODE'
           import subprocess
-          changed=subprocess.check_output(['git','diff','--name-only','96171c234534e4b6657faa45e9a0c96f553f840b','d36b32d690ea530ff7d179004577eb22928f765c','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
+          changed=subprocess.check_output(['git','diff','--name-only','96171c234534e4b6657faa45e9a0c96f553f840b','23da195aab00454e8074a59b824af8a121594c15','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
           assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/styles/styles.css','apps/web/src/styles/collection-spotlight.css'}, changed
           print('PASS: only the two requested homepage sections changed')
           PYCODE
