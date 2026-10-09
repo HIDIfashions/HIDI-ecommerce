@@ -42,8 +42,6 @@ jobs:
       DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true
       API_URL: http://127.0.0.1:4100/v1
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/hidi-account-otp-browsers
-      HIDI_PLAYWRIGHT_MODULE: ${{ runner.temp }}/account-otp-browser/node_modules/playwright/index.mjs
-      HIDI_OTP_BASELINE_STATE_DIR: ${{ runner.temp }}/account-otp-private/before
     steps:
       - name: Resolve explicit reviewed source and current live image pins
         run: |
@@ -58,6 +56,8 @@ jobs:
           echo "EXPECTED_WEB=$web" >> "$GITHUB_ENV"
           echo "EXPECTED_API=$api" >> "$GITHUB_ENV"
           echo "HIDI_OTP_JOB_DEADLINE_EPOCH=$(( $(date +%s) + 120 * 60 ))" >> "$GITHUB_ENV"
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/account-otp-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          echo "HIDI_OTP_BASELINE_STATE_DIR=$RUNNER_TEMP/account-otp-private/before" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.REVIEWED_SOURCE }}

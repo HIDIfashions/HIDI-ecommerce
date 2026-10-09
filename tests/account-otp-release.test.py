@@ -117,7 +117,7 @@ class ExplicitActivationPins(unittest.TestCase):
         script = "\n".join(line[10:] for line in match.group(1).splitlines())
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "environment"
-            env = {**os.environ, "GITHUB_ENV": str(output), **{name: "" for name in ["INPUT_REVIEWED_SOURCE", "INPUT_EXPECTED_WEB", "INPUT_EXPECTED_API", "PUSH_REVIEWED_SOURCE", "PUSH_EXPECTED_WEB", "PUSH_EXPECTED_API"]}, **pins}
+            env = {**os.environ, "GITHUB_ENV": str(output), "RUNNER_TEMP": directory, **{name: "" for name in ["INPUT_REVIEWED_SOURCE", "INPUT_EXPECTED_WEB", "INPUT_EXPECTED_API", "PUSH_REVIEWED_SOURCE", "PUSH_EXPECTED_WEB", "PUSH_EXPECTED_API"]}, **pins}
             result = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True)
             return result, output.read_text() if output.exists() else ""
 
@@ -131,7 +131,10 @@ class ExplicitActivationPins(unittest.TestCase):
             result, output = self.resolve_pins(**{mode + "_REVIEWED_SOURCE": "a" * 40, mode + "_EXPECTED_WEB": OLD["hidi-web"], mode + "_EXPECTED_API": OLD["hidi-api"]})
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue(output.startswith("REVIEWED_SOURCE=" + "a" * 40 + "\nEXPECTED_WEB=" + OLD["hidi-web"] + "\nEXPECTED_API=" + OLD["hidi-api"] + "\n"))
-            self.assertRegex(output, r"HIDI_OTP_JOB_DEADLINE_EPOCH=\d+\n$")
+            self.assertRegex(output, r"HIDI_OTP_JOB_DEADLINE_EPOCH=\d+\n")
+            module_path = re.search(r"^HIDI_PLAYWRIGHT_MODULE=(.+)/account-otp-browser/node_modules/playwright/index\.mjs$", output, re.M)
+            self.assertIsNotNone(module_path)
+            self.assertIn("HIDI_OTP_BASELINE_STATE_DIR=" + module_path.group(1) + "/account-otp-private/before\n", output)
         workflow = (ROOT / ".github/workflows/account-otp-release.yml").read_text()
         self.assertIn("ref: ${{ env.REVIEWED_SOURCE }}", workflow)
         self.assertIn("['git','rev-parse','HEAD']", workflow)
@@ -142,6 +145,23 @@ class ExplicitActivationPins(unittest.TestCase):
             result, output = self.resolve_pins(**{**valid, field: value})
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(output, "")
+
+    def test_job_env_excludes_runner_context_and_runner_paths_are_exported_at_runtime(self):
+        workflow = (ROOT / ".github/workflows/account-otp-release.yml").read_text()
+        allowed = {"github", "needs", "strategy", "matrix", "vars", "secrets", "inputs"}
+
+        def validate_job_envs(text):
+            blocks = re.findall(r"(?m)^    env:\n(?:^      .+\n)+", text)
+            self.assertTrue(blocks, "Expected the release job env block")
+            for block in blocks:
+                contexts = set(re.findall(r"\$\{\{\s*([A-Za-z_]\w*)[.\[]", block))
+                self.assertEqual(contexts - allowed, set(), "A context unavailable during job env evaluation was introduced")
+
+        validate_job_envs(workflow)
+        invalid = workflow.replace("    env:\n", "    env:\n      INVALID: ${{ runner.temp }}\n", 1)
+        with self.assertRaises(AssertionError): validate_job_envs(invalid)
+        for name in ["HIDI_PLAYWRIGHT_MODULE", "HIDI_OTP_BASELINE_STATE_DIR"]:
+            self.assertRegex(workflow, 'echo "' + name + r'=\$RUNNER_TEMP/[^\n]+" >> "\$GITHUB_ENV"')
 
 
 class AccountRollout(unittest.TestCase):
