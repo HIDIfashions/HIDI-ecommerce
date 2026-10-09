@@ -10,7 +10,7 @@ const output = resolve('validation/landscape-hover');
 await mkdir(output, { recursive: true });
 const reports = [];
 for (const engine of ['chromium', 'firefox', 'webkit']) {
-  const browser = await pw[engine].launch({ headless: true });
+  const browser = await pw[engine].launch({ headless: true, ...(engine === 'firefox' ? { firefoxUserPrefs: { 'ui.primaryPointerCapabilities': 6, 'ui.allPointerCapabilities': 6 } } : {}) });
   try {
     for (const [width, height, touch] of [[320,844,true],[390,844,true],[768,1024,true],[844,390,true],[1440,900,false],[1920,1080,false]]) {
       const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, reducedMotion: 'reduce' });
@@ -43,6 +43,7 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
           }
           await page.waitForFunction(index => document.querySelector('.meet-cinematic__count')?.textContent.startsWith(String(index + 1).padStart(2,'0')), pick);
           await page.waitForFunction(() => { const image=document.querySelector('.meet-cinematic__slide.is-active img'); return image?.complete && image.naturalWidth > 0; });
+          await page.locator('.meet-cinematic__slide.is-active img').evaluate(async image => { await image.decode(); await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))); });
           const geometry = await page.evaluate(() => {
             const canvas = document.querySelector('.meet-cinematic').getBoundingClientRect();
             const image = document.querySelector('.meet-cinematic__slide.is-active img');
@@ -67,6 +68,7 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
         }
         await page.locator('.hidi-collection-gallery').scrollIntoViewIfNeeded();
         if (!touch) {
+          assert(await page.evaluate(()=>matchMedia('(hover: hover) and (pointer: fine)').matches), 'Desktop runner must emulate a mouse');
           console.log('HOVER CAPABILITIES '+engine+' '+width+' '+JSON.stringify(await page.evaluate(()=>({hover:matchMedia('(hover: hover)').matches,fine:matchMedia('(pointer: fine)').matches,coarse:matchMedia('(pointer: coarse)').matches}))));
           for (const depth of ['active','near']) {
             const card = page.locator(`.hidi-collection-card[data-depth="${depth}"]`).first();
