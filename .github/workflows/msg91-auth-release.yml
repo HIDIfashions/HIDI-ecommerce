@@ -35,7 +35,7 @@ jobs:
       ACR: acrhidiprod0927
       DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true
       API_URL: http://127.0.0.1:4100/v1
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/sms-browsers
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/hidi-msg91-browsers
     steps:
       - uses: actions/checkout@v4
         with:
