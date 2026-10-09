@@ -7,14 +7,15 @@
   "category": "Consumer goods and automobiles",
   "language": "English",
   "contentType": "TEXT",
-  "content": "Your HIDI login OTP is {#var#}. Valid for 5 minutes. Do not share this code.",
-  "variables": [{ "type": "OTP", "sample": "123456" }],
-  "sampleContent": "Your HIDI login OTP is 123456. Valid for 5 minutes. Do not share this code.",
-  "dltContentTemplateId": "1777179154039835718",
-  "dltReferenceNumber": "11-43PAMV0SWAHH",
-  "dltSubmittedAt": "2026-10-09T15:36:00+05:30",
-  "dltStatus": "Rejected",
-  "dltRejectionReason": "Please mention proper entity name.",
+  "content": "Your HIDI login OTP is {#var#}. Valid for 5 minutes. Do not share this code. - HI DI-HIGHER DIMENSION",
+  "variables": [{ "type": "NUMBER", "sample": "123456" }],
+  "sampleContent": "Your HIDI login OTP is 123456. Valid for 5 minutes. Do not share this code. - HI DI-HIGHER DIMENSION",
+  "dltContentTemplateId": "1777179154935052683",
+  "dltReferenceNumber": "11-448OMV0Y860U",
+  "dltSubmittedAt": "2026-10-09T18:05:00+05:30",
+  "dltSubmittedAtPrecision": "minute",
+  "dltSubmissionMethod": "Re-Submit",
+  "dltStatus": "Work In Progress",
   "peTmChain": {
     "name": "HIDI-MSG91",
     "status": "Active",
@@ -27,15 +28,18 @@
   "msg91SenderId": "HIDIIN",
   "msg91SenderStatus": "Saved and selectable",
   "msg91TemplateName": "hidi_login_otp",
-  "msg91Content": "Your HIDI login OTP is ##OTP##. Valid for 5 minutes. Do not share this code.",
-  "msg91OtpTemplateStatus": "Draft for rejected original; not created",
+  "msg91Content": "Your HIDI login OTP is ##OTP##. Valid for 5 minutes. Do not share this code. - HI DI-HIGHER DIMENSION",
+  "msg91OtpTemplateStatus": "Draft for corrected resubmission filled; not created",
   "msg91OtpTemplateId": null,
-  "proposedResubmission": {
-    "status": "Prepared; not resubmitted",
-    "registeredEntityName": "HI DI-HIGHER DIMENSION",
-    "content": "Your HIDI login OTP is {#var#}. Valid for 5 minutes. Do not share this code. - HI DI-HIGHER DIMENSION",
-    "sampleContent": "Your HIDI login OTP is 123456. Valid for 5 minutes. Do not share this code. - HI DI-HIGHER DIMENSION",
-    "msg91Content": "Your HIDI login OTP is ##OTP##. Valid for 5 minutes. Do not share this code. - HI DI-HIGHER DIMENSION"
+  "previousSubmission": {
+    "content": "Your HIDI login OTP is {#var#}. Valid for 5 minutes. Do not share this code.",
+    "sampleContent": "Your HIDI login OTP is 123456. Valid for 5 minutes. Do not share this code.",
+    "dltContentTemplateId": "1777179154039835718",
+    "dltReferenceNumber": "11-43PAMV0SWAHH",
+    "dltSubmittedAt": "2026-10-09T15:36:00+05:30",
+    "dltStatus": "Rejected",
+    "dltRejectionReason": "Please mention proper entity name.",
+    "msg91DraftContent": "Your HIDI login OTP is ##OTP##. Valid for 5 minutes. Do not share this code."
   },
-  "notes": "The current content, DLT ID and reference describe the rejected original submission. Smartping rejected it with: Please mention proper entity name. The corrected legal-name suffix is prepared separately and has not been resubmitted because the Smartping session expired at a CAPTCHA. The registered HIDI-MSG91 PE-TM chain remains verified Active, and MSG91 sender HIDIIN is saved and selectable with the recorded PE ID. The SendOTP draft refers to the rejected original; Create was not clicked and no MSG91 OTP template ID has been assigned. After corrected DLT resubmission and approval, update the SendOTP draft to the exact approved content and DLT ID, then create it and record its assigned ID. No runtime settings or live SMS activation have changed."
+  "notes": "The corrected content was successfully resubmitted using Re-Submit on 2026-10-09 at 18:05 IST, with minute precision. The new DLT ID and reference are Work In Progress, not approved. Original rejected content, identifiers, submission time and reason remain in previousSubmission. The registered HIDI-MSG91 PE-TM chain remains verified Active, and MSG91 sender HIDIIN is saved and selectable with the recorded PE ID. After MSG91 browser recovery, the original unsaved form was gone and the template list remained empty. Add Template was reopened and the current unsaved draft was filled with hidi_login_otp, the selected existing HIDIIN sender, corrected DLT ID 1777179154935052683, English and the exact msg91Content. Create was not clicked because MSG91 requires an approved DLT ID while the current status is Work In Progress. After approval, recheck the exact approved content and DLT ID, create the template and record its assigned MSG91 ID. No runtime settings or live SMS activation have changed."
 }
