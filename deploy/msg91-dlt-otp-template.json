@@ -13,7 +13,8 @@
   "dltContentTemplateId": "1777179154039835718",
   "dltReferenceNumber": "11-43PAMV0SWAHH",
   "dltSubmittedAt": "2026-10-09T15:36:00+05:30",
-  "dltStatus": "Work In Progress",
+  "dltStatus": "Rejected",
+  "dltRejectionReason": "Please mention proper entity name.",
   "peTmChain": {
     "name": "HIDI-MSG91",
     "status": "Active",
@@ -27,7 +28,14 @@
   "msg91SenderStatus": "Saved and selectable",
   "msg91TemplateName": "hidi_login_otp",
   "msg91Content": "Your HIDI login OTP is ##OTP##. Valid for 5 minutes. Do not share this code.",
-  "msg91OtpTemplateStatus": "Draft filled; not created",
+  "msg91OtpTemplateStatus": "Draft for rejected original; not created",
   "msg91OtpTemplateId": null,
-  "notes": "Submission was verified in Smartping under active header HIDIIN. The registered HIDI-MSG91 PE-TM chain is Active. MSG91 sender HIDIIN is saved with the recorded PE ID and available in Select Sender ID. The SendOTP draft contains the recorded name, sender, DLT ID and exact content, but Create was not clicked because MSG91 requires an approved DLT ID and the template remains Work In Progress. After DLT approval, create the SendOTP template and record its assigned ID. The MSG91 OTP template ID remains unknown and live SMS activation has not occurred."
+  "proposedResubmission": {
+    "status": "Prepared; not resubmitted",
+    "registeredEntityName": "HI DI-HIGHER DIMENSION",
+    "content": "Your HIDI login OTP is {#var#}. Valid for 5 minutes. Do not share this code. - HI DI-HIGHER DIMENSION",
+    "sampleContent": "Your HIDI login OTP is 123456. Valid for 5 minutes. Do not share this code. - HI DI-HIGHER DIMENSION",
+    "msg91Content": "Your HIDI login OTP is ##OTP##. Valid for 5 minutes. Do not share this code. - HI DI-HIGHER DIMENSION"
+  },
+  "notes": "The current content, DLT ID and reference describe the rejected original submission. Smartping rejected it with: Please mention proper entity name. The corrected legal-name suffix is prepared separately and has not been resubmitted because the Smartping session expired at a CAPTCHA. The registered HIDI-MSG91 PE-TM chain remains verified Active, and MSG91 sender HIDIIN is saved and selectable with the recorded PE ID. The SendOTP draft refers to the rejected original; Create was not clicked and no MSG91 OTP template ID has been assigned. After corrected DLT resubmission and approval, update the SendOTP draft to the exact approved content and DLT ID, then create it and record its assigned ID. No runtime settings or live SMS activation have changed."
 }
