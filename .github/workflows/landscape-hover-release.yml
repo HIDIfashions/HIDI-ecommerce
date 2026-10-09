@@ -1,4 +1,4 @@
-name: Landscape hero and 110 percent hover guarded release
+name: Full-page Ananya photograph guarded release
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -17,8 +17,8 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: 91b55b213da13f438443c70e2ea1b2caa6b98d26
-      HERO_BASE_SHA: 96171c234534e4b6657faa45e9a0c96f553f840b
+      HERO_SOURCE_SHA: 4bf5b10fb910397fc93b50caa912fdc09e254a75
+      HERO_BASE_SHA: 91b55b213da13f438443c70e2ea1b2caa6b98d26
     steps:
       - uses: actions/checkout@v4
       - name: Require prior storefront and admin commerce regression
@@ -36,12 +36,12 @@ jobs:
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: 91b55b213da13f438443c70e2ea1b2caa6b98d26
+          ref: 4bf5b10fb910397fc93b50caa912fdc09e254a75
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
         with:
-          ref: 96171c234534e4b6657faa45e9a0c96f553f840b
+          ref: 91b55b213da13f438443c70e2ea1b2caa6b98d26
           path: hero-before
       - uses: actions/setup-node@v4
         with:
@@ -55,9 +55,9 @@ jobs:
           (cd hero-source && node --test deploy/hidi-web-new/runtime.test.mjs)
           python3 - <<'PYCODE'
           import subprocess
-          changed=subprocess.check_output(['git','diff','--name-only','96171c234534e4b6657faa45e9a0c96f553f840b','91b55b213da13f438443c70e2ea1b2caa6b98d26','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
-          assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/styles/styles.css','apps/web/src/styles/collection-spotlight.css'}, changed
-          print('PASS: only the two requested homepage sections changed')
+          changed=subprocess.check_output(['git','diff','--name-only','91b55b213da13f438443c70e2ea1b2caa6b98d26','4bf5b10fb910397fc93b50caa912fdc09e254a75','--','apps/web/src','apps/web/index.html'],cwd='hero-source',text=True).splitlines()
+          assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/styles/styles.css'}, changed
+          print('PASS: only the requested Ananya photo layout changed')
           PYCODE
           echo "PLAYWRIGHT_BROWSERS_PATH=$GITHUB_WORKSPACE/.cache/hidi-layout-browsers" >> "$GITHUB_ENV"
           echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/hero-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
@@ -95,7 +95,7 @@ jobs:
           PY
           az acr login --name "$ACR" --only-show-errors
           docker pull "$OLD_WEB"
-          backup="$ACR.azurecr.io/hidi-web:backup-landscape-hover-${GITHUB_RUN_ID}"
+          backup="$ACR.azurecr.io/hidi-web:backup-full-page-ananya-${GITHUB_RUN_ID}"
           docker tag "$OLD_WEB" "$backup"
           docker push "$backup"
           echo "$backup" > evidence/backup-tag.txt
@@ -127,7 +127,7 @@ jobs:
           pathlib.Path('evidence/patch-hashes.json').write_text(json.dumps({k:after[k] for k in delta},indent=2))
           print('Only these files will change: '+json.dumps(delta))
           PY
-          image="$ACR.azurecr.io/hidi-web:landscape-hover-${GITHUB_RUN_ID}"
+          image="$ACR.azurecr.io/hidi-web:full-page-ananya-${GITHUB_RUN_ID}"
           docker build --pull=false -t "$image" hero-patch
           echo "CANDIDATE_TAG=$image" >> "$GITHUB_ENV"
           cid="$(docker create "$image")"
@@ -193,16 +193,16 @@ jobs:
           let secondaryState;
           try {
             const r=await fetch(secondary+'/',{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(30000)});
-            secondaryState={base:secondary,probe:'secondary-home',status:r.status,ok:r.ok,finalUrl:r.url,server:r.headers.get('server')};
-            await r.body?.cancel();
+            const secondaryHtml=await r.text();
+            secondaryState={base:secondary,probe:'secondary-home',status:r.status,ok:r.ok,storeReachable:r.ok && !secondaryHtml.includes('HIDI is temporarily private'),finalUrl:r.url,server:r.headers.get('server')};
           } catch(error) {
             secondaryState={base:secondary,probe:'secondary-home',ok:false,error:error.cause?.code||error.name};
           }
           report.push(secondaryState); console.log(JSON.stringify(secondaryState));
           const oldSecondary=baseline.find(item=>item.probe==='secondary-home');
-          if(!before && oldSecondary?.ok) assert(secondaryState.ok,'Previously reachable secondary homepage regressed');
-          if(secondaryState.ok) bases.push(secondary);
-          else console.warn('Secondary hostname could not be validated; no DNS, routing or certificate changes are part of this release.');
+          if(!before && oldSecondary?.storeReachable) assert(secondaryState.storeReachable,'Previously reachable secondary homepage regressed');
+          if(secondaryState.storeReachable) bases.push(secondary);
+          else console.warn('Secondary hostname remains private or unavailable; the working test storefront is validated and domain access stays unchanged.');
           await mkdir(directory,{recursive:true});
           const save=()=>writeFile(directory+(before?'/live-before.json':'/live-after.json'),JSON.stringify(report,null,2));
           await save();
@@ -349,12 +349,12 @@ jobs:
           PY
           updated=0
           trap - ERR
-          echo 'DEPLOYMENT COMPLETE: requested landscape and hover fixes healthy; API, media and protected storefront/admin files retained.'
+          echo 'DEPLOYMENT COMPLETE: full-page landscape photo healthy; API, media and protected storefront/admin files retained.'
       - name: Preserve release evidence without credentials or raw container files
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: landscape-hover-release-${{ github.run_id }}
+          name: full-page-ananya-release-${{ github.run_id }}
           path: |
             evidence
             hero-source/apps/web/validation
