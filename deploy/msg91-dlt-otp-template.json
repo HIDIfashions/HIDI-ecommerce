@@ -1,0 +1,19 @@
+{
+  "templateName": "HIDI_LOGIN_OTP",
+  "principalEntityId": "1701179068941616531",
+  "header": "HIDIND",
+  "communicationType": "SMS",
+  "templateType": "Service Implicit",
+  "category": "E-Commerce",
+  "language": "English",
+  "contentType": "TEXT",
+  "content": "Your HIDI login OTP is {#var#}. Valid for 5 minutes. Do not share this code.",
+  "variables": [{ "type": "OTP", "sample": "123456" }],
+  "sampleContent": "Your HIDI login OTP is 123456. Valid for 5 minutes. Do not share this code.",
+  "dltContentTemplateId": null,
+  "dltStatus": "NOT_SUBMITTED",
+  "msg91TemplateName": "hidi_login_otp",
+  "msg91Content": "Your HIDI login OTP is ##OTP##. Valid for 5 minutes. Do not share this code.",
+  "msg91OtpTemplateId": null,
+  "notes": "DLT assigns the content template ID. Confirm the current approved header and select the matching available category in the portal before submission. Use the exact approved content in MSG91; only the OTP placeholder changes."
+}

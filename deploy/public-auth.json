@@ -1,7 +1,10 @@
 {
   "SUPABASE_URL": "https://cxncbuducljauadcuvnu.supabase.co",
   "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_uqLlQZh0bd4lclBg2tyRtQ_wlSTcAwZ",
-  "CUSTOMER_AUTH_PROVIDER": "firebase",
+  "CUSTOMER_OTP_PROVIDER": "msg91",
+  "CUSTOMER_OTP_FALLBACK_PROVIDER": "firebase",
+  "CUSTOMER_AUTH_PROVIDER": "hidi",
+  "CUSTOMER_OTP_CHANNEL": "sms",
   "FIREBASE_API_KEY": "AIzaSyAl7OF_pLA8WYZQLJy0I1NhHKZL6mk_oEk",
   "FIREBASE_AUTH_DOMAIN": "hidi-dee0f.firebaseapp.com",
   "FIREBASE_PROJECT_ID": "hidi-dee0f",
