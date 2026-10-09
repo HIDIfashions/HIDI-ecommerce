@@ -71,7 +71,6 @@ for app in hidi-api hidi-web; do
   if [[ "$app" == hidi-api ]]; then
     az containerapp update -g "$group" -n "$app" \
       --image "$(target_image "$app")" \
-      --set-env-vars CUSTOMER_OTP_PROVIDER=firebase FIREBASE_PROJECT_ID=hidi-dee0f \
       --only-show-errors -o none
   else
     az containerapp update -g "$group" -n "$app" --image "$(target_image "$app")" --only-show-errors -o none
@@ -93,4 +92,5 @@ $verified || { echo 'New admin marker or protected API check failed'; false; }
 trap - ERR
 rm -rf "$work"
 echo 'Updated existing hidi-api and hidi-web. Validation-domain admin and authentication boundary verified.'
+echo 'Customer OTP provider environment was preserved. Use configure-msg91-auth.mjs or configure-firebase-auth.mjs to intentionally switch providers.'
 echo 'No new Azure resources, database changes, DNS changes, staff accounts, orders or refunds.'

@@ -9,6 +9,7 @@ const CUSTOMER_AUTH_PROVIDER = (
   process.env.NEXT_PUBLIC_HIDI_AUTH_PROVIDER ??
   ""
 ).trim().toLowerCase();
+const CUSTOMER_OTP_CHANNEL = (process.env.NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL ?? "sms").trim().toLowerCase();
 const FIREBASE_CONFIG = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -23,6 +24,13 @@ type StoredSession = {
   refresh_token: string;
   expires_at: number;
   user: { id: string; email?: string | null; phone?: string | null };
+};
+
+type CustomerAuthConfig = {
+  phoneOtp: boolean;
+  channel: "SMS" | "WHATSAPP" | "FIREBASE";
+  provider: "msg91" | "whatsapp" | "firebase";
+  fallbackProvider?: "firebase";
 };
 
 type FirebaseConfirmationResult = {
@@ -63,6 +71,10 @@ declare global {
 
 let pendingFirebaseConfirmation: FirebaseConfirmationResult | null = null;
 let pendingFirebasePhone: string | null = null;
+let runtimeAuthConfig: CustomerAuthConfig | null = null;
+let authConfigRequest: Promise<CustomerAuthConfig> | null = null;
+let pendingOtpProvider: "firebase" | "hidi" | null = null;
+let pendingOtpPhone: string | null = null;
 
 function firebaseConfigured() {
   return Boolean(
@@ -75,11 +87,13 @@ function firebaseConfigured() {
 }
 
 function customerAuthProvider() {
+  if (runtimeAuthConfig) return runtimeAuthConfig.provider === "firebase" ? "firebase" : "hidi";
   if (CUSTOMER_AUTH_PROVIDER) return CUSTOMER_AUTH_PROVIDER;
   return firebaseConfigured() ? "firebase" : "hidi";
 }
 
 function configured() {
+  if (runtimeAuthConfig && !runtimeAuthConfig.phoneOtp) return false;
   return customerAuthProvider() === "firebase" ? firebaseConfigured() : Boolean(API_URL);
 }
 
@@ -95,7 +109,34 @@ export function authConfigured() {
 }
 
 export function authChannelLabel() {
-  return customerAuthProvider() === "firebase" ? "SMS" : "WhatsApp";
+  if (runtimeAuthConfig) return runtimeAuthConfig.channel === "WHATSAPP" ? "WhatsApp" : "SMS";
+  if (customerAuthProvider() === "firebase") return "SMS";
+  return CUSTOMER_OTP_CHANNEL === "whatsapp" ? "WhatsApp" : "SMS";
+}
+
+export async function loadAuthConfig(): Promise<CustomerAuthConfig> {
+  if (authConfigRequest) return authConfigRequest;
+  authConfigRequest = (async () => {
+    const response = await fetch(`${API_URL}/auth/config`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await response.json().catch(() => null);
+    const expectedChannel = data?.provider === "firebase" ? "FIREBASE"
+      : data?.provider === "whatsapp" ? "WHATSAPP"
+      : data?.provider === "msg91" ? "SMS" : null;
+    if (!response.ok || typeof data?.phoneOtp !== "boolean" || !expectedChannel || data.channel !== expectedChannel ||
+        (data.fallbackProvider !== undefined && (data.fallbackProvider !== "firebase" || data.provider !== "msg91"))) {
+      throw new Error("Customer sign-in is temporarily unavailable. Please retry.");
+    }
+    runtimeAuthConfig = data as CustomerAuthConfig;
+    return runtimeAuthConfig;
+  })();
+  try {
+    return await authConfigRequest;
+  } finally {
+    authConfigRequest = null;
+  }
 }
 
 export function normalizeIndianPhone(value: string) {
@@ -200,20 +241,27 @@ function firebaseErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+async function sendFirebasePhoneOtp(normalizedPhone: string) {
+  try {
+    const auth = await firebaseAuth();
+    const verifier = await firebaseRecaptchaVerifier();
+    pendingFirebaseConfirmation = await auth.signInWithPhoneNumber(normalizedPhone, verifier);
+    pendingFirebasePhone = normalizedPhone;
+    pendingOtpProvider = "firebase";
+    pendingOtpPhone = normalizedPhone;
+    runtimeAuthConfig = { phoneOtp: true, channel: "FIREBASE", provider: "firebase" };
+    return normalizedPhone;
+  } catch (error) {
+    throw new Error(firebaseErrorMessage(error, "Unable to send the verification code"));
+  }
+}
+
 export async function sendPhoneOtp(phone: string) {
   if (!API_URL) throw new Error("Customer sign-in is not configured");
   const normalizedPhone = normalizeIndianPhone(phone);
-  if (customerAuthProvider() === "firebase") {
-    try {
-      const auth = await firebaseAuth();
-      const verifier = await firebaseRecaptchaVerifier();
-      pendingFirebaseConfirmation = await auth.signInWithPhoneNumber(normalizedPhone, verifier);
-      pendingFirebasePhone = normalizedPhone;
-      return normalizedPhone;
-    } catch (error) {
-      throw new Error(firebaseErrorMessage(error, "Unable to send the verification code"));
-    }
-  }
+  const config = await loadAuthConfig();
+  if (!config.phoneOtp) throw new Error("Customer sign-in is temporarily unavailable. Please retry.");
+  if (customerAuthProvider() === "firebase") return sendFirebasePhoneOtp(normalizedPhone);
   const response = await fetch(`${API_URL}/auth/otp/request`, {
     method: "POST",
     headers: headers(),
@@ -221,13 +269,29 @@ export async function sendPhoneOtp(phone: string) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data?.message ?? "Unable to send the verification code");
+  if (config.provider === "msg91" && config.fallbackProvider === "firebase" && data?.fallback === true &&
+      data?.clientHandled === true && data?.provider === "firebase" && data?.channel === "FIREBASE" &&
+      data?.phone === normalizedPhone) {
+    return sendFirebasePhoneOtp(normalizedPhone);
+  }
+  if (data?.clientHandled || !["SMS", "WHATSAPP"].includes(data?.channel)) {
+    throw new Error("Sign-in settings changed. Please request a new code.");
+  }
+  runtimeAuthConfig = {
+    phoneOtp: true,
+    channel: data.channel,
+    provider: data.channel === "WHATSAPP" ? "whatsapp" : "msg91",
+  };
+  pendingOtpProvider = "hidi";
+  pendingOtpPhone = normalizedPhone;
   return String(data?.phone ?? normalizedPhone);
 }
 
 export async function verifyPhoneOtp(phone: string, token: string) {
   if (!API_URL) throw new Error("Customer sign-in is not configured");
   const normalizedPhone = normalizeIndianPhone(phone);
-  if (customerAuthProvider() === "firebase") {
+  const provider = pendingOtpPhone === normalizedPhone ? pendingOtpProvider : null;
+  if (provider === "firebase" || (!provider && customerAuthProvider() === "firebase")) {
     if (!pendingFirebaseConfirmation || pendingFirebasePhone !== normalizedPhone) {
       throw new Error("Request a new OTP before verifying this code");
     }
@@ -244,6 +308,8 @@ export async function verifyPhoneOtp(phone: string, token: string) {
       if (!response.ok) throw new Error(data?.message ?? "That code is invalid or has expired");
       pendingFirebaseConfirmation = null;
       pendingFirebasePhone = null;
+      pendingOtpProvider = null;
+      pendingOtpPhone = null;
       await auth.signOut().catch(() => undefined);
       return saveSession(data);
     } catch (error) {
@@ -257,6 +323,8 @@ export async function verifyPhoneOtp(phone: string, token: string) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data?.message ?? "That code is invalid or has expired");
+  pendingOtpProvider = null;
+  pendingOtpPhone = null;
   return saveSession(data);
 }
 

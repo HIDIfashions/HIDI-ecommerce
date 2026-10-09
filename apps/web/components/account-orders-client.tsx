@@ -14,6 +14,7 @@ import {
   authConfigured,
   getAccessToken,
   getStoredSession,
+  loadAuthConfig,
   maskedPhone,
   sendPhoneOtp,
   signOut,
@@ -88,7 +89,8 @@ function localPhoneDigits(value: string) {
 }
 
 export function AccountOrdersClient({ view = "overview" }: { view?: "overview" | "orders" }) {
-  const channelLabel = authChannelLabel();
+  const [channelLabel, setChannelLabel] = useState(authChannelLabel);
+  const [otpConfigured, setOtpConfigured] = useState(authConfigured);
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -97,6 +99,17 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+
+  async function refreshAuthConfig() {
+    try {
+      await loadAuthConfig();
+      setChannelLabel(authChannelLabel());
+      setOtpConfigured(authConfigured());
+      setError("");
+    } catch {
+      setError("Customer sign-in is temporarily unavailable. Please retry.");
+    }
+  }
 
   async function loadAccount() {
     const token = await getAccessToken();
@@ -127,6 +140,7 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
     const stored = getStoredSession();
     setPhone(String(stored?.user?.phone ?? "").replace(/^\+91/, ""));
     loadAccount();
+    refreshAuthConfig();
   }, []);
 
   async function requestOtp(event: FormEvent<HTMLFormElement>) {
@@ -139,9 +153,11 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
     setBusy(true); setError(""); setMessage("");
     try {
       const normalized = await sendPhoneOtp(enteredPhone);
+      const deliveredChannel = authChannelLabel();
+      setChannelLabel(deliveredChannel);
       setPhone(normalized);
       setStep("otp");
-      setMessage(`We sent a 6-digit HIDI sign-in code by ${channelLabel} to ${maskedPhone(normalized)}.`);
+      setMessage(`We sent a 6-digit HIDI sign-in code by ${deliveredChannel} to ${maskedPhone(normalized)}.`);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -179,10 +195,11 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
     setBusy(false);
   }
 
-  if (!authConfigured()) {
+  if (!signedIn && !otpConfigured) {
     return <div className={styles.empty}>
-      <h2>Customer sign-in needs configuration.</h2>
-      <p>Add the HIDI API URL and phone OTP credentials before testing customer sign-in.</p>
+      <h2>Customer sign-in is temporarily unavailable.</h2>
+      <button className="button button-dark" onClick={async () => { setBusy(true); await refreshAuthConfig(); setBusy(false); }} disabled={busy}>Retry</button>
+      {error && <p className="form-error">{error}</p>}
     </div>;
   }
 

@@ -177,19 +177,27 @@ test("requireUser does not log credentials, user data, or failure details", asyn
   for (const log of logs) assert.equal(log.mock.callCount(), 0);
 });
 
-function mockHidiOtpAuth(t: TestContext) {
-  const previous = {
-    HIDI_AUTH_DEV_OTP: process.env.HIDI_AUTH_DEV_OTP,
-    HIDI_AUTH_DEV_OTP_RESPONSE: process.env.HIDI_AUTH_DEV_OTP_RESPONSE,
-    HIDI_AUTH_SECRET: process.env.HIDI_AUTH_SECRET,
-  };
+function mockHidiOtpAuth(t: TestContext, overrides: Record<string, string | undefined> = {}) {
+  const managed = new Set([
+    "HIDI_AUTH_DEV_OTP",
+    "HIDI_AUTH_DEV_OTP_RESPONSE",
+    "HIDI_AUTH_SECRET",
+    ...Object.keys(overrides),
+  ]);
+  const previous = Object.fromEntries(
+    [...managed].map((key) => [key, process.env[key]]),
+  ) as Record<string, string | undefined>;
   process.env.HIDI_AUTH_DEV_OTP = "true";
   process.env.HIDI_AUTH_DEV_OTP_RESPONSE = "true";
   process.env.HIDI_AUTH_SECRET = "test-hidi-auth-secret-with-at-least-32-characters";
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
   t.after(() => {
     for (const [key, value] of Object.entries(previous)) {
-      if (value === undefined) delete process.env[key as keyof typeof previous];
-      else process.env[key as keyof typeof previous] = value;
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
     }
   });
 
@@ -270,7 +278,7 @@ function signFirebaseIdToken(privateKey: any, payload: Record<string, unknown>, 
   return `${header}.${body}.${signer.sign(privateKey).toString("base64url")}`;
 }
 
-test("WhatsApp OTP verification creates and rotates HIDI customer sessions", async (t) => {
+test("SMS OTP verification creates and rotates HIDI customer sessions", async (t) => {
   const service = mockHidiOtpAuth(t);
   const requested = await service.requestPhoneOtp({ phone: "70937 09353" }) as any;
   assert.equal(requested.phone, "+917093709353");
@@ -296,6 +304,202 @@ test("WhatsApp OTP verification creates and rotates HIDI customer sessions", asy
   await assert.rejects(() => service.refresh({ refresh_token: refreshed.refresh_token }), {
     name: "UnauthorizedException",
   });
+});
+
+test("MSG91 SMS OTP uses the configured OTP template", async (t) => {
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  const fetchMock = t.mock.method(globalThis, "fetch", async (url: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(url), init: init ?? {} });
+    return new Response(JSON.stringify({ type: "success", request_id: "msg91-sms-request-1" }), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+  const service = mockHidiOtpAuth(t, {
+    HIDI_AUTH_DEV_OTP: "false",
+    HIDI_AUTH_DEV_OTP_RESPONSE: "false",
+    CUSTOMER_OTP_PROVIDER: "msg91",
+    MSG91_AUTHKEY: "test-msg91-authkey",
+    MSG91_SMS_OTP_TEMPLATE_ID: "test-msg91-template-id",
+  });
+
+  const requested = await service.requestPhoneOtp({ phone: "7093709353" }) as any;
+  assert.equal(requested.phone, "+917093709353");
+  assert.equal(requested.channel, "SMS");
+  assert.equal(requested.devOtp, undefined);
+  assert.equal(fetchMock.mock.callCount(), 1);
+
+  const url = new URL(calls[0].url);
+  assert.equal(`${url.origin}${url.pathname}`, "https://control.msg91.com/api/v5/otp");
+  assert.equal(url.searchParams.get("template_id"), "test-msg91-template-id");
+  assert.equal(url.searchParams.get("mobile"), "917093709353");
+  assert.match(url.searchParams.get("otp") ?? "", /^\d{6}$/);
+  assert.equal(url.searchParams.get("otp_length"), "6");
+  assert.equal(url.searchParams.get("otp_expiry"), "5");
+  assert.equal(calls[0].init.method, "POST");
+  assert.equal(calls[0].init.redirect, "error");
+  assert(calls[0].init.signal instanceof AbortSignal);
+  assert.equal((calls[0].init.headers as Record<string, string>).authkey, "test-msg91-authkey");
+
+  const session = await service.verifyPhoneOtp({
+    phone: "7093709353",
+    otp: url.searchParams.get("otp"),
+  });
+  assert.match(session.access_token, /^hidi_at_/);
+  assert.deepEqual(session.user, { id: "user-1", email: null, phone: "+917093709353" });
+});
+
+for (const failure of ["http", "rejected", "empty", "html", "unknown", "network", "timeout"]) {
+  test(`MSG91 SMS OTP invalidates the challenge after ${failure}`, async (t) => {
+    let sentCode = "";
+    t.mock.method(globalThis, "fetch", async (url: string | URL | Request, init?: RequestInit) => {
+      sentCode = new URL(String(url)).searchParams.get("otp") ?? "";
+      assert(init?.signal instanceof AbortSignal);
+      if (failure === "network") throw new Error(`provider error ${sentCode} private-test-key`);
+      if (failure === "timeout") throw new DOMException("Request timed out", "TimeoutError");
+      if (failure === "html") return new Response("<html>Provider unavailable</html>");
+      if (failure === "empty") return new Response("");
+      return new Response(JSON.stringify({
+        type: failure === "rejected" ? "error" : failure === "unknown" ? "queued" : "success",
+        request_id: "provider-request",
+        message: "private-test-key",
+      }), { status: failure === "http" ? 503 : 200 });
+    });
+    const service = mockHidiOtpAuth(t, {
+      HIDI_AUTH_DEV_OTP: "false", HIDI_AUTH_DEV_OTP_RESPONSE: "false",
+      CUSTOMER_OTP_PROVIDER: "msg91", MSG91_AUTHKEY: "private-test-key",
+      MSG91_SMS_OTP_TEMPLATE_ID: "test-msg91-template-id",
+    });
+    await assert.rejects(service.requestPhoneOtp({ phone: "9000812818" }), {
+      name: "ServiceUnavailableException", message: "Unable to send SMS OTP right now",
+    });
+    assert.match(sentCode, /^\d{6}$/);
+    await assert.rejects(service.verifyPhoneOtp({ phone: "9000812818", otp: sentCode }), {
+      name: "UnauthorizedException",
+    });
+  });
+}
+
+for (const endpoint of [
+  "http://control.msg91.com/api/v5/otp", "https://example.test/api/v5/otp",
+  "https://control.msg91.com@other.test/api/v5/otp", "https://control.msg91.com/api/v5/otp?authkey=unsafe",
+]) {
+  test(`MSG91 SMS OTP rejects unsafe endpoint ${endpoint}`, async (t) => {
+    const fetchMock = t.mock.method(globalThis, "fetch", async () => new Response(""));
+    const service = mockHidiOtpAuth(t, {
+      HIDI_AUTH_DEV_OTP: "false", HIDI_AUTH_DEV_OTP_RESPONSE: "false", CUSTOMER_OTP_PROVIDER: "msg91",
+      MSG91_AUTHKEY: "private-test-key", MSG91_SMS_OTP_TEMPLATE_ID: "test-msg91-template-id",
+      MSG91_SMS_OTP_ENDPOINT: endpoint,
+    });
+    await assert.rejects(service.requestPhoneOtp({ phone: "9000812818" }), {
+      name: "ServiceUnavailableException", message: "SMS OTP endpoint is not configured correctly",
+    });
+    assert.equal(fetchMock.mock.callCount(), 0);
+  });
+}
+
+test("MSG91 SMS accepts the legacy success acknowledgement and preserves pending proof during rollback", async (t) => {
+  let sentCode = "";
+  t.mock.method(globalThis, "fetch", async (url: string | URL | Request) => {
+    sentCode = new URL(String(url)).searchParams.get("otp") ?? "";
+    return new Response(JSON.stringify({ type: "success", message: "3763646c3058373530393938" }));
+  });
+  const service = mockHidiOtpAuth(t, {
+    HIDI_AUTH_DEV_OTP: "false", HIDI_AUTH_DEV_OTP_RESPONSE: "false", CUSTOMER_OTP_PROVIDER: "msg91",
+    MSG91_AUTHKEY: "private-test-key", MSG91_SMS_OTP_TEMPLATE_ID: "test-msg91-template-id",
+  });
+  await service.requestPhoneOtp({ phone: "9000812818" });
+  process.env.CUSTOMER_OTP_PROVIDER = "firebase";
+  const session = await service.verifyPhoneOtp({ phone: "9000812818", otp: sentCode });
+  assert.match(session.access_token, /^hidi_at_/);
+  const refreshed = await service.refresh({ refresh_token: session.refresh_token });
+  await service.logout({ refresh_token: refreshed.refresh_token });
+  await assert.rejects(service.refresh({ refresh_token: refreshed.refresh_token }), { name: "UnauthorizedException" });
+});
+
+function mockMsg91WithFirebaseFallback(t: TestContext, overrides: Record<string, string | undefined> = {}) {
+  return mockHidiOtpAuth(t, {
+    HIDI_AUTH_DEV_OTP: "false", HIDI_AUTH_DEV_OTP_RESPONSE: "false",
+    CUSTOMER_OTP_PROVIDER: "msg91", CUSTOMER_OTP_FALLBACK_PROVIDER: "firebase",
+    MSG91_AUTHKEY: "private-test-key", MSG91_SMS_OTP_TEMPLATE_ID: "test-template",
+    FIREBASE_PROJECT_ID: "hidi-test-project", ...overrides,
+  });
+}
+
+test("MSG91 stays primary when its send succeeds with Firebase fallback enabled", async (t) => {
+  const service = mockMsg91WithFirebaseFallback(t);
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ type: "success", request_id: "test-request" })));
+  assert.deepEqual(service.authConfig(), { phoneOtp: true, channel: "SMS", provider: "msg91", fallbackProvider: "firebase" });
+  const result = await service.requestPhoneOtp({ phone: "9000812818", provider: "firebase" }) as any;
+  assert.equal(result.channel, "SMS");
+  assert.equal(result.fallback, undefined);
+});
+
+test("failed MSG91 send invalidates its code before authorising Firebase fallback", async (t) => {
+  const service = mockMsg91WithFirebaseFallback(t);
+  let code = "";
+  t.mock.method(globalThis, "fetch", async (url: string | URL | Request) => {
+    code = new URL(String(url)).searchParams.get("otp") ?? "";
+    return new Response(JSON.stringify({ type: "error", message: "private provider error" }));
+  });
+  assert.deepEqual(await service.requestPhoneOtp({ phone: "9000812818" }), {
+    phone: "+919000812818", channel: "FIREBASE", provider: "firebase", clientHandled: true, fallback: true,
+  });
+  await assert.rejects(service.verifyPhoneOtp({ phone: "9000812818", otp: code }), { name: "UnauthorizedException" });
+});
+
+test("missing MSG91 credentials use only an explicitly configured Firebase fallback", async (t) => {
+  const service = mockMsg91WithFirebaseFallback(t, { MSG91_AUTHKEY: undefined, MSG91_SMS_OTP_TEMPLATE_ID: undefined });
+  assert.equal(service.authConfig().provider, "msg91");
+  assert.equal(service.authConfig().phoneOtp, true);
+  assert.equal((await service.requestPhoneOtp({ phone: "9000812818" }) as any).fallback, true);
+  process.env.CUSTOMER_OTP_FALLBACK_PROVIDER = "none";
+  assert.equal(service.authConfig().phoneOtp, false);
+  await assert.rejects(service.requestPhoneOtp({ phone: "9000812818" }), { name: "ServiceUnavailableException" });
+});
+
+test("Firebase fallback never bypasses rate limits or failed challenge invalidation", async (t) => {
+  const service = mockMsg91WithFirebaseFallback(t);
+  const prisma = (service as any).prisma;
+  const fetchMock = t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ type: "error" })));
+  t.mock.method(prisma.customerAuthOtp, "count", async () => 5);
+  await assert.rejects(service.requestPhoneOtp({ phone: "9000812818" }), /wait before requesting/);
+  assert.equal(fetchMock.mock.callCount(), 0);
+  t.mock.method(prisma.customerAuthOtp, "count", async () => 0);
+  t.mock.method(prisma.customerAuthOtp, "update", async () => { throw new Error("database unavailable"); });
+  await assert.rejects(service.requestPhoneOtp({ phone: "9000812818" }), {
+    name: "ServiceUnavailableException", message: "Unable to send SMS OTP right now",
+  });
+});
+
+test("SMS OTP rejects wrong codes and reuse while creating a verified customer session", async (t) => {
+  const service = mockHidiOtpAuth(t, { CUSTOMER_OTP_PROVIDER: "msg91" });
+  const requested = await service.requestPhoneOtp({ phone: "9999999999" }) as any;
+  const wrongCode = requested.devOtp === "000000" ? "000001" : "000000";
+  await assert.rejects(service.verifyPhoneOtp({ phone: requested.phone, otp: wrongCode }), { name: "UnauthorizedException" });
+  const session = await service.verifyPhoneOtp({ phone: requested.phone, otp: requested.devOtp });
+  assert.equal((await service.requireUser(`Bearer ${session.access_token}`)).phoneVerified, true);
+  await assert.rejects(service.verifyPhoneOtp({ phone: requested.phone, otp: requested.devOtp }), { name: "UnauthorizedException" });
+});
+
+test("SMS OTP locks after five incorrect verification attempts", async (t) => {
+  const service = mockHidiOtpAuth(t, { CUSTOMER_OTP_PROVIDER: "msg91" });
+  const requested = await service.requestPhoneOtp({ phone: "9999999999" }) as any;
+  const wrongCode = requested.devOtp === "000000" ? "000001" : "000000";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await assert.rejects(service.verifyPhoneOtp({ phone: requested.phone, otp: wrongCode }), { name: "UnauthorizedException" });
+  }
+  await assert.rejects(service.verifyPhoneOtp({ phone: requested.phone, otp: requested.devOtp }), /request a new OTP/);
+});
+
+test("SMS OTP cannot be verified after its five-minute expiry", async (t) => {
+  const service = mockHidiOtpAuth(t, { CUSTOMER_OTP_PROVIDER: "msg91" });
+  const requested = await service.requestPhoneOtp({ phone: "9999999999" }) as any;
+  const prisma = (service as any).prisma;
+  const challenge = await prisma.customerAuthOtp.findFirst({ where: {
+    phone: requested.phone, purpose: "SIGN_IN", expiresAt: { gt: new Date("1999-01-01") },
+  } });
+  challenge.expiresAt = new Date("2000-01-01");
+  await assert.rejects(service.verifyPhoneOtp({ phone: requested.phone, otp: requested.devOtp }), { name: "UnauthorizedException" });
 });
 
 test("Firebase phone verification creates a HIDI customer session", async (t) => {
