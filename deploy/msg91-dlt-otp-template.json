@@ -1,19 +1,33 @@
 {
   "templateName": "HIDI_LOGIN_OTP",
   "principalEntityId": "1701179068941616531",
-  "header": "HIDIND",
+  "header": "HIDIIN",
   "communicationType": "SMS",
   "templateType": "Service Implicit",
-  "category": "E-Commerce",
+  "category": "Consumer goods and automobiles",
   "language": "English",
   "contentType": "TEXT",
   "content": "Your HIDI login OTP is {#var#}. Valid for 5 minutes. Do not share this code.",
   "variables": [{ "type": "OTP", "sample": "123456" }],
   "sampleContent": "Your HIDI login OTP is 123456. Valid for 5 minutes. Do not share this code.",
-  "dltContentTemplateId": null,
-  "dltStatus": "NOT_SUBMITTED",
+  "dltContentTemplateId": "1777179154039835718",
+  "dltReferenceNumber": "11-43PAMV0SWAHH",
+  "dltSubmittedAt": "2026-10-09T15:36:00+05:30",
+  "dltStatus": "Work In Progress",
+  "peTmChain": {
+    "name": "HIDI-MSG91",
+    "status": "Active",
+    "referenceNumber": "11-2V26MUP2YJVA",
+    "tmDeliveryId": "1302157225275643280",
+    "tmDeliveryName": "WALKOVER WEB SOLUTIONS PRIVATE LIMITED",
+    "chainId": "1715679744263757600",
+    "lastUpdatedAt": "2026-10-01T10:54:00+05:30"
+  },
+  "msg91SenderId": "HIDIIN",
+  "msg91SenderStatus": "Saved and selectable",
   "msg91TemplateName": "hidi_login_otp",
   "msg91Content": "Your HIDI login OTP is ##OTP##. Valid for 5 minutes. Do not share this code.",
+  "msg91OtpTemplateStatus": "Draft filled; not created",
   "msg91OtpTemplateId": null,
-  "notes": "DLT assigns the content template ID. Confirm the current approved header and select the matching available category in the portal before submission. Use the exact approved content in MSG91; only the OTP placeholder changes."
+  "notes": "Submission was verified in Smartping under active header HIDIIN. The registered HIDI-MSG91 PE-TM chain is Active. MSG91 sender HIDIIN is saved with the recorded PE ID and available in Select Sender ID. The SendOTP draft contains the recorded name, sender, DLT ID and exact content, but Create was not clicked because MSG91 requires an approved DLT ID and the template remains Work In Progress. After DLT approval, create the SendOTP template and record its assigned ID. The MSG91 OTP template ID remains unknown and live SMS activation has not occurred."
 }
