@@ -37,6 +37,27 @@ import {pathToFileURL} from 'node:url';
 import {writeFile} from 'node:fs/promises';
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
 const base='http://127.0.0.1:3192';
+const delay=ms=>new Promise(done=>setTimeout(done,ms));
+const fixtureNetworkStates = new WeakMap();
+function trackFixtureNetwork(page) {
+  let state = fixtureNetworkStates.get(page);
+  if (state) return state;
+  state = { pending: new Set(), lastActivity: Date.now() };
+  fixtureNetworkStates.set(page, state);
+  page.on('request', request => { state.pending.add(request); state.lastActivity = Date.now(); });
+  const finished = request => { state.pending.delete(request); state.lastActivity = Date.now(); };
+  page.on('requestfinished', finished);
+  page.on('requestfailed', finished);
+  return state;
+}
+async function settleFixtureNetwork(page) {
+  const state = trackFixtureNetwork(page), started = Date.now();
+  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  while (state.pending.size || Date.now() - Math.max(started, state.lastActivity) < 500) {
+    assert(Date.now() - started < 15000, 'Fixture network did not settle: ' + [...state.pending].map(request => request.url()).join(', '));
+    await delay(50);
+  }
+}
 const admin=await fetch(base+'/api/admin/dashboard/overview');
 assert([401,403].includes(admin.status),'Retained admin authentication boundary is missing');
 const report=[];
@@ -46,11 +67,14 @@ for(const engine of ['chromium','firefox','webkit']) {
   try {
     await context.route('**/*',route=>new URL(route.request().url()).origin===base && ['GET','HEAD'].includes(route.request().method()) ? route.continue() : route.abort());
     const page=await context.newPage(),errors=[];
+    trackFixtureNetwork(page);
     page.on('pageerror',error=>errors.push(error.message));
     const home=await page.goto(base+'/');assert(home?.ok(),'Retained homepage runtime did not start');
+    await settleFixtureNetwork(page);
     const policy=await page.goto(base+'/account/policy');assert(policy?.ok(),'Combined runtime does not forward the new account policy route');
     await page.getByRole('heading',{name:'Account terms & privacy notice',exact:true}).waitFor();
     assert.equal(await page.locator('#terms').count(),1);assert.equal(await page.locator('#privacy').count(),1);
+    await settleFixtureNetwork(page);
     assert.deepEqual(errors,[],'Policy or retained homepage has browser runtime errors');
     await page.screenshot({path:'evidence/'+engine+'-candidate-account-policy.png',fullPage:true});
     report.push({engine,passed:true,retainedHomepage:true,accountPolicy:true,adminProtected:true,providerRequestsSent:0});

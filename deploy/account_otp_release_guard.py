@@ -21,6 +21,7 @@ RELEASE_FILES = APPLICATION_FILES | {
     "deploy/update-account-otp-images.sh",
     "tests/account-otp-release.test.py",
     "tests/admin-workspace.browser.mjs",
+    "tests/editorial-storefront.browser.mjs",
     "tests/auth-otp-frontend.test.cjs",
     "tests/auth-otp-resend.browser.mjs",
     "tests/auth-verification.test.ts",

@@ -77,6 +77,33 @@ await new Promise((done,reject)=>{upstream.once('error',reject);upstream.listen(
 server=spawn(process.execPath,[resolve('apps/web/node_modules/next/dist/bin/next'),'start','-H','127.0.0.1','-p',String(port)],{cwd:resolve('apps/web'),env:{...process.env,NODE_ENV:'production',API_URL:`http://127.0.0.1:${apiPort}/v1`,INTERNAL_API_URL:`http://127.0.0.1:${apiPort}/v1`,HIDI_HERO_VIDEO_URL:'/fixture-unavailable-campaign.mp4'},stdio:['ignore','pipe','pipe']});
 server.stdout.on('data',b=>{serverLog+=b;});server.stderr.on('data',b=>{serverLog+=b;});
 async function until(check,label,timeout=8000){const start=Date.now();while(!(await check())){if(Date.now()-start>timeout)throw new Error(`Timed out: ${label}`);await delay(50);}}
+// A cached networkidle lifecycle does not cover product links newly exposed by
+// scrolling to the wishlist button. Require current requests to finish and a
+// fresh quiet interval before forcing a reload; all page errors remain fatal.
+const fixtureNetworkStates = new WeakMap();
+function trackFixtureNetwork(page) {
+  let state = fixtureNetworkStates.get(page);
+  if (state) return state;
+  state = { pending: new Set(), lastActivity: Date.now() };
+  fixtureNetworkStates.set(page, state);
+  page.on('request', request => { state.pending.add(request); state.lastActivity = Date.now(); });
+  const finished = request => { state.pending.delete(request); state.lastActivity = Date.now(); };
+  page.on('requestfinished', finished);
+  page.on('requestfailed', finished);
+  return state;
+}
+async function settleFixtureNetwork(page) {
+  const state = trackFixtureNetwork(page), started = Date.now();
+  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  while (state.pending.size || Date.now() - Math.max(started, state.lastActivity) < 500) {
+    assert(Date.now() - started < 15000, 'Fixture network did not settle: ' + [...state.pending].map(request => request.url()).join(', '));
+    await delay(50);
+  }
+}
+async function settledReload(page) {
+  await settleFixtureNetwork(page);
+  return page.reload({ waitUntil: 'networkidle', timeout: 30000 });
+}
 async function fontAudit(page,engine,label){
   await page.evaluate(()=>document.fonts.ready);
   const values=await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(el=>{const style=getComputedStyle(el),box=el.getBoundingClientRect();return !el.closest('[aria-hidden="true"],.sr-only,.cart-status,script,style')&&style.display!=='none'&&style.visibility!=='hidden'&&box.width>0&&box.height>0&&[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());}).map(el=>{const style=getComputedStyle(el);return{section:el.closest('[data-section]')?.getAttribute('data-section')||(el.closest('.site-header')?'header':el.closest('.footer')?'footer':el.closest('[role="dialog"],dialog')?'dialog':'global'),tag:el.tagName,text:el.textContent.trim().replace(/\s+/g,' ').slice(0,140),family:style.fontFamily,size:style.fontSize,weight:style.fontWeight,lineHeight:style.lineHeight,spacing:style.letterSpacing,color:style.color};}));
@@ -90,7 +117,7 @@ async function scenario(browser,engine,id,title,work,options={}){
   assert(typeof startPath==='string'&&startPath.startsWith('/')&&!startPath.startsWith('//'),'Only isolated same-origin entry routes are allowed');
   const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce',...contextOptions});
   await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
-  const page=await context.newPage();page.setDefaultTimeout(8000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  const page=await context.newPage();trackFixtureNetwork(page);page.setDefaultTimeout(8000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
   cartMode='ok';catalogueMode='ok';const start=Date.now();
   try{
     await page.goto(base+startPath,{waitUntil:'domcontentloaded'});await page.locator('#main-content').waitFor();
@@ -231,7 +258,7 @@ try{
     await scenario(browser,engine,'WISH-01','Wishlist toggles and survives a settled full reload without changing cart',async page=>{
       const before=writes.length;await card(page).getByRole('button',{name:/Add to wishlist/}).click();await card(page).getByRole('button',{name:/Remove from wishlist/}).waitFor();
       // Settle Next prefetch before unloading. Do not suppress WebKit page errors.
-      await page.waitForLoadState('networkidle');await page.reload({waitUntil:'networkidle',timeout:30000});await card(page).getByRole('button',{name:/Remove from wishlist/}).waitFor();await card(page).getByRole('button',{name:/Remove from wishlist/}).click();await card(page).getByRole('button',{name:/Add to wishlist/}).waitFor();assert.equal(writes.length,before);
+      await settledReload(page);await card(page).getByRole('button',{name:/Remove from wishlist/}).waitFor();await card(page).getByRole('button',{name:/Remove from wishlist/}).click();await card(page).getByRole('button',{name:/Add to wishlist/}).waitFor();assert.equal(writes.length,before);
     });
     await scenario(browser,engine,'PRIV-01','Compact privileges preserve offer destinations and terms',async page=>{
       const details=page.locator('[data-section="privileges"] details');assert.equal(await details.getAttribute('open'),null);await details.locator('summary').click();assert.match(await details.innerText(),/₹3,999\+/);assert.match(await details.innerText(),/2 g silver/);assert.equal(await details.getByRole('link').count(),3);await fontAudit(page,engine,'privileges-expanded');await details.locator('summary').click();assert.equal(await details.getAttribute('open'),null);

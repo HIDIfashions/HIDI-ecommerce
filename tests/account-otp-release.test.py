@@ -74,10 +74,11 @@ def mock(tool, args):
 class SourceAndSettingsGuards(unittest.TestCase):
     def test_only_exact_reviewed_application_paths_and_release_files_pass(self):
         guard.validate_paths(guard.APPLICATION_FILES, guard.RELEASE_FILES)
+        guard.validate_paths(guard.APPLICATION_FILES, {"tests/editorial-storefront.browser.mjs"})
         for unexpected in ["apps/api/prisma/schema.prisma", "packages/shared/schema.ts", "apps/web/package.json", "package.json", "pnpm-lock.yaml", "apps/web/next.config.mjs", "apps/api/src/wallet/wallet-transaction.ts"]:
             with self.subTest(path=unexpected), self.assertRaises(AssertionError):
                 guard.validate_paths(guard.APPLICATION_FILES | {unexpected}, guard.RELEASE_FILES | {unexpected})
-        for unexpected in ["deploy/public-auth.json", ".github/workflows/landscape-hover-release.yml", "tests/admin-rbac.test.ts"]:
+        for unexpected in ["deploy/public-auth.json", ".github/workflows/landscape-hover-release.yml", "tests/admin-rbac.test.ts", "tests/editorial-polish.browser.mjs", "tests/storefront-quality.browser.mjs"]:
             with self.subTest(path=unexpected), self.assertRaises(AssertionError):
                 guard.validate_paths(guard.APPLICATION_FILES, guard.RELEASE_FILES | {unexpected})
 
@@ -288,6 +289,71 @@ assert(now>=850,'The drawer transition waits for completion and a fresh quiet in
         transition = source[start:end]
         self.assertRegex(transition, r"Admin navigation' \}\)\.waitFor\(\);\s+await settleFixtureNetwork\(mobile.page\);\s+await mobile.page.keyboard.press\('Escape'\)")
         self.assertRegex(transition, r"waitFor\(\{ state: 'hidden' \}\);\s+await settleFixtureNetwork\(mobile.page\)")
+
+
+class EditorialAndCandidatePrefetch(unittest.TestCase):
+    def helpers(self, path):
+        source = (ROOT / path).read_text()
+        helpers = []
+        names = ["trackFixtureNetwork", "settleFixtureNetwork"]
+        if path.startswith("tests/"): names.append("settledReload")
+        for name in names:
+            match = re.search(r"(?:async )?function " + name + r"\([^\n]+\) \{\n.*?^\}", source, re.S | re.M)
+            self.assertIsNotNone(match)
+            helpers.append(match.group(0))
+        return source, helpers
+
+    def test_cached_lifecycle_waits_for_late_requests_before_wishlist_reload_or_candidate_navigation(self):
+        for path in ["tests/editorial-storefront.browser.mjs", "deploy/smoke-account-otp-candidates.sh"]:
+            with self.subTest(fixture=path):
+                source, helpers = self.helpers(path)
+                script = "const fixtureNetworkStates=new WeakMap();\n" + "\n".join(helpers) + "\n" + """
+import assert from 'node:assert/strict';
+let now=0,started=false,finished=false,navigated=false;Date.now=()=>now;
+const listeners=new Map();
+const request={url:()=> 'http://127.0.0.1:3107/products/fixture?_rsc=fixture'};
+const page={on:(name,callback)=>listeners.set(name,callback),waitForLoadState:async()=>{},
+  reload:async options=>{assert.equal(options.waitUntil,'networkidle');assert.equal(options.timeout,30000);assert(started&&finished&&now>=850);navigated=true;}};
+const delay=async milliseconds=>{
+  now+=milliseconds;
+  if(now>=100&&!started){started=true;listeners.get('request')(request);}
+  if(now>=350&&!finished){finished=true;listeners.get('requestfinished')(request);}
+};
+"""
+                if path.startswith("tests/"):
+                    script += "await settledReload(page);assert(navigated);\n"
+                else:
+                    script += "await settleFixtureNetwork(page);assert(started&&finished&&now>=850);\n"
+                result = subprocess.run(["node", "--input-type=module"], input=script, text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                if path.startswith("tests/"):
+                    scenario = source[source.index("async function scenario("):source.index("const card=page=>")]
+                    self.assertLess(scenario.index("trackFixtureNetwork(page)"), scenario.index("await page.goto("))
+                    wish = source[source.index("'WISH-01'"):source.index("'PRIV-01'")]
+                    self.assertIn("await settledReload(page)", wish)
+                    self.assertNotIn("page.reload(", wish)
+                    self.assertIn("assert.deepEqual(errors,[],'Unexpected browser exceptions')", source)
+                else:
+                    home, policy = source.index("const home=await page.goto("), source.index("const policy=await page.goto(")
+                    self.assertLess(source.index("trackFixtureNetwork(page);", source.index("const page=await context.newPage()")), home)
+                    self.assertIn("await settleFixtureNetwork(page);", source[home:policy])
+                    self.assertIn("await settleFixtureNetwork(page);", source[policy:source.index("assert.deepEqual(errors,[]")])
+
+    def test_pending_requests_time_out_instead_of_hiding_browser_failures(self):
+        for path in ["tests/editorial-storefront.browser.mjs", "deploy/smoke-account-otp-candidates.sh"]:
+            with self.subTest(fixture=path):
+                _, helpers = self.helpers(path)
+                script = "const fixtureNetworkStates=new WeakMap();\n" + "\n".join(helpers) + "\n" + """
+import assert from 'node:assert/strict';
+let now=0;Date.now=()=>now;const delay=async milliseconds=>{now+=milliseconds;};
+const listeners=new Map(),request={url:()=> 'http://127.0.0.1:3107/products/never-finished?_rsc=fixture'};
+const page={on:(name,callback)=>listeners.set(name,callback),waitForLoadState:async()=>{}};
+trackFixtureNetwork(page);listeners.get('request')(request);
+await assert.rejects(settleFixtureNetwork(page),/Fixture network did not settle/);
+assert(now>=15000&&now<15100,'Network quiescence must remain bounded');
+"""
+                result = subprocess.run(["node", "--input-type=module"], input=script, text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
 
 
 class AccountRollout(unittest.TestCase):
