@@ -175,7 +175,28 @@ jobs:
           const sha=b=>createHash('sha256').update(b).digest('hex');
           const before=process.argv.includes('--before');
           const report=[];
-          for(const base of ['https://thidigk.thehidi.com','https://thehidi.com']) {
+          const baseline=before?[]:JSON.parse(await readFile(directory+'/live-before.json','utf8'));
+          const bases=['https://thidigk.thehidi.com'];
+          // The working storefront is mandatory. An already-unavailable secondary
+          // hostname is reported separately and never falsely certified healthy.
+          const secondary='https://thehidi.com';
+          let secondaryState;
+          try {
+            const r=await fetch(secondary+'/',{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(30000)});
+            secondaryState={base:secondary,probe:'secondary-home',status:r.status,ok:r.ok,finalUrl:r.url,server:r.headers.get('server')};
+            await r.body?.cancel();
+          } catch(error) {
+            secondaryState={base:secondary,probe:'secondary-home',ok:false,error:error.cause?.code||error.name};
+          }
+          report.push(secondaryState); console.log(JSON.stringify(secondaryState));
+          const oldSecondary=baseline.find(item=>item.probe==='secondary-home');
+          if(!before && oldSecondary?.ok) assert(secondaryState.ok,'Previously reachable secondary homepage regressed');
+          if(secondaryState.ok) bases.push(secondary);
+          else console.warn('Secondary hostname could not be validated; no DNS, routing or certificate changes are part of this release.');
+          await mkdir(directory,{recursive:true});
+          const save=()=>writeFile(directory+(before?'/live-before.json':'/live-after.json'),JSON.stringify(report,null,2));
+          await save();
+          for(const base of bases) {
             const home=await fetch(base+'/',{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(30000)});
             assert(home.ok, 'Homepage unavailable: '+base); const html=await home.text();
             if(!before) {
@@ -189,21 +210,26 @@ jobs:
               const r=await fetch(base+path,{signal:AbortSignal.timeout(30000)});
               assert([200,401,403].includes(r.status), base+path+' returned '+r.status);
               report.push({base,path,status:r.status});
+              if(path==='/health') {assert.equal(r.status,200); const health=await r.json(); assert.equal(health.status,'ok');}
+              else await r.body?.cancel();
             }
             for(const path of ['/api/admin/session','/api/hidi/packing-plan?order=HIDI-READONLY-NOT-AN-ORDER']) {
               const r=await fetch(base+path,{redirect:'manual',signal:AbortSignal.timeout(30000)});
               assert([401,403].includes(r.status),'Admin API authentication boundary changed: '+path);
-              report.push({base,path,status:r.status});
+              report.push({base,path,status:r.status}); await r.body?.cancel();
             }
             const configResponse=await fetch(base+'/api/hidi/hero-config',{signal:AbortSignal.timeout(30000)});
             assert(configResponse.ok); const config=await configResponse.json();
             assert.equal(config.active,true,'The existing uploaded hero must remain selected');
-            report.push({base,selectedType:config.type,selectedUrl:config.url});
+            const selection={base,selectedType:config.type,selectedUrl:config.url};
+            const previous=baseline.find(item=>item.base===base && item.selectedUrl);
+            if(previous) assert.deepEqual(selection,previous,'Existing uploaded media selection must remain unchanged');
+            report.push(selection); await save();
           }
           if(!before) {
             const browser=await pw.chromium.launch({channel:'chrome',headless:true});
             try {
-              for(const base of ['https://thidigk.thehidi.com','https://thehidi.com']) for(const width of [390,1440]) {
+              for(const base of bases) for(const width of [390,1440]) {
                 const context=await browser.newContext({viewport:{width,height:844},hasTouch:width<700});
                 const page=await context.newPage(); page.setDefaultTimeout(30000);
                 const oldRequests=[];
@@ -220,16 +246,18 @@ jobs:
                     assert.equal(await page.evaluate(()=>window.__oldHeroSeen),false);
                     assert.deepEqual(oldRequests,[]);
                     const state=await page.locator('.hero-live-media').evaluate(el=>({type:el.tagName,src:el.currentSrc||el.src,width:el.videoWidth||el.naturalWidth,ready:el.readyState}));
-                    assert(state.width>0); report.push({base,width,visit,passed:true,oldMediaRequests:0,media:state});
+                    assert(state.width>0);
+                    const expected=report.find(item=>item.base===base && item.selectedUrl);
+                    assert.equal(state.src,new URL(expected.selectedUrl,base).href);
+                    report.push({base,width,visit,passed:true,oldMediaRequests:0,media:state}); await save();
                   }
                   await page.screenshot({path:directory+'/live-'+new URL(base).hostname+'-'+width+'.png',timeout:20000});
                 } finally {await context.close();}
               }
             } finally {await browser.close();}
           }
-          await mkdir(directory,{recursive:true});
-          await writeFile(directory+(before?'/live-before.json':'/live-after.json'),JSON.stringify(report,null,2));
-          console.log(before?'PASS: current storefront and protected admin routes recorded':'PASS: new live hero, fresh/reloaded mobile/desktop sessions, commerce and admin boundaries');
+          await save();
+          console.log(before?'PASS: active storefront and protected admin routes recorded':'PASS: new live hero, fresh/reloaded mobile/desktop sessions, commerce and admin boundaries');
           JS
           node --check "$RUNNER_TEMP/hero-live.mjs"
           node "$RUNNER_TEMP/hero-live.mjs" --before
