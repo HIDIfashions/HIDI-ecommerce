@@ -73,8 +73,8 @@ export default function App() {
           <Navbar />
           <main id="main" tabIndex={-1}>
             <VideoHero />
-            <MeetHidi />
             <RangeCarousel />
+            <MeetHidi />
             <HidiEdit />
             <BrandPromises />
           </main>

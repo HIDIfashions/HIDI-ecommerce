@@ -120,8 +120,8 @@ for(const engine of ['chromium','firefox','webkit']) {
         await page.getByRole('button',{name:'Show Ananya photo 1',exact:true}).click();
         await page.locator('.site-header a').first().focus();await page.mouse.move(0,0);await delay(3400);
         assert.equal(await page.locator('.meet-cinematic__model').getAttribute('data-media-index'),'0','Manual browsing pauses automatic rotation');
-        const geometry=await page.evaluate(()=>{const hero=document.querySelector('.hero').getBoundingClientRect(),heading=document.querySelector('.ananya-section-heading').getBoundingClientRect(),canvas=document.querySelector('.meet-cinematic').getBoundingClientRect();return {heroBottom:hero.bottom,headingTop:heading.top,headingBottom:heading.bottom,photoTop:canvas.top,width:document.documentElement.scrollWidth};});
-        assert(geometry.headingTop>=geometry.heroBottom-1&&geometry.headingBottom<=geometry.photoTop+1);
+        const geometry=await page.evaluate(()=>{const range=document.querySelector('#our-range').getBoundingClientRect(),heading=document.querySelector('.ananya-section-heading').getBoundingClientRect(),canvas=document.querySelector('.meet-cinematic').getBoundingClientRect();return {rangeBottom:range.bottom,headingTop:heading.top,headingBottom:heading.bottom,photoTop:canvas.top,width:document.documentElement.scrollWidth};});
+        assert(geometry.headingTop>=geometry.rangeBottom-1&&geometry.headingBottom<=geometry.photoTop+1);
         assert(geometry.width<=width+1);assert.equal(await page.locator('.meet-cinematic__scroll,.meet-cinematic__count,.meet-cinematic__label,.meet-cinematic__ghost').count(),0);
         assert.equal(await page.locator('.meet-cinematic__model').count(),1,'One full-page photo at a time');
         if(width===1440)await page.screenshot({path:resolve(output,engine+'-photo-carousel.png'),animations:'disabled'});

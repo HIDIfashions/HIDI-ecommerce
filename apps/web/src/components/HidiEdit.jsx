@@ -12,17 +12,17 @@ export default function HidiEdit() {
   );
 
   return (
-    <section className="edit-section edit-section--campaign" id="hidi-edit" aria-labelledby="edit-title">
+    <section className="edit-section edit-section--campaign" id="hidi-edit" aria-labelledby="edit-title" aria-busy={landingMedia.status === 'loading'} data-landing-config-status={landingMedia.status}>
       <div className="edit-campaign">
         <h2 id="edit-title" className="sr-only">Shop HIDI collections</h2>
-        <img
+        {banner.src ? <img
           {...banner}
           alt={banner.alt}
           width="5460"
           height="2048"
           loading="lazy"
           decoding="async"
-        />
+        /> : <div aria-hidden="true" style={{ aspectRatio: '5460 / 2048' }} />}
         <a className="button button--burgundy edit-campaign__button" href="/collections/all">
           Shop now <Icon name="arrow" />
         </a>

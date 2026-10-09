@@ -761,7 +761,11 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
 
       try {
         value = publicConfig(await storageGetJson(CURRENT_KEY));
-      } catch {}
+      } catch {
+        response.setHeader("Retry-After", "1");
+        sendJson(response, 503, { message: "Media is temporarily unavailable" });
+        return true;
+      }
 
       if (request.method === "HEAD") {
         response.writeHead(200, {
@@ -785,7 +789,11 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
       let value = publicLandingConfig(null);
       try {
         value = publicLandingConfig(await storageGetJson(LANDING_CURRENT_KEY));
-      } catch {}
+      } catch {
+        response.setHeader("Retry-After", "1");
+        sendJson(response, 503, { message: "Media is temporarily unavailable" });
+        return true;
+      }
 
       if (request.method === "HEAD") {
         response.writeHead(200, {

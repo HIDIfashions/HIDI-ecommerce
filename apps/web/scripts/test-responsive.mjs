@@ -21,8 +21,14 @@ try {
         const context = await browser.newContext({ viewport: { width, height: 844 }, hasTouch: width < 800, reducedMotion: 'reduce' });
         const page = await context.newPage();
         const errors = []; page.on('pageerror', error => errors.push(error.message));
-        await context.route('**/*', route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
-        await page.goto(base); await page.locator('.meet-cinematic').waitFor();
+        await context.route('**/*', route => {
+          const url=new URL(route.request().url());
+          if(url.origin!==base) return route.abort();
+          if(url.pathname==='/api/hidi/landing-media-config') return route.fulfill({contentType:'application/json',body:JSON.stringify({version:1,slots:{},ananya:null})});
+          if(url.pathname==='/api/hidi/hero-config') return route.fulfill({contentType:'application/json',body:JSON.stringify({version:1,active:false,source:'bundled'})});
+          return route.continue();
+        });
+        await page.goto(base); await page.locator('.meet-cinematic__model').waitFor();
         const measure = await page.evaluate(() => { const section = document.querySelector('.meet-section--cinematic'); return { height: section.offsetHeight, viewport: innerHeight, position: getComputedStyle(section.querySelector('.container')).position, scrollWidth: document.documentElement.scrollWidth, width: innerWidth }; });
         assert(measure.scrollWidth <= width + 1, `No horizontal overflow at ${width}`);
         assert.equal(measure.position, 'relative'); assert(measure.height <= measure.viewport + 120, 'Photo and heading have no pinned slideshow runway');
@@ -54,7 +60,13 @@ try {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
       const page = await context.newPage();
       const errors=[];page.on('pageerror',error=>errors.push(error.message));
-      await context.route('**/*', route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
+      await context.route('**/*', route => {
+          const url=new URL(route.request().url());
+          if(url.origin!==base) return route.abort();
+          if(url.pathname==='/api/hidi/landing-media-config') return route.fulfill({contentType:'application/json',body:JSON.stringify({version:1,slots:{},ananya:null})});
+          if(url.pathname==='/api/hidi/hero-config') return route.fulfill({contentType:'application/json',body:JSON.stringify({version:1,active:false,source:'bundled'})});
+          return route.continue();
+        });
       let mode='server', requests=0;
       await context.route('**/api/store/marketing/newsletter',async route=>{requests++;assert.equal(route.request().method(),'POST');assert.deepEqual(route.request().postDataJSON(),{email:'fixture@example.invalid'});await delay(150);await route.fulfill({status:mode==='server'?503:200,contentType:'application/json',body:JSON.stringify(mode==='success'?{ok:true}:mode==='malformed'?{accepted:true}:{message:'Fixture newsletter unavailable'})});});
       await page.goto(base);

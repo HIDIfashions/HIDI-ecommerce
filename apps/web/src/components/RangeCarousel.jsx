@@ -37,7 +37,8 @@ export default function RangeCarousel() {
 
   useEffect(() => { setPaused(mobile || reduced); }, [mobile, reduced]);
   useEffect(() => {
-    if (!visible) return undefined;
+    setReady(false);
+    if (!visible || landingMedia.status !== 'ready') return undefined;
     let cancelled = false;
     // Decode each photograph before autoplay starts; the first turn never waits
     // for an image fetch or decode. The DOM contains only five real cards.
@@ -51,7 +52,7 @@ export default function RangeCarousel() {
       image.src = item.imageProps.src;
     }))).then(() => { if (!cancelled) setReady(true); });
     return () => { cancelled = true; };
-  }, [resolvedCollections, visible]);
+  }, [resolvedCollections, visible, landingMedia.status]);
 
   useEffect(() => {
     if (!ready || paused || reduced || hovered || focused || dragging || moving || !visible || !documentVisible || dialogOpen) return undefined;
@@ -87,7 +88,7 @@ export default function RangeCarousel() {
   };
 
   return (
-    <section ref={section} className="range-section range-section--spotlight" id="our-range" aria-labelledby="range-title">
+    <section ref={section} className="range-section range-section--spotlight" id="our-range" aria-labelledby="range-title" aria-busy={landingMedia.status === 'loading'} data-landing-config-status={landingMedia.status}>
       <Reveal className="section-heading container">
         <p className="eyebrow">A WARDROBE FOR EVERY YOU</p>
         <h2 id="range-title">Explore our <em>range.</em></h2>
@@ -112,7 +113,7 @@ export default function RangeCarousel() {
                   <div className="hidi-collection-photo"
                     onMouseEnter={() => { if (window.matchMedia('(hover: hover)').matches) setHoveredCard(index); }}
                     onMouseLeave={() => setHoveredCard(null)}>
-                    <img {...item.imageProps} alt={item.imageProps.alt || item.alt} width="355" height="593" draggable={false} decoding="async" loading="eager" />
+                    {item.imageProps.src && <img {...item.imageProps} alt={item.imageProps.alt || item.alt} width="355" height="593" draggable={false} decoding="async" loading="eager" />}
                   </div>
                   <div className="hidi-collection-caption">
                     <h3>{item.name}</h3>

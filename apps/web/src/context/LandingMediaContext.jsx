@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { asset, safeWebUrl } from '../config.js';
 
-const LandingMediaContext = createContext({});
+const LandingMediaContext = createContext({ status: 'loading' });
 
 function cleanPosition(value) {
   return typeof value === 'string' && /^\d{1,3}%\s+\d{1,3}%$/.test(value.trim())
@@ -14,9 +14,10 @@ function cleanFitMode(value) {
 }
 
 function cleanSlot(value) {
-  if (!value?.active || value.type !== 'image') return null;
+  if (value?.active === false) return null;
+  if (value?.active !== true || value.type !== 'image') throw new Error('Invalid landing media');
   const url = safeWebUrl(value.url);
-  if (!url) return null;
+  if (!url) throw new Error('Invalid landing media URL');
   return {
     active: true,
     type: 'image',
@@ -29,31 +30,49 @@ function cleanSlot(value) {
 }
 
 export function LandingMediaProvider({ children }) {
-  const [slots, setSlots] = useState({});
+  const [slots, setSlots] = useState({ status: 'loading' });
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetch('/api/hidi/landing-media-config', { cache: 'no-store', signal: controller.signal })
-      .then((response) => response.ok ? response.json() : null)
-      .then((value) => {
-        const next = {};
-        if (value?.slots && typeof value.slots === 'object') {
-          for (const [id, slot] of Object.entries(value.slots)) {
-            const clean = cleanSlot(slot);
-            if (clean) next[id] = clean;
-          }
+    let disposed = false, controller, timeout, retryTimer, attempts = 0;
+    const loadSelection = async () => {
+      attempts += 1;
+      controller = new AbortController();
+      timeout = window.setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch('/api/hidi/landing-media-config', { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('Landing media unavailable');
+        const value = await response.json();
+        if (!value?.slots || typeof value.slots !== 'object' || Array.isArray(value.slots)) throw new Error('Invalid landing configuration');
+        const next = { status: 'ready' };
+        for (const [id, slot] of Object.entries(value.slots)) {
+          const clean = cleanSlot(slot);
+          if (clean) next[id] = clean;
         }
-        if (value?.ananya) {
-          next.ananya = { active: value.ananya.active === true, autoPlay: value.ananya.autoPlay === true,
-            intervalSeconds: Math.max(3, Math.min(30, Number(value.ananya.intervalSeconds) || 6)),
-            items: (Array.isArray(value.ananya.items) ? value.ananya.items : []).map(item => cleanSlot({ ...item, active: true })).filter(Boolean).slice(0, 20) };
+        if (value.ananya != null) {
+          const list = value.ananya;
+          if (list.active !== true && list.active !== false) throw new Error('Invalid Ananya media');
+          const items = list.active ? (Array.isArray(list.items) ? list.items : []).map(item => cleanSlot({ ...item, active: true })) : [];
+          if (list.active && (!items.length || items.length > 20)) throw new Error('Invalid Ananya media list');
+          next.ananya = { active: list.active, autoPlay: list.autoPlay === true,
+            intervalSeconds: Math.max(3, Math.min(30, Number(list.intervalSeconds) || 6)), items };
         }
-        setSlots(next);
-      })
-      .catch((error) => {
-        if (error?.name !== 'AbortError') setSlots({});
-      });
-    return () => controller.abort();
+        if (!disposed) setSlots(next);
+      } catch {
+        if (disposed) return;
+        // A failed request is never permission to show an earlier campaign.
+        if (attempts < 3) retryTimer = window.setTimeout(loadSelection, attempts * 500);
+        else setSlots({ status: 'error' });
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    };
+    void loadSelection();
+    return () => {
+      disposed = true;
+      window.clearTimeout(timeout);
+      window.clearTimeout(retryTimer);
+      controller?.abort();
+    };
   }, []);
 
   const value = useMemo(() => slots, [slots]);
@@ -65,6 +84,7 @@ export function useLandingMedia() {
 }
 
 export function landingImageProps(slots, slotId, fallbackPath, fallbackAlt = '') {
+  if (slots?.status && slots.status !== 'ready') return { alt: fallbackAlt };
   const slot = slots?.[slotId] || null;
   if (!slot) {
     return {

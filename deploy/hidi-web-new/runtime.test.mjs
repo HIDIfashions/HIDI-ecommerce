@@ -299,7 +299,7 @@ test("provider webhooks on /v1 proxy directly to the API with signatures and raw
   assert.equal(received.headers.host, `127.0.0.1:${apiFixture.address().port}`);
 });
 
-test("media control routes stay on the landing runtime and public media config safely falls back", async () => {
+test("media control routes stay on the landing runtime and unavailable public media config never pretends to be the bundled selection", async () => {
   const control = await send(proxy.url, "/admin/hero-media");
   assert.equal(control.status, 200);
   assert.match(control.body, /Hero Media Control/);
@@ -307,13 +307,14 @@ test("media control routes stay on the landing runtime and public media config s
   assert.equal(landingControl.status, 200);
   assert.match(landingControl.body, /Landing Media Control/);
   const config = await send(proxy.url, "/api/hidi/hero-config");
-  assert.equal(config.status, 200);
+  assert.equal(config.status, 503);
   assert.equal(config.headers["cache-control"], "no-store");
-  assert.equal(JSON.parse(config.body).active, false);
+  assert.equal(config.headers["retry-after"], "1");
+  assert.equal(JSON.parse(config.body).active, undefined);
   const landingConfig = await send(proxy.url, "/api/hidi/landing-media-config");
-  assert.equal(landingConfig.status, 200);
+  assert.equal(landingConfig.status, 503);
   assert.equal(landingConfig.headers["cache-control"], "no-store");
-  assert.equal(JSON.parse(landingConfig.body).slots["range-occasion"].active, false);
+  assert.equal(JSON.parse(landingConfig.body).slots, undefined);
 });
 
 test("preview stays noindex while production requests receive canonical SEO metadata", async () => {
@@ -481,6 +482,7 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
   const tokenRequests = [];
   const blobRequests = [];
   const blobs = new Map();
+  let configReadFault = null;
 
   const identity = createServer((incoming, response) => {
     tokenRequests.push({ url: incoming.url, headers: incoming.headers });
@@ -503,6 +505,11 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     }
 
     if (incoming.method === "GET" || incoming.method === "HEAD") {
+      if (configReadFault && incoming.url.endsWith("/current.json")) {
+        if (configReadFault === "disconnect") incoming.socket.destroy();
+        else response.writeHead(configReadFault === "malformed" ? 200 : configReadFault).end("not a configuration");
+        return;
+      }
       const saved = blobs.get(incoming.url);
       if (!saved) {
         response.writeHead(404).end("missing");
@@ -552,6 +559,13 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
       AZURE_STORAGE_BLOB_ENDPOINT: blobUrl,
     });
 
+    for (const path of ["/api/hidi/hero-config", "/api/hidi/landing-media-config"]) {
+      const missing = await send(azure.url, path);
+      assert.equal(missing.status, 200, "Missing Blob configuration is an authoritative default selection");
+      const value = JSON.parse(missing.body);
+      if (path.includes("landing")) assert.equal(value.slots["range-occasion"].active, false);
+      else assert.equal(value.active, false);
+    }
     const media = Buffer.from("hero image bytes");
     const uploaded = await send(azure.url, "/api/hidi/hero-upload", {
       method: "POST",
@@ -713,6 +727,22 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     assert.equal((await post("/api/hidi/landing-media-ananya-restore",{})).status,200);
     assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya.items,listConfig.ananya.items);
 
+    for (const fault of [503, 403, "disconnect", "malformed"]) {
+      configReadFault = fault;
+      for (const path of ["/api/hidi/hero-config", "/api/hidi/landing-media-config"]) {
+        for (const method of ["GET", "HEAD"]) {
+          const unavailable = await send(azure.url, path, { method });
+          assert.equal(unavailable.status, 503, `${fault} must not revert to the original media`);
+          assert.equal(unavailable.headers["cache-control"], "no-store");
+          assert.equal(unavailable.headers["retry-after"], "1");
+          if (method === "GET") assert.deepEqual(JSON.parse(unavailable.body), { message: "Media is temporarily unavailable" });
+          else assert.equal(unavailable.body, "");
+        }
+      }
+    }
+    configReadFault = null;
+    assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/hero-config")).body).items,publishedList.items,"Recovery keeps the published hero list");
+    assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya.items,listConfig.ananya.items,"Recovery keeps the published photo list");
     assert.equal(tokenRequests.length, 1);
     assert.match(tokenRequests[0].url, /resource=https%3A%2F%2Fstorage\.azure\.com%2F/);
     assert.match(tokenRequests[0].url, /client_id=client-id-123/);
