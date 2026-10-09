@@ -1,0 +1,76 @@
+name: Hero first-paint regression
+on:
+  push:
+    branches: [fix/hero-no-flash-20261009]
+permissions:
+  contents: read
+concurrency:
+  group: hero-first-paint-regression
+  cancel-in-progress: false
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Configure isolated browser tooling
+        run: |
+          echo "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/hero-browsers" >> "$GITHUB_ENV"
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/hero-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+      - name: Check scope against pre-change backup
+        run: |
+          python3 - <<'PY'
+          import pathlib, subprocess
+          base='561d46940f57fe28d6de36c0d165089c7e8787dc'
+          changed=subprocess.check_output(['git','diff','--name-only',base,'HEAD','--','apps/web/src','apps/web/index.html'],text=True).splitlines()
+          assert set(changed)=={'apps/web/src/components/VideoHero.jsx','apps/web/index.html'}, changed
+          original=subprocess.check_output(['git','show',base+':apps/web/index.html'],text=True)
+          lines=original.splitlines(keepends=True)
+          expected=''.join(line for line in lines if not ('rel="preload"' in line and 'luminous-first-frame' in line))
+          actual=pathlib.Path('apps/web/index.html').read_text().replace('    <!-- Hero media is requested only after the active Admin selection resolves. -->\n','')
+          assert actual==expected, 'Only the old hero preload lines may change in index.html'
+          print('PASS: no layout, CSS, other section, admin, API or media-file changes')
+          PY
+      - name: Existing landing tests and production build
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Existing combined runtime regression
+        run: node --test deploy/hidi-web-new/runtime.test.mjs
+      - name: Install isolated browser engines
+        run: |
+          npm install --prefix "$RUNNER_TEMP/hero-browser" --no-save playwright@1.56.1
+          node "$RUNNER_TEMP/hero-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Reproduce old flash on the backed-up source
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/hero-before" 561d46940f57fe28d6de36c0d165089c7e8787dc
+          cd "$RUNNER_TEMP/hero-before/apps/web"
+          npm ci
+          npm run build
+          HERO_EXPECT_LEGACY=1 node "$GITHUB_WORKSPACE/apps/web/scripts/test-hero-first-paint.mjs"
+          mkdir -p "$GITHUB_WORKSPACE/apps/web/validation/hero-baseline"
+          cp validation/hero-first-paint/report.json "$GITHUB_WORKSPACE/apps/web/validation/hero-baseline/report.json"
+      - name: First-paint regression in Chromium, Firefox and WebKit
+        working-directory: apps/web
+        run: node scripts/test-hero-first-paint.mjs
+      - name: Existing full responsive homepage regression
+        working-directory: apps/web
+        env:
+          HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+        run: node scripts/test-responsive.mjs
+      - name: Preserve browser regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hero-first-paint-regression-${{ github.sha }}
+          path: apps/web/validation
+          retention-days: 30
