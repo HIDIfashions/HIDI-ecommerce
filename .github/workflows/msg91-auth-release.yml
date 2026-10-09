@@ -1,0 +1,153 @@
+name: MSG91 guarded auth image release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/msg91-auth-release.yml]
+  workflow_dispatch:
+    inputs:
+      expected_web_image:
+        description: Current live web image, copied from Azure immediately before dispatch
+        required: true
+        default: acrhidiprod0927.azurecr.io/hidi-web@sha256:1b677b6b40f4429273478114738a57a8d5eaf011f99aae38aa3e28021d0f6f97
+      expected_api_image:
+        description: Current live API image, copied from Azure immediately before dispatch
+        required: true
+        default: acrhidiprod0927.azurecr.io/hidi-api:36fe22c09dd060606b3a531433ccb24e04ce62b7
+permissions:
+  contents: read
+concurrency:
+  group: hidi-msg91-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    # Ordinary source merges do not deploy. The marker permits an explicit release
+    # when this workflow has not yet been registered on the default branch.
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[deploy-msg91-auth]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      BASE_SOURCE: 36fe22c09dd060606b3a531433ccb24e04ce62b7
+      EXPECTED_WEB: ${{ inputs.expected_web_image || 'acrhidiprod0927.azurecr.io/hidi-web@sha256:1b677b6b40f4429273478114738a57a8d5eaf011f99aae38aa3e28021d0f6f97' }}
+      EXPECTED_API: ${{ inputs.expected_api_image || 'acrhidiprod0927.azurecr.io/hidi-api:36fe22c09dd060606b3a531433ccb24e04ce62b7' }}
+      ACR: acrhidiprod0927
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true
+      API_URL: http://127.0.0.1:4100/v1
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/sms-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require the exact existing source plus reviewed auth changes
+        run: |
+          python3 - <<'PY'
+          import os,re
+          from deploy.compose_msg91_source_guard import validate_source
+          for app,key in [('api','EXPECTED_API'),('web','EXPECTED_WEB')]:
+            assert re.fullmatch('acrhidiprod0927.azurecr.io/hidi-'+app+r'(?:@sha256:[0-9a-f]{64}|:[0-9a-f]{40})',os.environ[key]), 'Expected immutable HIDI images'
+          validate_source(os.environ['BASE_SOURCE'],os.environ['GITHUB_SHA'])
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - name: Test authentication, fallback, carts, rewards and customer safeguards
+        run: |
+          node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
+          pnpm --filter @hidi/api test:customer-experience
+          python3 tests/msg91-image-preservation.test.py
+          python3 tests/msg91-rollout.test.py
+      - name: Build the compiled auth service and complete current Next storefront
+        run: |
+          pnpm --filter @hidi/api build
+          export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER="$(jq -r .CUSTOMER_AUTH_PROVIDER deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL=sms
+          for key in API_KEY AUTH_DOMAIN PROJECT_ID APP_ID MESSAGING_SENDER_ID STORAGE_BUCKET; do
+            value="$(jq -r --arg key "FIREBASE_$key" '.[$key] // ""' deploy/public-auth.json)"
+            export "NEXT_PUBLIC_FIREBASE_$key=$value"
+          done
+          export NEXT_PUBLIC_API_URL=https://thidigk.thehidi.com/api/store
+          export NEXT_PUBLIC_WALLET_ENABLED=true
+          pnpm --filter @hidi/web build
+      - name: Verify current admin and shopping UI in isolated browser fixtures
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sms-browser" --no-save playwright@1.56.1
+          node "$RUNNER_TEMP/sms-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+          export HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/sms-browser/node_modules/playwright/index.mjs"
+          node tests/admin-workspace.browser.mjs
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-storefront.browser.mjs
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-polish.browser.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Require current ready images and create exact rollback tags
+        run: |
+          set -euo pipefail
+          mkdir -p evidence "$RUNNER_TEMP/sms-private"
+          chmod 700 "$RUNNER_TEMP/sms-private"
+          for app in hidi-api hidi-web; do
+            az containerapp show -g rg-hidi-prod -n "$app" --only-show-errors -o json > "$RUNNER_TEMP/sms-private/$app.json"
+          done
+          python3 - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'sms-private'
+          for app,key in [('hidi-api','EXPECTED_API'),('hidi-web','EXPECTED_WEB')]:
+            p=json.loads((root/(app+'.json')).read_text())['properties']
+            assert len(p['template']['containers'])==1 and p['template']['containers'][0]['image']==os.environ[key], 'Another live release is active'
+            assert p['latestRevisionName']==p['latestReadyRevisionName'] and p['configuration']['activeRevisionsMode']=='Single', 'App is not ready in Single revision mode'
+            pathlib.Path('evidence/'+app+'-before.json').write_text(json.dumps({'app':app,'image':os.environ[key],'revision':p['latestReadyRevisionName']},indent=2))
+          PY
+          az acr login --name "$ACR" --only-show-errors
+          docker pull "$EXPECTED_API"
+          docker pull "$EXPECTED_WEB"
+          pinned_api="$(docker image inspect "$EXPECTED_API" --format '{{index .RepoDigests 0}}')"
+          pinned_web="$(docker image inspect "$EXPECTED_WEB" --format '{{index .RepoDigests 0}}')"
+          echo "PINNED_API=$pinned_api" >> "$GITHUB_ENV"
+          echo "PINNED_WEB=$pinned_web" >> "$GITHUB_ENV"
+          for app in api web; do
+            if [[ "$app" == api ]]; then old="$pinned_api"; else old="$pinned_web"; fi
+            backup="$ACR.azurecr.io/hidi-$app:backup-sms-${GITHUB_RUN_ID}"
+            docker tag "$old" "$backup"
+            docker push "$backup"
+          done
+      - name: Compose additive images and verify all protected files and runtime settings
+        run: |
+          set -euo pipefail
+          for app in api web; do
+            if [[ "$app" == api ]]; then old="$PINNED_API"; else old="$PINNED_WEB"; fi
+            tag="$ACR.azurecr.io/hidi-$app:sms-${GITHUB_RUN_ID}"
+            python3 deploy/compose-msg91-images.py --app "$app" --base "$old" --tag "$tag" \
+              --work "$RUNNER_TEMP/sms-private/$app" --report "evidence/$app-preservation.json"
+            docker push "$tag"
+            docker pull "$tag"
+            image="$(docker image inspect "$tag" --format '{{index .RepoDigests 0}}')"
+            if [[ "$app" == api ]]; then echo "CANDIDATE_API=$image" >> "$GITHUB_ENV"; else echo "CANDIDATE_WEB=$image" >> "$GITHUB_ENV"; fi
+          done
+      - name: Boot composed candidate containers before any Azure app update
+        env:
+          HIDI_PLAYWRIGHT_MODULE: ${{ runner.temp }}/sms-browser/node_modules/playwright/index.mjs
+        run: bash deploy/smoke-msg91-candidates.sh "$CANDIDATE_API" "$CANDIDATE_WEB"
+      - name: Deploy images with drift guards and owned-image rollback
+        run: bash deploy/update-msg91-images.sh "$EXPECTED_API" "$EXPECTED_WEB" "$CANDIDATE_API" "$CANDIDATE_WEB"
+      - name: Save public preservation and rollback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msg91-auth-release-${{ github.run_id }}
+          path: |
+            evidence
+            ${{ runner.temp }}/hidi-msg91-rollout
+            test-results
+          if-no-files-found: ignore
+          retention-days: 30

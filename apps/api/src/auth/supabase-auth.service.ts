@@ -248,9 +248,28 @@ export class SupabaseAuthService {
       process.env.HIDI_CUSTOMER_AUTH_PROVIDER ??
       ""
     ).trim().toLowerCase();
-    if (configured) return configured;
+    if (configured && configured !== "hidi") return configured;
+    if (process.env.MSG91_AUTHKEY && process.env.MSG91_SMS_OTP_TEMPLATE_ID) return "msg91";
     if (process.env.FIREBASE_PROJECT_ID) return "firebase";
-    return "whatsapp";
+    return "msg91";
+  }
+
+  private isMsg91SmsProvider(provider: string) {
+    return ["msg91", "msg91-sms", "msg91_sms", "sms"].includes(provider);
+  }
+
+  private firebaseFallbackConfigured() {
+    return process.env.CUSTOMER_OTP_FALLBACK_PROVIDER?.trim().toLowerCase() === "firebase" &&
+      Boolean(process.env.FIREBASE_PROJECT_ID?.trim());
+  }
+
+  private firebaseOtpRequest(phone: string, fallback = false) {
+    this.signingSecret();
+    this.firebaseProjectId();
+    return {
+      phone, channel: "FIREBASE", provider: "firebase", clientHandled: true,
+      ...(fallback ? { fallback: true } : {}),
+    };
   }
 
   private firebaseProjectId() {
@@ -386,6 +405,56 @@ export class SupabaseAuthService {
     };
   }
 
+  private msg91SmsOtpConfigured() {
+    if (process.env.HIDI_AUTH_DEV_OTP === "true" && process.env.NODE_ENV !== "production") return true;
+    return Boolean(process.env.MSG91_AUTHKEY && process.env.MSG91_SMS_OTP_TEMPLATE_ID);
+  }
+
+  private async sendMsg91SmsOtp(phone: string, code: string) {
+    if (process.env.HIDI_AUTH_DEV_OTP === "true" && process.env.NODE_ENV !== "production") return;
+    const authkey = process.env.MSG91_AUTHKEY?.trim();
+    const templateId = process.env.MSG91_SMS_OTP_TEMPLATE_ID?.trim();
+    if (!authkey || !templateId) throw new ServiceUnavailableException("SMS OTP is not configured");
+
+    let url: URL;
+    try {
+      url = new URL(process.env.MSG91_SMS_OTP_ENDPOINT?.trim() || "https://control.msg91.com/api/v5/otp");
+      if (url.protocol !== "https:" || !["control.msg91.com", "api.msg91.com"].includes(url.hostname) ||
+          (url.port && url.port !== "443") || url.username || url.password || url.search || url.hash ||
+          !/^\/api\/v5\/otp\/?$/.test(url.pathname)) {
+        throw new Error("Invalid endpoint");
+      }
+    } catch {
+      throw new ServiceUnavailableException("SMS OTP endpoint is not configured correctly");
+    }
+    url.searchParams.set("template_id", templateId);
+    url.searchParams.set("mobile", phone.replace(/\D/g, ""));
+    url.searchParams.set("otp", code);
+    url.searchParams.set("otp_length", String(code.length));
+    url.searchParams.set("otp_expiry", String(Math.ceil(OTP_TTL_SECONDS / 60)));
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
+          authkey,
+        },
+        body: JSON.stringify({}),
+      });
+      const payload = await response.json().catch(() => null);
+      const status = String(payload?.type ?? payload?.status ?? "").toLowerCase();
+      if (!response.ok || status !== "success") throw new Error("SMS provider rejected request");
+    } catch {
+      // Provider responses and network errors may include the recipient, code
+      // or credentials. Return a generic error and invalidate the challenge.
+      throw new ServiceUnavailableException("Unable to send SMS OTP right now");
+    }
+  }
+
   private whatsappOtpProvider() {
     const provider = (process.env.WHATSAPP_OTP_PROVIDER ?? "").trim().toLowerCase();
     if (provider) return provider;
@@ -500,16 +569,20 @@ export class SupabaseAuthService {
       if (provider === "firebase") {
         this.firebaseProjectId();
         configured = true;
+      } else if (this.isMsg91SmsProvider(provider)) {
+        configured = this.msg91SmsOtpConfigured() || this.firebaseFallbackConfigured();
       } else if (!provider || provider === "whatsapp") {
         configured = this.whatsappOtpConfigured();
       }
     } catch {
       configured = false;
     }
+    const smsProvider = this.isMsg91SmsProvider(provider);
     return {
       phoneOtp: configured,
-      channel: provider === "firebase" ? "FIREBASE" : "WHATSAPP",
-      provider: provider === "firebase" ? "firebase" : "whatsapp",
+      channel: provider === "firebase" ? "FIREBASE" : smsProvider ? "SMS" : "WHATSAPP",
+      provider: provider === "firebase" ? "firebase" : smsProvider ? "msg91" : "whatsapp",
+      ...(configured && smsProvider && this.firebaseFallbackConfigured() ? { fallbackProvider: "firebase" } : {}),
     };
   }
 
@@ -518,13 +591,55 @@ export class SupabaseAuthService {
     const phone = normalizeIndianPhone(body.phone);
     const provider = this.customerOtpProvider();
     if (provider === "firebase") {
+      return this.firebaseOtpRequest(phone);
+    }
+    const smsProvider = this.isMsg91SmsProvider(provider);
+    if (smsProvider) {
       this.signingSecret();
-      this.firebaseProjectId();
+      if (!this.msg91SmsOtpConfigured()) {
+        if (this.firebaseFallbackConfigured()) return this.firebaseOtpRequest(phone, true);
+        throw new ServiceUnavailableException("SMS OTP is not configured");
+      }
+      const prisma = this.requirePrisma();
+
+      const recent = await prisma.customerAuthOtp.count({
+        where: {
+          phone,
+          purpose: "SIGN_IN",
+          createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+        },
+      });
+      if (recent >= 5) throw tooManyRequests("Please wait before requesting another OTP");
+
+      const code = randomOtp();
+      const challenge = await prisma.customerAuthOtp.create({
+        data: {
+          phone,
+          codeHash: this.otpHash(phone, code),
+          purpose: "SIGN_IN",
+          channel: "SMS",
+          expiresAt: secondsFromNow(OTP_TTL_SECONDS),
+        },
+      });
+
+      try {
+        await this.sendMsg91SmsOtp(phone, code);
+      } catch (error) {
+        // Finish invalidation before switching proof types. A database failure
+        // must not leave a potentially delivered SMS valid alongside fallback.
+        await prisma.customerAuthOtp.update({ where: { id: challenge.id }, data: { consumedAt: new Date() } })
+          .catch(() => { throw new ServiceUnavailableException("Unable to send SMS OTP right now"); });
+        if (error instanceof ServiceUnavailableException && this.firebaseFallbackConfigured()) {
+          return this.firebaseOtpRequest(phone, true);
+        }
+        throw error;
+      }
+
       return {
         phone,
-        channel: "FIREBASE",
-        provider: "firebase",
-        clientHandled: true,
+        channel: "SMS",
+        expiresInSeconds: OTP_TTL_SECONDS,
+        ...(process.env.HIDI_AUTH_DEV_OTP_RESPONSE === "true" && process.env.NODE_ENV !== "production" ? { devOtp: code } : {}),
       };
     }
     if (provider && provider !== "whatsapp") {
@@ -572,7 +687,8 @@ export class SupabaseAuthService {
   async verifyPhoneOtp(input: unknown): Promise<AuthSessionPayload> {
     const body = jsonBody(input, "Invalid OTP verification request");
     const requestedProvider = typeof body.provider === "string" ? body.provider.trim().toLowerCase() : "";
-    if (this.customerOtpProvider() === "firebase" || requestedProvider === "firebase" || typeof body.idToken === "string") {
+    // Verify the proof that was issued, even if the delivery provider changed meanwhile.
+    if (requestedProvider === "firebase" || typeof body.idToken === "string") {
       return this.verifyFirebasePhoneOtp(body);
     }
     const phone = normalizeIndianPhone(body.phone);

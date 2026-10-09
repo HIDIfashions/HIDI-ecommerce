@@ -42,6 +42,7 @@ jobs:
           export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"
           export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)"
           export NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER="$(jq -r '.CUSTOMER_AUTH_PROVIDER // .NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER // "hidi"' deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL="$(jq -r '.CUSTOMER_OTP_CHANNEL // .NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL // "sms"' deploy/public-auth.json)"
           export NEXT_PUBLIC_FIREBASE_API_KEY="$(jq -r '.FIREBASE_API_KEY // .NEXT_PUBLIC_FIREBASE_API_KEY // ""' deploy/public-auth.json)"
           export NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$(jq -r '.FIREBASE_AUTH_DOMAIN // .NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN // ""' deploy/public-auth.json)"
           export NEXT_PUBLIC_FIREBASE_PROJECT_ID="$(jq -r '.FIREBASE_PROJECT_ID // .NEXT_PUBLIC_FIREBASE_PROJECT_ID // ""' deploy/public-auth.json)"
@@ -146,6 +147,7 @@ jobs:
           SUPABASE_URL=$(jq -r .SUPABASE_URL deploy/public-auth.json)
           SUPABASE_PUBLISHABLE_KEY=$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)
           CUSTOMER_AUTH_PROVIDER=$(jq -r '.CUSTOMER_AUTH_PROVIDER // .NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER // "hidi"' deploy/public-auth.json)
+          CUSTOMER_OTP_CHANNEL=$(jq -r '.CUSTOMER_OTP_CHANNEL // .NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL // "sms"' deploy/public-auth.json)
           FIREBASE_API_KEY=$(jq -r '.FIREBASE_API_KEY // .NEXT_PUBLIC_FIREBASE_API_KEY // ""' deploy/public-auth.json)
           FIREBASE_AUTH_DOMAIN=$(jq -r '.FIREBASE_AUTH_DOMAIN // .NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN // ""' deploy/public-auth.json)
           FIREBASE_PROJECT_ID=$(jq -r '.FIREBASE_PROJECT_ID // .NEXT_PUBLIC_FIREBASE_PROJECT_ID // ""' deploy/public-auth.json)
@@ -164,6 +166,7 @@ jobs:
             --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET" \
             --build-arg NEXT_PUBLIC_WALLET_ENABLED=true \
             --build-arg NEXT_PUBLIC_API_URL=https://www.thehidi.com/api/store \
+            --build-arg NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL="$CUSTOMER_OTP_CHANNEL" \
             -t "acrhidiprod0927.azurecr.io/hidi-$HIDI_APP:$GITHUB_SHA" .
           docker push "acrhidiprod0927.azurecr.io/hidi-$HIDI_APP:$GITHUB_SHA"
   update-existing-admin:
