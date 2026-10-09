@@ -59,7 +59,7 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
             const scale = (css.objectFit === 'cover' ? Math.max : Math.min)(contentWidth / image.naturalWidth, contentHeight / image.naturalHeight);
             return { fit:css.objectFit, transform:css.transform, width:rect.width, canvasWidth:canvas.width,
               photo:image.dataset.ananyaLayout === 'photo', fullPage:document.querySelector('.meet-cinematic').classList.contains('meet-cinematic--photo'), naturalWidth:image.naturalWidth,naturalHeight:image.naturalHeight,
-              padding:parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)+parseFloat(css.paddingLeft)+parseFloat(css.paddingRight), canvasLeft:canvas.left, pageWidth:document.documentElement.clientWidth,
+              padding:parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)+parseFloat(css.paddingLeft)+parseFloat(css.paddingRight), canvasLeft:canvas.left, pageWidth:document.body.getBoundingClientRect().width,
               prism:getComputedStyle(document.querySelector('.meet-cinematic__prism')).display,
               panel:getComputedStyle(document.querySelector('.meet-cinematic'),'::before').display,
               imageWidth:image.naturalWidth*scale, imageHeight:image.naturalHeight*scale, contentWidth, contentHeight,
