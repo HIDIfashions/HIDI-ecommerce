@@ -235,7 +235,7 @@ export function AdminOrdersClient() {
                     <span className={`${styles.status} ${styles[`status${order.status}`] ?? ""}`}>{statusLabel(order.status)}</span>
                   )}
                 </div>
-                <div className={styles.viewCell}>{order.status === "CONFIRMED" && <Link href={`/admin/orders/packing?order=${encodeURIComponent(order.orderNumber)}`}>Scan pack →</Link>}<Link href={`/admin/orders/${encodeURIComponent(order.orderNumber)}`}>View →</Link></div>
+                <div className={styles.viewCell}><Link href={`/admin/orders/${encodeURIComponent(order.orderNumber)}`}>View →</Link></div>
               </div>
             );
           })}
