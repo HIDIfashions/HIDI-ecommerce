@@ -126,7 +126,7 @@ export default function MeetHidi() {
 
       return (
         <div className={`meet-cinematic__slide is-${slideState}`} key={pick.name} style={{ '--pick-accent': pick.accent }} aria-hidden={!isActive}>
-        <img className="meet-cinematic__model" {...image} alt={image.alt || pick.name} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+        <img className="meet-cinematic__model" {...image} style={{ ...image.style, objectFit: 'contain' }} alt={image.alt || pick.name} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
         </div>
       );
     })}

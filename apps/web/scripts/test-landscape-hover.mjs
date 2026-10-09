@@ -21,12 +21,16 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
         const url = new URL(route.request().url());
         if (process.env.HIDI_LAYOUT_LIVE === '1') return ['GET','HEAD'].includes(route.request().method()) ? route.continue() : route.abort();
         if (url.origin !== new URL(base).origin) return route.abort();
-        if (url.pathname.startsWith('/api/')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version:1, slots:{}, items:[], products:[], active:false, source:'bundled' }) });
+        if (url.pathname.startsWith('/api/')) {
+          const slots=Object.fromEntries(['orange','pink','maroon','black','green'].map(color=>[`ananya-${color}`,{active:true,type:'image',url:new URL(`/assets/images/ananya-top-picks/ananya-${color}.webp`,base).href,fitMode:'cover',desktopPosition:'50% 50%',mobilePosition:'50% 50%'}]));
+          return route.fulfill({ contentType:'application/json', body:JSON.stringify({version:1,slots,items:[],products:[],active:false,source:'bundled'}) });
+        }
         return route.continue();
       });
       try {
         await page.goto(base, { waitUntil: 'domcontentloaded' });
         await page.locator('.meet-cinematic').waitFor();
+        if (process.env.HIDI_LAYOUT_LIVE !== '1') await page.waitForFunction(()=>document.querySelectorAll('.meet-cinematic__model[data-landing-media-slot]').length===5);
         assert.equal(await page.locator('.meet-cinematic__ghost').count(), 0, 'No duplicate/mirrored model');
         assert.equal(await page.locator('.meet-cinematic__model').count(), 5, 'All five original looks retained');
         for (let pick = 0; pick < 5; pick++) {
