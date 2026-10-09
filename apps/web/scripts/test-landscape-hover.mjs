@@ -59,7 +59,7 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
             const scale = (css.objectFit === 'cover' ? Math.max : Math.min)(contentWidth / image.naturalWidth, contentHeight / image.naturalHeight);
             return { fit:css.objectFit, transform:css.transform, width:rect.width, canvasWidth:canvas.width,
               photo:image.dataset.ananyaLayout === 'photo', fullPage:document.querySelector('.meet-cinematic').classList.contains('meet-cinematic--photo'), naturalWidth:image.naturalWidth,naturalHeight:image.naturalHeight,
-              padding:parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)+parseFloat(css.paddingLeft)+parseFloat(css.paddingRight), canvasLeft:canvas.left,
+              padding:parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)+parseFloat(css.paddingLeft)+parseFloat(css.paddingRight), canvasLeft:canvas.left, pageWidth:document.documentElement.clientWidth,
               prism:getComputedStyle(document.querySelector('.meet-cinematic__prism')).display,
               panel:getComputedStyle(document.querySelector('.meet-cinematic'),'::before').display,
               imageWidth:image.naturalWidth*scale, imageHeight:image.naturalHeight*scale, contentWidth, contentHeight,
@@ -79,7 +79,7 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
             assert.equal(geometry.padding, 0, 'No inset photo frame');
             assert.equal(geometry.prism, 'none', 'No decorative prism around full-page photography');
             assert.equal(geometry.panel, 'none', 'No side panel around full-page photography');
-            assert(Math.abs(geometry.width - width) <= 1 && Math.abs(geometry.canvasLeft) <= 1, 'Photo spans the full page width');
+            assert(Math.abs(geometry.width - geometry.pageWidth) <= 1 && Math.abs(geometry.canvasLeft) <= 1, `Photo spans the full available page width: ${JSON.stringify(geometry)}`);
             assert(geometry.canvasHeight <= height && geometry.canvasHeight >= height * .6, 'Photo fills the space below the header');
             const controls = await page.locator('.meet-cinematic').evaluate(el => ['.meet-cinematic__content','.meet-cinematic__label','.meet-cinematic__tone','.meet-cinematic__scroll'].map(selector=>{const canvas=el.getBoundingClientRect(),box=el.querySelector(selector).getBoundingClientRect();return {selector,left:box.left-canvas.left,right:box.right-canvas.right,top:box.top-canvas.top,bottom:box.bottom-canvas.bottom};}));
             assert(controls.every(box=>box.left>=0 && box.right<=1 && box.top>=0 && box.bottom<=1), 'Label, Shop now and controls stay inside the photo');
