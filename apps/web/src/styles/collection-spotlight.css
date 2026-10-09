@@ -122,15 +122,14 @@
 .hidi-collection-arrow--next { right: 3.2%; }
 .hidi-collection-arrow .icon { width: 24px; height: 24px; }
 @media (hover: hover) and (pointer: fine) {
-  .hidi-collection-stage { overflow: visible; }
+  .hidi-collection-stage { overflow: visible; height: calc(var(--collection-photo) * 1.05 + 90px); }
   .hidi-collection-arrow:hover { color: #fffaf0; background: var(--burgundy); }
   .hidi-collection-card[data-hovered="true"] .hidi-collection-photo {
-    transform: scale(1.5);
-    box-shadow: 0 34px 76px -28px #3c201b70;
-    filter: saturate(1.04) contrast(1.03);
+    transform: scale(1.1);
+    box-shadow: 0 18px 40px -18px #3c201b55;
   }
-  .hidi-collection-card[data-hovered="true"] .hidi-collection-photo img { transform: scale(1.01); }
   .hidi-collection-card[data-hovered="true"] .hidi-collection-caption h3 { color: var(--gold-deep); }
+  .hidi-collection-gallery[data-hovering-card="true"] .hidi-collection-card[data-hovered="true"] .hidi-collection-caption { transform: translateY(calc(var(--collection-photo) * .05)); }
 }
 .hidi-collection-controls { display: flex; justify-content: center; align-items: center; min-height: 44px; margin-top: 0; }
 .hidi-collection-dots { display: flex; align-items: center; gap: 0; }

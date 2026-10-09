@@ -5,10 +5,10 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
-const base = 'http://127.0.0.1:3188';
+const base = process.env.HIDI_RESPONSIVE_BASE_URL || 'http://127.0.0.1:3188';
 const output = resolve('validation/responsive');
 await mkdir(output, { recursive: true });
-const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '3188', '--strictPort'], { stdio: 'ignore' });
+const server = process.env.HIDI_RESPONSIVE_BASE_URL ? null : spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '3188', '--strictPort'], { stdio: 'ignore' });
 const delay = ms => new Promise(done => setTimeout(done, ms));
 try {
   let ready = false;
@@ -72,6 +72,5 @@ try {
     } finally { await browser.close(); }
   }
 } finally {
-  server.kill('SIGTERM');
-  await new Promise(done => server.exitCode !== null ? done() : server.once('exit', done));
+  if (server) { server.kill('SIGTERM'); await new Promise(done => server.exitCode !== null ? done() : server.once('exit', done)); }
 }
