@@ -96,7 +96,8 @@ test("exact physical scans move CONFIRMED to PACKED and audit scanner source", a
   assert.equal(audit.length, 1);
   assert.equal(audit[0].eventType, "ORDER_PACKED");
   assert.equal(audit[0].source, "PACKING_SCANNER");
-  assert.equal(audit[0].metadata.scannedPieces, 3);
+  const metadata = typeof audit[0].metadata === "string" ? JSON.parse(audit[0].metadata) : audit[0].metadata;
+  assert.equal(metadata.scannedPieces, 3);
 });
 
 test("wrong item cannot pack an order", async () => {
