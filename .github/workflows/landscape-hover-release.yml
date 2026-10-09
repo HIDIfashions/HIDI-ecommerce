@@ -1,4 +1,4 @@
-name: Hero and Ananya media lists guarded release
+name: Landing order and published-media reload guarded release
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -17,8 +17,8 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: 15ef87ca599a223545150d15692cc4f2e829ef54
-      HERO_BASE_SHA: 8949557590453040662a50b8b04c80c95277cdbe
+      HERO_SOURCE_SHA: 3dcf19fea8e50560edb81a9728b9f32cdfa41a55
+      HERO_BASE_SHA: 15ef87ca599a223545150d15692cc4f2e829ef54
     steps:
       - uses: actions/checkout@v4
       - name: Require prior storefront and admin commerce regression
@@ -36,12 +36,12 @@ jobs:
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: 15ef87ca599a223545150d15692cc4f2e829ef54
+          ref: 3dcf19fea8e50560edb81a9728b9f32cdfa41a55
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
         with:
-          ref: 8949557590453040662a50b8b04c80c95277cdbe
+          ref: 15ef87ca599a223545150d15692cc4f2e829ef54
           path: hero-before
       - uses: actions/setup-node@v4
         with:
@@ -55,9 +55,9 @@ jobs:
           (cd hero-source && node --test deploy/hidi-web-new/runtime.test.mjs)
           python3 - <<'PYCODE'
           import subprocess
-          changed=subprocess.check_output(['git','diff','--name-only','8949557590453040662a50b8b04c80c95277cdbe','15ef87ca599a223545150d15692cc4f2e829ef54','--','apps/web/src','apps/web/index.html','apps/web/public/hero-control.html','apps/web/public/landing-media-control.html','deploy/hidi-web-new/hero-media.mjs'],cwd='hero-source',text=True).splitlines()
-          assert set(changed)=={'apps/web/src/components/MeetHidi.jsx','apps/web/src/components/VideoHero.jsx','apps/web/src/components/MediaSequenceControls.jsx','apps/web/src/hooks/useMediaSequence.js','apps/web/src/context/LandingMediaContext.jsx','apps/web/src/styles/styles.css','apps/web/public/hero-control.html','apps/web/public/landing-media-control.html','deploy/hidi-web-new/hero-media.mjs'}, changed
-          print('PASS: only the requested hero/Ananya media controls and layouts changed')
+          changed=subprocess.check_output(['git','diff','--name-only','15ef87ca599a223545150d15692cc4f2e829ef54','3dcf19fea8e50560edb81a9728b9f32cdfa41a55','--','apps/web/src','apps/web/index.html','apps/web/public/hero-control.html','apps/web/public/landing-media-control.html','deploy/hidi-web-new/hero-media.mjs'],cwd='hero-source',text=True).splitlines()
+          assert set(changed)=={'apps/web/src/App.jsx','apps/web/src/components/MeetHidi.jsx','apps/web/src/components/RangeCarousel.jsx','apps/web/src/components/HidiEdit.jsx','apps/web/src/context/LandingMediaContext.jsx','deploy/hidi-web-new/hero-media.mjs'}, changed
+          print('PASS: only landing order, published-image loading and storage failure responses changed')
           PYCODE
           echo "PLAYWRIGHT_BROWSERS_PATH=$GITHUB_WORKSPACE/.cache/hidi-layout-browsers" >> "$GITHUB_ENV"
           echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/hero-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
@@ -95,7 +95,7 @@ jobs:
           PY
           az acr login --name "$ACR" --only-show-errors
           docker pull "$OLD_WEB"
-          backup="$ACR.azurecr.io/hidi-web:backup-media-lists-${GITHUB_RUN_ID}"
+          backup="$ACR.azurecr.io/hidi-web:backup-range-reload-${GITHUB_RUN_ID}"
           docker tag "$OLD_WEB" "$backup"
           docker push "$backup"
           echo "$backup" > evidence/backup-tag.txt
@@ -118,7 +118,7 @@ jobs:
           delta=[k for k,v in after.items() if before.get(k)!=v]
           assert 'index.html' in delta
           assert all(k in {'index.html','hero-control.html','landing-media-control.html'} or re.fullmatch(r'assets/[A-Za-z0-9_-]+\.(?:js|css)',k) for k in delta), delta
-          assert len(delta)==5 and {'index.html','hero-control.html','landing-media-control.html'}.issubset(delta), delta
+          assert len(delta)==2 and 'index.html' in delta and any(k.endswith('.js') for k in delta), delta
           for k in delta:
             if k not in {'index.html','hero-control.html','landing-media-control.html'}: assert k not in before, 'Do not overwrite an already-cached bundle URL'
             dest=pathlib.Path('hero-patch/overlay')/k; dest.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(candidate/k,dest)
@@ -134,7 +134,7 @@ jobs:
           pathlib.Path('evidence/patch-hashes.json').write_text(json.dumps({k:after[k] for k in delta},indent=2))
           print('Only these files will change: '+json.dumps(delta))
           PY
-          image="$ACR.azurecr.io/hidi-web:media-lists-${GITHUB_RUN_ID}"
+          image="$ACR.azurecr.io/hidi-web:range-reload-${GITHUB_RUN_ID}"
           docker build --pull=false -t "$image" hero-patch
           echo "CANDIDATE_TAG=$image" >> "$GITHUB_ENV"
           cid="$(docker create "$image")"
@@ -171,9 +171,14 @@ jobs:
           node --input-type=module -e 'import {createServer} from "node:http"; createServer((q,s)=>{s.setHeader("Content-Type","application/json");s.end(JSON.stringify({status:"ok"}));}).listen(3193,"127.0.0.1")' > "$RUNNER_TEMP/hero-private/mock.log" 2>&1 &
           mock_pid=$!
           docker run --detach --name hero-candidate-check --network host -e PORT=3192 -e STOREFRONT_ORIGIN=http://127.0.0.1:3193 -e API_URL=http://127.0.0.1:3193/v1 -e INTERNAL_API_URL=http://127.0.0.1:3193/v1 "$CANDIDATE_TAG"
-          trap 'docker rm -f hero-candidate-check >/dev/null 2>&1 || true; kill "$mock_pid" 2>/dev/null || true' EXIT
+          trap 'docker rm -f hero-candidate-check landing-baseline-check >/dev/null 2>&1 || true; kill "$mock_pid" 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3192/health >/dev/null; then break; fi; sleep 1; done
+          docker run --detach --name landing-baseline-check --network host -e PORT=3194 -e STOREFRONT_ORIGIN=http://127.0.0.1:3193 -e API_URL=http://127.0.0.1:3193/v1 -e INTERNAL_API_URL=http://127.0.0.1:3193/v1 "$OLD_WEB"
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3194/health >/dev/null; then break; fi; sleep 1; done
           cd hero-source/apps/web
+          HIDI_LANDING_EXPECT_LEGACY=1 HIDI_LANDING_BASE_URL=http://127.0.0.1:3194 node scripts/test-landing-first-paint.mjs
+          docker rm -f landing-baseline-check >/dev/null
+          HIDI_LANDING_BASE_URL=http://127.0.0.1:3192 node scripts/test-landing-first-paint.mjs
           HIDI_SEQUENCE_BASE_URL=http://127.0.0.1:3192 node scripts/test-media-sequences.mjs
           HIDI_LAYOUT_BASE_URL=http://127.0.0.1:3192 node scripts/test-landscape-hover.mjs
           HERO_TEST_BASE_URL=http://127.0.0.1:3192 node scripts/test-hero-first-paint.mjs
@@ -256,18 +261,33 @@ jobs:
               for(const base of bases) for(const width of [390,1440]) {
                 const context=await browser.newContext({viewport:{width,height:844},hasTouch:width<700});
                 const page=await context.newPage(); page.setDefaultTimeout(30000);
+                const landing=report.find(item=>item.base===base && item.probe==='landing-selections');
+                const defaults={'range-occasion':'occasion-set.webp','range-new-arrivals':'peach-set.webp','range-work-edit':'cream-set.webp','range-everyday':'burgundy-set.webp','range-shop-all':'hero-portrait.webp','hidi-edit-banner':'hidi-premium-ai-full-banner-lossless.png'};
+                const blocked=Object.entries(defaults).filter(([id])=>landing.slots[id]?.active).map(([,name])=>'/assets/images/'+name);
+                if(landing.ananya?.active || (!landing.ananya && landing.slots['ananya-green']?.active)) blocked.push('/assets/images/ananya-top-picks/ananya-green.webp');
                 const oldRequests=[];
-                page.on('request',r=>{if(/\/assets\/(video\/hidi-hero-|images\/hero-).*luminous/.test(r.url())) oldRequests.push(r.url());});
+                page.on('request',r=>{if(blocked.includes(new URL(r.url()).pathname) || /\/assets\/(video\/hidi-hero-|images\/hero-).*luminous/.test(r.url())) oldRequests.push(r.url());});
                 await context.route('**/*',route=> ['GET','HEAD'].includes(route.request().method()) ? route.continue() : route.abort());
-                await context.addInitScript(()=>{
-                  window.__oldHeroSeen=false;
-                  new MutationObserver(()=>{if(document.querySelector('.hero-media .hero-poster,.hero-media #hero-video')) window.__oldHeroSeen=true;}).observe(document,{childList:true,subtree:true});
-                });
+                await context.addInitScript(blocked=>{
+                  window.__oldHeroSeen=false; window.__oldLandingSeen=false;
+                  new MutationObserver(()=>{
+                    if(document.querySelector('.hero-media .hero-poster,.hero-media #hero-video')) window.__oldHeroSeen=true;
+                    for(const image of document.querySelectorAll('#our-range img,#meet-hidi img,#hidi-edit img')) if(image.getAttribute('src') && blocked.includes(new URL(image.src).pathname)) window.__oldLandingSeen=true;
+                  }).observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});
+                },blocked);
                 try {
                   for(let visit=0;visit<2;visit++) {
                     if(visit===0) await page.goto(base+'/',{waitUntil:'domcontentloaded'}); else await page.reload({waitUntil:'domcontentloaded'});
                     await page.waitForFunction(()=>{const el=document.querySelector('.hero-live-media');return el && getComputedStyle(el).visibility==='visible' && document.querySelector('.hero-media')?.dataset.frameReady==='true';});
-                    assert.equal(await page.evaluate(()=>window.__oldHeroSeen),false);
+                    await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready' && document.querySelector('.meet-cinematic__model')?.complete && document.querySelector('.meet-cinematic__model')?.naturalWidth>0);
+                    assert.equal(await page.evaluate(()=>window.__oldHeroSeen || window.__oldLandingSeen),false);
+                    const photos=await page.locator('#our-range img,#meet-hidi img,#hidi-edit img').evaluateAll(images=>images.map(image=>({slot:image.dataset.landingMediaSlot,src:image.src})));
+                    assert.equal(photos.length,7);
+                    for(const [slot,selected] of Object.entries(landing.slots)) if(selected.active && defaults[slot]) assert(photos.some(image=>image.slot===slot && image.src===new URL(selected.url,base).href),'Current published photo not used: '+slot);
+                    const expectedAnanya=landing.ananya?.active ? landing.ananya.items[0].url : !landing.ananya && landing.slots['ananya-green']?.active ? landing.slots['ananya-green'].url : null;
+                    if(expectedAnanya) assert.equal(await page.locator('.meet-cinematic__model').evaluate(image=>image.src),new URL(expectedAnanya,base).href);
+                    const order=await page.evaluate(()=>Array.from(document.querySelector('#main').children).map(node=>node.id||node.className));
+                    assert(order.indexOf('our-range')<order.indexOf('meet-hidi') && order.indexOf('meet-hidi')<order.indexOf('hidi-edit'));
                     assert.deepEqual(oldRequests,[]);
                     const state=await page.locator('.hero-live-media').evaluate(el=>({type:el.tagName,src:el.currentSrc||el.src,width:el.videoWidth||el.naturalWidth,ready:el.readyState}));
                     assert(state.width>0);
@@ -363,12 +383,12 @@ jobs:
           PY
           updated=0
           trap - ERR
-          echo 'DEPLOYMENT COMPLETE: hero and Ananya media lists healthy; API, media and protected storefront/admin files retained.'
+          echo 'DEPLOYMENT COMPLETE: range precedes Ananya; reload uses only published selections; API, media and protected storefront/admin files retained.'
       - name: Preserve release evidence without credentials or raw container files
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: media-lists-release-${{ github.run_id }}
+          name: range-reload-release-${{ github.run_id }}
           path: |
             evidence
             hero-source/apps/web/validation
