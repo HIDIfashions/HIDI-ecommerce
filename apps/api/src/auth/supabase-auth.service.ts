@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { createHash, createHmac, createVerify, randomBytes, timingSafeEqual, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 
 type SupabaseAuthUser = {
   id: string;
@@ -49,6 +50,9 @@ const ACCESS_PREFIX = "hidi_at_";
 const REFRESH_PREFIX = "hidi_rt_";
 const OTP_TTL_SECONDS = 5 * 60;
 const OTP_MAX_ATTEMPTS = 5;
+const OTP_RESEND_SECONDS = 60;
+const OTP_REQUEST_WINDOW_SECONDS = 15 * 60;
+const OTP_REQUEST_PURPOSES = ["SIGN_IN", "SIGN_IN_REQUEST"];
 const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 
 let firebaseCertCache: { expiresAt: number; certs: Record<string, string> } | null = null;
@@ -90,8 +94,10 @@ function jsonBody(value: unknown, fallback: string) {
     : (() => { throw new BadRequestException(fallback); })();
 }
 
-function tooManyRequests(message: string) {
-  return new HttpException(message, 429);
+function tooManyRequests(message: string, retryAfterSeconds?: number) {
+  return new HttpException(retryAfterSeconds === undefined ? message : {
+    statusCode: 429, message, retryAfterSeconds,
+  }, 429);
 }
 
 function decodeJwtPart(part: string) {
@@ -268,6 +274,7 @@ export class SupabaseAuthService {
     this.firebaseProjectId();
     return {
       phone, channel: "FIREBASE", provider: "firebase", clientHandled: true,
+      retryAfterSeconds: OTP_RESEND_SECONDS,
       ...(fallback ? { fallback: true } : {}),
     };
   }
@@ -345,10 +352,12 @@ export class SupabaseAuthService {
     const idToken = typeof body.idToken === "string" ? body.idToken.trim() : "";
     const { phone } = await this.verifyFirebaseIdToken(idToken);
     const prisma = this.requirePrisma();
-    const user = await prisma.user.upsert({
-      where: { phone },
-      create: { phone },
-      update: {},
+    const user = await withSerializableRetry(prisma, async (tx: any) => {
+      await tx.customerAuthOtp.updateMany({
+        where: { phone, purpose: "SIGN_IN", consumedAt: null },
+        data: { consumedAt: new Date() },
+      });
+      return tx.user.upsert({ where: { phone }, create: { phone }, update: {} });
     });
     return this.createSession(prisma, user);
   }
@@ -586,100 +595,98 @@ export class SupabaseAuthService {
     };
   }
 
+  private async reserveOtpRequest(prisma: any, phone: string, channel: string, code: string) {
+    return withSerializableRetry(prisma, async (tx: any) => {
+      const now = new Date();
+      const where = {
+        phone, purpose: { in: OTP_REQUEST_PURPOSES },
+        createdAt: { gte: new Date(now.getTime() - OTP_REQUEST_WINDOW_SECONDS * 1000) },
+      };
+      const recent = await tx.customerAuthOtp.count({ where });
+      if (recent >= 5) {
+        const oldest = await tx.customerAuthOtp.findFirst({ where, orderBy: { createdAt: "asc" } });
+        const wait = oldest
+          ? Math.max(1, Math.ceil((oldest.createdAt.getTime() + OTP_REQUEST_WINDOW_SECONDS * 1000 - now.getTime()) / 1000))
+          : OTP_REQUEST_WINDOW_SECONDS;
+        throw tooManyRequests("Please wait before requesting another OTP", wait);
+      }
+      const latest = await tx.customerAuthOtp.findFirst({ where, orderBy: { createdAt: "desc" } });
+      const wait = latest
+        ? Math.ceil((latest.createdAt.getTime() + OTP_RESEND_SECONDS * 1000 - now.getTime()) / 1000)
+        : 0;
+      if (wait > 0) throw tooManyRequests("Please wait before requesting another OTP", wait);
+
+      // Reservations count failed sends and Firebase authorizations as attempts.
+      // They cannot verify a HIDI code until delivery has been acknowledged.
+      return tx.customerAuthOtp.create({ data: {
+        phone, codeHash: this.otpHash(phone, code), purpose: "SIGN_IN_REQUEST", channel,
+        createdAt: now, expiresAt: new Date(now.getTime() + OTP_TTL_SECONDS * 1000), consumedAt: now,
+      } });
+    });
+  }
+
+  private async activateOtpRequest(prisma: any, challenge: any) {
+    await withSerializableRetry(prisma, async (tx: any) => {
+      const latest = await tx.customerAuthOtp.findFirst({
+        where: { phone: challenge.phone, purpose: { in: OTP_REQUEST_PURPOSES } },
+        orderBy: { createdAt: "desc" },
+      });
+      if (latest?.id !== challenge.id) {
+        throw new ServiceUnavailableException("A newer code was requested. Please use the latest code.");
+      }
+      const now = new Date();
+      await tx.customerAuthOtp.updateMany({
+        where: { phone: challenge.phone, purpose: "SIGN_IN", consumedAt: null },
+        data: { consumedAt: now },
+      });
+      await tx.customerAuthOtp.update({ where: { id: challenge.id }, data: {
+        purpose: "SIGN_IN", consumedAt: null, expiresAt: new Date(now.getTime() + OTP_TTL_SECONDS * 1000),
+      } });
+    });
+  }
+
   async requestPhoneOtp(input: unknown) {
     const body = jsonBody(input, "Invalid OTP request");
     const phone = normalizeIndianPhone(body.phone);
     const provider = this.customerOtpProvider();
-    if (provider === "firebase") {
-      return this.firebaseOtpRequest(phone);
-    }
     const smsProvider = this.isMsg91SmsProvider(provider);
-    if (smsProvider) {
-      this.signingSecret();
-      if (!this.msg91SmsOtpConfigured()) {
-        if (this.firebaseFallbackConfigured()) return this.firebaseOtpRequest(phone, true);
-        throw new ServiceUnavailableException("SMS OTP is not configured");
-      }
-      const prisma = this.requirePrisma();
-
-      const recent = await prisma.customerAuthOtp.count({
-        where: {
-          phone,
-          purpose: "SIGN_IN",
-          createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
-        },
-      });
-      if (recent >= 5) throw tooManyRequests("Please wait before requesting another OTP");
-
-      const code = randomOtp();
-      const challenge = await prisma.customerAuthOtp.create({
-        data: {
-          phone,
-          codeHash: this.otpHash(phone, code),
-          purpose: "SIGN_IN",
-          channel: "SMS",
-          expiresAt: secondsFromNow(OTP_TTL_SECONDS),
-        },
-      });
-
-      try {
-        await this.sendMsg91SmsOtp(phone, code);
-      } catch (error) {
-        // Finish invalidation before switching proof types. A database failure
-        // must not leave a potentially delivered SMS valid alongside fallback.
-        await prisma.customerAuthOtp.update({ where: { id: challenge.id }, data: { consumedAt: new Date() } })
-          .catch(() => { throw new ServiceUnavailableException("Unable to send SMS OTP right now"); });
-        if (error instanceof ServiceUnavailableException && this.firebaseFallbackConfigured()) {
-          return this.firebaseOtpRequest(phone, true);
-        }
-        throw error;
-      }
-
-      return {
-        phone,
-        channel: "SMS",
-        expiresInSeconds: OTP_TTL_SECONDS,
-        ...(process.env.HIDI_AUTH_DEV_OTP_RESPONSE === "true" && process.env.NODE_ENV !== "production" ? { devOtp: code } : {}),
-      };
-    }
-    if (provider && provider !== "whatsapp") {
+    if (provider && provider !== "firebase" && provider !== "whatsapp" && !smsProvider) {
       throw new ServiceUnavailableException("Customer OTP provider is not supported");
     }
-    const prisma = this.requirePrisma();
     this.signingSecret();
-    if (!this.whatsappOtpConfigured()) throw new ServiceUnavailableException("WhatsApp OTP is not configured");
-
-    const recent = await prisma.customerAuthOtp.count({
-      where: {
-        phone,
-        purpose: "SIGN_IN",
-        createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
-      },
-    });
-    if (recent >= 5) throw tooManyRequests("Please wait before requesting another OTP");
-
+    const firebaseOnly = provider === "firebase" || (smsProvider && !this.msg91SmsOtpConfigured());
+    if (firebaseOnly) {
+      if (provider !== "firebase" && !this.firebaseFallbackConfigured()) {
+        throw new ServiceUnavailableException("SMS OTP is not configured");
+      }
+      this.firebaseProjectId();
+    } else if (!smsProvider && !this.whatsappOtpConfigured()) {
+      throw new ServiceUnavailableException("WhatsApp OTP is not configured");
+    }
+    const prisma = this.requirePrisma();
     const code = randomOtp();
-    const challenge = await prisma.customerAuthOtp.create({
-      data: {
-        phone,
-        codeHash: this.otpHash(phone, code),
-        purpose: "SIGN_IN",
-        channel: "WHATSAPP",
-        expiresAt: secondsFromNow(OTP_TTL_SECONDS),
-      },
-    });
+    const channel = firebaseOnly ? "FIREBASE" : smsProvider ? "SMS" : "WHATSAPP";
+    const challenge = await this.reserveOtpRequest(prisma, phone, channel, code);
+    if (firebaseOnly) return this.firebaseOtpRequest(phone, smsProvider);
 
     try {
-      await this.sendWhatsappOtp(phone, code);
+      if (smsProvider) await this.sendMsg91SmsOtp(phone, code);
+      else await this.sendWhatsappOtp(phone, code);
     } catch (error) {
-      await prisma.customerAuthOtp.update({ where: { id: challenge.id }, data: { consumedAt: new Date() } }).catch(() => undefined);
+      // A failed resend must not consume a previous successfully sent code.
+      // Persist failure before authorizing fallback; DB failures never fall back.
+      await prisma.customerAuthOtp.update({ where: { id: challenge.id }, data: { consumedAt: new Date() } })
+        .catch(() => { throw new ServiceUnavailableException("Unable to send SMS OTP right now"); });
+      if (smsProvider && error instanceof ServiceUnavailableException && this.firebaseFallbackConfigured()) {
+        return this.firebaseOtpRequest(phone, true);
+      }
       throw error;
     }
-
+    // SQL publication is separate from sending so a DB failure cannot cause a
+    // second provider send. Only an acknowledged fresh code supersedes old ones.
+    await this.activateOtpRequest(prisma, challenge);
     return {
-      phone,
-      channel: "WHATSAPP",
-      expiresInSeconds: OTP_TTL_SECONDS,
+      phone, channel, expiresInSeconds: OTP_TTL_SECONDS, retryAfterSeconds: OTP_RESEND_SECONDS,
       ...(process.env.HIDI_AUTH_DEV_OTP_RESPONSE === "true" && process.env.NODE_ENV !== "production" ? { devOtp: code } : {}),
     };
   }
@@ -698,12 +705,12 @@ export class SupabaseAuthService {
       where: {
         phone,
         purpose: "SIGN_IN",
-        consumedAt: null,
-        expiresAt: { gt: new Date() },
       },
       orderBy: { createdAt: "desc" },
     });
-    if (!challenge) throw new UnauthorizedException("That code is invalid or has expired");
+    if (!challenge || challenge.consumedAt || challenge.expiresAt <= new Date()) {
+      throw new UnauthorizedException("That code is invalid or has expired");
+    }
     if (challenge.attempts >= OTP_MAX_ATTEMPTS) throw tooManyRequests("Please request a new OTP");
 
     const expected = this.otpHash(phone, code);
@@ -717,7 +724,7 @@ export class SupabaseAuthService {
 
     const user = await prisma.$transaction(async (tx: any) => {
       const consumed = await tx.customerAuthOtp.updateMany({
-        where: { id: challenge.id, consumedAt: null },
+        where: { id: challenge.id, consumedAt: null, expiresAt: { gt: new Date() }, attempts: { lt: OTP_MAX_ATTEMPTS } },
         data: { consumedAt: new Date() },
       });
       if (consumed.count !== 1) throw new UnauthorizedException("That code is invalid or has expired");

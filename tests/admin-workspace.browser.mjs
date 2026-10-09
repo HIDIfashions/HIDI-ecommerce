@@ -5,9 +5,11 @@ import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-const { chromium } = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
+const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
+const engine = process.env.HIDI_BROWSER_ENGINE || 'chromium';
+assert(['chromium', 'firefox', 'webkit'].includes(engine), 'Known isolated browser engine required');
 const port = 3100, upstreamPort = 4100, base = `http://127.0.0.1:${port}`;
-const output = resolve('test-results/admin-workspace'); await mkdir(output, { recursive: true });
+const output = resolve('test-results/admin-workspace', engine); await mkdir(output, { recursive: true });
 const upstreamRequests = [], contexts = [], diagnostics = [];
 const upstream = createServer((req, res) => { upstreamRequests.push({ url: req.url, authorization: req.headers.authorization }); res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ message: 'Test upstream: invalid staff token' })); });
 await new Promise(resolve => upstream.listen(upstreamPort, '127.0.0.1', resolve));
@@ -63,7 +65,7 @@ try {
     assert.equal(deniedInventory.status, 401, 'inventory preserves the upstream authentication status');
   }
   passed('real Next.js BFF denies missing and forged sessions; forwards only allowed filters');
-  browser = await chromium.launch({ headless: true });
+  browser = await pw[engine].launch({ headless: true });
   const signedOut = await browser.newPage(); await signedOut.goto(base + '/admin'); await waitText(signedOut, 'Secure staff access'); assert.equal(await signedOut.getByRole('heading', { name: 'Overview', exact: true }).count(), 0); await signedOut.close(); passed('signed-out workspace does not render operational data');
   const { page, context, state, errors } = await fixtureContext();
   await page.goto(base + '/admin'); await waitText(page, 'Booked order value'); await noOverflow(page);

@@ -261,20 +261,25 @@ export async function sendPhoneOtp(phone: string) {
   const normalizedPhone = normalizeIndianPhone(phone);
   const config = await loadAuthConfig();
   if (!config.phoneOtp) throw new Error("Customer sign-in is temporarily unavailable. Please retry.");
-  if (customerAuthProvider() === "firebase") return sendFirebasePhoneOtp(normalizedPhone);
   const response = await fetch(`${API_URL}/auth/otp/request`, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({ phone: normalizedPhone }),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data?.message ?? "Unable to send the verification code");
-  if (config.provider === "msg91" && config.fallbackProvider === "firebase" && data?.fallback === true &&
-      data?.clientHandled === true && data?.provider === "firebase" && data?.channel === "FIREBASE" &&
-      data?.phone === normalizedPhone) {
+  if (!response.ok) {
+    const error = new Error(data?.message ?? "Unable to send the verification code") as Error & { retryAfterSeconds?: number };
+    const retryAfter = Number(data?.retryAfterSeconds);
+    if (response.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfterSeconds = Math.ceil(retryAfter);
+    throw error;
+  }
+  const firebaseDirective = data?.clientHandled === true && data?.provider === "firebase" &&
+    data?.channel === "FIREBASE" && data?.phone === normalizedPhone;
+  if (firebaseDirective && ((config.provider === "firebase" && (data?.fallback === undefined || data?.fallback === false)) ||
+      (config.provider === "msg91" && config.fallbackProvider === "firebase" && data?.fallback === true))) {
     return sendFirebasePhoneOtp(normalizedPhone);
   }
-  if (data?.clientHandled || !["SMS", "WHATSAPP"].includes(data?.channel)) {
+  if (data?.clientHandled || !["SMS", "WHATSAPP"].includes(data?.channel) || data?.phone !== normalizedPhone) {
     throw new Error("Sign-in settings changed. Please request a new code.");
   }
   runtimeAuthConfig = {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { CatalogImage } from "@/components/catalog-image";
 import { RetentionPreferences } from "@/components/retention-preferences";
 import { ReturnExchangeRequest } from "@/components/return-exchange-request";
@@ -96,9 +96,37 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState<string>("");
+  const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [otpAction, setOtpAction] = useState<"send" | "verify" | null>(null);
+  const [retryPhone, setRetryPhone] = useState("");
+  const [retryAt, setRetryAt] = useState(0);
+  const [now, setNow] = useState(0);
+  const pendingAuthRequest = useRef(false);
+  const mounted = useRef(true);
+  const resendSeconds = localPhoneDigits(phone) === localPhoneDigits(retryPhone)
+    ? Math.max(0, Math.ceil((retryAt - now) / 1000)) : 0;
+
+  function startOtpCooldown(forPhone: string, seconds = 60) {
+    const current = Date.now();
+    setRetryPhone(forPhone);
+    setNow(current);
+    setRetryAt(current + seconds * 1000);
+  }
+
+  useEffect(() => {
+    if (!retryAt) return;
+    setNow(Date.now());
+    if (Date.now() >= retryAt) return;
+    const timer = window.setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= retryAt) window.clearInterval(timer);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [retryAt]);
 
   async function refreshAuthConfig() {
     try {
@@ -137,49 +165,64 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
   }
 
   useEffect(() => {
+    mounted.current = true;
     const stored = getStoredSession();
     setPhone(String(stored?.user?.phone ?? "").replace(/^\+91/, ""));
     loadAccount();
     refreshAuthConfig();
+    return () => { mounted.current = false; };
   }, []);
 
-  async function requestOtp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function requestOtp(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    if (pendingAuthRequest.current) return;
     const enteredPhone = String(phone ?? "").trim();
+    if (localPhoneDigits(enteredPhone) === localPhoneDigits(retryPhone) && Date.now() < retryAt) return;
     if (!enteredPhone) {
       setError("Enter your mobile number");
       return;
     }
-    setBusy(true); setError(""); setMessage("");
+    pendingAuthRequest.current = true;
+    setBusy(true); setOtpAction("send"); setError("");
     try {
       const normalized = await sendPhoneOtp(enteredPhone);
+      if (!mounted.current) return;
       const deliveredChannel = authChannelLabel();
       setChannelLabel(deliveredChannel);
       setPhone(normalized);
+      setOtp("");
       setStep("otp");
+      startOtpCooldown(normalized);
       setMessage(`We sent a 6-digit HIDI sign-in code by ${deliveredChannel} to ${maskedPhone(normalized)}.`);
     } catch (e: any) {
+      if (!mounted.current) return;
+      const retryAfter = Number(e?.retryAfterSeconds);
+      if (Number.isFinite(retryAfter) && retryAfter > 0) startOtpCooldown(enteredPhone, Math.ceil(retryAfter));
       setError(e.message);
     } finally {
-      setBusy(false);
+      pendingAuthRequest.current = false;
+      if (mounted.current) { setBusy(false); setOtpAction(null); }
     }
   }
 
   async function verifyOtp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const otp = String(data.get("otp") ?? "");
-    setBusy(true); setError("");
+    if (pendingAuthRequest.current) return;
+    pendingAuthRequest.current = true;
+    setBusy(true); setOtpAction("verify"); setError("");
     try {
       await verifyPhoneOtp(String(phone ?? ""), otp);
+      if (!mounted.current) return;
       setSignedIn(true);
       setLoading(true);
       setMessage("");
       await loadAccount();
     } catch (e: any) {
+      if (!mounted.current) return;
       setError(e.message);
     } finally {
-      setBusy(false);
+      pendingAuthRequest.current = false;
+      if (mounted.current) { setBusy(false); setOtpAction(null); }
     }
   }
 
@@ -190,6 +233,7 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
     setSignedIn(false);
     setStep("phone");
     setPhone("");
+    setOtp("");
     setMessage("");
     setError("");
     setBusy(false);
@@ -216,14 +260,16 @@ export function AccountOrdersClient({ view = "overview" }: { view?: "overview" |
           <label htmlFor="account-phone">Mobile number</label>
           <div style={{ display: "flex", gap: 8 }}>
             <span style={{ display: "flex", alignItems: "center", padding: "0 12px", border: "1px solid #d8d3cb", borderRadius: 8 }}>+91</span>
-            <input id="account-phone" type="tel" value={localPhoneDigits(phone)} onChange={(event) => setPhone(localPhoneDigits(event.target.value ?? ""))} placeholder="98765 43210" inputMode="numeric" autoComplete="tel" maxLength={10} required />
+            <input id="account-phone" type="tel" value={localPhoneDigits(phone)} onChange={(event) => setPhone(localPhoneDigits(event.target.value ?? ""))} placeholder="98765 43210" inputMode="numeric" autoComplete="tel" maxLength={10} required disabled={busy} />
           </div>
-          <button className={`button ${styles.authPrimaryButton}`} disabled={busy || localPhoneDigits(phone).length !== 10}>{busy ? "Sending OTP…" : `Send ${channelLabel} OTP`}</button>
+          <p className={styles.authPolicy}>We use your mobile number to verify sign-in and manage your HIDI account. By requesting a code, you agree to our <Link href="/account/policy#terms" target="_blank" rel="noopener noreferrer">Account terms</Link> and acknowledge our <Link href="/account/policy#privacy" target="_blank" rel="noopener noreferrer">Privacy notice</Link>.</p>
+          <button className={`button ${styles.authPrimaryButton}`} disabled={busy || resendSeconds > 0 || localPhoneDigits(phone).length !== 10}>{otpAction === "send" ? "Sending OTP…" : resendSeconds > 0 ? `Send OTP in ${resendSeconds}s` : `Send ${channelLabel} OTP`}</button>
         </form> : <form className={styles.authForm} onSubmit={verifyOtp}>
           <label htmlFor="account-otp">6-digit OTP</label>
-          <input id="account-otp" name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="000000" required autoComplete="one-time-code" />
-          <button className={`button ${styles.authPrimaryButton}`} disabled={busy}>{busy ? "Signing in…" : "Verify & sign in"}</button>
-          <button className={styles.secondaryButton} type="button" onClick={() => { setStep("phone"); setMessage(""); setError(""); }} disabled={busy}>Use a different mobile number</button>
+          <input id="account-otp" name="otp" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="000000" required autoComplete="one-time-code" disabled={busy} />
+          <button className={`button ${styles.authPrimaryButton}`} disabled={busy}>{otpAction === "verify" ? "Signing in…" : "Verify & sign in"}</button>
+          <button className={styles.secondaryButton} type="button" onClick={() => { void requestOtp(); }} disabled={busy || resendSeconds > 0}>{otpAction === "send" ? "Sending OTP…" : resendSeconds > 0 ? `Resend OTP in ${resendSeconds}s` : "Resend OTP"}</button>
+          <button className={styles.secondaryButton} type="button" onClick={() => { setStep("phone"); setOtp(""); setMessage(""); setError(""); }} disabled={busy}>Use a different mobile number</button>
         </form>}
 
         {message && <p className={styles.authMessage}>{message}</p>}
