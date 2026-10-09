@@ -37,22 +37,28 @@ const productionHosts = new Set(["thehidi.com", "www.thehidi.com"]);
 const adminLandingMediaLink = `
 <script data-hidi-landing-media-link="true">
 (() => {
-  const addMediaTab = () => {
+  const tabs = [
+    { href: '/admin/landing-media', label: 'Media Upload', key: 'media' },
+    { href: '/admin/packing-scanner', label: 'Packing Scanner', key: 'packing' },
+  ];
+  const addAdminTabs = () => {
     const nav = document.querySelector('nav[aria-label="Admin navigation"]');
-    if (!nav || nav.querySelector('[data-hidi-media-tab="true"]')) return;
-    const link = document.createElement('a');
-    link.href = '/admin/landing-media';
-    link.textContent = 'Media Upload';
-    link.dataset.hidiMediaTab = 'true';
-    link.setAttribute('aria-label', 'Open HIDI landing media upload');
-    nav.appendChild(link);
+    if (!nav) return;
+    for (const tab of tabs) {
+      if (nav.querySelector('[data-hidi-admin-tab="' + tab.key + '"]')) continue;
+      const link = document.createElement('a');
+      link.href = tab.href;
+      link.textContent = tab.label;
+      link.dataset.hidiAdminTab = tab.key;
+      nav.appendChild(link);
+    }
   };
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', addMediaTab, { once: true });
+    document.addEventListener('DOMContentLoaded', addAdminTabs, { once: true });
   } else {
-    addMediaTab();
+    addAdminTabs();
   }
-  const observer = new MutationObserver(addMediaTab);
+  const observer = new MutationObserver(addAdminTabs);
   observer.observe(document.documentElement, { childList: true, subtree: true });
 })();
 </script>
@@ -888,6 +894,123 @@ function storefrontReady() {
   });
 }
 
+
+function cookieValue(request, name) {
+  const raw = String(request.headers.cookie || "");
+  for (const part of raw.split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) {
+      try { return decodeURIComponent(rest.join("=")); } catch { return rest.join("="); }
+    }
+  }
+  return "";
+}
+
+function readSmallJson(request, maxBytes = 64 * 1024) {
+  return new Promise((resolveBody, rejectBody) => {
+    const chunks = [];
+    let size = 0;
+    request.on("data", chunk => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        rejectBody(new Error("Request is too large"));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => {
+      try {
+        resolveBody(chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {});
+      } catch {
+        rejectBody(new Error("Invalid JSON"));
+      }
+    });
+    request.on("error", rejectBody);
+  });
+}
+
+function callAdminApi(request, response, apiPath, method = "GET", body) {
+  if (!apiOrigin) return sendJson(response, 503, { message: "API unavailable" }, request.method);
+  const accessToken = cookieValue(request, "hidi_admin_access");
+  if (!accessToken) {
+    return sendJson(response, 401, { message: "Admin sign-in required" }, request.method);
+  }
+  const payload = body === undefined ? null : Buffer.from(JSON.stringify(body));
+  const headers = {
+    Authorization: "Bearer " + accessToken,
+    Accept: "application/json",
+  };
+  if (payload) {
+    headers["Content-Type"] = "application/json";
+    headers["Content-Length"] = String(payload.length);
+  }
+  const upstream = requestApi({
+    protocol: apiOrigin.protocol,
+    hostname: apiOrigin.hostname,
+    port: apiOrigin.port || undefined,
+    method,
+    path: apiProxyPath("/v1" + apiPath),
+    headers,
+  }, incoming => {
+    const chunks = [];
+    incoming.on("data", chunk => chunks.push(chunk));
+    incoming.on("end", () => {
+      const raw = Buffer.concat(chunks);
+      const responseHeaders = {
+        "Content-Type": String(incoming.headers["content-type"] || "application/json; charset=utf-8"),
+        "Cache-Control": "no-store",
+        "Content-Length": String(raw.length),
+      };
+      response.writeHead(incoming.statusCode || 502, responseHeaders);
+      response.end(raw);
+    });
+  });
+  upstream.on("error", () => sendJson(response, 503, { message: "Packing service unavailable" }, request.method));
+  if (payload) upstream.end(payload);
+  else upstream.end();
+}
+
+async function handlePackingScannerApi(request, response, pathname) {
+  if (pathname !== "/api/hidi/packing-plan" && pathname !== "/api/hidi/packing-complete") return false;
+  const url = new URL(request.url || "/", "http://localhost");
+  const orderNumber = String(url.searchParams.get("order") || "").trim();
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(orderNumber)) {
+    sendJson(response, 400, { message: "Enter a valid order number" }, request.method);
+    return true;
+  }
+
+  if (pathname === "/api/hidi/packing-plan") {
+    if (request.method !== "GET") {
+      response.setHeader("Allow", "GET");
+      sendJson(response, 405, { message: "Method not allowed" }, request.method);
+      return true;
+    }
+    callAdminApi(request, response, "/admin/orders/" + encodeURIComponent(orderNumber) + "/packing");
+    return true;
+  }
+
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "POST");
+    sendJson(response, 405, { message: "Method not allowed" }, request.method);
+    return true;
+  }
+  try {
+    const body = await readSmallJson(request);
+    const scannedBarcodes = Array.isArray(body?.scannedBarcodes) ? body.scannedBarcodes : [];
+    callAdminApi(
+      request,
+      response,
+      "/admin/orders/" + encodeURIComponent(orderNumber) + "/packing/complete",
+      "POST",
+      { scannedBarcodes },
+    );
+  } catch (failure) {
+    sendJson(response, 400, { message: failure instanceof Error ? failure.message : "Invalid request" }, request.method);
+  }
+  return true;
+}
+
 async function handle(request, response) {
   if (!request.url?.startsWith("/") || request.url.startsWith("//")) {
     return error(response, 400, "Invalid request path");
@@ -919,6 +1042,7 @@ async function handle(request, response) {
   }
 
   if (await handleHeroMedia(request, response, pathname)) return;
+  if (await handlePackingScannerApi(request, response, pathname)) return;
 
   if (pathname === "/api/hidi/analytics-config") {
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -960,7 +1084,9 @@ async function handle(request, response) {
     ? "/hero-control.html"
     : pathname === "/admin/landing-media"
       ? "/landing-media-control.html"
-      : pathname;
+      : pathname === "/admin/packing-scanner"
+        ? "/packing-scanner-control.html"
+        : pathname;
   let filePath = resolve(root, `.${landingPath === "/" ? "/index.html" : landingPath}`);
   if (!filePath.startsWith(`${root}${sep}`)) {
     return error(response, 403, "Forbidden");
