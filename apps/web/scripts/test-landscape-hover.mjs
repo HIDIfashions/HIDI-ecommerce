@@ -19,6 +19,7 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
       page.on('pageerror', error => errors.push(error.message));
       await context.route('**/*', async route => {
         const url = new URL(route.request().url());
+        if (process.env.HIDI_LAYOUT_LIVE === '1') return ['GET','HEAD'].includes(route.request().method()) ? route.continue() : route.abort();
         if (url.origin !== new URL(base).origin) return route.abort();
         if (url.pathname.startsWith('/api/')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version:1, slots:{}, items:[], products:[], active:false, source:'bundled' }) });
         return route.continue();
@@ -68,7 +69,7 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
         if (!touch) {
           const cards = page.locator('.hidi-collection-card');
           for (const depth of ['active','near']) {
-            const card = cards.filter({ has:page.locator('a') }).locator(`xpath=self::*[@data-depth="${depth}"]`).first();
+            const card = page.locator(`.hidi-collection-card[data-depth="${depth}"]`).first();
             await card.locator('.hidi-collection-photo').hover({ position:{x:10,y:20} });
             await page.waitForFunction(() => {
               const image=document.querySelector('[data-hovered="true"] .hidi-collection-photo');
