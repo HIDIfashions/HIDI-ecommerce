@@ -29,9 +29,12 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
         return route.continue();
       });
       try {
+        const mediaResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/hidi/landing-media-config' && response.request().method() === 'GET');
         await page.goto(base, { waitUntil: 'domcontentloaded' });
+        const mediaConfig = await (await mediaResponse).json();
+        const configuredPicks = Object.entries(mediaConfig.slots || {}).filter(([id,slot]) => id.startsWith('ananya-') && slot.active && slot.type === 'image' && slot.url).map(([id]) => id);
         await page.locator('.meet-cinematic').waitFor();
-        if (process.env.HIDI_LAYOUT_LIVE !== '1') await page.waitForFunction(()=>document.querySelectorAll('.meet-cinematic__model[data-landing-media-slot]').length===5);
+        await page.waitForFunction(ids => ids.every(id => document.querySelector(`.meet-cinematic__model[data-landing-media-slot="${id}"]`)), configuredPicks);
         assert.equal(await page.locator('.meet-cinematic__ghost').count(), 0, 'No duplicate/mirrored model');
         assert.equal(await page.locator('.meet-cinematic__model').count(), 5, 'All five original looks retained');
         for (let pick = 0; pick < 5; pick++) {
