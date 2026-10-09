@@ -13,7 +13,7 @@ const imageUrl=id=>new URL('/assets/images/hero-landscape.webp?sequence='+id,bas
 const videoUrl=id=>new URL('/__playlist__/video-'+id+'.mp4',base).href;
 const delay=ms=>new Promise(done=>setTimeout(done,ms));
 for(const engine of ['chromium','firefox','webkit']) {
-  const browser=await pw[engine].launch({headless:true});
+  const browser=await pw[engine].launch({headless:true,...(engine==='chromium'?{channel:'chrome'}:{})});
   try {
     for(const [width,height] of [[390,844],[844,390],[1440,900]]) {
       const context=await browser.newContext({viewport:{width,height},hasTouch:width<900,reducedMotion:'no-preference'});
@@ -138,7 +138,7 @@ for(const engine of ['chromium','firefox','webkit']) {
         signedIn=false;await page.reload();await page.locator('#signin').waitFor({state:'visible'});assert(await page.locator('#workspace').isHidden());
         assert.deepEqual(errors,[]);reports.push({engine,width,height,result:'passed',photoItems:5,heroItems:4});
         console.log('PASS '+engine+' '+width+'x'+height+': multi-upload, ordering, crops, restore, mixed hero videos/images, rotation, keyboard, normal scrolling and admin boundaries');
-      }catch(error){await page.screenshot({path:resolve(output,engine+'-'+width+'-failure.png'),animations:'disabled'});await writeFile(resolve(output,'partial-report.json'),JSON.stringify(reports,null,2));console.error('MEDIA SEQUENCE FAILURE '+engine+' '+width+': '+error.stack);throw error;}
+      }catch(error){console.error('MEDIA STATE '+JSON.stringify(await page.evaluate(()=>{const media=document.querySelector('.hero-live-media');return {status:document.querySelector('.hero-media')?.dataset,media:media?{src:media.getAttribute('src'),type:media.tagName,readyState:media.readyState,networkState:media.networkState,error:media.error?.message,paused:media.paused,codec:document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"')}:null,message:document.querySelector('#message')?.textContent,photoIndex:document.querySelector('.meet-cinematic__model')?.dataset.mediaIndex};})));await page.screenshot({path:resolve(output,engine+'-'+width+'-failure.png'),animations:'disabled'});await writeFile(resolve(output,'partial-report.json'),JSON.stringify(reports,null,2));console.error('MEDIA SEQUENCE FAILURE '+engine+' '+width+': '+error.stack);throw error;}
       finally{await context.close();}
     }
   }finally{await browser.close();}
