@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HIDI Packing Scanner</title>
+<style>
+:root{--wine:#591d20;--gold:#d5a24d;--paper:#fffaf4;--ink:#352722;--muted:#7a6a61;--line:#e3d7ce;--ok:#1c7b4b;--bad:#a62e2e;font-family:Arial,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#f7f1eb;color:var(--ink)}button,input{font:inherit}.top{background:var(--wine);color:#fff;padding:18px 24px;display:flex;justify-content:space-between;align-items:center}.top a{color:#f7dd9a;text-decoration:none;font-size:13px}.wrap{width:min(980px,calc(100% - 28px));margin:28px auto 70px}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #3a241410}.row{display:flex;gap:10px;flex-wrap:wrap}.row input{flex:1;min-width:220px;padding:12px 14px;border:1px solid var(--line);border-radius:9px}.btn{border:0;border-radius:9px;padding:12px 16px;background:var(--wine);color:#fff;cursor:pointer}.btn:disabled{opacity:.45}.scan{margin-top:18px;padding:18px;border:2px solid var(--wine);border-radius:14px;background:var(--paper)}.scan input{width:100%;padding:16px;font-size:20px;border:1px solid var(--line);border-radius:10px}.hint{color:var(--muted);font-size:12px;line-height:1.5}.status{margin-top:10px;font-weight:700}.good{color:var(--ok)}.bad{color:var(--bad)}.items{display:grid;gap:10px;margin-top:16px}.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px;border:1px solid var(--line);border-radius:12px}.meta{font-size:12px;color:var(--muted);margin-top:4px}.count{font-weight:700}.bar{height:10px;background:#eadfd6;border-radius:999px;overflow:hidden;margin:14px 0}.bar>div{height:100%;background:var(--wine);width:0}.headline{display:flex;justify-content:space-between;gap:10px;align-items:center}.headline h1{margin:0;font-family:Georgia,serif;font-weight:400;color:var(--wine)}.pill{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:6px 10px}.success{border-color:#b7d8c5;background:#f2fbf6}.error{border-color:#e6bebe;background:#fff5f5}@media(max-width:620px){.top{padding:14px 16px}.wrap{margin-top:16px}.headline{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header class="top"><strong>HIDI Admin</strong><a href="/admin/orders">Back to Orders</a></header>
+<main class="wrap">
+<section class="card">
+<div class="headline"><h1>Packing Scanner</h1><span id="orderState" class="pill">No order loaded</span></div>
+<p class="hint">Load one CONFIRMED order first. Then scan every physical garment tag. The order moves to PACKED only after the exact SKU and quantity match.</p>
+<div class="row">
+<input id="orderNo" autocomplete="off" placeholder="Order number">
+<button id="load" class="btn">Load order</button>
+</div>
+<div id="message" class="status"></div>
+<div id="workspace" hidden>
+<div class="bar"><div id="progress"></div></div>
+<div id="summary" class="hint"></div>
+<div class="scan">
+<label for="scan"><strong>Scan barcode</strong></label>
+<input id="scan" autocomplete="off" inputmode="none" placeholder="Scanner input appears here">
+<p class="hint">MJ2818C should type the barcode like a keyboard. Enter/Tab after each scan is accepted automatically.</p>
+</div>
+<div id="items" class="items"></div>
+</div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let plan=null, scans=[], expected=new Map(), actual=new Map(), finishing=false;
+function say(text,type=""){const el=$("message");el.textContent=text;el.className="status "+type}
+function focusScan(){setTimeout(()=>$("scan").focus(),40)}
+function normalize(v){return String(v||"").trim().toUpperCase()}
+function render(){
+  if(!plan)return;
+  const total=plan.itemCount||0;
+  const done=scans.length;
+  $("progress").style.width=(total?Math.min(100,done/total*100):0)+"%";
+  $("summary").textContent=done+" of "+total+" pieces scanned";
+  $("items").innerHTML="";
+  for(const item of plan.items){
+    const row=document.createElement("div");row.className="item";
+    const left=document.createElement("div");
+    left.innerHTML="<strong></strong><div class='meta'></div>";
+    left.querySelector("strong").textContent=item.productName;
+    left.querySelector(".meta").textContent=[item.sku,item.size,item.color,item.barcode].filter(Boolean).join(" • ");
+    const c=document.createElement("div");c.className="count";
+    c.textContent=(actual.get(item.barcode)||0)+" / "+item.quantity;
+    row.append(left,c);$("items").append(row);
+  }
+}
+async function loadOrder(){
+  const order=normalize($("orderNo").value);
+  if(!order){say("Enter an order number.","bad");return}
+  $("load").disabled=true;say("Loading order...");
+  try{
+    const r=await fetch("/api/hidi/packing-plan?order="+encodeURIComponent(order),{cache:"no-store"});
+    const b=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(b.message||"Unable to load order");
+    plan=b.order; scans=[]; expected=new Map(); actual=new Map();
+    for(const item of plan.items) expected.set(item.barcode,(expected.get(item.barcode)||0)+item.quantity);
+    $("workspace").hidden=false;
+    $("orderState").textContent=plan.orderNumber+" • "+plan.status;
+    if(plan.status!=="CONFIRMED"){
+      say("Only CONFIRMED orders can be scanned for packing.","bad");
+      $("scan").disabled=true;
+    }else{
+      $("scan").disabled=false;say("Order ready. Start scanning.","good");focusScan();
+    }
+    render();
+  }catch(e){say(e.message||"Unable to load order","bad")}
+  finally{$("load").disabled=false}
+}
+async function finish(){
+  if(finishing||!plan)return;finishing=true;$("scan").disabled=true;say("All pieces matched. Marking order PACKED...");
+  try{
+    const r=await fetch("/api/hidi/packing-complete?order="+encodeURIComponent(plan.orderNumber),{
+      method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({scannedBarcodes:scans})
+    });
+    const b=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(typeof b.message==="string"?b.message:"Packing could not be completed");
+    $("orderState").textContent=plan.orderNumber+" • PACKED";
+    say("Packed successfully. Order status changed to PACKED.","good");
+  }catch(e){
+    $("scan").disabled=false;say(e.message||"Packing failed","bad");focusScan();
+  }finally{finishing=false}
+}
+function acceptScan(raw){
+  if(!plan||plan.status!=="CONFIRMED"||finishing)return;
+  const code=normalize(raw);$("scan").value="";
+  if(!/^H[A-Z0-9]{12}$/.test(code)){say("Invalid barcode: "+code,"bad");focusScan();return}
+  const need=expected.get(code)||0, have=actual.get(code)||0;
+  if(!need){say("Wrong item scanned: "+code,"bad");focusScan();return}
+  if(have>=need){say("Extra scan rejected for "+code,"bad");focusScan();return}
+  scans.push(code);actual.set(code,have+1);render();say("Accepted "+code,"good");
+  const complete=[...expected.entries()].every(([b,q])=>(actual.get(b)||0)===q)&&scans.length===plan.itemCount;
+  if(complete)finish();else focusScan();
+}
+$("load").onclick=loadOrder;
+$("orderNo").addEventListener("keydown",e=>{if(e.key==="Enter")loadOrder()});
+$("scan").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();acceptScan(e.currentTarget.value)}});
+let timer=0;
+$("scan").addEventListener("input",e=>{clearTimeout(timer);timer=setTimeout(()=>{const v=e.currentTarget.value;if(/^H[A-Z0-9]{12}$/i.test(v))acceptScan(v)},180)});
+</script>
+</body>
+</html>
