@@ -22,12 +22,11 @@ env:
   AZURE_RESOURCE_GROUP: rg-hidi-prod
   AZURE_CONTAINER_APP: hidi-web
   ACR_NAME: acrhidiprod0927
-  # Landing deploys only add the Vite landing layer; keep the base on the current full Next/admin storefront image.
-  BASE_IMAGE: hidi-web:fb664ca85ecf13e69166942acbfef7cbe9372d41
   LIVE_URL: https://thidigk.thehidi.com
 
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[shopping-ux-coordinated]')
     name: Build, publish, and update Azure Container App
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -86,10 +85,15 @@ jobs:
         id: publish
         shell: bash
         run: |
+          current_image="$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_CONTAINER_APP" --query properties.template.containers[0].image -o tsv)"
+          registry_prefix="${ACR_NAME}.azurecr.io/"
+          [[ "$current_image" == "${registry_prefix}hidi-web"* ]] || { echo 'Unexpected storefront image registry'; exit 1; }
+          base_image="${current_image#"$registry_prefix"}"
+          echo "previous_image=$current_image" >> "$GITHUB_OUTPUT"
           python3 deploy/hidi-web-new/push-hidi-landing-oci.py \
             --registry "$ACR_NAME" \
             --payload hidi-landing-connected-runtime.tar.gz \
-            --base "$BASE_IMAGE" \
+            --base "$base_image" \
             --tag "${{ steps.version.outputs.tag }}" \
             | tee published-image.json
 
@@ -105,6 +109,8 @@ jobs:
       - name: Update Azure Container App
         shell: bash
         run: |
+          current_image="$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_CONTAINER_APP" --query properties.template.containers[0].image -o tsv)"
+          [[ "$current_image" == '${{ steps.publish.outputs.previous_image }}' ]] || { echo 'Storefront changed during publication; refusing overwrite'; exit 1; }
           az containerapp update \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --name "$AZURE_CONTAINER_APP" \

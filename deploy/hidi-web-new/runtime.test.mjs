@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { runInNewContext } from "node:vm";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdtemp, mkdir, rm, symlink, utimes, writeFile } from "node:fs/promises";
@@ -452,7 +453,22 @@ test("proxied admin portal pages expose the landing media control link", async (
   assert.equal(admin.status, 200);
   assert.match(admin.body, /Admin Portal/);
   assert.match(admin.body, /data-hidi-landing-media-link="true"/);
-  assert.match(admin.body, /href="\/admin\/landing-media"/);
+  const script = admin.body.match(/<script data-hidi-landing-media-link="true">([\s\S]*?)<\/script>/)?.[1];
+  assert(script, "Admin navigation enhancement is present");
+  const links = [];
+  const nav = {
+    querySelector(selector) { return links.find(link => selector.includes(`"${link.dataset.hidiAdminTab}"`)); },
+    appendChild(link) { links.push(link); },
+  };
+  let observe;
+  runInNewContext(script, {
+    document: { readyState: "complete", documentElement: {}, querySelector: () => nav, createElement: () => ({ dataset: {} }) },
+    MutationObserver: class { constructor(callback) { observe = callback; } observe() {} },
+  });
+  observe();
+  assert.deepEqual(links.map(link => [link.href, link.textContent]), [
+    ["/admin/landing-media", "Media Upload"], ["/admin/packing-scanner", "Packing Scanner"],
+  ]);
   assert.equal(admin.headers.etag, undefined);
   assert.equal(admin.headers["content-length"], String(Buffer.byteLength(admin.body)));
 

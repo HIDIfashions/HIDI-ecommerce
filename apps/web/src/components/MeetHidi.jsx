@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import { landingImageProps, useLandingMedia } from '../context/LandingMediaContext.jsx';
+import { useMediaQuery, useReducedMotion } from '../hooks/useMediaQuery.js';
+import { useDocumentVisible, useInView } from '../hooks/useVisibility.js';
 
 const topPicks = [
   {
@@ -46,11 +48,16 @@ export default function MeetHidi() {
   const activeIndexRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [previousIndex, setPreviousIndex] = useState(null);
+  const [interacting, setInteracting] = useState(false);
+  const touchLayout = useMediaQuery('(max-width: 700px), (pointer: coarse)');
+  const reducedMotion = useReducedMotion();
+  const visible = useInView(sectionRef);
+  const documentVisible = useDocumentVisible();
   const activePick = topPicks[activeIndex];
 
   useEffect(() => {
     const section = sectionRef.current;
-    if (!section) return undefined;
+    if (!section || touchLayout) return undefined;
 
     let frameId = 0;
 
@@ -81,7 +88,19 @@ export default function MeetHidi() {
       window.removeEventListener('resize', requestSync);
       if (frameId) window.cancelAnimationFrame(frameId);
     };
-  }, []);
+  }, [touchLayout]);
+
+  useEffect(() => {
+    if (!touchLayout || reducedMotion || !visible || !documentVisible || interacting) return undefined;
+    const timer = window.setInterval(() => {
+      const previous = activeIndexRef.current;
+      const next = (previous + 1) % topPicks.length;
+      setPreviousIndex(previous);
+      activeIndexRef.current = next;
+      setActiveIndex(next);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [touchLayout, reducedMotion, visible, documentVisible, interacting]);
 
   return (
     <section ref={sectionRef} className="meet-section meet-section--cinematic" id="meet-hidi" aria-labelledby="meet-title" style={{ '--pick-count': topPicks.length }}>
@@ -113,11 +132,11 @@ export default function MeetHidi() {
       );
     })}
     </div>
-    <div className="meet-cinematic__scroll" aria-hidden="true">
+    <div className="meet-cinematic__scroll" aria-hidden={touchLayout ? undefined : true} onFocus={() => setInteracting(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setInteracting(false); }}>
     <span className="meet-cinematic__count">{String(activeIndex + 1).padStart(2, '0')} / {String(topPicks.length).padStart(2, '0')}</span>
     <span className="meet-cinematic__scroll-track">
     {topPicks.map((pick, index) => (
-      <span className={`meet-cinematic__step ${index === activeIndex ? 'is-active' : ''}`} key={pick.name} />
+      touchLayout ? <button type="button" className="meet-cinematic__pick-control" key={pick.name} aria-label={`Show ${pick.name}`} aria-pressed={index === activeIndex} onClick={() => { setPreviousIndex(activeIndexRef.current); activeIndexRef.current = index; setActiveIndex(index); }}><span className={`meet-cinematic__step ${index === activeIndex ? 'is-active' : ''}`} /></button> : <span className={`meet-cinematic__step ${index === activeIndex ? 'is-active' : ''}`} key={pick.name} />
     ))}
     </span>
     <span className="meet-cinematic__scroll-copy">Scroll down</span>

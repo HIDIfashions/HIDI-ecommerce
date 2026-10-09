@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { config, safeWebUrl } from '../config.js';
 import { newsletterConfirmed, newsletterError } from '../routes.js';
 import { useHidi } from '../context/HidiContext.jsx';
-import Icon from './Icon.jsx';
 
 export default function Newsletter() {
   const { openNotice } = useHidi();
@@ -63,7 +62,7 @@ export default function Newsletter() {
           placeholder="Email address" required maxLength={254} autoCapitalize="none" autoCorrect="off" spellCheck={false}
           aria-invalid={error ? 'true' : undefined} aria-describedby={`newsletter-note${error ? ' newsletter-error' : ''}`}
           value={email} onChange={(event) => { setEmail(event.target.value); if (error) setError(''); }} />
-        <button type="submit" disabled={busy} aria-label={busy ? 'Submitting subscription' : 'Subscribe to HIDI updates'}><Icon name="arrow" /></button>
+        <button type="submit" disabled={busy} aria-label={busy ? 'Submitting subscription' : 'Subscribe to HIDI updates'}>{busy ? 'Subscribing...' : 'Subscribe'}</button>
       </div>
       {error && <p id="newsletter-error" className="newsletter-error" role="alert">{error}</p>}
       <p className="newsletter-note" id="newsletter-note">{endpoint

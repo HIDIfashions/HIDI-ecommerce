@@ -28,6 +28,7 @@
   .site-header .app-download { padding-inline: 13px; }
 }
 @media (max-width: 700px) {
+  .footer-stay { grid-column: 1 / -1; max-width: 480px; }
   .site-header .header-actions { gap: 7px; }
   .header-account { padding: 3px; gap: 0; border-radius: 5px; }
   .account-action { min-height: 31px; padding: 5px 10px; font-size: 10px; gap: 5px; }
@@ -167,17 +168,20 @@
 .newsletter .newsletter-field:focus-within { border-color: #e8c06fc7; background: #34171b25; box-shadow: 0 0 0 2px #e8c06f14; }
 .newsletter .newsletter-field input { padding: 11px 11px; font-size: 12px; line-height: 1.5; outline: none; box-shadow: none; border: 0; caret-color: #f4d79a; }
 .newsletter .newsletter-field input:focus, .newsletter .newsletter-field input:focus-visible { outline: none; box-shadow: none; }
-.newsletter .newsletter-field button { width: 38px; height: 40px; border-radius: 3px; margin-right: 2px; }
-.newsletter .newsletter-field button:hover { background: #e8c06f14; }
+.newsletter .newsletter-field button { width: auto; min-width: 94px; min-height: 44px; height: auto; padding: 10px 14px; border: 1px solid var(--gold); border-radius: 3px; margin: 2px; background: var(--gold); color: var(--burgundy-deep); font-family: var(--sans); font-size: 12px; line-height: 1.5; font-weight: 600; letter-spacing: 0; }
+.newsletter .newsletter-field button:hover:not(:disabled) { background: #fff8ed; border-color: #fff8ed; }
+.newsletter .newsletter-field button:disabled { opacity: .55; cursor: not-allowed; }
 .newsletter .newsletter-field button:focus-visible { outline: 1px solid var(--gold); outline-offset: -4px; }
 .newsletter .newsletter-field input:-webkit-autofill { -webkit-text-fill-color: #fff8ed; caret-color: #f4d79a; -webkit-box-shadow: 0 0 0 1000px #6b3434 inset; }
 .newsletter .newsletter-field.has-error { border-color: #ffe0d4; }
-.newsletter-error { color: #ffe8df; font-size: 10px; line-height: 1.6; margin-top: 8px; }
+.newsletter-error { color: #ffe8df; font-size: 11px; line-height: 1.6; margin-top: 8px; }
 @media (max-width: 700px) {
   .newsletter .newsletter-field input { font-size: 16px; padding: 10px 8px; }
   .newsletter .newsletter-field input::placeholder { font-size: 12px; }
-  .newsletter .newsletter-field button { width: 30px; }
-  .newsletter-error { font-size: 9px; }
+  .newsletter .newsletter-field button { width: auto; min-width: 90px; padding-inline: 10px; }
+  .newsletter label { font-size: 12px; line-height: 1.5; }
+  .newsletter .newsletter-note { font-size: 11px; line-height: 1.6; }
+  .newsletter-error { font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .editorial-photo--current, .editorial-card-button:hover .editorial-photo--current { transform: none !important; }

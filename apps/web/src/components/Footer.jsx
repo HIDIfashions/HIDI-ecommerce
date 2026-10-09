@@ -41,7 +41,7 @@ export default function Footer() {
     <div className="footer-column">
     <h3>Collections</h3>
     <button onClick={() => openCollection('new-arrivals')} type="button">New Arrivals</button>
-    <button onClick={() => openCollection('work-edit')} type="button">Work Edit</button>
+    <button onClick={() => openCollection('work-edit')} type="button">Workwear Edit</button>
     <button onClick={() => openCollection('everyday')} type="button">Everyday</button>
     <button onClick={() => openCollection('occasion')} type="button">Occasion</button>
     <button onClick={() => openCollection()} type="button">Shop All</button>

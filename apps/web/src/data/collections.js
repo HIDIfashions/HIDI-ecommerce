@@ -16,7 +16,7 @@ export const collections = [
   },
   {
     "id": "work-edit",
-    "name": "Work Edit",
+    "name": "Workwear Edit",
     "description": "From first meetings to last plans",
     "image": "images/cream-set.webp",
     "alt": "Cream Indian-wear set with a lightly embroidered kurta"

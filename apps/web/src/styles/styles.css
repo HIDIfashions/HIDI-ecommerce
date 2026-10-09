@@ -213,6 +213,15 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
   .meet-cinematic::after, .meet-cinematic__prism::after { animation: none; }
   .meet-cinematic__slide { transition: none; }
 }
+
+/* Touch visitors scroll through this section normally, without five pinned screens. */
+@media (max-width: 700px), (pointer: coarse) {
+  .meet-section--cinematic { min-height: 0; }
+  .meet-section--cinematic .container { position: relative; top: auto; }
+  .meet-cinematic { touch-action: pan-y pinch-zoom; }
+  .meet-cinematic__pick-control { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; }
+  .meet-cinematic__pick-control:focus-visible { outline: 2px solid var(--burgundy); outline-offset: -2px; }
+}
 /* 04 / Runway carousel — larger high centre, shorter flanks, clipped outer cards. */
 .range-section { background: var(--linen); padding: 67px 0 42px; overflow: clip; }
 .section-heading { text-align: center; }
@@ -522,7 +531,7 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
   .meet-cinematic::before { inset: 32% -20% 5% 12%; }
   .meet-cinematic::after { inset: 32% -20% 5% 12%; }
   .meet-cinematic__content { align-self: auto; padding: 82px 2px 0; }
-  .meet-cinematic__label { top: 21px; left: 18px; min-height: 30px; padding: 8px 12px; font-size: 8px; letter-spacing: .13em; }
+  .meet-cinematic__label { top: 21px; left: 18px; min-height: 30px; padding: 8px 12px; font-size: 11px; letter-spacing: 0; }
   .meet-cinematic__button { width: auto; min-width: 136px; margin-top: 0; }
   .meet-cinematic__stage { min-height: 506px; margin-top: -11px; }
   .meet-cinematic__prism { inset: 10% -14% 2% 8%; }
@@ -533,7 +542,8 @@ html.hidi-smooth-scroll { scroll-behavior: auto; }
   .meet-cinematic__ghost { left: 0; bottom: 1%; height: min(430px, 86%); opacity: .1; }
   .meet-cinematic__model { height: min(510px, 63svh); max-width: 112%; transform: translateX(-2%); }
   .meet-cinematic__scroll { right: 8px; bottom: 15px; gap: 8px; min-height: 36px; padding: 8px 10px; }
-  .meet-cinematic__count { font-size: 8px; letter-spacing: .14em; }
+  .meet-cinematic__count { font-size: 11px; letter-spacing: 0; }
+  .meet-cinematic__scroll-track { gap: 2px; }
   .meet-cinematic__step { width: 12px; }
   .meet-cinematic__step.is-active { width: 22px; }
   .meet-cinematic__scroll-copy { display: none; }
