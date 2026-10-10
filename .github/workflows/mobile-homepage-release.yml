@@ -25,7 +25,7 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/checkout@v4
         with:
-          ref: d89145d44ce4c714f7c15c5f2131296ed2e43591
+          ref: cc76aa49b243792f61e353c2e5092fa934a0e57c
           path: landing-source
       - uses: actions/setup-node@v4
         with: {node-version: 24}
@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: d89145d44ce4c714f7c15c5f2131296ed2e43591
+          ref: cc76aa49b243792f61e353c2e5092fa934a0e57c
           path: landing-source
       - uses: actions/setup-node@v4
         with: {node-version: 24}
