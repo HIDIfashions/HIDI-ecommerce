@@ -1,5 +1,6 @@
 """Compare the backed-up live baseline; update only our web image, with owned rollback."""
 import hashlib
+import copy
 import importlib.util
 import json
 import os
@@ -15,6 +16,15 @@ EXPECTED={
  'hidi-api':{'image':'acrhidiprod0927.azurecr.io/hidi-api@sha256:69d4c89fd6531658eba730b7254b7d34c9a274953e2fed4b46ce22caa13e56e6','settingsHash':'e2b3c06d5ffbea15ec506c9ede1b67a0e44cf7f3f5e46f5ef893cab76d582c8b'},
 }
 PUBLIC=['/api/hidi/privacy-policy','/privacy','/api/hidi/hero-config','/api/hidi/landing-media-config','/config.js']
+
+def write_image(data, image, suffix):
+    # Azure can return secrets=null. The shared helper uses this list only
+    # for stderr redaction; its PATCH contains no configuration/secrets.
+    # Keep the captured settings and the actual image-only patch unchanged.
+    safe=copy.deepcopy(data)
+    if safe['properties']['configuration'].get('secrets') is None:
+        safe['properties']['configuration']['secrets']=[]
+    guard.write_image(safe,image,suffix)
 
 def stable_public():
     result={}
@@ -66,7 +76,7 @@ def main():
     assert_public(public,'Published policy, media or social configuration changed independently')
     changed=False
     try:
-        changed=True;suffix='perf'+os.environ['GITHUB_RUN_ID'];print('Stage: apply protected image patch',flush=True);guard.write_image(old['hidi-web'],candidate,suffix)
+        changed=True;suffix='perf'+os.environ['GITHUB_RUN_ID'];print('Stage: apply protected image patch',flush=True);write_image(old['hidi-web'],candidate,suffix)
         print('Stage: wait for ready candidate revision',flush=True)
         state=guard.snapshot(guard.wait_ready(candidate,suffix));assert state['settingsHash']==baseline['hidi-web']['settingsHash']
         assert guard.snapshot(guard.app('hidi-api'))==baseline['hidi-api'], 'API drift'
@@ -81,7 +91,7 @@ def main():
         if changed:
             data=guard.app('hidi-web');current=guard.snapshot(data)
             if current['image']==candidate and current['settingsHash']==baseline['hidi-web']['settingsHash']:
-                suffix='perfrb'+os.environ['GITHUB_RUN_ID'];guard.write_image(data,baseline['hidi-web']['image'],suffix);guard.wait_ready(baseline['hidi-web']['image'],suffix)
+                suffix='perfrb'+os.environ['GITHUB_RUN_ID'];write_image(data,baseline['hidi-web']['image'],suffix);guard.wait_ready(baseline['hidi-web']['image'],suffix)
                 print('Candidate failed verification; exact previous web image restored',file=sys.stderr)
             elif current['image']==baseline['hidi-web']['image']:print('Previous image remains active',file=sys.stderr)
             else:print('Independent live drift; refusing rollback over another release',file=sys.stderr)
