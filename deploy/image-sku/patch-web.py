@@ -79,17 +79,27 @@ def patch_web(base, overlay):
     else: raise AssertionError('Image SKU asset references did not settle')
     files = {mapping.get(name, name): value for name, value in final.items() if value != original[name]}
     photo = original[PHOTO]
-    keyfn = re.search(r'function (?P<fn>'+ID+r')\((?P<variant>'+ID+r'),(?P<mime>'+ID+r')\)\{let (?P<clean>'+ID+r')=(?P=variant)\.toLowerCase\(\).*?return`products/variants/\$\{(?P=clean)\}/',photo); assert keyfn
-    photo = once(photo, keyfn[0], keyfn[0].replace('('+keyfn['variant']+','+keyfn['mime']+')','('+keyfn['variant']+','+keyfn['mime']+',hidiUploadKey)'))
-    insert = photo.index('return`products/variants/${'+keyfn['clean']+'}/')
-    expression = 'if(hidiUploadKey)return`products/variants/${'+keyfn['clean']+'}/batch-${hidiUploadKey}.${({"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/avif":"avif"})['+keyfn['mime']+']??"jpg"}`;'
-    photo = photo[:insert]+expression+photo[insert:]
-    sha = re.search(r'function (?P<fn>'+ID+r')\('+ID+r'\)\{return\(0,'+ID+r'\.createHash\)\("sha256"\)',photo); assert sha
-    target = re.search(r'await (?P<ticket>'+ID+r')\((?P<request>'+ID+r'),(?P<variant>'+ID+r'),(?P<file>'+ID+r')\);let '+ID+r'="azure"===process\.env\.MEDIA_STORAGE_PROVIDER\?await \(0,'+ID+r'\.i\)\('+re.escape(keyfn['fn'])+r'\((?P=variant),(?P=file)\.type\)',photo); assert target
-    form = re.search(r'let (?P<form>'+ID+r')=await '+re.escape(target['request'])+r'\.formData\(\)',photo); assert form
-    prefix='let hidiUploadKey,hidiImageSku=String('+form['form']+'.get("imageSku")??"");if(hidiImageSku){let hidiPhotoNumber=String('+form['form']+'.get("photoNumber")??"");if(!/^[A-Z][A-Z0-9]*(?:[_-][A-Z0-9]+)*$/.test(hidiImageSku)||hidiImageSku.length>64||!/^[1-9]\\d{0,3}$/.test(hidiPhotoNumber))throw Error("Invalid Image SKU or photo number");if(process.env.MEDIA_STORAGE_PROVIDER!=="azure")throw Error("Image SKU uploads require the configured Azure photo storage");hidiUploadKey='+sha['fn']+'([hidiImageSku,hidiPhotoNumber,'+target['file']+'.type,'+sha['fn']+'(Buffer.from(await '+target['file']+'.arrayBuffer()))].join("\\u0000"));}'
-    photo = photo[:target.start()]+prefix+photo[target.start():]
-    photo = once(photo,keyfn['fn']+'('+target['variant']+','+target['file']+'.type),Buffer.from(await ',keyfn['fn']+'('+target['variant']+','+target['file']+'.type,hidiUploadKey),Buffer.from(await ')
+    if 'let hidiUploadKey,hidiImageSku=' not in photo:
+        keyfn = re.search(r'function (?P<fn>'+ID+r')\((?P<variant>'+ID+r'),(?P<mime>'+ID+r')\)\{let (?P<clean>'+ID+r')=(?P=variant)\.toLowerCase\(\).*?return`products/variants/\$\{(?P=clean)\}/',photo); assert keyfn
+        photo = once(photo, keyfn[0], keyfn[0].replace('('+keyfn['variant']+','+keyfn['mime']+')','('+keyfn['variant']+','+keyfn['mime']+',hidiUploadKey)'))
+        insert = photo.index('return`products/variants/${'+keyfn['clean']+'}/')
+        expression = 'if(hidiUploadKey)return`products/variants/${'+keyfn['clean']+'}/batch-${hidiUploadKey}.${({"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/avif":"avif"})['+keyfn['mime']+']??"jpg"}`;'
+        photo = photo[:insert]+expression+photo[insert:]
+        sha = re.search(r'function (?P<fn>'+ID+r')\('+ID+r'\)\{return\(0,'+ID+r'\.createHash\)\("sha256"\)',photo); assert sha
+        target = re.search(r'await (?P<ticket>'+ID+r')\((?P<request>'+ID+r'),(?P<variant>'+ID+r'),(?P<file>'+ID+r')\);let '+ID+r'="azure"===process\.env\.MEDIA_STORAGE_PROVIDER\?await \(0,'+ID+r'\.i\)\('+re.escape(keyfn['fn'])+r'\((?P=variant),(?P=file)\.type\)',photo); assert target
+        form = re.search(r'let (?P<form>'+ID+r')=await '+re.escape(target['request'])+r'\.formData\(\)',photo); assert form
+        prefix='let hidiUploadKey,hidiImageSku=String('+form['form']+'.get("imageSku")??"");if(hidiImageSku){let hidiPhotoNumber=String('+form['form']+'.get("photoNumber")??"");if(!/^[A-Z][A-Z0-9]*(?:[_-][A-Z0-9]+)*$/.test(hidiImageSku)||hidiImageSku.length>64||!/^[1-9]\\d{0,3}$/.test(hidiPhotoNumber))throw Error("Invalid Image SKU or photo number");if(process.env.MEDIA_STORAGE_PROVIDER!=="azure")throw Error("Image SKU uploads require the configured Azure photo storage");hidiUploadKey='+sha['fn']+'([hidiImageSku,hidiPhotoNumber,'+target['file']+'.type,'+sha['fn']+'(Buffer.from(await '+target['file']+'.arrayBuffer()))].join("\\u0000"));}'
+        photo = photo[:target.start()]+prefix+photo[target.start():]
+        photo = once(photo,keyfn['fn']+'('+target['variant']+','+target['file']+'.type),Buffer.from(await ',keyfn['fn']+'('+target['variant']+','+target['file']+'.type,hidiUploadKey),Buffer.from(await ')
+    else:
+        assert photo.count('let hidiUploadKey,hidiImageSku=')==1 and photo.count('/batch-${hidiUploadKey}.')==1 and 'hidiUploadKey),Buffer.from(await ' in photo,'Installed Image SKU server key hooks differ'
+    if 'hidiSavedBlob' not in photo:
+        storage = re.search(r'let (?P<blob>'+ID+r')=(?P<container>'+ID+r')\(\)\.getBlockBlobClient\((?P<key>'+ID+r')\);return await (?P=blob)\.uploadData\((?P<bytes>'+ID+r'),\{conditions:\{ifNoneMatch:"\*"\},blobHTTPHeaders:\{blobContentType:(?P<mime>'+ID+r'),blobCacheControl:"public, max-age=31536000, immutable"\}\}\),\{url:',photo); assert storage,'Azure immutable upload helper differs'
+        guard='if(!/^products\\/variants\\/[a-z0-9_-]+\\/batch-[a-f0-9]{64}\\.(?:jpg|png|webp|avif)$/.test('+storage['key']+')||![409,412].includes(hidiStorageError?.statusCode))throw hidiStorageError;let hidiSavedBlob=await '+storage['blob']+'.getProperties();if(hidiSavedBlob.contentLength!=='+storage['bytes']+'.length||hidiSavedBlob.contentType!=='+storage['mime']+'||!(await '+storage['blob']+'.downloadToBuffer(0,'+storage['bytes']+'.length)).equals('+storage['bytes']+'))throw Error("Saved batch image differs from this upload");'
+        replacement=storage[0].replace(';return await ',';try{await ').replace(',{url:','}catch(hidiStorageError){'+guard+'}return{url:')
+        photo=once(photo,storage[0],replacement)
+    else:
+        assert photo.count('let hidiSavedBlob=')==1 and 'hidiSavedBlob.contentLength!==' in photo and 'hidiSavedBlob.contentType!==' in photo and 'Saved batch image differs from this upload' in photo,'Installed Image SKU file retry guard differs'
     files[PHOTO] = photo
     handler = (base / 'admin-tools/handler.mjs').read_text()
     if 'createImageSkuHandler' not in handler:

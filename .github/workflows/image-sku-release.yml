@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
   id-token: write
-# Every attempt captures the fresh ready image and retains uploads from earlier releases.
+# Every attempt captures the fresh ready image and verifies complete and partial upload retries.
 concurrency:
   group: hidi-hero-guarded-release
   cancel-in-progress: false
