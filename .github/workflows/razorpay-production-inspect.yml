@@ -1,0 +1,104 @@
+name: Razorpay production readiness inspection
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/razorpay-production-inspect.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-razorpay-production
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Inspect only payment readiness; never print credential values
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, json, subprocess, urllib.request, urllib.error
+          def az(*args):
+              proc = subprocess.run(['az', *args, '--only-show-errors', '-o', 'json'], capture_output=True, text=True)
+              if proc.returncode:
+                  raise RuntimeError('Azure inspection command failed; output suppressed')
+              return json.loads(proc.stdout or 'null')
+          report = {'apps': {}, 'payment': {}, 'routes': {}}
+          app = None
+          for name in ('hidi-web', 'hidi-api'):
+              obj = az('containerapp', 'show', '-g', 'rg-hidi-prod', '-n', name)
+              props = obj['properties']
+              env = {i['name']: i for i in props['template']['containers'][0].get('env', [])}
+              report['apps'][name] = {
+                  'image': props['template']['containers'][0]['image'],
+                  'readyRevision': props.get('latestReadyRevisionName'),
+                  'latestRevision': props.get('latestRevisionName'),
+                  'fqdn': props['configuration']['ingress']['fqdn'],
+                  'safeSettings': {k: env.get(k, {}).get('value', '<secretRef>' if env.get(k, {}).get('secretRef') else '<unset>') for k in ('MIGRATION_READ_ONLY', 'MIGRATION_CUSTOMER_TESTING', 'DEPLOYMENT_STAGE', 'SITE_URL', 'WEB_ORIGIN')}
+              }
+              if name == 'hidi-api':
+                  app = obj
+          env = {i['name']: i for i in app['properties']['template']['containers'][0].get('env', [])}
+          secret_defs = {i['name']: i for i in app['properties']['configuration'].get('secrets', [])}
+          secrets = None
+          def value(k):
+              nonlocal_placeholder = None
+              global secrets
+              item = env.get(k, {})
+              if 'value' in item:
+                  return item['value'] or ''
+              ref = item.get('secretRef')
+              if not ref:
+                  return ''
+              if secrets is None:
+                  secrets = {i['name']: i for i in az('containerapp', 'secret', 'list', '-g', 'rg-hidi-prod', '-n', 'hidi-api', '--show-values') or []}
+              return secrets.get(ref, {}).get('value', '') or ''
+          for k in ('RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'):
+              item = env.get(k, {})
+              ref = item.get('secretRef')
+              v = value(k)
+              report['payment'][k] = {
+                  'configured': bool(v or (ref and secret_defs.get(ref, {}).get('keyVaultUrl'))),
+                  'storage': 'secretRef' if ref else ('inline' if 'value' in item else 'unset'),
+                  'resolved': bool(v)
+              }
+              if k == 'RAZORPAY_KEY_ID':
+                  report['payment'][k]['mode'] = 'live' if v.startswith('rzp_live_') else ('test' if v.startswith('rzp_test_') else 'unknown')
+          key = value('RAZORPAY_KEY_ID')
+          secret = value('RAZORPAY_KEY_SECRET')
+          if key and secret:
+              for v in (key, secret, value('RAZORPAY_WEBHOOK_SECRET')):
+                  if v:
+                      print('::add-mask::' + v.replace('\n', '').replace('\r', ''))
+              token = base64.b64encode((key + ':' + secret).encode()).decode()
+              req = urllib.request.Request('https://api.razorpay.com/v1/orders?count=1', headers={'Authorization': 'Basic ' + token})
+              try:
+                  with urllib.request.urlopen(req, timeout=15) as response:
+                      report['payment']['providerAuthenticationStatus'] = response.status
+              except urllib.error.HTTPError as err:
+                  report['payment']['providerAuthenticationStatus'] = err.code
+              except Exception:
+                  report['payment']['providerAuthenticationStatus'] = 'unreachable'
+          else:
+              report['payment']['providerAuthenticationStatus'] = 'not_checked'
+          for origin in ('https://thidigk.thehidi.com', 'https://thehidi.com'):
+              checks = {}
+              for label, path, body in (('health', '/api/store/health/ready', None), ('webhook', '/v1/payments/razorpay/webhook', b'{}')):
+                  req = urllib.request.Request(origin + path, data=body, headers={'Content-Type': 'application/json'} if body else {}, method='POST' if body else 'GET')
+                  try:
+                      with urllib.request.urlopen(req, timeout=20) as response:
+                          checks[label] = {'status': response.status, 'contentType': response.headers.get('Content-Type')}
+                  except urllib.error.HTTPError as err:
+                      checks[label] = {'status': err.code, 'contentType': err.headers.get('Content-Type')}
+                  except Exception:
+                      checks[label] = {'status': 'unreachable'}
+              report['routes'][origin] = checks
+          print(json.dumps(report, indent=2, sort_keys=True))
+          PY
