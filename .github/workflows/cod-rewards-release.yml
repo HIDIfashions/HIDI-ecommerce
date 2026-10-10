@@ -63,7 +63,7 @@ jobs:
           export NEXT_PUBLIC_API_URL=https://thidigk.thehidi.com/api/store
           pnpm --filter @hidi/web build
       - name: Verify desktop, mobile, cart, checkout and admin in three engines
-        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') || contains(github.event.head_commit.message, '[candidate-cod]') }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           COD_REUSE_BROWSER_REGRESSION: ${{ contains(github.event.head_commit.message, '[resume-cod]') }}
@@ -91,7 +91,7 @@ jobs:
           python3 deploy/cod-rewards-release.py capture
           python3 deploy/cod-rewards-readiness.py
       - name: Back up actual live API and storefront before any image change
-        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') || contains(github.event.head_commit.message, '[candidate-cod]') }}
         run: |
           set -euo pipefail
           export EXPECTED_API="$(python3 -c 'import json; print(json.load(open("evidence/cod-rewards/before.json"))["hidi-api"]["image"])')"
@@ -109,7 +109,7 @@ jobs:
             echo "CANDIDATE_${app^^}=$candidate" >> "$GITHUB_ENV"
           done
       - name: Verify actual candidate overlay with protected homepage and admin routes
-        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') || contains(github.event.head_commit.message, '[candidate-cod]') }}
         run: |
           set -euo pipefail
           node deploy/cod-rewards-candidate.mjs
