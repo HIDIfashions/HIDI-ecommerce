@@ -1,0 +1,95 @@
+name: Order notification regression
+on:
+  push:
+    branches: [feat/order-notifications-20261010, migration/azure-sql-blob]
+    paths: [apps/api/src/order-notifications/**, apps/api/src/app.module.ts, apps/api/prisma/**, tests/order-notifications*, deploy/order-notifications/**, .github/workflows/order-notifications-*.yml]
+  pull_request:
+    branches: [migration/azure-sql-blob]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Disposable-CI-Only_2026!
+        ports: [1433:1433]
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true
+      NOTIFICATION_TEST_SQL_HOST: 127.0.0.1
+      NOTIFICATION_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm test:customer-experience
+      - run: pnpm --filter @hidi/api build
+      - run: python3 tests/order-notifications-release.test.py
+      - name: Verify migration, concurrent claims and recovery in disposable SQL Server
+        run: node tests/order-notifications.sqlserver.mjs
+  install-disabled:
+    needs: regression
+    if: github.ref == 'refs/heads/migration/azure-sql-blob' && contains(github.event.head_commit.message, '[install-order-notifications-disabled]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: hidi-msg91-guarded-release
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true
+      ACR: acrhidiprod0927
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hidi/api build
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh live images and protect the existing API image in ACR
+        run: |
+          set -euo pipefail
+          python3 deploy/order-notifications/rollout.py capture
+          az acr login --name "$ACR" --only-show-errors
+          docker pull "$EXPECTED_API"
+          docker tag "$EXPECTED_API" "$ACR.azurecr.io/hidi-api:backup-order-notifications-${GITHUB_RUN_ID}"
+          docker push "$ACR.azurecr.io/hidi-api:backup-order-notifications-${GITHUB_RUN_ID}"
+      - name: Add only the notification module and verify every existing file
+        run: |
+          set -euo pipefail
+          tag="$ACR.azurecr.io/hidi-api:order-notifications-${GITHUB_RUN_ID}"
+          python3 deploy/order-notifications/compose.py --base "$EXPECTED_API" --tag "$tag" --work "$RUNNER_TEMP/order-notification-compose" --report evidence/notification-image-preservation.json
+          docker push "$tag"
+          docker pull "$tag"
+          echo "CANDIDATE_API=$(docker image inspect "$tag" --format '{{index .RepoDigests 0}}')" >> "$GITHUB_ENV"
+      - name: Install disabled module, check health and preserve all live settings
+        run: python3 deploy/order-notifications/rollout.py deploy "$CANDIDATE_API"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: order-notification-install-${{ github.run_id }}
+          path: evidence
+          retention-days: 90
+          if-no-files-found: ignore
