@@ -3,10 +3,15 @@ import {resolve} from 'node:path';
 const brown='rgb(89, 29, 32)';
 export async function runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products,settleFixtureNetwork}) {
  const phone={viewport:{width:390,height:844},isMobile:engine!=='firefox',hasTouch:true};
+ const navigate=async(page,path)=>{
+  await settleFixtureNetwork(page,{prefetchOnly:true});
+  const response=await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:30000});
+  assert(response?.ok(),'Successful fixture route '+path);
+ };
  const cartFor=price=>({items:[{id:'quote-fixture',quantity:1,lineTotalPaise:price,product:{id:products[0].id,slug:products[0].slug,name:products[0].name,image:products[0].images[0].url},variant:{id:'quote-m',size:'M',color:'Ivory',available:4}}],itemCount:1,subtotalPaise:price,shippingPaise:price<149900?9900:0,totalPaise:price+(price<149900?9900:0)});
  const loadCheckout=async(page,price=100000)=>{
   await page.route('**/api/store/carts/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(cartFor(price))}));
-  await page.goto(base+'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();
+  await navigate(page,'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();
  };
  const color=el=>el.evaluate(e=>getComputedStyle(e).backgroundColor);
  await scenario(browser,engine,'FIX-01','Guest sign-in card matches hierarchy and all responsive totals include shipping',async page=>{
@@ -46,7 +51,7 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
  await scenario(browser,engine,'FIX-04','Every product has the screenshot Shipping & Returns rows and a working policy link',async page=>{
   for(const product of products.slice(0,3)){
    await settleFixtureNetwork(page,{prefetchOnly:true});
-   if(new URL(page.url()).pathname!=='/products/'+product.slug)await page.goto(base+'/products/'+product.slug,{waitUntil:'domcontentloaded',timeout:30000});const section=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await section.waitFor();
+   if(new URL(page.url()).pathname!=='/products/'+product.slug)await navigate(page,'/products/'+product.slug);const section=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await section.waitFor();
    assert(await section.evaluate(e=>e.open));assert.match(await section.innerText(),/Free Shipping[\s\S]*₹1,499 and above[\s\S]*Easy Returns[\s\S]*7 days[\s\S]*Exchanges/);
    await settleFixtureNetwork(page,{prefetchOnly:true});
    const link=section.getByRole('link',{name:/View Shipping, Returns & Exchange Policy/});await link.click();await page.waitForURL('**/returns#shipping-returns-exchange');assert.match(await page.locator('#shipping-returns-exchange').innerText(),/₹99/);
@@ -58,8 +63,9 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
  await scenario(browser,engine,'FIX-05','Boundary shipping summaries and bag quantity recalculation agree on both screens',async page=>{
   for(const [price,shipping] of [[149899,9900],[149900,0],[149901,0]]){
    await page.route('**/api/store/carts/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(cartFor(price))}));
-   await page.goto(base+'/cart');await page.locator('.summary-total').waitFor();assert.match(await page.locator('.order-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
-   await page.goto(base+'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();assert.equal(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),Boolean(shipping));assert.match(await page.locator('.checkout-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
+   await navigate(page,'/cart');await page.locator('.summary-total').waitFor();assert.match(await page.locator('.order-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
+   await navigate(page,'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();assert.equal(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),Boolean(shipping));assert.match(await page.locator('.checkout-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
+   await settleFixtureNetwork(page);
    await page.unroute('**/api/store/carts/**');
   }
  },phone);

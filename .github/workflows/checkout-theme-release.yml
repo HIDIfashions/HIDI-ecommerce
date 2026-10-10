@@ -1,4 +1,5 @@
 name: Checkout shipping and theme guarded release
+# Wait for actual route prefetches before each isolated shipping-boundary navigation.
 on:
   push:
     branches: [migration/azure-sql-blob]
