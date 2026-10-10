@@ -1,0 +1,132 @@
+name: Mobile homepage guarded release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/mobile-homepage-release.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+env:
+  HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-homepage-browser/node_modules/playwright/index.mjs
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      API_URL: http://127.0.0.1:4107/v1
+      INTERNAL_API_URL: http://127.0.0.1:4107/v1
+      DATABASE_URL: sqlserver://127.0.0.1:1433;database=hidi_fixture;user=fixture;password=FixtureOnlyPassword;encrypt=true;trustServerCertificate=true
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/checkout@v4
+        with:
+          ref: 8c4a5e3736552347f5141a2ce0f4660642c05185
+          path: landing-source
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - name: Install the three browser engines
+        run: |
+          npm install --prefix /tmp/hidi-homepage-browser --no-save playwright@1.56.1
+          node /tmp/hidi-homepage-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Landing source and responsive regression
+        run: |
+          set -euo pipefail
+          cd landing-source/apps/web
+          npm ci
+          npm test
+          npm run build
+          node --test ../../deploy/hidi-web-new/runtime.test.mjs
+          timeout 420s node scripts/test-homepage-launch.mjs
+          node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 3208 --strictPort > /tmp/landing-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3208/ >/dev/null; then break; fi; sleep 1; done
+          HIDI_LANDING_BASE_URL=http://127.0.0.1:3208 timeout 420s node scripts/test-landing-first-paint.mjs
+      - name: Shopping service, frontend and privacy regression
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm --filter @hidi/api exec prisma generate
+          pnpm --filter @hidi/api test:customer-experience
+          node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs tests/privacy-policy.test.mjs tests/privacy-policy-storage.test.mjs
+          python3 tests/privacy-policy-release.test.py
+          pnpm --filter @hidi/web build
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit timeout 720s node tests/editorial-storefront.browser.mjs
+          for engine in chromium firefox webkit; do HIDI_BROWSER_ENGINE="$engine" timeout 240s node tests/admin-workspace.browser.mjs; done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-homepage-source-regression-${{ github.run_id }}
+          path: |
+            landing-source/apps/web/validation
+            test-results
+          retention-days: 30
+  release:
+    needs: regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 8c4a5e3736552347f5141a2ce0f4660642c05185
+          path: landing-source
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Install candidate verification dependencies
+        run: |
+          npm install --prefix /tmp/hidi-homepage-browser --no-save playwright@1.56.1
+          node /tmp/hidi-homepage-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+          cd landing-source/apps/web
+          npm ci
+          npm run build
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Back up the actual live image before any mutation
+        run: |
+          set -euo pipefail
+          python3 deploy/mobile-homepage-release.py capture
+          az acr login --name acrhidiprod0927 --only-show-errors
+          docker pull "$EXPECTED_WEB"
+          backup="acrhidiprod0927.azurecr.io/hidi-web:backup-mobile-homepage-${GITHUB_RUN_ID}"
+          docker tag "$EXPECTED_WEB" "$backup"
+          docker push "$backup"
+          echo "$backup" > evidence/backup-tag.txt
+          echo "CANDIDATE_TAG=acrhidiprod0927.azurecr.io/hidi-web:mobile-homepage-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+      - name: Compose and fingerprint the minimal overlay
+        run: |
+          python3 deploy/mobile-homepage-release.py compose --css landing-source/apps/web/public/homepage-responsive-20261010.css --image "$CANDIDATE_TAG"
+      - name: Full homepage regression against the actual candidate image
+        run: |
+          set -euo pipefail
+          node --input-type=module -e 'import {createServer} from "node:http";createServer((q,s)=>{s.setHeader("Content-Type","application/json");s.end(JSON.stringify({status:"ok"}));}).listen(3193,"127.0.0.1")' > /tmp/mobile-mock.log 2>&1 &
+          mock_pid=$!
+          docker run --detach --name mobile-candidate --network host -e PORT=3192 -e STOREFRONT_ORIGIN=http://127.0.0.1:3193 -e API_URL=http://127.0.0.1:3193/v1 -e INTERNAL_API_URL=http://127.0.0.1:3193/v1 "$CANDIDATE_TAG"
+          trap 'docker rm -f mobile-candidate >/dev/null 2>&1 || true; kill "$mock_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3192/health >/dev/null; then break; fi; sleep 1; done
+          cd landing-source/apps/web
+          HIDI_HOME_BASE_URL=http://127.0.0.1:3192 timeout 420s node scripts/test-homepage-launch.mjs
+          HIDI_LANDING_BASE_URL=http://127.0.0.1:3192 timeout 420s node scripts/test-landing-first-paint.mjs
+      - name: Publish the verified image and deploy with rollback
+        run: |
+          set -euo pipefail
+          docker push "$CANDIDATE_TAG"
+          candidate="$(docker image inspect --format '{{index .RepoDigests 0}}' "$CANDIDATE_TAG")"
+          python3 deploy/mobile-homepage-release.py apply --image "$candidate"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-homepage-release-${{ github.run_id }}
+          path: |
+            evidence
+            landing-source/apps/web/validation
+          retention-days: 30
