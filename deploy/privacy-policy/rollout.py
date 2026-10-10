@@ -18,7 +18,7 @@ API_VERSION = '2024-03-01'
 class AzureOperationError(RuntimeError):
     pass
 
-def azure(*args):
+def azure(*args, redact=()):
     result = subprocess.run(['az', *args, '--only-show-errors', '-o', 'json'], capture_output=True, text=True, timeout=180)
     if result.returncode:
         code = 'unclassified'
@@ -28,7 +28,12 @@ def azure(*args):
                 candidate = error.get('code')
                 if isinstance(candidate, str) and re.fullmatch(r'[A-Za-z0-9_.-]{1,100}', candidate): code = candidate; break
             except (ValueError, AttributeError): pass
-        raise AzureOperationError('Azure operation rejected: ' + code)
+        standard = re.search(r'ERROR:\s*\(([A-Za-z0-9_.-]{1,100})\)', result.stderr)
+        if standard: code = standard.group(1)
+        hint = '\n'.join(result.stderr.splitlines()[:2])
+        for secret in sorted({str(value) for value in redact if value}, key=len, reverse=True): hint = hint.replace(secret, '[redacted]')
+        hint = re.sub(r'(?i)Bearer\s+\S+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+', '[redacted credential]', hint)
+        raise AzureOperationError('Azure operation rejected: ' + code + '; ' + hint[:1800])
     return json.loads(result.stdout or '{}')
 
 def app(name):
@@ -62,7 +67,9 @@ def image_patch(data, image, suffix):
 def write_image(data, image, suffix):
     path = Path(os.environ['RUNNER_TEMP']) / 'privacy-policy-image-patch.json'
     path.write_text(json.dumps(image_patch(data, image, suffix))); path.chmod(0o600)
-    try: azure('rest', '--method', 'patch', '--url', 'https://management.azure.com' + data['id'] + '?api-version=' + API_VERSION, '--body', '@' + str(path))
+    protected = [item.get('value') for item in data['properties']['template']['containers'][0].get('env', [])]
+    protected += [item.get('value') for item in data['properties']['configuration'].get('secrets', [])]
+    try: azure('rest', '--method', 'patch', '--url', 'https://management.azure.com' + data['id'] + '?api-version=' + API_VERSION, '--body', '@' + str(path), redact=protected)
     finally: path.unlink(missing_ok=True)
 
 def wait_ready(image, suffix):

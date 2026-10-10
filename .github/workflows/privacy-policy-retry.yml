@@ -1,4 +1,5 @@
 name: Privacy policy verified image rollout
+# Report bounded errors with all retained environment/secret values redacted.
 # ARM JSON Merge Patch retains scale and volume settings while replacing only
 # the preserved container list/image and the unique revision suffix.
 on:
