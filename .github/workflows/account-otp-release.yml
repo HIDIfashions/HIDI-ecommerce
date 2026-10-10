@@ -20,9 +20,9 @@ permissions:
 # pins and carry [deploy-account-otp] before default-branch dispatch registration.
 # Ordinary source merges do not deploy; there are no previous-image defaults.
 env:
-  PUSH_REVIEWED_SOURCE: '3d2bf70353da76cd70dfe8f4902352c45b428e9b'
-  PUSH_EXPECTED_WEB: 'acrhidiprod0927.azurecr.io/hidi-web@sha256:e388b7f6c160d7ce7543649591d704f7e99c29ea5a86d2cf070acb5ca016e999'
-  PUSH_EXPECTED_API: 'acrhidiprod0927.azurecr.io/hidi-api@sha256:89e6d010f2a4f9dcaea14451926f3512aec3ad5f079d110475ccc8c13b4a0448'
+  PUSH_REVIEWED_SOURCE: ''
+  PUSH_EXPECTED_WEB: ''
+  PUSH_EXPECTED_API: ''
 concurrency:
   group: hidi-msg91-guarded-release
   cancel-in-progress: false

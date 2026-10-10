@@ -1,0 +1,40 @@
+name: Read-only account OTP settings diagnosis
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/account-otp-diagnose.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hidi-msg91-guarded-release
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/migration/azure-sql-blob' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[diagnose-account-otp]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Validate read-only diagnostic and existing guards
+        run: python3 -B tests/account-otp-release.test.py
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Read pinned apps and old revision without exposing settings values
+        run: python3 -B deploy/diagnose-account-otp-settings.py
+      - name: Preserve only public digests and diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-otp-settings-diagnostic-${{ github.run_id }}
+          path: evidence/account-otp-settings-diagnostic.json
+          if-no-files-found: ignore
+          retention-days: 30

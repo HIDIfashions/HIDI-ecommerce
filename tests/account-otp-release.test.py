@@ -1,6 +1,8 @@
 """Exercise account source guards and real image rollout using isolated fake Azure/curl."""
 import copy
+import contextlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -11,11 +13,15 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock as unittest_mock
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("account_guard", ROOT / "deploy/account_otp_release_guard.py")
 guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
+diagnostic_spec = importlib.util.spec_from_file_location("account_diagnostic", ROOT / "deploy/diagnose-account-otp-settings.py")
+diagnostic = importlib.util.module_from_spec(diagnostic_spec)
+diagnostic_spec.loader.exec_module(diagnostic)
 OLD = {app: "acrhidiprod0927.azurecr.io/" + app + "@sha256:" + "a" * 64 for app in ["hidi-api", "hidi-web"]}
 NEW = {app: "acrhidiprod0927.azurecr.io/" + app + "@sha256:" + "b" * 64 for app in ["hidi-api", "hidi-web"]}
 SCRIPT = ROOT / "deploy/update-account-otp-images.sh"
@@ -542,6 +548,131 @@ assert.equal(now,3000);
 await assert.rejects(waitForDrawerAlignment({evaluate:async()=>geometry(89+now/125,26+now/125)}),/Drawer must meet header within 2px/);
 assert.equal(now,3000,'Even 0.2px movement per sample must remain within 0.25px of the fixed stable-window anchor');
 """)
+
+
+class ReadOnlySettingsDiagnosis(unittest.TestCase):
+    def fixture(self):
+        env = [{"name": "AUTH_KEY", "secretRef": "sensitive-reference-never-print"}, {"name": "INLINE_SECRET", "value": "sensitive-inline-value-never-print"}]
+        before = resource({"image": diagnostic.OLD_API, "revision": diagnostic.OLD_REVISION, "env": env})
+        api = copy.deepcopy(before)
+        api["properties"]["template"]["containers"][0]["image"] = diagnostic.EXPECTED_API
+        api["properties"]["template"]["containers"][0]["env"][0]["value"] = ""
+        api["properties"]["latestRevisionName"] = api["properties"]["latestReadyRevisionName"] = diagnostic.EXPECTED_REVISIONS["hidi-api"]
+        web = resource({"image": diagnostic.EXPECTED_WEB, "revision": diagnostic.EXPECTED_REVISIONS["hidi-web"], "env": env})
+        old = {"name": diagnostic.OLD_REVISION, "properties": {"template": before["properties"]["template"]}}
+        return api, web, old, guard.snapshot(before)["settingsHash"]
+
+    def report(self, api, web, old, baseline):
+        with unittest_mock.patch.object(diagnostic, "BASELINE_HASH", baseline):
+            return diagnostic.build_report(api, web, old, b"private-per-run-key-never-print")
+
+    def test_exact_reconstructed_baseline_identifies_blank_value_presence_without_values(self):
+        report = self.report(*self.fixture())
+        self.assertTrue(report["reconstructedBaselineMatches"])
+        self.assertTrue(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+        self.assertTrue(report["onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs"])
+        fields = report["changedProtectedFields"]
+        self.assertEqual([field["path"] for field in fields], ["/template/containers/0/env/0/value"])
+        self.assertEqual(fields[0]["before"], {"present": False})
+        self.assertEqual(fields[0]["after"]["type"], "string")
+        self.assertRegex(fields[0]["after"]["hmac"], r"^[0-9a-f]{64}$")
+        for private in ["sensitive-reference-never-print", "sensitive-inline-value-never-print", "private-per-run-key-never-print", "AUTH_KEY", "INLINE_SECRET"]:
+            self.assertNotIn(private, json.dumps(report))
+
+    def test_appwide_drift_prevents_template_only_inference(self):
+        api, web, old, baseline = self.fixture()
+        api["identity"] = {"type": "None"}
+        report = self.report(api, web, old, baseline)
+        self.assertFalse(report["reconstructedBaselineMatches"])
+        self.assertNotIn("changedProtectedFields", report)
+        self.assertNotIn("onlyMissingToEmptyValueOnRetainedSecretRefs", report)
+        self.assertNotIn("onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs", report)
+
+    def test_null_value_presence_is_reported_separately_from_missing(self):
+        api, web, old, _ = self.fixture()
+        old["properties"]["template"]["containers"][0]["env"][0]["value"] = None
+        reconstructed = copy.deepcopy(api); reconstructed["properties"]["template"] = old["properties"]["template"]
+        report = self.report(api, web, old, guard.snapshot(reconstructed)["settingsHash"])
+        self.assertTrue(report["reconstructedBaselineMatches"])
+        self.assertFalse(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+        self.assertTrue(report["onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs"])
+        self.assertEqual(report["changedProtectedFields"][0]["before"]["type"], "null")
+
+    def test_empty_or_non_string_reference_cannot_be_classified_as_retained_secret_ref(self):
+        for reference in [None, "", False]:
+            api, web, old, _ = self.fixture()
+            old["properties"]["template"]["containers"][0]["env"][0]["secretRef"] = reference
+            api["properties"]["template"]["containers"][0]["env"][0]["secretRef"] = reference
+            reconstructed = copy.deepcopy(api); reconstructed["properties"]["template"] = old["properties"]["template"]
+            report = self.report(api, web, old, guard.snapshot(reconstructed)["settingsHash"])
+            with self.subTest(reference=reference):
+                self.assertFalse(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+                self.assertFalse(report["onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs"])
+
+    def test_actual_secret_reference_change_is_detected_and_never_classified_as_blank_presence(self):
+        api, web, old, baseline = self.fixture()
+        api["properties"]["template"]["containers"][0]["env"][0]["secretRef"] = "different-sensitive-reference-never-print"
+        report = self.report(api, web, old, baseline)
+        self.assertFalse(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+        self.assertIn("/template/containers/0/env/0/secretRef", [item["path"] for item in report["changedProtectedFields"]])
+        self.assertNotIn("different-sensitive-reference-never-print", json.dumps(report))
+
+    def test_hmacs_vary_by_private_run_key_and_list_order_changes_remain_visible(self):
+        before, after = {"rules": [{"value": "sensitive-first"}, {"value": "sensitive-second"}]}, {"rules": [{"value": "sensitive-second"}, {"value": "sensitive-first"}]}
+        first = diagnostic.changed_field_digests(before, after, b"first-private-key")
+        second = diagnostic.changed_field_digests(before, after, b"second-private-key")
+        self.assertEqual([item["path"] for item in first], ["/template/rules/0/value", "/template/rules/1/value"])
+        self.assertNotEqual(first[0]["after"]["hmac"], second[0]["after"]["hmac"])
+        self.assertNotIn("sensitive-first", json.dumps(first))
+
+    def test_pins_or_revision_drift_stop_diagnosis(self):
+        for mutation in ["image", "revision", "old-image"]:
+            api, web, old, baseline = self.fixture()
+            if mutation == "image": api["properties"]["template"]["containers"][0]["image"] = diagnostic.OLD_API
+            elif mutation == "revision": api["properties"]["latestReadyRevisionName"] = diagnostic.OLD_REVISION
+            else: old["properties"]["template"]["containers"][0]["image"] = diagnostic.EXPECTED_API
+            with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                self.report(api, web, old, baseline)
+
+    def test_azure_command_allowlist_rejects_writes_and_suppresses_raw_stderr(self):
+        with unittest_mock.patch.object(diagnostic.subprocess, "run") as run:
+            with self.assertRaisesRegex(RuntimeError, "non-allowlisted"):
+                diagnostic.azure_read(["containerapp", "update", "-n", "hidi-api"])
+            run.assert_not_called()
+            run.return_value = subprocess.CompletedProcess([], 1, stdout="sensitive-json-never-print", stderr="sensitive-error-never-print")
+            with self.assertRaisesRegex(RuntimeError, "^Azure diagnostic read failed$"):
+                diagnostic.azure_read(diagnostic.AZURE_READS[0])
+            self.assertEqual(run.call_args.args[0], ["az", *diagnostic.AZURE_READS[0], "--only-show-errors", "-o", "json"])
+            self.assertTrue(run.call_args.kwargs["capture_output"])
+
+    def test_main_prints_and_saves_only_the_safe_report(self):
+        api, web, old, baseline = self.fixture()
+        output, errors = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            previous = Path.cwd()
+            try:
+                os.chdir(directory)
+                with unittest_mock.patch.object(diagnostic, "BASELINE_HASH", baseline), unittest_mock.patch.object(diagnostic, "azure_read", side_effect=[api, web, old, api, web]) as read, unittest_mock.patch.object(diagnostic, "public_gets", return_value=[]), contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                    self.assertEqual(diagnostic.main(), 0)
+                saved = Path("evidence/account-otp-settings-diagnostic.json").read_text()
+                self.assertEqual(json.loads(saved), json.loads(output.getvalue()))
+                self.assertEqual([call.args[0] for call in read.call_args_list], [*diagnostic.AZURE_READS, *diagnostic.AZURE_READS[:2]])
+                self.assertEqual(errors.getvalue(), "")
+                self.assertEqual(list(Path("evidence").iterdir()), [Path("evidence/account-otp-settings-diagnostic.json")])
+                for private in ["sensitive-reference-never-print", "sensitive-inline-value-never-print"]:
+                    self.assertNotIn(private, saved + output.getvalue())
+            finally:
+                os.chdir(previous)
+
+    def test_diagnostic_workflow_uses_exact_commit_and_contains_no_deploy_or_secret_operations(self):
+        workflow = (ROOT / ".github/workflows/account-otp-diagnose.yml").read_text()
+        self.assertIn("ref: ${{ github.sha }}", workflow)
+        self.assertIn("[diagnose-account-otp]", workflow)
+        for forbidden in ["[deploy-", "containerapp update", "az acr", "docker", "secret set", "configure-msg91", "update-account-otp-images"]:
+            self.assertNotIn(forbidden, workflow)
+        self.assertIn("path: evidence/account-otp-settings-diagnostic.json", workflow)
+        self.assertEqual(len(diagnostic.AZURE_READS), 3)
+        self.assertTrue(all(arguments[:2] == ("containerapp", "show") or arguments[:3] == ("containerapp", "revision", "show") for arguments in diagnostic.AZURE_READS))
 
 
 class AccountRollout(unittest.TestCase):
