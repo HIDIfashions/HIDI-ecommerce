@@ -1,0 +1,44 @@
+name: Product SKN fresh read-only Azure and SQL preflight
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/product-skn-inspect.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Check the read-only helpers before connecting
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile deploy/product-skn/access-preflight.py
+          node --check deploy/product-skn/access-preflight.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh apps, managed identity SQL permissions and PITR metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 deploy/product-skn/access-preflight.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: product-skn-access-preflight-${{ github.run_id }}
+          path: |
+            evidence/product-skn/access-preflight
+            evidence/product-skn/sql-checkpoint.json
+          retention-days: 30
