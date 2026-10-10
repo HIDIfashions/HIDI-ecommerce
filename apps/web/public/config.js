@@ -6,7 +6,12 @@ window.HIDI_CONFIG = Object.freeze({
   auth: { signInUrl: '/account', signUpUrl: '/account' },
   app: { androidUrl: '', iosUrl: '' },
   policies: { shipping: '/shipping', returns: '/returns', privacy: '', terms: '', contact: '/contact' },
-  socials: { instagram: '', facebook: '', x: '', youtube: '' },
+  socials: {
+    instagram: 'https://www.instagram.com/hidiindia/',
+    facebook: 'https://www.facebook.com/hidiindia/',
+    x: '',
+    youtube: 'https://www.youtube.com/@hidiindia'
+  },
   newsletterEndpoint: '/api/store/marketing/newsletter',
   // Messages supplied by the brand owner. Confirm the published policies before launch.
   announcement: {
