@@ -1,8 +1,12 @@
 name: Publish saved production drafts from current database
 on:
-  push:
-    branches: [migration/azure-sql-blob]
-    paths: [.github/workflows/publish-saved-drafts.yml]
+  workflow_dispatch:
+    inputs:
+      publish_drafts:
+        description: Publish all currently saved production drafts
+        type: boolean
+        required: true
+        default: false
 permissions:
   contents: read
   id-token: write
@@ -11,6 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
+    if: inputs.publish_drafts == true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
