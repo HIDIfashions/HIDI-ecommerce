@@ -61,10 +61,11 @@ jobs:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh ready images and hand them to the backup step
+        run: python3 deploy/admin-delete/release.py capture
       - name: Back up fresh immutable live images and compose admin-only overlays
         run: |
           set -euo pipefail
-          python3 deploy/admin-delete/release.py capture
           az acr login --name acrhidiprod0927 --only-show-errors
           for app in api web; do
             key="EXPECTED_${app^^}"
