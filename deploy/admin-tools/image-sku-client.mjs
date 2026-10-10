@@ -85,10 +85,13 @@ export async function prepareMappedPhotos(candidates, api = request) {
 }
 const uploaded = new WeakMap();
 const attempted = new WeakSet();
-function confirms(product, item, suffix) {
+function confirms(product, item, suffix, legacyAlt) {
   const targets = item.targetVariantIds.map(id => product.variants?.find(variant => variant.id === id));
   const images = targets[0]?.images || [];
-  return images.find(image => typeof image.url === 'string' && new URL(image.url, 'https://local.invalid').pathname.endsWith(suffix) && targets.every(target => target?.images?.some(photo => photo.url === image.url)));
+  return images.find(image => typeof image.url === 'string' && (
+    new URL(image.url, 'https://local.invalid').pathname.endsWith(suffix) && targets.every(target => target?.images?.some(photo => photo.url === image.url)) ||
+    legacyAlt && image.alt === legacyAlt && targets.every(target => target?.images?.some(photo => photo.url === image.url && photo.alt === legacyAlt))
+  ));
 }
 export async function uploadMappedPhotoCandidate(item, api = request) {
   if (item.error || !item.imageSku || !item.variantId) throw new Error(item.error || 'Photo has no saved Image SKU mapping.');
@@ -97,11 +100,13 @@ export async function uploadMappedPhotoCandidate(item, api = request) {
   const keyBytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode([item.imageSku, String(item.sequence), item.file.type, digest].join('\u0000')));
   const key = [...new Uint8Array(keyBytes)].map(byte => byte.toString(16).padStart(2, '0')).join('');
   const suffix = '/batch-' + key + '.' + ({'image/jpeg':'jpg','image/webp':'webp','image/png':'png','image/avif':'avif'})[item.file.type];
+  // Preserve uploads made with the first Image SKU release during an upgrade.
+  const legacyAlt = 'Image SKU ' + item.imageSku + ' · photo ' + item.sequence + ' · sha256:' + digest;
   const path = '/api/admin/products/' + encodeURIComponent(item.productId);
   const current = await api(path), target = photoTarget(current, {productId: item.productId, color: item.color});
   if (target.variantId !== item.variantId || target.targetVariantIds.join() !== item.targetVariantIds.join()) throw new Error('Product size variants changed after the photo preview. Select the photos again.');
   const alt = current.name + ' · ' + item.color + ' · photo ' + item.sequence;
-  const previous = confirms(current, item, suffix);
+  const previous = confirms(current, item, suffix, legacyAlt);
   if (previous) {const result = {id: item.variantId, skipped: true, images: current.variants.find(variant => variant.id === item.variantId).images}; uploaded.set(item, result); return result;}
   if (attempted.has(item)) throw new Error('The previous upload is still unconfirmed. Review the saved product photos before selecting this file again.');
   attempted.add(item);
@@ -114,7 +119,7 @@ export async function uploadMappedPhotoCandidate(item, api = request) {
   } catch (error) {failure = error;}
   // A lost successful response is reconciled before allowing a retry.
   const after = await api(path).catch(() => null);
-  if (!after || !confirms(after, item, suffix)) throw new Error((failure?.message || 'Photo attachment could not be confirmed for every size.') + ' Check the product photos, then resume.');
+  if (!after || !confirms(after, item, suffix, legacyAlt)) throw new Error((failure?.message || 'Photo attachment could not be confirmed for every size.') + ' Check the product photos, then resume.');
   const result = {id: item.variantId, images: after.variants.find(variant => variant.id === item.variantId).images};
   uploaded.set(item, result); return result;
 }

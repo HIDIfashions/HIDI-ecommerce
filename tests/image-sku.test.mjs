@@ -45,6 +45,14 @@ test('lost successful uploads are confirmed across sizes and are not sent twice'
     const [again]=await prepareMappedPhotos([candidate('KUR_001_1.JPEG')],api(data));assert.equal((await uploadMappedPhotoCandidate(again,api(data))).skipped,true);assert.equal(writes,1);
   }finally{globalThis.fetch=original;}
 });
+test('photos saved by the first Image SKU release remain idempotent after an upgrade',async()=>{
+  const data=product(),file=candidate('KUR_001_1.JPEG');
+  const digest=createHash('sha256').update(Buffer.from(await file.file.arrayBuffer())).digest('hex');
+  for(const variant of data.variants)variant.images=[{id:'old-'+variant.id,url:'/media/products/variants/source/previous-random.jpg',alt:'Image SKU KUR_001 · photo 1 · sha256:'+digest}];
+  const [item]=await prepareMappedPhotos([file],api(data));const original=globalThis.fetch;
+  globalThis.fetch=()=>{throw new Error('A confirmed previous upload must not be sent again');};
+  try{assert.equal((await uploadMappedPhotoCandidate(item,api(data))).skipped,true);}finally{globalThis.fetch=original;}
+});
 test('an unconfirmed upload is not blindly retried',async()=>{
   const data=product(),[item]=await prepareMappedPhotos([candidate('KUR_001_2.JPEG')],api(data));let writes=0;const original=globalThis.fetch;
   globalThis.fetch=async()=>{writes++;return new Response('{}',{status:500});};
