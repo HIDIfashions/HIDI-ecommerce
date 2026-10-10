@@ -96,7 +96,8 @@ function trackFixtureNetwork(page) {
 }
 async function settleFixtureNetwork(page, { prefetchOnly = false } = {}) {
   const state = trackFixtureNetwork(page), started = Date.now();
-  if(!prefetchOnly)await page.waitForLoadState('networkidle', { timeout: 15000 });
+  // Client navigation can retain the previous document's lifecycle state.
+  // Verify tracked requests and a fresh quiet interval instead.
   const pending=()=>[...state.pending].filter(request=>!prefetchOnly||new URL(request.url()).searchParams.has('_rsc'));
   while (pending().length || Date.now() - Math.max(started, prefetchOnly?state.lastPrefetchActivity:state.lastActivity) < 500) {
     assert(Date.now() - started < 15000, 'Fixture network did not settle: ' + pending().map(request => request.url()).join(', '));

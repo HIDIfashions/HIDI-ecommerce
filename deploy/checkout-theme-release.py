@@ -43,7 +43,9 @@ def compose(app,tag):
  (folder/'Dockerfile').write_text('FROM '+base+'\nCOPY --chown=node:node overlay/ /app/\n')
  subprocess.run(['docker','build','--pull=false','-t',tag,str(folder)],check=True);helpers.extract(tag,candidate)
  a,b=helpers.fingerprints(old),helpers.fingerprints(candidate);delta={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
- if app=='api':assert delta and delta<=API_FILES,'Unreviewed API file changed'
+ if app=='api':
+  assert delta<=API_FILES,'Unreviewed API file changed'
+  if not delta:subprocess.run(['docker','tag',base,tag],check=True)
  else:
   assert delta and all(p.startswith('apps/web/.next/') or p in {'apps/web/server.js','dist/index.html','dist/'+cssname} for p in delta),'Unreviewed web file changed'
   assert all(b.get(p)==value for p,value in a.items() if not p.startswith('apps/web/.next/') and p not in {'apps/web/server.js','dist/index.html'}),'Protected homepage, admin, media or runtime changed'
@@ -64,6 +66,7 @@ def apply(api,web):
  try:
   for n,image in images.items():
    assert cloud.snapshot(cloud.app(n))==before[n],'Concurrent deployment changed '+n
+   if image==before[n]['image']:continue
    suffix='checkout'+n.removeprefix('hidi-')+run;owned[n]=image;cloud.write_image(old[n],image,suffix)
    state=cloud.snapshot(wait(n,image,suffix));assert state['settingsHash']==before[n]['settingsHash'],'App settings changed'
   for p in ['/health','/healthz','/api/store/health/ready','/collections/all','/cart','/checkout','/account','/wishlist','/shipping','/returns','/admin','/admin/products/price-tags','/admin/landing-media','/admin/packing-scanner','/admin/privacy-policy']:cloud.get(p)
