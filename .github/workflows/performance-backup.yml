@@ -1,0 +1,65 @@
+name: HIDI performance live backup
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/performance-backup.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture ready live images without changing applications
+        run: |
+          python3 deploy/privacy-policy/rollout.py capture
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 - <<'PY'
+          import json, pathlib, subprocess, os
+          states=json.loads(pathlib.Path('evidence/privacy-before.json').read_text())
+          for name,state in states.items():
+            tag='acrhidiprod0927.azurecr.io/'+name+':backup-performance-'+os.environ['GITHUB_RUN_ID']
+            for args in [('pull',state['image']),('tag',state['image'],tag),('push',tag)]:
+              subprocess.run(['docker',*args],check=True)
+            state['backupTag']=tag
+          pathlib.Path('evidence/performance-backup.json').write_text(json.dumps({'sourceSha':os.environ['GITHUB_SHA'],'apps':states},indent=2))
+          print(json.dumps(states,indent=2))
+          PY
+      - name: Preserve public runtime sources and integrity manifest for precise patching
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess,shutil
+          states=json.load(open('evidence/privacy-before.json'))
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'baseline-app'; root.mkdir()
+          cid=subprocess.check_output(['docker','create',states['hidi-web']['image']],text=True).strip()
+          try: subprocess.run(['docker','cp',cid+':/app/.',str(root)],check=True)
+          finally: subprocess.run(['docker','rm',cid],check=True,stdout=subprocess.DEVNULL)
+          manifest={}
+          for p in root.rglob('*'):
+            key=str(p.relative_to(root))
+            if p.is_symlink(): manifest[key]=['link',os.readlink(p)]
+            elif p.is_file(): manifest[key]=['file',hashlib.sha256(p.read_bytes()).hexdigest()]
+          pathlib.Path('evidence/baseline-file-hashes.json').write_text(json.dumps(manifest,indent=2))
+          out=pathlib.Path('evidence/runtime-source');out.mkdir()
+          for filename in ['server.mjs','hero-media.mjs','privacy-policy/handler.mjs','privacy-policy/links.js','privacy-policy/policy.css','dist/index.html']:
+            src=root/filename
+            if src.is_file():
+              dest=out/filename;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(src,dest)
+          pathlib.Path('evidence/source-summary.json').write_text(json.dumps({'files':len(manifest),'buildId':(root/'apps/web/.next/BUILD_ID').read_text().strip()},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-backup-${{ github.run_id }}
+          path: evidence
+          retention-days: 90
