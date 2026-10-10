@@ -31,7 +31,9 @@ async function fixture(browser,width,height,shape='landscape',multiple=false){
   return route.continue();
  });
  const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));
- await page.goto(base,{waitUntil:'networkidle'});await page.locator('#footer').scrollIntoViewIfNeeded();
+ await page.goto(base,{waitUntil:'networkidle'});await page.locator('#hidi-edit').scrollIntoViewIfNeeded();
+ await page.locator('#hidi-edit img').evaluate(i=>i.decode());
+ await page.locator('#footer').scrollIntoViewIfNeeded();
  await page.locator('#meet-hidi img').evaluate(i=>i.decode());
  return{page,context,calls,errors};
 }
@@ -42,7 +44,7 @@ async function geometry(page,width,height){
   return{width:innerWidth,overflow:document.documentElement.scrollWidth-innerWidth,sections:[...document.querySelectorAll('main>section')].map(e=>({id:e.id,top:e.offsetTop,height:e.offsetHeight})),hasPhotoControls:!!document.querySelector('#meet-hidi .media-sequence-controls'),photo:box('#meet-hidi img'),canvas:box('.meet-cinematic--photo'),ananyaButton:box('.meet-cinematic__content'),banner:box('#hidi-edit img'),bannerButton:box('.edit-campaign__button'),ananyaRatio:ananya.naturalWidth/ananya.naturalHeight,bannerRatio:banner.naturalWidth/banner.naturalHeight,header:box('.campaign-header'),controls:[...document.querySelectorAll('.hidi-collection-dot,.social-link,.footer-column>a,.footer-column>button,.promise .small-link')].map(e=>({text:e.getAttribute('aria-label')||e.innerText,height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width}))};
  });
  assert(g.overflow<=1,'No page-wide horizontal scroll');
- assert(Math.abs(g.banner.width/g.banner.height-g.bannerRatio)<.02,'Admin banner uses its natural proportions');
+ assert(Math.abs(g.banner.width/g.banner.height-g.bannerRatio)<.02,'Admin banner uses its natural proportions: '+JSON.stringify(g));
  const compact=width<=700||(width<=1000&&height>width);
  if(compact){assert(Math.abs(g.photo.width/g.photo.height-g.ananyaRatio)<.02,'Full photo has its natural height');assert(g.canvas.height-g.photo.height<(g.hasPhotoControls?200:140),'Photo only reserves space for its visible action and optional media controls');assert(g.ananyaButton.y>=g.photo.bottom-1,'Shop now is below the full photo');}
  if(width<=700){assert(g.bannerButton.y>=g.banner.bottom-1,'Banner CTA does not cover the outfit');assert(g.controls.every(c=>c.height>=43.5),'All footer, gallery and promise controls have 44px tap height');}
