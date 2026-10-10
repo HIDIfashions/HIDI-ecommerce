@@ -14,8 +14,8 @@ try {
       new PerformanceObserver(list=>{window.__hidiTiming.lcp=list.getEntries().at(-1).startTime;}).observe({type:'largest-contentful-paint',buffered:true});
     });
     await page.goto('https://hidiindia.com/collections/casual-wear',{waitUntil:'load',timeout:60000});
-    await page.locator('.collection-page h1').waitFor();
-    await page.waitForFunction(()=>[...document.querySelectorAll('.collection-page img')].length>0&&[...document.querySelectorAll('.collection-page img')].every(i=>i.complete&&i.naturalWidth>0),{timeout:30000});
+    await page.locator('.collection-page h1').waitFor({state:'attached'});
+    await page.waitForFunction(()=>{const images=[...document.querySelectorAll('.collection-page img')].filter(i=>i.getBoundingClientRect().width>0);return images.length>0&&images.every(i=>i.complete&&i.naturalWidth>0);},null,{timeout:30000});
     const result=await page.evaluate(()=>({
       title:document.querySelector('h1').textContent,
       navigation:performance.getEntriesByType('navigation')[0].toJSON(),

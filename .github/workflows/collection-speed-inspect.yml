@@ -1,4 +1,5 @@
 name: Collection loading baseline and live backup
+# The collection title is attached but hidden in the mobile layout.
 on:
   push:
     branches: [migration/azure-sql-blob]
