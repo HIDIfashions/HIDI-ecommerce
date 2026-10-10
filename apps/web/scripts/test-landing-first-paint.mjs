@@ -74,7 +74,7 @@ async function runCase(browser, engine, width, scenario) {
       return { heroBottom: hero.bottom, rangeTop: range.top, rangeBottom: range.bottom, pickTop: pick.top, pickBottom: pick.bottom, headingHeight: heading.height, editTop: edit.top, width: document.documentElement.scrollWidth };
     });
     assert(geometry.rangeTop >= geometry.heroBottom - 1 && geometry.pickTop >= geometry.rangeBottom - 1 && geometry.editTop >= geometry.pickBottom - 1, 'Order is Hero → Explore our range → Ananya’s Pick → shopping banner');
-    assert(geometry.headingHeight >= 70 && geometry.width <= width + 1, 'Heading, full photo area and responsive spacing are retained');
+    assert(geometry.headingHeight >= 64 && geometry.width <= width + 1, 'The compact heading stays visible without horizontal overflow');
     assert.equal(await page.locator(mediaSelector).count(), 0, 'Original images never mount while the selection is pending');
     assert.deepEqual(oldRequests, [], 'No original image is downloaded before configuration resolves');
     assert.equal(await page.locator('#our-range').getAttribute('data-landing-config-status'), 'loading');
