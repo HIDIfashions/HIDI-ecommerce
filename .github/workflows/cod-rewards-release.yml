@@ -8,7 +8,7 @@ permissions:
   contents: read
   id-token: write
 concurrency:
-  group: hidi-hero-guarded-release
+  group: ${{ contains(github.event.head_commit.message, '[validate-cod]') && format('hidi-cod-readonly-{0}', github.sha) || 'hidi-hero-guarded-release' }}
   cancel-in-progress: false
 jobs:
   regression-and-release:
@@ -59,6 +59,7 @@ jobs:
           export NEXT_PUBLIC_API_URL=https://thidigk.thehidi.com/api/store
           pnpm --filter @hidi/web build
       - name: Verify desktop, mobile, cart, checkout and admin in three engines
+        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') }}
         # Font readiness and navigation settlement are checked in the page context.
         run: |
           set -euo pipefail
@@ -72,11 +73,15 @@ jobs:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Back up actual live API and storefront before any image change
+      - name: Verify actual live wallet readiness without writes
         run: |
           set -euo pipefail
           python3 deploy/cod-rewards-release.py capture
           node deploy/cod-rewards-readiness.mjs
+      - name: Back up actual live API and storefront before any image change
+        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') }}
+        run: |
+          set -euo pipefail
           export EXPECTED_API="$(python3 -c 'import json; print(json.load(open("evidence/cod-rewards/before.json"))["hidi-api"]["image"])')"
           export EXPECTED_WEB="$(python3 -c 'import json; print(json.load(open("evidence/cod-rewards/before.json"))["hidi-web"]["image"])')"
           az acr login --name acrhidiprod0927 --only-show-errors
@@ -92,10 +97,12 @@ jobs:
             echo "CANDIDATE_${app^^}=$candidate" >> "$GITHUB_ENV"
           done
       - name: Verify actual candidate overlay with protected homepage and admin routes
+        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') }}
         run: |
           set -euo pipefail
           node deploy/cod-rewards-candidate.mjs
       - name: Publish verified immutable images and apply guarded rollout
+        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') }}
         run: |
           set -euo pipefail
           for app in api web; do
@@ -105,6 +112,7 @@ jobs:
             echo "IMAGE_${app^^}=$image" >> "$GITHUB_ENV"
           done
       - name: Deploy and run live regression within automatic rollback boundary
+        if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') }}
         run: python3 deploy/cod-rewards-release.py apply --api "$IMAGE_API" --web "$IMAGE_WEB"
       - uses: actions/upload-artifact@v4
         if: always()
