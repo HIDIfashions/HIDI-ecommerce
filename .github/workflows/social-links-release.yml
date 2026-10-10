@@ -1,0 +1,394 @@
+name: HIDI social channels guarded release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/social-links-release.yml]
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RG: rg-hidi-prod
+      ACR: acrhidiprod0927
+      HERO_SOURCE_SHA: 5c11d5544b3a10b9b461d042caf94825f852c730
+      HERO_BASE_SHA: 6af6ec850ef470f09f6c6cd70d7b50723727ddba
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require prior storefront and admin commerce regression
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          gh api repos/HIDIfashions/HIDI-ecommerce/actions/jobs/114100688909 > evidence/commerce-gate.json
+          python3 - <<'PYCODE'
+          import json
+          commerce=json.load(open('evidence/commerce-gate.json'))
+          assert commerce['conclusion']=='success' and commerce['name']=='source-and-test' and commerce['head_sha']=='3c16e20f7c1971448953113e2d9750d87d193527'
+          print('PASS: current API/admin source, TypeScript, customer safeguards and three-browser commerce regression completed')
+          PYCODE
+      - uses: actions/checkout@v4
+        with:
+          ref: 5c11d5544b3a10b9b461d042caf94825f852c730
+          fetch-depth: 0
+          path: hero-source
+      - uses: actions/checkout@v4
+        with:
+          ref: 6af6ec850ef470f09f6c6cd70d7b50723727ddba
+          path: hero-before
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: hero-source/apps/web/package-lock.json
+      - name: Build pinned before-and-after landing bundles
+        run: |
+          (cd hero-before/apps/web && npm ci && npm run build)
+          (cd hero-source/apps/web && npm ci && npm test && npm run build)
+          (cd hero-source && node --test deploy/hidi-web-new/runtime.test.mjs)
+          python3 - <<'PYCODE'
+          import os,subprocess
+          changed=subprocess.check_output(['git','diff','--name-only',os.environ['HERO_BASE_SHA'],os.environ['HERO_SOURCE_SHA'],'--','apps/web/src','apps/web/index.html','apps/web/public','deploy/hidi-web-new'],cwd='hero-source',text=True).splitlines()
+          assert changed==['apps/web/public/config.js'], changed
+          print('PASS: only the four supplied social account URLs change in production source')
+          PYCODE
+          echo "PLAYWRIGHT_BROWSERS_PATH=$GITHUB_WORKSPACE/.cache/hidi-layout-browsers" >> "$GITHUB_ENV"
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/hero-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Reject live drift and capture configuration privately
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/hero-private"
+          for app in hidi-web hidi-api; do
+            az containerapp show -g "$RG" -n "$app" --only-show-errors -o json > "$RUNNER_TEMP/hero-private/$app-before.json"
+          done
+          export OLD_WEB="$(jq -r '.properties.template.containers[0].image' "$RUNNER_TEMP/hero-private/hidi-web-before.json")"
+          export EXPECTED_API="$(jq -r '.properties.template.containers[0].image' "$RUNNER_TEMP/hero-private/hidi-api-before.json")"
+          [[ "$OLD_WEB" == acrhidiprod0927.azurecr.io/hidi-web:* || "$OLD_WEB" == acrhidiprod0927.azurecr.io/hidi-web@sha256:* ]]
+          [[ "$EXPECTED_API" == acrhidiprod0927.azurecr.io/hidi-api:* || "$EXPECTED_API" == acrhidiprod0927.azurecr.io/hidi-api@sha256:* ]]
+          echo "OLD_WEB=$OLD_WEB" >> "$GITHUB_ENV"
+          echo "EXPECTED_API=$EXPECTED_API" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'hero-private'
+          for app,key in [('hidi-web','OLD_WEB'),('hidi-api','EXPECTED_API')]:
+            state=json.loads((root/(app+'-before.json')).read_text()); p=state['properties']
+            assert len(p['template']['containers'])==1
+            assert p['template']['containers'][0]['image']==os.environ[key], 'Live image changed; stop instead of overwriting another release'
+            assert p['latestRevisionName']==p['latestReadyRevisionName'], 'Another rollout is in progress'
+            assert p['configuration']['activeRevisionsMode']=='Single'
+            summary={'app':app,'image':os.environ[key],'revision':p['latestReadyRevisionName'],'mode':'Single'}
+            pathlib.Path('evidence/'+app+'-before.json').write_text(json.dumps(summary,indent=2))
+            print(json.dumps(summary))
+          PY
+          az acr login --name "$ACR" --only-show-errors
+          docker pull "$OLD_WEB"
+          backup="$ACR.azurecr.io/hidi-web:backup-social-links-${GITHUB_RUN_ID}"
+          docker tag "$OLD_WEB" "$backup"
+          docker push "$backup"
+          echo "$backup" > evidence/backup-tag.txt
+          cid="$(docker create "$OLD_WEB")"
+          trap 'docker rm "$cid" >/dev/null 2>&1 || true' EXIT
+          mkdir -p "$RUNNER_TEMP/hero-private/base-app"
+          docker cp "$cid:/app/." "$RUNNER_TEMP/hero-private/base-app/"
+      - name: Assemble only the public social configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,shutil
+          baseline=pathlib.Path('hero-before/apps/web/dist'); candidate=pathlib.Path('hero-source/apps/web/dist')
+          live=pathlib.Path(os.environ['RUNNER_TEMP'])/'hero-private/base-app/dist'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          def hashes(root): return {str(p.relative_to(root)):sha(p) for p in root.rglob('*') if p.is_file()}
+          before=hashes(baseline); after=hashes(candidate); actual=hashes(live)
+          assert all(actual.get(k)==v for k,v in before.items()), 'Current live landing differs from the pinned baseline; stop instead of overwriting changes'
+          delta=[k for k,v in after.items() if before.get(k)!=v]
+          assert delta==['config.js'], delta
+          pathlib.Path('hero-patch/overlay').mkdir(parents=True,exist_ok=True)
+          shutil.copyfile(candidate/'config.js','hero-patch/overlay/config.js')
+          pathlib.Path('hero-patch/Dockerfile').write_text('FROM '+os.environ['OLD_WEB']+'\nCOPY --chown=node:node overlay/config.js /app/dist/config.js\n')
+          pathlib.Path('evidence/patch-files.json').write_text(json.dumps(delta,indent=2))
+          pathlib.Path('evidence/patch-hashes.json').write_text(json.dumps({k:after[k] for k in delta},indent=2))
+          print('Only this file will change: '+json.dumps(delta))
+          PY
+          node --input-type=module - <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          import {runInNewContext} from 'node:vm';
+          const config=path=>{const scope={window:{}};runInNewContext(readFileSync(path,'utf8'),scope);return JSON.parse(JSON.stringify(scope.window.HIDI_CONFIG));};
+          const before=config(process.env.RUNNER_TEMP+'/hero-private/base-app/dist/config.js'),after=config('hero-patch/overlay/config.js');
+          const expected={instagram:'https://www.instagram.com/hidiindia/',facebook:'https://www.facebook.com/profile.php?id=61594615364935',x:'https://x.com/Hidiindia',youtube:'https://www.youtube.com/@Hidiindia'};
+          assert.deepEqual(after.socials,expected);
+          assert.deepEqual({...after,socials:before.socials},before,'All non-social integration settings remain identical');
+          console.log('PASS: exact supplied URLs; every other public integration setting preserved');
+          JS
+          image="$ACR.azurecr.io/hidi-web:social-links-${GITHUB_RUN_ID}"
+          docker build --pull=false -t "$image" hero-patch
+          echo "CANDIDATE_TAG=$image" >> "$GITHUB_ENV"
+          cid="$(docker create "$image")"
+          trap 'docker rm "$cid" >/dev/null 2>&1 || true' EXIT
+          mkdir -p "$RUNNER_TEMP/hero-private/candidate-app"
+          docker cp "$cid:/app/." "$RUNNER_TEMP/hero-private/candidate-app/"
+          docker image inspect "$OLD_WEB" "$image" > "$RUNNER_TEMP/hero-private/image-configs.json"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'hero-private'
+          def fingerprints(folder):
+            result={}
+            for p in folder.rglob('*'):
+              key=str(p.relative_to(folder))
+              if p.is_symlink(): result[key]=['link',os.readlink(p)]
+              elif p.is_file(): result[key]=['file',hashlib.sha256(p.read_bytes()).hexdigest()]
+            return result
+          a=fingerprints(root/'base-app'); b=fingerprints(root/'candidate-app')
+          allowed={'dist/config.js'}
+          changed={k for k in set(a)|set(b) if a.get(k)!=b.get(k)}
+          assert changed==allowed, 'Unexpected runtime/admin/commerce/media change: '+str(changed-allowed)
+          configs=json.loads((root/'image-configs.json').read_text()); old,new=configs
+          assert old['Config']==new['Config'], 'The runtime entrypoint, user, environment or other image settings changed'
+          assert new['RootFS']['Layers'][:len(old['RootFS']['Layers'])]==old['RootFS']['Layers']
+          report={'passed':True,'protected_files_identical':len(a)-1,'changed_files':sorted(changed),'runtime_config_identical':True,'base_layers_preserved':True}
+          pathlib.Path('evidence/image-preservation.json').write_text(json.dumps(report,indent=2)); print(json.dumps(report))
+          PY
+      - name: Full regression against the actual candidate container
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/hero-browser" --no-save playwright@1.56.1
+          node "$RUNNER_TEMP/hero-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+          node --input-type=module -e 'import {createServer} from "node:http"; createServer((q,s)=>{s.setHeader("Content-Type","application/json");s.end(JSON.stringify({status:"ok"}));}).listen(3193,"127.0.0.1")' > "$RUNNER_TEMP/hero-private/mock.log" 2>&1 &
+          mock_pid=$!
+          docker run --detach --name hero-candidate-check --network host -e PORT=3192 -e STOREFRONT_ORIGIN=http://127.0.0.1:3193 -e API_URL=http://127.0.0.1:3193/v1 -e INTERNAL_API_URL=http://127.0.0.1:3193/v1 "$CANDIDATE_TAG"
+          trap 'docker rm -f hero-candidate-check >/dev/null 2>&1 || true; kill "$mock_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3192/health >/dev/null; then break; fi; sleep 1; done
+          cd hero-source/apps/web
+          HIDI_SOCIAL_BASE_URL=http://127.0.0.1:3192 node scripts/test-social-links.mjs
+          HIDI_LANDING_BASE_URL=http://127.0.0.1:3192 node scripts/test-landing-first-paint.mjs
+          HIDI_SEQUENCE_BASE_URL=http://127.0.0.1:3192 node scripts/test-media-sequences.mjs
+          HIDI_LAYOUT_BASE_URL=http://127.0.0.1:3192 node scripts/test-landscape-hover.mjs
+          HERO_TEST_BASE_URL=http://127.0.0.1:3192 node scripts/test-hero-first-paint.mjs
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit HIDI_RESPONSIVE_BASE_URL=http://127.0.0.1:3192 node scripts/test-responsive.mjs
+      - name: Install read-only post-release browser verification
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/hero-live.mjs" <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFile,writeFile,mkdir} from 'node:fs/promises';
+          import {pathToFileURL} from 'node:url';
+          import {createHash} from 'node:crypto';
+          const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
+          const directory=process.env.GITHUB_WORKSPACE+'/evidence';
+          const patch=JSON.parse(await readFile(directory+'/patch-hashes.json','utf8'));
+          const bundles=Object.keys(patch);
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          const before=process.argv.includes('--before');
+          const report=[];
+          const baseline=before?[]:JSON.parse(await readFile(directory+'/live-before.json','utf8'));
+          const bases=['https://thidigk.thehidi.com'];
+          // The working storefront is mandatory. An already-unavailable secondary
+          // hostname is reported separately and never falsely certified healthy.
+          const secondary='https://thehidi.com';
+          let secondaryState;
+          try {
+            const r=await fetch(secondary+'/',{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(30000)});
+            const secondaryHtml=await r.text();
+            secondaryState={base:secondary,probe:'secondary-home',status:r.status,ok:r.ok,storeReachable:r.ok && !secondaryHtml.includes('HIDI is temporarily private'),finalUrl:r.url,server:r.headers.get('server')};
+          } catch(error) {
+            secondaryState={base:secondary,probe:'secondary-home',ok:false,error:error.cause?.code||error.name};
+          }
+          report.push(secondaryState); console.log(JSON.stringify(secondaryState));
+          const oldSecondary=baseline.find(item=>item.probe==='secondary-home');
+          if(!before && oldSecondary?.storeReachable) assert(secondaryState.storeReachable,'Previously reachable secondary homepage regressed');
+          if(secondaryState.storeReachable) bases.push(secondary);
+          else console.warn('Secondary hostname remains private or unavailable; the working test storefront is validated and domain access stays unchanged.');
+          await mkdir(directory,{recursive:true});
+          const save=()=>writeFile(directory+(before?'/live-before.json':'/live-after.json'),JSON.stringify(report,null,2));
+          await save();
+          for(const base of bases) {
+            const home=await fetch(base+'/',{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(30000)});
+            assert(home.ok, 'Homepage unavailable: '+base); const html=await home.text();
+            if(!before) {
+              for(const bundle of bundles) {
+                assert(html.includes('./'+bundle) || html.includes('/'+bundle),'Social configuration absent from '+base);
+                const response=await fetch(new URL('/'+bundle,home.url),{signal:AbortSignal.timeout(30000)});
+                assert(response.ok); assert.match(response.headers.get('cache-control')||'',/no-cache|no-store/,'Public config must refresh on reload'); assert.equal(sha(Buffer.from(await response.arrayBuffer())),patch[bundle]);
+              }
+            }
+            for(const path of ['/health','/healthz','/cart','/account','/collections/all','/admin','/admin/landing-media','/admin/packing-scanner']) {
+              const r=await fetch(base+path,{signal:AbortSignal.timeout(30000)});
+              assert([200,401,403].includes(r.status), base+path+' returned '+r.status);
+              report.push({base,path,status:r.status});
+              if(path==='/health') {assert.equal(r.status,200); const health=await r.json(); assert.equal(health.status,'ok');}
+              else await r.body?.cancel();
+            }
+            for(const path of ['/api/admin/session','/api/hidi/hero-library','/api/hidi/landing-media-library','/api/hidi/landing-media-ananya-publish','/api/hidi/packing-plan?order=HIDI-READONLY-NOT-AN-ORDER']) {
+              const r=await fetch(base+path,{redirect:'manual',signal:AbortSignal.timeout(30000)});
+              assert([401,403].includes(r.status),'Admin API authentication boundary changed: '+path);
+              report.push({base,path,status:r.status}); await r.body?.cancel();
+            }
+            const configResponse=await fetch(base+'/api/hidi/hero-config',{signal:AbortSignal.timeout(30000)});
+            assert(configResponse.ok); const config=await configResponse.json();
+            assert.equal(config.active,true,'The existing uploaded hero must remain selected');
+            const selection={base,selectedType:config.type,selectedUrl:config.url};
+            const previous=baseline.find(item=>item.base===base && item.selectedUrl);
+            if(previous) assert.deepEqual(selection,previous,'Existing uploaded media selection must remain unchanged');
+            report.push(selection);
+            const landingResponse=await fetch(base+'/api/hidi/landing-media-config',{signal:AbortSignal.timeout(30000)});
+            assert(landingResponse.ok); const landing=await landingResponse.json();
+            const landingSelection={base,probe:'landing-selections',slots:landing.slots,ananya:landing.ananya||null};
+            const oldLanding=baseline.find(item=>item.base===base && item.probe==='landing-selections');
+            if(oldLanding) assert.deepEqual(landingSelection,oldLanding,'Published landing media changed during the code-only rollout');
+            report.push(landingSelection); await save();
+          }
+          if(!before) {
+            const browser=await pw.chromium.launch({channel:'chrome',headless:true});
+            try {
+              for(const base of bases) for(const width of [390,1440]) {
+                const context=await browser.newContext({viewport:{width,height:844},hasTouch:width<700});
+                const page=await context.newPage(); page.setDefaultTimeout(30000);
+                const landing=report.find(item=>item.base===base && item.probe==='landing-selections');
+                const defaults={'range-occasion':'occasion-set.webp','range-new-arrivals':'peach-set.webp','range-work-edit':'cream-set.webp','range-everyday':'burgundy-set.webp','range-shop-all':'hero-portrait.webp','hidi-edit-banner':'hidi-premium-ai-full-banner-lossless.png'};
+                const blocked=Object.entries(defaults).filter(([id])=>landing.slots[id]?.active).map(([,name])=>'/assets/images/'+name);
+                if(landing.ananya?.active || (!landing.ananya && landing.slots['ananya-green']?.active)) blocked.push('/assets/images/ananya-top-picks/ananya-green.webp');
+                const oldRequests=[];
+                page.on('request',r=>{if(blocked.includes(new URL(r.url()).pathname) || /\/assets\/(video\/hidi-hero-|images\/hero-).*luminous/.test(r.url())) oldRequests.push(r.url());});
+                await context.route('**/*',route=> ['GET','HEAD'].includes(route.request().method()) ? route.continue() : route.abort());
+                await context.addInitScript(blocked=>{
+                  window.__oldHeroSeen=false; window.__oldLandingSeen=false;
+                  new MutationObserver(()=>{
+                    if(document.querySelector('.hero-media .hero-poster,.hero-media #hero-video')) window.__oldHeroSeen=true;
+                    for(const image of document.querySelectorAll('#our-range img,#meet-hidi img,#hidi-edit img')) if(image.getAttribute('src') && blocked.includes(new URL(image.src).pathname)) window.__oldLandingSeen=true;
+                  }).observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});
+                },blocked);
+                try {
+                  for(let visit=0;visit<2;visit++) {
+                    if(visit===0) await page.goto(base+'/',{waitUntil:'domcontentloaded'}); else await page.reload({waitUntil:'domcontentloaded'});
+                    await page.waitForFunction(()=>{const el=document.querySelector('.hero-live-media');return el && getComputedStyle(el).visibility==='visible' && document.querySelector('.hero-media')?.dataset.frameReady==='true';});
+                    await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready' && document.querySelector('.meet-cinematic__model')?.complete && document.querySelector('.meet-cinematic__model')?.naturalWidth>0);
+                    assert.equal(await page.evaluate(()=>window.__oldHeroSeen || window.__oldLandingSeen),false);
+                    const photos=await page.locator('#our-range img,#meet-hidi img,#hidi-edit img').evaluateAll(images=>images.map(image=>({slot:image.dataset.landingMediaSlot,src:image.src})));
+                    assert.equal(photos.length,7);
+                    for(const [slot,selected] of Object.entries(landing.slots)) if(selected.active && defaults[slot]) assert(photos.some(image=>image.slot===slot && image.src===new URL(selected.url,base).href),'Current published photo not used: '+slot);
+                    const expectedAnanya=landing.ananya?.active ? landing.ananya.items[0].url : !landing.ananya && landing.slots['ananya-green']?.active ? landing.slots['ananya-green'].url : null;
+                    if(expectedAnanya) assert.equal(await page.locator('.meet-cinematic__model').evaluate(image=>image.src),new URL(expectedAnanya,base).href);
+                    const order=await page.evaluate(()=>Array.from(document.querySelector('#main').children).map(node=>node.id||node.className));
+                    assert(order.indexOf('our-range')<order.indexOf('meet-hidi') && order.indexOf('meet-hidi')<order.indexOf('hidi-edit'));
+                    assert.deepEqual(oldRequests,[]);
+                    const state=await page.locator('.hero-live-media').evaluate(el=>({type:el.tagName,src:el.currentSrc||el.src,width:el.videoWidth||el.naturalWidth,ready:el.readyState}));
+                    assert(state.width>0);
+                    const expected=report.find(item=>item.base===base && item.selectedUrl);
+                    assert.equal(state.src,new URL(expected.selectedUrl,base).href);
+                    report.push({base,width,visit,passed:true,oldMediaRequests:0,media:state}); await save();
+                  }
+                  await page.screenshot({path:directory+'/live-'+new URL(base).hostname+'-'+width+'.png',timeout:20000});
+                } finally {await context.close();}
+              }
+            } finally {await browser.close();}
+          }
+          await save();
+          console.log(before?'PASS: active storefront and protected admin routes recorded':'PASS: new live hero, fresh/reloaded mobile/desktop sessions, commerce and admin boundaries');
+          JS
+          node --check "$RUNNER_TEMP/hero-live.mjs"
+          node "$RUNNER_TEMP/hero-live.mjs" --before
+      - name: Publish the verified candidate by immutable digest
+        run: |
+          set -euo pipefail
+          docker push "$CANDIDATE_TAG"
+          docker pull "$CANDIDATE_TAG"
+          digest="$(docker image inspect "$CANDIDATE_TAG" --format '{{index .RepoDigests 0}}')"
+          [[ "$digest" == acrhidiprod0927.azurecr.io/hidi-web@sha256:* ]]
+          echo "CANDIDATE_IMAGE=$digest" >> "$GITHUB_ENV"
+          echo "$digest" > evidence/candidate-image.txt
+          echo "$OLD_WEB" > evidence/rollback-image.txt
+      - name: Roll out only the social configuration; verify or restore the exact previous image
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          updated=0
+          image_of() { az containerapp show -g "$RG" -n "$1" --only-show-errors --query 'properties.template.containers[0].image' -o tsv; }
+          wait_ready() {
+            local image="$1" target="$2" deadline=$((SECONDS+600))
+            while [ "$SECONDS" -lt "$deadline" ]; do
+              local health ready current
+              health="$(az containerapp revision show -g "$RG" -n hidi-web --revision "$target" --only-show-errors --query properties.healthState -o tsv 2>/dev/null || true)"
+              ready="$(az containerapp show -g "$RG" -n hidi-web --only-show-errors --query properties.latestReadyRevisionName -o tsv)"
+              current="$(image_of hidi-web)"
+              echo "revision=$target health=$health ready=$ready"
+              [ "$current" = "$image" ] || return 1
+              if [ "$health" = Healthy ] && [ "$ready" = "$target" ]; then return 0; fi
+              sleep 10
+            done
+            return 1
+          }
+          rollback() {
+            local code=$?
+            trap - ERR
+            if [ "$updated" = 1 ]; then
+              current="$(image_of hidi-web)"
+              if [ "$current" = "$CANDIDATE_IMAGE" ]; then
+                echo 'Verification failed; restoring the exact previous web image only.'
+                az containerapp update -g "$RG" -n hidi-web --image "$OLD_WEB" --revision-suffix "herorb${GITHUB_RUN_ID}" --only-show-errors -o none
+                target="$(az containerapp show -g "$RG" -n hidi-web --only-show-errors --query properties.latestRevisionName -o tsv)"
+                if wait_ready "$OLD_WEB" "$target"; then echo 'Rollback confirmed healthy.'; else echo 'Rollback requires attention.'; fi
+              else
+                echo 'Current image is not our candidate; no rollback overwrite of another release was attempted.'
+              fi
+            fi
+            exit "$code"
+          }
+          trap rollback ERR
+          test "$(image_of hidi-web)" = "$OLD_WEB"
+          test "$(image_of hidi-api)" = "$EXPECTED_API"
+          updated=1
+          az containerapp update -g "$RG" -n hidi-web --image "$CANDIDATE_IMAGE" --revision-suffix "layout${GITHUB_RUN_ID}" --only-show-errors -o none
+          target="$(az containerapp show -g "$RG" -n hidi-web --only-show-errors --query properties.latestRevisionName -o tsv)"
+          wait_ready "$CANDIDATE_IMAGE" "$target"
+          node "$RUNNER_TEMP/hero-live.mjs"
+          (cd hero-source/apps/web && HIDI_SOCIAL_LIVE=1 HIDI_SOCIAL_BASE_URL=https://thidigk.thehidi.com node scripts/test-social-links.mjs)
+          (cd hero-source/apps/web && HIDI_LAYOUT_LIVE=1 HIDI_LAYOUT_BASE_URL=https://thidigk.thehidi.com node scripts/test-landscape-hover.mjs)
+          for app in hidi-web hidi-api; do
+            az containerapp show -g "$RG" -n "$app" --only-show-errors -o json > "$RUNNER_TEMP/hero-private/$app-after.json"
+          done
+          python3 - <<'PY'
+          import json,os,pathlib,copy
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'hero-private'
+          report={}
+          for app in ['hidi-web','hidi-api']:
+            before=json.loads((root/(app+'-before.json')).read_text()); after=json.loads((root/(app+'-after.json')).read_text())
+            for key in ['identity','location','tags']:
+              assert before.get(key)==after.get(key), app+' '+key+' changed'
+            for key in ['configuration','environmentId','workloadProfileName']:
+              assert before['properties'].get(key)==after['properties'].get(key), app+' '+key+' changed'
+            a=copy.deepcopy(before['properties']['template']); b=copy.deepcopy(after['properties']['template'])
+            if app=='hidi-web':
+              a.pop('revisionSuffix',None); b.pop('revisionSuffix',None)
+              a['containers'][0].pop('image',None); b['containers'][0].pop('image',None)
+            assert a==b, app+' template changed outside the authorized image'
+            report[app]={'image':after['properties']['template']['containers'][0]['image'],'revision':after['properties']['latestReadyRevisionName'],'configurationPreserved':True}
+          pathlib.Path('evidence/deployment-result.json').write_text(json.dumps(report,indent=2)); print(json.dumps(report))
+          PY
+          updated=0
+          trap - ERR
+          echo 'DEPLOYMENT COMPLETE: Instagram, Facebook, YouTube and X use the supplied URLs; API, media, privacy, account and protected storefront/admin files retained.'
+      - name: Preserve release evidence without credentials or raw container files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: social-links-release-${{ github.run_id }}
+          path: |
+            evidence
+            hero-source/apps/web/validation
+          retention-days: 30
