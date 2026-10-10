@@ -25,7 +25,7 @@ export async function probe(base,output,engines=['chromium','firefox','webkit'])
     for(const [raw,clean] of [['+91 abc9876543210','+919876543210'],['+91 (987) 654-3210','+919876543210'],['+442071234567','+442071234567']]){await input.fill(raw);assert.equal(await input.inputValue(),clean);assert(await input.evaluate(e=>e.checkValidity()));}
     assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)));
     await go('/products/'+product.slug);const details=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await details.waitFor();await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor();assert(await details.evaluate(e=>e.open));assert.match(await details.innerText(),/Free Shipping[\s\S]*Easy Returns[\s\S]*Exchanges/);assert.equal(await details.getByRole('link',{name:/View Shipping, Returns & Exchange Policy/}).count(),1);
-    if((product.images?.length||0)>=2)await page.locator('.hidi-pdp-gallery-controls').waitFor();
+    if(await page.locator('.pdp-gallery .pdp-image').count()>=2)await page.locator('.hidi-pdp-gallery-controls').waitFor();
     const add=page.locator('[class*="purchaseActions"]').getByRole('button',{name:'Add to bag',exact:true});if(await add.count())assert.equal(await add.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(89, 29, 32)');
     if(viewport.width<=720){
      await go('/collections/all');await page.getByRole('button',{name:'Filter & Sort',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Product filters'});const show=dialog.getByRole('button',{name:/Show \d+ styles/});assert.equal(await show.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(89, 29, 32)');
