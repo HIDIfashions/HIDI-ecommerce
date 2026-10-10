@@ -72,6 +72,24 @@ class ReleaseGuards(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {'migration': payload['migration'], 'database': database})
 
+    def test_read_only_console_selects_diagnose_and_does_not_call_apply(self):
+        payload = {'module': 'export async function run(){throw Error("unexpected DDL");} export async function diagnose(database){console.log(JSON.stringify({readOnly:true,database}));}'}
+        packed = base64.b64encode(gzip.compress(json.dumps(payload).encode(), mtime=0)).decode()
+        command = schema_console.console_command(packed, 'fixture', diagnose=True)
+        result = subprocess.run(['bash'], input=command, text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {'readOnly': True, 'database': 'fixture'})
+        self.assertNotIn('module.run(', command)
+
+    def test_failure_reports_preserve_static_ids_and_only_allowlisted_schema_metadata(self):
+        payload = {'failureCode': 'PRODUCT_STATUS_COLUMN_MAX_LENGTH', 'diagnostics': {'columnType': 'nvarchar', 'columnMaxLength': 40, 'columnNullable': False, 'statusLiterals': ['ACTIVE', 'ARCHIVED', 'DRAFT'], 'definition': 'private SQL text', 'database': 'private database', 'connectionString': 'private connection'}}
+        result = schema_console.parse_failure('HIDI_DELETE_SCHEMA_FAILED::' + json.dumps(payload))
+        self.assertEqual(result['failureCode'], payload['failureCode']); self.assertEqual(result['diagnostics']['columnMaxLength'], 40)
+        self.assertFalse(any(key in result['diagnostics'] for key in ['definition', 'database', 'connectionString']))
+        self.assertNotIn('private', json.dumps(result))
+        self.assertEqual(schema_console.parse_failure('no marker')['failureCode'], 'CONSOLE_CHECK_INCOMPLETE')
+        self.assertEqual(schema_console.parse_failure('HIDI_DELETE_SCHEMA_FAILED::{"failureCode":"unsafe value"}')['failureCode'], 'SCHEMA_HELPER_FAILED')
+
     def test_api_protects_unreviewed_files_baseline_and_runtime_configuration(self):
         with tempfile.TemporaryDirectory() as temp:
             private = Path(temp); base = private / 'base'; candidate = private / 'candidate'

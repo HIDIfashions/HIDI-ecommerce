@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
-import { allowedStatuses, applySchema } from '../deploy/admin-delete/schema-readiness.mjs';
+import { allowedStatuses, applySchema, diagnoseSchema, schemaDiagnostics } from '../deploy/admin-delete/schema-readiness.mjs';
 
 const migration = 'reviewed additive Product CHECK';
 const legacy = "([status]='ARCHIVED' OR [status]='ACTIVE' OR [status]='DRAFT')";
@@ -13,7 +13,7 @@ function fixture(options = {}) {
     async $queryRawUnsafe(sql) {
       calls.push(sql);
       if (sql.startsWith('SELECT name, definition')) return options.missing ? [] : [{ name: 'Product_status_values', definition: applied || options.alreadyReady ? ready : legacy, is_disabled: options.disabled ? 1 : 0, is_not_trusted: options.untrusted ? 1 : 0 }];
-      if (sql.includes('sys.columns')) return [{ typeName: 'nvarchar', max_length: applied && options.changeColumn ? 160 : 80, is_nullable: 0 }];
+      if (sql.includes('sys.columns')) return options.columnMissing ? [] : [{ typeName: options.columnType || 'nvarchar', max_length: options.maxLength ?? (applied && options.changeColumn ? 160 : 80), is_nullable: options.nullable ? 1 : 0 }];
       if (sql.includes('sys.foreign_keys')) return [{ name: applied && options.changeForeignKey ? 'changed' : 'retained-order-product-fk', parent_object_id: 1, referenced_object_id: 2, is_disabled: 0, is_not_trusted: 0 }];
       if (sql.includes('sys.check_constraints')) return [{ name: 'retained-inventory-type', parent_object_id: 3, definition: "[type]='RECEIPT'", is_disabled: 0, is_not_trusted: 0 }];
       throw new Error('Unexpected metadata query');
@@ -51,4 +51,40 @@ test('DDL rejection or unrelated metadata changes cannot produce schema readines
   for (const options of [{ failure: true }, { changeForeignKey: true }, { changeColumn: true }]) {
     const f = fixture(options); await assert.rejects(() => applySchema(f.db, migration, 'fixture-db'));
   }
+});
+
+test('each inspected invariant reports a static code and safe metadata before any DDL', async () => {
+  for (const [options, code] of [
+    [{ missing: true }, 'PRODUCT_CHECK_COUNT'], [{ disabled: true }, 'PRODUCT_CHECK_DISABLED'],
+    [{ untrusted: true }, 'PRODUCT_CHECK_UNTRUSTED'], [{ columnMissing: true }, 'PRODUCT_STATUS_COLUMN_COUNT'],
+    [{ columnType: 'varchar' }, 'PRODUCT_STATUS_COLUMN_TYPE'], [{ maxLength: 40 }, 'PRODUCT_STATUS_COLUMN_MAX_LENGTH'],
+    [{ nullable: true }, 'PRODUCT_STATUS_COLUMN_NULLABLE'],
+  ]) {
+    const f = fixture(options);
+    await assert.rejects(() => applySchema(f.db, migration, 'private-database-name'), error => {
+      assert.equal(error.code, code); assert.ok(error.schemaDiagnostics);
+      assert.equal(JSON.stringify(error.schemaDiagnostics).includes('private-database-name'), false);
+      return true;
+    });
+    assert.equal(f.calls.includes('MIGRATION'), false);
+  }
+  assert.throws(() => allowedStatuses({ definition: "[status] IN ('OTHER')", is_disabled: 0, is_not_trusted: 0 }), { code: 'PRODUCT_CHECK_STATUS_SET' });
+});
+
+test('read-only diagnosis returns schema differences without asserting them or executing DDL', async () => {
+  const f = fixture({ missing: true, columnType: 'varchar', maxLength: 40, nullable: true });
+  const result = await diagnoseSchema(f.db);
+  assert.equal(result.readOnly, true); assert.equal(result.applicationRowsQueried, false); assert.equal(result.ddlExecuted, false);
+  assert.equal(result.constraintPresent, false); assert.equal(result.columnType, 'varchar'); assert.equal(result.columnMaxLength, 40); assert.equal(result.columnNullable, true);
+  assert.equal(f.calls.includes('MIGRATION'), false);
+  assert.equal(f.calls.length, 3); assert.ok(f.calls.every(sql => sql.startsWith('SELECT ')));
+});
+
+test('diagnostic metadata excludes full SQL and redacts unexpected literal contents', () => {
+  const privateText = 'person@example.invalid';
+  const result = schemaDiagnostics([{ definition: `[status] IN ('ACTIVE','${privateText}')`, is_disabled: 1, is_not_trusted: 1 }], [{ typeName: 'nvarchar', max_length: 80, is_nullable: 0 }]);
+  assert.equal(result.constraintEnabled, false); assert.equal(result.constraintTrusted, false);
+  assert.deepEqual(result.statusLiterals, ['ACTIVE', '[REDACTED]']);
+  assert.equal(JSON.stringify(result).includes(privateText), false);
+  assert.equal(JSON.stringify(result).includes('IN ('), false);
 });
