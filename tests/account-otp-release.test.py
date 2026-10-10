@@ -297,13 +297,14 @@ class EditorialAndCandidatePrefetch(unittest.TestCase):
         helpers = []
         names = ["trackFixtureNetwork", "settleFixtureNetwork"]
         if path.startswith("tests/"): names.append("settledReload")
+        else: names.insert(1, "fixtureNetworkSnapshot")
         for name in names:
             match = re.search(r"(?:async )?function " + name + r"\([^\n]+\) \{\n.*?^\}", source, re.S | re.M)
             self.assertIsNotNone(match)
             helpers.append(match.group(0))
         return source, helpers
 
-    def test_cached_lifecycle_waits_for_late_requests_before_wishlist_reload_or_candidate_navigation(self):
+    def test_cached_lifecycle_waits_for_late_requests_before_wishlist_reload_or_policy_completion(self):
         for path in ["tests/editorial-storefront.browser.mjs", "deploy/smoke-account-otp-candidates.sh"]:
             with self.subTest(fixture=path):
                 source, helpers = self.helpers(path)
@@ -311,7 +312,7 @@ class EditorialAndCandidatePrefetch(unittest.TestCase):
 import assert from 'node:assert/strict';
 let now=0,started=false,finished=false,navigated=false;Date.now=()=>now;
 const listeners=new Map();
-const request={url:()=> 'http://127.0.0.1:3107/products/fixture?_rsc=fixture'};
+const request={url:()=> 'http://127.0.0.1:3107/products/fixture?_rsc=fixture',method:()=> 'GET',resourceType:()=> 'fetch'};
 const page={on:(name,callback)=>listeners.set(name,callback),waitForLoadState:async()=>{},
   reload:async options=>{assert.equal(options.waitUntil,'networkidle');assert.equal(options.timeout,30000);assert(started&&finished&&now>=850);navigated=true;}};
 const delay=async milliseconds=>{
@@ -334,10 +335,17 @@ const delay=async milliseconds=>{
                     self.assertNotIn("page.reload(", wish)
                     self.assertIn("assert.deepEqual(errors,[],'Unexpected browser exceptions')", source)
                 else:
-                    home, policy = source.index("const home=await page.goto("), source.index("const policy=await page.goto(")
-                    self.assertLess(source.index("trackFixtureNetwork(page);", source.index("const page=await context.newPage()")), home)
-                    self.assertIn("await settleFixtureNetwork(page);", source[home:policy])
-                    self.assertIn("await settleFixtureNetwork(page);", source[policy:source.index("assert.deepEqual(errors,[]")])
+                    home, policy = source.index("const home=await homePage.goto("), source.index("const policy=await policyPage.goto(")
+                    self.assertLess(source.index("trackFixtureNetwork(page);", source.index("const observe=async()")), home)
+                    self.assertNotIn("settleFixtureNetwork(homePage)", source)
+                    self.assertIn("const policyPage=await observe();", source[home:policy])
+                    self.assertIn("await settleFixtureNetwork(policyPage);", source[policy:source.index("assert.deepEqual(errors,[]")])
+                    self.assertIn("name:'Main navigation',exact:true", source[home:policy])
+                    self.assertIn("header#site-header", source[home:policy])
+                    self.assertIn('main#main > section[aria-labelledby="hero-title"]', source[home:policy])
+                    self.assertLess(source.index("await policyPage.screenshot("), source.index("assert.deepEqual(errors,[]"))
+                    self.assertIn("['chromium','firefox','webkit']", source)
+                    self.assertIn("['GET','HEAD'].includes(route.request().method())", source)
 
     def test_pending_requests_time_out_instead_of_hiding_browser_failures(self):
         for path in ["tests/editorial-storefront.browser.mjs", "deploy/smoke-account-otp-candidates.sh"]:
@@ -346,7 +354,7 @@ const delay=async milliseconds=>{
                 script = "const fixtureNetworkStates=new WeakMap();\n" + "\n".join(helpers) + "\n" + """
 import assert from 'node:assert/strict';
 let now=0;Date.now=()=>now;const delay=async milliseconds=>{now+=milliseconds;};
-const listeners=new Map(),request={url:()=> 'http://127.0.0.1:3107/products/never-finished?_rsc=fixture'};
+const listeners=new Map(),request={url:()=> 'http://127.0.0.1:3107/products/never-finished?_rsc=fixture',method:()=> 'GET',resourceType:()=> 'fetch'};
 const page={on:(name,callback)=>listeners.set(name,callback),waitForLoadState:async()=>{}};
 trackFixtureNetwork(page);listeners.get('request')(request);
 await assert.rejects(settleFixtureNetwork(page),/Fixture network did not settle/);
@@ -354,6 +362,111 @@ assert(now>=15000&&now<15100,'Network quiescence must remain bounded');
 """
                 result = subprocess.run(["node", "--input-type=module"], input=script, text=True, capture_output=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_native_policy_timeout_reports_pending_type_age_and_redacts_queries(self):
+        _, helpers = self.helpers("deploy/smoke-account-otp-candidates.sh")
+        script = "const fixtureNetworkStates=new WeakMap();\n" + "\n".join(helpers) + "\n" + r"""
+import assert from 'node:assert/strict';
+let now=100;Date.now=()=>now;const delay=async()=>{};
+const listeners=new Map(),request={url:()=> 'http://127.0.0.1:3192/account/policy?_rsc=fixture&secret=must-not-be-printed',method:()=> 'GET',resourceType:()=> 'fetch'};
+const cause=new Error('Native networkidle timeout');
+const page={on:(name,callback)=>listeners.set(name,callback),waitForLoadState:async()=>{now+=15000;throw cause;}};
+trackFixtureNetwork(page);listeners.get('request')(request);
+await assert.rejects(settleFixtureNetwork(page),error=>{
+  assert.equal(error.cause,cause);assert.match(error.message,/Fixture network did not settle/);
+  assert.match(error.message,/"type":"fetch"/);assert.match(error.message,/"ageMilliseconds":15000/);
+  assert.match(error.message,/127.0.0.1:3192\/account\/policy/);assert(!error.message.includes('secret='));return true;
+});
+"""
+        result = subprocess.run(["node", "--input-type=module"], input=script, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_readonly_candidate_mock_stays_alive_and_rejects_otp_or_other_writes(self):
+        source = (ROOT / "deploy/smoke-account-otp-candidates.sh").read_text()
+        match = re.search(r"function readOnlyFixture\([^\n]+\) \{\n.*?^\}", source, re.S | re.M)
+        self.assertIsNotNone(match)
+        script = "const unexpectedWrites=[];\n" + match.group(0) + "\n" + """
+import assert from 'node:assert/strict';import {createServer} from 'node:http';
+const upstream=createServer(readOnlyFixture);
+await new Promise(done=>upstream.listen(0,'127.0.0.1',done));
+const base='http://127.0.0.1:'+upstream.address().port;
+try {
+  const config=await fetch(base+'/v1/auth/config');assert.equal(config.status,200);
+  assert.equal((await config.json()).fixture,'loopback-account-otp-candidate-readonly');
+  assert.equal((await fetch(base+'/v1/auth/config',{method:'HEAD'})).status,200);
+  assert.equal((await fetch(base+'/v1/admin/dashboard/overview')).status,401);
+  for(const path of ['/v1/auth/otp/request','/v1/auth/otp/verify','/v1/orders']){
+    const response=await fetch(base+path,{method:'POST',body:'{}'});assert.equal(response.status,405);await response.text();
+  }
+  assert.equal((await fetch(base+'/v1/auth/otp/request')).status,405);
+  assert.equal(unexpectedWrites.length,3);
+}finally{upstream.closeAllConnections();await new Promise(done=>upstream.close(done));}
+"""
+        result = subprocess.run(["node", "--input-type=module"], input=script, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertLess(source.index("upstream.listen(4116,'127.0.0.1'"), source.index("const config=await fetch(base+'/api/store/auth/config')"))
+        self.assertLess(source.index("'loopback-account-otp-candidate-readonly','Candidate must"), source.index("for(const engine of"))
+        self.assertGreater(source.index("upstream.closeAllConnections()"), source.index("writeFile('evidence/candidate-account-packaging.json'"))
+        self.assertIn("assert.deepEqual(unexpectedWrites,[]", source)
+
+    def run_candidate_inline(self, homepage_error=False):
+        source = (ROOT / "deploy/smoke-account-otp-candidates.sh").read_text()
+        inline = source.split("node --input-type=module <<'NODE'\n", 1)[1].split("\nNODE", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="hidi-candidate-inline-") as directory:
+            root = Path(directory); (root / "evidence").mkdir()
+            module = root / "playwright.mjs"
+            module.write_text("""
+import {appendFileSync} from 'node:fs';
+const record=event=>appendFileSync(process.env.HIDI_PROBE_RECORD,JSON.stringify(event)+'\\n');
+function engine(name){return {launch:async()=>({newContext:async()=>({route:async()=>{},
+  newPage:async()=>{const listeners=new Map(),id=Math.random();let url='about:blank';
+    const locator=selector=>({waitFor:async()=>{},count:async()=>1,textContent:async()=> 'HIDI',isVisible:async()=>true});
+    return {on:(event,fn)=>listeners.set(event,fn),url:()=>url,
+      goto:async target=>{url=target;record({engine:name,id,url});if(process.env.HIDI_PROBE_HOME_ERROR==='yes'&&new URL(url).pathname==='/')listeners.get('pageerror')(new Error('Homepage runtime exception'));
+        return {ok:()=>true};},
+      getByRole:locator,locator,waitForLoadState:async()=>{},
+      screenshot:async()=>{},evaluate:async()=>({document:'complete'}),};},
+  close:async()=>{},}),close:async()=>{},})};}
+export const chromium=engine('chromium'),firefox=engine('firefox'),webkit=engine('webkit');
+""")
+            candidate = root / "candidate.mjs"; candidate.write_text(inline)
+            driver = root / "driver.mjs"
+            driver.write_text("""
+import {createServer} from 'node:http';
+const server=createServer(async(req,res)=>{
+  if(req.url==='/api/store/auth/config'){
+    const upstream=await fetch('http://127.0.0.1:4116/v1/auth/config');res.writeHead(upstream.status,{'content-type':'application/json'});return res.end(await upstream.text());}
+  res.writeHead(401);res.end();
+});
+await new Promise(done=>server.listen(3192,'127.0.0.1',done));
+try{await import('./candidate.mjs');}catch(error){console.error(error.message);process.exitCode=1;}
+finally{server.closeAllConnections();await new Promise(done=>server.close(done));}
+""")
+            record = root / "calls.jsonl"
+            env = {**os.environ, "HIDI_PLAYWRIGHT_MODULE": str(module), "HIDI_PROBE_RECORD": str(record), "HIDI_PROBE_HOME_ERROR": "yes" if homepage_error else "no"}
+            process = subprocess.run(["node", str(driver)], cwd=root, env=env, capture_output=True, text=True, timeout=15)
+            calls = [json.loads(line) for line in record.read_text().splitlines()]
+            diagnostics = [json.loads(path.read_text()) for path in (root / "evidence").glob("*-readiness-failure.json")]
+            return process, calls, diagnostics
+
+    def test_actual_candidate_inline_keeps_home_open_and_checks_policy_in_every_engine(self):
+        process, calls, diagnostics = self.run_candidate_inline()
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(diagnostics, [])
+        self.assertEqual([call["engine"] for call in calls], [engine for engine in ["chromium", "firefox", "webkit"] for _ in range(2)])
+        for index in range(0, len(calls), 2):
+            home, policy = calls[index:index+2]
+            self.assertEqual(home["url"], "http://127.0.0.1:3192/")
+            self.assertEqual(policy["url"], "http://127.0.0.1:3192/account/policy")
+            self.assertNotEqual(home["id"], policy["id"], "Policy must use its own page without unloading home")
+
+    def test_homepage_runtime_error_still_fails_the_actual_candidate_inline(self):
+        process, calls, diagnostics = self.run_candidate_inline(homepage_error=True)
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIn("Policy or retained homepage has browser runtime errors", process.stderr)
+        self.assertEqual(len(calls), 2, "The homepage stays open while policy is checked before the strict error assertion")
+        self.assertEqual(diagnostics[0]["pageErrors"], ["Homepage runtime exception"])
+        self.assertEqual(len(diagnostics[0]["pages"]), 2)
 
 
 class AccountRollout(unittest.TestCase):
