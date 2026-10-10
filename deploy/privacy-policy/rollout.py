@@ -52,12 +52,15 @@ def snapshot(data):
 def ready(state):
     assert state['mode'] == 'Single' and state['latest'] == state['ready'] and state['ready'], 'Application is not ready'
 
-def write_image(data, image, suffix):
+def image_patch(data, image, suffix):
     # Use ARM with the exact retained template rather than rebuilding env via CLI.
     template = copy.deepcopy(data['properties']['template'])
     template['containers'][0]['image'] = image; template['revisionSuffix'] = suffix
+    return {'location': data['location'], 'properties': {'template': template}}
+
+def write_image(data, image, suffix):
     path = Path(os.environ['RUNNER_TEMP']) / 'privacy-policy-image-patch.json'
-    path.write_text(json.dumps({'properties': {'template': template}})); path.chmod(0o600)
+    path.write_text(json.dumps(image_patch(data, image, suffix))); path.chmod(0o600)
     try: azure('rest', '--method', 'patch', '--url', 'https://management.azure.com' + data['id'] + '?api-version=' + API_VERSION, '--body', '@' + str(path))
     finally: path.unlink(missing_ok=True)
 

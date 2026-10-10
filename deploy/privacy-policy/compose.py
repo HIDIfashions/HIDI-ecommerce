@@ -22,6 +22,8 @@ def verify(base, candidate, configs):
     expected = {'server.mjs'} | {'privacy-policy/' + name for name in FILES}
     changed = {name for name in before.keys() | after.keys() if before.get(name) != after.get(name)}
     assert changed == expected, 'Unexpected application changes: ' + str(sorted(changed ^ expected))
+    for name in FILES:
+        assert (candidate / 'privacy-policy' / name).read_bytes() == (here / name).read_bytes(), 'Policy payload differs from reviewed source: ' + name
     assert configs[0]['Config'] == configs[1]['Config'], 'Image runtime settings changed'
     layers = configs[0]['RootFS']['Layers']
     assert configs[1]['RootFS']['Layers'][:len(layers)] == layers, 'Original image layers changed'

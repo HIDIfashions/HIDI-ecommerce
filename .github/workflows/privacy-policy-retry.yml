@@ -1,0 +1,68 @@
+name: Privacy policy verified image rollout
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/privacy-policy-retry.yml]
+permissions:
+  contents: read
+concurrency:
+  group: hidi-msg91-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: contains(github.event.head_commit.message, '[deploy-privacy-admin-retry]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VERIFIED_BASE: acrhidiprod0927.azurecr.io/hidi-web@sha256:e388b7f6c160d7ce7543649591d704f7e99c29ea5a86d2cf070acb5ca016e999
+      VERIFIED_CANDIDATE: acrhidiprod0927.azurecr.io/hidi-web@sha256:8fc7976b1141a1d1e27a9889c73366997f2672cf24d61d1bfb863e0beaed4763
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify required ARM fields, rollback guards and private storage safeguards
+        run: |
+          python3 tests/privacy-policy-release.test.py
+          node --test tests/privacy-policy.test.mjs tests/privacy-policy-storage.test.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Require retained live base and the exact previously browser-tested candidate
+        run: |
+          set -euo pipefail
+          python3 deploy/privacy-policy/rollout.py capture
+          actual="$(python3 -c 'import json; print(json.load(open("evidence/privacy-before.json"))["hidi-web"]["image"])')"
+          test "$actual" = "$VERIFIED_BASE"
+          az acr login --name acrhidiprod0927 --only-show-errors
+          docker pull "$VERIFIED_BASE"
+          docker pull "$VERIFIED_CANDIDATE"
+          python3 - <<'PY'
+          import importlib.util,json,os,pathlib
+          spec=importlib.util.spec_from_file_location('compose','deploy/privacy-policy/compose.py')
+          module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'privacy-policy-retry'
+          base,candidate=root/'base',root/'candidate'
+          module.helpers.extract(os.environ['VERIFIED_BASE'],base)
+          module.helpers.extract(os.environ['VERIFIED_CANDIDATE'],candidate)
+          report=module.verify(base,candidate,json.loads(module.helpers.docker('image','inspect',os.environ['VERIFIED_BASE'],os.environ['VERIFIED_CANDIDATE'])))
+          pathlib.Path('evidence/privacy-image-preservation.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report))
+          PY
+          docker tag "$VERIFIED_BASE" "acrhidiprod0927.azurecr.io/hidi-web:backup-privacy-${GITHUB_RUN_ID}"
+          docker push "acrhidiprod0927.azurecr.io/hidi-web:backup-privacy-${GITHUB_RUN_ID}"
+      - name: Deploy the verified image with unchanged location and settings
+        run: python3 deploy/privacy-policy/rollout.py deploy "$VERIFIED_CANDIDATE"
+      - name: Preserve sanitized live verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: privacy-policy-release-${{ github.run_id }}
+          path: evidence
+          retention-days: 30
+          if-no-files-found: ignore

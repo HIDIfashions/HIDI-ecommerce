@@ -39,6 +39,16 @@ class PrivacyReleaseTest(unittest.TestCase):
         with self.assertRaises(ValueError): patcher.patch(result)
         with self.assertRaises(AssertionError): patcher.patch(source.replace(patcher.HOOKS[0][0], 'changed'))
 
+    def test_arm_patch_includes_required_retained_location_and_only_image_revision_changes(self):
+        original = self.state(); patch = rollout.image_patch(original, 'candidate-image', 'privacy-reviewed')
+        self.assertEqual(set(patch), {'location', 'properties'})
+        self.assertEqual(patch['location'], original['location'])
+        self.assertEqual(set(patch['properties']), {'template'})
+        expected = copy.deepcopy(original['properties']['template'])
+        expected['containers'][0]['image'] = 'candidate-image'; expected['revisionSuffix'] = 'privacy-reviewed'
+        self.assertEqual(patch['properties']['template'], expected)
+        self.assertEqual(original['properties']['template']['containers'][0]['image'], 'old-image')
+
     def test_image_guard_protects_shopping_media_api_dependencies_and_config(self):
         with tempfile.TemporaryDirectory() as work:
             base, candidate = Path(work) / 'base', Path(work) / 'candidate'
@@ -49,7 +59,7 @@ class PrivacyReleaseTest(unittest.TestCase):
                 for name in ['hero-media.mjs', 'dist/index.html', 'apps/web/.next/compiled.js', 'apps/api/dist/untouched.js', 'node_modules/package/file.js']:
                     file = root / name; file.parent.mkdir(parents=True, exist_ok=True); file.write_text('protected bytes')
             (candidate / 'privacy-policy').mkdir()
-            for name in composer.FILES: (candidate / 'privacy-policy' / name).write_text('new policy file')
+            for name in composer.FILES: (candidate / 'privacy-policy' / name).write_bytes((ROOT / 'deploy/privacy-policy' / name).read_bytes())
             configs = [{'Config': {'Cmd': ['node', 'server.mjs']}, 'RootFS': {'Layers': ['original']}}, {'Config': {'Cmd': ['node', 'server.mjs']}, 'RootFS': {'Layers': ['original', 'policy']}}]
             self.assertTrue(composer.verify(base, candidate, configs)['passed'])
             protected = candidate / 'dist/index.html'; protected.write_text('unrelated replacement')
