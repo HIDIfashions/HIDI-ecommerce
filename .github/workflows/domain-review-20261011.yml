@@ -98,6 +98,7 @@ jobs:
               state['publicDomainControls'] = {k: env(data).get(k, {}).get('value', '<absent>') for k in TARGET}
               state['deploymentStage'] = env(data).get('DEPLOYMENT_STAGE', {}).get('value')
               state['siteUrl'] = env(data).get('SITE_URL', {}).get('value')
+              state['webOrigins'] = env(data).get('WEB_ORIGIN', {}).get('value')
               state['hostnames'] = sorted(x['name'] for x in (data['properties']['configuration']['ingress'].get('customDomains') or []))
               return state
 
@@ -192,6 +193,8 @@ jobs:
               assert not any(values.get(k, {}).get('secretRef') for k in TARGET), 'Domain controls unexpectedly reference secrets'
               assert set(safe_record(web)['hostnames']) == set(HOSTS), 'Unexpected hostname bindings'
               assert old['hidi-api']['properties']['configuration']['ingress']['external'] is False, 'API must remain internal'
+              origins = set(env(old['hidi-api']).get('WEB_ORIGIN', {}).get('value', '').split(','))
+              assert {'https://' + host for host in HOSTS}.issubset(origins), 'Current API must retain all four approved origins'
               (evidence / 'before.json').write_text(json.dumps({name: safe_record(data) for name, data in old.items()}, indent=2))
               previous = {host: probe(host) for host in HOSTS[2:]}
               image = baseline['hidi-web']['image']
