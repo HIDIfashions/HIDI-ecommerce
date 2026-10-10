@@ -1,5 +1,5 @@
 name: COD rewards and app guarded release
-# Reuse only a completed matching browser gate; refresh all tests when application, build or browser inputs differ.
+# Keep the isolated API responsive during candidate browser checks and reuse only completed matching app gates.
 on:
   push:
     branches: [migration/azure-sql-blob]
