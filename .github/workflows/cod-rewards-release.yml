@@ -1,5 +1,5 @@
 name: COD rewards and app guarded release
-# Scope checkout verification to its form so the separate footer newsletter stays unambiguous.
+# Complete page prefetches before fixture navigation and require zero browser exceptions in every engine.
 on:
   push:
     branches: [migration/azure-sql-blob]
