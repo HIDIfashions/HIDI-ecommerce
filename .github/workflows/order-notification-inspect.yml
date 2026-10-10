@@ -1,0 +1,50 @@
+name: Order notification configuration inspection
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/order-notification-inspect.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-notification-inspection
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Inspect messaging availability and restore retention without exposing credentials
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          def az(*args):
+              p = subprocess.run(['az', *args, '--only-show-errors', '-o', 'json'], capture_output=True, text=True)
+              if p.returncode: raise RuntimeError('Azure inspection failed; command output suppressed')
+              return json.loads(p.stdout or 'null')
+          result = {'apps': {}}
+          for name in ('hidi-api', 'hidi-web'):
+              app = az('containerapp', 'show', '-g', 'rg-hidi-prod', '-n', name)
+              p = app['properties']; c = p['template']['containers'][0]
+              result['apps'][name] = {'image': c['image'], 'latest': p['latestRevisionName'], 'ready': p.get('latestReadyRevisionName'), 'state': p.get('runningStatus')}
+              if name != 'hidi-api': continue
+              env = {i['name']: i for i in c.get('env', [])}
+              secrets = {i['name']: i for i in az('containerapp', 'secret', 'list', '-g', 'rg-hidi-prod', '-n', name, '--show-values') or []}
+              def value(k):
+                  i = env.get(k, {})
+                  return i.get('value') or secrets.get(i.get('secretRef'), {}).get('value') or ''
+              keys = ('RESEND_API_KEY', 'ORDER_FROM_EMAIL', 'REVIEW_FROM_EMAIL', 'REVIEW_URL', 'REVIEW_FOLLOWUP_ENABLED', 'MSG91_AUTHKEY', 'MSG91_WHATSAPP_INTEGRATED_NUMBER', 'MSG91_ORDER_TEMPLATE_NAME', 'MSG91_ORDER_TEMPLATE_NAMESPACE', 'WHATSAPP_CLOUD_ACCESS_TOKEN', 'WHATSAPP_CLOUD_PHONE_NUMBER_ID', 'WHATSAPP_ORDER_TEMPLATE_NAME', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WHATSAPP_FROM', 'TWILIO_WHATSAPP_ORDER_CONTENT_SID', 'ORDER_NOTIFICATIONS_ENABLED', 'ORDER_NOTIFICATIONS_START_AT')
+              result['messaging'] = {k: {'configured': bool(value(k)), 'storage': 'secretRef' if env.get(k, {}).get('secretRef') else ('inline' if 'value' in env.get(k, {}) else 'unset')} for k in keys}
+              result['database'] = {'server': value('AZURE_SQL_SERVER'), 'database': value('AZURE_SQL_DATABASE')}
+              result['notificationSwitch'] = value('ORDER_NOTIFICATIONS_ENABLED') or 'unset'
+          db = az('sql', 'db', 'show', '-g', 'rg-hidi-prod', '-s', 'sql-hidi-prod-0927', '-n', 'hidi-sql-validation')
+          result['restore'] = {'status': db.get('status'), 'earliestRestoreDate': db.get('earliestRestoreDate')}
+          policy = az('sql', 'db', 'str-policy', 'show', '-g', 'rg-hidi-prod', '-s', 'sql-hidi-prod-0927', '-n', 'hidi-sql-validation')
+          result['restore']['retentionDays'] = policy.get('retentionDays')
+          print(json.dumps(result, indent=2, sort_keys=True))
+          PY
