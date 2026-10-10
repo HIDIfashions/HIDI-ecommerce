@@ -50,7 +50,7 @@ jobs:
           export NEXT_PUBLIC_API_URL=https://thidigk.thehidi.com/api/store
           pnpm --filter @hidi/web build
       - name: Verify desktop, mobile, cart, checkout and admin in three engines
-        # Font readiness and navigation settlement are checked in the page context.
+        # Font readiness and relevant navigation requests are checked in the page context.
         run: |
           set -euo pipefail
           npm install --prefix /tmp/hidi-checkout-browser --no-save playwright@1.56.1

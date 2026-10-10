@@ -85,20 +85,21 @@ const fixtureNetworkStates = new WeakMap();
 function trackFixtureNetwork(page) {
   let state = fixtureNetworkStates.get(page);
   if (state) return state;
-  state = { pending: new Set(), lastActivity: Date.now() };
+  state = { pending: new Set(), lastActivity: Date.now(), lastPrefetchActivity: Date.now() };
   fixtureNetworkStates.set(page, state);
-  page.on('request', request => { state.pending.add(request); state.lastActivity = Date.now(); });
-  const finished = request => { state.pending.delete(request); state.lastActivity = Date.now(); };
+  const prefetch=request=>new URL(request.url()).searchParams.has('_rsc');
+  page.on('request', request => { state.pending.add(request); state.lastActivity = Date.now(); if(prefetch(request))state.lastPrefetchActivity=Date.now(); });
+  const finished = request => { state.pending.delete(request); state.lastActivity = Date.now(); if(prefetch(request))state.lastPrefetchActivity=Date.now(); };
   page.on('requestfinished', finished);
   page.on('requestfailed', finished);
   return state;
 }
-async function settleFixtureNetwork(page) {
+async function settleFixtureNetwork(page, { prefetchOnly = false } = {}) {
   const state = trackFixtureNetwork(page), started = Date.now();
-  // Next client navigation can retain the previous document's lifecycle state.
-  // Verify the actual tracked requests and a fresh quiet interval instead.
-  while (state.pending.size || Date.now() - Math.max(started, state.lastActivity) < 500) {
-    assert(Date.now() - started < 15000, 'Fixture network did not settle: ' + [...state.pending].map(request => request.url()).join(', '));
+  if(!prefetchOnly)await page.waitForLoadState('networkidle', { timeout: 15000 });
+  const pending=()=>[...state.pending].filter(request=>!prefetchOnly||new URL(request.url()).searchParams.has('_rsc'));
+  while (pending().length || Date.now() - Math.max(started, prefetchOnly?state.lastPrefetchActivity:state.lastActivity) < 500) {
+    assert(Date.now() - started < 15000, 'Fixture network did not settle: ' + pending().map(request => request.url()).join(', '));
     await delay(50);
   }
 }

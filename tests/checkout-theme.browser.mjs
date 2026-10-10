@@ -44,13 +44,13 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
  },{...phone,startPath:'/collections/all'});
  await scenario(browser,engine,'FIX-04','Every product has the screenshot Shipping & Returns rows and a working policy link',async page=>{
   for(const product of products.slice(0,3)){
-   await settleFixtureNetwork(page);
-   await page.goto(base+'/products/'+product.slug,{waitUntil:'domcontentloaded',timeout:30000});const section=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await section.waitFor();
+   await settleFixtureNetwork(page,{prefetchOnly:true});
+   if(new URL(page.url()).pathname!=='/products/'+product.slug)await page.goto(base+'/products/'+product.slug,{waitUntil:'domcontentloaded',timeout:30000});const section=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await section.waitFor();
    assert(await section.evaluate(e=>e.open));assert.match(await section.innerText(),/Free Shipping[\s\S]*₹1,499 and above[\s\S]*Easy Returns[\s\S]*7 days[\s\S]*Exchanges/);
-   await settleFixtureNetwork(page);
+   await settleFixtureNetwork(page,{prefetchOnly:true});
    const link=section.getByRole('link',{name:/View Shipping, Returns & Exchange Policy/});await link.click();await page.waitForURL('**/returns#shipping-returns-exchange');assert.match(await page.locator('#shipping-returns-exchange').innerText(),/₹99/);
   }
- },phone);
+ },{...phone,startPath:'/products/'+products[0].slug});
  await scenario(browser,engine,'FIX-07','Mobile Quick add maintains brown Add to bag through selection and success',async page=>{
   await page.getByRole('button',{name:'Quick add — '+products[0].name,exact:true}).click();const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:products[0].name,exact:true})});await dialog.waitFor();const add=dialog.getByRole('button',{name:'Add to bag',exact:true});assert.equal(await color(add),brown);await dialog.getByRole('button',{name:'M',exact:true}).click();assert.equal(await color(add),brown);await add.click();await dialog.getByRole('button',{name:'Added to bag',exact:true}).waitFor();assert.equal(await color(dialog.getByRole('button',{name:'Added to bag',exact:true})),brown);await page.screenshot({path:resolve(output,`${engine}-quick-add-fixed.png`)});
  },{...phone,startPath:'/collections/all'});
