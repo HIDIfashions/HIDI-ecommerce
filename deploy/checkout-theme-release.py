@@ -9,7 +9,7 @@ cloud=module('checkout_cloud',ROOT/'privacy-policy/rollout.py')
 cloud.API_VERSION='2025-07-01'
 work=pathlib.Path(os.environ.get('RUNNER_TEMP','/tmp'))/'hidi-checkout-private';work.mkdir(exist_ok=True);work.chmod(0o700)
 evidence=pathlib.Path('evidence/checkout-theme');evidence.mkdir(parents=True,exist_ok=True)
-API_FILES={f'apps/api/dist/{path}{ext}' for path in ['checkout/checkout.service','checkout/shipping-policy','carts/carts.service'] for ext in ['.js','.js.map']}
+API_FILES={f'apps/api/dist/{path}{ext}' for path in ['checkout/checkout.service','checkout/checkout.controller','checkout/shipping-policy','carts/carts.service','admin/admin.service','admin/admin.controller'] for ext in ['.js','.js.map']}
 
 def save(name,value): (evidence/name).write_text(json.dumps(value,indent=2))
 def wait(name,image,suffix):

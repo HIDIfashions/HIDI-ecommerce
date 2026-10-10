@@ -82,6 +82,7 @@ jobs:
             echo "CANDIDATE_${app^^}=$candidate" >> "$GITHUB_ENV"
           done
       - name: Verify actual candidate overlay with protected homepage and admin routes
+        # Keep current checkout and admin controllers matched with their compiled services.
         run: |
           set -euo pipefail
           node deploy/checkout-theme-candidate.mjs
