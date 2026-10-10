@@ -12,6 +12,10 @@ const labels: Record<string, { title: string; copy: string }> = {
   "work-edit": { title: "Workwear Edit", copy: "Polished Indian wear for meetings, commutes and everything after." },
   everyday: { title: "Everyday", copy: "Easy silhouettes designed to earn their place in your weekly rotation." },
   occasion: { title: "Occasion", copy: "Elevated colour and detail, without the noise." },
+  "casual-wear": { title: "Casual Wear", copy: "Easy HIDI styles for everyday plans." },
+  "work-wear": { title: "Work Wear", copy: "Considered Indian wear for your working week." },
+  "occasional-wear": { title: "Occasional Wear", copy: "HIDI styles for celebrations and special occasions." },
+  "ananyas-pick": { title: "Ananya’s Pick", copy: "Ananya’s selected styles from Casual, Work and Occasional Wear." },
 };
 
 export async function generateMetadata({

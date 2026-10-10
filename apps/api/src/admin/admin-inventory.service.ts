@@ -38,6 +38,7 @@ export type VariantImageInput = {
   storagePath?: string;
   alt?: string;
   applyToColor?: boolean;
+  isMain?: boolean;
 };
 
 export type VariantImageUploadTicketInput = {
@@ -341,6 +342,7 @@ export class AdminInventoryService {
   }
 
   async addVariantImage(variantId: string, input: VariantImageInput) {
+    if (input.isMain !== undefined && typeof input.isMain !== "boolean") throw new BadRequestException("Main photo must be true or false");
     const url = input.url?.trim() ?? "";
     if (!this.validImageUrl(url)) throw new BadRequestException("Enter a valid HTTPS or local image URL");
 
@@ -364,7 +366,7 @@ export class AdminInventoryService {
       await this.requirePhotoNotPendingDeletion(tx, url, input.storagePath?.trim() || null);
       for (const target of targets) {
         const count = await tx.productVariantImage.count({ where: { variantId: target.id } });
-        await tx.productVariantImage.upsert({
+        const attached = await tx.productVariantImage.upsert({
           where: { variantId_url: { variantId: target.id, url } },
           create: {
             variantId: target.id,
@@ -378,6 +380,17 @@ export class AdminInventoryService {
             alt: input.alt?.trim() || `${source.product.name} · ${source.color} · ${target.size}`,
           },
         });
+        if (input.isMain) {
+          const gallery = await tx.productVariantImage.findMany({
+            where: { variantId: target.id },
+            select: { id: true, position: true },
+            orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+          });
+          const ordered = [attached, ...gallery.filter(image => image.id !== attached.id)];
+          for (const [position, image] of ordered.entries()) {
+            if (image.position !== position) await tx.productVariantImage.update({ where: { id: image.id }, data: { position } });
+          }
+        }
       }
     }, { isolationLevel: "Serializable" });
 

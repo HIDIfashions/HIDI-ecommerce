@@ -132,7 +132,7 @@ export function BulkImportClient() {
             }
           }
           const stockResult = await receiveOpening(variant.id, row.openingQty, batchRef);
-          report.push({ row: row.rowNumber, state: stockResult.startsWith("Opening stock already") ? "SKIPPED" : "DONE", message: `${product.name} · ${variant.color}/${variant.size} · ${variant.sku}: ${stockResult}.` });
+          report.push({ row: row.rowNumber, state: stockResult.startsWith("Opening stock already") ? "SKIPPED" : "DONE", message: `SKN ${product.skn} · ${product.name} · ${variant.color}/${variant.size} · ${variant.sku}: ${stockResult}.` });
           inventoryBySku.set(skuKey(variant.sku), { variantId: variant.id, productName: product.name, sku: variant.sku, color: variant.color, size: variant.size, onHand: variant.inventory?.onHand ?? 0 });
         } catch (caught) { report.push({ row: row.rowNumber, state: "FAILED", message: caught instanceof Error ? caught.message : "Import failed." }); }
         setLogs([...report]);

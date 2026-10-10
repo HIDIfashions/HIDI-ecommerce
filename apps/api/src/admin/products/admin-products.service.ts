@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
+import { productIdForSkn, productSknMap, withProductSkn } from "./product-skn.js";
 import {
   canonical, identifier, makeSku, MAX_VARIANTS, only, parseAddVariants, parseCreate, parseEdit,
   parseStatus, parseVariantEdit, parseDelete, parseDeleteCleanup, productMediaKeys, isDeletedProduct, deletedProductPredicate, DELETED_PRODUCT_SLUG_PREFIX, ProductInputError, record, slugify, text,
@@ -73,19 +74,22 @@ export class AdminProductsService {
     ] : [];
     const suffix = barcodeSuffix(query);
     if (suffix) search.push({ variants: { some: { id: { endsWith: suffix } } } });
+    const sknSearch = /^\d{5}$/.test(query);
+    const sknProductId = sknSearch ? await productIdForSkn(this.prisma, query) : null;
     const where: Prisma.ProductWhereInput = {
       ...(status && status !== "ALL" ? { status } : {}),
       NOT: deletedProductPredicate(),
-      ...(query ? { OR: search } : {}),
+      ...(sknSearch ? { id: sknProductId ?? "__hidi_unknown_skn__" } : query ? { OR: search } : {}),
     };
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({ where, include: detailInclude, skip: (page - 1) * 20, take: 20, orderBy: [{ updatedAt: "desc" }, { id: "asc" }] }),
       this.prisma.product.count({ where }),
     ]);
+    const skns = await productSknMap(this.prisma, products.map(product => product.id));
     return {
       page, pageSize: 20, total,
       items: products.map(p => ({
-        id: p.id, name: p.name, slug: p.slug, status: p.status, category: p.category?.name ?? null,
+        id: p.id, skn: skns.get(p.id)!, name: p.name, slug: p.slug, status: p.status, category: p.category?.name ?? null,
         updatedAt: p.updatedAt, variantCount: p.variants.length,
         onHand: p.variants.reduce((n, v) => n + (v.inventory?.onHand ?? 0), 0),
         imageUrl: p.images[0]?.url ?? p.variants.find(v => v.images.length)?.images[0]?.url ?? null,
@@ -174,7 +178,7 @@ export class AdminProductsService {
   async get(productId: string) {
     const product = await this.find(this.prisma, id(productId));
     if (isDeletedProduct(product)) throw new NotFoundException("Product has been deleted.");
-    return product;
+    return withProductSkn(this.prisma, product);
   }
 
   async getDeletion(productId: string) {
@@ -326,25 +330,25 @@ export class AdminProductsService {
 
   async create(value: unknown) {
     const data = input(parseCreate, value);
-    // Idempotency for a retried creation request without adding a DB table or mutating stock.
+    // Retried creation requests keep the product identity and do not replay stock.
     const productId = `pm_${data.requestId.replace(/-/g, "")}`;
     const replay = async () => {
       const p = await this.prisma.product.findUnique({ where: { id: productId }, include: detailInclude });
       if (!p) return null;
       this.requireNotDeleted(p);
       if (!this.sameCreation(p, data)) throw new ConflictException("This request already created a product. Find it in Products before starting another creation.");
-      return p;
+      return withProductSkn(this.prisma, p);
     };
     const previous = await replay();
     if (previous) return previous;
     try {
       return await this.write(async tx => {
         await this.references(tx, data);
-        return tx.product.create({ data: {
+        return withProductSkn(tx, await tx.product.create({ data: {
           id: productId, ...fields(data), slug: data.slug, status: "DRAFT",
           collections: { create: data.collectionIds.map(collectionId => ({ collectionId })) },
           variants: { create: this.newVariants(productId, data.slug, data) },
-        }, include: detailInclude });
+        }, include: detailInclude }));
       });
     } catch (e) {
       if (code(e) === "P2002") {
@@ -361,10 +365,10 @@ export class AdminProductsService {
     return this.write(async tx => {
       const current = await this.locked(tx, key, data.expectedUpdatedAt);
       await this.references(tx, data);
-      return tx.product.update({ where: { id: key }, data: {
+      return withProductSkn(tx, await tx.product.update({ where: { id: key }, data: {
         ...fields(data), updatedAt: versionTime(current.updatedAt),
         collections: { deleteMany: {}, create: data.collectionIds.map(collectionId => ({ collectionId })) },
-      }, include: detailInclude });
+      }, include: detailInclude }));
     });
   }
 
@@ -389,7 +393,7 @@ export class AdminProductsService {
             images: { create: imageSource.map(photo => ({ url: photo.url, alt: photo.alt, position: photo.position })) },
           } });
         }
-        return tx.product.update({ where: { id: key }, data: { updatedAt: versionTime(current.updatedAt) }, include: detailInclude });
+        return withProductSkn(tx, await tx.product.update({ where: { id: key }, data: { updatedAt: versionTime(current.updatedAt) }, include: detailInclude }));
       });
     } catch (e) {
       if (code(e) === "P2002") throw new ConflictException("A variant with this colour/size or SKU already exists. Refresh before retrying.");
@@ -407,7 +411,7 @@ export class AdminProductsService {
       if (!data.active && current.status === "ACTIVE" && !current.variants.some(v => v.id !== variantKey && v.active)) throw new BadRequestException("Move the product to Draft before disabling its final active SKU.");
       const { expectedUpdatedAt: _expected, ...changes } = data;
       await tx.productVariant.update({ where: { id: variantKey }, data: changes });
-      return tx.product.update({ where: { id: key }, data: { updatedAt: versionTime(current.updatedAt) }, include: detailInclude });
+      return withProductSkn(tx, await tx.product.update({ where: { id: key }, data: { updatedAt: versionTime(current.updatedAt) }, include: detailInclude }));
     });
   }
 
@@ -421,8 +425,8 @@ export class AdminProductsService {
         if (active.some(v => v.pricePaise <= 0 || v.mrpPaise < v.pricePaise)) throw new BadRequestException("Correct variant selling prices and MRPs before publishing.");
         if (!current.images.length && !active.some(v => v.images.length)) throw new BadRequestException("Upload at least one product/SKU photo before publishing.");
       }
-      if (current.status === data.status) return current;
-      return tx.product.update({ where: { id: key }, data: { status: data.status, updatedAt: versionTime(current.updatedAt) }, include: detailInclude });
+      if (current.status === data.status) return withProductSkn(tx, current);
+      return withProductSkn(tx, await tx.product.update({ where: { id: key }, data: { status: data.status, updatedAt: versionTime(current.updatedAt) }, include: detailInclude }));
     });
   }
 }

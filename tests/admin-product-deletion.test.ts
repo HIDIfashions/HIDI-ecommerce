@@ -51,6 +51,7 @@ function fixture(options: { status?: string; reserved?: number; reservations?: n
     },
     $queryRaw: async (parts: TemplateStringsArray, ...values: unknown[]) => {
       const sql = parts.join("?"); record("lock", { sql, values });
+      if (sql.includes("[dbo].[HidiProductSKN]")) return [{ productId: state.product.id, skn: "12345" }];
       return sql.includes('FROM "Inventory"') ? [{ reserved: state.variants[0].inventory.reserved }] : [{ id: state.product.id }];
     },
   };

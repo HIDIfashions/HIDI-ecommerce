@@ -35,6 +35,7 @@ try {
     catch (error) { if (error.code === 'ENOENT') continue; throw error; }
     await pool.request().batch(migration);
   }
+  await pool.request().batch(await readFile(new URL('../deploy/product-skn/migration.sql', import.meta.url), 'utf8'));
   async function checkState() {
     return (await pool.request().query("SELECT name,definition,is_disabled,is_not_trusted FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'dbo.Product') ORDER BY name")).recordset;
   }

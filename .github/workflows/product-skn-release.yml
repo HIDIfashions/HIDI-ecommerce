@@ -1,0 +1,136 @@
+name: Product SKN and photo mapping guarded Azure release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/product-skn-release.yml]
+  workflow_dispatch:
+    inputs:
+      owner_definition_report:
+        description: "SQL owner definition verification JSON after exact migration; hashes and timestamp only, no secrets"
+        required: false
+        default: ""
+        type: string
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  regression-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env: {ACCEPT_EULA: Y, MSSQL_SA_PASSWORD: Disposable-CI-Only_2026!}
+        ports: [1433:1433]
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=fixture;password=fixture;encrypt=true
+      NEXT_TELEMETRY_DISABLED: 1
+      SKN_TEST_SQL_HOST: 127.0.0.1
+      SKN_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+      ADMIN_DELETE_TEST_SQL_HOST: 127.0.0.1
+      ADMIN_DELETE_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-product-skn-browsers
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-product-skn-browser/node_modules/playwright/index.mjs
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+      HIDI_BUTTON_OUTPUT: evidence/product-skn/customer-browser
+      HIDI_SKN_PRIVATE_DIR: ${{ runner.temp }}/hidi-product-skn-private
+      HIDI_SKN_SCHEMA_REPORT: evidence/product-skn/schema-ready.json
+      HIDI_SKN_TAXONOMY_REPORT: evidence/product-skn/taxonomy-ready.json
+      HIDI_SKN_OWNER_REPORT: evidence/product-skn/owner-migration.json
+      HIDI_SKN_OWNER_DEFINITION_REPORT: ${{ inputs.owner_definition_report || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Install retained dependencies and independently compile pinned source
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm db:generate
+          python3 deploy/product-skn/release.py baseline
+      - name: Verify commerce, SKN allocation, category selection and bulk import
+        run: |
+          set -euo pipefail
+          pnpm --filter @hidi/api test:customer-experience
+          node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
+          node --test tests/admin-quick-tools.test.mjs tests/admin-product-bulk.test.mjs tests/admin-product-delete-handler.test.mjs tests/product-skn-photos.test.mjs tests/product-skn-taxonomy.test.mjs
+          python3 tests/product-skn-release.test.py
+          python3 tests/product-skn-landing.test.py
+          pnpm --filter @hidi/api build
+          node tests/product-skn.sqlserver.mjs
+          node tests/admin-product-delete.sqlserver.mjs
+      - name: Install isolated Chromium, Firefox and WebKit regression tools
+        run: |
+          set -euo pipefail
+          npm install --prefix /tmp/hidi-product-skn-browser --no-save playwright@1.56.1
+          node /tmp/hidi-product-skn-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh production settings and verify both rollback image digests
+        run: |
+          set -euo pipefail
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/product-skn/release.py capture
+          python3 deploy/product-skn/release.py backup
+      - name: Compose reviewed additive overlays over the actual live images
+        run: |
+          set -euo pipefail
+          for app in api web; do
+            tag="acrhidiprod0927.azurecr.io/hidi-$app:product-skn-${GITHUB_RUN_ID}"
+            python3 deploy/product-skn/release.py compose --app "$app" --tag "$tag"
+          done
+      - name: Test full multipart uploads, new collection routes and retained admin/store behavior
+        run: python3 deploy/product-skn/release.py candidate
+      - name: Publish tested immutable candidates before the final private SQL gate
+        run: python3 deploy/product-skn/release.py publish
+      - name: Capture fresh read-only SQL restore checkpoint
+        run: |
+          set -euo pipefail
+          if ! python3 deploy/product-skn/access-preflight.py --checkpoint-only; then
+            echo "SQL restore metadata inspection is unavailable; owner migration will remain blocked."
+          fi
+      - name: Verify schema and use existing private SQL owner only when authorized
+        env:
+          HIDI_SKN_SQL_CHECKPOINT: evidence/product-skn/sql-checkpoint.json
+        run: |
+          set -euo pipefail
+          HIDI_SKN_SCHEMA_REPORT=evidence/product-skn/schema-access.json python3 deploy/product-skn/schema-check.py --checkDdl
+          if python3 - <<'PY'
+          import json, pathlib
+          schema=json.loads(pathlib.Path('evidence/product-skn/schema-access.json').read_text())
+          path=pathlib.Path('evidence/product-skn/sql-checkpoint.json')
+          checkpoint=json.loads(path.read_text()) if path.exists() else {}
+          raise SystemExit(0 if schema.get('ddlAuthorized') is True and checkpoint.get('passed') is True else 1)
+          PY
+          then
+            export HIDI_SKN_MIGRATION_SHA256="$(sha256sum deploy/product-skn/migration.sql | cut -d ' ' -f 1)"
+            HIDI_SKN_SCHEMA_REPORT=evidence/product-skn/owner-migration.json python3 deploy/product-skn/schema-check.py --migrate-owner
+          fi
+          if ! HIDI_SKN_SCHEMA_REPORT=evidence/product-skn/schema-ready.json python3 deploy/product-skn/schema-check.py --verify; then
+            echo "Deployment remains blocked: deploy/product-skn/migration.sql requires an authorized private SQL owner. Tested candidates and backup evidence are available."
+            exit 1
+          fi
+          python3 deploy/product-skn/release.py owner-evidence
+          python3 deploy/product-skn/taxonomy.py --ensure
+      - name: Roll out API then web with exact state guards and live verification
+        run: python3 deploy/product-skn/release.py apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: product-skn-release-${{ github.run_id }}
+          path: |
+            evidence/product-skn
+            test-results/product-skn-photos
+            test-results/admin-quick-tools
+            test-results/admin-product-delete
+            test-results/admin-navigation
+          retention-days: 30

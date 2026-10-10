@@ -205,6 +205,7 @@ export async function POST(
       storagePath: uploaded.storagePath,
       alt: String(form.get("alt") ?? ""),
       applyToColor: String(form.get("applyToColor") ?? "false") === "true",
+      isMain: String(form.get("isMain") ?? "false") === "true",
     });
     const body = await response.json().catch(() => ({ message: "Photo uploaded, but it could not be attached to the SKU" }));
     return NextResponse.json(body, { status: response.status });

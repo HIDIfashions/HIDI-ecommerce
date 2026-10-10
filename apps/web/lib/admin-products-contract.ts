@@ -11,13 +11,14 @@ export type ProductVariant = {
   inventory: { onHand: number; reserved: number; safetyStock: number; reorderLevel: number } | null;
 };
 export type ProductRecord = {
+  skn?: string;
   id: string; name: string; slug: string; status: ProductState; categoryId: string | null;
   category: Option | null; shortDescription: string | null; description: string | null;
   fabric: string | null; care: string | null; updatedAt: string;
   images: ProductPhoto[]; variants: ProductVariant[];
   collections: Array<{ collectionId: string; collection: Option }>;
 };
-export type ProductSummary = Pick<ProductRecord, "id" | "name" | "slug" | "status" | "updatedAt"> & {
+export type ProductSummary = Pick<ProductRecord, "id" | "skn" | "name" | "slug" | "status" | "updatedAt"> & {
   category: string | null; variantCount: number; onHand: number; imageUrl: string | null; minPricePaise: number | null;
 };
 export type ProductList = { items: ProductSummary[]; total: number; page: number; pageSize: number };

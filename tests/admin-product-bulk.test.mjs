@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {blankTemplate,parseDelimited,parseWorkbook,exactMatch,identityConflict,batchPayload,duplicateTargets,creationId,alreadyApplied} from '../deploy/admin-tools/product-batch.mjs';
+import {blankTemplate,parseDelimited,parseWorkbook,exactMatch,identityConflict,batchPayload,duplicateTargets,creationId,alreadyApplied,categoryOption,categoryCollectionSlug,resultsCsv,sknMappingCsv,savedIdentity,photoFileExample,safeCsv} from '../deploy/admin-tools/product-batch.mjs';
+import {pricePaise,optionalBoolean} from '../deploy/admin-tools/product-sheet.mjs';
 import {parseCreate,parseEdit} from '../apps/api/src/admin/products/product-input.ts';
 const parse=(text,mode)=>parseWorkbook([{name:'Supplier',rows:parseDelimited(text)}],mode).entries;
 const original={id:'product1',name:'Existing product',slug:'existing-product',categoryId:'cat1',fabric:'Silk',care:'Dry clean',shortDescription:'Keep',description:'Old',updatedAt:'2026-10-10T00:00:00.000Z',collections:[{collectionId:'retain'}]};
@@ -16,3 +17,46 @@ test('duplicate targets, invalid modes and oversized fields fail before batch wr
 test('creation retry IDs are stable UUIDv4 and differ if approved content changes',async()=>{const p=batchPayload(parse('product_name,color,sizes,selling_price,mrp\nNew Kurta,Cream,L,1999,2999','NEW')[0]);const id=await creationId(p);assert.match(id,/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);assert.equal(await creationId(p),id);assert.notEqual(await creationId({...p,care:'Hand wash'}),id);});
 test('uncertain update retries recognise an already-saved response without extra writes',()=>{const row=parse('product_id,fabric\nproduct1,Cotton')[0];row.record=original;const body=batchPayload(row);assert.ok(alreadyApplied({...original,fabric:'Cotton'},body));assert.ok(!alreadyApplied({...original,fabric:'Cotton',care:'Changed by another admin'},body));});
 test('batch product limit prevents an oversized import',()=>{assert.throws(()=>parse('product_name,fabric\n'+Array.from({length:501},(_,i)=>'Kurta '+i+',Cotton').join('\n')),/500/);});
+const taxonomy={categories:[{id:'casual',name:'Casual Wear',slug:'casual-wear'},{id:'work',name:'Work Wear',slug:'work-wear'},{id:'occasion',name:'Occasional Wear',slug:'occasional-wear'}],collections:[{id:'everyday',slug:'everyday'},{id:'work-edit',slug:'work-edit'},{id:'occasion-edit',slug:'occasion'},{id:'ananya',slug:'ananyas-pick'}]};
+test('supplier sheet reads paired sizes and colour, formatted rupees and explicit Ananya choice',()=>{
+  const rows=[['Product Name',"Women's Magenta Floral Embroidered Anarkali Suit Set with Dupatta"],['','Price','₹1,095/-',''],['Size','M, L, XL, XXL,','Colour','Magenta Pink'],['Category','Casual Wear.'],["Ananya’s Pick",'YES']];
+  const row=parseWorkbook([{name:'Magenta',rows}],'NEW').entries[0];assert.deepEqual(row.sizes,['M','L','XL','XXL']);assert.equal(row.color,'Magenta Pink');assert.equal(row.price,'₹1,095/-');assert.equal(row.mrp,'');assert.equal(row.ananyaPick,true);assert.match(row.fields.description,/Colour: Magenta Pink/);assert.doesNotMatch(row.sizes.join(','),/COLOUR/);
+  assert.throws(()=>batchPayload(row,{},taxonomy),/price in rupees/);const body=batchPayload(row,{mrp:'1499'},taxonomy);assert.equal(body.pricePaise,109500);assert.equal(body.mrpPaise,149900);assert.deepEqual(body.sizes,['M','L','XL','XXL']);assert.deepEqual(body.collectionIds,['everyday','ananya']);assert.equal(body.skn,undefined);
+});
+test('rupee decoration accepts validated western and Indian grouping without guessing malformed values',()=>{
+  assert.equal(pricePaise('₹1,095/-'),109500);assert.equal(pricePaise('₹ 1,095.50 /-'),109550);assert.equal(pricePaise('₹1,09,500.50'),10950050);assert.equal(pricePaise('₹1095'),109500);
+  for(const raw of ['₹1,09/-','₹01,095/-','₹1,095.999/-','₹-1095','₹1e3','₹1,095/- plus tax','1,095','1095/-','₹0/-'])assert.throws(()=>pricePaise(raw));
+});
+test('Ananya import is optional, explicit and accepts both row and labelled input',()=>{
+  for(const raw of ['TRUE','yes','1'])assert.equal(optionalBoolean(raw),true);for(const raw of ['FALSE','no','0'])assert.equal(optionalBoolean(raw),false);for(const raw of ['',undefined,null])assert.equal(optionalBoolean(raw),undefined);for(const raw of ['maybe','selected','2'])assert.throws(()=>optionalBoolean(raw));
+  assert.equal(parse('product_id,ananyas_pick\nproduct1,NO')[0].ananyaPick,false);assert.equal(parse('product_id,ananyas_pick\nproduct1,')[0].ananyaPick,undefined);
+  const invalid=parse('product_id,ananyas_pick\nproduct1,perhaps')[0];invalid.record=original;assert.throws(()=>batchPayload(invalid,{},taxonomy),/must be/);
+});
+test('explicit Ananya subcategory tags labelled and row sheets while other subcategories remain descriptive',()=>{
+  for(const label of ['Subcategory','Sub category']){const row=parseWorkbook([{name:'Named tag',rows:[['Product Name','Product'],[label,"Ananya’s Pick"]]}]).entries[0];assert.equal(row.ananyaPick,true);assert.match(row.fields.description,/Ananya’s Pick/);}
+  const row=parse('product_id,sub_category\nproduct1,Ananya\'s Pick')[0];assert.equal(row.ananyaPick,true);row.record=original;assert.deepEqual(batchPayload(row,{},taxonomy).collectionIds,['retain','ananya']);
+  const other=parseWorkbook([{name:'Other',rows:[['Product Name','Product'],['Subcategory','Kurta Set']]}]).entries[0];assert.equal(other.ananyaPick,undefined);assert.match(other.fields.description,/Kurta Set/);
+  const conflict=parse('product_id,subcategory,ananyas_pick\nproduct1,Ananya\'s Pick,FALSE')[0];conflict.record=original;assert.throws(()=>batchPayload(conflict,{},taxonomy),/conflicts/);
+});
+test('blank tag retains every collection, true adds only Ananya, false removes only Ananya',()=>{
+  const record={...original,collections:[{collectionId:'retain'},{collectionId:'work-edit'},{collectionId:'ananya'}]};const base=parse('product_id,fabric\nproduct1,Cotton')[0];base.record=record;
+  assert.deepEqual(batchPayload(base,{},taxonomy).collectionIds,['retain','work-edit','ananya']);assert.deepEqual(batchPayload({...base,ananyaPick:false}, {},taxonomy).collectionIds,['retain','work-edit']);
+  const absent={...base,record:{...record,collections:[{collectionId:'retain'}]},ananyaPick:true};assert.deepEqual(batchPayload(absent,{},taxonomy).collectionIds,['retain','ananya']);assert.deepEqual(batchPayload({...base,ananyaPick:true}, {},taxonomy).collectionIds,['retain','work-edit','ananya']);
+  assert.equal(parseEdit(batchPayload({...base,selected:new Set(),ananyaPick:false},{},taxonomy)).collectionIds.length,2);assert.throws(()=>batchPayload(absent,{}, {collections:[]}),/not ready/);
+});
+test('category aliases keep legacy URL slugs and additions preserve unrelated collections',()=>{
+  for(const [name,slug]of [['Casual wear.','everyday'],[' Work Wear ','work-edit'],['Occasional Wear','occasion'],['Everyday','everyday']])assert.equal(categoryCollectionSlug(name),slug);assert.equal(categoryCollectionSlug('Unknown'),null);assert.equal(categoryOption(taxonomy,'casual-wear').id,'casual');
+  const row=parse('product_id,category,fabric\nproduct1,Work Wear,Cotton')[0];row.record={...original,collections:[{collectionId:'retain'},{collectionId:'everyday'}]};row.fields.categoryId='work';row.selected.add('categoryId');assert.deepEqual(batchPayload(row,{},taxonomy).collectionIds,['retain','everyday','work-edit']);
+});
+test('existing products match SKN exactly and conflicting identities remain blocked',()=>{
+  const row=parse('skn,fabric\n12345,Cotton')[0],record={...original,skn:'12345'};assert.equal(exactMatch(row,[record]).id,record.id);assert.equal(exactMatch(row,[record,{...record,id:'another'}]),null);assert.equal(identityConflict({...row,id:'product1'},record),false);assert.equal(identityConflict({...row,id:'product1'}, {...record,skn:'54321'}),true);
+  for(const skn of ['1234','123456','01234','1e4'])assert.match(parse('skn,fabric\n'+skn+',Cotton')[0].error,/five-digit/);assert.match(parse('action,skn,product_name\nNEW,12345,Name')[0].error,/assigned/);
+});
+test('one four-size design exports one confirmed SKN and one photo filename example',async()=>{
+  const row=parse('product_name,color,sizes,selling_price,mrp\nMagenta Set,Magenta,"M,L,XL,XXL",1095,1499','NEW')[0],body=batchPayload(row);body.requestId=await creationId(body);assert.equal(parseCreate(body).sizes.length,4);
+  row.record={id:'created-product',skn:'12345',name:body.name,variants:body.sizes.map(size=>({size,color:'Magenta'}))};row.status='saved';row.resultMessage='Saved';const csv=parseDelimited(sknMappingCsv([row]));assert.equal(csv.length,2);assert.equal(csv[1][0],'12345');assert.equal(csv[1][4],'M, L, XL, XXL');assert.equal(csv[1][5],'12345_001_main.webp');assert.match(savedIdentity(row.record),/SKN 12345/);assert.equal(photoFileExample({skn:'123'}),'');
+  const failed={...row,status:'failed',record:{...row.record,skn:'54321'}};assert.equal(parseDelimited(sknMappingCsv([row,failed])).length,2);const report=parseDelimited(resultsCsv([row,failed]));assert.equal(report[1][4],'12345');assert.equal(report[2][4],'');assert.equal(report[2][7],'');
+});
+test('CSV exports quote delimiters and guard leading whitespace formula injection',()=>{
+  const rows=[['=HYPERLINK("x")','\t+1',' \r@SUM(1)','-2','ordinary, "quoted"\nname','₹1,095/-']];const csv=safeCsv(rows),parsed=parseDelimited(csv);assert.equal(parsed.length,1);for(let i=0;i<4;i++)assert.equal(parsed[0][i],"'"+rows[0][i]);assert.equal(parsed[0][4],rows[0][4]);assert.equal(parsed[0][5],rows[0][5]);
+});

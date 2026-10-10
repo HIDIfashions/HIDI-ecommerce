@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 const playwright = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
 const navigation = await readFile(process.env.HIDI_CANDIDATE_RUNTIME ? join(process.env.HIDI_CANDIDATE_RUNTIME, 'admin-tools/navigation.js') : new URL('../deploy/admin-tools/navigation.js', import.meta.url));
 const tools = [
+  ['/admin/product-photos', 'SKN Photo Upload', 'skn-photos'],
   ['/admin/landing-media', 'Media Upload', 'media'],
   ['/admin/packing-scanner', 'Packing Scanner', 'packing'],
   ['/admin/product-quick-fill', 'Product Quick Fill', 'quick-fill'],

@@ -6,9 +6,29 @@ const labels = new Map(Object.entries({
   'occasion': 'occasion', 'number of pieces': 'pieces', 'included components': 'components', 'included pieces': 'components', 'includes': 'components',
   'fabric': 'fabric', 'wash care': 'care', 'care': 'care', 'care instructions': 'care',
   'size': 'sizes', 'sizes': 'sizes', 'available sizes': 'sizes',
+  'price': 'price', 'selling price': 'price', 'mrp': 'mrp',
+  "ananya's pick": 'ananyaPick', 'ananyas pick': 'ananyaPick', 'ananyas_pick': 'ananyaPick',
 }));
-const normalize = v => v.toLowerCase().trim().replace(/\s+/g, ' ');
+const normalize = v => v.toLowerCase().trim().replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
 const sectionPattern = /^(?:top\s*\/\s*kurta|bottom\s*\/\s*pants|dupatta\s*\/\s*chunni|kurta|bottom|pants|dupatta|top)$/i;
+export function optionalBoolean(raw) {
+  const value = String(raw ?? '').trim().toLowerCase();
+  if (!value) return undefined;
+  if (['true', 'yes', '1'].includes(value)) return true;
+  if (['false', 'no', '0'].includes(value)) return false;
+  throw new Error("Ananya's Pick must be TRUE/YES/1, FALSE/NO/0, or blank to keep the current choice.");
+}
+export function subcategoryPick(subcategory, raw) {
+  const explicit = optionalBoolean(raw), named = normalize(String(subcategory ?? '')).replace(/'/g, '') === 'ananyas pick';
+  if (named && explicit === false) throw new Error("Subcategory Ananya's Pick conflicts with FALSE. Review the tag before saving.");
+  return explicit ?? (named ? true : undefined);
+}
+function pairedRows(raw) {
+  const cells = raw.split('\t').map(value => value.trim()).filter(Boolean), boundaries = [0];
+  // Supplier sheets often put Size/value and Colour/value on the same row.
+  for (let i = 1; i < cells.length - 1; i++) if (labels.has(normalize(cells[i]))) boundaries.push(i);
+  return boundaries.map((start, i) => cells.slice(start, boundaries[i + 1] ?? cells.length).join('\t'));
+}
 export function parseSheet(text) {
   if (typeof text !== 'string' || !text.trim()) throw new Error('Paste the product details first.');
   if (text.length > 20000) throw new Error('Paste one product at a time (up to 20,000 characters).');
@@ -19,7 +39,7 @@ export function parseSheet(text) {
     if (values[key] && values[key] !== value) warnings.push('Multiple '+key+' values found; review the first value.');
     else values[key] = value;
   };
-  for (const raw of text.replace(/\r\n?/g, '\n').split('\n')) {
+  for (const raw of text.replace(/\r\n?/g, '\n').split('\n').flatMap(pairedRows)) {
     const cells = raw.split('\t').map(v => v.trim()).filter(Boolean);
     if (!cells.length) continue;
     // A care note in the image column can share a row with a different field.
@@ -59,7 +79,7 @@ export function parseSheet(text) {
   const sizes = values.sizes ? [...new Set(values.sizes.split(/[,;/|\n]+/).map(v => v.trim().toUpperCase()).filter(Boolean))] : [];
   if (values.fit) description.unshift('Fit: '+values.fit);
   const shortDescription = [values.subcategory, values.pieces, values.components, values.occasion].filter(Boolean).join(' · ');
-  const result = { fields: {}, category: values.category || '', color: values.color || '', sizes, style: values.style || '', warnings };
+  const result = { fields: {}, category: values.category || '', color: values.color || '', sizes, style: values.style || '', price: values.price || '', mrp: values.mrp || '', ananyaPick: subcategoryPick(values.subcategory, values.ananyaPick), warnings };
   for (const key of ['name', 'fabric', 'care']) if (values[key]) result.fields[key] = values[key];
   if (shortDescription) result.fields.shortDescription = shortDescription;
   result.fields.description = description.join('\n').replace(/\n{3,}/g, '\n\n').trim();
@@ -77,7 +97,14 @@ export function detailsPayload(record, fields, selected) {
   return result;
 }
 export function pricePaise(raw) {
-  const value = String(raw).trim();
+  let value = String(raw).trim();
+  // Accept a labelled rupee amount, while keeping unlabelled comma inputs ambiguous.
+  if (value.startsWith('₹')) {
+    value = value.slice(1).trim().replace(/\s*\/-$/, '').trim();
+    const whole = value.split('.')[0];
+    if (whole.includes(',') && !/^(?:[1-9]\d{0,2}(?:,\d{3})+|[1-9]\d?(?:,\d{2})*,\d{3})$/.test(whole)) throw new Error('Enter a correctly grouped rupee amount.');
+    value = value.replace(/,/g, '');
+  }
   if (!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(value)) throw new Error('Enter a price in rupees with up to two decimal places.');
   const [whole, fraction = ''] = value.split('.');
   const result = Number(whole)*100+Number(fraction.padEnd(2,'0'));

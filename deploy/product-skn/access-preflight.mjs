@@ -18,13 +18,17 @@ export async function inspectAccess(db, expectedDatabase, migrationPrincipalId =
   invariant(!migrationPrincipalId || guid(migrationPrincipalId), 'MIGRATION_IDENTITY_INVALID');
   const identity = await metadata(db, `SELECT DB_NAME() AS databaseName, USER_NAME() AS principalName,
     HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CREATE TABLE') AS createTable,
-    HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CREATE SEQUENCE') AS createSequence,
+    HAS_PERMS_BY_NAME(N'dbo','SCHEMA','CREATE SEQUENCE') AS createSequence,
     HAS_PERMS_BY_NAME(N'dbo','SCHEMA','ALTER') AS alterDbo,
+    HAS_PERMS_BY_NAME(N'dbo','SCHEMA','CONTROL') AS controlDbo,
     HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL') AS controlDatabase,
     HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','VIEW DEFINITION') AS viewDefinition`);
   invariant(identity.length === 1 && identity[0].databaseName === expectedDatabase, 'DATABASE_TARGET_CHANGED');
   const capabilityNames = ['createTable', 'createSequence', 'alterDbo', 'controlDatabase', 'viewDefinition'];
   const effectiveCapabilities = Object.fromEntries(capabilityNames.map(key => [key, flag(identity[0][key])]));
+  const schemaSequenceCreate = flag(identity[0].createSequence), schemaControl = flag(identity[0].controlDbo);
+  const sequencePermissions = [schemaSequenceCreate, effectiveCapabilities.alterDbo, schemaControl];
+  effectiveCapabilities.createSequence = sequencePermissions.some(value => value === true) ? true : sequencePermissions.every(value => value === false) ? false : null;
   const objects = await metadata(db, `SELECT
     CASE WHEN OBJECT_ID(N'dbo.HidiProductSKN',N'U') IS NULL THEN 0 ELSE 1 END AS mappingVisible,
     CASE WHEN OBJECT_ID(N'dbo.HidiProductSknSequence',N'SO') IS NULL THEN 0 ELSE 1 END AS sequenceVisible,
@@ -63,7 +67,8 @@ export async function inspectAccess(db, expectedDatabase, migrationPrincipalId =
   return {
     passed: true, readOnly: true, ddlExecuted: false, schemaChanged: false, applicationRowsModified: false, applicationRowsReturned: false,
     databaseHash: hash(expectedDatabase), runtimePrincipalHash: hash(identity[0].principalName),
-    effectiveCapabilities, ddlAuthorized: ['createTable', 'createSequence', 'alterDbo'].every(key => effectiveCapabilities[key] === true),
+    effectiveCapabilities, schemaSequenceCreate, schemaControl,
+    ddlAuthorized: ['createTable', 'createSequence', 'alterDbo'].every(key => effectiveCapabilities[key] === true),
     metadataVisibilityLimited: effectiveCapabilities.viewDefinition !== true,
     mappingObjectVisible: flag(objects[0].mappingVisible), sequenceObjectVisible: flag(objects[0].sequenceVisible),
     objectCapabilities: Object.fromEntries(['mappingSelect', 'mappingInsert', 'mappingUpdate', 'sequenceUse'].map(key => [key, flag(objects[0][key])])),

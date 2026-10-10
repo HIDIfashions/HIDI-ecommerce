@@ -54,10 +54,26 @@ export class ProductsService {
       ? undefined
       : Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 24) : undefined;
 
+    const key = category?.trim().toLowerCase();
+    const wearGroups: Record<string, { collection: string; category: string }> = {
+      everyday: { collection: "everyday", category: "casual-wear" },
+      "casual-wear": { collection: "everyday", category: "casual-wear" },
+      "work-edit": { collection: "work-edit", category: "work-wear" },
+      "work-wear": { collection: "work-edit", category: "work-wear" },
+      occasion: { collection: "occasion", category: "occasional-wear" },
+      "occasional-wear": { collection: "occasion", category: "occasional-wear" },
+    };
+    const group = key ? wearGroups[key] : undefined;
+    const filter: Prisma.ProductWhereInput = group ? {
+      OR: [
+        { category: { is: { slug: group.category, active: true } } },
+        { collections: { some: { collection: { slug: { in: [...new Set([key!, group.collection])] }, active: true } } } },
+      ],
+    } : key ? { collections: { some: { collection: { slug: key, active: true } } } } : {};
     const products = await this.prisma.product.findMany({
       where: {
         status: "ACTIVE",
-        ...(category ? { collections: { some: { collection: { slug: category, active: true } } } } : {}),
+        ...filter,
       },
       orderBy: [{ featuredRank: "asc" }, { createdAt: "desc" }],
       ...(safeLimit ? { take: safeLimit } : {}),
