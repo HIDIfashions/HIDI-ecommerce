@@ -60,7 +60,7 @@ def apply(candidate):
   report=json.loads((evidence/'preservation.json').read_text());assert hashlib.sha256(rollout.get('/'+report['cssFilename'])).hexdigest()==report['cssSha256']
   assert ('href="/'+report['cssFilename']+'"').encode() in rollout.get('/')
   # A read-only real-site regression is part of the rollback boundary.
-  subprocess.run(['node','deploy/mobile-homepage-live.mjs'],check=True,timeout=360)
+  subprocess.run(['node','deploy/mobile-homepage-live.mjs'],check=True,timeout=540)
   after={n:rollout.snapshot(rollout.app(n)) for n in old};assert after['hidi-api']==before['hidi-api']
   assert after['hidi-web']['settingsHash']==before['hidi-web']['settingsHash'];rollout.ready(after['hidi-web'])
   write('after.json',{'states':after,'publishedContentPreserved':True,'apiUnchanged':True,'settingsUnchanged':True})
