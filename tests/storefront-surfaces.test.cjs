@@ -55,7 +55,7 @@ test('logo on another page retains normal Next Link navigation to home', () => {
     window: { scrollTo: () => assert.fail('must navigate before scrolling') },
   });
   assert.deepEqual(calls, [false]);
-  assert.match(header, /<Link className="wordmark" href="\/"/);
+  assert.match(header, /<a className="wordmark" href="\/"/);
 });
 function* walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

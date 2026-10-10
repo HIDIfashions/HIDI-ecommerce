@@ -38,6 +38,7 @@ export function CartLink() {
   return (
     <Link
       href="/cart"
+      prefetch={false}
       className={iconStyles.iconLink}
       aria-label={`Bag with ${count} item${count === 1 ? "" : "s"}`}
       title="Bag"

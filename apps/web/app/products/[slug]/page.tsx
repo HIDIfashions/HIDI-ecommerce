@@ -139,7 +139,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       dangerouslySetInnerHTML={{ __html: safeJsonLd([productJsonLd, breadcrumbJsonLd]) }}
     />
     <RetentionTracker productId={product.id} slug={product.slug} />
-    <div className="breadcrumbs"><Link href="/">Home</Link> / <Link href={`/collections/${collection.slug}`}>{collection.name}</Link> / {product.name}</div>
+    <div className="breadcrumbs"><a href="/">Home</a> / <Link href={`/collections/${collection.slug}`}>{collection.name}</Link> / {product.name}</div>
     <div className="pdp-grid">
       <ProductMedia key={product.id} product={product} />
       <aside className="pdp-info">

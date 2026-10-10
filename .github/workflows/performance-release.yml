@@ -1,0 +1,160 @@
+name: HIDI performance guarded release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/performance-release.yml, deploy/performance/**, tests/performance.test.mjs]
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: contains(github.event.head_commit.message, '[deploy-performance]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+      API_URL: http://127.0.0.1:4100/v1
+      BASE_IMAGE: acrhidiprod0927.azurecr.io/hidi-web@sha256:800ccb5374a9cc8a46d268c86e57221af9150bd9671b6d5c749fad3a39b873ed
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/performance-browsers
+      HIDI_PLAYWRIGHT_MODULE: ${{ runner.temp }}/performance-browser/node_modules/playwright/index.mjs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require successful live backup and constrain source changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p evidence
+          gh api repos/HIDIfashions/HIDI-ecommerce/actions/runs/38020864167 > evidence/backup-run.json
+          python3 - <<'PY'
+          import json,subprocess
+          backup=json.load(open('evidence/backup-run.json'));assert backup['conclusion']=='success' and backup['head_sha']=='620ddc580cb80367f51d888ba621c41ab4a122a2'
+          allowed={'apps/web/app/contact/page.tsx','apps/web/app/offers/page.tsx','apps/web/app/products/[slug]/page.tsx','apps/web/app/returns/page.tsx','apps/web/app/shipping/page.tsx','apps/web/components/admin/admin-workspace.tsx','apps/web/components/cart-link.tsx','apps/web/components/header.tsx','apps/web/components/order-confirmation-client.tsx','apps/web/components/site-footer.tsx'}
+          changed=set(subprocess.check_output(['git','diff','--name-only','620ddc580cb80367f51d888ba621c41ab4a122a2','HEAD','--','apps','pnpm-lock.yaml','package.json','deploy/public-auth.json'],text=True).splitlines())
+          assert changed==allowed, 'Unreviewed API/dependency/auth/schema changes: '+str(changed^allowed)
+          print('PASS: live backup complete; source changes limited to routing/prefetch/static logo references')
+          PY
+      - uses: actions/checkout@v4
+        with:
+          ref: 0ec4122ad573656e6ae83019edb37b032e46a680
+          path: landing-before
+      - uses: actions/checkout@v4
+        with:
+          ref: 0ec4122ad573656e6ae83019edb37b032e46a680
+          path: landing-after
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install and run unit, privacy, customer and rollback safeguards
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm db:generate
+          node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs tests/privacy-policy.test.mjs tests/privacy-policy-storage.test.mjs tests/performance.test.mjs
+          pnpm --filter @hidi/api test:customer-experience
+          pnpm --filter @hidi/api build
+          python3 tests/shopping-ux-deploy.test.py
+      - name: Build and type-check Next with the preserved public auth/wallet configuration
+        run: |
+          set -euo pipefail
+          export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER="$(jq -r .CUSTOMER_AUTH_PROVIDER deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL=sms
+          for key in API_KEY AUTH_DOMAIN PROJECT_ID APP_ID MESSAGING_SENDER_ID STORAGE_BUCKET; do
+            value="$(jq -r --arg key "FIREBASE_$key" '.[$key] // ""' deploy/public-auth.json)"
+            export "NEXT_PUBLIC_FIREBASE_$key=$value"
+          done
+          export NEXT_PUBLIC_API_URL=https://thidigk.thehidi.com/api/store
+          export NEXT_PUBLIC_WALLET_ENABLED=true
+          pnpm --filter @hidi/web build
+      - name: Build identical landing baseline and responsive variant candidate
+        run: |
+          (cd landing-before/apps/web && npm ci && npm run build)
+          node deploy/performance/banner.mjs landing-after
+          (cd landing-after/apps/web && npm ci && npm test && npm run build)
+          node --test landing-before/deploy/hidi-web-new/runtime.test.mjs
+      - name: Install the three browser engines
+        run: |
+          npm install --prefix "$RUNNER_TEMP/performance-browser" --no-save playwright@1.56.1
+          node "$RUNNER_TEMP/performance-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture current state and refuse drift from the backed-up live release
+        run: |
+          python3 deploy/performance/rollout.py capture
+          az acr login --name acrhidiprod0927 --only-show-errors
+          docker pull "$BASE_IMAGE"
+      - name: Compose and verify the exact image; preserve all unrelated application bytes
+        run: |
+          set -euo pipefail
+          tag="acrhidiprod0927.azurecr.io/hidi-web:performance-${GITHUB_RUN_ID}"
+          echo "CANDIDATE_TAG=$tag" >> "$GITHUB_ENV"
+          python3 deploy/performance/compose.py --base "$BASE_IMAGE" --tag "$tag" --work "$RUNNER_TEMP/performance-image" --report evidence/image-preservation.json --landing-before landing-before --landing-after landing-after
+      - name: Full shopping, admin and privacy browser regression on the compiled candidate
+        run: |
+          set -euo pipefail
+          python3 deploy/performance/test-candidate.py "$RUNNER_TEMP/performance-image/candidate-app"
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/privacy-policy.browser.mjs
+          python3 deploy/performance/test-runtime.py "$RUNNER_TEMP/performance-image/candidate-app" landing-before/deploy/hidi-web-new/runtime.test.mjs
+      - name: Regression against the actual combined candidate container
+        run: |
+          set -euo pipefail
+          node --input-type=module -e 'import {createServer} from "node:http";createServer((q,s)=>{s.setHeader("Content-Type","application/json");s.end(q.url.includes("products")?"[]":JSON.stringify({status:"ok"}));}).listen(4192,"127.0.0.1")' > "$RUNNER_TEMP/performance-private/mock.log" 2>&1 &
+          mock_pid=$!
+          docker run --detach --name performance-check --network host -e PORT=3192 -e API_URL=http://127.0.0.1:4192/v1 -e INTERNAL_API_URL=http://127.0.0.1:4192/v1 "$CANDIDATE_TAG"
+          trap 'docker rm -f performance-check >/dev/null 2>&1 || true; kill "$mock_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3192/health >/dev/null; then break; fi; sleep 1; done
+          node deploy/performance/performance.browser.mjs
+          (cd landing-after/apps/web && HIDI_RESPONSIVE_BASE_URL=http://127.0.0.1:3192 HIDI_BROWSER_ENGINES=chromium,firefox,webkit node scripts/test-responsive.mjs)
+          (cd landing-after/apps/web && HIDI_LAYOUT_BASE_URL=http://127.0.0.1:3192 node scripts/test-landscape-hover.mjs)
+          (cd landing-after/apps/web && HIDI_SOCIAL_BASE_URL=http://127.0.0.1:3192 node scripts/test-social-links.mjs)
+      - name: Record sanitized current logs and domain DNS evidence
+        run: |
+          set -euo pipefail
+          for app in hidi-web hidi-api; do
+            az containerapp logs show -g rg-hidi-prod -n "$app" --tail 50 --format json > "$RUNNER_TEMP/performance-private/$app-logs.json" 2> "$RUNNER_TEMP/performance-private/$app-logs.err" || true
+          done
+          python3 - <<'PY'
+          import pathlib,re,json,os
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'performance-private';result={}
+          for name in ['hidi-web','hidi-api']:
+            text=(root/(name+'-logs.json')).read_text();result[name]={'lines':len(text.splitlines()),'timeoutMentions':len(re.findall(r'(?i)timeout|timed out',text)),'exceptionMentions':len(re.findall(r'(?i)exception|error',text)),'sqlDeadlockMentions':len(re.findall(r'(?i)deadlock',text)),'logAvailable':bool(text.strip())}
+          pathlib.Path('evidence/log-summary.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
+          PY
+          for host in thidigk.thehidi.com thehidi.com www.thehidi.com hidiindia.com www.hidiindia.com; do
+            echo "$host" >> evidence/dns.txt
+            dig +short CNAME "$host" >> evidence/dns.txt
+            dig +short A "$host" >> evidence/dns.txt
+          done
+      - name: Push verified immutable candidate and deploy with automatic owned rollback
+        run: |
+          set -euo pipefail
+          docker push "$CANDIDATE_TAG"
+          docker pull "$CANDIDATE_TAG"
+          digest="$(docker image inspect "$CANDIDATE_TAG" --format '{{index .RepoDigests 0}}')"
+          echo "$digest" > evidence/candidate-image.txt
+          python3 deploy/performance/rollout.py deploy "$digest"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-release-${{ github.run_id }}
+          path: |
+            evidence
+            test-results/editorial-storefront
+            test-results/admin-workspace
+            test-results/auth-otp-resend
+            landing-after/apps/web/validation
+          retention-days: 90

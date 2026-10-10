@@ -20,7 +20,16 @@
       oldButton.before(link); oldButton.hidden = true; oldButton.style.display = 'none';
     }
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addLinks, { once: true }); else addLinks();
+  const ready = () => Boolean(document.querySelector('footer.site-footer a[data-hidi-privacy-policy]') || document.querySelector('footer.footer a[href="/privacy"]') || document.querySelector('nav[aria-label="Admin navigation"] [data-hidi-privacy-admin]'));
+  // Stop after the required links exist. Observe structural insertions while
+  // React mounts; carousels, card buttons and photo changes need no DOM scan.
+  let observer;
+  const update = () => { addLinks(); if (ready()) observer?.disconnect(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', update, { once: true }); else update();
   let queued = false;
-  new MutationObserver(() => { if (queued) return; queued = true; queueMicrotask(() => { queued = false; addLinks(); }); }).observe(document.documentElement, { childList: true, subtree: true });
+  if (!ready()) {
+    observer = new MutationObserver(records => { if (queued || !records.some(record => record.addedNodes.length)) return; queued = true; queueMicrotask(() => { queued = false; update(); }); });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+  window.addEventListener('pageshow', update);
 })();

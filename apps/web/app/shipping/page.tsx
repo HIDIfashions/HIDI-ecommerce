@@ -12,7 +12,7 @@ const questions = [
   { q: "Is Cash on Delivery available?", a: "Cash on Delivery is not promised for launch. Only payment methods explicitly offered at checkout are available for that order." },
 ];
 export default function ShippingPage() { return <div className={styles.page}>
-  <div className={styles.breadcrumbs}><Link href="/">Home</Link> / Shipping Policy</div>
+  <div className={styles.breadcrumbs}><a href="/">Home</a> / Shipping Policy</div>
   <header className={styles.header}><p className={styles.eyebrow}>HIDI DELIVERY</p><h1>Shipping &amp; delivery</h1><p>Know the cost. Check availability. Follow your order.</p></header>
   <section className={styles.notice}><strong>{SHIPPING_COPY}</strong><p>{SHIPPING_TIMELINE}</p><Link href="/account/orders">View tracking on my order →</Link></section>
   <div className={styles.list}>{questions.map(({q,a}) => <details className={styles.item} key={q}><summary><span>{q}</span><span className={styles.plus} aria-hidden="true" /></summary><div className={styles.answer}><p>{a}</p></div></details>)}</div>

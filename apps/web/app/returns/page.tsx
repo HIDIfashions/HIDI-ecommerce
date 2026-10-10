@@ -13,7 +13,7 @@ const questions = [
   { q: "Can I return a promotional item?", a: "Promotional items have their own eligibility conditions. Read the specific offer before purchase; wrong or damaged-item cases are handled separately from ordinary preference returns." },
 ];
 export default function ReturnsPage() { return <div className={styles.page}>
-  <div className={styles.breadcrumbs}><Link href="/">Home</Link> / Returns &amp; Exchanges</div>
+  <div className={styles.breadcrumbs}><a href="/">Home</a> / Returns &amp; Exchanges</div>
   <header className={styles.header}><p className={styles.eyebrow}>HIDI AFTERCARE</p><h1>Returns &amp; exchanges</h1><p>Clear information before you choose. A next step after delivery.</p></header>
   <section className={styles.notice}><strong>Return window:</strong> {RETURN_COPY}<p>Final exchange charges, pickup conditions and refund timelines remain launch prerequisites.</p><Link href="/account/orders">Open my orders →</Link></section>
   <div className={styles.list}>{questions.map(({q,a}) => <details className={styles.item} key={q}><summary><span>{q}</span><span className={styles.plus} aria-hidden="true" /></summary><div className={styles.answer}><p>{a}</p></div></details>)}</div>

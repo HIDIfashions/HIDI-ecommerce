@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Contact & Help", description: "Help 
 export default function ContactPage() {
   const support = publicSupport();
   return <div className={styles.page}>
-    <div className={styles.breadcrumbs}><Link href="/">Home</Link> / Contact &amp; Help</div>
+    <div className={styles.breadcrumbs}><a href="/">Home</a> / Contact &amp; Help</div>
     <header className={styles.header}><p className={styles.eyebrow}>HIDI HELP</p><h1>How can we help?</h1><p>Your order, your fit, your next step.</p></header>
     <div className={styles.helpGrid}>
       <section className={styles.notice}><h2>Your orders</h2><p>Sign in using the details linked to your order to view available tracking and item-level aftercare actions.</p><Link href="/account/orders">View my orders →</Link></section>
