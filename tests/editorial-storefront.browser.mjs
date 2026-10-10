@@ -95,7 +95,8 @@ function trackFixtureNetwork(page) {
 }
 async function settleFixtureNetwork(page) {
   const state = trackFixtureNetwork(page), started = Date.now();
-  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  // Next client navigation can retain the previous document's lifecycle state.
+  // Verify the actual tracked requests and a fresh quiet interval instead.
   while (state.pending.size || Date.now() - Math.max(started, state.lastActivity) < 500) {
     assert(Date.now() - started < 15000, 'Fixture network did not settle: ' + [...state.pending].map(request => request.url()).join(', '));
     await delay(50);
