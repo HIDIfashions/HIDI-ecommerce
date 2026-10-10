@@ -32,7 +32,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
       - run: pnpm test:customer-experience
       - run: pnpm --filter @hidi/api build
+      - run: python3 tests/order-notifications-release.test.py
       - name: Verify migration, concurrent claims and recovery in disposable SQL Server
         run: node tests/order-notifications.sqlserver.mjs

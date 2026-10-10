@@ -30,8 +30,8 @@ function adapter(connection) {
   };
   return { $executeRaw: async (parts, ...values) => (await query(parts, values)).rowsAffected.reduce((a,b) => a+b, 0),
     $queryRaw: async (parts, ...values) => (await query(parts, values)).recordset,
-    $transaction: async callback => {
-      const tx = new sql.Transaction(pool); await tx.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+    $transaction: async (callback, options) => {
+      const tx = new sql.Transaction(pool); await tx.begin(options.isolationLevel === "ReadCommitted" ? sql.ISOLATION_LEVEL.READ_COMMITTED : sql.ISOLATION_LEVEL.SERIALIZABLE);
       try { const result = await callback(adapter(tx)); await tx.commit(); return result; }
       catch (error) { await tx.rollback().catch(() => {}); throw error; }
     } };

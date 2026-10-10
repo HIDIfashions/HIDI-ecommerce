@@ -37,14 +37,15 @@ export class OrderNotificationStore {
       WHERE [status] IN ('PROCESSING','SENDING') AND [leaseUntil]<SYSUTCDATETIME()`;
   }
   async claim(owner: string): Promise<NotificationJob | null> {
-    const rows = await this.prisma.$queryRaw<NotificationJob[]>`
+    const rows = await this.prisma.$transaction(tx => tx.$queryRaw<NotificationJob[]>`
       ;WITH nextJob AS (SELECT TOP (1) * FROM [dbo].[OrderNotificationOutbox] WITH (UPDLOCK,READPAST,READCOMMITTEDLOCK)
         WHERE [status] IN ('PENDING','RETRY','WAITING_CONFIG') AND [dueAt]<=SYSUTCDATETIME()
         ORDER BY [dueAt],[id])
       UPDATE nextJob SET [status]='PROCESSING', [leaseOwner]=${owner},
         [leaseUntil]=DATEADD(MINUTE,2,SYSUTCDATETIME()), [updatedAt]=SYSUTCDATETIME()
       OUTPUT INSERTED.[id], INSERTED.[orderId], INSERTED.[channel], INSERTED.[provider],
-        INSERTED.[payload], INSERTED.[attempts], INSERTED.[firstAttemptAt], INSERTED.[leaseOwner]`;
+        INSERTED.[payload], INSERTED.[attempts], INSERTED.[firstAttemptAt], INSERTED.[leaseOwner]`,
+      { isolationLevel: "ReadCommitted", timeout: 15000 });
     return rows[0] ?? null;
   }
   async order(id: string): Promise<NotificationOrder | null> {
