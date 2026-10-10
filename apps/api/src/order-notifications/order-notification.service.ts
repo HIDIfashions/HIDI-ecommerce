@@ -71,6 +71,12 @@ export class OrderNotificationService implements OnModuleInit, OnModuleDestroy {
     if (!prepared || !this.sender.configured(prepared.provider)) {
       await this.store.finish(job, "WAITING_CONFIG", "PROVIDER_NOT_CONFIGURED", null, 300); return;
     }
+    if (job.channel === "WHATSAPP") {
+      const to = (prepared.body.payload as any)?.template?.to_and_components?.[0]?.to;
+      if (!Array.isArray(to) || to.length !== 1 || to[0] !== recipient(order, "WHATSAPP")) {
+        await this.store.finish(job, "SKIPPED", "WHATSAPP_RECIPIENT_CHANGED"); return;
+      }
+    }
     const payload = job.payload || JSON.stringify(prepared);
     if (!await this.store.beginSend(job, prepared.provider, payload)) return;
     const result = await this.sender.send(job.id, prepared);

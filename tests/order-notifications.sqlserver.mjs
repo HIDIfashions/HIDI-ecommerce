@@ -89,9 +89,16 @@ try {
   console.log('PASS: crash recovery respects provider deduplication limits; original order/payment data remain unchanged');
   await pool.request().batch(`
     INSERT dbo.[User] (id,updatedAt) VALUES ('opted-in-user',SYSUTCDATETIME());
-    INSERT dbo.RetentionProfile (id,authSubject,userId,whatsappOptIn,updatedAt)
-      VALUES ('consent','consent-subject','opted-in-user',1,SYSUTCDATETIME());
+    INSERT dbo.RetentionProfile (id,authSubject,userId,whatsappOptIn,verifiedPhone,phoneVerifiedAt,consentVersion,updatedAt)
+      VALUES ('consent','consent-subject','opted-in-user',1,'+919876543210',SYSUTCDATETIME(),'hidi-retention-v1',SYSUTCDATETIME());
     UPDATE dbo.[Order] SET userId='opted-in-user' WHERE id='paid';`);
+  await pool.request().query("UPDATE dbo.RetentionProfile SET consentVersion='old'");
+  await store.enqueue('WHATSAPP',start);
+  assert.equal((await pool.request().query("SELECT COUNT(*) AS count FROM dbo.OrderNotificationOutbox WHERE channel='WHATSAPP'")).recordset[0].count,0);
+  await pool.request().query("UPDATE dbo.RetentionProfile SET consentVersion='hidi-retention-v1',phoneVerifiedAt=NULL");
+  await store.enqueue('WHATSAPP',start);
+  assert.equal((await pool.request().query("SELECT COUNT(*) AS count FROM dbo.OrderNotificationOutbox WHERE channel='WHATSAPP'")).recordset[0].count,0);
+  await pool.request().query("UPDATE dbo.RetentionProfile SET phoneVerifiedAt=SYSUTCDATETIME()");
   await store.enqueue('WHATSAPP',start);
   assert.deepEqual((await pool.request().query("SELECT orderId FROM dbo.OrderNotificationOutbox WHERE channel='WHATSAPP'")).recordset,[{orderId:'paid'}]);
   console.log('PASS: WhatsApp queues only existing opted-in customers; email remains independent');

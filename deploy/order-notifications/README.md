@@ -47,7 +47,7 @@ The body variables are: `1` customer first name, `2` HIDI order number, `3` item
 
 > Hi {{1}}, your HIDI order {{2}} is confirmed and payment received. Items: {{3}}. Total paid: {{4}}. Delivery address: {{5}}. We will update you when your order is dispatched. Thank you for shopping with HIDI.
 
-Customers without an existing WhatsApp opt-in are skipped for this channel; email remains independent. The sender/template integration must be verified against the provider's current API example before activation. Missing provider credentials or sender/template configuration remain `WAITING_CONFIG` without disrupting orders.
+Customers without a current WhatsApp opt-in tied to the same verified phone number are skipped for this channel; email remains independent. The sender/template integration must be verified against the provider's current API example before activation. Missing provider credentials or sender/template configuration remain `WAITING_CONFIG` without disrupting orders.
 
 ## Operations and rollback
 

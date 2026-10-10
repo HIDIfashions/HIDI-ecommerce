@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
-import type { NotificationChannel, NotificationOrder } from "./order-message.js";
+import { recipient, type NotificationChannel, type NotificationOrder } from "./order-message.js";
+import { RETENTION_CONSENT_VERSION } from "../retention/retention-policy.js";
 export type NotificationJob = {
   id: string; orderId: string; channel: NotificationChannel; provider: string | null;
   payload: string | null; attempts: number; firstAttemptAt: Date | null; leaseOwner: string;
@@ -19,7 +20,9 @@ export class OrderNotificationStore {
           FROM [dbo].[Order] o JOIN [dbo].[OrderAuditEvent] a ON a.[orderId]=o.[id]
           WHERE a.[eventType]='ORDER_CONFIRMED' AND a.[toStatus]='CONFIRMED' AND a.[createdAt]>=${startAt}
             AND o.[status] IN ('CONFIRMED','PACKED','SHIPPED','DELIVERED')
-            AND (${channel}='EMAIL' OR EXISTS (SELECT 1 FROM [dbo].[RetentionProfile] consent WHERE consent.[userId]=o.[userId] AND consent.[whatsappOptIn]=1))
+            AND (${channel}='EMAIL' OR EXISTS (SELECT 1 FROM [dbo].[RetentionProfile] consent WHERE consent.[userId]=o.[userId]
+              AND consent.[whatsappOptIn]=1 AND consent.[phoneVerifiedAt] IS NOT NULL
+              AND consent.[consentVersion]=${RETENTION_CONSENT_VERSION}))
             AND EXISTS (SELECT 1 FROM [dbo].[Payment] p WHERE p.[orderId]=o.[id] AND p.[status]='CAPTURED')
             AND NOT EXISTS (SELECT 1 FROM [dbo].[OrderNotificationOutbox] n WITH (UPDLOCK,HOLDLOCK)
               WHERE n.[orderId]=o.[id] AND n.[channel]=${channel})
@@ -51,9 +54,16 @@ export class OrderNotificationStore {
   }
   async order(id: string): Promise<NotificationOrder | null> {
     const order = await this.prisma.order.findUnique({ where: { id }, include: {
-      items: true, user: { select: { retentionProfile: { select: { whatsappOptIn: true } } } },
+      items: true, user: { select: { retentionProfile: { select: {
+        whatsappOptIn: true, verifiedPhone: true, phoneVerifiedAt: true, consentVersion: true,
+      } } } },
     } });
-    return order ? { ...order, whatsappOptIn: order.user?.retentionProfile?.whatsappOptIn === true } : null;
+    if (!order) return null;
+    const consent = order.user?.retentionProfile;
+    const to = recipient(order, "WHATSAPP");
+    return { ...order, whatsappOptIn: Boolean(consent?.whatsappOptIn && consent.phoneVerifiedAt
+      && consent.consentVersion === RETENTION_CONSENT_VERSION && to
+      && consent.verifiedPhone?.replace(/\D/g, "") === to) };
   }
   async beginSend(job: NotificationJob, provider: string, payload: string): Promise<boolean> {
     const changed = await this.prisma.$executeRaw`

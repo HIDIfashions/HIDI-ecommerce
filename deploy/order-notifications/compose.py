@@ -6,7 +6,9 @@ existing = importlib.util.module_from_spec(spec); spec.loader.exec_module(existi
 
 IMPORT = 'import { OrderNotificationModule } from "./order-notifications/order-notification.module.js";'
 def patch_module(source):
-    assert 'OrderNotificationModule' not in source, 'Notifications are already installed; inspect current image before a new release'
+    if 'OrderNotificationModule' in source:
+        assert source.count(IMPORT) == 1 and source.count('MarketingModule, OrderNotificationModule]') == 1, 'Installed notification registration changed; review before composing'
+        return source
     anchor = 'import { MarketingModule } from "./marketing/marketing.module.js";'
     assert source.count(anchor) == 1 and source.count('MarketingModule]') == 1, 'Live module structure changed; review before composing'
     changed = source.replace(anchor, anchor + '\n' + IMPORT).replace('MarketingModule]', 'MarketingModule, OrderNotificationModule]')
@@ -18,13 +20,15 @@ def verify(base, candidate, configs):
     old, new = existing.fingerprints(base), existing.fingerprints(candidate)
     delta = {p for p in old.keys() | new.keys() if old.get(p) != new.get(p)}
     module = 'apps/api/dist/app.module.js'
-    assert module in delta and all(p == module or p.startswith('apps/api/dist/order-notifications/') for p in delta), 'API changed outside notification module registration and new files'
+    assert delta and all(p == module or p.startswith('apps/api/dist/order-notifications/') for p in delta), 'API changed outside notification module registration and its files'
     for path in old:
-        if path != module: assert new.get(path) == old[path], 'Existing application bytes changed: ' + path
+        if path != module and not path.startswith('apps/api/dist/order-notifications/'):
+            assert new.get(path) == old[path], 'Existing application bytes changed: ' + path
     before, after = configs
     assert before['Config'] == after['Config'], 'Docker runtime configuration changed'
     assert after['RootFS']['Layers'][:len(before['RootFS']['Layers'])] == before['RootFS']['Layers'], 'Live base layers changed'
-    return {'passed': True, 'changedFiles': sorted(delta), 'existingFilesIdentical': len(old)-1, 'dockerConfigPreserved': True, 'baseLayersPreserved': True}
+    protected = sum(1 for path in old if path != module and not path.startswith('apps/api/dist/order-notifications/'))
+    return {'passed': True, 'changedFiles': sorted(delta), 'existingFilesIdentical': protected, 'dockerConfigPreserved': True, 'baseLayersPreserved': True}
 
 def compose(args):
     existing.validate_image(args.base, 'api')

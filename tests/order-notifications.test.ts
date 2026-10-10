@@ -147,7 +147,27 @@ test("WhatsApp remains separate from email and requires recorded opt-in", async 
   await f.service.runOnce(); assert.equal(f.sends, 0);
   assert.equal(f.states[0][1], "WHATSAPP_CONSENT_NOT_PRESENT");
 });
+test("WhatsApp consent must be verified, current and match the order recipient", async () => {
+  const consent = { whatsappOptIn: true, verifiedPhone: "+919876543210", phoneVerifiedAt: new Date(), consentVersion: "hidi-retention-v1" };
+  for (const [profile, expected] of [
+    [consent, true], [{ ...consent, verifiedPhone: "+919999999999" }, false],
+    [{ ...consent, phoneVerifiedAt: null }, false], [{ ...consent, consentVersion: "old" }, false],
+    [{ ...consent, whatsappOptIn: false }, false], [null, false],
+  ] as const) {
+    const db: any = { order: { findUnique: async () => ({ ...order, user: { retentionProfile: profile } }) } };
+    assert.equal((await new OrderNotificationStore(db).order(order.id))?.whatsappOptIn, expected);
+  }
+});
 test("admin readiness reports an absent additive table without querying it", async () => {
   const f = fixture(); const status = await f.service.status();
   assert.equal(status.schemaReady, false); assert.deepEqual(status.counts, []);
+});
+test("a queued WhatsApp retry cannot send to a previous phone number", async () => {
+  process.env.ORDER_WHATSAPP_ENABLED = "true";
+  process.env.MSG91_AUTHKEY = "test-key";
+  const payload = JSON.stringify({ provider: "MSG91", body: { payload: { template: { to_and_components: [{ to: ["919999999999"] }] } } } });
+  const f = fixture({ payload, order: { ...order, whatsappOptIn: true } });
+  f.job.channel = "WHATSAPP";
+  await f.service.runOnce();
+  assert.equal(f.sends, 0); assert.equal(f.states[0][1], "WHATSAPP_RECIPIENT_CHANGED");
 });

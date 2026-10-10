@@ -47,7 +47,7 @@ jobs:
       contents: read
       id-token: write
     concurrency:
-      group: hidi-msg91-guarded-release
+      group: hidi-hero-guarded-release
       cancel-in-progress: false
     env:
       DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true

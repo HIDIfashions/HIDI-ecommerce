@@ -11,7 +11,8 @@ class Release(unittest.TestCase):
         original='import { MarketingModule } from "./marketing/marketing.module.js";\nlet AppModule;\nimports: [ExistingModule, MarketingModule]\n'
         patched=compose.patch_module(original)
         self.assertEqual(patched.replace('\n'+compose.IMPORT,'').replace('MarketingModule, OrderNotificationModule]','MarketingModule]'),original)
-        with self.assertRaises(AssertionError):compose.patch_module(patched)
+        self.assertEqual(compose.patch_module(patched),patched)
+        with self.assertRaises(AssertionError):compose.patch_module(patched.replace('MarketingModule, OrderNotificationModule]', 'OtherModule, OrderNotificationModule]'))
         with self.assertRaises(AssertionError):compose.patch_module('Unknown module structure')
     def test_existing_payment_auth_and_dependency_files_are_protected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -22,6 +23,10 @@ class Release(unittest.TestCase):
             (new/'apps/api/dist/app.module.js').write_text('new')
             added=new/'apps/api/dist/order-notifications/service.js';added.parent.mkdir();added.write_text('new module')
             configs=[{'Config':{'Cmd':['node','main.js']},'RootFS':{'Layers':['old']}},{'Config':{'Cmd':['node','main.js']},'RootFS':{'Layers':['old','new']}}]
+            self.assertTrue(compose.verify(base,new,configs)['passed'])
+            (base/'apps/api/dist/app.module.js').write_text('new')
+            (base/'apps/api/dist/order-notifications').mkdir()
+            (base/'apps/api/dist/order-notifications/service.js').write_text('previous module')
             self.assertTrue(compose.verify(base,new,configs)['passed'])
             (new/'apps/api/dist/payments/payments.service.js').write_text('unrelated change')
             with self.assertRaises(AssertionError):compose.verify(base,new,configs)
