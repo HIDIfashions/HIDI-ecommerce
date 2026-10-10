@@ -8,16 +8,23 @@ const STOREFRONT_MEDIA_HOSTS = new Set([
   "azure-preview.thehidi.com",
 ]);
 
+/** Version the display URL so a previous oversized optimiser response expires immediately. */
+function displaySource(path: string): string {
+  const url = new URL(path, "https://hidiindia.com");
+  url.searchParams.set("hidi_image", "2");
+  return url.pathname + url.search;
+}
+
 export function productImageSource(source: string): string {
   try {
     const url = new URL(source);
     if (url.protocol === "https:" && STOREFRONT_MEDIA_HOSTS.has(url.hostname.toLowerCase()) && url.pathname.startsWith("/media/products/")) {
-      return url.pathname + url.search;
+      return displaySource(url.pathname + url.search);
     }
   } catch {
     // Next Image also supports local absolute paths.
   }
-  return source;
+  return source.startsWith("/media/products/") ? displaySource(source) : source;
 }
 
 export function canOptimizeProductImage(source: string): boolean {

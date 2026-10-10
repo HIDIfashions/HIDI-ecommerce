@@ -1,0 +1,81 @@
+name: Guarded collection image speed Azure release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/collection-speed-release.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-collection-browsers
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-collection-browser/node_modules/playwright/index.mjs
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+      HIDI_BUTTON_OUTPUT: evidence/collection-speed/retained-commerce
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Verify image sizing, HTTP caching and source types
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          node apps/web/node_modules/typescript/bin/tsc --noEmit -p apps/web/tsconfig.json
+          node --test tests/collection-images.test.mjs
+          python3 -m py_compile deploy/collection-speed/release.py deploy/collection-speed/patch-web.py
+      - name: Install desktop and mobile browser engines
+        run: |
+          npm install --prefix /tmp/hidi-collection-browser --no-save playwright@1.56.1
+          node /tmp/hidi-collection-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Back up the fresh live images and settings
+        run: |
+          set -euo pipefail
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/collection-speed/release.py capture
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-collection-speed-private/web/candidate-app" >> "$GITHUB_ENV"
+          echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-collection-speed-private/api/base-app" >> "$GITHUB_ENV"
+          echo "HIDI_CATEGORY_PRIVATE=$RUNNER_TEMP/hidi-collection-speed-private" >> "$GITHUB_ENV"
+      - name: Prepare catalogue images and compose the retained web runtime
+        run: |
+          set -euo pipefail
+          tag="acrhidiprod0927.azurecr.io/hidi-web:collection-speed-${GITHUB_RUN_ID}"
+          python3 deploy/collection-speed/release.py compose --tag "$tag"
+          echo "CANDIDATE_WEB=$tag" >> "$GITHUB_ENV"
+      - name: Check real image delivery and retained shopping flows
+        run: |
+          set -euo pipefail
+          node deploy/collection-speed/candidate.mjs
+          node tests/admin-quick-tools.runtime.mjs
+          node deploy/four-categories/candidate.mjs
+          node deploy/button-states/revert-candidate.mjs
+      - name: Publish the verified immutable image
+        run: |
+          set -euo pipefail
+          docker push "$CANDIDATE_WEB"
+          digest="$(az acr repository show --name acrhidiprod0927 --image "hidi-web:collection-speed-${GITHUB_RUN_ID}" --query digest -o tsv --only-show-errors)"
+          echo "WEB_IMAGE=acrhidiprod0927.azurecr.io/hidi-web@$digest" >> "$GITHUB_ENV"
+      - name: Deploy and verify live with ownership-checked rollback
+        run: python3 deploy/collection-speed/release.py apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: collection-speed-release-${{ github.run_id }}
+          path: |
+            evidence/collection-speed
+            evidence/four-categories
+          retention-days: 30
