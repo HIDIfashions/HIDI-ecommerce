@@ -66,10 +66,11 @@ def main():
     assert_public(public,'Published policy, media or social configuration changed independently')
     changed=False
     try:
-        changed=True;suffix='perf'+os.environ['GITHUB_RUN_ID'];guard.write_image(old['hidi-web'],candidate,suffix)
+        changed=True;suffix='perf'+os.environ['GITHUB_RUN_ID'];print('Stage: apply protected image patch',flush=True);guard.write_image(old['hidi-web'],candidate,suffix)
+        print('Stage: wait for ready candidate revision',flush=True)
         state=guard.snapshot(guard.wait_ready(candidate,suffix));assert state['settingsHash']==baseline['hidi-web']['settingsHash']
         assert guard.snapshot(guard.app('hidi-api'))==baseline['hidi-api'], 'API drift'
-        verify_live();assert_public(public,'Published policy, media or social configuration changed')
+        print('Stage: verify live routes and compression',flush=True);verify_live();assert_public(public,'Published policy, media or social configuration changed')
         subprocess=__import__('subprocess');subprocess.run(['node','deploy/performance/live-check.mjs'],check=True)
         after={name:guard.snapshot(guard.app(name)) for name in baseline};guard.ready(after['hidi-web'])
         assert after['hidi-web']['image']==candidate and after['hidi-web']['settingsHash']==baseline['hidi-web']['settingsHash']
@@ -89,4 +90,9 @@ def main():
 if __name__=='__main__':
     try:main()
     except Exception as error:
-        print(str(error) if isinstance(error,(AssertionError,guard.AzureOperationError)) else 'Performance gate stopped; production not certified',file=sys.stderr);sys.exit(1)
+        if isinstance(error,(AssertionError,guard.AzureOperationError)):print(str(error),file=sys.stderr)
+        else:
+            import traceback
+            print('Performance gate stopped: '+type(error).__name__+'; production not certified',file=sys.stderr)
+            for frame in traceback.extract_tb(error.__traceback__):print(Path(frame.filename).name+':'+str(frame.lineno)+':'+frame.name,file=sys.stderr)
+        sys.exit(1)
