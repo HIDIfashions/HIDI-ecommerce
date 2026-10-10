@@ -7,7 +7,7 @@ permissions:
   contents: read
   id-token: write
 concurrency:
-  group: hidi-hero-guarded-release
+  group: hidi-collection-speed-inspection
   cancel-in-progress: false
 jobs:
   inspect:
