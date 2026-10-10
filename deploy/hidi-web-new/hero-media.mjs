@@ -540,9 +540,13 @@ function ownedBrandKeyFromUrl(value, config) {
   const { pathname } = parsed;
   const absoluteUrl = /^[a-z][a-z\d+.-]*:/i.test(value) || value.startsWith("//");
   const publicHosts = new Set([
+    // This was HIDI's public media origin when the affected URLs were saved.
+    // Keep it as an explicit, bounded migration origin even if the product
+    // media base changes later.
+    "https://thidigk.thehidi.com",
     config.publicBaseUrl,
     process.env.SITE_URL,
-    process.env.WEB_ORIGIN,
+    ...(process.env.WEB_ORIGIN || "").split(","),
   ].flatMap(item => {
     try { return item ? [new URL(item).hostname] : []; } catch { return []; }
   }));

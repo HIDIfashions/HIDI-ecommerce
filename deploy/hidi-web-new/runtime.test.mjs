@@ -556,7 +556,9 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
       AZURE_CLIENT_ID: "client-id-123",
       // Production uses this HTTPS base for product photos. Hero and landing
       // media must still use their dedicated private-Blob proxy.
-      MEDIA_PUBLIC_BASE_URL: "https://thidigk.thehidi.com/media",
+      // Product media may use a same-origin route; legacy brand URLs from the
+      // reviewed HIDI media origin must still migrate to the private proxy.
+      MEDIA_PUBLIC_BASE_URL: "/media",
       AZURE_IMDS_ENDPOINT: `${identityUrl}/metadata/identity/oauth2/token`,
       AZURE_STORAGE_BLOB_ENDPOINT: blobUrl,
     });
