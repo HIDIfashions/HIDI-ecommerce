@@ -14,23 +14,20 @@ const channels = [
 ];
 
 async function verifyCase(engine, width, visit) {
-  // Reload before popup testing and release each engine between cases.
+  // Release each engine between cases and exercise the real footer controls.
   const browser = await pw[engine].launch({ headless: true });
   const context = await browser.newContext({ viewport: { width, height: 844 }, hasTouch: width < 700 });
   try {
-    const outgoing = [];
+    await context.addInitScript(() => {
+      window.__hidiSocialNavigation = [];
+      window.open = (...args) => { window.__hidiSocialNavigation.push(args); return null; };
+    });
     await context.route('**/*', route => {
       const request = route.request(), url = new URL(request.url());
       if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
       // Actual playback is covered by the separate media regression suite.
       if (request.resourceType() === 'media') return route.abort();
-      if (url.origin !== base) {
-        if (channels.some(([, target]) => request.url() === target)) {
-          outgoing.push(request.url());
-          return route.fulfill({ contentType: 'text/html', body: '<title>Social destination verification</title>' });
-        }
-        return route.abort();
-      }
+      if (url.origin !== base) return route.abort();
       // Preflight applies reviewed settings in this browser only.
       if (previewConfig && url.pathname === '/config.js') return route.fulfill({ contentType: 'text/javascript', body: previewConfig });
       if (!live && url.pathname === '/api/hidi/hero-config') return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 1, active: false, source: 'bundled' }) });
@@ -52,17 +49,12 @@ async function verifyCase(engine, width, visit) {
       assert.equal(await button.count(), 1);
       assert(await button.isVisible() && await button.isEnabled());
       for (const action of ['click', 'keyboard']) {
-        const count = outgoing.length;
-        const popupReady = context.waitForEvent('page');
+        const count = await page.evaluate(() => window.__hidiSocialNavigation.length);
         if (action === 'click') await button.click();
         else { await button.focus(); await button.press('Enter'); }
-        const popup = await popupReady;
-        await popup.waitForURL(target);
-        await popup.waitForLoadState('domcontentloaded');
-        assert.equal(await popup.evaluate(() => window.opener), null, 'Social page has no opener');
-        assert.deepEqual(outgoing.slice(count), [target], 'One navigation to the correct account');
+        const calls = await page.evaluate(() => window.__hidiSocialNavigation);
+        assert.deepEqual(calls.slice(count), [[target, '_blank', 'noopener,noreferrer']], 'One navigation to the exact account in a safe new tab');
         assert.equal(await page.getByRole('dialog').count(), 0, 'No placeholder dialog');
-        await popup.close();
         console.log(`PASS ${engine} ${width}px ${visit ? 'reload' : 'fresh'} ${label} ${action}: ${target}`);
       }
     }
@@ -86,4 +78,4 @@ for (const engine of ['chromium', 'firefox', 'webkit']) for (const width of [390
     }
   }
 }
-console.log('PASS: 96 social-link activations across three browsers, mobile/desktop, fresh/reloaded pages, mouse and keyboard.');
+console.log('PASS: 96 social-link navigation checks across three browsers, mobile/desktop, fresh/reloaded pages, mouse and keyboard.');
