@@ -20,7 +20,6 @@ jobs:
       API_URL: http://127.0.0.1:4100/v1
       BASE_IMAGE: acrhidiprod0927.azurecr.io/hidi-web@sha256:800ccb5374a9cc8a46d268c86e57221af9150bd9671b6d5c749fad3a39b873ed
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/performance-browsers
-      HIDI_PLAYWRIGHT_MODULE: ${{ runner.temp }}/performance-browser/node_modules/playwright/index.mjs
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,6 +84,7 @@ jobs:
           node --test landing-before/deploy/hidi-web-new/runtime.test.mjs
       - name: Install the three browser engines
         run: |
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/performance-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
           npm install --prefix "$RUNNER_TEMP/performance-browser" --no-save playwright@1.56.1
           node "$RUNNER_TEMP/performance-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
       - uses: azure/login@v2
