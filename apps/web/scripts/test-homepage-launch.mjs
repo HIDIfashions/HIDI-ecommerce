@@ -26,6 +26,11 @@ async function fixture(browser,width,height,shape='landscape',multiple=false){
    return send({version:1,slots,ananya:multiple?{active:true,autoPlay:false,items:[image,portrait,image+'?third'].map(url=>({type:'image',url,fitMode:'cover'}))}:null});
   }
   if(u.pathname==='/api/store/products')return send([product]);
+  // Keep first-party performance reporting intact; it is not a subscription write.
+  // Validate its identifier-free schema while all test requests stay intercepted.
+  if(req.method()==='POST'&&u.pathname==='/api/hidi/performance'){
+   const metric=JSON.parse(req.postData());assert.deepEqual(Object.keys(metric).sort(),['device','name','route','value']);assert.equal(metric.route,'home');assert.equal(metric.device,width<=767?'mobile':'desktop');assert(['LCP','INP','CLS'].includes(metric.name));assert(Number.isFinite(metric.value)&&metric.value>=0);return send({accepted:true});
+  }
   if(req.method()!=='GET'&&req.method()!=='HEAD'){calls.push({method:req.method(),path:u.pathname,body:req.postData()});return send({success:true,message:'Fixture subscription accepted.'});}
   if(u.pathname.startsWith('/api/'))return send({items:[],products:[],published:true});
   return route.continue();
@@ -75,7 +80,7 @@ for(const engine of(process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit')
    }
    await page.getByRole('button',{name:'Open HIDI menu',exact:true}).click();assert(await page.getByRole('dialog').isVisible());assert.equal(await page.locator('.campaign-panel-nav>a').count(),2);await page.keyboard.press('Escape');assert.equal(await page.locator('dialog[open]').count(),0);
    await page.getByRole('button',{name:'Search HIDI products',exact:true}).click();await page.getByLabel('Search products',{exact:true}).fill('cotton');await page.getByText('Fixture cotton kurta',{exact:true}).waitFor();await page.keyboard.press('Escape');
-   await page.locator('#footer').scrollIntoViewIfNeeded();await page.getByRole('textbox',{name:'Email address',exact:true}).fill('fixture@example.test');await page.getByRole('button',{name:'Subscribe to HIDI updates',exact:true}).click();await page.getByText('Your newsletter subscription has been confirmed.',{exact:true}).waitFor();assert.equal(calls.length,1);assert(calls[0].path.includes('newsletter'));await page.keyboard.press('Escape');
+   await page.locator('#footer').scrollIntoViewIfNeeded();await page.getByRole('textbox',{name:'Email address',exact:true}).fill('fixture@example.test');await page.getByRole('button',{name:'Subscribe to HIDI updates',exact:true}).click();await page.getByText('Your newsletter subscription has been confirmed.',{exact:true}).waitFor();assert.equal(calls.length,1,JSON.stringify(calls));assert(calls[0].path.includes('newsletter'));await page.keyboard.press('Escape');
    await page.reload({waitUntil:'networkidle'});await page.locator('#hidi-edit').scrollIntoViewIfNeeded();await page.waitForFunction(()=>{const i=document.querySelector('#hidi-edit img');return i?.complete&&i.naturalWidth>0;},{},{timeout:20000});await page.locator('#hidi-edit img').evaluate(i=>i.decode());await page.locator('#footer').scrollIntoViewIfNeeded();await page.locator('#meet-hidi img').evaluate(i=>i.decode());await geometry(page,390,844);assert.deepEqual(errors,[]);
    if(engine==='chromium')for(const id of['our-range','meet-hidi','hidi-edit','our-promises']){
     await page.locator('#'+id).scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);const cdp=await context.newCDPSession(page);
