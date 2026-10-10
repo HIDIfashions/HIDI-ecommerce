@@ -137,7 +137,7 @@ jobs:
 
           def probe(host):
               homepage = None
-              for path in ['/', '/collections/all', '/account', '/cart', '/checkout']:
+              for path in ['/', '/collections/all', '/account', '/cart', '/checkout', '/about', '/contact', '/returns', '/shipping', '/account/policy']:
                   body, hdr = request(host, path)
                   if path == '/': homepage = body
                   assert 'noindex' in hdr.get('X-Robots-Tag', '').lower(), 'Indexing protection missing: ' + host + path
@@ -149,6 +149,13 @@ jobs:
               config, _ = request(host, '/api/store/auth/config')
               parsed = json.loads(config)
               assert parsed.get('provider') == 'msg91' and parsed.get('fallbackProvider') == 'firebase', 'Active OTP providers changed'
+              products, _ = request(host, '/api/store/products')
+              assert isinstance(json.loads(products), (dict, list)), 'Catalogue API response is not JSON'
+              payment_options, _ = request(host, '/api/store/checkout/payment-options')
+              assert json.loads(payment_options).get('online') is True, 'Existing online payment option is unavailable'
+              delivery, _ = request(host, '/api/store/checkout/delivery-serviceability?pin=560001')
+              delivery_data = json.loads(delivery)
+              assert delivery_data.get('pin') == '560001' and isinstance(delivery_data.get('serviceable'), bool), 'Delivery serviceability response invalid'
               request(host, '/api/admin/session', 401)
               request(host, '/api/hidi/privacy-policy/admin', 401)
               policy, _ = request(host, '/api/hidi/privacy-policy')
@@ -174,7 +181,7 @@ jobs:
               assert len(sample) == 32 and hdr.get('Content-Range', '').startswith('bytes 0-31/'), 'Media byte range failed'
               checks[-1]['mediaSource'] = 'azure-media-route' if candidates else 'retained-bundled-asset'
               request(host, '/v1/payments/razorpay/webhook', 400, method='POST', headers={'Content-Type': 'application/json', 'X-Razorpay-Signature': '0'*64}, body=b'{}')
-              return {'authConfig': hashlib.sha256(config).hexdigest(), 'policy': hashlib.sha256(policy).hexdigest(), 'landingMedia': hashlib.sha256(media).hexdigest()}
+              return {'authConfig': hashlib.sha256(config).hexdigest(), 'policy': hashlib.sha256(policy).hexdigest(), 'landingMedia': hashlib.sha256(media).hexdigest(), 'paymentOptions': hashlib.sha256(payment_options).hexdigest(), 'delivery': hashlib.sha256(delivery).hexdigest()}
 
           def main():
               global checks
