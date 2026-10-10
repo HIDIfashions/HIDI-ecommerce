@@ -43,12 +43,14 @@ def compose(app,tag):
  (folder/'Dockerfile').write_text('FROM '+base+'\nCOPY --chown=node:node overlay/ /app/\n')
  subprocess.run(['docker','build','--pull=false','-t',tag,str(folder)],check=True);helpers.extract(tag,candidate)
  a,b=helpers.fingerprints(old),helpers.fingerprints(candidate);delta={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
- if app=='api':assert delta and delta<=API_FILES,'Unreviewed API file changed'
+ if app=='api':
+  assert delta<=API_FILES,'Unreviewed API file changed'
+  if not delta:subprocess.run(['docker','tag',base,tag],check=True)
  else:
   assert delta and all(p.startswith('apps/web/.next/') or p in {'apps/web/server.js','dist/index.html','dist/'+scriptname} for p in delta),'Unreviewed web file changed'
   assert all(b.get(p)==value for p,value in a.items() if not p.startswith('apps/web/.next/') and p not in {'apps/web/server.js','dist/index.html'}),'Protected homepage, admin, media or runtime changed'
  configs=json.loads(helpers.docker('image','inspect',base,tag));assert configs[0]['Config']==configs[1]['Config'];layers=configs[0]['RootFS']['Layers'];assert configs[1]['RootFS']['Layers'][:len(layers)]==layers
- save(app+'-preservation.json',{'passed':True,'changedFiles':sorted(delta),'protectedFilesIdentical':len(a)-len(delta&a.keys()),'baseImage':base,'settingsPreserved':True,'baseLayersPreserved':True})
+ save(app+'-preservation.json',{'passed':True,'changedFiles':sorted(delta),'protectedFilesIdentical':len(a)-len(delta&a.keys()),'baseImage':base,'alreadyCurrent':not delta,'settingsPreserved':True,'baseLayersPreserved':True})
  print(app+': reviewed overlay verified; protected files and image configuration preserved')
 def public():
  paths=['/api/hidi/hero-config','/api/hidi/landing-media-config','/api/hidi/privacy-policy']

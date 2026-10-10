@@ -1,5 +1,5 @@
 name: COD rewards and app guarded release
-# Private SQL readiness and isolated COD regression passed; verify the complete release before rollout.
+# Reuse identical live API bytes while enabling the authorized COD/rewards flags after candidate verification.
 on:
   push:
     branches: [migration/azure-sql-blob]
