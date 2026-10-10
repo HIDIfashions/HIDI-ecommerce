@@ -1,6 +1,6 @@
-import type { ProductRecord, ProductVariant } from "@/lib/admin-products-contract";
-import { productSlug, rupeesToPaise } from "@/lib/admin-products-contract";
-import type { SheetRow } from "@/lib/hidi-spreadsheet";
+import type { ProductRecord, ProductVariant } from "./admin-products-contract";
+import { productSlug, rupeesToPaise } from "./admin-products-contract";
+import type { SheetRow } from "./hidi-spreadsheet";
 
 export type BulkProductMode = "NEW" | "STOCK";
 export type BulkProductRow = {
