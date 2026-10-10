@@ -1,0 +1,43 @@
+name: Collection loading baseline and live backup
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/collection-speed-inspect.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-collection-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-collection-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Install browser for read-only public timings
+        run: |
+          npm install --prefix /tmp/hidi-collection-browser --no-save playwright@1.56.1
+          node /tmp/hidi-collection-browser/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Measure first-visit mobile and desktop collection loading
+        run: node deploy/collection-speed/baseline.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Verify fresh immutable backups and inspect retained image delivery
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/collection-speed/inspect.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: collection-speed-inspect-${{ github.run_id }}
+          path: evidence/collection-speed
+          retention-days: 30
