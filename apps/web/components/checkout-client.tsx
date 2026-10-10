@@ -355,7 +355,7 @@ export function CheckoutClient() {
   return <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
 
-    <details className="checkout-mobile-summary">
+    <details className="checkout-mobile-summary" open={!complimentaryShipping}>
       <summary>
         <span><b>Order summary</b><small>{cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}</small></span>
         <strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong>

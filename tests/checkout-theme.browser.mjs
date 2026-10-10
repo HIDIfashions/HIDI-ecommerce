@@ -12,6 +12,7 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
  await scenario(browser,engine,'FIX-01','Guest sign-in card matches hierarchy and all responsive totals include shipping',async page=>{
   await loadCheckout(page);
   const card=page.locator('.checkout-signin-card');await card.waitFor();
+  assert(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),'Charged shipping must be visible without an extra tap');
   for(const width of [320,390,768,1440]){
    await page.setViewportSize({width,height:844});const sign=card.getByRole('link',{name:'Sign In',exact:true}),guest=card.getByRole('button',{name:'Continue as Guest',exact:true});
    assert.equal(await color(sign),brown);assert.equal(await sign.getAttribute('href'),'/account?returnTo=%2Fcheckout');
@@ -58,7 +59,7 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
   for(const [price,shipping] of [[149899,9900],[149900,0],[149901,0]]){
    await page.route('**/api/store/carts/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(cartFor(price))}));
    await page.goto(base+'/cart');await page.locator('.summary-total').waitFor();assert.match(await page.locator('.order-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
-   await page.goto(base+'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();assert.match(await page.locator('.checkout-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
+   await page.goto(base+'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();assert.equal(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),Boolean(shipping));assert.match(await page.locator('.checkout-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
    await page.unroute('**/api/store/carts/**');
   }
  },phone);
