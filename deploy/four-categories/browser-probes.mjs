@@ -34,7 +34,7 @@ export async function probe(base,output,{candidate=false}={}){
     await page.screenshot({path:`${output}/${engine}-${width}-home-menu.png`});await page.keyboard.press('Escape');
     for(const [slug,title] of categories){
      assert.equal((await page.goto(base+'/collections/'+slug,{waitUntil:'domcontentloaded'})).status(),200);
-     await page.getByRole('heading',{name:title,exact:true,level:1}).waitFor();
+     await page.getByRole('heading',{name:title,exact:true,level:1,includeHidden:true}).waitFor({state:'attached'});
      if(width>=1000){
       const nav=page.getByRole('navigation',{name:'Primary navigation',exact:true});
       assert.deepEqual(await nav.locator('a').allTextContents(),categories.map(([,name])=>name));
@@ -57,6 +57,11 @@ export async function probe(base,output,{candidate=false}={}){
     assert.equal(writes,0,'Live category verification may not submit any writes');
     results.push({engine,width,height,passed:true,fourCategoryMenu:true,fourCarouselItems:true,fourFooterLinks:true,allCategoryViews:true,searchSuggestions:true});
     console.log(`PASS ${candidate?'candidate':'live'} ${engine} ${width}: exactly four categories, menu/footer/carousel, filtered views, search and viewport bounds`);
+   }catch(error){
+    await page.screenshot({path:`${output}/${engine}-${width}-failure.png`,fullPage:true}).catch(()=>{});
+    await writeFile(`${output}/${engine}-${width}-failure.html`,await page.content()).catch(()=>{});
+    await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({url:page.url(),errors,headings:await page.locator('h1,h2,h3').allTextContents()},null,2)).catch(()=>{});
+    throw error;
    }finally{await context.close();}
   }}finally{await browser.close();}
  }

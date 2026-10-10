@@ -14,9 +14,10 @@ import styles from "./home.module.css";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 const edits = [
-  { eyebrow: "WORKWEAR EDIT", title: "Quiet confidence.", href: "/collections/work-wear", image: "/products/ira-beige-office-kurta-set/01-main.png", detail: "/products/ira-beige-office-kurta-set/03-detail.png" },
-  { eyebrow: "EVERYDAY", title: "Ease, beautifully considered.", href: "/collections/casual-wear", image: "/products/myra-peach-comfort-kurta-set/01-main.png", detail: "/products/myra-peach-comfort-kurta-set/03-detail.png" },
-  { eyebrow: "OCCASION", title: "Presence, without excess.", href: "/collections/occasional-wear", image: "/products/kiara-wine-festive-kurta-set/01-main.png", detail: "/products/kiara-wine-festive-kurta-set/03-detail.png" },
+  { eyebrow: "WORK WEAR", title: "Quiet confidence.", href: "/collections/work-wear", image: "/products/ira-beige-office-kurta-set/01-main.png", detail: "/products/ira-beige-office-kurta-set/03-detail.png" },
+  { eyebrow: "CASUAL WEAR", title: "Ease, beautifully considered.", href: "/collections/casual-wear", image: "/products/myra-peach-comfort-kurta-set/01-main.png", detail: "/products/myra-peach-comfort-kurta-set/03-detail.png" },
+  { eyebrow: "OCCASIONAL WEAR", title: "Presence, without excess.", href: "/collections/occasional-wear", image: "/products/kiara-wine-festive-kurta-set/01-main.png", detail: "/products/kiara-wine-festive-kurta-set/03-detail.png" },
+  { eyebrow: "ANANYA’S PICK", title: "Ananya’s selected styles.", href: "/collections/ananyas-pick", image: "/products/anika-ivory-embroidered-set/01-main.png", detail: "/products/anika-ivory-embroidered-set/03-detail.png" },
 ] as const;
 const privileges = [
   { title: "The ₹1 HIDI Privilege", copy: "Planned launch privilege: ₹3,999+ and one selected style for ₹1.", href: "/offers#rupee", cta: "Read eligibility details" },
@@ -37,10 +38,10 @@ export default async function Home() {
     <section className={styles.hero} aria-labelledby="hidi-hero-title" data-section="hero">
       <AmbientHero videoSrc={process.env.HIDI_HERO_VIDEO_URL} />
       <div className={styles.heroShade} aria-hidden="true" />
-      <div className={styles.heroContent}><p className={styles.heroEyebrow}>HIDI / NEW SEASON</p><h1 id="hidi-hero-title">Wear the feeling.</h1><p className={styles.heroIntro}>A quieter kind of statement.</p><Link href="/collections/new-arrivals" className={styles.heroCta}>Discover the collection<ArrowRight size={16} strokeWidth={1.5} aria-hidden="true" /></Link></div>
+      <div className={styles.heroContent}><p className={styles.heroEyebrow}>HIDI / NEW SEASON</p><h1 id="hidi-hero-title">Wear the feeling.</h1><p className={styles.heroIntro}>A quieter kind of statement.</p><Link href="/collections/all" className={styles.heroCta}>Discover the collection<ArrowRight size={16} strokeWidth={1.5} aria-hidden="true" /></Link></div>
     </section>
     <section className={styles.editSection} aria-labelledby="hidi-edits-title" data-neutral-surface data-section="edits">
-      <header className={styles.sectionHeader + " container"}><div><p className={styles.eyebrow}>SHOP BY EDIT</p><h2 id="hidi-edits-title">For every side of you.</h2></div><span className={styles.sectionNote}>Work. Casual Wear. Occasion.</span></header>
+      <header className={styles.sectionHeader + " container"}><div><p className={styles.eyebrow}>SHOP BY EDIT</p><h2 id="hidi-edits-title">For every side of you.</h2></div><span className={styles.sectionNote}>Casual Wear. Work Wear. Occasional Wear. Ananya’s Pick.</span></header>
       <div className={styles.edits + " container"} aria-label="Shop HIDI edits">{edits.map((edit, index) => <Link className={styles.editCard} href={edit.href} key={edit.href}>
         <Image src={edit.image} alt="" fill sizes={index === 0 ? "(max-width: 760px) calc(100vw - 36px), (max-width: 1504px) calc(60vw - 50.4px), 852px" : "(max-width: 760px) calc(50vw - 24px), (max-width: 1504px) calc(40vw - 33.6px), 568px"} className={styles.editPrimary} />
         <EditorialDetailImage key={edit.detail} src={edit.detail} sizes={index === 0 ? "(max-width: 760px) calc(100vw - 36px), (max-width: 1504px) calc(60vw - 50.4px), 852px" : "(max-width: 760px) calc(50vw - 24px), (max-width: 1504px) calc(40vw - 33.6px), 568px"} className={styles.editDetail} /><span className={styles.editShade} aria-hidden="true" />

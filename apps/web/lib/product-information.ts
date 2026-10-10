@@ -58,17 +58,17 @@ const PRODUCT_INFORMATION: Record<string, ProductInformation> = {
   "anika-ivory-embroidered-set": {
     productType: "Embroidered Set",
     fitDetail: "Straight coordinated fit with thread embroidery",
-    edit: "Occasion",
+    edit: "Occasional Wear",
   },
   "kiara-wine-festive-kurta-set": {
     productType: "Festive Kurta Set",
     fitDetail: "Straight fit with embroidery and subtle accents",
-    edit: "Occasion",
+    edit: "Occasional Wear",
   },
   "meher-gold-beige-occasion-set": {
     productType: "Occasion Set",
     fitDetail: "Structured straight fit with fine embroidery and subtle festive detailing",
-    edit: "Occasion",
+    edit: "Occasional Wear",
   },
 };
 

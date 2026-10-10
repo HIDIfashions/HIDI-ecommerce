@@ -46,6 +46,12 @@ const base='http://127.0.0.1:'+port;
 try{
  let ready=false;for(let i=0;i<150;i++){try{if((await fetch(base+'/collections/casual-wear')).ok){ready=true;break;}}catch{}if(processRuntime.exitCode!==null)throw new Error('Candidate exited: '+logs.slice(-2000));await new Promise(done=>setTimeout(done,200));}assert(ready,'Combined runtime failed readiness: '+logs.slice(-2000));
  for(const [slug,title] of categories){const response=await fetch(base+'/collections/'+slug);assert.equal(response.status,200);assert((await response.text()).includes('<h1>'+title+'</h1>'));}
+ for(const [slug,title] of categories.slice(0,3)){
+  const response=await fetch(base+'/products/picked-'+slug);assert.equal(response.status,200);
+  const html=await response.text();const scripts=[...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map(match=>JSON.parse(match[1]));
+  const breadcrumb=scripts.find(value=>value['@type']==='BreadcrumbList');assert(breadcrumb,'Actual product breadcrumb metadata required');
+  assert.equal(breadcrumb.itemListElement[1].name,title);assert(new URL(breadcrumb.itemListElement[1].item).pathname==='/collections/'+slug);
+ }
  const report=await probe(base,'evidence/four-categories/candidate',{candidate:true});
  assert.equal(writes,0);report.actualRetainedNextAndLanding=true;report.actualCandidateApiCategoryFilter=true;report.fixtureApiReads=requests;
  await mkdir('evidence/four-categories',{recursive:true});await writeFile('evidence/four-categories/candidate.json',JSON.stringify(report,null,2));
