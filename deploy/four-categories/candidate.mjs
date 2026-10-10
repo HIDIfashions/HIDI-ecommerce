@@ -48,7 +48,7 @@ try{
  for(const [slug,title] of categories){const response=await fetch(base+'/collections/'+slug);assert.equal(response.status,200);assert((await response.text()).includes('<h1>'+title+'</h1>'));}
  for(const [slug,title] of categories.slice(0,3)){
   const response=await fetch(base+'/products/picked-'+slug);assert.equal(response.status,200);
-  const html=await response.text();const scripts=[...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map(match=>JSON.parse(match[1]));
+  const html=await response.text();const scripts=[...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].flatMap(match=>JSON.parse(match[1]));
   const breadcrumb=scripts.find(value=>value['@type']==='BreadcrumbList');assert(breadcrumb,'Actual product breadcrumb metadata required');
   assert.equal(breadcrumb.itemListElement[1].name,title);assert(new URL(breadcrumb.itemListElement[1].item).pathname==='/collections/'+slug);
  }

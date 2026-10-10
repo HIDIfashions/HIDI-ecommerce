@@ -63,7 +63,7 @@ jobs:
             echo "CANDIDATE_${app^^}=$tag" >> "$GITHUB_ENV"
           done
       - name: Verify category filters and actual desktop/mobile navigation
-        # Mobile retains its intentionally hidden collection heading; visible category menus remain required.
+        # Check the retained JSON-LD array and the four visible desktop/mobile category menus.
         run: |
           set -euo pipefail
           node deploy/four-categories/candidate.mjs
