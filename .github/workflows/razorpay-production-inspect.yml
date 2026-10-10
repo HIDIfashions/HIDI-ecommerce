@@ -1,4 +1,5 @@
 name: Razorpay production readiness inspection
+# Recheck after live secret configuration and manual webhook creation, 2026-10-10.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -24,7 +25,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import base64, json, subprocess, urllib.request, urllib.error
+          import base64, hashlib, hmac, json, subprocess, urllib.request, urllib.error
           def az(*args):
               proc = subprocess.run(['az', *args, '--only-show-errors', '-o', 'json'], capture_output=True, text=True)
               if proc.returncode:
@@ -40,6 +41,11 @@ jobs:
                   'image': props['template']['containers'][0]['image'],
                   'readyRevision': props.get('latestReadyRevisionName'),
                   'latestRevision': props.get('latestRevisionName'),
+                  'provisioningState': props.get('provisioningState'),
+                  'runningStatus': props.get('runningStatus'),
+                  'activeRevisionsMode': props['configuration'].get('activeRevisionsMode'),
+                  'traffic': props['configuration']['ingress'].get('traffic'),
+                  'probes': props['template']['containers'][0].get('probes', []),
                   'fqdn': props['configuration']['ingress']['fqdn'],
                   'safeSettings': {k: env.get(k, {}).get('value', '<secretRef>' if env.get(k, {}).get('secretRef') else '<unset>') for k in ('MIGRATION_READ_ONLY', 'MIGRATION_CUSTOMER_TESTING', 'DEPLOYMENT_STAGE', 'SITE_URL', 'WEB_ORIGIN')}
               }
@@ -67,6 +73,7 @@ jobs:
               report['payment'][k] = {
                   'configured': bool(v or (ref and secret_defs.get(ref, {}).get('keyVaultUrl'))),
                   'storage': 'secretRef' if ref else ('inline' if 'value' in item else 'unset'),
+                  'secretReference': ref,
                   'resolved': bool(v)
               }
               if k == 'RAZORPAY_KEY_ID':
@@ -88,7 +95,7 @@ jobs:
                   report['payment']['providerAuthenticationStatus'] = 'unreachable'
           else:
               report['payment']['providerAuthenticationStatus'] = 'not_checked'
-          for origin in ('https://thidigk.thehidi.com', 'https://thehidi.com'):
+          for origin in ('https://thidigk.thehidi.com', 'https://hidiindia.com', 'https://thehidi.com'):
               checks = {}
               for label, path, body in (('health', '/api/store/health/ready', None), ('webhook', '/v1/payments/razorpay/webhook', b'{}')):
                   req = urllib.request.Request(origin + path, data=body, headers={'Content-Type': 'application/json'} if body else {}, method='POST' if body else 'GET')
@@ -99,6 +106,24 @@ jobs:
                       checks[label] = {'status': err.code, 'contentType': err.headers.get('Content-Type')}
                   except Exception:
                       checks[label] = {'status': 'unreachable'}
+              # A nonfinancial event exercises HMAC and raw-body forwarding only.
+              # The application ignores this event and never changes any order.
+              webhook_secret = value('RAZORPAY_WEBHOOK_SECRET')
+              if webhook_secret:
+                  body = b'{"event":"hidi.integration_check","payload":{}}'
+                  signature = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
+                  for label, sig in (('signedNonfinancialWebhook', signature), ('invalidSignatureWebhook', '0' * 64)):
+                      req = urllib.request.Request(origin + '/v1/payments/razorpay/webhook', data=body, headers={'Content-Type': 'application/json', 'x-razorpay-signature': sig}, method='POST')
+                      try:
+                          with urllib.request.urlopen(req, timeout=20) as response:
+                              reply = response.read(2048)
+                              checks[label] = {'status': response.status, 'contentType': response.headers.get('Content-Type'), 'acknowledged': json.loads(reply).get('received') is True}
+                      except urllib.error.HTTPError as err:
+                          checks[label] = {'status': err.code, 'contentType': err.headers.get('Content-Type')}
+                      except Exception:
+                          checks[label] = {'status': 'unreachable'}
+              else:
+                  checks['signedNonfinancialWebhook'] = {'status': 'secret_not_resolved'}
               report['routes'][origin] = checks
           print(json.dumps(report, indent=2, sort_keys=True))
           PY
