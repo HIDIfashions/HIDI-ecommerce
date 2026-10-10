@@ -36,7 +36,6 @@ jobs:
       HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-product-skn-browser/node_modules/playwright/index.mjs
       HIDI_BROWSER_ENGINES: chromium,firefox,webkit
       HIDI_BUTTON_OUTPUT: evidence/product-skn/customer-browser
-      HIDI_SKN_PRIVATE_DIR: ${{ runner.temp }}/hidi-product-skn-private
       HIDI_SKN_SCHEMA_REPORT: evidence/product-skn/schema-ready.json
       HIDI_SKN_TAXONOMY_REPORT: evidence/product-skn/taxonomy-ready.json
       HIDI_SKN_OWNER_REPORT: evidence/product-skn/owner-migration.json
