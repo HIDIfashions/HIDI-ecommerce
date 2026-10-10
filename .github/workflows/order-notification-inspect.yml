@@ -42,9 +42,10 @@ jobs:
               result['messaging'] = {k: {'configured': bool(value(k)), 'storage': 'secretRef' if env.get(k, {}).get('secretRef') else ('inline' if 'value' in env.get(k, {}) else 'unset')} for k in keys}
               result['database'] = {'server': value('AZURE_SQL_SERVER'), 'database': value('AZURE_SQL_DATABASE')}
               result['notificationSwitch'] = value('ORDER_NOTIFICATIONS_ENABLED') or 'unset'
-          db = az('sql', 'db', 'show', '-g', 'rg-hidi-prod', '-s', 'sql-hidi-prod-0927', '-n', 'hidi-sql-validation')
+          print(json.dumps(result, indent=2, sort_keys=True))
+          db = az('sql', 'db', 'show', '-g', 'rg-hidi-prod', '-s', result['database']['server'].split('.')[0], '-n', 'hidi-sql-validation')
           result['restore'] = {'status': db.get('status'), 'earliestRestoreDate': db.get('earliestRestoreDate')}
-          policy = az('sql', 'db', 'str-policy', 'show', '-g', 'rg-hidi-prod', '-s', 'sql-hidi-prod-0927', '-n', 'hidi-sql-validation')
+          policy = az('sql', 'db', 'str-policy', 'show', '-g', 'rg-hidi-prod', '-s', result['database']['server'].split('.')[0], '-n', 'hidi-sql-validation')
           result['restore']['retentionDays'] = policy.get('retentionDays')
           print(json.dumps(result, indent=2, sort_keys=True))
           PY
