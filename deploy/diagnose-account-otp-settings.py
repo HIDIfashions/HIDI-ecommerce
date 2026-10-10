@@ -1,5 +1,6 @@
-"""Read-only diagnosis of the first account OTP image update; never emit Azure values."""
+"""Read-only diagnosis of the first account OTP image update; never emit env/secret values."""
 import copy
+from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
@@ -33,6 +34,18 @@ PUBLIC_GETS = (
 # Its ContainerResources.ephemeralStorage is readOnly; retain the current value.
 SCALE_DEFAULTS = {"cooldownPeriod": 300, "pollingInterval": 30}
 DEFAULTS_SOURCE = "https://github.com/Azure/azure-rest-api-specs/blob/main/specification/app/resource-manager/Microsoft.App/ContainerApps/stable/2025-07-01/CommonDefinitions.json"
+SUBSCRIPTION = "91d9572d-0f0b-47fe-802d-0eef36d7c719"
+API_RESOURCE_ID = "/subscriptions/" + SUBSCRIPTION + "/resourceGroups/rg-hidi-prod/providers/Microsoft.App/containerApps/hidi-api"
+GRAPH_URL = "https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01"
+SNAPSHOT_PREFIX = "https://management.azure.com" + API_RESOURCE_ID + "/providers/Microsoft.Resources/snapshots/"
+HISTORY_START, HISTORY_END = "2026-10-10T00:30:00Z", "2026-10-10T00:36:00Z"
+HISTORY_QUERY = (
+    "resourcechanges | where properties.targetResourceId =~ '" + API_RESOURCE_ID + "'"
+    " | extend changeTime=todatetime(properties.changeAttributes.timestamp)"
+    " | where changeTime >= datetime(" + HISTORY_START + ") and changeTime <= datetime(" + HISTORY_END + ")"
+    " | where properties.changeType == 'Update' | order by changeTime asc, id asc | project id, changeTime, properties"
+)
+MAX_HISTORY_PAGES, HISTORY_PAGE_SIZE, MAX_HISTORY_RECORDS = 2, 4, 8
 
 
 def azure_read(arguments):
@@ -45,6 +58,171 @@ def azure_read(arguments):
         return json.loads(result.stdout)
     except (ValueError, TypeError):
         raise RuntimeError("Azure diagnostic read returned invalid JSON") from None
+
+
+def graph_body(skip_token=None):
+    body = {"subscriptions": [SUBSCRIPTION], "query": HISTORY_QUERY, "options": {"resultFormat": "objectArray", "$top": HISTORY_PAGE_SIZE}}
+    if skip_token is not None:
+        assert isinstance(skip_token, str) and 0 < len(skip_token) <= 4096, "Invalid bounded history continuation"
+        body["options"]["$skipToken"] = skip_token
+    return body
+
+
+def snapshot_url(snapshot_id):
+    assert isinstance(snapshot_id, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,256}", snapshot_id), "Invalid target snapshot identifier"
+    return SNAPSHOT_PREFIX + snapshot_id + "?api-version=2022-11-01-preview"
+
+
+def azure_rest_read(method, url, body=None):
+    """Only the fixed read-query POST and target-scoped snapshot GET are callable."""
+    if method == "POST":
+        assert url == GRAPH_URL and isinstance(body, dict) and body == graph_body(body.get("options", {}).get("$skipToken")), "Rejected non-allowlisted history query"
+    else:
+        assert method == "GET" and body is None and url.startswith(SNAPSHOT_PREFIX), "Rejected non-allowlisted snapshot operation"
+        suffix = url[len(SNAPSHOT_PREFIX):]
+        assert suffix.endswith("?api-version=2022-11-01-preview") and url == snapshot_url(suffix.split("?", 1)[0]), "Rejected non-allowlisted snapshot URL"
+    arguments = ["az", "rest", "--method", method, "--url", url, "--only-show-errors", "-o", "json"]
+    if body is not None:
+        arguments += ["--body", json.dumps(body, separators=(",", ":"))]
+    result = subprocess.run(arguments, capture_output=True, text=True, timeout=45)
+    if result.returncode or len(result.stdout) > 4 * 1024 * 1024:
+        raise RuntimeError("Bounded Azure history read failed")
+    try:
+        return json.loads(result.stdout)
+    except (ValueError, TypeError):
+        raise RuntimeError("Azure history read returned invalid JSON") from None
+
+
+def incident_time(value):
+    assert isinstance(value, str), "Invalid history timestamp"
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    assert parsed.tzinfo is not None, "History timestamp must include timezone"
+    return parsed.astimezone(timezone.utc)
+
+
+def read_incident_history():
+    records, seen_ids, tokens = [], set(), set()
+    token, total = None, None
+    for page in range(MAX_HISTORY_PAGES):
+        response = azure_rest_read("POST", GRAPH_URL, graph_body(token))
+        data = response.get("data")
+        assert isinstance(data, list) and len(data) <= HISTORY_PAGE_SIZE, "Invalid bounded history page"
+        assert type(response.get("count")) is int and response["count"] == len(data), "History page count differs"
+        assert type(response.get("totalRecords")) is int and len(data) <= response["totalRecords"] <= MAX_HISTORY_RECORDS, "History exceeded the explicit record bound"
+        if total is None:
+            total = response["totalRecords"]
+        assert response["totalRecords"] == total, "History count changed during pagination"
+        truncated = response.get("resultTruncated")
+        assert type(truncated) is bool or truncated in ["false", "true"], "Invalid history truncation marker"
+        assert len(records) + len(data) <= MAX_HISTORY_RECORDS, "History exceeded the explicit record bound"
+        for record in data:
+            properties = record["properties"]
+            assert properties["targetResourceId"].lower() == API_RESOURCE_ID.lower(), "History targets a different resource"
+            assert properties["changeType"] == "Update", "History contains an unexpected change type"
+            timestamp = incident_time(properties["changeAttributes"]["timestamp"])
+            assert incident_time(HISTORY_START) <= timestamp <= incident_time(HISTORY_END), "History falls outside the incident window"
+            record_id = record["id"]
+            assert isinstance(record_id, str) and record_id not in seen_ids, "History repeats a change record"
+            seen_ids.add(record_id)
+            changes = properties.get("changes", {})
+            assert isinstance(changes, dict) and len(changes) <= 256, "Invalid bounded property history"
+            assert all(change.get("isTruncated", False) in [False, "false"] for change in changes.values()), "A history field was truncated"
+            snapshot_url(properties["changeAttributes"]["previousResourceSnapshotId"])
+            records.append(record)
+        token = response.get("$skipToken")
+        if not token:
+            assert truncated is False or truncated == "false", "History results were truncated without continuation"
+            assert len(records) == response["totalRecords"], "History was not completely returned"
+            return records
+        assert data and token not in tokens and page + 1 < MAX_HISTORY_PAGES, "History continuation exceeds the explicit bound"
+        tokens.add(token)
+    raise RuntimeError("Bounded history did not complete")
+
+
+def protected_settings(data):
+    """The existing snapshot's field schema, solely for HMAC difference reporting."""
+    properties = data["properties"]
+    configuration = copy.deepcopy(properties["configuration"])
+    configuration.get("ingress", {}).pop("traffic", None)
+    return {
+        "template": protected_template(properties["template"]), "configuration": configuration,
+        "identity": data.get("identity", {}), "location": data.get("location"), "tags": data.get("tags", {}),
+        "environmentId": properties.get("environmentId"), "managedEnvironmentId": properties.get("managedEnvironmentId"),
+        "workloadProfileName": properties.get("workloadProfileName"),
+    }
+
+
+def protected_resource_change_report(before, after, key):
+    classification = template_change_report(before["properties"]["template"], after["properties"]["template"], key)
+    changes = changed_field_digests(protected_settings(before), protected_settings(after), key, "")
+    template_paths = {item["path"] for item in classification["changedProtectedFields"]}
+    all_paths = {item["path"] for item in changes}
+    for field in classification:
+        if field.startswith("only"):
+            classification[field] = classification[field] and all_paths == template_paths
+    classification["changedProtectedFields"] = changes
+    return classification
+
+
+def historical_snapshot_model(response, expected_snapshot_id):
+    assert response["name"] == expected_snapshot_id and response["type"].lower() == "microsoft.resources/snapshots", "Unexpected historical snapshot envelope"
+    expected_id = API_RESOURCE_ID + "/providers/Microsoft.Resources/snapshots/" + expected_snapshot_id
+    assert response["id"].lower() == expected_id.lower(), "Historical snapshot belongs to another resource"
+    resource = copy.deepcopy(response["properties"]["content"])
+    assert resource["id"].lower() == API_RESOURCE_ID.lower(), "Historical content belongs to another resource"
+    assert resource["type"].lower() == "microsoft.app/containerapps", "Historical content has a different resource type"
+    # These revision status fields are not fingerprinted. No protected field is
+    # added, dropped, merged or normalized to compensate for an API model shape.
+    supplied = []
+    if "latestRevisionName" not in resource["properties"]:
+        resource["properties"]["latestRevisionName"] = "diagnostic-unhashed-placeholder"
+        supplied.append("/properties/latestRevisionName")
+    return resource, supplied
+
+
+def declared_history_changes(changes, key):
+    result = []
+    for path, change in sorted(changes.items()):
+        assert isinstance(path, str) and len(path) <= 1024, "Invalid history field path"
+        protected = path.startswith(("properties.template.", "properties.configuration.", "identity.", "tags.")) or path in ["identity", "tags", "location", "properties.environmentId", "properties.managedEnvironmentId", "properties.workloadProfileName"]
+        excluded = path == "properties.template.revisionSuffix" or path.endswith(".image") or path.startswith("properties.configuration.ingress.traffic")
+        if not protected or excluded:
+            continue
+        description = {"path": path}
+        for output_name, input_name in [("before", "previousValue"), ("after", "newValue")]:
+            description[output_name] = changed_field_digests({}, {"field": change[input_name]}, key)[0]["after"] if input_name in change else {"present": False}
+        result.append(description)
+    return result
+
+
+def resource_history_report(api, key):
+    records = read_incident_history()
+    report = {"purpose": "read-only-historical-baseline-proof", "window": {"start": HISTORY_START, "end": HISTORY_END}, "complete": True, "recordCount": len(records), "status": "empty-unresolved" if not records else "baseline-unresolved", "baselineMatched": False, "records": []}
+    seen_snapshots = set()
+    for index, record in enumerate(records):
+        properties = record["properties"]
+        attributes = properties["changeAttributes"]
+        snapshot_id = attributes["previousResourceSnapshotId"]
+        assert snapshot_id not in seen_snapshots, "History repeats a previous snapshot"
+        seen_snapshots.add(snapshot_id)
+        response = azure_rest_read("GET", snapshot_url(snapshot_id))
+        resource, supplied = historical_snapshot_model(response, snapshot_id)
+        state = snapshot(resource)
+        matched = state["settingsHash"] == BASELINE_HASH and state["image"] == OLD_API
+        version = response["properties"].get("apiVersion")
+        assert isinstance(version, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:-preview)?", version), "Invalid captured resource API version"
+        entry = {
+            "index": index, "timestamp": incident_time(attributes["timestamp"]).isoformat(), "changeType": "Update",
+            "capturedApiVersion": version, "unhashedMetadataSupplied": supplied,
+            "priorSnapshotSettingsHash": state["settingsHash"], "priorImageMatches": state["image"] == OLD_API, "baselineMatched": matched,
+            "declaredFieldChanges": {"purpose": "diagnostic-only", "fields": declared_history_changes(properties.get("changes", {}), key)},
+        }
+        if matched:
+            entry.update(protected_resource_change_report(resource, api, key))
+            report["baselineMatched"] = True
+            report["status"] = "exact-baseline-matched"
+        report["records"].append(entry)
+    return report
 
 
 def protected_template(template):
@@ -181,10 +359,14 @@ def observed_nonsecret_scalars(before_template, after_template, key):
 
 def build_report(api, web, old_revision, key):
     states = {"hidi-api": snapshot(api), "hidi-web": snapshot(web)}
-    for app, expected in [("hidi-api", EXPECTED_API), ("hidi-web", EXPECTED_WEB)]:
-        state = states[app]
-        assert state["image"] == expected, "Current image differs from the diagnostic incident pin"
-        assert state["mode"] == "Single" and state["latest"] == state["ready"] == EXPECTED_REVISIONS[app], "Current revision differs from the ready incident pin"
+    assert api["id"].lower() == API_RESOURCE_ID.lower(), "Current API has a different resource ID"
+    state = states["hidi-api"]
+    assert state["image"] == EXPECTED_API, "Current image differs from the diagnostic incident pin"
+    assert state["mode"] == "Single" and state["latest"] == state["ready"] == EXPECTED_REVISIONS["hidi-api"], "Current revision differs from the ready incident pin"
+    # Web may be independently released; it does not authorize API inference.
+    web_state = states["hidi-web"]
+    assert re.fullmatch(r"acrhidiprod0927\.azurecr\.io/hidi-web@sha256:[0-9a-f]{64}", web_state["image"]), "Web image must be immutable"
+    assert web_state["mode"] == "Single" and web_state["latest"] == web_state["ready"] and isinstance(web_state["latest"], str) and web_state["latest"].startswith("hidi-web--"), "Web must have a ready Single revision"
     assert old_revision["name"] == OLD_REVISION, "Unexpected old API revision"
     old_template = old_revision["properties"]["template"]
     assert old_template["containers"][0]["image"] == OLD_API, "Old revision image differs from the retained baseline"
@@ -228,7 +410,24 @@ def main():
     output = Path("evidence/account-otp-settings-diagnostic.json")
     try:
         api, web, old = [azure_read(arguments) for arguments in AZURE_READS]
-        report = build_report(api, web, old, secrets.token_bytes(32))
+        key = secrets.token_bytes(32)
+        report = build_report(api, web, old, key)
+        report["schemaVersion"] = 4
+        report["resourceChangeHistory"] = resource_history_report(api, key)
+        history = report["resourceChangeHistory"]
+        # In this phase the prior model hypotheses are diagnostic evidence;
+        # an empty or incompatible history cannot authorize baseline inference.
+        report["baselineMatched"] = history["baselineMatched"]
+        report["matchedBaselineBases"] = []
+        for field in list(report):
+            if field == "changedProtectedFields" or field.startswith("only"):
+                del report[field]
+        if history["baselineMatched"]:
+            matched = next(entry for entry in history["records"] if entry["baselineMatched"])
+            report["matchedBaselineBases"].append("resource-change-prior-snapshot")
+            for field, value in matched.items():
+                if field == "changedProtectedFields" or field.startswith("only"):
+                    report[field] = value
         report["publicReadiness"] = public_gets()
         # Refuse to report a coherent incident diagnosis across an independent release.
         assert snapshot(azure_read(AZURE_READS[0])) == report["states"]["hidi-api"], "API changed during read-only diagnosis"

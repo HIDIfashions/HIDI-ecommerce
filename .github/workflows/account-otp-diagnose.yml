@@ -1,7 +1,7 @@
 name: Read-only account OTP settings diagnosis
-# Stage 3 adds nine explicit env/scale-null forms to the four prior hypotheses.
-# Only historical null / documented 300/30 defaults qualify; generated storage
-# remains intact. No deployment-guard normalization or Azure writes occur.
+# Stage 4 reads only exact API resource-change history in the incident window
+# and target-scoped prior snapshots. Full original hash authority is unchanged;
+# no protected-field mapping, deployment normalization or Azure writes occur.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -31,7 +31,7 @@ jobs:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Read pinned apps and old revision without exposing settings values
+      - name: Read pinned API and bounded historical snapshots without exposing settings values
         run: python3 -B deploy/diagnose-account-otp-settings.py
       - name: Preserve only public digests and diagnosis
         if: always()

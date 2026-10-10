@@ -1,6 +1,7 @@
 """Exercise account source guards and real image rollout using isolated fake Azure/curl."""
 import copy
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -555,6 +556,7 @@ class ReadOnlySettingsDiagnosis(unittest.TestCase):
         env = [{"name": "AUTH_KEY", "secretRef": "sensitive-reference-never-print"}, {"name": "INLINE_SECRET", "value": "sensitive-inline-value-never-print"}]
         before = resource({"image": diagnostic.OLD_API, "revision": diagnostic.OLD_REVISION, "env": env})
         api = copy.deepcopy(before)
+        api["id"] = diagnostic.API_RESOURCE_ID
         api["properties"]["template"]["containers"][0]["image"] = diagnostic.EXPECTED_API
         api["properties"]["template"]["containers"][0]["env"][0]["value"] = ""
         api["properties"]["latestRevisionName"] = api["properties"]["latestReadyRevisionName"] = diagnostic.EXPECTED_REVISIONS["hidi-api"]
@@ -808,7 +810,7 @@ class ReadOnlySettingsDiagnosis(unittest.TestCase):
             previous = Path.cwd()
             try:
                 os.chdir(directory)
-                with unittest_mock.patch.object(diagnostic, "BASELINE_HASH", baseline), unittest_mock.patch.object(diagnostic, "azure_read", side_effect=[api, web, old, api, web]) as read, unittest_mock.patch.object(diagnostic, "public_gets", return_value=[]), contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                with unittest_mock.patch.object(diagnostic, "BASELINE_HASH", baseline), unittest_mock.patch.object(diagnostic, "azure_read", side_effect=[api, web, old, api, web]) as read, unittest_mock.patch.object(diagnostic, "resource_history_report", return_value={"baselineMatched": True, "records": [{"baselineMatched": True}]}), unittest_mock.patch.object(diagnostic, "public_gets", return_value=[]), contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
                     self.assertEqual(diagnostic.main(), 0)
                 saved = Path("evidence/account-otp-settings-diagnostic.json").read_text()
                 self.assertEqual(json.loads(saved), json.loads(output.getvalue()))
@@ -829,6 +831,193 @@ class ReadOnlySettingsDiagnosis(unittest.TestCase):
         self.assertIn("path: evidence/account-otp-settings-diagnostic.json", workflow)
         self.assertEqual(len(diagnostic.AZURE_READS), 3)
         self.assertTrue(all(arguments[:2] == ("containerapp", "show") or arguments[:3] == ("containerapp", "revision", "show") for arguments in diagnostic.AZURE_READS))
+
+
+class ResourceChangeHistoryDiagnosis(unittest.TestCase):
+    def fixture(self):
+        api, web, old, baseline = ReadOnlySettingsDiagnosis().fixture()
+        before = copy.deepcopy(api)
+        before["type"] = "Microsoft.App/containerApps"
+        before["properties"]["template"]["containers"][0]["image"] = diagnostic.OLD_API
+        del before["properties"]["template"]["containers"][0]["env"][0]["value"]
+        before["properties"]["latestRevisionName"] = diagnostic.OLD_REVISION
+        snapshot_id = "11111111111111111111_22222222-3333-aaaa-bbbb-444444444444_5555555555_6666666666"
+        envelope = {"id": diagnostic.API_RESOURCE_ID + "/providers/Microsoft.Resources/snapshots/" + snapshot_id, "name": snapshot_id, "type": "Microsoft.Resources/snapshots", "properties": {"apiVersion": "2025-07-01", "content": before}}
+        record = {"id": "private-change-record-id", "properties": {"targetResourceId": diagnostic.API_RESOURCE_ID, "changeType": "Update", "changeAttributes": {"timestamp": "2026-10-10T00:33:42Z", "previousResourceSnapshotId": snapshot_id, "changedBy": "private-person@example.com"}, "changes": {"properties.template.containers[0].env[0].value": {"newValue": "private-history-value"}, "properties.template.containers[0].image": {"previousValue": diagnostic.OLD_API, "newValue": diagnostic.EXPECTED_API}, "properties.provisioningState": {"newValue": "Succeeded"}}}}
+        return api, web, old, baseline, record, envelope
+
+    def page(self, records, total=None, token=None, truncated=False):
+        response = {"data": records, "count": len(records), "totalRecords": len(records) if total is None else total, "resultTruncated": truncated}
+        if token is not None:
+            response["$skipToken"] = token
+        return response
+
+    def test_transport_allows_only_fixed_read_query_and_target_snapshot_get(self):
+        body = diagnostic.graph_body()
+        with unittest_mock.patch.object(diagnostic.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, stdout='{"data":[]}', stderr="")) as run:
+            diagnostic.azure_rest_read("POST", diagnostic.GRAPH_URL, body)
+            args = run.call_args.args[0]
+            self.assertEqual(args[:6], ["az", "rest", "--method", "POST", "--url", diagnostic.GRAPH_URL])
+            self.assertEqual(json.loads(args[args.index("--body") + 1]), body)
+            self.assertTrue(run.call_args.kwargs["capture_output"])
+            diagnostic.azure_rest_read("GET", diagnostic.snapshot_url("bounded_snapshot-id"))
+            self.assertNotIn("--body", run.call_args.args[0])
+            bad_body = copy.deepcopy(body); bad_body["query"] = "resources | limit 100"
+            for method, url, request_body in [("PATCH", diagnostic.GRAPH_URL, body), ("POST", diagnostic.GRAPH_URL, bad_body), ("GET", "https://untrusted.example/snapshot", None), ("GET", diagnostic.SNAPSHOT_PREFIX + "../other?api-version=2022-11-01-preview", None), ("GET", diagnostic.SNAPSHOT_PREFIX + "id?api-version=2025-01-01", None)]:
+                calls = run.call_count
+                with self.subTest(method=method, url=url), self.assertRaises(AssertionError):
+                    diagnostic.azure_rest_read(method, url, request_body)
+                self.assertEqual(run.call_count, calls)
+            run.return_value = subprocess.CompletedProcess([], 1, stdout="private-json", stderr="private-Azure-error")
+            with self.assertRaisesRegex(RuntimeError, "^Bounded Azure history read failed$"):
+                diagnostic.azure_rest_read("POST", diagnostic.GRAPH_URL, body)
+
+    def test_two_pages_are_complete_and_fixed_target_window_query_is_preserved(self):
+        *_, record, _ = self.fixture()
+        second = copy.deepcopy(record); second["id"] = "second-private-record"
+        pages = [self.page([record], total=2, token="private-continuation", truncated=True), self.page([second], total=2)]
+        with unittest_mock.patch.object(diagnostic, "azure_rest_read", side_effect=pages) as read:
+            self.assertEqual(diagnostic.read_incident_history(), [record, second])
+        self.assertEqual(read.call_count, 2)
+        self.assertEqual(read.call_args_list[0].args, ("POST", diagnostic.GRAPH_URL, diagnostic.graph_body()))
+        self.assertEqual(read.call_args_list[1].args, ("POST", diagnostic.GRAPH_URL, diagnostic.graph_body("private-continuation")))
+        self.assertIn(diagnostic.API_RESOURCE_ID, diagnostic.HISTORY_QUERY)
+        self.assertIn(diagnostic.HISTORY_START, diagnostic.HISTORY_QUERY)
+        self.assertIn(diagnostic.HISTORY_END, diagnostic.HISTORY_QUERY)
+
+    def test_partial_excessive_cyclic_wrong_target_or_outside_window_history_stops(self):
+        *_, record, _ = self.fixture()
+        for mutation in ["partial", "excessive", "cycle", "duplicate", "count-change", "target", "time", "field-truncated", "snapshot-id"]:
+            first, second = copy.deepcopy(record), copy.deepcopy(record)
+            second["id"] = "second-private-record"
+            pages = [self.page([first])]
+            if mutation == "partial": pages[0]["resultTruncated"] = True
+            elif mutation == "excessive": pages[0]["totalRecords"] = 9
+            elif mutation in ["cycle", "duplicate", "count-change"]:
+                pages = [self.page([first], total=2, token="opaque", truncated=True), self.page([second], total=2)]
+                if mutation == "cycle": pages[1]["$skipToken"] = "opaque"
+                elif mutation == "duplicate": second["id"] = first["id"]
+                else: pages[1]["totalRecords"] = 1
+            elif mutation == "target": first["properties"]["targetResourceId"] += "-other"
+            elif mutation == "time": first["properties"]["changeAttributes"]["timestamp"] = "2026-10-10T00:37:00Z"
+            elif mutation == "field-truncated": first["properties"]["changes"]["properties.template.containers[0].env[0].value"]["isTruncated"] = "true"
+            else: first["properties"]["changeAttributes"]["previousResourceSnapshotId"] = "../../different-resource"
+            with self.subTest(mutation=mutation), unittest_mock.patch.object(diagnostic, "azure_rest_read", side_effect=pages), self.assertRaises(AssertionError):
+                diagnostic.read_incident_history()
+
+    def test_raw_prior_snapshot_full_hash_is_authority_and_private_values_are_not_reported(self):
+        api, _, _, baseline, record, envelope = self.fixture()
+        del envelope["properties"]["content"]["properties"]["latestRevisionName"]
+        with unittest_mock.patch.object(diagnostic, "BASELINE_HASH", baseline), unittest_mock.patch.object(diagnostic, "azure_rest_read", side_effect=[self.page([record]), envelope]) as read:
+            report = diagnostic.resource_history_report(api, b"private-run-key")
+        self.assertEqual(read.call_count, 2)
+        self.assertEqual(read.call_args_list[1].args, ("GET", diagnostic.snapshot_url(envelope["name"])))
+        self.assertTrue(report["baselineMatched"])
+        entry = report["records"][0]
+        self.assertEqual(entry["priorSnapshotSettingsHash"], baseline)
+        self.assertEqual(entry["unhashedMetadataSupplied"], ["/properties/latestRevisionName"])
+        self.assertTrue(entry["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+        self.assertEqual([field["path"] for field in entry["changedProtectedFields"]], ["/template/containers/0/env/0/value"])
+        self.assertEqual(len(entry["declaredFieldChanges"]["fields"]), 1)
+        for private in ["private-history-value", "private-person@example.com", "private-change-record-id", envelope["name"], "sensitive-reference-never-print", "sensitive-inline-value-never-print", "private-run-key"]:
+            self.assertNotIn(private, json.dumps(report))
+
+    def test_empty_or_model_mismatch_history_cannot_authorize_baseline_inference(self):
+        api, _, _, baseline, record, envelope = self.fixture()
+        with unittest_mock.patch.object(diagnostic, "azure_rest_read", return_value=self.page([])) as read:
+            empty = diagnostic.resource_history_report(api, b"private-key")
+        self.assertEqual(read.call_count, 1)
+        self.assertFalse(empty["baselineMatched"])
+        self.assertEqual(empty["status"], "empty-unresolved")
+        envelope["properties"]["content"]["identity"] = {"type": "None"}
+        with unittest_mock.patch.object(diagnostic, "BASELINE_HASH", baseline), unittest_mock.patch.object(diagnostic, "azure_rest_read", side_effect=[self.page([record]), envelope]):
+            report = diagnostic.resource_history_report(api, b"private-key")
+        self.assertFalse(report["baselineMatched"])
+        self.assertNotIn("changedProtectedFields", report["records"][0])
+        self.assertNotIn("onlyMissingToEmptyValueOnRetainedSecretRefs", report["records"][0])
+
+    def test_snapshot_target_envelope_or_old_image_drift_is_never_authoritative(self):
+        for mutation in ["name", "envelope-id", "content-id", "type", "image"]:
+            api, _, _, baseline, record, envelope = self.fixture()
+            if mutation == "name": envelope["name"] = "other"
+            elif mutation == "envelope-id": envelope["id"] += "other"
+            elif mutation == "content-id": envelope["properties"]["content"]["id"] += "other"
+            elif mutation == "type": envelope["properties"]["content"]["type"] = "Microsoft.Web/sites"
+            else: envelope["properties"]["content"]["properties"]["template"]["containers"][0]["image"] = diagnostic.EXPECTED_API
+            with self.subTest(mutation=mutation), unittest_mock.patch.object(diagnostic, "BASELINE_HASH", baseline), unittest_mock.patch.object(diagnostic, "azure_rest_read", side_effect=[self.page([record]), envelope]):
+                if mutation == "image":
+                    self.assertFalse(diagnostic.resource_history_report(api, b"private-key")["baselineMatched"])
+                else:
+                    with self.assertRaises(AssertionError): diagnostic.resource_history_report(api, b"private-key")
+
+    def test_whole_protected_schema_diff_rejects_non_template_mutations(self):
+        api, _, _, _, _, envelope = self.fixture()
+        before = envelope["properties"]["content"]
+        self.assertEqual(hashlib.sha256(json.dumps(diagnostic.protected_settings(before), sort_keys=True).encode()).hexdigest(), guard.snapshot(before)["settingsHash"])
+        for mutation in ["identity", "location", "tags", "configuration", "managedEnvironmentId"]:
+            after = copy.deepcopy(api)
+            if mutation == "configuration": after["properties"]["configuration"]["registries"] = [{"passwordSecretRef": "private-new-reference"}]
+            elif mutation == "managedEnvironmentId": after["properties"][mutation] = "/different/environment"
+            else: after[mutation] = {"private-key": "private-mutation-value"} if mutation != "location" else "eastus"
+            report = diagnostic.protected_resource_change_report(before, after, b"private-key")
+            with self.subTest(mutation=mutation):
+                self.assertFalse(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+                self.assertFalse(report["onlyAbsentOrNullSecretRefValuesAndDocumentedScaleDefaults"])
+                self.assertGreater(len(report["changedProtectedFields"]), 1)
+                self.assertNotIn("private-mutation-value", json.dumps(report))
+                self.assertNotIn("private-new-reference", json.dumps(report))
+
+    def test_dynamic_web_is_validated_but_cannot_relax_api_incident_pin(self):
+        api, web, old, baseline, _, _ = self.fixture()
+        web["properties"]["template"]["containers"][0]["image"] = "acrhidiprod0927.azurecr.io/hidi-web@sha256:" + "c" * 64
+        web["properties"]["latestRevisionName"] = web["properties"]["latestReadyRevisionName"] = "hidi-web--independent-reviewed-release"
+        ReadOnlySettingsDiagnosis().report(api, web, old, baseline)
+        for mutation in ["tag", "not-ready", "api-id"]:
+            changed_api, changed_web = copy.deepcopy(api), copy.deepcopy(web)
+            if mutation == "tag": changed_web["properties"]["template"]["containers"][0]["image"] = "hidi-web:latest"
+            elif mutation == "not-ready": changed_web["properties"]["latestReadyRevisionName"] = "hidi-web--old"
+            else: changed_api["id"] += "other"
+            with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                ReadOnlySettingsDiagnosis().report(changed_api, changed_web, old, baseline)
+
+    def test_main_uses_history_authority_and_final_web_transition_blocks_the_report(self):
+        for scenario in ["matched", "empty", "web-transition"]:
+            api, web, old, baseline, record, envelope = self.fixture()
+            # Full-resource history detects even drift outside revision templates.
+            if scenario == "matched": api["tags"]["purpose"] = "changed-nonsecret-tag"
+            final_web = copy.deepcopy(web)
+            if scenario == "web-transition": final_web["properties"]["template"]["containers"][0]["image"] = "acrhidiprod0927.azurecr.io/hidi-web@sha256:" + "d" * 64
+            rest = [self.page([])] if scenario == "empty" else [self.page([record]), envelope]
+            output, errors = io.StringIO(), io.StringIO()
+            with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as directory:
+                previous = Path.cwd()
+                try:
+                    os.chdir(directory)
+                    with unittest_mock.patch.object(diagnostic, "BASELINE_HASH", baseline), unittest_mock.patch.object(diagnostic, "azure_read", side_effect=[api, web, old, api, final_web]) as read, unittest_mock.patch.object(diagnostic, "azure_rest_read", side_effect=rest), unittest_mock.patch.object(diagnostic, "public_gets", return_value=[]), contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                        status = diagnostic.main()
+                    path = Path("evidence/account-otp-settings-diagnostic.json")
+                    if scenario == "web-transition":
+                        self.assertEqual(status, 1)
+                        self.assertFalse(path.exists())
+                        self.assertEqual(output.getvalue(), "")
+                    else:
+                        report = json.loads(path.read_text())
+                        self.assertEqual(json.loads(output.getvalue()), report)
+                        self.assertEqual(status, 0 if scenario == "matched" else 2)
+                        self.assertEqual(report["baselineMatched"], scenario == "matched")
+                        if scenario == "matched":
+                            self.assertEqual(report["matchedBaselineBases"], ["resource-change-prior-snapshot"])
+                            self.assertFalse(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+                            self.assertIn("/tags/purpose", [item["path"] for item in report["changedProtectedFields"]])
+                        else:
+                            self.assertTrue(report["reconstructedBaselineMatches"], "A legacy model match is insufficient in phase 4")
+                            self.assertNotIn("changedProtectedFields", report)
+                        self.assertEqual(errors.getvalue(), "")
+                    self.assertEqual(read.call_count, 5)
+                    for private in ["private-history-value", "private-person@example.com", "sensitive-reference-never-print", "sensitive-inline-value-never-print"]:
+                        self.assertNotIn(private, output.getvalue() + errors.getvalue())
+                finally:
+                    os.chdir(previous)
 
 
 class AccountRollout(unittest.TestCase):
