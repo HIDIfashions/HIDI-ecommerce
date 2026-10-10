@@ -104,6 +104,30 @@ async function settledReload(page) {
   await settleFixtureNetwork(page);
   return page.reload({ waitUntil: 'networkidle', timeout: 30000 });
 }
+function sampleDrawerGeometry(page) {
+  // Both boxes must come from one browser task, rather than two protocol calls
+  // that can straddle a header resize or its ResizeObserver positioning update.
+  return page.evaluate(() => {
+    const header=document.querySelector('.site-header'),panel=document.querySelector('#mobile-navigation');
+    const box=element=>{if(!element)return null;const rect=element.getBoundingClientRect();return {x:rect.x,y:rect.y,width:rect.width,height:rect.height};};
+    return {header:box(header),panel:box(panel),menuTop:header?.style.getPropertyValue('--hidi-menu-top'),panelTop:panel?getComputedStyle(panel).top:null,announcementHeight:getComputedStyle(document.documentElement).getPropertyValue('--hidi-announcement-height'),scrollY,viewport:{width:innerWidth,height:innerHeight}};
+  });
+}
+async function waitForDrawerAlignment(page) {
+  const started=Date.now(),samples=[];
+  let stableAnchor,stableSince;
+  while(Date.now()-started<3000) {
+    const geometry=await sampleDrawerGeometry(page),{header,panel}=geometry;
+    const aligned=header&&panel&&header.width>0&&header.height>0&&panel.width>0&&panel.height>0&&Math.abs(panel.y-(header.y+header.height))<=2;
+    const stable=stableAnchor&&header&&panel&&['header','panel'].every(name=>['x','y','width','height'].every(key=>Math.abs(geometry[name][key]-stableAnchor[name][key])<=0.25));
+    samples.push({elapsedMilliseconds:Date.now()-started,...geometry});if(samples.length>8)samples.shift();
+    if(!aligned) {stableAnchor=undefined;stableSince=undefined;}
+    else if(!stable) {stableAnchor=geometry;stableSince=Date.now();}
+    if(aligned&&stableSince!==undefined&&Date.now()-stableSince>=150)return geometry;
+    await delay(25);
+  }
+  assert.fail('Drawer must meet header within 2px after stable layout: '+JSON.stringify(samples));
+}
 async function fontAudit(page,engine,label){
   await page.evaluate(()=>document.fonts.ready);
   const values=await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(el=>{const style=getComputedStyle(el),box=el.getBoundingClientRect();return !el.closest('[aria-hidden="true"],.sr-only,.cart-status,script,style')&&style.display!=='none'&&style.visibility!=='hidden'&&box.width>0&&box.height>0&&[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());}).map(el=>{const style=getComputedStyle(el);return{section:el.closest('[data-section]')?.getAttribute('data-section')||(el.closest('.site-header')?'header':el.closest('.footer')?'footer':el.closest('[role="dialog"],dialog')?'dialog':'global'),tag:el.tagName,text:el.textContent.trim().replace(/\s+/g,' ').slice(0,140),family:style.fontFamily,size:style.fontSize,weight:style.fontWeight,lineHeight:style.lineHeight,spacing:style.letterSpacing,color:style.color};}));
@@ -159,7 +183,7 @@ try{
     });
     await scenario(browser,engine,'NAV-01','Mobile drawer anchor, single close action, Escape and focus return',async page=>{
       const button=page.getByRole('button',{name:'Open menu',exact:true});await button.click();const panel=page.getByRole('dialog',{name:'Mobile navigation'});await panel.waitFor();
-      const headerBox=await page.locator('.site-header').boundingBox(),panelBox=await panel.boundingBox();assert(Math.abs(panelBox.y-(headerBox.y+headerBox.height))<=2,'Drawer must meet header');assert.equal(await page.getByRole('button',{name:'Close menu',exact:true}).count(),1);await fontAudit(page,engine,'mobile-navigation');
+      const geometry=await waitForDrawerAlignment(page),headerBox=geometry.header,panelBox=geometry.panel;assert(Math.abs(panelBox.y-(headerBox.y+headerBox.height))<=2,'Drawer must meet header: '+JSON.stringify(geometry));assert.equal(await page.getByRole('button',{name:'Close menu',exact:true}).count(),1);await fontAudit(page,engine,'mobile-navigation');
       await page.keyboard.press('Escape');await panel.waitFor({state:'hidden'});await until(()=>page.getByRole('button',{name:'Open menu',exact:true}).evaluate(el=>el===document.activeElement),'menu focus return');
     },{viewport:{width:390,height:844},hasTouch:true});
     await scenario(browser,engine,'MOT-01','Reduced motion avoids playback and keeps campaign poster visible',async page=>{

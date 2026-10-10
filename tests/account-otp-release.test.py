@@ -469,6 +469,81 @@ finally{server.closeAllConnections();await new Promise(done=>server.close(done))
         self.assertEqual(len(diagnostics[0]["pages"]), 2)
 
 
+class EditorialDrawerGeometry(unittest.TestCase):
+    def helpers(self):
+        source = (ROOT / "tests/editorial-storefront.browser.mjs").read_text()
+        helpers = []
+        for name in ["sampleDrawerGeometry", "waitForDrawerAlignment"]:
+            match = re.search(r"(?:async )?function " + name + r"\([^\n]+\) \{\n.*?^\}", source, re.S | re.M)
+            self.assertIsNotNone(match)
+            helpers.append(match.group(0))
+        return source, "\n".join(helpers)
+
+    def execute(self, scenario):
+        _, helpers = self.helpers()
+        script = helpers + "\n" + """
+import assert from 'node:assert/strict';
+let now=0;Date.now=()=>now;const delay=async milliseconds=>{now+=milliseconds;};
+const geometry=(top=89,headerY=26)=>({header:{x:0,y:headerY,width:390,height:63},panel:{x:0,y:top,width:390,height:755},menuTop:top+'px',panelTop:top+'px',announcementHeight:'26px',scrollY:0,viewport:{width:390,height:844}});
+""" + scenario
+        result = subprocess.run(["node", "--input-type=module"], input=script, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_atomic_measurement_reads_both_boxes_in_one_browser_task(self):
+        self.execute("""
+let evaluations=0,reads=[];
+globalThis.scrollY=0;globalThis.innerWidth=390;globalThis.innerHeight=844;
+const current=geometry(),header={style:{getPropertyValue:()=> '89px'},getBoundingClientRect:()=>{reads.push('header');return current.header;}};
+const panel={getBoundingClientRect:()=>{reads.push('panel');return current.panel;}},root={};
+globalThis.document={documentElement:root,querySelector:selector=>selector==='.site-header'?header:panel};
+globalThis.getComputedStyle=element=>({top:'89px',getPropertyValue:()=> '26px'});
+const sample=await sampleDrawerGeometry({evaluate:async callback=>{evaluations++;return callback();}});
+assert.equal(evaluations,1);assert.deepEqual(reads,['header','panel']);assert.deepEqual(sample,current);
+""")
+        source, _ = self.helpers()
+        nav = source[source.index("'NAV-01'"):source.index("'MOT-01'")]
+        self.assertIn("await waitForDrawerAlignment(page)", nav)
+        self.assertNotIn("boundingBox()", nav)
+        self.assertIn("Math.abs(panelBox.y-(headerBox.y+headerBox.height))<=2", nav)
+        self.assertIn("assert.deepEqual(errors,[],'Unexpected browser exceptions')", source)
+
+    def test_delayed_resize_position_update_requires_a_fresh_stable_interval(self):
+        self.execute("""
+let samples=0;
+const page={evaluate:async()=>{samples++;return now<125?geometry(63):geometry();}};
+const result=await waitForDrawerAlignment(page);
+assert.equal(result.panel.y,89);assert(now>=275&&now<325,'A delayed ResizeObserver update must be followed by stable aligned samples');assert(samples>8);
+""")
+
+    def test_exact_two_pixel_tolerance_passes_but_permanent_misalignment_fails_with_boxes(self):
+        self.execute("""
+await waitForDrawerAlignment({evaluate:async()=>geometry(91)});assert(now>=150);
+now=0;
+await assert.rejects(waitForDrawerAlignment({evaluate:async()=>geometry(91.01)}),error=>{
+  assert.match(error.message,/Drawer must meet header within 2px/);assert.match(error.message,/"menuTop":"91.01px"/);
+  assert.match(error.message,/"header":/);assert.match(error.message,/"panel":/);assert.match(error.message,/"viewport":/);return true;
+});assert.equal(now,3000,'Permanent geometry errors cannot be hidden by the wait');
+""")
+
+    def test_aligned_but_moving_layout_does_not_pass_as_stable(self):
+        self.execute("""
+await assert.rejects(waitForDrawerAlignment({evaluate:async()=>geometry(89+now/25,26+now/25)}),/Drawer must meet header within 2px/);
+assert.equal(now,3000);
+""")
+
+    def test_hidden_zero_size_boxes_cannot_pass_alignment(self):
+        self.execute("""
+await assert.rejects(waitForDrawerAlignment({evaluate:async()=>{const result=geometry();result.header.height=0;result.panel.y=26;result.panel.width=0;return result;}}),/Drawer must meet header within 2px/);
+assert.equal(now,3000);
+""")
+
+    def test_slow_drift_cannot_accumulate_across_the_stable_window(self):
+        self.execute("""
+await assert.rejects(waitForDrawerAlignment({evaluate:async()=>geometry(89+now/125,26+now/125)}),/Drawer must meet header within 2px/);
+assert.equal(now,3000,'Even 0.2px movement per sample must remain within 0.25px of the fixed stable-window anchor');
+""")
+
+
 class AccountRollout(unittest.TestCase):
     def run_release(self, scenario):
         with tempfile.TemporaryDirectory(prefix="hidi-account-release-") as directory:
