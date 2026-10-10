@@ -94,9 +94,9 @@ function imageExtension(mimeType: string) {
   } as Record<string, string>)[mimeType] ?? "jpg";
 }
 
-function objectKey(variantId: string, mimeType: string) {
+function objectKey(variantId: string, mimeType: string, uploadKey?: string) {
   const cleanVariant = variantId.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "variant";
-  return `products/variants/${cleanVariant}/${Date.now()}-${randomUUID()}.${imageExtension(mimeType)}`;
+  return `products/variants/${cleanVariant}/${uploadKey ? `batch-${uploadKey}` : `${Date.now()}-${randomUUID()}`}.${imageExtension(mimeType)}`;
 }
 
 function signingKey(secretAccessKey: string, dateStamp: string) {
@@ -195,9 +195,17 @@ export async function POST(
       return NextResponse.json({ message: "Image must be no larger than 12 MB" }, { status: 400 });
     }
 
+    let uploadKey: string | undefined;
+    const imageSku = String(form.get("imageSku") ?? "");
+    if (imageSku) {
+      const photoNumber = String(form.get("photoNumber") ?? "");
+      if (!/^[A-Z][A-Z0-9]*(?:[_-][A-Z0-9]+)*$/.test(imageSku) || imageSku.length > 64 || !/^[1-9]\d{0,3}$/.test(photoNumber)) return NextResponse.json({ message: "Invalid Image SKU or photo number" }, { status: 400 });
+      if (process.env.MEDIA_STORAGE_PROVIDER !== "azure") return NextResponse.json({ message: "Image SKU uploads require the configured Azure photo storage" }, { status: 503 });
+      uploadKey = sha256Hex([imageSku, photoNumber, file.type, sha256Hex(Buffer.from(await file.arrayBuffer()))].join("\u0000"));
+    }
     await createUploadTicket(request, variantId, file);
     const uploaded = process.env.MEDIA_STORAGE_PROVIDER === "azure"
-      ? await uploadProductImage(objectKey(variantId, file.type), Buffer.from(await file.arrayBuffer()), file.type)
+      ? await uploadProductImage(objectKey(variantId, file.type, uploadKey), Buffer.from(await file.arrayBuffer()), file.type)
       : await uploadToR2(variantId, file);
 
     const response = await saveImageMetadata(request, variantId, {

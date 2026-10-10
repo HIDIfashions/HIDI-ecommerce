@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {spawn} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -45,8 +46,8 @@ try{
           if(tail==='/'+product.id+'/status'&&method==='POST'){statusWrites++;assert(product.variants.every(variant=>variant.images.length));assert.equal(request.postDataJSON().expectedUpdatedAt,product.updatedAt);product.status='ACTIVE';return send(200,product);}
         }
         if(url.origin===base&&/^\/api\/admin\/inventory\/variant-[^/]+\/images$/.test(url.pathname)&&method==='POST'){
-          const form=await new Response(request.postDataBuffer(),{headers:{'content-type':request.headers()['content-type']}}).formData();assert.equal(form.get('applyToColor'),'true');const alt=form.get('alt'),number=Number(alt.match(/photo (\d+)/)[1]);photoNumbers.push(number);photoWrites++;
-          for(const variant of product.variants)variant.images.push({id:'image-'+photoWrites+'-'+variant.id,url:'/brand/hidi-logo-header.svg?fixture='+photoWrites,alt,position:variant.images.length});
+          const form=await new Response(request.postDataBuffer(),{headers:{'content-type':request.headers()['content-type']}}).formData();assert.equal(form.get('applyToColor'),'true');const alt=form.get('alt'),number=Number(form.get('photoNumber')),file=form.get('file'),digest=createHash('sha256').update(Buffer.from(await file.arrayBuffer())).digest('hex'),key=createHash('sha256').update([form.get('imageSku'),String(number),file.type,digest].join('\u0000')).digest('hex'),photoUrl='/media/products/variants/source/batch-'+key+'.'+({'image/jpeg':'jpg','image/webp':'webp'})[file.type];assert(!alt.includes('sha256'));photoNumbers.push(number);photoWrites++;
+          for(const variant of product.variants)variant.images.push({id:'image-'+photoWrites+'-'+variant.id,url:photoUrl,alt,position:variant.images.length});
           const variant=product.variants.find(variant=>url.pathname.includes('/'+variant.id+'/'));if(lost){lost=false;return send(500,{message:'Lost successful response'});}return send(200,variant);
         }
         if(!['GET','HEAD'].includes(method)){if(isBlockedTelemetry(method,url,base))return route.abort();unexpected.push(method+' '+url.pathname);return route.abort();}return route.continue();

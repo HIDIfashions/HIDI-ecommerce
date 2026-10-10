@@ -7,6 +7,7 @@ HERE = Path(__file__).resolve().parent
 ID = r'[A-Za-z_$][\w$]*'
 IMPORT = 'apps/web/.next/server/app/admin/import/page.js'
 MANIFEST = 'apps/web/.next/server/app/admin/import/page_client-reference-manifest.js'
+PHOTO = 'apps/web/.next/server/app/api/admin/inventory/[variantId]/images/route.js'
 CLIENT = '/admin-tools-assets/image-sku-client.mjs'
 
 def once(text, old, new):
@@ -14,6 +15,9 @@ def once(text, old, new):
     return text.replace(old, new)
 
 def native(text):
+    if 'hidiImageSkusSaved' in text:
+        for name,count in [('preflightMappings',1),('saveImageSku',1),('prepareMappedPhotos',2),('uploadMappedPhotoCandidate',1)]:assert text.count('.'+name+'(')==count,'Previously installed Image SKU hooks differ'
+        return text
     start = re.search(r'function (?P<fn>' + ID + r')\((?P<sheet>' + ID + r')\)\{let (?P<rows>' + ID + r')=(?P=sheet)\.map\(\((?P<raw>' + ID + r'),(?P<index>' + ID + r')\)=>\{let ' + ID + r'=(?P<take>' + ID + r')\((?P=raw),"product_name","product"\)', text)
     assert start, 'Product row normalizer missing'
     end = text.index('function ', start.end())
@@ -74,14 +78,29 @@ def patch_web(base, overlay):
         mapping = updated
     else: raise AssertionError('Image SKU asset references did not settle')
     files = {mapping.get(name, name): value for name, value in final.items() if value != original[name]}
+    photo = original[PHOTO]
+    keyfn = re.search(r'function (?P<fn>'+ID+r')\((?P<variant>'+ID+r'),(?P<mime>'+ID+r')\)\{let (?P<clean>'+ID+r')=(?P=variant)\.toLowerCase\(\).*?return`products/variants/\$\{(?P=clean)\}/',photo); assert keyfn
+    photo = once(photo, keyfn[0], keyfn[0].replace('('+keyfn['variant']+','+keyfn['mime']+')','('+keyfn['variant']+','+keyfn['mime']+',hidiUploadKey)'))
+    insert = photo.index('return`products/variants/${'+keyfn['clean']+'}/')
+    expression = 'if(hidiUploadKey)return`products/variants/${'+keyfn['clean']+'}/batch-${hidiUploadKey}.${({"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/avif":"avif"})['+keyfn['mime']+']??"jpg"}`;'
+    photo = photo[:insert]+expression+photo[insert:]
+    sha = re.search(r'function (?P<fn>'+ID+r')\('+ID+r'\)\{return\(0,'+ID+r'\.createHash\)\("sha256"\)',photo); assert sha
+    target = re.search(r'await (?P<ticket>'+ID+r')\((?P<request>'+ID+r'),(?P<variant>'+ID+r'),(?P<file>'+ID+r')\);let '+ID+r'="azure"===process\.env\.MEDIA_STORAGE_PROVIDER\?await \(0,'+ID+r'\.i\)\('+re.escape(keyfn['fn'])+r'\((?P=variant),(?P=file)\.type\)',photo); assert target
+    form = re.search(r'let (?P<form>'+ID+r')=await '+re.escape(target['request'])+r'\.formData\(\)',photo); assert form
+    prefix='let hidiUploadKey,hidiImageSku=String('+form['form']+'.get("imageSku")??"");if(hidiImageSku){let hidiPhotoNumber=String('+form['form']+'.get("photoNumber")??"");if(!/^[A-Z][A-Z0-9]*(?:[_-][A-Z0-9]+)*$/.test(hidiImageSku)||hidiImageSku.length>64||!/^[1-9]\\d{0,3}$/.test(hidiPhotoNumber))throw Error("Invalid Image SKU or photo number");if(process.env.MEDIA_STORAGE_PROVIDER!=="azure")throw Error("Image SKU uploads require the configured Azure photo storage");hidiUploadKey='+sha['fn']+'([hidiImageSku,hidiPhotoNumber,'+target['file']+'.type,'+sha['fn']+'(Buffer.from(await '+target['file']+'.arrayBuffer()))].join("\\u0000"));}'
+    photo = photo[:target.start()]+prefix+photo[target.start():]
+    photo = once(photo,keyfn['fn']+'('+target['variant']+','+target['file']+'.type),Buffer.from(await ',keyfn['fn']+'('+target['variant']+','+target['file']+'.type,hidiUploadKey),Buffer.from(await ')
+    files[PHOTO] = photo
     handler = (base / 'admin-tools/handler.mjs').read_text()
-    handler = once(handler, "import { createProductDeletionHandler } from './product-delete-handler.mjs';", "import { createProductDeletionHandler } from './product-delete-handler.mjs';\nimport {createImageSkuHandler} from './image-sku-handler.mjs';")
-    handler = once(handler, "'admin-tools.css',", "'image-sku-client.mjs','admin-tools.css',")
-    handler = once(handler, 'let deletionHandler;', 'let deletionHandler,imageSkuHandler;')
-    handler = once(handler, 'options={}){', "options={}){\n  if(pathname==='/api/hidi/product-image-skus'||pathname==='/api/hidi/product-image-skus/preflight'){imageSkuHandler??=createImageSkuHandler(options);return imageSkuHandler(request,response,pathname);}")
+    if 'createImageSkuHandler' not in handler:
+        handler = once(handler, "import { createProductDeletionHandler } from './product-delete-handler.mjs';", "import { createProductDeletionHandler } from './product-delete-handler.mjs';\nimport {createImageSkuHandler} from './image-sku-handler.mjs';")
+        handler = once(handler, "'admin-tools.css',", "'image-sku-client.mjs','admin-tools.css',")
+        handler = once(handler, 'let deletionHandler;', 'let deletionHandler,imageSkuHandler;')
+        handler = once(handler, 'options={}){', "options={}){\n  if(pathname==='/api/hidi/product-image-skus'||pathname==='/api/hidi/product-image-skus/preflight'){imageSkuHandler??=createImageSkuHandler(options);return imageSkuHandler(request,response,pathname);}")
+    else:assert "imageSkuHandler??=createImageSkuHandler(options)" in handler and "'image-sku-client.mjs'" in handler,'Installed Image SKU handler differs'
     files['admin-tools/handler.mjs'] = handler
     navigation = (base / 'admin-tools/navigation.js').read_text()
-    files['admin-tools/navigation.js'] = once(navigation, "'opening_qty','sku']", "'opening_qty','sku','image_sku']")
+    files['admin-tools/navigation.js'] = navigation if "'opening_qty','sku','image_sku']" in navigation else once(navigation, "'opening_qty','sku']", "'opening_qty','sku','image_sku']")
     for name in ('image-sku-client.mjs', 'image-sku-handler.mjs', 'image-sku-store.mjs'): files['admin-tools/' + name] = (HERE.parent / 'admin-tools' / name).read_text()
     for name, value in files.items():
         target = overlay / name; target.parent.mkdir(parents=True, exist_ok=True); target.write_text(value)

@@ -1,4 +1,4 @@
-name: Guarded Image SKU photo mapping Azure release
+name: Guarded Image SKU photo mapping and repeat-upload Azure release
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -57,6 +57,7 @@ jobs:
           echo "CANDIDATE_WEB=$tag" >> "$GITHUB_ENV"
       - name: Test actual retained import, photos, publishing and commerce without production writes
         run: |
+          node --test tests/image-sku-runtime-keys.test.mjs
           node deploy/image-sku/candidate.mjs
           node deploy/bulk-publish/candidate.mjs
           node tests/admin-quick-tools.runtime.mjs

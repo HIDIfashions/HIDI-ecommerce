@@ -33,7 +33,7 @@ def compose(tag):
     subprocess.run(['docker','build','--pull=false','-t',tag,str(folder)],check=True);images.extract(tag,candidate)
     verified=bulk.preserve.verify(base,candidate,overlay,set(report['allowedFiles']),json.loads(images.docker('image','inspect',photo.states()['hidi-web']['image'],tag)))
     verified.update({'apiUnchanged':True,'baseImage':photo.states()['hidi-web']['image'],'candidateTag':tag});photo.save('web-preservation.json',verified);photo.unchanged(photo.states())
-    print('PASS: Image SKU changes are confined to eight admin import files; current catalogue-speed fixes and all other runtime files preserved')
+    print('PASS: Image SKU changes are confined to nine admin import/photo files; current catalogue-speed fixes and all other runtime files preserved')
 def apply():
     setup();before=photo.states();photo.require_backups();photo.unchanged(before)
     for path in (EVIDENCE/'web-preservation.json',EVIDENCE/'candidate.json',Path('evidence/bulk-publish/candidate.json'),Path('evidence/four-categories/candidate.json')):assert json.loads(path.read_text()).get('passed') is True,'Required retained regression proof missing'
@@ -51,6 +51,7 @@ def apply():
             assert cloud.get('/_next/'+new.split('apps/web/.next/',1)[1])==(PRIVATE/'web/candidate-app'/new).read_bytes(),'Live import asset differs'
             assert cloud.get('/_next/'+old.split('apps/web/.next/',1)[1])==(PRIVATE/'web/base-app'/old).read_bytes(),'Original immutable import asset changed'
         subprocess.run(['node','deploy/image-sku/live.mjs'],check=True,timeout=600)
+        subprocess.run(['python3','deploy/image-sku/probe-store.py'],check=True,timeout=180)
         assert photo.public_state()==public_before,'Published media changed during deployment';photo.unchanged(deployed)
         photo.save('after.json',{'passed':True,'states':deployed,'sourceSha':os.environ['GITHUB_SHA'],'apiUnchanged':True,'appSettingsPreserved':True,'publishedContentPreserved':True,'imageSkuBulkMappingVerified':True,'sqlSchemaChanged':False,'productRowsModified':False,'blobWrites':False})
         print('PASS: Image SKU bulk mapping is live with persistent Azure storage; no products, photos, API or settings changed by deployment')

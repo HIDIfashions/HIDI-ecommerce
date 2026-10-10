@@ -1,10 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Readable} from 'node:stream';
+import {createHash} from 'node:crypto';
+async function photoUrl(form){const file=form.get('file'),digest=createHash('sha256').update(Buffer.from(await file.arrayBuffer())).digest('hex'),key=createHash('sha256').update([form.get('imageSku'),form.get('photoNumber'),file.type,digest].join('\u0000')).digest('hex');return '/media/products/variants/source/batch-'+key+'.'+({'image/jpeg':'jpg','image/webp':'webp'})[file.type];}
 import {parseImageSkuPhoto, validateImageSkuRows, prepareMappedPhotos, uploadMappedPhotoCandidate} from '../deploy/admin-tools/image-sku-client.mjs';
 import {createImageSkuHandler} from '../deploy/admin-tools/image-sku-handler.mjs';
 import {createImageSkuStore} from '../deploy/admin-tools/image-sku-store.mjs';
-const product = () => ({id:'p1',slug:'magenta-set',status:'DRAFT',updatedAt:'2026-10-10T00:00:00.000Z',variants:['M','L','XL','XXL'].map(size=>({id:'v'+size,color:'Magenta',size,active:true,images:[]}))});
+const product = () => ({id:'p1',name:'Magenta Set',slug:'magenta-set',status:'DRAFT',updatedAt:'2026-10-10T00:00:00.000Z',variants:['M','L','XL','XXL'].map(size=>({id:'v'+size,color:'Magenta',size,active:true,images:[]}))});
 const binding = {imageSku:'KUR_001',productId:'p1',productSlug:'magenta-set',color:'Magenta'};
 const row = extra => ({mode:'NEW',productSlug:'magenta-set',color:'Magenta',imageSku:'KUR_001',errors:[],...extra});
 const candidate = name => ({file:new File(['bytes'],name,{type:name.toLowerCase().endsWith('.webp')?'image/webp':'image/jpeg'}),sourceName:name,variantId:null,sku:null,error:'Unknown SKU'});
@@ -38,7 +40,7 @@ test('existing HIDI SKU photos keep their original matching path',async()=>{
 });
 test('lost successful uploads are confirmed across sizes and are not sent twice',async()=>{
   const data=product(),[item]=await prepareMappedPhotos([candidate('KUR_001_1.JPEG')],api(data));let writes=0;const original=globalThis.fetch;
-  globalThis.fetch=async(url,options)=>{writes++;assert.equal(options.body.get('applyToColor'),'true');const alt=options.body.get('alt');for(const variant of data.variants)variant.images.push({id:'photo-'+variant.id,url:'/media/products/shared.jpeg',alt});return new Response(JSON.stringify({message:'Lost successful response'}),{status:500});};
+  globalThis.fetch=async(url,options)=>{writes++;assert.equal(options.body.get('applyToColor'),'true');const alt=options.body.get('alt'),imageUrl=await photoUrl(options.body);assert(!alt.includes('sha256'));for(const variant of data.variants)variant.images.push({id:'photo-'+variant.id,url:imageUrl,alt});return new Response(JSON.stringify({message:'Lost successful response'}),{status:500});};
   try{await uploadMappedPhotoCandidate(item,api(data));await uploadMappedPhotoCandidate(item,api(data));assert.equal(writes,1);
     const [again]=await prepareMappedPhotos([candidate('KUR_001_1.JPEG')],api(data));assert.equal((await uploadMappedPhotoCandidate(again,api(data))).skipped,true);assert.equal(writes,1);
   }finally{globalThis.fetch=original;}
