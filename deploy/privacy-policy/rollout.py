@@ -68,7 +68,7 @@ def write_image(data, image, suffix):
     path = Path(os.environ['RUNNER_TEMP']) / 'privacy-policy-image-patch.json'
     path.write_text(json.dumps(image_patch(data, image, suffix))); path.chmod(0o600)
     protected = [item.get('value') for item in data['properties']['template']['containers'][0].get('env', [])]
-    protected += [item.get('value') for item in data['properties']['configuration'].get('secrets', [])]
+    protected += [item.get('value') for item in (data['properties']['configuration'].get('secrets') or [])]
     try: azure('rest', '--method', 'patch', '--url', 'https://management.azure.com' + data['id'] + '?api-version=' + API_VERSION, '--body', '@' + str(path), redact=protected)
     finally: path.unlink(missing_ok=True)
 
