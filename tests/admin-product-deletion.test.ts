@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { AdminProductsService } from "../apps/api/src/admin/products/admin-products.service.js";
 import { AdminProductsController } from "../apps/api/src/admin/products/admin-products.controller.js";
-import { parseDelete, parseDeleteCleanup, productMediaKeys } from "../apps/api/src/admin/products/product-input.js";
+import { parseCreate, parseDelete, parseDeleteCleanup, productMediaKeys, isDeletedProduct, DELETED_PRODUCT_SLUG_PREFIX, deletedProductPredicate } from "../apps/api/src/admin/products/product-input.js";
 import { AdminInventoryService } from "../apps/api/src/admin/admin-inventory.service.js";
 
 const timestamp = "2026-10-10T10:00:00.000Z";
@@ -25,14 +25,14 @@ function fixture(options: { status?: string; reserved?: number; reservations?: n
   const calls: any[] = [];
   const record = (name: string, args: unknown) => calls.push({ name, args: structuredClone(args) });
   const detail = () => ({ ...structuredClone(state.product), images: structuredClone(state.productImages), variants: structuredClone(state.variants).map((variant: any) => ({ ...variant, images: structuredClone(state.variantImages.filter((image: any) => image.variantId === variant.id)) })) });
-  const foreignMatches = (row: any, query: any) => options.otherDeleted && (query.where.product?.is?.status?.not === "DELETED" || query.where.variant?.is?.product?.is?.status?.not === "DELETED") ? false : query.where.id?.in ? query.where.id.in.includes(row.id) : query.where.OR
+  const foreignMatches = (row: any, query: any) => options.otherDeleted && (query.where.product?.is?.NOT || query.where.variant?.is?.product?.is?.NOT) ? false : query.where.id?.in ? query.where.id.in.includes(row.id) : query.where.OR
     ? query.where.OR.some((condition: any) => condition.url?.in?.includes(row.url) || condition.storagePath?.in?.includes(row.storagePath) || (condition.url?.contains && row.url?.includes(condition.url.contains)) || (condition.storagePath?.contains && row.storagePath?.includes(condition.storagePath.contains)))
     : query.where.url?.in ? query.where.url.in.includes(row.url) : true;
   const db: any = {
     product: {
       findUnique: async (args: any) => args.where.id === state.product.id ? detail() : null,
-      findMany: async (args: any) => { record("product.findMany", args); return args.where.status?.not === state.product.status ? [] : [detail()]; },
-      count: async (args: any) => args.where.status?.not === state.product.status ? 0 : 1,
+      findMany: async (args: any) => { record("product.findMany", args); return args.where.NOT && isDeletedProduct(state.product) ? [] : [detail()]; },
+      count: async (args: any) => args.where.NOT && isDeletedProduct(state.product) ? 0 : 1,
       update: async (args: any) => { record("product.update", args); Object.assign(state.product, args.data); return detail(); },
     },
     productVariant: { updateMany: async (args: any) => { record("productVariant.updateMany", args); state.variants.forEach((row: any) => Object.assign(row, args.data)); return { count: state.variants.length }; } },
@@ -73,7 +73,9 @@ test("delete removes a catalogue product and its bag items while preserving all 
   const f = fixture(); const before = f.state();
   const result = await f.service.beginDeletion("product_1", confirmation());
   assert.equal(result.status, "DELETED"); assert.equal(result.historyPreserved, true); assert.equal(result.repeated, false);
-  assert.equal(f.state().variants[0].active, false); assert.equal(f.state().product.status, "DELETED");
+  assert.equal(f.state().variants[0].active, false); assert.equal(f.state().product.status, "ARCHIVED");
+  assert.equal(f.state().product.slug, DELETED_PRODUCT_SLUG_PREFIX + Buffer.from(before.product.id, "utf8").toString("hex"));
+  assert.equal(isDeletedProduct(f.state().product), true);
   assert.deepEqual(f.state().cartItems, [{ id: "cartitem_2", productId: "product_2" }]);
   for (const key of ["orderItems", "receipts", "movements", "productImages", "variantImages"]) assert.deepEqual(f.state()[key], before[key]);
   assert.deepEqual(f.state().variants[0].inventory, before.variants[0].inventory);
@@ -134,8 +136,8 @@ test("another deleted product's queued photos do not orphan blobs by being treat
 
 test("normal photo upload, attachment and removal cannot bypass a product tombstone", async () => {
   const deniedDb: any = {
-    productVariant: { findUnique: async () => ({ id: "variant_1", productId: "product_1", color: "Olive", size: "M", product: { name: "Olive Kurta", status: "DELETED" } }) },
-    productVariantImage: { findFirst: async () => ({ id: "photo_2", url: "https://media.example.test/products/olive.jpg", storagePath: "azure://product-media/products/olive.jpg", variant: { id: "variant_1", productId: "product_1", product: { status: "DELETED" } } }) },
+    productVariant: { findUnique: async () => ({ id: "variant_1", productId: "product_1", color: "Olive", size: "M", product: { name: "Olive Kurta", status: "ARCHIVED", slug: DELETED_PRODUCT_SLUG_PREFIX + "id" } }) },
+    productVariantImage: { findFirst: async () => ({ id: "photo_2", url: "https://media.example.test/products/olive.jpg", storagePath: "azure://product-media/products/olive.jpg", variant: { id: "variant_1", productId: "product_1", product: { status: "ARCHIVED", slug: DELETED_PRODUCT_SLUG_PREFIX + "id" } } }) },
     $transaction: async () => { assert.fail("Deleted photos must fail before any mutation transaction"); },
   };
   const service = new AdminInventoryService(deniedDb);
@@ -162,10 +164,10 @@ test("a fresh product cannot attach a photo still queued by a deleted product, i
 });
 
 test("normal draft product photo attachments still work and recheck deletion inside the write transaction", async () => {
-  const writes: any[] = []; let status = "DRAFT";
+  const writes: any[] = []; let status = "DRAFT", slug = "normal-draft";
   const db: any = {
     productVariant: { findUnique: async () => ({ id: "variant_2", productId: "product_2", color: "Olive", size: "M", product: { name: "New Kurta", status: "DRAFT" } }) },
-    product: { findUnique: async () => ({ status }) },
+    product: { findUnique: async () => ({ status, slug }) },
     $queryRaw: async () => [{ id: "product_2" }],
     productImage: { findMany: async () => [] },
     productVariantImage: { findMany: async () => [], count: async () => 0, upsert: async (args: any) => { writes.push(args); } },
@@ -174,7 +176,7 @@ test("normal draft product photo attachments still work and recheck deletion ins
   const service = new AdminInventoryService(db);
   await service.addVariantImage("variant_2", { url: "https://media.example.test/products/new.jpg" });
   assert.equal(writes.length, 1); assert.equal(writes[0].create.variantId, "variant_2");
-  status = "DELETED";
+  status = "ARCHIVED"; slug = DELETED_PRODUCT_SLUG_PREFIX + "id";
   await assert.rejects(() => service.addVariantImage("variant_2", { url: "https://media.example.test/products/later.jpg" }), { name: "ConflictException" });
   assert.equal(writes.length, 1);
 });
@@ -214,11 +216,27 @@ test("delete, retry read and cleanup are guarded catalogue-write endpoints", () 
 
 test("replaying the original create request cannot report a tombstone as a newly created draft", async () => {
   const db: any = {
-    product: { findUnique: async () => ({ id: "pm_00000000000040008000000000000000", status: "DELETED" }) },
+    product: { findUnique: async () => ({ id: "pm_00000000000040008000000000000000", status: "ARCHIVED", slug: DELETED_PRODUCT_SLUG_PREFIX + "id" }) },
     $transaction: async () => { assert.fail("A deleted product replay must never create or mutate a draft"); },
   };
   const service = new AdminProductsService(db);
   await assert.rejects(() => service.create({
     requestId: "00000000-0000-4000-8000-000000000000", name: "Olive Kurta", colors: [{ name: "Olive" }], sizes: ["M"], pricePaise: 249900, mrpPaise: 249900,
   }), { name: "ConflictException" });
+});
+
+test("reserved tombstone URLs cannot be manufactured and ordinary archived products remain readable, listed and editable", async () => {
+  const create = { requestId: "00000000-0000-4000-8000-000000000000", name: "Olive Kurta", colors: [{ name: "Olive" }], sizes: ["M"], pricePaise: 249900, mrpPaise: 249900 };
+  assert.throws(() => parseCreate({ ...create, slug: DELETED_PRODUCT_SLUG_PREFIX + "1234" }), /reserved/);
+  assert.throws(() => parseCreate({ ...create, name: "hidi internal deleted 1234" }), /reserved/);
+  assert.equal(isDeletedProduct({ status: "ARCHIVED", slug: "ordinary-archived-product" }), false);
+  assert.equal(isDeletedProduct({ status: "DELETED", slug: "legacy-deletion" }), true);
+  assert.equal(isDeletedProduct({ status: "ARCHIVED", slug: DELETED_PRODUCT_SLUG_PREFIX + "1234" }), true);
+  assert.deepEqual(deletedProductPredicate().OR[1], { status: "ARCHIVED", slug: { startsWith: DELETED_PRODUCT_SLUG_PREFIX } });
+  const f = fixture({ status: "ARCHIVED", shared: true });
+  assert.equal((await f.service.get("product_1")).status, "ARCHIVED");
+  assert.equal((await f.service.list(undefined, "ARCHIVED")).total, 1);
+  assert.equal((await f.service.setStatus("product_1", { status: "DRAFT", expectedUpdatedAt: timestamp })).status, "DRAFT");
+  const fresh = fixture({ status: "ARCHIVED", shared: true });
+  assert.ok((await fresh.service.beginDeletion("product_1", confirmation())).media.every(row => row.shared));
 });

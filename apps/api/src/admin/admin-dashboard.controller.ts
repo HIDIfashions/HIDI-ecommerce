@@ -2,6 +2,7 @@ import { BadRequestException, Controller, Get, Header, Query, UseGuards } from '
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AdminGuard, CurrentAdmin, RequireAdminPermissions, type AdminActor } from './admin-auth.js';
 import { ACTIVE_RETURNS, SALES_STATUSES, cleanQuery, pageNumber, reportingRange, safeNumber, salesSeries, changePercent } from './dashboard-rules.js';
+import { deletedProductPredicate } from './products/product-input.js';
 
 const ORDER_SELECT = {
   id: true, orderNumber: true, status: true, totalPaise: true, createdAt: true,
@@ -112,7 +113,7 @@ export class AdminDashboardController {
     // All existing roles can read catalogue. CATALOG must never receive order/customer data.
     const canReadOrders = ['OWNER', 'OPERATIONS', 'SUPPORT'].includes(actor.role);
     const [products, orders, customers] = await Promise.all([
-      this.db.product.findMany({ where: { OR: [{ name: { contains: q } }, { slug: { contains: q } }, { variants: { some: { sku: { contains: q } } } }] }, select: { id: true, name: true, status: true }, orderBy: { name: 'asc' }, take: 6 }),
+      this.db.product.findMany({ where: { NOT: deletedProductPredicate(), OR: [{ name: { contains: q } }, { slug: { contains: q } }, { variants: { some: { sku: { contains: q } } } }] }, select: { id: true, name: true, status: true }, orderBy: { name: 'asc' }, take: 6 }),
       canReadOrders ? this.db.order.findMany({ where: { OR: [{ orderNumber: { contains: q } }, { customerEmail: { contains: q } }, { customerPhone: { contains: q } }, { shipments: { some: { awb: { contains: q } } } }] }, select: { id: true, orderNumber: true, customerPhone: true, status: true }, orderBy: { createdAt: 'desc' }, take: 6 }) : Promise.resolve([]),
       canReadOrders ? this.db.user.findMany({ where: { OR: [{ email: { contains: q } }, { phone: { contains: q } }, { firstName: { contains: q } }, { lastName: { contains: q } }] }, select: { id: true, firstName: true, lastName: true, email: true, phone: true }, orderBy: { createdAt: 'desc' }, take: 4 }) : Promise.resolve([]),
     ]);

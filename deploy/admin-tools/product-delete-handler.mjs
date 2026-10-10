@@ -106,7 +106,7 @@ export function createProductDeletionHandler({ origin, hasStorefront, env = proc
         ? await backend(request, id, 'POST', '/deletion/cleanup', completed)
         : await backend(request, id, 'GET', '/deletion');
       const pending = cleanup.pendingMediaCount || 0;
-      send(response, 200, { productId: id, deleted: true, historyPreserved: true, photosDeleted: removed, sharedPhotosPreserved: shared, externalPhotosDetached: external, pendingMediaCount: pending, cleanupComplete: pending === 0, message: pending === 0 ? 'Product deleted. Dedicated storage photos were removed; shared photos and past order records were preserved.' : pendingError ? 'Product removed from sale. Photo cleanup is pending; retry to finish.' : 'Product removed from sale. Continue cleanup to finish the remaining photos.' });
+      send(response, 200, { productId: id, deleted: true, historyPreserved: true, photosDeleted: removed, sharedPhotosPreserved: shared, externalPhotosDetached: external, pendingMediaCount: pending, cleanupComplete: pending === 0, cleanupBlocked: pendingError, message: pending === 0 ? 'Product deleted. Dedicated storage photos were removed; shared photos and past order records were preserved.' : pendingError ? 'Product removed from sale. Photo cleanup is pending; retry to finish.' : 'Product removed from sale. Continue cleanup to finish the remaining photos.' });
     } catch (e) { send(response, e.status || 503, { message: typeof e.status === 'number' ? e.message : 'Deletion could not finish. Reload and retry; no success was confirmed.' }); }
     return true;
   };

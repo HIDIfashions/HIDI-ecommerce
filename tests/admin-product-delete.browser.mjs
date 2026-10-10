@@ -35,6 +35,12 @@ const server = createServer(async (req, res) => {
         const chunks = []; for await (const chunk of req) chunks.push(chunk);
         const body = JSON.parse(Buffer.concat(chunks).toString()); state.deletes.push(body);
         if (state.delay) await new Promise(done => setTimeout(done, state.delay));
+        if (state.responses) {
+          const result = state.responses[Math.min(state.deletes.length - 1, state.responses.length - 1)];
+          if (result.status) return json(res, result.status, { message: result.message });
+          state.product.status = 'DELETED'; state.product.pendingMediaCount = result.pendingMediaCount;
+          return json(res, 200, result);
+        }
         if (state.deleteStatus) return json(res, state.deleteStatus, { message: state.deleteMessage });
         const pending = state.pendingOnce && state.deletes.length === 1;
         state.product.status = 'DELETED'; state.product.pendingMediaCount = pending ? 2 : 0;
@@ -104,6 +110,55 @@ try {
         await page.locator('#retry').click(); await success(page); assert.equal(state.deletes.length, 2);
         await page.reload(); await page.locator('#loading').waitFor({ state: 'hidden' });
         assert.match(await page.locator('#status').textContent(), /already been deleted/); assert(await page.locator('#retry').isHidden()); assert(await page.locator('#done').isVisible());
+      });
+      await check('automatic-cleanup-batches', async () => {
+        const { id, state } = fixture({ delay: 300, responses: [
+          { cleanupComplete: false, cleanupBlocked: false, pendingMediaCount: 2, message: 'Product removed from sale. Continue cleanup.' },
+          { cleanupComplete: true, cleanupBlocked: false, pendingMediaCount: 0, message: 'Product deleted and its dedicated photos removed from storage.' },
+        ] });
+        await load(page, id); await page.locator('#confirmName').fill(state.product.name);
+        await page.evaluate(() => {
+          window.cleanupProgress = [];
+          new MutationObserver(() => {
+            if (!document.querySelector('#status').textContent.includes('Cleaning up its remaining photos')) return;
+            window.cleanupProgress.push({ disabled: document.querySelector('#deleteButton').disabled, retryHidden: document.querySelector('#retry').hidden });
+            document.querySelector('#retry').dispatchEvent(new Event('click'));
+          }).observe(document.querySelector('#status'), { childList: true });
+          document.querySelector('#deleteButton').click();
+        });
+        await success(page); assert.equal(state.deletes.length, 2, 'A single confirmed action completes multiple bounded batches');
+        assert.deepEqual(await page.evaluate(() => window.cleanupProgress), [{ disabled: true, retryHidden: true }], 'Continuation keeps busy controls disabled and does not expose Retry');
+        assert.deepEqual(state.deletes[1], state.deletes[0], 'Each continuation retains the same confirmed product/version');
+      });
+      await check('automatic-cleanup-no-progress-and-cap', async () => {
+        const stalled = fixture({ responses: [{ cleanupComplete: false, cleanupBlocked: false, pendingMediaCount: 3, message: 'Product removed from sale. Continue cleanup.' }] });
+        await load(page, stalled.id); await page.locator('#confirmName').fill(stalled.state.product.name); await page.locator('#deleteButton').click();
+        await page.locator('#retry').waitFor({ state: 'visible' }); assert(await page.locator('#retry').isEnabled());
+        assert.equal(stalled.state.deletes.length, 2, 'Unchanged pending count stops automatic requests'); assert(await page.locator('#done').isHidden());
+        assert.match(await page.locator('#photos').textContent(), /3 photo references remain/);
+        const capped = fixture({ responses: Array.from({ length: 40 }, (_, round) => ({ cleanupComplete: false, cleanupBlocked: false, pendingMediaCount: 40 - round, message: 'Product removed from sale. Continue cleanup.' })) });
+        await load(page, capped.id); await page.locator('#confirmName').fill(capped.state.product.name); await page.locator('#deleteButton').click();
+        await page.locator('#retry').waitFor({ state: 'visible' }); assert.equal(capped.state.deletes.length, 32, 'One action cannot exceed 32 cleanup requests');
+        assert.match(await page.locator('#photos').textContent(), /9 photo references remain/); assert(await page.locator('#done').isHidden());
+      });
+      await check('automatic-cleanup-error-stops-and-retries', async () => {
+        const blocked = fixture({ responses: [{ cleanupComplete: false, cleanupBlocked: true, pendingMediaCount: 3, message: 'Product removed from sale. Photo cleanup is pending; retry to finish.' }] });
+        await load(page, blocked.id); await page.locator('#confirmName').fill(blocked.state.product.name); await page.locator('#deleteButton').click();
+        await page.locator('#retry').waitFor({ state: 'visible' }); assert.equal(blocked.state.deletes.length, 1, 'A storage error stops automatic requests immediately');
+        assert(await page.locator('#done').isHidden()); assert.match(await page.locator('#photos').textContent(), /3 photo references remain/);
+        const interrupted = fixture({ responses: [
+          { cleanupComplete: false, cleanupBlocked: false, pendingMediaCount: 2, message: 'Product removed from sale. Continue cleanup.' },
+          { status: 401, message: 'Admin session expired. Sign in again.' },
+          { cleanupComplete: true, cleanupBlocked: false, pendingMediaCount: 0, message: 'Product deleted and its dedicated photos removed from storage.' },
+        ] });
+        await load(page, interrupted.id); await page.locator('#confirmName').fill(interrupted.state.product.name); await page.locator('#deleteButton').click();
+        await page.locator('#retry').waitFor({ state: 'visible' });
+        assert.equal(interrupted.state.deletes.length, 2); assert(await page.locator('#deleteForm').isHidden()); assert(await page.locator('#done').isHidden());
+        assert(await page.locator('#signin').isVisible()); assert.match(await page.locator('#status').textContent(), /Product removed from sale\. Photo cleanup stopped\. Admin session expired/);
+        assert.match(await page.locator('#photos').textContent(), /2 photo references remain/);
+        await page.reload(); await page.locator('#loading').waitFor({ state: 'hidden' });
+        assert.match(await page.locator('#status').textContent(), /already removed from sale/); await page.locator('#retry').click(); await success(page);
+        assert.equal(interrupted.state.deletes.length, 3, 'A pending interrupted batch can be safely resumed after reload');
       });
       await check('stale-conflict', async () => {
         const { id, state } = fixture({ deleteStatus: 409, deleteMessage: 'Product changed. Reload before deleting.' }); await load(page, id);

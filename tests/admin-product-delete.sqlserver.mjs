@@ -7,7 +7,7 @@ import { PrismaMssql } from '../apps/api/node_modules/@prisma/adapter-mssql/dist
 import { PrismaClient } from '../apps/api/dist/generated/prisma/client.js';
 import { AdminProductsService } from '../apps/api/dist/admin/products/admin-products.service.js';
 import { AdminInventoryService } from '../apps/api/dist/admin/admin-inventory.service.js';
-import { applySchema } from '../deploy/admin-delete/schema-readiness.mjs';
+import { verifyExistingSchema } from '../deploy/admin-delete/schema-readiness.mjs';
 
 assert.equal(process.env.ADMIN_DELETE_TEST_SQL_HOST, '127.0.0.1', 'Deletion SQL regression accepts loopback only');
 assert.ok(process.env.ADMIN_DELETE_TEST_SQL_PASSWORD, 'Disposable SQL Server password is required');
@@ -29,9 +29,6 @@ try {
   pool = await new sql.ConnectionPool({ ...config, database }).connect();
   const root = new URL('../apps/api/prisma/migrations-sqlserver/', import.meta.url);
   const migrations = (await readdir(root, { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
-  const deletionMigrationName = '20261010120000_admin_product_deletion';
-  assert.ok(migrations.includes(deletionMigrationName), 'Required product status CHECK migration must be applied');
-  const deletionMigration = await readFile(new URL(deletionMigrationName + '/migration.sql', root), 'utf8');
   for (const folder of migrations) {
     let migration;
     try { migration = await readFile(new URL(folder + '/migration.sql', root), 'utf8'); }
@@ -43,35 +40,21 @@ try {
   }
   const constraints = await checkState();
   const statusCheck = constraints.find(row => row.name === 'Product_status_values');
-  assert.ok(statusCheck.definition.includes('DELETED')); assert.equal(statusCheck.is_disabled, false); assert.equal(statusCheck.is_not_trusted, false);
-  const schemaBefore = (await pool.request().query('SELECT COUNT(*) AS tables FROM sys.tables; SELECT COUNT(*) AS foreignKeys FROM sys.foreign_keys;')).recordsets;
-  await pool.request().batch(deletionMigration);
-  assert.deepEqual(await checkState(), constraints);
-  assert.deepEqual((await pool.request().query('SELECT COUNT(*) AS tables FROM sys.tables; SELECT COUNT(*) AS foreignKeys FROM sys.foreign_keys;')).recordsets, schemaBefore);
-  // Deliberate drift fixtures prove the migration refuses to silently remove a
-  // business rule or replace an unchecked constraint, and transaction rollback preserves it.
-  await pool.request().batch("ALTER TABLE dbo.Product DROP CONSTRAINT Product_status_values; ALTER TABLE dbo.Product WITH CHECK ADD CONSTRAINT Product_status_values CHECK(status IN ('DRAFT','ACTIVE','ARCHIVED','UNEXPECTED')); ");
-  const driftBefore = await checkState();
-  await assert.rejects(() => pool.request().batch(deletionMigration), /unexpected allowed values|unexpected expression/);
-  assert.deepEqual(await checkState(), driftBefore);
-  await pool.request().batch("ALTER TABLE dbo.Product DROP CONSTRAINT Product_status_values; ALTER TABLE dbo.Product WITH NOCHECK ADD CONSTRAINT Product_status_values CHECK(status IN ('DRAFT','ACTIVE','ARCHIVED')); ");
-  const untrustedBefore = await checkState();
-  await assert.rejects(() => pool.request().batch(deletionMigration), /enabled, and be trusted/);
-  assert.deepEqual(await checkState(), untrustedBefore);
-  await pool.request().batch('ALTER TABLE dbo.Product WITH CHECK CHECK CONSTRAINT Product_status_values;');
-  await pool.request().batch(deletionMigration);
-  assert.deepEqual(await checkState(), constraints);
-  console.log('PASS: trusted product CHECK migration is idempotent, retains all tables and foreign keys, and rejects unexpected or untrusted constraints');
+  assert.equal(statusCheck.definition.includes('DELETED'), false); assert.equal(statusCheck.is_disabled, false); assert.equal(statusCheck.is_not_trusted, false);
+  console.log('PASS: original trusted three-value product status CHECK remains unchanged; deletion requires no new schema or DDL');
   const foreignKeysBefore = (await pool.request().query('SELECT COUNT(*) AS n FROM sys.foreign_keys')).recordset[0].n;
   await pool.close();
   db = new PrismaClient({ adapter: new PrismaMssql({ ...config, database }, { schema: 'dbo' }) });
   await db.$connect();
-  const readiness = await applySchema(db, deletionMigration, database);
-  assert.equal(readiness.passed, true); assert.equal(readiness.applicationRowsModified, false);
-  console.log('PASS: real Prisma raw SQL executes the private schema gate and preserves unrelated schema');
+  const readiness = await verifyExistingSchema(db, database);
+  assert.equal(readiness.passed, true); assert.equal(readiness.schemaChanged, false);
+  assert.equal(readiness.ddlExecuted, false); assert.equal(readiness.existingProductSchema, true);
+  assert.deepEqual(await db.$queryRaw`SELECT name,definition,is_disabled,is_not_trusted FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'dbo.Product') ORDER BY name`, constraints);
+  console.log('PASS: actual Prisma read-only readiness verifies the original CHECK, column types and DML permissions without schema changes');
   const service = new AdminProductsService(db), photos = new AdminInventoryService(db);
   const product = await db.product.create({ data: { name: 'Disposable Olive Kurta', slug: 'ci-deletion-product', status: 'ACTIVE' } });
-  const other = await db.product.create({ data: { name: 'Shared Photo Product', slug: 'ci-other-product', status: 'ACTIVE' } });
+  const other = await db.product.create({ data: { name: 'Shared Photo Product', slug: 'ci-other-product', status: 'ARCHIVED' } });
+  assert.equal((await service.get(other.id)).status, 'ARCHIVED');
   const variant = await db.productVariant.create({ data: { productId: product.id, sku: 'DELETE-CI-M', size: 'M', color: 'Olive', pricePaise: 249900, mrpPaise: 249900, inventory: { create: { onHand: 9, reserved: 0 } } } });
   const otherVariant = await db.productVariant.create({ data: { productId: other.id, sku: 'OTHER-CI-M', size: 'M', color: 'Olive', pricePaise: 249900, mrpPaise: 249900, inventory: { create: { onHand: 3 } } } });
   const ownedImage = await db.productImage.create({ data: { productId: product.id, url: 'https://media.example.test/products/owned.jpg', alt: 'Owned product image' } });
@@ -135,7 +118,7 @@ try {
   assert.equal(deleted.media.find(image => image.id === ownedImage.id).shared, false);
   assert.equal(deleted.media.find(image => image.id === sharedImage.id).shared, true);
   const after = await snapshot();
-  assert.equal(after.product.status, 'DELETED'); assert.equal(after.variants[0].active, false);
+  assert.equal(after.product.status, 'ARCHIVED'); assert.equal(after.product.slug, 'hidi-internal-deleted-' + Buffer.from(product.id, 'utf8').toString('hex')); assert.equal(after.variants[0].active, false);
   assert.equal(after.cart.length, 1); assert.equal(after.cart[0].productId, other.id);
   for (const key of ['stock', 'receipt', 'order', 'images', 'variantImages']) assert.deepEqual(after[key], preservedBefore[key]);
   assert.deepEqual(await db.productImage.findUnique({ where: { id: foreignImage.id } }), foreignImage);
@@ -169,6 +152,9 @@ try {
   assert.deepEqual(await db.productImage.findUnique({ where: { id: foreignImage.id } }), foreignImage);
   assert.deepEqual(await db.productVariantImage.findUnique({ where: { id: foreignVariantImage.id } }), foreignVariantImage);
   assert.equal((await db.$queryRaw`SELECT COUNT(*) AS n FROM sys.foreign_keys`)[0].n, foreignKeysBefore);
+  assert.deepEqual(await db.$queryRaw`SELECT name,definition,is_disabled,is_not_trusted FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'dbo.Product') ORDER BY name`, constraints);
+  const replacement = await db.product.create({ data: { name: 'Replacement Draft', slug: product.slug, status: 'DRAFT' } });
+  assert.equal(replacement.slug, product.slug); assert.notEqual(replacement.id, product.id);
   console.log('PASS: SQL cleanup ownership, partial failure retry and completion retain every historical FK and the other product\'s photo references');
 } finally {
   await db?.$disconnect(); await pool?.close().catch(() => {});

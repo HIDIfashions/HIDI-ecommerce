@@ -2,8 +2,8 @@
 
 The current API must match the pinned source compilation before changed JavaScript
 is copied. All other application files, image layers and app settings are retained.
-This release performs no product, order or Blob mutation. A separately gated
-additive Product status CHECK migration is retained even if images roll back.
+This release performs no product, order, schema or Blob mutation. Existing
+Product metadata and effective DML permissions are verified read-only.
 """
 import argparse
 import copy
@@ -22,12 +22,11 @@ import time
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
 BASELINE_SHA = 'e599917a963e0294689600d59d00575ca3f1dcb3'
-API_STEMS = {'admin/products/admin-products.controller', 'admin/products/admin-products.service', 'admin/products/product-input', 'admin/admin-inventory.service'}
+API_STEMS = {'admin/products/admin-products.controller', 'admin/products/admin-products.service', 'admin/products/product-input', 'admin/admin-inventory.service', 'admin/admin-dashboard.controller'}
 API_FILES = {'apps/api/dist/' + name + ext for name in API_STEMS for ext in ('.js', '.js.map')}
 API_SOURCES = {'apps/api/src/' + name + '.ts' for name in API_STEMS}
 WEB_ASSETS = {'handler.mjs', 'navigation.js', 'product-delete-handler.mjs', 'product-delete.html', 'product-delete.mjs', 'product-delete-links.js', 'product-delete-storage.mjs'}
 WEB_FILES = {'server.mjs'} | {'admin-tools/' + name for name in WEB_ASSETS}
-SCHEMA_MIGRATION = pathlib.Path('apps/api/prisma/migrations-sqlserver/20261010120000_admin_product_deletion/migration.sql')
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -53,11 +52,13 @@ def require_schema_ready(api_state):
     assert target.is_file(), 'Verified private Product schema readiness is required before image rollout'
     report = json.loads(target.read_text())
     assert report.get('passed') is True and report.get('apiImage') == api_state['image'] and report.get('apiSettingsHash') == api_state['settingsHash'], 'Schema readiness does not match the captured API'
-    assert report.get('migrationSha256') == hashlib.sha256(SCHEMA_MIGRATION.read_bytes()).hexdigest(), 'Schema readiness does not match the reviewed migration'
-    assert report.get('allowedStatuses') == ['ACTIVE', 'ARCHIVED', 'DELETED', 'DRAFT']
-    for field in ['trustedConstraint', 'foreignKeysPreserved', 'unrelatedChecksPreserved', 'columnPreserved', 'privateNetwork', 'managedIdentity', 'keepOnImageRollback']:
+    for field in ['readOnly', 'existingProductSchema', 'trustedConstraint', 'productColumnsVerified', 'dmlCapabilitiesVerified', 'privateNetwork', 'managedIdentity']:
         assert report.get(field) is True, 'Schema readiness invariant missing: ' + field
     assert report.get('applicationRowsModified') is False, 'Unexpected application row changes'
+    assert report.get('applicationRowsQueried') is False and report.get('ddlExecuted') is False, 'Read-only metadata verification required'
+    assert report.get('schemaChanged') is False, 'Schema changes are outside this release'
+    for prefix, expected_bytes in [('column', 80), ('slugColumn', 382)]:
+        assert report.get(prefix + 'Type') == 'nvarchar' and report.get(prefix + 'MaxLength') == expected_bytes and report.get(prefix + 'Nullable') is False, 'Existing Product column metadata mismatch: ' + prefix
     return report
 
 def baseline():
@@ -200,7 +201,7 @@ def apply(api, web):
         for name, state in after.items():
             assert state['image'] == images[name] and state['settingsHash'] == before[name]['settingsHash']
             cloud.ready(state)
-        save('after.json', {'states': after, 'publicContentPreserved': True, 'appSettingsPreserved': True, 'productOrStorageMutations': False, 'anonymousAdminWritesDenied': True, 'additiveProductConstraintVerified': True, 'schemaConstraintKeptOnImageRollback': True})
+        save('after.json', {'states': after, 'publicContentPreserved': True, 'appSettingsPreserved': True, 'productOrStorageMutations': False, 'anonymousAdminWritesDenied': True, 'existingProductSchemaVerified': True, 'schemaMutations': False})
         print('PASS: ready admin deletion and clear tools deployed; protected content and settings retained')
     except Exception:
         restored = []; failed = []
@@ -215,7 +216,7 @@ def apply(api, web):
                 # An independent restoration failure must not prevent restoring
                 # the other owned app. Never record private Azure error content.
                 failed.append(name)
-        save('rollback.json', {'restoredApps': restored, 'failedApps': failed, 'schemaConstraintRetained': True, 'reason': 'Existing deleted-product history may depend on the additive allowed status'})
+        save('rollback.json', {'restoredApps': restored, 'failedApps': failed, 'schemaMutations': False})
         raise
 
 if __name__ == '__main__':

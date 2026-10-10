@@ -3,7 +3,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma } from "../generated/prisma/client.js";
 import { InventoryMovementType, StockReceiptStatus } from "../prisma/domain-enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { productMediaKeys } from "./products/product-input.js";
+import { productMediaKeys, isDeletedProduct, deletedProductPredicate } from "./products/product-input.js";
 
 type InventoryStatus = "ALL" | "HEALTHY" | "LOW" | "OUT";
 type AdjustmentOperation = "RECEIVE" | "REMOVE" | "SET";
@@ -312,10 +312,10 @@ export class AdminInventoryService {
 
     const variant = await this.prisma.productVariant.findUnique({
       where: { id: variantId },
-      select: { id: true, productId: true, product: { select: { status: true } } },
+      select: { id: true, productId: true, product: { select: { status: true, slug: true } } },
     });
     if (!variant) throw new NotFoundException("Product variant not found");
-    if (variant.product.status === "DELETED") throw new ConflictException("Photos cannot be uploaded to a deleted product.");
+    if (isDeletedProduct(variant.product)) throw new ConflictException("Photos cannot be uploaded to a deleted product.");
 
     const token = randomBytes(32).toString("base64url");
     const tokenHash = createHash("sha256").update(token).digest("hex");
@@ -346,10 +346,10 @@ export class AdminInventoryService {
 
     const source = await this.prisma.productVariant.findUnique({
       where: { id: variantId },
-      select: { id: true, productId: true, product: { select: { name: true, status: true } }, color: true, size: true },
+      select: { id: true, productId: true, product: { select: { name: true, status: true, slug: true } }, color: true, size: true },
     });
     if (!source) throw new NotFoundException("Product variant not found");
-    if (source.product.status === "DELETED") throw new ConflictException("Photos cannot be attached to a deleted product.");
+    if (isDeletedProduct(source.product)) throw new ConflictException("Photos cannot be attached to a deleted product.");
 
     const targets = input.applyToColor
       ? await this.prisma.productVariant.findMany({
@@ -389,17 +389,17 @@ export class AdminInventoryService {
 
   private async lockPhotoProduct(tx: Prisma.TransactionClient, productId: string) {
     await tx.$queryRaw`SELECT "id" FROM "Product" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${productId}`;
-    const product = await tx.product.findUnique({ where: { id: productId }, select: { status: true } });
+    const product = await tx.product.findUnique({ where: { id: productId }, select: { status: true, slug: true } });
     if (!product) throw new NotFoundException("Product not found");
-    if (product.status === "DELETED") throw new ConflictException("Photos cannot be changed for a deleted product.");
+    if (isDeletedProduct(product)) throw new ConflictException("Photos cannot be changed for a deleted product.");
   }
 
   private async requirePhotoNotPendingDeletion(tx: Prisma.TransactionClient, url: string, storagePath: string | null) {
     const keys = productMediaKeys(url, storagePath);
     const [products, variants] = await Promise.all([
-      tx.productImage.findMany({ where: { product: { is: { status: "DELETED" } } }, select: { url: true } }),
+      tx.productImage.findMany({ where: { product: { is: deletedProductPredicate() } }, select: { url: true } }),
       tx.productVariantImage.findMany({
-        where: { variant: { is: { product: { is: { status: "DELETED" } } } } },
+        where: { variant: { is: { product: { is: deletedProductPredicate() } } } },
         select: { url: true, storagePath: true },
       }),
     ]);
@@ -418,11 +418,11 @@ export class AdminInventoryService {
         id: true,
         url: true,
         storagePath: true,
-        variant: { select: { id: true, productId: true, color: true, sku: true, product: { select: { status: true } } } },
+        variant: { select: { id: true, productId: true, color: true, sku: true, product: { select: { status: true, slug: true } } } },
       },
     });
     if (!image) throw new NotFoundException("Product photo not found");
-    if (image.variant.product.status === "DELETED") throw new ConflictException("Deleted-product photos must be removed through product deletion cleanup.");
+    if (isDeletedProduct(image.variant.product)) throw new ConflictException("Deleted-product photos must be removed through product deletion cleanup.");
 
     const targetVariants = applyToColor
       ? await this.prisma.productVariant.findMany({

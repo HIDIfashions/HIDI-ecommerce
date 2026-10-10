@@ -1,5 +1,5 @@
 name: Admin product deletion and clear tools guarded release
-# Verify shared-photo cleanup and the trusted additive Product status CHECK.
+# Verify shared-photo cleanup against the original trusted Product schema.
 
 on:
   push:
@@ -108,8 +108,8 @@ jobs:
             image="acrhidiprod0927.azurecr.io/hidi-$app@$digest"
             echo "IMAGE_${app^^}=$image" >> "$GITHUB_ENV"
           done
-      - name: Verify and apply the minimal Product CHECK through the private managed identity
-        run: python3 deploy/admin-delete/schema-readiness.py
+      - name: Verify existing Product columns and DML permissions read-only through the private identity
+        run: python3 deploy/admin-delete/schema-readiness.py --verify-existing-schema
       - name: Deploy with exact-state guards and automatic rollback
         run: python3 deploy/admin-delete/release.py apply --api "$IMAGE_API" --web "$IMAGE_WEB"
       - uses: actions/upload-artifact@v4

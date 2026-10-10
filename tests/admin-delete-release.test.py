@@ -35,24 +35,23 @@ class ReleaseGuards(unittest.TestCase):
         for invalid in [release.helpers.REGISTRY + '/hidi-api:' + 'a' * 40, image('web', 'a'), 'unrelated.invalid/hidi-api@sha256:' + 'a' * 64]:
             with self.assertRaises(AssertionError): release.immutable(invalid, 'api')
 
-    def test_schema_readiness_is_required_and_tied_to_the_exact_api_and_migration(self):
+    def test_read_only_schema_readiness_is_required_and_tied_to_the_exact_captured_api(self):
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp); migration = root / 'migration.sql'; migration.write_text('reviewed additive CHECK')
-            report = {'passed': True, 'apiImage': image('api', 'a'), 'apiSettingsHash': 'retained', 'migrationSha256': hashlib.sha256(migration.read_bytes()).hexdigest(), 'allowedStatuses': ['ACTIVE', 'ARCHIVED', 'DELETED', 'DRAFT'], 'applicationRowsModified': False}
-            for field in ['trustedConstraint', 'foreignKeysPreserved', 'unrelatedChecksPreserved', 'columnPreserved', 'privateNetwork', 'managedIdentity', 'keepOnImageRollback']: report[field] = True
+            root = Path(temp)
+            report = {'passed': True, 'apiImage': image('api', 'a'), 'apiSettingsHash': 'retained', 'applicationRowsModified': False, 'applicationRowsQueried': False, 'ddlExecuted': False, 'schemaChanged': False, 'columnType': 'nvarchar', 'columnMaxLength': 80, 'columnNullable': False, 'slugColumnType': 'nvarchar', 'slugColumnMaxLength': 382, 'slugColumnNullable': False}
+            for field in ['readOnly', 'existingProductSchema', 'trustedConstraint', 'productColumnsVerified', 'dmlCapabilitiesVerified', 'privateNetwork', 'managedIdentity']: report[field] = True
             state = {'image': report['apiImage'], 'settingsHash': report['apiSettingsHash']}
-            with patch.object(release, 'evidence', root), patch.object(release, 'SCHEMA_MIGRATION', migration):
+            with patch.object(release, 'evidence', root):
                 with self.assertRaisesRegex(AssertionError, 'required'): release.require_schema_ready(state)
                 target = root / 'schema-ready.json'; target.write_text(json.dumps(report))
                 self.assertTrue(release.require_schema_ready(state)['passed'])
-                for field, invalid in [('passed', False), ('apiImage', image('api', 'b')), ('apiSettingsHash', 'other'), ('migrationSha256', 'other'), ('trustedConstraint', False), ('applicationRowsModified', True)]:
+                for field, invalid in [('passed', False), ('apiImage', image('api', 'b')), ('apiSettingsHash', 'other'), ('trustedConstraint', False), ('applicationRowsModified', True), ('ddlExecuted', True), ('existingProductSchema', False), ('slugColumnMaxLength', 191), ('schemaChanged', True)]:
                     altered = copy.deepcopy(report); altered[field] = invalid; target.write_text(json.dumps(altered))
                     with self.assertRaises(AssertionError): release.require_schema_ready(state)
 
     def test_private_console_code_is_chunked_below_terminal_limits(self):
-        migration = release.SCHEMA_MIGRATION.read_bytes()
         module = (ROOT / 'deploy/admin-delete/schema-readiness.mjs').read_text()
-        payload = json.dumps({'module': module, 'migration': migration.decode()}, separators=(',', ':')).encode()
+        payload = json.dumps({'module': module}, separators=(',', ':')).encode()
         packed = base64.b64encode(gzip.compress(payload, mtime=0)).decode()
         command = schema_console.console_command(packed, "fixture database with ' quoted name")
         self.assertTrue(all(len(line.encode()) < 2000 for line in command.splitlines()))
@@ -61,16 +60,18 @@ class ReleaseGuards(unittest.TestCase):
         self.assertIn('process.argv[2]', command)
         self.assertGreater(len([line for line in command.splitlines() if line.startswith('"')]), 1)
         self.assertNotIn('ALTER TABLE', command)
-        self.assertEqual(json.loads(gzip.decompress(base64.b64decode(packed)))['migration'].encode(), migration)
+        self.assertEqual(json.loads(gzip.decompress(base64.b64decode(packed)))['module'], module)
+        self.assertNotIn('migration', json.loads(gzip.decompress(base64.b64decode(packed))))
 
     def test_private_console_heredoc_preserves_literals_and_passes_the_database_argument(self):
-        payload = {'module': 'export async function run(migration,database){console.log(JSON.stringify({migration,database}));}', 'migration': "Review literal '$()' and `backticks` without shell expansion\nexact second line"}
+        literal = "Review literal '$()' and `backticks` without shell expansion\nexact second line"
+        payload = {'module': 'export async function run(database){const literal=' + json.dumps(literal) + ';console.log(JSON.stringify({literal,database}));}'}
         packed = base64.b64encode(gzip.compress(json.dumps(payload).encode(), mtime=0)).decode()
         database = "fixture database with ' quoted name"
         command = schema_console.console_command(packed, database)
         result = subprocess.run(['bash'], input=command, text=True, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout), {'migration': payload['migration'], 'database': database})
+        self.assertEqual(json.loads(result.stdout), {'literal': literal, 'database': database})
 
     def test_read_only_console_selects_diagnose_and_does_not_call_apply(self):
         payload = {'module': 'export async function run(){throw Error("unexpected DDL");} export async function diagnose(database){console.log(JSON.stringify({readOnly:true,database}));}'}
@@ -89,6 +90,16 @@ class ReleaseGuards(unittest.TestCase):
         self.assertNotIn('private', json.dumps(result))
         self.assertEqual(schema_console.parse_failure('no marker')['failureCode'], 'CONSOLE_CHECK_INCOMPLETE')
         self.assertEqual(schema_console.parse_failure('HIDI_DELETE_SCHEMA_FAILED::{"failureCode":"unsafe value"}')['failureCode'], 'SCHEMA_HELPER_FAILED')
+
+    def test_terminal_marker_requires_a_complete_valid_nested_json_line(self):
+        marker = 'HIDI_DELETE_SCHEMA_DIAGNOSTIC'
+        nested = {'readOnly': True, 'availableProductChecks': [{'name': 'Product_status_values', 'trusted': True}]}
+        text = marker + '::' + json.dumps(nested)
+        first_closing_brace = text.index('}') + 1
+        self.assertIsNone(schema_console.complete_marker(text[:first_closing_brace], marker))
+        self.assertIsNone(schema_console.complete_marker(text, marker))
+        self.assertEqual(schema_console.complete_marker(text + '\r\n', marker), nested)
+        self.assertIsNone(schema_console.complete_marker(marker + '::{bad json}\n', marker))
 
     def test_api_protects_unreviewed_files_baseline_and_runtime_configuration(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -148,7 +159,7 @@ class ReleaseGuards(unittest.TestCase):
             self.assertEqual(states['hidi-api']['image'], original['hidi-api']['image'])
             report = json.loads((private / 'evidence/rollback.json').read_text())
             self.assertEqual(report['restoredApps'], ['hidi-api']); self.assertEqual(report['failedApps'], ['hidi-web'])
-            self.assertTrue(report['schemaConstraintRetained'])
+            self.assertFalse(report['schemaMutations'])
             self.assertEqual(len(writes), 4)
 
 if __name__ == '__main__': unittest.main()

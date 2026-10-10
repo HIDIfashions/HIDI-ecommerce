@@ -82,7 +82,7 @@ test('invalid owned metadata is rejected before the product is marked deleted so
 
 test('storage failure leaves pending metadata and reports that cleanup is incomplete', async () => {
   const f = await fixture({ failure: true });
-  try { const data = await (await f.request()).json(); assert.equal(data.deleted, true); assert.equal(data.cleanupComplete, false); assert.equal(data.pendingMediaCount, 1); assert.equal(f.calls.at(-1).method, 'GET'); assert.equal(f.calls.at(-1).suffix, '/deletion'); assert.match(data.message, /pending/); } finally { await f.close(); }
+  try { const data = await (await f.request()).json(); assert.equal(data.deleted, true); assert.equal(data.cleanupComplete, false); assert.equal(data.cleanupBlocked, true); assert.equal(data.pendingMediaCount, 1); assert.equal(f.calls.at(-1).method, 'GET'); assert.equal(f.calls.at(-1).suffix, '/deletion'); assert.match(data.message, /pending/); } finally { await f.close(); }
 });
 
 test('a draft with no photos deletes successfully without an invalid empty cleanup acknowledgement', async () => {
@@ -102,7 +102,7 @@ test('stale version and unknown request fields never delete storage or claim suc
 test('cleanup is bounded to eight owned objects per request and can safely continue', async () => {
   const media = Array.from({ length: 10 }, (_, i) => photo('p' + i, { url: `/media/products/photo${i}.jpg` }));
   const f = await fixture({ media });
-  try { const first = await (await f.request()).json(); assert.equal(first.pendingMediaCount, 2); assert.equal(first.cleanupComplete, false); const second = await (await f.request()).json(); assert.equal(second.cleanupComplete, true); assert.equal(f.calls.filter(c => c.remove).length, 10); } finally { await f.close(); }
+  try { const first = await (await f.request()).json(); assert.equal(first.pendingMediaCount, 2); assert.equal(first.cleanupComplete, false); assert.equal(first.cleanupBlocked, false); const second = await (await f.request()).json(); assert.equal(second.cleanupComplete, true); assert.equal(f.calls.filter(c => c.remove).length, 10); } finally { await f.close(); }
 });
 
 test('more than 200 size references to one photo make durable cleanup progress on every retry', async () => {

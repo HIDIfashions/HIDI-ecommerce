@@ -1,6 +1,13 @@
 /** Pure input validation. No implicit coercion, no inventory quantities accepted. */
 export class ProductInputError extends Error {}
 export const MAX_VARIANTS = 200;
+export const DELETED_PRODUCT_SLUG_PREFIX = "hidi-internal-deleted-";
+export function isDeletedProduct(product: { status: string; slug?: string }) {
+  return product.status === "DELETED" || (product.status === "ARCHIVED" && Boolean(product.slug?.startsWith(DELETED_PRODUCT_SLUG_PREFIX)));
+}
+export function deletedProductPredicate() {
+  return { OR: [{ status: "DELETED" }, { status: "ARCHIVED", slug: { startsWith: DELETED_PRODUCT_SLUG_PREFIX } }] };
+}
 export type ProductState = "DRAFT" | "ACTIVE" | "ARCHIVED";
 export type Colour = { name: string; hex: string | null };
 export type MatrixInput = { colors: Colour[]; sizes: string[]; pricePaise: number; mrpPaise: number; weightGrams: number | null };
@@ -94,6 +101,7 @@ export function parseCreate(value: unknown) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) throw new ProductInputError("Invalid request ID. Reload the product form.");
   const slug = text(input.slug, "Product URL", 100) ?? slugify(product.name).slice(0, 80).replace(/-+$/, "");
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 100) throw new ProductInputError("Product URL must use lowercase English letters, numbers and hyphens.");
+  if (slug.startsWith(DELETED_PRODUCT_SLUG_PREFIX)) throw new ProductInputError("This product URL prefix is reserved. Choose a different product URL.");
   return { ...product, ...matrix(input), slug, requestId: requestId.toLowerCase() };
 }
 export function revision(value: unknown): Date {
