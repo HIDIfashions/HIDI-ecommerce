@@ -109,7 +109,7 @@ jobs:
                   'containers': copy.deepcopy(data['properties']['template']['containers']), 'revisionSuffix': suffix}}}
               path = work / 'patch.json'; persist('patch.json', body)
               redact = [x.get('value') for x in env(data).values()]
-              redact += [x.get('value') for x in data['properties']['configuration'].get('secrets', [])]
+              redact += [x.get('value') for x in (data['properties']['configuration'].get('secrets') or [])]
               try:
                   retained.azure('rest', '--method', 'patch', '--url', 'https://management.azure.com' + data['id'] + '?api-version=' + retained.API_VERSION, '--body', '@' + str(path), redact=redact)
               finally: path.unlink(missing_ok=True)
@@ -135,8 +135,10 @@ jobs:
                       time.sleep(5)
 
           def probe(host):
+              homepage = None
               for path in ['/', '/collections/all', '/account', '/cart', '/checkout']:
                   body, hdr = request(host, path)
+                  if path == '/': homepage = body
                   assert 'noindex' in hdr.get('X-Robots-Tag', '').lower(), 'Indexing protection missing: ' + host + path
                   assert b'HIDI is temporarily private' not in body, 'Storefront remains gated: ' + host
               body, hdr = request(host, '/robots.txt')
@@ -152,6 +154,24 @@ jobs:
               assert isinstance(json.loads(policy), dict)
               media, _ = request(host, '/api/hidi/landing-media-config')
               assert isinstance(json.loads(media), dict)
+              hero, _ = request(host, '/api/hidi/hero-config')
+              parsed_hero = json.loads(hero)
+              def urls(value):
+                  if isinstance(value, dict):
+                      for key, child in value.items():
+                          if key == 'url' and isinstance(child, str): yield child
+                          yield from urls(child)
+                  elif isinstance(value, list):
+                      for child in value: yield from urls(child)
+              candidates = [url for value in [json.loads(media), parsed_hero] for url in urls(value) if url.startswith('/api/hidi/hero-asset/')]
+              bundled = re.findall(rb'src=["\'](/assets/[^"\']+\.(?:webp|png|jpg|jpeg|svg))(?:[?"\'])', homepage or b'')
+              asset = candidates[0] if candidates else (bundled[0].decode() if bundled else None)
+              assert asset, 'No existing first-party media sample available'
+              _, hdr = request(host, asset, method='HEAD')
+              assert int(hdr.get('Content-Length', '0')) > 0, 'Media HEAD has no size'
+              sample, hdr = request(host, asset, 206, headers={'Range': 'bytes=0-31'})
+              assert len(sample) == 32 and hdr.get('Content-Range', '').startswith('bytes 0-31/'), 'Media byte range failed'
+              checks[-1]['mediaSource'] = 'azure-media-route' if candidates else 'retained-bundled-asset'
               request(host, '/v1/payments/razorpay/webhook', 400, method='POST', headers={'Content-Type': 'application/json', 'X-Razorpay-Signature': '0'*64}, body=b'{}')
               return {'authConfig': hashlib.sha256(config).hexdigest(), 'policy': hashlib.sha256(policy).hexdigest(), 'landingMedia': hashlib.sha256(media).hexdigest()}
 
@@ -193,8 +213,13 @@ jobs:
               suffix = 'domainreview' + run
               changed = False
               try:
-                  changed = True; write(candidate, suffix)
-                  current = retained.wait_ready(image, suffix)
+                  if equal_env(web, candidate):
+                      suffix = web['properties']['latestRevisionName'].removeprefix('hidi-web--')
+                      current = web
+                      print('Domain controls already match; performing read-only verification', flush=True)
+                  else:
+                      changed = True; write(candidate, suffix)
+                      current = retained.wait_ready(image, suffix)
                   assert verify_owned(current, candidate, suffix), 'Unexpected post-change web settings'
                   for host in HOSTS:
                       result = probe(host)
@@ -203,7 +228,7 @@ jobs:
                   current = retained.app('hidi-web')
                   assert verify_owned(current, candidate, suffix)
                   retained.ready(retained.snapshot(current))
-                  (evidence / 'after.json').write_text(json.dumps({'verifiedAt': datetime.now(timezone.utc).isoformat(), 'states': {'hidi-web': safe_record(current), 'hidi-api': safe_record(old['hidi-api'])}, 'onlyWebEnvChanged': TARGET, 'applicationImagePreserved': True, 'indexingDisabled': True, 'currentHostsRetained': True, 'merchantWebsiteRequestSubmitted': False, 'webhookProviderSubscriptionUnchanged': True}, indent=2))
+                  (evidence / 'after.json').write_text(json.dumps({'verifiedAt': datetime.now(timezone.utc).isoformat(), 'states': {'hidi-web': safe_record(current), 'hidi-api': safe_record(old['hidi-api'])}, 'onlyWebEnvChanged': TARGET if changed else {}, 'domainControls': TARGET, 'applicationImagePreserved': True, 'indexingDisabled': True, 'currentHostsRetained': True, 'merchantWebsiteRequestSubmitted': False, 'webhookProviderSubscriptionUnchanged': True}, indent=2))
                   print('New storefront hosts serve the retained application; old domains, API and images preserved; indexing remains disabled')
               except Exception:
                   if changed:
