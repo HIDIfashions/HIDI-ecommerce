@@ -25,7 +25,9 @@ jobs:
           import json, subprocess
           def az(*args):
               p = subprocess.run(['az', *args, '--only-show-errors', '-o', 'json'], capture_output=True, text=True)
-              if p.returncode: raise RuntimeError('Azure inspection failed; command output suppressed')
+              if p.returncode:
+                  if args[0] == 'sql': print('SQL metadata inspection: ' + p.stderr[:1800])
+                  raise RuntimeError('Azure inspection failed; command output suppressed')
               return json.loads(p.stdout or 'null')
           result = {'apps': {}}
           for name in ('hidi-api', 'hidi-web'):
