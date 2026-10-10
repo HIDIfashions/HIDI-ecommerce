@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isBlockedTelemetry } from './request-policy.mjs';
 const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
 const brown='rgb(89, 29, 32)', ivory='rgb(255, 248, 239)', green='rgb(37, 211, 102)',greenInk='rgb(5, 66, 37)';
 const injectTheme=process.env.HIDI_BUTTON_TEST_INJECT_SOURCE==='1'||process.env.HIDI_BUTTON_TEST_INJECT_THEME==='1';
@@ -44,7 +45,7 @@ export async function probe(base, output, engines=(process.env.HIDI_BROWSER_ENGI
       const context=await browser.newContext({viewport,hasTouch:viewport.width<1100,reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(20000);
       const errors=[],unexpectedWrites=[],telemetryBlocked=[];let legacyProduct=false,legacyAdminTools=false;page.on('pageerror',error=>errors.push({path:new URL(page.url()).pathname,message:error.message}));
       await context.route('**/*',async route=>{
-        const request=route.request();if(!['GET','HEAD'].includes(request.method())){const url=new URL(request.url()),localPerformance=request.method()==='POST'&&url.origin===new URL(base).origin&&url.pathname==='/api/hidi/performance';const googleAnalytics=request.method()==='POST'&&['www.google-analytics.com','region1.google-analytics.com'].includes(url.hostname)&&['/g/collect','/collect'].includes(url.pathname);(localPerformance||googleAnalytics?telemetryBlocked:unexpectedWrites).push({method:request.method(),host:url.hostname,path:url.pathname});return route.abort();}
+        const request=route.request();if(!['GET','HEAD'].includes(request.method())){const url=new URL(request.url()),telemetry=isBlockedTelemetry(request.method(),request.url(),new URL(base).origin);(telemetry?telemetryBlocked:unexpectedWrites).push({method:request.method(),host:url.hostname,path:url.pathname});return route.abort();}
         if(injectTheme&&request.resourceType()==='document'){
           const response=await route.fetch(),type=response.headers()['content-type']||'';
           if(type.includes('text/html')){let html=await response.text();if(!/data-hidi-button-theme=/.test(html))html=html.replace(/<html\b/i,'<html data-hidi-button-theme="site"');const css='<link rel="stylesheet" data-hidi-button-states="v1" href="/button-states/buttons.css">',script=/<script\b[^>]*data-hidi-button-states=/.test(html)?'':'<script defer data-hidi-button-states="v1" src="/button-states/buttons.js"></script>';html=html.replace(/<\/head>/i,css+script+'</head>');return route.fulfill({response,body:html});}

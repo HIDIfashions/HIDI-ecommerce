@@ -38,7 +38,7 @@ jobs:
           pnpm --filter @hidi/api test:customer-experience
           node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
           node --test tests/admin-quick-tools.test.mjs tests/admin-product-bulk.test.mjs
-          node --test tests/admin-product-delete-handler.test.mjs tests/button-theme-handler.test.mjs
+          node --test tests/admin-product-delete-handler.test.mjs tests/button-theme-handler.test.mjs tests/button-request-policy.test.mjs
           python3 tests/button-states-release.test.py
       - name: Verify source asset parity and build web source with an isolated API origin
         env:
