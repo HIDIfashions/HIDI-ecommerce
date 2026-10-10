@@ -6,7 +6,9 @@ import re
 import subprocess
 
 BASE_SOURCE = "5d8b2081f920ac09984e062d873e7caf32e7cc1b"
-REVIEW_BASE = "3c0eb8d7aa3f8163ffead1c3c4922a895cf7e2b1"
+# Preserve the independently reviewed privacy-editor work on the shared branch.
+# APPLICATION_FILES still bounds all application changes from BASE_SOURCE.
+REVIEW_BASE = "32a1e35402f6855ef138a6e54065e65cc7cba249"
 APPLICATION_FILES = {
     "apps/api/src/auth/supabase-auth.service.ts",
     "apps/web/components/account-orders-client.tsx",
@@ -16,10 +18,16 @@ APPLICATION_FILES = {
 }
 RELEASE_FILES = APPLICATION_FILES | {
     ".github/workflows/account-otp-release.yml",
+    ".github/workflows/account-otp-diagnose.yml",
+    ".github/workflows/account-otp-web-completion.yml",
     "deploy/account_otp_release_guard.py",
+    "deploy/diagnose-account-otp-settings.py",
+    "deploy/verify-account-otp-live-api.py",
+    "deploy/complete-account-otp-web.py",
     "deploy/smoke-account-otp-candidates.sh",
     "deploy/update-account-otp-images.sh",
     "tests/account-otp-release.test.py",
+    "tests/account-otp-web-completion.test.py",
     "tests/admin-workspace.browser.mjs",
     "tests/editorial-storefront.browser.mjs",
     "tests/auth-otp-frontend.test.cjs",

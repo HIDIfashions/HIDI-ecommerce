@@ -1,0 +1,182 @@
+name: Complete account OTP storefront with the live API unchanged
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/account-otp-web-completion.yml]
+  workflow_dispatch:
+    inputs:
+      reviewed_source_sha:
+        description: Full reviewed source commit; must exactly match the dispatched ref
+        required: true
+      expected_web_image:
+        description: Current live web sha256 digest, copied from Azure immediately before dispatch
+        required: true
+      expected_api_image:
+        description: Already-live reviewed OTP API sha256 digest; must remain unchanged
+        required: true
+permissions:
+  contents: read
+# Deliberately empty. An activation-only workflow commit can set these reviewed
+# pins and carry [complete-account-otp] before default-branch dispatch registration.
+# Ordinary source merges do not deploy; there are no previous-image defaults.
+env:
+  PUSH_REVIEWED_SOURCE: ''
+  PUSH_EXPECTED_WEB: ''
+  PUSH_EXPECTED_API: ''
+concurrency:
+  group: hidi-msg91-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[complete-account-otp]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      INPUT_REVIEWED_SOURCE: ${{ inputs.reviewed_source_sha }}
+      INPUT_EXPECTED_WEB: ${{ inputs.expected_web_image }}
+      INPUT_EXPECTED_API: ${{ inputs.expected_api_image }}
+      ACR: acrhidiprod0927
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true
+      API_URL: http://127.0.0.1:4100/v1
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/hidi-account-otp-browsers
+    steps:
+      - name: Resolve explicit reviewed source and current live image pins
+        run: |
+          set -euo pipefail
+          source="${INPUT_REVIEWED_SOURCE:-$PUSH_REVIEWED_SOURCE}"
+          web="${INPUT_EXPECTED_WEB:-$PUSH_EXPECTED_WEB}"
+          api="${INPUT_EXPECTED_API:-$PUSH_EXPECTED_API}"
+          [[ "$source" =~ ^[0-9a-f]{40}$ ]] || { echo 'An explicit reviewed source commit is required' >&2; exit 1; }
+          [[ "$web" =~ ^acrhidiprod0927\.azurecr\.io/hidi-web@sha256:[0-9a-f]{64}$ ]] || { echo 'An explicit current live web digest is required' >&2; exit 1; }
+          [[ "$api" =~ ^acrhidiprod0927\.azurecr\.io/hidi-api@sha256:[0-9a-f]{64}$ ]] || { echo 'An explicit current live API digest is required' >&2; exit 1; }
+          [[ "$api" == "acrhidiprod0927.azurecr.io/hidi-api@sha256:69d4c89fd6531658eba730b7254b7d34c9a274953e2fed4b46ce22caa13e56e6" ]] || { echo 'Only the already-live reviewed API is permitted' >&2; exit 1; }
+          echo "REVIEWED_SOURCE=$source" >> "$GITHUB_ENV"
+          echo "EXPECTED_WEB=$web" >> "$GITHUB_ENV"
+          echo "EXPECTED_API=$api" >> "$GITHUB_ENV"
+          echo "HIDI_OTP_JOB_DEADLINE_EPOCH=$(( $(date +%s) + 120 * 60 ))" >> "$GITHUB_ENV"
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/account-otp-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          echo "HIDI_OTP_BASELINE_STATE_DIR=$RUNNER_TEMP/account-otp-private/before" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REVIEWED_SOURCE }}
+          fetch-depth: 0
+      - name: Require the exact reviewed source and fresh immutable live images
+        run: |
+          python3 - <<'PY'
+          import os,subprocess
+          from deploy.account_otp_release_guard import validate_image,validate_source
+          for app,key in [('api','EXPECTED_API'),('web','EXPECTED_WEB')]:
+            validate_image(os.environ[key],app)
+          source=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          validate_source(source,os.environ['REVIEWED_SOURCE'])
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - name: Test account throttling, fallback, customer safeguards and protected image handling
+        run: |
+          node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
+          pnpm --filter @hidi/api test:customer-experience
+          python3 tests/msg91-image-preservation.test.py
+          python3 tests/msg91-browser-evidence.test.py
+          python3 tests/msg91-rollout.test.py
+          python3 tests/account-otp-release.test.py
+          python3 tests/account-otp-web-completion.test.py
+      - name: Build only reviewed auth code and the existing Next storefront
+        run: |
+          pnpm --filter @hidi/api build
+          export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER="$(jq -r .CUSTOMER_AUTH_PROVIDER deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL=sms
+          for key in API_KEY AUTH_DOMAIN PROJECT_ID APP_ID MESSAGING_SENDER_ID STORAGE_BUCKET; do
+            value="$(jq -r --arg key "FIREBASE_$key" '.[$key] // ""' deploy/public-auth.json)"
+            export "NEXT_PUBLIC_FIREBASE_$key=$value"
+          done
+          export NEXT_PUBLIC_API_URL=https://thidigk.thehidi.com/api/store
+          export NEXT_PUBLIC_WALLET_ENABLED=true
+          pnpm --filter @hidi/web build
+      - name: Run fresh admin, shopping and OTP browser fixtures in all three engines
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/account-otp-browser" --no-save playwright@1.56.1
+          node "$RUNNER_TEMP/account-otp-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+          failed=0
+          for engine in chromium firefox webkit; do
+            HIDI_BROWSER_ENGINE="$engine" node tests/admin-workspace.browser.mjs || failed=1
+          done
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-storefront.browser.mjs || failed=1
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-polish.browser.mjs || failed=1
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/auth-otp-resend.browser.mjs || failed=1
+          exit "$failed"
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Freeze the fresh ready web state and unchanged API; back up only web
+        run: |
+          set -euo pipefail
+          mkdir -p evidence "$HIDI_OTP_BASELINE_STATE_DIR"
+          chmod 700 "$RUNNER_TEMP/account-otp-private" "$HIDI_OTP_BASELINE_STATE_DIR"
+          python3 deploy/complete-account-otp-web.py capture \
+            --baseline "$HIDI_OTP_BASELINE_STATE_DIR" --expected-web "$EXPECTED_WEB" \
+            --report evidence/account-otp-web-before.json
+          az acr login --name "$ACR" --only-show-errors
+          docker pull "$EXPECTED_WEB"
+          backup="$ACR.azurecr.io/hidi-web:backup-account-otp-web-${GITHUB_RUN_ID}"
+          docker tag "$EXPECTED_WEB" "$backup"
+          docker push "$backup"
+      - name: Prove compiled auth equals the unchanged live API and preserve historical protected bytes
+        run: |
+          set -euo pipefail
+          python3 deploy/verify-account-otp-live-api.py \
+            --work "$RUNNER_TEMP/account-otp-private/api-proof" --report evidence/api-live-preservation.json
+          python3 deploy/complete-account-otp-web.py check \
+            --baseline "$HIDI_OTP_BASELINE_STATE_DIR" --expected-web "$EXPECTED_WEB" \
+            --report evidence/account-otp-web-before.json
+          echo "CANDIDATE_API=$EXPECTED_API" >> "$GITHUB_ENV"
+      - name: Compose only the web overlay from the fresh immutable current web image
+        run: |
+          set -euo pipefail
+          tag="$ACR.azurecr.io/hidi-web:account-otp-web-${GITHUB_RUN_ID}"
+          python3 deploy/compose-msg91-images.py --app web --base "$EXPECTED_WEB" --tag "$tag" \
+            --work "$RUNNER_TEMP/account-otp-private/web" --report evidence/web-preservation.json
+          docker push "$tag"
+          docker pull "$tag"
+          image="$(docker image inspect "$tag" --format '{{index .RepoDigests 0}}')"
+          [[ "$image" =~ ^acrhidiprod0927\.azurecr\.io/hidi-web@sha256:[0-9a-f]{64}$ ]]
+          echo "CANDIDATE_WEB=$image" >> "$GITHUB_ENV"
+      - name: Test the actual live API and composed web in all engines before any web image write
+        run: |
+          set -euo pipefail
+          python3 deploy/complete-account-otp-web.py check \
+            --baseline "$HIDI_OTP_BASELINE_STATE_DIR" --expected-web "$EXPECTED_WEB" \
+            --report evidence/account-otp-web-before.json
+          bash deploy/smoke-account-otp-candidates.sh "$CANDIDATE_API" "$CANDIDATE_WEB"
+      - name: Complete only the owned web image with exact raw settings and API guards
+        run: |
+          set -euo pipefail
+          python3 deploy/complete-account-otp-web.py rollout \
+            --baseline "$HIDI_OTP_BASELINE_STATE_DIR" --expected-web "$EXPECTED_WEB" \
+            --candidate-web "$CANDIDATE_WEB" --deadline "$HIDI_OTP_JOB_DEADLINE_EPOCH" \
+            --run-id "$GITHUB_RUN_ID" --report evidence/account-otp-web-rollout.json
+      - name: Preserve public validation and rollback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-otp-web-completion-${{ github.run_id }}
+          path: |
+            evidence
+            test-results
+          if-no-files-found: ignore
+          retention-days: 30
