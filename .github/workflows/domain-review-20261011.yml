@@ -122,7 +122,7 @@ jobs:
                       try: response = urllib.request.urlopen(req, timeout=30)
                       except urllib.error.HTTPError as error: response = error
                       with response:
-                          status, final, hdr, data = response.status, response.url, dict(response.headers), response.read(4*1024*1024)
+                          status, final, hdr, data = response.status, response.url, response.headers, response.read(4*1024*1024)
                       assert status in (expected if isinstance(expected, tuple) else (expected,)), 'Unexpected status for ' + host + path + ': ' + str(status)
                       assert urllib.parse.urlparse(final).hostname in ({'hidiindia.com', 'www.hidiindia.com'} if host in HOSTS[:2] else {host}), 'Unexpected host redirect'
                       row = {'host': host, 'path': path, 'method': method, 'status': status, 'finalUrl': final,
@@ -227,6 +227,8 @@ jobs:
 
           try: main()
           except Exception as error:
+              if evidence.exists() and 'checks' in globals():
+                  (evidence / 'http-checks.json').write_text(json.dumps(checks, indent=2))
               print('Stopped with ' + type(error).__name__ + '; frames=' + json.dumps([{'file': Path(f.filename).name, 'line': f.lineno, 'function': f.name} for f in traceback.extract_tb(error.__traceback__)]), file=sys.stderr)
               print(str(error) if isinstance(error, (AssertionError, retained.AzureOperationError)) else 'Domain preparation stopped; inspect sanitized evidence', file=sys.stderr)
               sys.exit(1)
