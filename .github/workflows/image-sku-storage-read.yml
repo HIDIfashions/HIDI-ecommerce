@@ -1,0 +1,27 @@
+name: Read-only live Image SKU storage verification
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/image-sku-storage-read.yml]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Read saved mappings through the live web managed identity without writing
+        run: python3 deploy/image-sku/probe-store.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: image-sku-storage-read-${{ github.run_id }}
+          path: evidence/image-sku/storage-read.json
+          retention-days: 30
