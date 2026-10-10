@@ -6,8 +6,9 @@ const base = new URL(process.env.HIDI_SOCIAL_BASE_URL || 'http://127.0.0.1:3192'
 const live = process.env.HIDI_SOCIAL_LIVE === '1';
 const channels = [
   ['HIDI Instagram', 'https://www.instagram.com/hidiindia/'],
-  ['HIDI Facebook', 'https://www.facebook.com/hidiindia/'],
-  ['HIDI Youtube', 'https://www.youtube.com/@hidiindia']
+  ['HIDI Facebook', 'https://www.facebook.com/profile.php?id=61594615364935'],
+  ['HIDI X', 'https://x.com/Hidiindia'],
+  ['HIDI Youtube', 'https://www.youtube.com/@Hidiindia']
 ];
 
 for (const engine of ['chromium', 'firefox', 'webkit']) {
@@ -65,4 +66,4 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
     }
   } finally { await browser.close(); }
 }
-console.log('PASS: 72 social-link activations across three browsers, mobile/desktop, fresh/reloaded pages, mouse and keyboard.');
+console.log('PASS: 96 social-link activations across three browsers, mobile/desktop, fresh/reloaded pages, mouse and keyboard.');
