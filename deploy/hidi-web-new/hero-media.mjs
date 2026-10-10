@@ -538,11 +538,21 @@ function ownedBrandKeyFromUrl(value, config) {
     return "";
   }
   const { pathname } = parsed;
+  const absoluteUrl = /^[a-z][a-z\d+.-]*:/i.test(value) || value.startsWith("//");
+  const publicHosts = new Set([
+    config.publicBaseUrl,
+    process.env.SITE_URL,
+    process.env.WEB_ORIGIN,
+  ].flatMap(item => {
+    try { return item ? [new URL(item).hostname] : []; } catch { return []; }
+  }));
 
   let encodedKey = "";
   if (pathname.startsWith(HERO_ASSET_PREFIX)) {
+    if (absoluteUrl && !publicHosts.has(parsed.hostname)) return "";
     encodedKey = pathname.slice(HERO_ASSET_PREFIX.length);
   } else if (pathname.startsWith("/media/brand/")) {
+    if (absoluteUrl && !publicHosts.has(parsed.hostname)) return "";
     encodedKey = pathname.slice("/media/".length);
   } else {
     let blobHost = "";

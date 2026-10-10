@@ -694,6 +694,10 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     const savedLanding = blobs.get(landingCurrentKey);
     const legacyLanding = JSON.parse(savedLanding.body.toString("utf8"));
     legacyLanding.slots["range-occasion"].url = legacyLandingUrl;
+    const externalBrandUrl = `https://unrelated.example/media/${landingAsset.url.slice("/api/hidi/hero-asset/".length)}`;
+    const malformedBrandUrl = "https://thidigk.thehidi.com/media/brand/landing-media/media/%E0%A4%A.png";
+    legacyLanding.slots["range-work-edit"] = { ...legacyLanding.slots["range-occasion"], url: externalBrandUrl };
+    legacyLanding.slots["range-everyday"] = { ...legacyLanding.slots["range-occasion"], url: malformedBrandUrl };
     legacyLanding.ananya = {
       version: 1,
       active: true,
@@ -712,6 +716,8 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     assert.equal(repairedHero.items[0].url, asset.url);
     const repairedLive = JSON.parse((await send(azure.url, "/api/hidi/landing-media-config")).body);
     assert.equal(repairedLive.slots["range-occasion"].url, landingAsset.url);
+    assert.equal(repairedLive.slots["range-work-edit"].url, externalBrandUrl);
+    assert.equal(repairedLive.slots["range-everyday"].url, malformedBrandUrl);
     assert.equal(repairedLive.ananya.items[0].url, landingAsset.url);
     const repairedLibrary = JSON.parse((await send(azure.url, "/api/hidi/landing-media-library")).body);
     assert.equal(repairedLibrary.assets[0].url, landingAsset.url);
