@@ -1,4 +1,4 @@
-name: Publish saved production drafts
+name: Publish saved production drafts from current database
 on:
   push:
     branches: [migration/azure-sql-blob]

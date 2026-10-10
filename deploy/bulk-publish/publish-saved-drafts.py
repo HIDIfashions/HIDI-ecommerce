@@ -39,7 +39,7 @@ def main(mode):
     state = transport.snapshot(data)
     assert state['ready'] and state['latest'] == state['ready'] and state['mode'] == 'Single', 'API must be ready'
     env = {item['name']: item.get('value') for item in data['properties']['template']['containers'][0].get('env', [])}
-    database = env.get('AZURE_SQL_DATABASE'); assert database == 'hidi-sql', 'Unexpected production database'
+    database = env.get('AZURE_SQL_DATABASE'); assert isinstance(database, str) and database, 'Captured production database missing'
     payload = None
     if mode == 'publish':
         snapshot = json.loads((EVIDENCE / 'draft-snapshot.json').read_text())

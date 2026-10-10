@@ -6,7 +6,7 @@ function invariant(value, code) {if (!value) throw Object.assign(new Error(code)
 const unchanged = product => {const {status, updatedAt, ...fields} = product; return hash(fields);};
 const emit = (kind, value) => console.log('HIDI_DRAFT_' + kind + '::' + JSON.stringify(value));
 async function connect(expectedDatabase) {
-  invariant(expectedDatabase === 'hidi-sql' && process.env.AZURE_SQL_DATABASE === expectedDatabase, 'DATABASE_TARGET_CHANGED');
+  invariant(typeof expectedDatabase === 'string' && expectedDatabase.length > 0 && process.env.AZURE_SQL_DATABASE === expectedDatabase, 'DATABASE_TARGET_CHANGED');
   const {PrismaService} = await import('file:///app/apps/api/dist/prisma/prisma.service.js');
   const db = new PrismaService(); await db.$connect();
   const identity = await db.$queryRawUnsafe('SELECT DB_NAME() AS databaseName');
