@@ -4,7 +4,7 @@ import { skuKey } from "@/lib/hidi-bulk-import";
 
 export type PhotoCandidate = { file: File; sourceName: string; sku: string | null; variantId: string | null; error: string | null };
 const IMAGE_TYPES: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", avif: "image/avif" };
-const MAX_FILE = 5 * 1024 * 1024;
+const MAX_FILE = 12 * 1024 * 1024;
 const MAX_PHOTOS = 1000;
 
 function basename(value: string) { return value.replace(/\\/g, "/").split("/").pop() ?? value; }
@@ -23,7 +23,7 @@ function candidate(file: File, sourceName: string, variants: InventoryRowLite[])
   let error: string | null = null;
   if (!IMAGE_TYPES[ext]) error = "Unsupported image type.";
   else if (file.size < 1) error = "Image is empty.";
-  else if (file.size > MAX_FILE) error = "Image exceeds 5 MB.";
+  else if (file.size > MAX_FILE) error = "Image exceeds 12 MB.";
   else if (!matched) error = "Filename does not begin with a known SKU followed by _.";
   return { file, sourceName, sku: matched?.sku ?? null, variantId: matched?.variantId ?? null, error };
 }

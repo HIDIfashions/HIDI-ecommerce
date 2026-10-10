@@ -7,7 +7,7 @@ import { adminApiHeaders, isAdminRequest } from "@/lib/admin-auth";
 export const runtime = "nodejs";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const DEFAULT_R2_BUCKET = "hidi-product-media-prod";
 
 type R2UploadResult = {
@@ -192,7 +192,7 @@ export async function POST(
       return NextResponse.json({ message: "Use a JPEG, PNG, WebP or AVIF image" }, { status: 400 });
     }
     if (file.size < 1 || file.size > MAX_IMAGE_BYTES) {
-      return NextResponse.json({ message: "Image must be smaller than 8 MB" }, { status: 400 });
+      return NextResponse.json({ message: "Image must be no larger than 12 MB" }, { status: 400 });
     }
 
     await createUploadTicket(request, variantId, file);

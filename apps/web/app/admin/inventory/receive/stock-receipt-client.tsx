@@ -351,7 +351,7 @@ function ReceiptLineRow({ line, busy, uploading, progress, onChange, onRemove, o
           }} />
       </label>
       <label className={styles.check}><input type="checkbox" checked={applyToColor} disabled={busy} onChange={(event) => setApplyToColor(event.target.checked)} /> Use for all {line.color} sizes</label>
-      <small style={{ display: "block", lineHeight: 1.4 }} role="status" aria-live="polite">{uploading ? progress : "Select up to 8 photos · max 5 MB each. Selection starts upload."}</small>
+      <small style={{ display: "block", lineHeight: 1.4 }} role="status" aria-live="polite">{uploading ? progress : "Select up to 8 photos · max 12 MB each. Selection starts upload."}</small>
     </div>
     <button type="button" className={styles.remove} disabled={busy} onClick={onRemove} aria-label={`Remove ${line.sku}`}>×</button>
   </article>;
