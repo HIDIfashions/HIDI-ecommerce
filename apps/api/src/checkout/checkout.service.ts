@@ -7,6 +7,7 @@ import type { VerifiedAuthUser } from "../auth/supabase-auth.service.js";
 import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 import { appendOrderAudit } from "../audit/order-audit.js";
+import { shippingQuote } from "./shipping-policy.js";
 
 const RESERVATION_MINUTES = 15;
 const MAX_PAISE = 2_147_483_647;
@@ -31,6 +32,7 @@ type PrepareInput = {
   shippingAddress?: AddressInput;
   walletPaise?: number;
   expectedTotalPaise?: number;
+  expectedPayableTotalPaise?: number;
 };
 
 @Injectable()
@@ -58,12 +60,13 @@ export class CheckoutService {
     if (typeof input.customerPhone !== "string") throw new BadRequestException("A valid mobile number is required");
     const phone = input.customerPhone.trim();
     const phoneDigits = phone.replace(/\D/g, "");
-    if (!/^[0-9+() -]{8,20}$/.test(phone) || phoneDigits.length < 8 || phoneDigits.length > 15) {
+    if (!/^\+?[0-9]{8,15}$/.test(phone) || phoneDigits.length < 8 || phoneDigits.length > 15) {
       throw new BadRequestException("A valid mobile number is required");
     }
 
     if (input.walletPaise !== undefined && (!Number.isSafeInteger(input.walletPaise) || input.walletPaise < 0 || input.walletPaise > MAX_PAISE)) throw new BadRequestException("Wallet amount must be nonnegative integer paise within the supported range");
     if (input.expectedTotalPaise !== undefined && (!Number.isSafeInteger(input.expectedTotalPaise) || input.expectedTotalPaise < 0 || input.expectedTotalPaise > MAX_PAISE)) throw new BadRequestException("Expected total must be nonnegative integer paise within the supported range");
+    if (input.expectedPayableTotalPaise !== undefined && (!Number.isSafeInteger(input.expectedPayableTotalPaise) || input.expectedPayableTotalPaise < 0 || input.expectedPayableTotalPaise > MAX_PAISE)) throw new BadRequestException("Expected payable total must be nonnegative integer paise within the supported range");
 
     const a = input.shippingAddress;
     const requiredText = (value: unknown, max: number) =>
@@ -85,6 +88,7 @@ export class CheckoutService {
       throw new BadRequestException("Complete delivery address with a 6-digit PIN code is required");
     }
     if (a.countryCode && a.countryCode !== "IN") throw new BadRequestException("HIDI checkout currently supports delivery addresses in India");
+    if (!/^\+?[0-9]{8,15}$/.test(a.phone.trim())) throw new BadRequestException("A valid delivery mobile number is required");
   }
 
   async prepare(input: PrepareInput, auth: VerifiedAuthUser | null = null) {
@@ -167,8 +171,10 @@ export class CheckoutService {
       }
       if (!Number.isSafeInteger(subtotalPaise) || subtotalPaise <= 0 || subtotalPaise > MAX_PAISE) throw new BadRequestException("Invalid order total");
       if (input.expectedTotalPaise !== undefined && input.expectedTotalPaise !== subtotalPaise) throw new ConflictException("Product prices changed. Refresh your bag and review the total before paying.");
-      if (walletPaise > subtotalPaise) throw new BadRequestException("Wallet amount cannot exceed the order total");
-      if (subtotalPaise - walletPaise > 0 && subtotalPaise - walletPaise < 100) throw new BadRequestException("The remaining online payment must be at least ₹1. Use the wallet for the full total or reduce the wallet amount.");
+      const { shippingPaise, totalPaise } = shippingQuote(subtotalPaise);
+      if (input.expectedPayableTotalPaise !== undefined && input.expectedPayableTotalPaise !== totalPaise) throw new ConflictException("Shipping or prices changed. Refresh your bag and review the total before paying.");
+      if (walletPaise > totalPaise) throw new BadRequestException("Wallet amount cannot exceed the order total");
+      if (totalPaise - walletPaise > 0 && totalPaise - walletPaise < 100) throw new BadRequestException("The remaining online payment must be at least ₹1. Use the wallet for the full total or reduce the wallet amount.");
 
       const created = await tx.order.create({
         data: {
@@ -178,7 +184,8 @@ export class CheckoutService {
           status: "PENDING_PAYMENT",
           userId,
           subtotalPaise,
-          totalPaise: subtotalPaise,
+          shippingPaise,
+          totalPaise,
           walletAppliedPaise: walletPaise,
           customerEmail: auth?.email ?? customerEmail,
           customerPhone: auth?.phoneVerified && auth.phone ? auth.phone : customerPhone,
@@ -502,6 +509,7 @@ export class CheckoutService {
       orderNumber: order.orderNumber,
       amountPaise: cashDue,
       subtotalPaise: order.subtotalPaise,
+      shippingPaise: order.shippingPaise ?? 0,
       totalPaise: order.totalPaise,
       walletAppliedPaise: order.walletAppliedPaise ?? 0,
       status: order.status,

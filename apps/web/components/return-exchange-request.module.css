@@ -336,3 +336,4 @@
   .trigger, .cancelRequest { min-height: 40px; }
 }
 
+.submit { background: var(--hidi-mulberry-clay, #591d20); border-color: var(--hidi-mulberry-clay, #591d20); color: #fff8ef; }

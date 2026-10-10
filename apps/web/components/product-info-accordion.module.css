@@ -70,6 +70,14 @@
   margin-top: 12px !important;
 }
 
+.policyRows { display: grid; gap: 22px; }
+.policyRow { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: start; gap: 16px; }
+.policyRow > svg { color: var(--ink); margin-top: 3px; }
+.policyRow > .shippingCheck { color: #239b48; }
+.policyRow strong { display: block; margin-bottom: 8px; font-size: var(--type-lead); }
+.policyRow p { margin: 0; }
+.policyLink { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; width: 100%; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink); text-decoration: underline; text-underline-offset: 5px; }
+
 .note svg {
   flex: 0 0 auto;
   margin-top: 4px;

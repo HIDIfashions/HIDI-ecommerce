@@ -405,3 +405,7 @@
   }
 }
 
+
+.checkoutWallet:hover { background: var(--hidi-page-bg); color: var(--ink); border-color: var(--line); transform: none; }
+.checkoutWallet:hover .note { color: var(--muted); }
+.textButton { color: var(--hidi-mulberry-clay, #591d20); }

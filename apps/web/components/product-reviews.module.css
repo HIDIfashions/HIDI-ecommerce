@@ -126,3 +126,5 @@
   }
 }
 
+.reviewButton { background: var(--hidi-mulberry-clay, #591d20); border-color: var(--hidi-mulberry-clay, #591d20); color: #fff8ef; }
+.reviewButton:hover { background: var(--hidi-mulberry-clay-lift, #69282a); border-color: var(--hidi-mulberry-clay-lift, #69282a); }

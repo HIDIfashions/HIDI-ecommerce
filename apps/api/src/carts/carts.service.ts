@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { shippingQuote } from "../checkout/shipping-policy.js";
 
 const cartInclude = {
   items: {
@@ -28,7 +29,7 @@ export class CartsService {
       include: cartInclude,
     });
     if (!cart) {
-      return { id: null, sessionId, currency: "INR", items: [], itemCount: 0, subtotalPaise: 0 };
+      return { id: null, sessionId, currency: "INR", items: [], itemCount: 0, subtotalPaise: 0, ...shippingQuote(0) };
     }
     return this.toView(cart);
   }
@@ -178,13 +179,15 @@ export class CartsService {
         },
       };
     });
+    const subtotalPaise = items.reduce((sum: number, item: any) => sum + item.lineTotalPaise, 0);
     return {
       id: cart.id,
       sessionId: cart.sessionId,
       currency: cart.currency,
       items,
       itemCount: items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-      subtotalPaise: items.reduce((sum: number, item: any) => sum + item.lineTotalPaise, 0),
+      subtotalPaise,
+      ...shippingQuote(subtotalPaise),
     };
   }
 }

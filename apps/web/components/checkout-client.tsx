@@ -10,6 +10,7 @@ import { useWalletSummary } from "@/components/wallet-balance";
 import { CatalogImage } from "@/components/catalog-image";
 import { checkoutFingerprint, formatWalletPaise, parsePreparedCheckout, walletAccountId, walletAmountPaise, walletEnabled, WALLET_UPDATED_EVENT, type PreparedCheckout } from "@/lib/wallet-client";
 import walletStyles from "./wallet.module.css";
+import { sanitizeCheckoutPhone } from "@/lib/checkout-phone";
 
 import { BROWSER_API_URL } from "@/lib/browser-api";
 const API = BROWSER_API_URL;
@@ -21,6 +22,7 @@ declare global {
 type CheckoutCart = {
   subtotalPaise: number;
   totalPaise?: number;
+  shippingPaise?: number;
   itemCount: number;
   items: Array<{
     id: string;
@@ -40,10 +42,11 @@ type DeliveryCheck =
   | { status: "unavailable"; pin: string };
 
 function cartSignature(cart: CheckoutCart) {
-  return JSON.stringify([cart.subtotalPaise, cart.totalPaise, cart.items.map((item) => [item.id, item.variant?.id, item.quantity, item.lineTotalPaise])]);
+  return JSON.stringify([cart.subtotalPaise, cart.totalPaise, cart.shippingPaise, cart.items.map((item) => [item.id, item.variant?.id, item.quantity, item.lineTotalPaise])]);
 }
 
 export function CheckoutClient() {
+  const [guestConfirmed, setGuestConfirmed] = useState(false);
   const router = useRouter();
   const wallet = useWalletSummary();
   const [cart, setCart] = useState<CheckoutCart | null>(null);
@@ -133,6 +136,7 @@ export function CheckoutClient() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message ?? "Unable to load bag");
       if (!Array.isArray(data.items) || !Number.isSafeInteger(data.subtotalPaise) || data.subtotalPaise < 0) throw new Error("Your bag is temporarily unavailable.");
+      if (data.shippingPaise !== undefined && (!Number.isSafeInteger(data.shippingPaise) || data.shippingPaise < 0 || !Number.isSafeInteger(data.totalPaise) || data.totalPaise !== data.subtotalPaise + data.shippingPaise)) throw new Error("Your shipping total could not be confirmed. Please refresh your bag.");
       if (controller.signal.aborted || getCartSession() !== sessionId) return;
       const signature = cartSignature(data);
       if (lifecycle.current.cartSignature && signature !== lifecycle.current.cartSignature) invalidate(true);
@@ -221,6 +225,7 @@ export function CheckoutClient() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (lock.current || !cart) return;
+    if (cart.subtotalPaise < 149900 && (cart.shippingPaise === undefined || cart.totalPaise !== cart.subtotalPaise + cart.shippingPaise)) { setError("Shipping could not be confirmed. Please refresh your bag before paying."); return; }
     const expectedUserId = walletAccountId();
     if (expectedUserId !== lifecycle.current.userId) { invalidate(true); setError("Your sign-in changed. Please reload checkout before paying."); return; }
     const requestedWallet = useWallet && walletEnabled ? walletAmountPaise(walletInput, cart.totalPaise ?? cart.subtotalPaise, cart.totalPaise ?? cart.subtotalPaise) : 0;
@@ -258,7 +263,7 @@ export function CheckoutClient() {
         method: "POST", signal: controller.signal,
         headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
         body: JSON.stringify({
-          sessionId, checkoutToken: attempt.current!.token, walletPaise: requestedWallet, expectedTotalPaise: cart.subtotalPaise,
+          sessionId, checkoutToken: attempt.current!.token, walletPaise: requestedWallet, expectedTotalPaise: cart.subtotalPaise, expectedPayableTotalPaise: cart.totalPaise ?? cart.subtotalPaise,
           customerEmail: details.email, customerPhone: details.phone,
           shippingAddress: { firstName: details.firstName, lastName: details.lastName, phone: details.phone, line1: details.line1, line2: details.line2, postalCode: details.postalCode, city: details.city, state: details.state, countryCode: "IN" },
         }),
@@ -274,6 +279,7 @@ export function CheckoutClient() {
         throw new Error(typeof payload?.message === "string" ? payload.message : "Unable to prepare checkout");
       }
       const result = parsePreparedCheckout(payload);
+      if (!result.captured && result.totalPaise !== (cart.totalPaise ?? cart.subtotalPaise)) throw new Error("Your shipping or order total changed. Refresh your bag and review the total before paying.");
       setPrepared(result);
       if (result.captured) {
         window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
@@ -286,7 +292,7 @@ export function CheckoutClient() {
         key: result.razorpayKeyId, amount: result.amountPaise, currency: result.currency,
         name: "HIDI", description: `Order ${result.orderNumber}`, order_id: result.providerOrderId,
         prefill: { name: `${details.firstName} ${details.lastName}`.trim(), email: details.email, contact: details.phone },
-        notes: { hidi_order_number: result.orderNumber }, theme: { color: "#1d1d1a" },
+        notes: { hidi_order_number: result.orderNumber }, theme: { color: "#591d20" },
         handler: async (paymentResult: any) => {
           if (!current()) return;
           try {
@@ -327,7 +333,9 @@ export function CheckoutClient() {
   const previewWallet = useWallet ? (walletAmountPaise(walletInput, gross, gross) ?? 0) : 0;
   const applied = prepared?.walletAppliedPaise ?? previewWallet;
   const payable = prepared?.amountPaise ?? Math.max(0, gross - previewWallet);
-  const complimentaryShipping = gross >= 149900;
+  const complimentaryShipping = cart.subtotalPaise >= 149900;
+  const shippingPaise = prepared?.shippingPaise ?? cart.shippingPaise;
+  const shippingLabel = complimentaryShipping ? "Complimentary" : shippingPaise !== undefined ? formatWalletPaise(shippingPaise) : "Confirming shipping…";
 
   return <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
@@ -355,7 +363,8 @@ export function CheckoutClient() {
             <strong>{formatWalletPaise(item.lineTotalPaise)}</strong>
           </Link>
         ))}
-        {complimentaryShipping && <div className="checkout-mobile-shipping-row"><span>Shipping</span><strong>Complimentary</strong></div>}
+        <div className="checkout-mobile-shipping-row"><span>Shipping</span><strong>{shippingLabel}</strong></div>
+        <p className="checkout-shipping-policy">₹99 shipping below ₹1,499. Free shipping from ₹1,499 before rewards.</p>
         <div className="checkout-mobile-total-row"><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div>
         <Link href="/cart" className="checkout-edit-bag">Edit bag</Link>
       </div>
@@ -406,7 +415,9 @@ export function CheckoutClient() {
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
-                  maxLength={18}
+                  pattern="\+?[0-9]{8,15}"
+                  title="Enter 8–15 digits, with an optional leading + for the country code"
+                  onInput={(event) => { event.currentTarget.value = sanitizeCheckoutPhone(event.currentTarget.value); }}
                   required
                 />
                 <small>Required for delivery and order updates.</small>
@@ -531,9 +542,16 @@ export function CheckoutClient() {
                 <p>Review rewards, then continue to secure payment.</p>
               </div>
             </div>
-            {walletEnabled && <div className={walletStyles.checkoutWallet}>
-              {!accountId ? <p className={walletStyles.note}><Link href="/account">Sign in</Link> to view and use your HIDI rewards. You can also continue as a guest.</p>
-                : wallet.loading && !wallet.summary ? <p role="status">Loading your rewards…</p>
+            {!accountId && !guestConfirmed && <div className="checkout-signin-card">
+              <h3>Enjoy your HIDI Rewards</h3>
+              <p>Sign in to access your rewards and redeem available benefits on your order.</p>
+              <Link href="/account?returnTo=%2Fcheckout" className="button button-dark checkout-signin-button">Sign In</Link>
+              <p className="checkout-guest-prompt">Prefer not to sign in?</p>
+              <button type="button" className="checkout-guest-link" onClick={() => { setGuestConfirmed(true); document.querySelector<HTMLButtonElement>(".checkout-pay-button")?.focus({ preventScroll: true }); }}>Continue as Guest</button>
+            </div>}
+            {!accountId && guestConfirmed && <p className="checkout-guest-status" role="status">Continuing as guest. <Link href="/account?returnTo=%2Fcheckout">Sign in for HIDI rewards</Link></p>}
+            {walletEnabled && accountId && <div className={walletStyles.checkoutWallet}>
+              {wallet.loading && !wallet.summary ? <p role="status">Loading your rewards…</p>
                 : wallet.error ? <div><p className={walletStyles.warning} role="alert">{wallet.error}</p><button className={walletStyles.textButton} type="button" onClick={() => { void wallet.refresh().catch(() => undefined); }}>Try loading rewards again</button></div>
                 : wallet.unavailable ? <p className={walletStyles.note}>Wallet redemption is temporarily unavailable. You can pay securely without rewards.</p>
                 : wallet.summary ? <>
@@ -600,7 +618,8 @@ export function CheckoutClient() {
           ))}
         </div>
 
-        <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Order total</span><strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong></div>{complimentaryShipping && <div><span>Shipping</span><strong>Complimentary</strong></div>}{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
+        <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Subtotal</span><strong>{formatWalletPaise(prepared?.subtotalPaise ?? cart.subtotalPaise)}</strong></div><div><span>Shipping</span><strong>{shippingLabel}</strong></div>{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
+        <p className="checkout-shipping-policy">₹99 shipping below ₹1,499. Free shipping from ₹1,499 before rewards.</p>
         {useWallet && !prepared && <p className={walletStyles.note}>Rewards are applied only after server confirmation.</p>}
         {!!prepared?.walletAppliedPaise && prepared.provider === "RAZORPAY" && <p className={walletStyles.note}>{formatWalletPaise(prepared.walletAppliedPaise)} is reserved for this checkout while the remaining payment is completed.</p>}
       </aside>

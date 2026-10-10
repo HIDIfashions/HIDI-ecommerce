@@ -123,7 +123,7 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
   };
   const jsx = (type, props, key) => ({ type, props: props ?? {}, key });
   const checkout = loadModule("apps/web/components/checkout-client.tsx", {
-    react, "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
+    react, "@/lib/checkout-phone": loadModule("apps/web/lib/checkout-phone.ts"), "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
     "next/link": "Link", "next/script": "Script", "next/navigation": { useRouter: () => ({ push: (url) => state.redirects.push(url) }) },
     "@/lib/cart-session": {
       getCartSession: () => "bag-a",
@@ -142,7 +142,7 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
     process: { env: { NEXT_PUBLIC_API_URL: "http://test.invalid/v1" } },
     FormData: class { constructor(form) { this.form = form; } get(key) { return this.form[key] ?? ""; } },
     fetch: async (url, init = {}) => {
-      if (url.includes("/carts/")) return { ok: true, json: async () => ({ subtotalPaise: 100000, itemCount: 1, items: [{ id: "line-1", quantity: 1, lineTotalPaise: 100000, product: { name: "Test Product", slug: "test-product", image: null }, variant: { id: "v1", size: "M", color: "Test" } }] }) };
+      if (url.includes("/carts/")) return { ok: true, json: async () => ({ subtotalPaise: 100000, shippingPaise: 0, totalPaise: 100000, itemCount: 1, items: [{ id: "line-1", quantity: 1, lineTotalPaise: 100000, product: { name: "Test Product", slug: "test-product", image: null }, variant: { id: "v1", size: "M", color: "Test" } }] }) };
       if (url.endsWith("/checkout/prepare")) {
         state.prepareCalls.push({ url, init, body: JSON.parse(init.body) });
         if (state.prepareImpl) return state.prepareImpl();

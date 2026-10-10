@@ -143,6 +143,7 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
         </span>
       </div>
 
+      <div className={styles.filterScroll}>
       <details className={styles.filterSection} open>
         <summary className={styles.filterSummary}><span>Size</span><ChevronDown className={styles.chevron} size={16} strokeWidth={1.5} /></summary>
         <div className={styles.options}>
@@ -208,6 +209,7 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
           </label>)}
         </div>
       </details>
+      </div>
       <div className={styles.drawerApply}>
         <button className="button button-dark" type="button" onClick={() => closeFilters(true)}>Show {filtered.length} styles</button>
       </div>

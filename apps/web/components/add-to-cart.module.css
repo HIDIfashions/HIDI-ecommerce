@@ -22,8 +22,8 @@
 }
 
 .addButton {
-  background: #fffaf5;
-  color: #591d20;
+  background: var(--hidi-mulberry-clay, #591d20);
+  color: #fff8ef;
 }
 
 .buyButton {
@@ -330,3 +330,7 @@
 /* The sticky purchase bar must remain below search, filter and gallery dialogs. */
 @media (max-width: 620px) { .mobileBar { z-index: 90; } }
 .fitUnits button { min-width: 44px; min-height: 44px; }
+
+.addButton, .buyButton, .stickyAdd, .stickyBuy { background: var(--hidi-mulberry-clay, #591d20); border-color: var(--hidi-mulberry-clay, #591d20); color: #fff8ef; }
+.addButton:hover:not(:disabled), .stickyAdd:hover:not(:disabled) { background: var(--hidi-mulberry-clay-lift, #69282a); border-color: var(--hidi-mulberry-clay-lift, #69282a); color: #fff8ef; }
+.mobileAdd, .mobileBuy { background: var(--hidi-mulberry-clay, #591d20); border-color: var(--hidi-mulberry-clay, #591d20); color: #fff8ef; }

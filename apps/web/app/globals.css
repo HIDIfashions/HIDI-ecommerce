@@ -4155,3 +4155,29 @@ body {
     font-size: clamp(25px, 8vw, 32px);
   }
 }
+
+/* One HIDI primary action palette on desktop and mobile. */
+.button, .button-dark, .button-light,
+.mobile-cart-checkout > a, .checkout-pay-button,
+.footer .newsletter button {
+  background: var(--hidi-mulberry-clay, #591d20);
+  border-color: var(--hidi-mulberry-clay, #591d20);
+  color: #fff8ef;
+}
+.button:hover:not(:disabled), .mobile-cart-checkout > a:hover,
+.footer .newsletter button:hover:not(:disabled) {
+  background: var(--hidi-mulberry-clay-lift, #69282a);
+  border-color: var(--hidi-mulberry-clay-lift, #69282a);
+  color: #fff8ef;
+}
+.button:disabled { opacity: .48; cursor: not-allowed; }
+.checkout-signin-card { margin-bottom: 20px; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--hidi-page-bg); }
+.checkout-signin-card h3 { margin: 0 0 14px; font: 600 var(--type-lead)/1.4 var(--font-sans); }
+.checkout-signin-card > p { margin: 0 0 18px; line-height: 1.65; }
+.checkout-signin-button { width: 100%; min-height: 50px; border-radius: 5px; text-transform: none; letter-spacing: 0; }
+.checkout-signin-card > .checkout-guest-prompt { margin: 14px 0 3px; text-align: center; color: var(--muted); }
+.checkout-guest-link { display: block; margin: 0 auto; min-height: 44px; border: 0; background: transparent; color: var(--hidi-mulberry-clay); font: inherit; text-decoration: underline; text-underline-offset: 5px; cursor: pointer; }
+.checkout-guest-status { line-height: 1.7; margin-bottom: 20px; }
+.checkout-guest-status a { color: var(--hidi-mulberry-clay); text-decoration: underline; }
+.checkout-shipping-policy { color: var(--muted); font-size: var(--type-meta); line-height: 1.65; margin: 12px 0; }
+@media(max-width:640px) { .checkout-signin-card { padding: 18px; } }

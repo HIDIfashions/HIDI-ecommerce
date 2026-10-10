@@ -308,8 +308,8 @@
 }
 
 .added {
-  background: #8f6531 !important;
-  border-color: #8f6531 !important;
+  background: var(--card-brand) !important;
+  border-color: var(--card-brand) !important;
   color: #fff8ef !important;
 }
 
@@ -425,6 +425,8 @@
 }
 
 .mobileSheet {
+  --card-brand: var(--hidi-mulberry-clay, #591d20);
+  --card-brand-deep: var(--hidi-mulberry-clay-deep, #461416);
   position: relative;
   width: 100%;
   max-height: 88dvh;
@@ -657,8 +659,8 @@
 
 .mobileSheetAdd {
   margin-right: 6px;
-  background: #fffaf5;
-  color: var(--card-brand);
+  background: var(--card-brand);
+  color: #fff8ef;
 }
 
 .mobileSheetBuy {

@@ -6,6 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runQualityChecks } from './storefront-quality.browser.mjs';
+import { runCheckoutThemeChecks } from './checkout-theme.browser.mjs';
 const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
 const output = resolve('test-results/editorial-storefront'); await mkdir(output, {recursive:true});
 const port=3107, apiPort=4107, base=`http://127.0.0.1:${port}`;
@@ -23,7 +24,7 @@ const products=folders.map((slug,i)=>({
 const carts=new Map(),writes=[],results=[],typography=[],pageErrors=[];
 let cartMode='ok',catalogueMode='ok',serverLog='',server,activeBrowser;
 const delay=ms=>new Promise(done=>setTimeout(done,ms));
-function basket(session){if(!carts.has(session))carts.set(session,[]);const items=carts.get(session);return{items,itemCount:items.reduce((n,i)=>n+i.quantity,0),subtotalPaise:items.reduce((n,i)=>n+i.lineTotalPaise,0)};}
+function basket(session){if(!carts.has(session))carts.set(session,[]);const items=carts.get(session),subtotalPaise=items.reduce((n,i)=>n+i.lineTotalPaise,0),shippingPaise=subtotalPaise>0&&subtotalPaise<149900?9900:0;return{items,itemCount:items.reduce((n,i)=>n+i.quantity,0),subtotalPaise,shippingPaise,totalPaise:subtotalPaise+shippingPaise};}
 const upstream=createServer(async(req,res)=>{
   const url=new URL(req.url,`http://127.0.0.1:${apiPort}`),route=url.pathname.replace(/^\/v1/,'');
   const send=(status,body)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(body));};
@@ -298,6 +299,7 @@ try{
       catalogueMode='empty';await page.waitForLoadState('networkidle');await page.reload({waitUntil:'networkidle'});await page.getByText('Our latest edit is being prepared.').waitFor();assert.equal(await page.locator('[data-editorial-product]').count(),0);assert.equal(await page.getByRole('heading',{name:'Wear the feeling.'}).count(),1);
     });
     await runQualityChecks({browser,engine,scenario,until,base,output,products,writes,setCartMode:value=>{cartMode=value;}});
+    await runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products});
     await browser.close();activeBrowser=null;
   }
 }finally{

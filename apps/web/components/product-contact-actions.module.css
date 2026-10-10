@@ -159,3 +159,6 @@
   letter-spacing: -.012em;
 }
 
+
+.actions button, .actions .whatsapp, .continueButton, .retryButton { background: var(--hidi-mulberry-clay, #591d20); border-color: var(--hidi-mulberry-clay, #591d20); color: #fff8ef; }
+.actions button:hover:not(:disabled), .actions .whatsapp:hover:not(:disabled), .continueButton:hover:not(:disabled), .retryButton:hover:not(:disabled) { background: var(--hidi-mulberry-clay-lift, #69282a); border-color: var(--hidi-mulberry-clay-lift, #69282a); }

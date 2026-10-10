@@ -383,3 +383,48 @@ test("a verified customer can adopt the same browser-session cart at purchase", 
   assert.equal(f.state().wallet.reservedPaise, 4000);
 });
 
+
+for (const [price, shipping] of [[1,9900],[99900,9900],[149899,9900],[149900,0],[149901,0],[200000,0]]) {
+  test(`shipping boundary ${price} paise persists shipping and charges Razorpay once`, async () => {
+    const f = fixture({ price });
+    const payload = input({ expectedTotalPaise: price, expectedPayableTotalPaise: price + shipping });
+    const first = await f.service.prepare(payload); const second = await f.service.prepare(payload);
+    assert.equal(first.shippingPaise, shipping); assert.equal(first.totalPaise, price + shipping); assert.equal(first.amountPaise, price + shipping);
+    assert.equal(second.orderNumber, first.orderNumber); assert.equal(f.state().orders[0].shippingPaise, shipping);
+    assert.equal(f.state().payments[0].amountPaise, price + shipping);
+    assert.equal(f.calls.filter(c => c.action === 'razorpay.createOrder').length, 1);
+  });
+}
+test('quantity crosses the free shipping boundary using the whole merchandise subtotal', async () => {
+  const f = fixture({ price: 74950, quantity: 2 });
+  const result = await f.service.prepare(input({ expectedTotalPaise: 149900, expectedPayableTotalPaise: 149900 }));
+  assert.equal(result.shippingPaise, 0); assert.equal(result.totalPaise, 149900);
+});
+test('rewards do not change free shipping eligibility', async () => {
+  const f = fixture({ price: 149900 });
+  const result = await f.service.prepare(input({ expectedTotalPaise: 149900, expectedPayableTotalPaise: 149900, walletPaise: 50000 }), auth);
+  assert.equal(result.shippingPaise, 0); assert.equal(result.amountPaise, 99900);
+});
+test('rewards can cover both merchandise and charged shipping atomically', async () => {
+  const f = fixture({ price: 100000 });
+  const result = await f.service.prepare(input({ expectedTotalPaise: 100000, expectedPayableTotalPaise: 109900, walletPaise: 109900 }), auth);
+  assert.equal(result.provider, 'WALLET'); assert.equal(result.shippingPaise, 9900); assert.equal(result.amountPaise, 0);
+  assert.equal(f.calls.some(c => c.action === 'razorpay.createOrder'), false);
+});
+test('omitted or manipulated client shipping never controls the server charge', async () => {
+  const f = fixture({ price: 100000 });
+  const result = await f.service.prepare(input({ expectedTotalPaise: 100000, shippingPaise: 0, totalPaise: 100000 }));
+  assert.equal(result.amountPaise, 109900); assert.equal(result.shippingPaise, 9900);
+});
+test('stale payable quote is rejected before stock or payment writes', async () => {
+  const f = fixture({ price: 100000 });
+  await assert.rejects(f.service.prepare(input({ expectedTotalPaise: 100000, expectedPayableTotalPaise: 100000 })), /Shipping or prices changed/);
+  assert.equal(f.state().orders.length, 0); assert.equal(f.state().inventory.reserved, 0);
+  assert.equal(f.calls.some(c => c.action === 'razorpay.createOrder'), false);
+});
+for (const phone of ['abc9876543210','98+76543210','++919876543210','987 6543210','(987)6543210','1234567','1234567890123456','+']) {
+  test(`invalid phone ${phone} is rejected without order writes`, async () => {
+    const f = fixture(); await assert.rejects(f.service.prepare(input({ customerPhone: phone })), /valid mobile number/);
+    assert.equal(f.state().orders.length, 0);
+  });
+}

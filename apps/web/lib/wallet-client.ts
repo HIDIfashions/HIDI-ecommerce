@@ -72,6 +72,7 @@ export type PreparedCheckout = {
   amountPaise: number;
   totalPaise: number;
   subtotalPaise: number;
+  shippingPaise?: number;
   walletAppliedPaise: number;
   currency: string;
   razorpayKeyId?: string;

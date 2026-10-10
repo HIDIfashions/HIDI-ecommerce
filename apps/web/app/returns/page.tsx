@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { RETURN_COPY, EXCHANGE_COPY, REFUND_TIMELINE } from "@/lib/shopping-guidance";
+import { SHIPPING_COPY, RETURN_COPY, EXCHANGE_COPY, REFUND_TIMELINE } from "@/lib/shopping-guidance";
 import styles from "@/components/policy-page.module.css";
 export const metadata: Metadata = { title: "Returns & Exchanges", description: "HIDI return eligibility, order-level aftercare and exchange guidance.", alternates: { canonical: "/returns" } };
 const questions = [
@@ -16,6 +16,7 @@ export default function ReturnsPage() { return <div className={styles.page}>
   <div className={styles.breadcrumbs}><a href="/">Home</a> / Returns &amp; Exchanges</div>
   <header className={styles.header}><p className={styles.eyebrow}>HIDI AFTERCARE</p><h1>Returns &amp; exchanges</h1><p>Clear information before you choose. A next step after delivery.</p></header>
   <section className={styles.notice}><strong>Return window:</strong> {RETURN_COPY}<p>Final exchange charges, pickup conditions and refund timelines remain launch prerequisites.</p><Link href="/account/orders">Open my orders →</Link></section>
+  <section id="shipping-returns-exchange" className={styles.notice}><strong>Shipping, Returns &amp; Exchange Policy</strong><p>{SHIPPING_COPY} Shipping is ₹99 below ₹1,499. The threshold uses the product subtotal before rewards.</p><Link href="/shipping">Shipping and delivery details →</Link></section>
   <div className={styles.list}>{questions.map(({q,a}) => <details className={styles.item} key={q}><summary><span>{q}</span><span className={styles.plus} aria-hidden="true" /></summary><div className={styles.answer}><p>{a}</p></div></details>)}</div>
   <p className={styles.footerNote}><Link href="/contact">Order help</Link> · <Link href="/offers">Offer conditions</Link> · <Link href="/shipping">Delivery guidance</Link></p>
 </div>; }

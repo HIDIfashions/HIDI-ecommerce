@@ -20,6 +20,8 @@ type CartItem = {
 
 type Cart = {
   subtotalPaise: number;
+  shippingPaise?: number;
+  totalPaise?: number;
   itemCount: number;
   items: CartItem[];
 };
@@ -29,6 +31,7 @@ function isCart(value: unknown): value is Cart {
   const data = value as Cart;
   if (!Array.isArray(data.items) || !Number.isSafeInteger(data.itemCount) || data.itemCount < 0
       || !Number.isSafeInteger(data.subtotalPaise) || data.subtotalPaise < 0) return false;
+  if (data.shippingPaise !== undefined && (!Number.isSafeInteger(data.shippingPaise) || data.shippingPaise < 0 || !Number.isSafeInteger(data.totalPaise) || data.totalPaise !== data.subtotalPaise + data.shippingPaise)) return false;
   if (!data.items.every(item => item && typeof item.id === "string"
       && Number.isInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 10
       && Number.isSafeInteger(item.lineTotalPaise) && item.lineTotalPaise >= 0
@@ -148,6 +151,7 @@ export function CartClient() {
 
   const groups = groupCartItems(cart.items);
   const complimentaryShipping = cart.subtotalPaise >= 149900;
+  const shippingLabel = complimentaryShipping ? "Complimentary" : cart.shippingPaise !== undefined ? formatPaise(cart.shippingPaise) : "Calculated at checkout";
 
   return <>
     {error && <p className="form-error" role="alert">{error}</p>}
@@ -215,8 +219,9 @@ export function CartClient() {
       <aside className="order-summary">
         <h2>Order summary</h2>
         <div><span>Subtotal</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
-        <div><span>Shipping</span><span>{complimentaryShipping ? "Complimentary" : "Calculated at checkout"}</span></div>
-        <div className="summary-total"><span>Total</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
+        <div><span>Shipping</span><span>{shippingLabel}</span></div>
+        <div className="summary-total"><span>Total</span><strong>{formatPaise(cart.totalPaise ?? cart.subtotalPaise)}</strong></div>
+        <p className="checkout-shipping-policy">₹99 shipping below ₹1,499. Free shipping from ₹1,499 before rewards.</p>
         <Link className="button button-dark cart-checkout-button" href="/checkout" aria-disabled={Boolean(busy)} onClick={event => { if (mutating.current) event.preventDefault(); }}>Continue to checkout</Link>
         <p className="fine-print">Secure checkout · UPI · Cards · Net banking</p>
       </aside>
@@ -224,8 +229,8 @@ export function CartClient() {
 
     <div className="mobile-cart-checkout" aria-label="Bag checkout summary">
       <div>
-        <span>Subtotal · {cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}</span>
-        <strong>{formatPaise(cart.subtotalPaise)}</strong>
+        <span>Total · {cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}</span>
+        <strong>{formatPaise(cart.totalPaise ?? cart.subtotalPaise)}</strong>
       </div>
       <Link href="/checkout" aria-disabled={Boolean(busy)} onClick={event => { if (mutating.current) event.preventDefault(); }}>Checkout</Link>
     </div>

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getAccessToken } from "@/lib/supabase-auth";
 import { WalletBalance } from "@/components/wallet-balance";
 
 export function AccountWalletGate() {
+  const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
   const revision = useRef(0);
 
@@ -16,6 +18,7 @@ export function AccountWalletGate() {
       const token = await getAccessToken().catch(() => null);
       if (!active || revision.current !== currentRevision) return;
       setAuthenticated(Boolean(token));
+      if (token && new URLSearchParams(window.location.search).get("returnTo") === "/checkout") router.replace("/checkout");
     }
 
     function onStorage(event: StorageEvent) {
@@ -31,7 +34,7 @@ export function AccountWalletGate() {
       window.removeEventListener("hidi-auth-updated", sync);
       window.removeEventListener("storage", onStorage);
     };
-  }, []);
+  }, [router]);
 
   if (!authenticated) return null;
   return <WalletBalance compact />;

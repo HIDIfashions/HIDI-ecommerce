@@ -5,7 +5,7 @@ import styles from "@/components/policy-page.module.css";
 export const metadata: Metadata = { title: "Shipping Policy", description: "HIDI delivery availability, shipping threshold and tracking guidance.", alternates: { canonical: "/shipping" } };
 const questions = [
   { q: "Where is delivery available?", a: "The launch delivery scope is India. Check a six-digit PIN code on the product page; an availability result is not a guaranteed delivery date." },
-  { q: "What are the shipping charges?", a: SHIPPING_COPY + " Review any charge for lower-value orders in the final checkout summary before payment." },
+  { q: "What are the shipping charges?", a: SHIPPING_COPY + " Shipping is ₹99 below ₹1,499. Eligibility is based on the product subtotal before HIDI rewards. Shipping is included in the bag total, checkout summary and payment amount." },
   { q: "When will my order arrive?", a: SHIPPING_TIMELINE },
   { q: "Where can I track an order?", a: "Open your order to view available shipment references and tracking updates. A reference appears only after it has been generated." },
   { q: "Can I change my address or reschedule delivery?", a: "Available changes depend on the shipment status and the courier. Do not assume an address can be changed once the parcel has been dispatched." },
