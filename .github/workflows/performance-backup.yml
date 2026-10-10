@@ -1,4 +1,5 @@
 name: HIDI performance live backup
+# Refresh the ready baseline after the independent mobile release, before performance deployment.
 on:
   push:
     branches: [migration/azure-sql-blob]
