@@ -15,7 +15,8 @@ const config={server:'127.0.0.1',port:1433,user:'sa',password:process.env.COD_TE
 let pool;for(let i=0;i<30;i++){try{pool=await new sql.ConnectionPool(config).connect();break;}catch{await new Promise(r=>setTimeout(r,2000));}}
 assert(pool);await pool.request().batch('CREATE DATABASE cod_rewards_regression COLLATE Latin1_General_100_BIN2; ALTER DATABASE cod_rewards_regression SET READ_COMMITTED_SNAPSHOT ON;');await pool.close();
 pool=await new sql.ConnectionPool({...config,database:'cod_rewards_regression'}).connect();
-for(const folder of (await readdir(new URL('../apps/api/prisma/migrations-sqlserver/',import.meta.url))).sort()){
+const migrations=await readdir(new URL('../apps/api/prisma/migrations-sqlserver/',import.meta.url),{withFileTypes:true});
+for(const folder of migrations.filter(entry=>entry.isDirectory()).map(entry=>entry.name).sort()){
  try{await pool.request().batch(await readFile(new URL('../apps/api/prisma/migrations-sqlserver/'+folder+'/migration.sql',import.meta.url),'utf8'));}catch(e){if(e.code==='ENOENT')continue;throw e;}
 }
 await pool.close();

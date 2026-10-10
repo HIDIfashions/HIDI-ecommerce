@@ -1,4 +1,5 @@
 name: COD rewards and app guarded release
+# Verify real SQL migrations and repeated app-notice openings before rollout.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -76,6 +77,8 @@ jobs:
           set -euo pipefail
           python3 deploy/cod-rewards-release.py capture
           node deploy/cod-rewards-readiness.mjs
+          export EXPECTED_API="$(python3 -c 'import json; print(json.load(open("evidence/cod-rewards/before.json"))["hidi-api"]["image"])')"
+          export EXPECTED_WEB="$(python3 -c 'import json; print(json.load(open("evidence/cod-rewards/before.json"))["hidi-web"]["image"])')"
           az acr login --name acrhidiprod0927 --only-show-errors
           for app in api web; do
             key="EXPECTED_${app^^}"
