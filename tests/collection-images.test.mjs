@@ -6,13 +6,25 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createServer} from 'node:http';
 import {mediaPath,imageRequest,createImageStore,createProductImageHandler} from '../deploy/collection-speed/images.mjs';
+import {productImageSource} from '../apps/web/lib/product-image.ts';
 const require=createRequire(new URL('../apps/web/package.json',import.meta.url));
 const sharp=require('next/dist/server/image-optimizer.js').getSharp(1,false);
 const source='/media/products/variants/example/photo.webp';
+test('versioned display sources pass the retained Next Image local-path rules',()=>{
+  const display=productImageSource('https://thidigk.thehidi.com'+source);
+  assert.equal(display,'/media/products/_display_v2/variants/example/photo.webp');
+  assert.equal(productImageSource(display),display);
+  assert.equal(productImageSource('https://other.invalid/photo.webp'),'https://other.invalid/photo.webp');
+  const loader=require('next/dist/shared/lib/image-loader.js').default;
+  const config=require('next/dist/shared/lib/image-config.js').imageConfigDefault;
+  assert.match(loader({config,src:display,width:1080,quality:75}),/_display_v2/);
+});
 test('only owned product photo paths and bounded sizes are accepted',()=>{
   assert.equal(mediaPath('https://thidigk.thehidi.com'+source),source);
   for(const value of ['https://evil.invalid'+source,'http://hidiindia.com'+source,source+'?token=secret','/media/private/file.png','/media/products/../private/photo.jpg','//evil.invalid'+source])assert.equal(mediaPath(value),null,value);
-  const url=new URL('https://hidiindia.com/_next/image?url='+encodeURIComponent(source+'?hidi_image=2')+'&w=1080&q=75');
+  const display=source.replace('/media/products/','/media/products/_display_v2/');
+  assert.equal(mediaPath(display),source);
+  const url=new URL('https://hidiindia.com/_next/image?url='+encodeURIComponent(display)+'&w=1080&q=75');
   assert.equal(imageRequest(url,'image/webp').width,1080);
   assert.equal(imageRequest(url,'image/webp;q=0').format,'jpeg');
   url.searchParams.set('w','99999');assert.equal(imageRequest(url).error,400);
@@ -35,7 +47,7 @@ test('real image HTTP supports HEAD, ETags and JPEG fallback; failures never sen
   const handler=createProductImageHandler({origin:new URL('http://127.0.0.1:3001'),sharp,cacheDir:dir,seedDir:join(dir,'empty'),fetchSource:async value=>{if(value.includes('missing'))throw Error('missing');return original;}});
   const server=createServer(async(req,res)=>{if(!await handler.handle(req,res,new URL(req.url,'http://fixture').pathname)){res.writeHead(404);res.end();}});
   await new Promise(done=>server.listen(0,'127.0.0.1',done));const base='http://127.0.0.1:'+server.address().port;
-  const path='/_next/image?url='+encodeURIComponent(source)+'&w=640&q=75';
+  const path='/_next/image?url='+encodeURIComponent(source.replace('/media/products/','/media/products/_display_v2/'))+'&w=640&q=75';
   try{
     const response=await fetch(base+path,{headers:{Accept:'image/webp'}});assert.equal(response.status,200);
     const bytes=Buffer.from(await response.arrayBuffer());assert.equal((await sharp(bytes).metadata()).width,640);

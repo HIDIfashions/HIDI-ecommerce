@@ -26,7 +26,7 @@ export async function probe(base) {
         const photos=[];
         for(const source of sources) {
           const url=new URL(source),media=new URL(url.searchParams.get('url'),'https://hidiindia.com');
-          assert.equal(media.searchParams.get('hidi_image'),'2','New display URL bypasses oversized cached thumbnails');
+          assert(media.pathname.startsWith('/media/products/_display_v2/'),'New display URL bypasses oversized cached thumbnails');
           assert(mediaPath(media.href));
           const result=await fetch(source,{headers:{Accept:'image/webp'},signal:AbortSignal.timeout(30000)});
           assert.equal(result.status,200);assert.equal(result.headers.get('x-hidi-image-cache'),'HIT');

@@ -1,4 +1,5 @@
 name: Guarded collection image speed Azure release
+# Versioned display paths work with the retained Next Image local-path rules.
 on:
   push:
     branches: [migration/azure-sql-blob]

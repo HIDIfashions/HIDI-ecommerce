@@ -18,7 +18,7 @@ def version(text):
         if '.pathname.startsWith("/media/products/")' not in match['condition']: return match[0]
         assert '.hostname.toLowerCase()' in match['condition'] and '"https:"' in match['condition']
         def display(value):
-            return '((hidiPhotoPath)=>{const hidiPhotoUrl=new URL(hidiPhotoPath,"https://hidiindia.com");hidiPhotoUrl.searchParams.set("hidi_image","2");return hidiPhotoUrl.pathname+hidiPhotoUrl.search})('+value+')'
+            return '((hidiPhotoPath)=>{const hidiPhotoUrl=new URL(hidiPhotoPath,"https://hidiindia.com");hidiPhotoUrl.pathname=hidiPhotoUrl.pathname.replace(/^\\/media\\/products\\/(?:_display_v2\\/)?/,"/media/products/_display_v2/");return hidiPhotoUrl.pathname+hidiPhotoUrl.search})('+value+')'
         old = match[0]
         old = once(old, 'return '+match['url']+'.pathname+'+match['url']+'.search}', 'return '+display(match['url']+'.pathname+'+match['url']+'.search')+'}')
         old = once(old, 'return '+match['arg']+'}', 'return '+match['arg']+'.startsWith("/media/products/")?'+display(match['arg'])+':'+match['arg']+'}')

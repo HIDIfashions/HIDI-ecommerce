@@ -20,7 +20,7 @@ export function mediaPath(value) {
   if(url.protocol!=='https:'||url.username||url.password||!HOSTS.has(url.hostname)||url.port||url.hash)return null;
   if(!/^\/media\/products\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp|avif)$/.test(url.pathname))return null;
   if([...url.searchParams.keys()].some(key=>key!=='hidi_image'))return null;
-  return url.pathname;
+  return url.pathname.replace('/media/products/_display_v2/','/media/products/');
 }
 export function imageRequest(url,accept='') {
   if(url.pathname!=='/_next/image')return null;
