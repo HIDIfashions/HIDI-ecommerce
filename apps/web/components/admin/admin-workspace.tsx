@@ -21,6 +21,7 @@ const links = [
   { href: '/admin/import', name: 'Bulk imports', icon: Upload, group: 'Manage', order: false, catalogWrite: true },
   { href: '/admin/customers', name: 'Customers', icon: Users, group: 'Manage', order: true },
   { href: '/admin/staff', name: 'Team & access', icon: ShieldCheck, group: 'Manage', order: false, owner: true },
+  { href: '/admin/privacy-policy', name: 'Privacy policy', icon: ShieldCheck, group: 'Manage', order: false, owner: true },
 ];
 export function adminNavigation(role: string) {
   return links.filter(item => (!item.owner || role === 'OWNER') && (!item.order || role !== 'CATALOG') && (!item.write || ['OWNER', 'OPERATIONS'].includes(role)) && (!item.catalogWrite || ['OWNER', 'CATALOG'].includes(role)));
@@ -70,7 +71,7 @@ function AuthenticatedWorkspace({ children }: { children: React.ReactNode }) {
   const items = adminNavigation(admin.role);
   const current = [...links].sort((a, b) => b.href.length - a.href.length).find(item => pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href + '/')));
   const allowed = !current || items.some(item => item.href === current.href);
-  function navigation() { return <nav aria-label="Admin navigation">{['Workspace', 'Manage'].map(group => <div key={group} className={styles.navGroup}><p>{group}</p>{items.filter(item => item.group === group).map(item => { const Icon = item.icon; const active = current?.href === item.href; return <Link key={item.href} href={item.href} onClick={() => menu.current?.close()} className={`${styles.navLink} ${active ? styles.navActive : ''}`} aria-current={active ? 'page' : undefined}><Icon size={18} aria-hidden="true" /><span>{item.name}</span></Link>; })}</div>)}</nav>; }
+  function navigation() { return <nav aria-label="Admin navigation">{['Workspace', 'Manage'].map(group => <div key={group} className={styles.navGroup}><p>{group}</p>{items.filter(item => item.group === group).map(item => { const Icon = item.icon; const active = current?.href === item.href; const NavigationLink = item.href === '/admin/privacy-policy' ? 'a' : Link; return <NavigationLink key={item.href} href={item.href} onClick={() => menu.current?.close()} className={`${styles.navLink} ${active ? styles.navActive : ''}`} aria-current={active ? 'page' : undefined}><Icon size={18} aria-hidden="true" /><span>{item.name}</span></NavigationLink>; })}</div>)}</nav>; }
   return <Session.Provider value={admin}><div data-hidi-admin-workspace="v1" className={styles.workspace}>
     <a href="#admin-content" className={styles.skip}>Skip to workspace</a>
     <aside className={styles.sidebar}><Link href={admin.role === 'CATALOG' ? '/admin/products' : '/admin'} className={styles.brand}><img src="/brand/hidi-logo-header.svg" width="146" height="77" alt="HIDI — Wear the Feeling" /></Link><span className={styles.workspaceLabel}>OPERATIONS WORKSPACE</span>{navigation()}<div className={styles.sidebarBottom}><span className={styles.smallDot} /> Existing HIDI environment<br/><small>Access controlled · private workspace</small></div></aside>

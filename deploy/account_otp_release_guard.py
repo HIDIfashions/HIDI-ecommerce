@@ -15,6 +15,9 @@ APPLICATION_FILES = {
     "apps/web/components/account-orders.module.css",
     "apps/web/lib/supabase-auth.ts",
     "apps/web/app/account/policy/page.tsx",
+    "apps/web/components/site-footer.tsx",
+    "apps/web/components/admin/admin-nav.tsx",
+    "apps/web/components/admin/admin-workspace.tsx",
 }
 RELEASE_FILES = APPLICATION_FILES | {
     ".github/workflows/account-otp-release.yml",
@@ -24,10 +27,13 @@ RELEASE_FILES = APPLICATION_FILES | {
     "deploy/diagnose-account-otp-settings.py",
     "deploy/verify-account-otp-live-api.py",
     "deploy/complete-account-otp-web.py",
+    "deploy/compose-account-privacy-links.py",
+    "deploy/privacy-policy/links.js",
     "deploy/smoke-account-otp-candidates.sh",
     "deploy/update-account-otp-images.sh",
     "tests/account-otp-release.test.py",
     "tests/account-otp-web-completion.test.py",
+    "tests/account-privacy-links-preservation.test.py",
     "tests/admin-workspace.browser.mjs",
     "tests/editorial-storefront.browser.mjs",
     "tests/auth-otp-frontend.test.cjs",
@@ -41,7 +47,7 @@ def validate_image(image, app):
 
 
 def validate_paths(application_paths, review_paths):
-    assert set(application_paths) == APPLICATION_FILES, "Application source changed outside the five reviewed account files: " + str(sorted(set(application_paths) ^ APPLICATION_FILES))
+    assert set(application_paths) == APPLICATION_FILES, "Application source changed outside the reviewed account and native privacy-link files: " + str(sorted(set(application_paths) ^ APPLICATION_FILES))
     assert set(review_paths) <= RELEASE_FILES, "Release contains an unreviewed file: " + str(sorted(set(review_paths) - RELEASE_FILES))
 
 

@@ -1,5 +1,8 @@
 // Extend only the existing footer and admin navigation; no shopping state writes.
 (() => {
+  // Next renders its own footer and admin links. Mutating that tree before
+  // hydration changes the server HTML and can replace the account form.
+  if (document.querySelector('script[src*="/_next/"]')) return;
   function addLinks() {
     const nav = document.querySelector('nav[aria-label="Admin navigation"]');
     if (nav && !nav.querySelector('[data-hidi-privacy-admin]')) {

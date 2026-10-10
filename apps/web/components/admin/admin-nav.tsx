@@ -28,7 +28,7 @@ export function AdminNav() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const items = role === "OWNER" ? [...ITEMS, { label: "Staff", href: "/admin/staff" } as const] : ITEMS;
+  const items = role === "OWNER" ? [...ITEMS, { label: "Staff", href: "/admin/staff" } as const, { label: "Privacy policy", href: "/admin/privacy-policy" } as const] : ITEMS;
 
   return (
     <nav aria-label="Admin navigation">
@@ -48,6 +48,10 @@ export function AdminNav() {
 
         return active ? (
           <strong key={item.href}>{item.label}</strong>
+        ) : item.href === "/admin/privacy-policy" ? (
+          <a key={item.href} href={item.href}>
+            {item.label}
+          </a>
         ) : (
           <Link key={item.href} href={item.href}>
             {item.label}

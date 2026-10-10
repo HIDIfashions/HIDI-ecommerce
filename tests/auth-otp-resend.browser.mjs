@@ -131,6 +131,8 @@ try {
     assert(['chromium', 'firefox', 'webkit'].includes(engine), 'Known isolated browser engine required');
     browser = await pw[engine].launch({ headless: true });
     await scenario(engine, 'single request, elapsed-time cooldown and successful replacement', async page => {
+      assert.equal(await page.locator('footer.footer a[href="/privacy"]').count(), 1,
+        'Privacy link must be rendered by Next without an external DOM mutation');
       await enterPhone(page);
       for (const [name, anchor] of [['Account terms', 'terms'], ['Privacy notice', 'privacy']]) {
         const link = page.getByRole('link', { name, exact: true });
@@ -208,6 +210,8 @@ try {
       assert.equal(requests()[1].phone, '+918888888888');
       await page.locator('a[href="/account/preferences"]:visible').first().click();
       await page.waitForURL('**/account/preferences');
+      assert.equal(await page.locator('footer.footer a[href="/privacy"]').count(), 1,
+        'Privacy link must survive client navigation without an external observer');
       await until(() => page.evaluate(baseline => !window.__otpFixtureIntervals || window.__otpFixtureIntervals.size <= baseline, baseline), 'timer cleanup after account unmount');
     });
     await browser.close(); browser = undefined;

@@ -20,9 +20,9 @@ permissions:
 # pins and carry [complete-account-otp] before default-branch dispatch registration.
 # Ordinary source merges do not deploy; there are no previous-image defaults.
 env:
-  PUSH_REVIEWED_SOURCE: '0f9cabe0cfa72792cdd7bd486974709e441654f7'
-  PUSH_EXPECTED_WEB: 'acrhidiprod0927.azurecr.io/hidi-web@sha256:8fc7976b1141a1d1e27a9889c73366997f2672cf24d61d1bfb863e0beaed4763'
-  PUSH_EXPECTED_API: 'acrhidiprod0927.azurecr.io/hidi-api@sha256:69d4c89fd6531658eba730b7254b7d34c9a274953e2fed4b46ce22caa13e56e6'
+  PUSH_REVIEWED_SOURCE: ''
+  PUSH_EXPECTED_WEB: ''
+  PUSH_EXPECTED_API: ''
 concurrency:
   group: hidi-msg91-guarded-release
   cancel-in-progress: false
@@ -91,6 +91,8 @@ jobs:
           python3 tests/msg91-rollout.test.py
           python3 tests/account-otp-release.test.py
           python3 tests/account-otp-web-completion.test.py
+          python3 tests/account-privacy-links-preservation.test.py
+          node --test tests/privacy-policy.test.mjs tests/privacy-policy-storage.test.mjs
       - name: Build only reviewed auth code and the existing Next storefront
         run: |
           pnpm --filter @hidi/api build
@@ -117,6 +119,7 @@ jobs:
           HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-storefront.browser.mjs || failed=1
           HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-polish.browser.mjs || failed=1
           HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/auth-otp-resend.browser.mjs || failed=1
+          HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/privacy-policy.browser.mjs || failed=1
           exit "$failed"
       - uses: azure/login@v2
         with:
@@ -148,9 +151,16 @@ jobs:
       - name: Compose only the web overlay from the fresh immutable current web image
         run: |
           set -euo pipefail
+          next_tag="$ACR.azurecr.io/hidi-web:account-otp-next-${GITHUB_RUN_ID}"
           tag="$ACR.azurecr.io/hidi-web:account-otp-web-${GITHUB_RUN_ID}"
-          python3 deploy/compose-msg91-images.py --app web --base "$EXPECTED_WEB" --tag "$tag" \
+          python3 deploy/compose-msg91-images.py --app web --base "$EXPECTED_WEB" --tag "$next_tag" \
             --work "$RUNNER_TEMP/account-otp-private/web" --report evidence/web-preservation.json
+          docker push "$next_tag"
+          docker pull "$next_tag"
+          next_image="$(docker image inspect "$next_tag" --format '{{index .RepoDigests 0}}')"
+          [[ "$next_image" =~ ^acrhidiprod0927\.azurecr\.io/hidi-web@sha256:[0-9a-f]{64}$ ]]
+          python3 deploy/compose-account-privacy-links.py --base "$next_image" --tag "$tag" \
+            --work "$RUNNER_TEMP/account-otp-private/privacy-links" --report evidence/privacy-links-preservation.json
           docker push "$tag"
           docker pull "$tag"
           image="$(docker image inspect "$tag" --format '{{index .RepoDigests 0}}')"
