@@ -1,5 +1,5 @@
 name: Mobile homepage guarded release
-# Supersede only this task's stale audit run; later releases retain queue protection.
+# Verify the actual live-image overlay and preserve all existing integrations.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -9,7 +9,7 @@ permissions:
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
-  cancel-in-progress: ${{ contains(github.event.head_commit.message, '[mobile-audit-replace-38025940353]') }}
+  cancel-in-progress: false
 env:
   HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-homepage-browser/node_modules/playwright/index.mjs
 jobs:
@@ -25,7 +25,7 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/checkout@v4
         with:
-          ref: cc76aa49b243792f61e353c2e5092fa934a0e57c
+          ref: 112a7086e7ce8aa4580832d1af333ebadfae1f80
           path: landing-source
       - uses: actions/setup-node@v4
         with: {node-version: 24}
@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: cc76aa49b243792f61e353c2e5092fa934a0e57c
+          ref: 112a7086e7ce8aa4580832d1af333ebadfae1f80
           path: landing-source
       - uses: actions/setup-node@v4
         with: {node-version: 24}
