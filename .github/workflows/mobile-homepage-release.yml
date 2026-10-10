@@ -1,5 +1,5 @@
 name: Mobile homepage guarded release
-# Restore the latest tested-source run replaced by the former shared backup queue.
+# Supersede only this task's stale audit run; later releases retain queue protection.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -9,7 +9,7 @@ permissions:
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
-  cancel-in-progress: false
+  cancel-in-progress: ${{ contains(github.event.head_commit.message, '[mobile-audit-replace-38025940353]') }}
 env:
   HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-homepage-browser/node_modules/playwright/index.mjs
 jobs:
