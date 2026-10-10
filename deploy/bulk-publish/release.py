@@ -74,6 +74,27 @@ def compose(tag):
     verified.update({'apiUnchanged':True,'baseImage':photo.states()['hidi-web']['image'],'candidateTag':tag});photo.save('web-preservation.json',verified);photo.unchanged(photo.states())
     print('PASS: only reviewed bulk admin files changed; customer theme, old assets, upload logic and image settings preserved')
 
+def promote(image):
+    """Reuse successful browser evidence only when fresh runtime bytes match exactly."""
+    photo.require_backups();photo.unchanged(photo.states())
+    assert image=='acrhidiprod0927.azurecr.io/hidi-web@sha256:61a6c866c127b9ac4c0fad122a59efeaaa2ff52ca5fe5087b7799ce531a501b9','Pinned tested image required'
+    proof=Path('evidence/bulk-publish-proof/bulk-publish')
+    old=json.loads((proof/'web-preservation.json').read_text())
+    old_states=json.loads((proof/'before.json').read_text())
+    assert old.get('passed') is True and old['baseImage']==photo.states()['hidi-web']['image'],'Live web image differs from tested base'
+    assert old_states['hidi-api']['image']==photo.states()['hidi-api']['image'],'Live API differs from tested API'
+    browser=json.loads((proof/'candidate.json').read_text());assert browser.get('passed') is True and len(browser['cases'])==12 and all(row.get('passed') for row in browser['cases'])
+    categories=Path('evidence/bulk-publish-proof/four-categories/candidate.json');assert json.loads(categories.read_text()).get('passed') is True
+    folder=PRIVATE/'web';folder.mkdir();base,overlay,candidate=(folder/name for name in ('base-app','overlay','candidate-app'))
+    images.extract(photo.states()['hidi-web']['image'],base);images.extract(image,candidate)
+    report=patcher.patch_web(base,overlay)
+    assert report==json.loads((proof/'web-patch.json').read_text()),'Runtime patch differs from tested patch'
+    verified=preserve.verify(base,candidate,overlay,set(report['allowedFiles']),json.loads(images.docker('image','inspect',photo.states()['hidi-web']['image'],image)))
+    verified.update({'apiUnchanged':True,'baseImage':photo.states()['hidi-web']['image'],'candidateImage':image,'verifiedBrowserRun':38091414418})
+    photo.save('web-preservation.json',verified);photo.save('web-patch.json',report);photo.save('candidate.json',browser)
+    destination=Path('evidence/four-categories');destination.mkdir(parents=True,exist_ok=True);(destination/'candidate.json').write_bytes(categories.read_bytes())
+    photo.unchanged(photo.states());print('PASS: fresh application backups and every candidate byte match the image already tested in 12 browser cases')
+
 def wait_ready(image,suffix,baseline):
     deadline=time.monotonic()+600
     while time.monotonic()<deadline:
@@ -90,7 +111,12 @@ def apply():
         assert json.loads((EVIDENCE/name).read_text()).get('passed') is True,'Bulk save/publication regression required'
     assert json.loads(Path('evidence/four-categories/candidate.json').read_text()).get('passed') is True,'Four customer categories regression required'
     image=os.environ['WEB_IMAGE'];assert re.fullmatch(re.escape(images.REGISTRY+'/hidi-web')+r'@sha256:[a-f0-9]{64}',image)
-    assert photo.public_state()==json.loads((EVIDENCE/'public-before.json').read_text()),'Published settings/content changed independently'
+    # CMS edits are independent of this web-only admin patch. Capture their latest
+    # stable values immediately before deployment rather than restoring older content.
+    public_before=photo.public_state();photo.save('public-live-before.json',public_before)
+    initial=json.loads((EVIDENCE/'public-before.json').read_text())
+    photo.save('independent-content.json',{'changedDuringCandidateChecks':[path for path in initial if initial[path]!=public_before[path]],'latestContentRetained':True})
+    assert photo.public_state()==public_before,'Published content is still changing; retry after the edit settles'
     suffix='bulkpublish'+os.environ['GITHUB_RUN_ID']
     try:
         cloud.write_image(photo.originals()['hidi-web'],image,suffix)
@@ -106,7 +132,7 @@ def apply():
             assert cloud.get('/_next/'+new.split('apps/web/.next/',1)[1])==(PRIVATE/'web/candidate-app'/new).read_bytes(),'Live native import asset differs'
             assert cloud.get('/_next/'+old.split('apps/web/.next/',1)[1])==(PRIVATE/'web/base-app'/old).read_bytes(),'Original immutable import asset changed'
         subprocess.run(['node','deploy/bulk-publish/live.mjs'],check=True,timeout=600)
-        assert photo.public_state()==json.loads((EVIDENCE/'public-before.json').read_text()),'Published content changed'
+        assert photo.public_state()==public_before,'Published content changed during deployment'
         photo.unchanged(deployed)
         photo.save('after.json',{'passed':True,'states':deployed,'sourceSha':os.environ['GITHUB_SHA'],'apiUnchanged':True,'appSettingsPreserved':True,'publishedContentPreserved':True,'bulkSaveAndPublishVerified':True,'databaseWrites':False,'blobWrites':False,'sknMigrationExecuted':False})
         print('PASS: bulk metadata saving and selected batch publication are live; Azure API, settings and customer experience preserved')
@@ -119,10 +145,11 @@ def apply():
         photo.save('rollback.json',{'passed':True,'state':recovery});raise
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('mode', choices=['inspect','capture','compose','apply']);parser.add_argument('--tag'); args = parser.parse_args()
+    parser = argparse.ArgumentParser(); parser.add_argument('mode', choices=['inspect','capture','compose','promote','apply']);parser.add_argument('--tag'); args = parser.parse_args()
     try:
         setup()
         if args.mode=='compose':compose(args.tag)
+        elif args.mode=='promote':promote(os.environ['WEB_IMAGE'])
         else:globals()[args.mode]()
     except Exception as error:
         print(str(error) if isinstance(error, (AssertionError, cloud.AzureOperationError)) else 'Bulk inspection stopped; inspect bounded evidence')

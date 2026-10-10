@@ -1,0 +1,64 @@
+name: Promote verified bulk publication with fresh content snapshot
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/bulk-publish-promote.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      WEB_IMAGE: acrhidiprod0927.azurecr.io/hidi-web@sha256:61a6c866c127b9ac4c0fad122a59efeaaa2ff52ca5fe5087b7799ce531a501b9
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-bulk-publish-browsers
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-bulk-publish-browser/node_modules/playwright/index.mjs
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Verify the pinned successful candidate evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/11684746182/zip" -o "$RUNNER_TEMP/bulk-proof.zip"
+          printf '%s  %s\n' ca1925c6259576e7ab7ef6f59fd9b6870ee2a8fac251d303608d220e98f7d482 "$RUNNER_TEMP/bulk-proof.zip" | sha256sum --check --status
+          python3 - <<'PY'
+          import os,zipfile
+          from pathlib import Path
+          with zipfile.ZipFile(Path(os.environ['RUNNER_TEMP'])/'bulk-proof.zip') as archive:
+              for name in archive.namelist(): assert not name.startswith('/') and '..' not in Path(name).parts
+              archive.extractall('evidence/bulk-publish-proof')
+          PY
+      - name: Install browser engines for live read-only verification
+        run: |
+          npm install --prefix /tmp/hidi-bulk-publish-browser --no-save playwright@1.56.1
+          node /tmp/hidi-bulk-publish-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Back up current production and match every tested candidate byte
+        run: |
+          set -euo pipefail
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/bulk-publish/release.py capture
+          python3 deploy/bulk-publish/release.py promote
+      - name: Preserve the latest CMS content and release the verified bulk changes
+        run: python3 deploy/bulk-publish/release.py apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bulk-publish-promote-${{ github.run_id }}
+          path: evidence/bulk-publish
+          retention-days: 30
