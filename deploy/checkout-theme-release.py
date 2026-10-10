@@ -6,6 +6,7 @@ def module(name,path):
  s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
 helpers=module('checkout_image_helpers',ROOT/'compose-msg91-images.py')
 cloud=module('checkout_cloud',ROOT/'privacy-policy/rollout.py')
+compat=module('checkout_runtime_compat',ROOT/'checkout-theme/runtime-compat.py')
 cloud.API_VERSION='2025-07-01'
 work=pathlib.Path(os.environ.get('RUNNER_TEMP','/tmp'))/'hidi-checkout-private';work.mkdir(exist_ok=True);work.chmod(0o700)
 evidence=pathlib.Path('evidence/checkout-theme');evidence.mkdir(parents=True,exist_ok=True)
@@ -40,6 +41,8 @@ def compose(app,tag):
   css=(ROOT/'checkout-theme/home-buttons.css').read_bytes();cssname='checkout-theme-'+hashlib.sha256(css).hexdigest()[:16]+'.css'
   (overlay/'dist').mkdir();(overlay/'dist'/cssname).write_bytes(css)
   (overlay/'dist/index.html').write_text(re.sub(r'</head>',f'<link rel="stylesheet" data-hidi-checkout-theme href="/{cssname}">\n</head>',html,count=1,flags=re.I))
+  runtime=(old/'server.mjs').read_text();patched_runtime=compat.patch_checkout_phone(runtime)
+  (overlay/'server.mjs').write_text(patched_runtime)
  (folder/'Dockerfile').write_text('FROM '+base+'\nCOPY --chown=node:node overlay/ /app/\n')
  subprocess.run(['docker','build','--pull=false','-t',tag,str(folder)],check=True);helpers.extract(tag,candidate)
  a,b=helpers.fingerprints(old),helpers.fingerprints(candidate);delta={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
@@ -47,8 +50,9 @@ def compose(app,tag):
   assert delta<=API_FILES,'Unreviewed API file changed'
   if not delta:subprocess.run(['docker','tag',base,tag],check=True)
  else:
-  assert delta and all(p.startswith('apps/web/.next/') or p in {'apps/web/server.js','dist/index.html','dist/'+cssname} for p in delta),'Unreviewed web file changed'
-  assert all(b.get(p)==value for p,value in a.items() if not p.startswith('apps/web/.next/') and p not in {'apps/web/server.js','dist/index.html'}),'Protected homepage, admin, media or runtime changed'
+  assert delta and all(p.startswith('apps/web/.next/') or p in {'apps/web/server.js','server.mjs','dist/index.html','dist/'+cssname} for p in delta),'Unreviewed web file changed'
+  assert (candidate/'server.mjs').read_text()==patched_runtime,'Runtime differs from the single reviewed phone-validation predicate'
+  assert all(b.get(p)==value for p,value in a.items() if not p.startswith('apps/web/.next/') and p not in {'apps/web/server.js','server.mjs','dist/index.html'}),'Protected homepage, admin, media or runtime changed'
  configs=json.loads(helpers.docker('image','inspect',base,tag));assert configs[0]['Config']==configs[1]['Config'];layers=configs[0]['RootFS']['Layers'];assert configs[1]['RootFS']['Layers'][:len(layers)]==layers
  save(app+'-preservation.json',{'passed':True,'changedFiles':sorted(delta),'protectedFilesIdentical':len(a)-len(delta&a.keys()),'baseImage':base,'settingsPreserved':True,'baseLayersPreserved':True})
  print(app+': reviewed overlay verified; protected files and image configuration preserved')

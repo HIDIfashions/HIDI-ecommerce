@@ -1,11 +1,12 @@
 name: Checkout shipping and theme guarded release
-# Wait for actual route prefetches before each isolated shipping-boundary navigation.
+# Respect component-owned phone validation in the preserved Azure wrapper.
 on:
   push:
     branches: [migration/azure-sql-blob]
     paths: [.github/workflows/checkout-theme-release.yml]
 permissions:
   contents: read
+  actions: read
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
@@ -50,7 +51,13 @@ jobs:
           done
           export NEXT_PUBLIC_API_URL=https://thidigk.thehidi.com/api/store
           pnpm --filter @hidi/web build
+      - name: Verify completed browser evidence against identical tested inputs
+        id: browser_gate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 deploy/checkout-theme/browser-gate.py
       - name: Verify desktop, mobile, cart, checkout and admin in three engines
+        if: steps.browser_gate.outputs.reuse != 'true'
         # Font readiness and relevant navigation requests are checked in the page context.
         run: |
           set -euo pipefail
@@ -86,6 +93,10 @@ jobs:
         # Verify loaded content and relevant navigation without waiting on ambient media.
         run: |
           set -euo pipefail
+          if [ ! -f "$HIDI_PLAYWRIGHT_MODULE" ]; then
+            npm install --prefix /tmp/hidi-checkout-browser --no-save playwright@1.56.1
+            node /tmp/hidi-checkout-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+          fi
           node deploy/checkout-theme-candidate.mjs
       - name: Publish verified immutable images and apply guarded rollout
         run: |
