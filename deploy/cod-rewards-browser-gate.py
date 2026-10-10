@@ -14,8 +14,25 @@ steps = {item['name']: item['conclusion'] for item in job['steps']}
 required = ['Run complete service and frontend regression','Build the storefront with retained public auth configuration','Verify desktop, mobile, cart, checkout and admin in three engines','Verify actual live wallet readiness without writes']
 assert all(steps.get(name) == 'success' for name in required), 'Previous validation is incomplete'
 assert steps.get('Deploy and run live regression within automatic rollback boundary') == 'skipped', 'Use only the pre-deployment baseline'
-paths = ['apps','packages','package.json','pnpm-lock.yaml','pnpm-workspace.yaml','deploy/public-auth.json','deploy/app-coming-soon.js','deploy/Dockerfile.api','deploy/Dockerfile.web']
+paths = ['apps','packages','package.json','pnpm-lock.yaml','pnpm-workspace.yaml','deploy/public-auth.json','deploy/app-coming-soon.js','deploy/Dockerfile.api','deploy/Dockerfile.web','tests/editorial-storefront.browser.mjs','tests/checkout-theme.browser.mjs','tests/storefront-quality.browser.mjs','tests/admin-workspace.browser.mjs','tests/auth-otp-resend.browser.mjs']
 changed = subprocess.check_output(['git','diff','--name-only',baseline,'HEAD','--',*paths],text=True).strip()
+if changed:
+    # A completed concurrent checkout gate can already validate this exact app and test suite.
+    recent = get('https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/runs?per_page=30')
+    for candidate in recent['workflow_runs']:
+        if candidate['status'] != 'completed' or candidate['head_branch'] != 'migration/azure-sql-blob': continue
+        if candidate['name'] not in ['Checkout shipping and theme guarded release','COD rewards and app guarded release']: continue
+        try:
+            candidate_changes = subprocess.check_output(['git','diff','--name-only',candidate['head_sha'],'HEAD','--',*paths],text=True,stderr=subprocess.DEVNULL).strip()
+        except subprocess.CalledProcessError:
+            continue
+        if candidate_changes: continue
+        candidate_job = next((item for item in get(candidate['url']+'/jobs')['jobs'] if item['name']=='regression-and-release'),None)
+        candidate_steps = {item['name']:item['conclusion'] for item in candidate_job['steps']} if candidate_job else {}
+        if not all(candidate_steps.get(name)=='success' for name in required[:3]): continue
+        run_id, baseline, changed = candidate['id'], candidate['head_sha'], ''
+        print('Completed concurrent gate validates identical application, build inputs and browser tests: '+str(run_id), flush=True)
+        break
 if changed:
     print('Application or build inputs changed; refreshing the complete browser regression', flush=True)
     def check(command, extra):

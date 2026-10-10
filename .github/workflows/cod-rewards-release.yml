@@ -1,5 +1,5 @@
 name: COD rewards and app guarded release
-# Refresh the entire browser gate whenever a concurrent update changes application or build inputs.
+# Reuse only a completed matching browser gate; refresh all tests when application, build or browser inputs differ.
 on:
   push:
     branches: [migration/azure-sql-blob]
