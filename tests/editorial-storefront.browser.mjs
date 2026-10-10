@@ -143,6 +143,13 @@ async function scenario(browser,engine,id,title,work,options={}){
   const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce',...contextOptions});
   await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
   const page=await context.newPage();trackFixtureNetwork(page);page.setDefaultTimeout(8000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  if(engine==='webkit'){
+    // WebKit can leave document.fonts.ready pending in Playwright's utility world.
+    // Require loaded fonts in the page world before capturing the same screenshot.
+    process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY='1';
+    const screenshot=page.screenshot.bind(page);
+    page.screenshot=async options=>{await until(()=>page.evaluate(()=>document.fonts.status==='loaded'),'loaded document fonts',10000);return screenshot(options);};
+  }
   cartMode='ok';catalogueMode='ok';const start=Date.now();
   try{
     await page.goto(base+startPath,{waitUntil:'domcontentloaded'});await page.locator('#main-content').waitFor();
@@ -299,7 +306,7 @@ try{
       catalogueMode='empty';await page.waitForLoadState('networkidle');await page.reload({waitUntil:'networkidle'});await page.getByText('Our latest edit is being prepared.').waitFor();assert.equal(await page.locator('[data-editorial-product]').count(),0);assert.equal(await page.getByRole('heading',{name:'Wear the feeling.'}).count(),1);
     });
     await runQualityChecks({browser,engine,scenario,until,base,output,products,writes,setCartMode:value=>{cartMode=value;}});
-    await runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products});
+    await runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products,settleFixtureNetwork});
     await browser.close();activeBrowser=null;
   }
 }finally{

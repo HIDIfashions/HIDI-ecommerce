@@ -24,7 +24,12 @@ export async function probe(base,output,engines=['chromium','firefox','webkit'])
      const check=()=>dialog.evaluate(d=>{const s=d.querySelector('[class*="filterScroll"]'),f=d.querySelector('[class*="drawerApply"]'),b=f.querySelector('button'),r=b.getBoundingClientRect();return {clear:s.getBoundingClientRect().bottom<=f.getBoundingClientRect().top+1,visible:r.bottom<=innerHeight,hit:b.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};});let g=await check();assert(g.clear&&g.visible&&g.hit);await dialog.locator('[class*="filterScroll"]').evaluate(e=>e.scrollTop=e.scrollHeight);g=await check();assert(g.clear&&g.visible&&g.hit);await show.click();
      const quickTrigger=page.getByRole('button',{name:'Quick add — '+product.name,exact:true});if(await quickTrigger.count()){await quickTrigger.first().click();const quick=page.getByRole('dialog');const bag=quick.getByRole('button',{name:'Add to bag',exact:true});assert.equal(await bag.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(89, 29, 32)');await page.keyboard.press('Escape');}
     }
-    assert.deepEqual(errors,[]);reports.push({engine,...viewport,status:'PASS'});await page.screenshot({path:output+'/'+engine+'-'+viewport.width+'.png'});console.log('PASS '+engine+' '+viewport.width+': checkout, shipping, phone, product policy and theme');
+    assert.deepEqual(errors,[]);reports.push({engine,...viewport,status:'PASS'});
+    await page.waitForFunction(()=>document.fonts.status==='loaded');
+    const previous=process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;
+    if(engine==='webkit')process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY='1';
+    try{await page.screenshot({path:output+'/'+engine+'-'+viewport.width+'.png'});}finally{if(previous===undefined)delete process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;else process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY=previous;}
+    console.log('PASS '+engine+' '+viewport.width+': checkout, shipping, phone, product policy and theme');
    }finally{await context.close();}
   }}finally{await browser.close();}
  }

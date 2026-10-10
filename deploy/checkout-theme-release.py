@@ -56,7 +56,9 @@ def public():
  bodies['/privacy']=cloud.get('/privacy',200 if published else 404)
  return {p:hashlib.sha256(body).hexdigest() for p,body in bodies.items()}
 def apply(api,web):
- images={'hidi-api':api,'hidi-web':web};old={n:json.loads((work/(n+'.json')).read_text()) for n in images};before={n:cloud.snapshot(d) for n,d in old.items()};protected=public();owned={};run=os.environ['GITHUB_RUN_ID']
+ # Publish the shipping-aware UI first; it blocks payment until the API confirms
+ # a quote, so the rollout cannot introduce an undisclosed shipping fee.
+ images={'hidi-web':web,'hidi-api':api};old={n:json.loads((work/(n+'.json')).read_text()) for n in images};before={n:cloud.snapshot(d) for n,d in old.items()};protected=public();owned={};run=os.environ['GITHUB_RUN_ID']
  for n in images:
   helpers.validate_image(images[n],n.removeprefix('hidi-'));assert cloud.snapshot(cloud.app(n))==before[n],'Concurrent release changed '+n+'; refusing to overwrite it'
  try:

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 const brown='rgb(89, 29, 32)';
-export async function runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products}) {
+export async function runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products,settleFixtureNetwork}) {
  const phone={viewport:{width:390,height:844},isMobile:engine!=='firefox',hasTouch:true};
  const cartFor=price=>({items:[{id:'quote-fixture',quantity:1,lineTotalPaise:price,product:{id:products[0].id,slug:products[0].slug,name:products[0].name,image:products[0].images[0].url},variant:{id:'quote-m',size:'M',color:'Ivory',available:4}}],itemCount:1,subtotalPaise:price,shippingPaise:price<149900?9900:0,totalPaise:price+(price<149900?9900:0)});
  const loadCheckout=async(page,price=100000)=>{
@@ -32,7 +32,7 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
   await input.fill('');await input.pressSequentially('abc+919876543210');assert.match(await input.inputValue(),/^\+?[0-9]*$/);
  },phone);
  await scenario(browser,engine,'FIX-03','Filter footer stays visible and never overlaps options on small phones and landscape',async page=>{
-  await page.goto(base+'/collections/all');await page.getByRole('button',{name:'Filter & Sort',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Filter & Sort',exact:true}).waitFor();
   for(const viewport of [{width:320,height:568},{width:390,height:360},{width:390,height:844}]){
    await page.setViewportSize(viewport);await page.getByRole('button',{name:'Filter & Sort',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Product filters'});await dialog.waitFor();
    const show=dialog.getByRole('button',{name:/Show \d+ styles/});assert.equal(await color(show),brown);
@@ -44,13 +44,15 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
  },{...phone,startPath:'/collections/all'});
  await scenario(browser,engine,'FIX-04','Every product has the screenshot Shipping & Returns rows and a working policy link',async page=>{
   for(const product of products.slice(0,3)){
-   await page.goto(base+'/products/'+product.slug);const section=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await section.waitFor();
+   await settleFixtureNetwork(page);
+   await page.goto(base+'/products/'+product.slug,{waitUntil:'domcontentloaded',timeout:30000});const section=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await section.waitFor();
    assert(await section.evaluate(e=>e.open));assert.match(await section.innerText(),/Free Shipping[\s\S]*₹1,499 and above[\s\S]*Easy Returns[\s\S]*7 days[\s\S]*Exchanges/);
+   await settleFixtureNetwork(page);
    const link=section.getByRole('link',{name:/View Shipping, Returns & Exchange Policy/});await link.click();await page.waitForURL('**/returns#shipping-returns-exchange');assert.match(await page.locator('#shipping-returns-exchange').innerText(),/₹99/);
   }
  },phone);
  await scenario(browser,engine,'FIX-07','Mobile Quick add maintains brown Add to bag through selection and success',async page=>{
-  await page.goto(base+'/collections/all');await page.getByRole('button',{name:'Quick add — '+products[0].name,exact:true}).click();const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:products[0].name,exact:true})});await dialog.waitFor();const add=dialog.getByRole('button',{name:'Add to bag',exact:true});assert.equal(await color(add),brown);await dialog.getByRole('button',{name:'M',exact:true}).click();assert.equal(await color(add),brown);await add.click();await dialog.getByRole('button',{name:'Added to bag',exact:true}).waitFor();assert.equal(await color(dialog.getByRole('button',{name:'Added to bag',exact:true})),brown);await page.screenshot({path:resolve(output,`${engine}-quick-add-fixed.png`)});
+  await page.getByRole('button',{name:'Quick add — '+products[0].name,exact:true}).click();const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:products[0].name,exact:true})});await dialog.waitFor();const add=dialog.getByRole('button',{name:'Add to bag',exact:true});assert.equal(await color(add),brown);await dialog.getByRole('button',{name:'M',exact:true}).click();assert.equal(await color(add),brown);await add.click();await dialog.getByRole('button',{name:'Added to bag',exact:true}).waitFor();assert.equal(await color(dialog.getByRole('button',{name:'Added to bag',exact:true})),brown);await page.screenshot({path:resolve(output,`${engine}-quick-add-fixed.png`)});
  },{...phone,startPath:'/collections/all'});
  await scenario(browser,engine,'FIX-05','Boundary shipping summaries and bag quantity recalculation agree on both screens',async page=>{
   for(const [price,shipping] of [[149899,9900],[149900,0],[149901,0]]){
