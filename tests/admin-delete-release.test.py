@@ -99,6 +99,9 @@ class ReleaseGuards(unittest.TestCase):
         self.assertIsNone(schema_console.complete_marker(text[:first_closing_brace], marker))
         self.assertIsNone(schema_console.complete_marker(text, marker))
         self.assertEqual(schema_console.complete_marker(text + '\r\n', marker), nested)
+        self.assertIsNone(schema_console.complete_marker(text + '\r\r', marker))
+        self.assertEqual(schema_console.complete_marker(text + '\r\r\n', marker), nested)
+        self.assertEqual(schema_console.complete_marker('\x1b[32m' + text + '\x1b[0m\r\r\n', marker), nested)
         self.assertIsNone(schema_console.complete_marker(marker + '::{bad json}\n', marker))
 
     def test_api_protects_unreviewed_files_baseline_and_runtime_configuration(self):

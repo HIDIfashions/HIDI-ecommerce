@@ -1,5 +1,5 @@
 name: Admin product deletion and clear tools guarded release
-# Verify shared-photo and brand-photo cleanup against the original trusted Product schema.
+# Verify shared-photo cleanup and normalize private-console terminal responses.
 
 on:
   push:

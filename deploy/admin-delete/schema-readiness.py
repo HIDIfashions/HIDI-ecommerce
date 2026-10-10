@@ -41,7 +41,11 @@ def verify_report(report, database):
     for prefix, expected_bytes in [('column', 80), ('slugColumn', 382)]:
         assert report.get(prefix + 'Type') == 'nvarchar' and report.get(prefix + 'MaxLength') == expected_bytes and report.get(prefix + 'Nullable') is False, 'Existing Product column metadata mismatch: ' + prefix
 
+def terminal_text(text):
+    return re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', text)
+
 def parse_failure(text):
+    text = terminal_text(text)
     match = re.search(r'HIDI_DELETE_SCHEMA_FAILED::(\{[^\r\n]+\})', text)
     if not match: return {'failureCode': 'CONSOLE_CHECK_INCOMPLETE'}
     try: value = json.loads(match.group(1))
@@ -67,7 +71,10 @@ def parse_failure(text):
 def complete_marker(text, marker):
     # Terminal reads may end at an inner object's closing brace. Wait for the
     # whole emitted line and valid JSON before closing the private console.
-    for match in re.finditer(re.escape(marker) + r'::(\{[^\r\n]+\})\r?\n', text):
+    # Both the remote shell and local PTY can translate LF to CRLF. Accept
+    # CRCRLF as well as LF/CRLF, and strip terminal decoration consistently.
+    text = terminal_text(text)
+    for match in re.finditer(re.escape(marker) + r'::(\{[^\r\n]+\})\r*\n', text):
         try:
             value = json.loads(match.group(1))
             if isinstance(value, dict): return value
@@ -107,12 +114,12 @@ def main(diagnose=False):
                 except OSError: break
                 if not chunk: break
                 output += chunk
-                plain = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output.decode(errors='replace'))
+                plain = terminal_text(output.decode(errors='replace'))
                 if not sent and re.search(r'(?:^|[\r\n])[^\r\n]{0,160}[#$] $', plain):
                     pending = command.encode(); sent = True
                 if complete_marker(plain, marker) is not None or complete_marker(plain, 'HIDI_DELETE_SCHEMA_FAILED') is not None: break
             if process.poll() is not None: break
-        text = output.decode(errors='replace')
+        text = terminal_text(output.decode(errors='replace'))
         report = complete_marker(text, marker)
         if report is None:
             report = {'passed': False, 'consoleCommandSent': sent, 'consoleExitCode': process.poll(), 'azureErrorCodes': re.findall(r'ERROR:\s*\(([A-Za-z0-9_.-]+)\)', text), **parse_failure(text), 'readOnlyDiagnostic': diagnose, 'ddlExecuted': False}
