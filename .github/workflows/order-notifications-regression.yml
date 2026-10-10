@@ -72,6 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 deploy/order-notifications/rollout.py capture
+          EXPECTED_API="$(python3 -c 'import json; print(json.load(open("evidence/notification-before.json"))["hidi-api"]["image"])')"
           az acr login --name "$ACR" --only-show-errors
           docker pull "$EXPECTED_API"
           docker tag "$EXPECTED_API" "$ACR.azurecr.io/hidi-api:backup-order-notifications-${GITHUB_RUN_ID}"
