@@ -17,6 +17,7 @@ function load(file, imports = {}) {
   return module.exports;
 }
 const rules = load('apps/api/src/admin/dashboard-rules.ts');
+const productInput = load('apps/api/src/admin/products/product-input.ts');
 const permissions = new Map();
 const noop = () => () => {};
 class BadRequestException extends Error {}
@@ -25,6 +26,7 @@ const { AdminDashboardController: Controller } = load('apps/api/src/admin/admin-
   '../prisma/prisma.service.js': {},
   './admin-auth.js': { AdminGuard: class {}, CurrentAdmin: noop, RequireAdminPermissions: (...values) => (_target, key) => { permissions.set(key, values); } },
   './dashboard-rules.js': rules,
+  './products/product-input.js': productInput,
 });
 const now = new Date('2026-09-28T12:00:00Z');
 test('IST midnight boundaries and exclusive end are correct', () => {

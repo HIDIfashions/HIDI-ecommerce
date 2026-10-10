@@ -42,6 +42,14 @@ test('storage only deletes owned product keys, accepts absent blobs and never fo
   assert.equal(calls[0].options.method, 'DELETE'); assert.equal(calls[0].options.headers['x-ms-delete-snapshots'], 'include'); await assert.rejects(() => storage.remove('brand/hero/current.json'));
 });
 
+test('homepage configuration preserves reused product photos while safely ignoring its dedicated brand assets', async () => {
+  const storage = createProductPhotoStorage({ env, getToken: async () => 'test-storage-token', requestFetch: async (_url, options) => {
+    assert.equal(options.method, 'GET');
+    return Response.json({ image: 'https://hidiaccount.blob.core.windows.net/product-media/brand/landing-media/media/home.webp', shared: '/media/products/photo.jpg', nested: [{ image: 'https://hidiaccount.blob.core.windows.net/product-media/products/reused.jpg' }] });
+  } });
+  assert.deepEqual([...await storage.protectedKeys()].sort(), ['products/photo.jpg', 'products/reused.jpg']);
+});
+
 test('anonymous, forged legacy sessions and cross-origin writes fail before any backend or blob action', async () => {
   assert.throws(() => trustedAdminHeaders('hidi_admin_session=forged', { ADMIN_LEGACY_KEY_ENABLED: 'true', ADMIN_API_KEY: 'test' }), { status: 401 });
   assert.equal(sameOrigin({ headers: { host: 'thehidi.com', origin: 'https://evil.test', 'sec-fetch-site': 'same-site' } }), false);

@@ -66,7 +66,20 @@ export function createProductPhotoStorage({ env = process.env, requestFetch = fe
       if (!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(container)) throw fail('Media storage configuration is invalid.');
       const keys = new Set();
       const visit = value => {
-        if (typeof value === 'string') { const key = ownedProductKey({ url: value }, env); if (key) keys.add(key); }
+        if (typeof value === 'string') {
+          // Brand assets are outside product cleanup. They can appear beside
+          // reused product photos in the same homepage configuration.
+          let brandAsset = false;
+          if (value.startsWith('https://')) {
+            const url = new URL(value);
+            const bases = [`https://${account}.blob.core.windows.net/product-media`, env.MEDIA_PUBLIC_BASE_URL].filter(Boolean);
+            brandAsset = bases.some(base => {
+              const expected = new URL(base.replace(/\/$/, '') + '/brand/');
+              return url.origin === expected.origin && url.pathname.startsWith(expected.pathname);
+            });
+          }
+          if (!brandAsset) { const key = ownedProductKey({ url: value }, env); if (key) keys.add(key); }
+        }
         else if (Array.isArray(value)) value.forEach(visit);
         else if (value && typeof value === 'object') Object.values(value).forEach(visit);
       };
