@@ -1,4 +1,6 @@
 name: Privacy policy verified image rollout
+# ARM JSON Merge Patch retains scale and volume settings while replacing only
+# the preserved container list/image and the unique revision suffix.
 on:
   push:
     branches: [migration/azure-sql-blob]

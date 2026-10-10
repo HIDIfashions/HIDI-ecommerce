@@ -44,7 +44,7 @@ class PrivacyReleaseTest(unittest.TestCase):
         self.assertEqual(set(patch), {'location', 'properties'})
         self.assertEqual(patch['location'], original['location'])
         self.assertEqual(set(patch['properties']), {'template'})
-        expected = copy.deepcopy(original['properties']['template'])
+        expected = {'containers': copy.deepcopy(original['properties']['template']['containers'])}
         expected['containers'][0]['image'] = 'candidate-image'; expected['revisionSuffix'] = 'privacy-reviewed'
         self.assertEqual(patch['properties']['template'], expected)
         self.assertEqual(original['properties']['template']['containers'][0]['image'], 'old-image')

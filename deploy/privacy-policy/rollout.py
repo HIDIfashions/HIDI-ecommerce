@@ -53,8 +53,9 @@ def ready(state):
     assert state['mode'] == 'Single' and state['latest'] == state['ready'] and state['ready'], 'Application is not ready'
 
 def image_patch(data, image, suffix):
-    # Use ARM with the exact retained template rather than rebuilding env via CLI.
-    template = copy.deepcopy(data['properties']['template'])
+    # JSON Merge Patch leaves scale, volumes and other template settings intact.
+    # The complete container list retains its env/resources/probes byte values.
+    template = {'containers': copy.deepcopy(data['properties']['template']['containers'])}
     template['containers'][0]['image'] = image; template['revisionSuffix'] = suffix
     return {'location': data['location'], 'properties': {'template': template}}
 
