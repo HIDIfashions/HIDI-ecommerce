@@ -1,0 +1,64 @@
+name: Read-only Image SKU multipart browser check
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/image-sku-fixture-check.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-image-sku-fixture-readonly
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-image-sku-browsers
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-image-sku-browser/node_modules/playwright/index.mjs
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - run: |
+          npm install --prefix /tmp/hidi-image-sku-browser --no-save playwright@1.56.1
+          node /tmp/hidi-image-sku-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Read the already verified immutable image without changing production
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 - <<'PY'
+          import importlib.util, os, pathlib, shutil, subprocess
+          def load(name,path):
+              spec=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+          images=load('fixture_images','deploy/compose-msg91-images.py')
+          patcher=load('fixture_patch','deploy/image-sku/patch-web.py')
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'image-sku-fixture-readonly'
+          runtime,overlay=root/'runtime',root/'overlay'
+          image='acrhidiprod0927.azurecr.io/hidi-web@sha256:66abed2f31709f9e5ac940cebc4f1da668902a3abb409534ff39b5523afbe842'
+          subprocess.run(['docker','pull',image],check=True)
+          images.extract(image,runtime)
+          report=patcher.patch_web(runtime,overlay)
+          for name in report['allowedFiles']:
+              if name.endswith(('.js','.mjs')):subprocess.run(['node','--check',str(overlay/name)],check=True)
+          shutil.copytree(overlay,runtime,dirs_exist_ok=True)
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('HIDI_CANDIDATE_RUNTIME='+str(runtime)+'\n')
+          print('PASS: only a local copy of the verified immutable runtime was modified')
+          PY
+      - name: Check server retry keys and unaltered multipart bytes in all browsers
+        run: |
+          node --test tests/image-sku.test.mjs tests/image-sku-runtime-keys.test.mjs
+          node deploy/image-sku/candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: image-sku-fixture-check-${{ github.run_id }}
+          path: |
+            evidence/image-sku/candidate.json
+            evidence/image-sku/candidate
+          retention-days: 30
