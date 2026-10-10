@@ -7,6 +7,22 @@ const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(proce
 const brown='rgb(89, 29, 32)', ivory='rgb(255, 248, 239)', green='rgb(37, 211, 102)',greenInk='rgb(5, 66, 37)';
 const delay=ms=>new Promise(done=>setTimeout(done,ms));
 const selectedClass=cls=>/(?:^|[\s_])(?:active|selected)(?:$|[\s_])|[A-Za-z](?:Active|Selected)(?:_|$)/.test(cls||'');
+/** The retained landing and commerce headers use distinct accessible trigger names. */
+export async function verifyHeaderDialogs(page, assess) {
+  const header=page.locator('.site-header');await header.waitFor();
+  await header.getByRole('button',{name:/^(?:Search|Search HIDI products)$/}).first().click();
+  const search=page.getByRole('dialog',{name:'Search HIDI',exact:true});await search.waitFor();
+  await assess('header search');await page.keyboard.press('Escape');await search.waitFor({state:'hidden'});
+  const menu=header.getByRole('button',{name:/^(?:Open HIDI menu|Open navigation|Open menu|Menu)$/}).first();
+  if(await menu.count()){
+    const legacy=await menu.getAttribute('aria-label')==='Open HIDI menu',element=await menu.elementHandle();
+    await menu.click();await page.waitForFunction(button=>button.getAttribute('aria-expanded')==='true',element);
+    const navigation=page.getByRole('dialog',{name:legacy?'The world of HIDI.':'Mobile navigation',exact:true});
+    await navigation.waitFor();await assess(legacy?'HIDI navigation':'mobile navigation');
+    await page.keyboard.press('Escape');await navigation.waitFor({state:'hidden'});
+    assert.equal(await element.getAttribute('aria-expanded'),'false','Closing navigation clears the selected trigger');
+  }
+}
 export async function probe(base, output, engines=(process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',')) {
   await mkdir(output,{recursive:true});const results=[];let examined=0,telemetryRequestsBlocked=0,adminRefreshesIsolated=0;
   const catalogueResponse=await fetch(base+'/api/store/products');assert(catalogueResponse.ok,'Public catalogue must load');
@@ -60,8 +76,7 @@ export async function probe(base, output, engines=(process.env.HIDI_BROWSER_ENGI
       }
       try{
         await go('/');await page.locator('.site-header').waitFor();await assess('home');
-        await page.getByRole('button',{name:'Search',exact:true}).first().click();await page.getByRole('dialog',{name:'Search HIDI',exact:true}).waitFor();await assess('header search');await page.keyboard.press('Escape');
-        if(viewport.width<=900){const menu=page.getByRole('button',{name:/Open navigation|Open menu|Menu/i}).first();if(await menu.count()){await menu.click();await assess('mobile navigation');await page.keyboard.press('Escape');}}
+        await verifyHeaderDialogs(page,assess);
         await go('/collections/all');await assess('collection');
         const filter=page.getByRole('button',{name:viewport.width<=720?'Filter & Sort':'Filter',exact:true});
         if(await filter.count()){await filter.click();const dialog=page.getByRole('dialog',{name:'Product filters'});await dialog.waitFor();await assess('filter dialog');const option=dialog.getByRole('checkbox').first();if(await option.count()){await option.check();assert(await option.isChecked());}const apply=dialog.getByRole('button',{name:/Show \d+ styles/});await apply.click();await dialog.waitFor({state:'hidden'});await assess('applied filters');const clear=page.getByRole('button',{name:'Clear all filters',exact:true});if(await clear.count())await clear.click();}
