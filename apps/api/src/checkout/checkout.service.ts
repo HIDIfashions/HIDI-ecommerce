@@ -8,6 +8,7 @@ import { WalletService } from "../wallet/wallet.service.js";
 import { withSerializableRetry } from "../wallet/wallet-transaction.js";
 import { appendOrderAudit } from "../audit/order-audit.js";
 import { shippingQuote } from "./shipping-policy.js";
+import { DelhiveryService } from "../delhivery/delhivery.service.js";
 
 const RESERVATION_MINUTES = 15;
 const MAX_PAISE = 2_147_483_647;
@@ -25,6 +26,7 @@ type AddressInput = {
 };
 
 type PrepareInput = {
+  paymentMethod?: "RAZORPAY" | "COD";
   sessionId?: string;
   checkoutToken?: string;
   customerEmail?: string;
@@ -41,10 +43,12 @@ export class CheckoutService {
     private readonly prisma: PrismaService,
     private readonly razorpay: RazorpayService,
     private readonly wallet: WalletService,
+    private readonly delhivery?: DelhiveryService,
   ) {}
 
   private validate(input: PrepareInput) {
     if (!input || typeof input !== "object" || Array.isArray(input)) throw new BadRequestException("Checkout details are required");
+    if (input.paymentMethod !== undefined && !["RAZORPAY", "COD"].includes(input.paymentMethod)) throw new BadRequestException("Choose a supported payment method");
     if (typeof input.sessionId !== "string" || input.sessionId.length < 8 || input.sessionId.length > 128) throw new BadRequestException("Cart session is required");
     if (typeof input.checkoutToken !== "string" || input.checkoutToken.length < 8 || input.checkoutToken.length > 128) {
       throw new BadRequestException("checkoutToken is required");
@@ -108,6 +112,9 @@ export class CheckoutService {
     const customerEmail = input.customerEmail?.trim() || null;
     const customerPhone = input.customerPhone!.trim();
     const walletPaise = input.walletPaise ?? 0;
+    const cod = input.paymentMethod === "COD";
+    if (cod && walletPaise > 0) throw new BadRequestException("Choose online payment to redeem HIDI rewards");
+    if (cod && process.env.HIDI_COD_ENABLED !== "true") throw new BadRequestException("Cash on delivery is temporarily unavailable. Choose online payment.");
     if (walletPaise > 0 && !auth) throw new UnauthorizedException("Sign in before using your wallet");
     if (walletPaise > 0 && !this.wallet.enabled()) throw new BadRequestException("Wallet redemption is not enabled");
     const walletEnabled = this.wallet.enabled();
@@ -144,8 +151,16 @@ export class CheckoutService {
         throw new ConflictException("Checkout identity or wallet amount changed. Start a new checkout attempt.");
       }
       const payment = existing.payments[0];
+      if ((payment?.provider === "COD") !== cod) throw new ConflictException("Payment method changed. Start a new checkout attempt.");
       if (payment && ((payment.providerOrderId && existing.status === "PENDING_PAYMENT") || ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].includes(existing.status))) return this.checkoutView(existing, payment);
       throw new ConflictException("This checkout attempt has ended. Please retry payment.");
+    }
+
+    if (cod) {
+      let available = false;
+      try { available = (await this.delhivery?.checkServiceability(shippingAddress.postalCode))?.cod === true; }
+      catch { throw new BadRequestException("Cash on delivery could not be confirmed for this PIN code. Choose online payment or try again."); }
+      if (!available) throw new BadRequestException("Cash on delivery is unavailable for this PIN code. Choose online payment.");
     }
 
     const orderNumber = this.makeOrderNumber();
@@ -252,6 +267,15 @@ export class CheckoutService {
       if (cart.userId !== userId) {
         await tx.cart.update({ where: { id: cart.id }, data: { userId } });
       }
+      if (cod) {
+        for (const item of cart.items) await tx.inventory.update({ where: { variantId: item.variantId }, data: { onHand: { decrement: item.quantity }, reserved: { decrement: item.quantity } } });
+        await tx.inventoryReservation.updateMany({ where: { orderId: created.id, status: "ACTIVE" }, data: { status: "CONSUMED", consumedAt: new Date() } });
+        const payment = await tx.payment.create({ data: { orderId: created.id, provider: "COD", amountPaise: created.totalPaise, status: "CREATED", method: "cod" } });
+        const confirmed = await tx.order.update({ where: { id: created.id }, data: { status: "CONFIRMED" } });
+        await appendOrderAudit(tx, { orderId: created.id, eventType: "ORDER_CONFIRMED", actorType: auth ? "CUSTOMER" : "SYSTEM", actorId: auth?.id ?? null, entityType: "ORDER", entityId: created.id, fromStatus: "PENDING_PAYMENT", toStatus: "CONFIRMED", eventKey: `order:${created.id}:payment-outcome:CONFIRMED`, source: "CHECKOUT", metadata: { provider: "COD", paymentId: payment.id, amountDuePaise: created.totalPaise } });
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+        return confirmed;
+      }
       if (created.totalPaise === walletPaise) {
         if (!await this.wallet.consume(tx, created.id)) throw new ConflictException("Wallet funds changed. Please review your bag and try again.");
         for (const item of cart.items) await tx.inventory.update({ where: { variantId: item.variantId }, data: { onHand: { decrement: item.quantity }, reserved: { decrement: item.quantity } } });
@@ -289,6 +313,8 @@ export class CheckoutService {
       }
       return created;
     });
+
+    if (cod) return this.checkoutView(order, { provider: "COD", status: "CREATED" });
 
     if (order.totalPaise === order.walletAppliedPaise) return this.checkoutView(order, { provider: "WALLET", status: "CAPTURED", amountPaise: 0 });
 
@@ -362,7 +388,8 @@ export class CheckoutService {
       createdAt: order.createdAt,
       totalPaise: order.totalPaise,
       walletAppliedPaise: order.walletAppliedPaise,
-      cashPaidPaise: order.totalPaise - order.walletAppliedPaise,
+      cashPaidPaise: ["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(order.payments[0]?.status ?? "") ? order.totalPaise - order.walletAppliedPaise : 0,
+      cashDuePaise: order.payments[0]?.provider === "COD" && order.payments[0]?.status === "CREATED" ? order.totalPaise : 0,
       paymentStatus: order.payments[0]?.status ?? null,
       itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
       items: order.items.map((item) => ({
@@ -419,11 +446,13 @@ export class CheckoutService {
       taxPaise: order.taxPaise,
       totalPaise: order.totalPaise,
       walletAppliedPaise: order.walletAppliedPaise,
-      cashPaidPaise: order.totalPaise - order.walletAppliedPaise,
+      cashPaidPaise: ["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(payment?.status ?? "") ? order.totalPaise - order.walletAppliedPaise : 0,
+      cashDuePaise: payment?.provider === "COD" && payment.status === "CREATED" ? order.totalPaise : 0,
       customerEmail: order.customerEmail,
       customerPhone: order.customerPhone,
       shippingAddress: address,
       payment: payment ? {
+        provider: payment.provider,
         status: payment.status,
         method: payment.method,
         amountPaise: payment.amountPaise,
@@ -514,9 +543,10 @@ export class CheckoutService {
       walletAppliedPaise: order.walletAppliedPaise ?? 0,
       status: order.status,
       captured,
+      confirmed: payment.provider === "COD" && ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].includes(order.status),
       currency: order.currency,
-      provider: cashDue === 0 ? "WALLET" : "RAZORPAY",
-      ...(cashDue > 0 ? { providerOrderId: payment.providerOrderId, razorpayKeyId: this.razorpay.publicKey() } : {}),
+      provider: payment.provider === "COD" ? "COD" : cashDue === 0 ? "WALLET" : "RAZORPAY",
+      ...(cashDue > 0 && payment.provider !== "COD" ? { providerOrderId: payment.providerOrderId, razorpayKeyId: this.razorpay.publicKey() } : {}),
       reservationMinutes: RESERVATION_MINUTES,
     };
   }

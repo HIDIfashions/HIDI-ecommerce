@@ -142,6 +142,8 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
     process: { env: { NEXT_PUBLIC_API_URL: "http://test.invalid/v1" } },
     FormData: class { constructor(form) { this.form = form; } get(key) { return this.form[key] ?? ""; } },
     fetch: async (url, init = {}) => {
+      if (url.endsWith("/checkout/payment-options")) return { ok:true, json:async()=>({cod:true}) };
+      if (url.includes("/checkout/delivery-serviceability")) return { ok:true,json:async()=>({serviceable:true,cod:true}) };
       if (url.includes("/carts/")) return { ok: true, json: async () => ({ subtotalPaise: 100000, shippingPaise: 0, totalPaise: 100000, itemCount: 1, items: [{ id: "line-1", quantity: 1, lineTotalPaise: 100000, product: { name: "Test Product", slug: "test-product", image: null }, variant: { id: "v1", size: "M", color: "Test" } }] }) };
       if (url.endsWith("/checkout/prepare")) {
         state.prepareCalls.push({ url, init, body: JSON.parse(init.body) });
@@ -267,4 +269,17 @@ test("bag ownership conflict offers explicit new-bag action without automatic re
   const button = h.find((node) => node.type === "button" && node.props.children === "Start a new bag");
   assert.ok(button); button.props.onClick();
   assert.equal(h.state.newBagCalls, 1);
+});
+
+test("COD response is confirmed but unpaid and requires no gateway fields", () => {
+ const {client}=clientHarness(); const cod=prepare({provider:"COD",confirmed:true,status:"CONFIRMED",razorpayKeyId:undefined,providerOrderId:undefined});
+ assert.equal(client.parsePreparedCheckout(cod).captured,false);
+ for(const change of [{confirmed:false},{status:"PENDING_PAYMENT"},{walletAppliedPaise:100,amountPaise:99900}]) assert.throws(()=>client.parsePreparedCheckout({...cod,...change}));
+});
+test("guest COD checkout bypasses missing Razorpay SDK and redirects once",async()=>{
+ const h=checkoutHarness({sdk:false,userId:null}); await h.ready();
+ await h.find(n=>n.type==="input"&&n.props.name==="postalCode").props.onBlur({currentTarget:{value:"500001",form:null}}); await settle(); h.render();
+ const radio=h.find(n=>n.type==="input"&&n.props.value==="COD"); assert.equal(radio.props.disabled,false); radio.props.onChange(); h.render();
+ h.state.prepareResult=prepare({provider:"COD",confirmed:true,status:"CONFIRMED",razorpayKeyId:undefined,providerOrderId:undefined});
+ await h.submit(); assert.equal(h.state.prepareCalls.length,1); assert.equal(h.state.prepareCalls[0].body.paymentMethod,"COD"); assert.equal(h.state.paymentOptions.length,0); assert.equal(h.state.redirects.length,1);
 });

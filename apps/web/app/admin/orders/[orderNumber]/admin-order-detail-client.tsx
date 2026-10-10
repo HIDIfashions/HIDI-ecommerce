@@ -170,6 +170,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
   const [provider, setProvider] = useState("");
   const [awb, setAwb] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
+  const [codCollected, setCodCollected] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -283,7 +284,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.orderNumber)}/status`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status: next }),
+        body: JSON.stringify({ status: next, codCollected }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message ?? "Unable to update order");
@@ -480,12 +481,13 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               </div>
             )}
 
+            {next === "DELIVERED" && order.payment?.provider === "COD" && order.payment.status === "CREATED" && <label><input type="checkbox" checked={codCollected} onChange={(event) => setCodCollected(event.target.checked)} /> I confirm the full COD amount of {money(order.totalPaise)} was collected.</label>}
             {next ? (
               <button
                 className={styles.primaryAction}
                 type="button"
                 onClick={() => void advanceStatus()}
-                disabled={updating || (next === "SHIPPED" && !shipmentReady)}
+                disabled={updating || (next === "SHIPPED" && !shipmentReady) || (next === "DELIVERED" && order.payment?.provider === "COD" && order.payment.status === "CREATED" && !codCollected)}
                 title={next === "SHIPPED" && !shipmentReady ? "Create or save shipping details first" : undefined}
               >
                 {updating ? "Updating…" : next === "SHIPPED" && !shipmentReady ? "Create shipment first" : `Mark as ${label(next)}`}

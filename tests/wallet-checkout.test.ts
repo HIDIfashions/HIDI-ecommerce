@@ -10,7 +10,7 @@ const input = (changes: Record<string, unknown> = {}) => ({
   expectedTotalPaise: 200000, ...changes,
 });
 
-function fixture(options: { enabled?: boolean; gatewayFailure?: boolean; price?: number; quantity?: number; balance?: number; ownedCart?: string } = {}) {
+function fixture(options: { enabled?: boolean; gatewayFailure?: boolean; price?: number; quantity?: number; balance?: number; ownedCart?: string; cod?: boolean; carrierFailure?: boolean } = {}) {
   const calls: { action: string; input?: any }[] = [];
   let state: any = {
     orders: [], payments: [], reservations: [], holds: [], auditEvents: [],
@@ -125,7 +125,7 @@ function fixture(options: { enabled?: boolean; gatewayFailure?: boolean; price?:
     createOrder: async (q: any) => { record("razorpay.createOrder", q); if (options.gatewayFailure) throw new Error("Gateway unavailable"); return { id: "rzp-order-1", amount: q.amountPaise, currency: "INR" }; },
     publicKey: () => { record("razorpay.publicKey"); return "rzp_test_key"; },
   };
-  return { service: new CheckoutService(db, razorpay, wallet), db, wallet, razorpay, calls, state: () => state };
+  return { service: new CheckoutService(db, razorpay, wallet, { checkServiceability: async () => { record("carrier.check"); if (options.carrierFailure) throw new Error("Carrier unavailable"); return { cod: options.cod !== false }; } } as any), db, wallet, razorpay, calls, state: () => state };
 }
 
 test("full-wallet checkout is confirmed atomically without gateway creation or public-key lookup", async () => {
@@ -279,6 +279,7 @@ test("checkout delivery serviceability returns only sanitized carrier fields and
   assert.deepEqual(first, {
     pin: "500001",
     serviceable: true,
+    cod: false,
     city: "Hyderabad",
     district: "Hyderabad",
     stateCode: "TG",
@@ -428,3 +429,22 @@ for (const phone of ['abc9876543210','98+76543210','++919876543210','987 6543210
     assert.equal(f.state().orders.length, 0);
   });
 }
+
+async function withCod(run: () => Promise<void>) { const before=process.env.HIDI_COD_ENABLED; process.env.HIDI_COD_ENABLED="true"; try { await run(); } finally { if(before===undefined) delete process.env.HIDI_COD_ENABLED; else process.env.HIDI_COD_ENABLED=before; } }
+test("COD confirms unpaid order with shipping and consumes inventory once without gateway", () => withCod(async () => {
+ const f=fixture({price:100000}); const payload=input({paymentMethod:"COD",expectedTotalPaise:100000,expectedPayableTotalPaise:109900});
+ const first=await f.service.prepare(payload); const second=await f.service.prepare(payload);
+ assert.equal(first.provider,"COD"); assert.equal(first.confirmed,true); assert.equal(first.captured,false); assert.equal(first.amountPaise,109900); assert.equal(first.shippingPaise,9900); assert.equal(second.orderNumber,first.orderNumber);
+ assert.equal(f.state().payments[0].status,"CREATED"); assert.equal(f.state().orders.length,1); assert.equal(f.state().payments.length,1); assert.equal(f.state().inventory.onHand,9); assert.equal(f.state().inventory.reserved,0); assert.equal(f.state().reservations[0].status,"CONSUMED"); assert.equal(f.state().cart.items.length,0); assert(!f.calls.some(c=>c.action.startsWith("razorpay.")));
+}));
+test("COD fails before order or stock mutation for unserviceable or unavailable carrier", () => withCod(async () => {
+ for (const options of [{cod:false},{carrierFailure:true}]) { const f=fixture(options); await assert.rejects(f.service.prepare(input({paymentMethod:"COD"})),/Cash on delivery/); assert.equal(f.state().orders.length,0); assert.equal(f.state().inventory.onHand,10); }
+}));
+test("COD cannot redeem rewards or reuse an online payment token", () => withCod(async () => {
+ const f=fixture(); await assert.rejects(f.service.prepare(input({paymentMethod:"COD",walletPaise:4000}),auth),/online payment/);
+ await f.service.prepare(input()); await assert.rejects(f.service.prepare(input({paymentMethod:"COD"})),/Payment method changed/);
+}));
+test("COD switch off and unsupported payment method are rejected", async () => {
+ const before=process.env.HIDI_COD_ENABLED; delete process.env.HIDI_COD_ENABLED;
+ try { const f=fixture(); await assert.rejects(f.service.prepare(input({paymentMethod:"COD"})),/temporarily unavailable/); await assert.rejects(f.service.prepare(input({paymentMethod:"BAD"})),/supported payment/); assert.equal(f.state().orders.length,0); } finally {if(before!==undefined) process.env.HIDI_COD_ENABLED=before;}
+});

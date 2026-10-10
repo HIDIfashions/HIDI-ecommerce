@@ -33,7 +33,7 @@ type Receipt = {
     postalCode?: string;
     countryCode?: string;
   };
-  payment: { status: string; method?: string | null; amountPaise: number } | null;
+  payment: { status: string; provider?: string; method?: string | null; amountPaise: number } | null;
   items: Array<{
     id: string;
     productName: string;
@@ -88,10 +88,11 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
 
   const address = receipt.shippingAddress ?? {};
   const fullName = [address.firstName, address.lastName].filter(Boolean).join(" ");
-  const paymentLabel = receipt.payment?.status === "CAPTURED" ? "Paid" : titleCase(receipt.payment?.status);
+  const codDue = receipt.payment?.provider === "COD" && receipt.payment.status !== "CAPTURED";
+  const paymentLabel = codDue ? "Due on delivery" : receipt.payment?.status === "CAPTURED" ? "Paid" : titleCase(receipt.payment?.status);
   const walletAppliedPaise = receipt.walletAppliedPaise ?? 0;
   const paymentMethod = walletAppliedPaise === receipt.totalPaise && walletAppliedPaise > 0
-    ? "HIDI rewards" : receipt.payment?.method ? titleCase(receipt.payment.method) : "Razorpay";
+    ? "HIDI rewards" : receipt.payment?.provider === "COD" ? "Cash on delivery" : receipt.payment?.method ? titleCase(receipt.payment.method) : "Razorpay";
   const orderLabel = titleCase(receipt.status);
   const placedAt = new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
@@ -140,7 +141,7 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
           <div><span>Shipping</span><strong>{receipt.shippingPaise ? formatPaise(receipt.shippingPaise) : "Free"}</strong></div>
           <div className="confirmation-total-row"><span>Order total</span><strong>{formatPaise(receipt.totalPaise)}</strong></div>
           {walletAppliedPaise > 0 && <div><span>HIDI rewards applied</span><strong>{formatPaise(walletAppliedPaise)}</strong></div>}
-          <div><span>{receipt.payment?.status === "CAPTURED" ? "Payment received" : "External payment amount"}</span><strong>{formatPaise(receipt.totalPaise - walletAppliedPaise)}</strong></div>
+          <div><span>{codDue ? "Amount due on delivery" : receipt.payment?.status === "CAPTURED" ? "Payment received" : "External payment amount"}</span><strong>{formatPaise(receipt.totalPaise - walletAppliedPaise)}</strong></div>
         </div>
       </section>
 
@@ -164,7 +165,7 @@ export function OrderConfirmationClient({ orderNumber, initialStatus }: { orderN
         <section className="confirmation-card">
           <p className="eyebrow">PAYMENT</p>
           <h2>{paymentLabel}</h2>
-          <p className="muted">Paid via {paymentMethod}</p>
+          <p className="muted">{codDue ? "Pay by" : "Paid via"} {paymentMethod}</p>
           <div className="confirmation-mini-row"><span>Payment status</span><strong>{paymentLabel}</strong></div>
           <div className="confirmation-mini-row"><span>Order status</span><strong>{orderLabel}</strong></div>
         </section>

@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
+const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),base=process.argv[2],phase=process.argv[3];
+const output='evidence/cod-rewards/'+phase;await mkdir(output,{recursive:true});const report=[];
+for(const engine of ['chromium','firefox','webkit']){
+ const browser=await pw[engine].launch({headless:true});
+ try{for(const width of [390,1440]){
+  const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(20000);
+  let prepareCalls=0;const cart={items:[{id:'fixture-line',quantity:1,lineTotalPaise:100000,product:{slug:'fixture',name:'Fixture style'},variant:{id:'fixture-variant',size:'M',color:'Ivory'}}],itemCount:1,subtotalPaise:100000,shippingPaise:9900,totalPaise:109900};
+  await context.route('**/*',r=>['GET','HEAD'].includes(r.request().method())&&r.request().resourceType()!=='media'?r.continue():r.abort());
+  const fulfill=(r,data)=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
+  await context.route('**/api/store/carts/**',r=>fulfill(r,cart));
+  await context.route('**/api/store/checkout/payment-options',r=>fulfill(r,{cod:true,online:true}));
+  await context.route('**/api/store/checkout/delivery-serviceability?*',r=>fulfill(r,{cod:r.request().url().includes('500001'),serviceable:true,city:'Hyderabad',stateCode:'Telangana'}));
+  await context.route('**/api/store/checkout/prepare',r=>{
+   const body=r.request().postDataJSON();assert.equal(body.paymentMethod,'COD');assert.equal(body.walletPaise,0);assert.equal(body.expectedPayableTotalPaise,109900);prepareCalls++;
+   return fulfill(r,{provider:'COD',confirmed:true,captured:false,orderNumber:'HIDI-CI-COD',status:'CONFIRMED',currency:'INR',subtotalPaise:100000,shippingPaise:9900,totalPaise:109900,walletAppliedPaise:0,amountPaise:109900});
+  });
+  await context.route('**/api/store/checkout/confirmation/**',r=>fulfill(r,{orderNumber:'HIDI-CI-COD',status:'CONFIRMED',createdAt:new Date().toISOString(),currency:'INR',subtotalPaise:100000,shippingPaise:9900,discountPaise:0,taxPaise:0,totalPaise:109900,walletAppliedPaise:0,customerPhone:'9000000000',shippingAddress:{firstName:'Fixture',line1:'Fixture address',city:'Hyderabad',state:'Telangana',postalCode:'500001'},payment:{provider:'COD',method:'cod',status:'CREATED',amountPaise:109900},items:[]}));
+  try{
+   await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Get the HIDI app for Android or iPhone',exact:true}).click();
+   await page.getByRole('heading',{name:'HIDI app launching soon',exact:true}).waitFor();assert.equal(await page.getByText('Store link not supplied',{exact:true}).count(),0);await page.screenshot({path:output+'/'+engine+'-'+width+'-app.png'});await page.getByRole('button',{name:'Close dialog',exact:true}).click();
+   await page.goto(base+'/account/rewards',{waitUntil:'domcontentloaded'});await page.getByRole('link',{name:'Sign in to view rewards',exact:true}).waitFor();assert.match(await page.locator('main').innerText(),/7 days after delivery/);await page.screenshot({path:output+'/'+engine+'-'+width+'-rewards.png'});
+   await page.goto(base+'/checkout',{waitUntil:'domcontentloaded'});const cod=page.getByRole('radio',{name:/Cash on delivery/});await cod.waitFor();assert(!(await cod.isEnabled()));
+   await page.getByLabel('Email address',{exact:true}).fill('fixture@example.test');await page.getByLabel('Mobile number',{exact:true}).fill('9000000000');await page.getByLabel('First name',{exact:true}).fill('Fixture');await page.getByLabel('House, building and street address',{exact:true}).fill('Fixture address');
+   const pin=page.getByLabel('PIN code',{exact:true});await pin.fill('500002');await pin.blur();await page.getByText('Unavailable for this PIN code',{exact:true}).waitFor();assert(!(await cod.isEnabled()));
+   await pin.fill('500001');await pin.blur();await page.getByText('Pay the full amount when your order arrives',{exact:true}).waitFor();await cod.check();
+   await page.getByLabel('City',{exact:true}).fill('Hyderabad');await page.getByLabel('State',{exact:true}).fill('Telangana');await page.screenshot({path:output+'/'+engine+'-'+width+'-cod.png'});
+   assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)));
+   await page.getByRole('button',{name:/Place cash on delivery order/}).click();await page.getByRole('heading',{name:'Due on delivery',exact:true}).waitFor();assert.equal(prepareCalls,1);assert.match(await page.locator('main').innerText(),/Amount due on delivery/);await page.screenshot({path:output+'/'+engine+'-'+width+'-receipt.png'});
+   report.push({engine,width,passed:true,appSoon:true,rewardsSignIn:true,pinEligibility:true,codReceiptUnpaid:true,liveOrdersCreated:0});console.log('PASS '+engine+' '+width+': app notice, rewards, COD PIN checks and unpaid receipt; all writes isolated');
+  }finally{await context.close();}
+ }}finally{await browser.close();}
+}
+await writeFile(output+'/report.json',JSON.stringify(report,null,2));

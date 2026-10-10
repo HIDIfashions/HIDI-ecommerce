@@ -221,9 +221,9 @@ export class AdminController {
   updateStatus(
     @CurrentAdmin() actor: AdminActor,
     @Param("orderNumber") orderNumber: string,
-    @Body() body: { status?: string },
+    @Body() body: { status?: string; codCollected?: boolean },
   ) {
     if (!body?.status) throw new BadRequestException("Status is required");
-    return this.admin.updateStatus(orderNumber, body.status, actor);
+    return this.admin.updateStatus(orderNumber, body.status, actor, body.codCollected === true);
   }
 }

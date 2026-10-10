@@ -4181,3 +4181,11 @@ body {
 .checkout-guest-status a { color: var(--hidi-mulberry-clay); text-decoration: underline; }
 .checkout-shipping-policy { color: var(--muted); font-size: var(--type-meta); line-height: 1.65; margin: 12px 0; }
 @media(max-width:640px) { .checkout-signin-card { padding: 18px; } }
+
+.checkout-payment-methods { display:grid; gap:12px; margin:20px 0; }
+.checkout-payment-methods label { display:flex; align-items:center; gap:12px; padding:16px; border:1px solid var(--border, #d9cfca); border-radius:8px; cursor:pointer; }
+.checkout-payment-methods label:has(input:checked) { border-color:#591d20; background:#f7efed; }
+.checkout-payment-methods label:has(input:disabled) { cursor:default; }
+.checkout-payment-methods input { width:18px; height:18px; margin:0; accent-color:#591d20; flex-shrink:0; }
+.checkout-payment-methods span { display:grid; gap:4px; }
+.checkout-payment-methods small { font-size:12px; line-height:1.5; color:#6e5854; }

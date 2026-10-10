@@ -65,7 +65,8 @@ export async function getWalletSummary(expectedUserId: string, signal: AbortSign
 }
 
 export type PreparedCheckout = {
-  provider: "WALLET" | "RAZORPAY";
+  provider: "WALLET" | "RAZORPAY" | "COD";
+  confirmed?: boolean;
   captured: boolean;
   orderNumber: string;
   status: string;
@@ -95,7 +96,8 @@ export function parsePreparedCheckout(data: unknown): PreparedCheckout {
   if (!value || typeof value.orderNumber !== "string" || !value.orderNumber || typeof value.captured !== "boolean" || typeof value.status !== "string" ||
       [value.amountPaise, value.totalPaise, value.subtotalPaise, value.walletAppliedPaise].some((amount) => !Number.isSafeInteger(amount) || (amount as number) < 0) ||
       value.amountPaise! + value.walletAppliedPaise !== value.totalPaise || value.currency !== "INR" ||
-      (value.provider !== "WALLET" && value.provider !== "RAZORPAY") ||
+      (value.provider !== "WALLET" && value.provider !== "RAZORPAY" && value.provider !== "COD") ||
+      (value.provider === "COD" && (value.confirmed !== true || !["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].includes(value.status) || value.amountPaise! <= 0 || value.walletAppliedPaise !== 0)) ||
       (value.provider === "WALLET" && (value.captured !== true || value.amountPaise !== 0 || value.walletAppliedPaise !== value.totalPaise)) ||
       (value.provider === "RAZORPAY" && (value.amountPaise! <= 0 || typeof value.razorpayKeyId !== "string" || typeof value.providerOrderId !== "string"))) {
     throw new Error("We couldn’t confirm the payment details. Please retry this checkout before starting a new order.");

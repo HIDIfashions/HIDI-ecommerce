@@ -87,7 +87,14 @@ const historyLabels: Record<string, string> = {
 
 export function WalletBalance({ compact = false }: { compact?: boolean }) {
   const { userId, summary, loading, error, unavailable, refresh } = useWalletSummary();
-  if (!walletEnabled || !userId || (unavailable && !summary)) return null;
+  if (!walletEnabled || !userId || (unavailable && !summary)) {
+    if (compact) return null;
+    return <section className={styles.panel} aria-labelledby="wallet-title">
+      <h2 id="wallet-title">Your HIDI rewards</h2>
+      <p>Earn ₹2 for every complete ₹100 of eligible merchandise spend. Rewards become available 7 days after delivery, subject to returns.</p>
+      {!userId ? <><p>Sign in to see your balance and rewards activity.</p><Link className="button button-dark" href="/account?returnTo=%2Faccount%2Frewards">Sign in to view rewards</Link></> : <p role="status">Rewards are temporarily unavailable. Please try again shortly.</p>}
+    </section>;
+  }
 
   if (compact) {
     return <section className={`${styles.panel} ${styles.compactPanel}`} aria-labelledby="wallet-compact-title" aria-busy={loading}>

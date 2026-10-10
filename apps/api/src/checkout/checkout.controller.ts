@@ -14,6 +14,9 @@ export class CheckoutController {
     private readonly delhivery: DelhiveryService,
   ) {}
 
+  @Get("payment-options")
+  paymentOptions() { return { online: true, cod: process.env.HIDI_COD_ENABLED === "true" }; }
+
 
   @Get("delivery-serviceability")
   async deliveryServiceability(@Query("pin") rawPin: string, @Req() request: any) {
@@ -43,6 +46,7 @@ export class CheckoutController {
     const value = {
       pin,
       serviceable: result.prepaid,
+      cod: process.env.HIDI_COD_ENABLED === "true" && result.cod === true,
       city: result.city ?? null,
       district: result.district ?? null,
       stateCode: result.stateCode ?? null,
