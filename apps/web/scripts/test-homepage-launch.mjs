@@ -87,4 +87,5 @@ for(const engine of(process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit')
   }finally{await context.close();}
  }finally{await browser.close();await writeFile(resolve(output,'report.json'),JSON.stringify(reports,null,2));}
 }
+server?.kill('SIGTERM');
 console.log(`PASS: ${reports.length} homepage cases`);
