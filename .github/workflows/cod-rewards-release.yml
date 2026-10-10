@@ -1,5 +1,5 @@
 name: COD rewards and app guarded release
-# Complete page prefetches before fixture navigation and require zero browser exceptions in every engine.
+# Refresh the entire browser gate whenever a concurrent update changes application or build inputs.
 on:
   push:
     branches: [migration/azure-sql-blob]
