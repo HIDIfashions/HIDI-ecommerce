@@ -45,7 +45,7 @@ html[data-hidi-button-theme="site"] :is(button,
   [class*="_photoButton_"], [class*="__backdrop"],
   [class*="__drawerBackdrop"], [class*="__photoButton"])):is([aria-pressed="true"], [aria-selected="true"], [aria-expanded="true"],
   [aria-current]:not([aria-current="false"]),
-  .selected, .active, [data-active="true"], [data-state="active"], [data-state="selected"],
+  .selected, .active, .is-active, .is-selected, [data-active="true"], [data-state="active"], [data-state="selected"],
   [class*="_choiceActive_"], [class*="_refundActive_"],
   [class*="_mobileSheetSizeActive_"], [class*="_fitRibbonSizeActive_"],
   [class*="_gridActive_"], [class*="_starActive_"],
@@ -90,6 +90,13 @@ html[data-hidi-button-theme="site"] :is(button,
   [class*="__drawerBackdrop"], [class*="__photoButton"])):is(details[open] > summary) {
   --hidi-button-fill: var(--hidi-mulberry-clay, #591d20);
   --hidi-button-ink: #fff8ef;
+}
+
+/* The retained runtime has an ID-specific review disclosure override. Paint
+   from the shared state variables so closed, hover and open states still agree. */
+html[data-hidi-button-theme="site"] #reviews details summary {
+  background-color: var(--hidi-button-fill) !important;
+  color: var(--hidi-button-ink) !important;
 }
 
 /* Pointer press is temporary. Keyboard focus remains visible. Disabled
