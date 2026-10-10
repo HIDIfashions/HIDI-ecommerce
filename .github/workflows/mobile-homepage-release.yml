@@ -96,6 +96,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 deploy/mobile-homepage-release.py capture
+          EXPECTED_WEB="$(python3 -c 'import json; print(json.load(open("evidence/before.json"))["hidi-web"]["image"])')"
           az acr login --name acrhidiprod0927 --only-show-errors
           docker pull "$EXPECTED_WEB"
           backup="acrhidiprod0927.azurecr.io/hidi-web:backup-mobile-homepage-${GITHUB_RUN_ID}"
