@@ -13,6 +13,13 @@ export async function probe(base,output,{candidate=false}={}){
   try{for(const [width,height] of [[320,740],[390,844],[1440,900]]){
    const context=await browser.newContext({viewport:{width,height},reducedMotion:'reduce',hasTouch:width<1000});
    const page=await context.newPage();page.setDefaultTimeout(25000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
+   const pendingRsc=new Set();let navigationActivity=0;
+   const tracked=request=>new URL(request.url()).searchParams.has('_rsc');
+   page.on('request',request=>{if(tracked(request)){pendingRsc.add(request);navigationActivity=Date.now();}});
+   const completed=request=>{if(tracked(request)){pendingRsc.delete(request);navigationActivity=Date.now();}};
+   page.on('requestfinished',completed);page.on('requestfailed',completed);
+   async function settle(){const started=Date.now();while(pendingRsc.size||Date.now()-Math.max(started,navigationActivity)<350){assert(Date.now()-started<20000,'Category prefetch requests did not settle');await new Promise(resolve=>setTimeout(resolve,40));}}
+   async function go(path){await settle();return page.goto(base+path,{waitUntil:'domcontentloaded'});}
    const writes=[],telemetryBlocked=[];
    await context.route('**/*',route=>{
     const url=route.request().url();if(/google-analytics|googletagmanager|facebook\.net/.test(url))return route.abort();
@@ -26,7 +33,7 @@ export async function probe(base,output,{candidate=false}={}){
     return route.continue();
    });
    try{
-    assert.equal((await page.goto(base+'/',{waitUntil:'domcontentloaded'})).status(),200);
+    assert.equal((await go('/')).status(),200);
     await page.locator('#our-range .hidi-collection-card').first().waitFor();
     assert.deepEqual(await page.locator('#our-range .hidi-collection-caption h3').allTextContents(),categories.map(([,title])=>title));
     assert.equal(await page.locator('#our-range .hidi-collection-dot').count(),4);
@@ -38,7 +45,7 @@ export async function probe(base,output,{candidate=false}={}){
     assert.deepEqual(await navigation.locator('a').evaluateAll(links=>links.map(link=>new URL(link.href).pathname)),categories.map(([slug])=>'/collections/'+slug));
     await page.screenshot({path:`${output}/${engine}-${width}-home-menu.png`});await page.keyboard.press('Escape');
     for(const [slug,title] of categories){
-     assert.equal((await page.goto(base+'/collections/'+slug,{waitUntil:'domcontentloaded'})).status(),200);
+     assert.equal((await go('/collections/'+slug)).status(),200);
      await page.getByRole('heading',{name:title,exact:true,level:1,includeHidden:true}).waitFor({state:'attached'});
      if(width>=1000){
       const nav=page.getByRole('navigation',{name:'Primary navigation',exact:true});
@@ -57,7 +64,7 @@ export async function probe(base,output,{candidate=false}={}){
     await page.getByRole('button',{name:'Search',exact:true}).click();
     const suggestions=page.getByRole('navigation',{name:'Suggested searches'});await suggestions.waitFor();
     assert.deepEqual(await suggestions.locator('a').allTextContents(),categories.map(([,title])=>title));
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');await settle();
     assert.deepEqual(errors.filter(error=>!error.startsWith('Minified React error #418;')),[],'No new browser exceptions');
     assert.deepEqual(writes,[],'Live category verification may not submit any writes');
     results.push({engine,width,height,passed:true,fourCategoryMenu:true,fourCarouselItems:true,fourFooterLinks:true,allCategoryViews:true,searchSuggestions:true,telemetryRequestsBlocked:telemetryBlocked.length});
