@@ -17,7 +17,7 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: 0ec4122ad573656e6ae83019edb37b032e46a680
+      HERO_SOURCE_SHA: 0c512a7b5f4f354846e32dd98efdb16691fbcd08
       HERO_BASE_SHA: 6af6ec850ef470f09f6c6cd70d7b50723727ddba
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: 0ec4122ad573656e6ae83019edb37b032e46a680
+          ref: 0c512a7b5f4f354846e32dd98efdb16691fbcd08
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
@@ -171,7 +171,7 @@ jobs:
           report={'passed':True,'protected_files_identical':len(a)-1,'changed_files':sorted(changed),'runtime_config_identical':True,'base_layers_preserved':True}
           pathlib.Path('evidence/image-preservation.json').write_text(json.dumps(report,indent=2)); print(json.dumps(report))
           PY
-      - name: Verify isolated social navigation against the actual candidate container
+      - name: Verify footer navigation in the candidate and live preflight
         shell: bash
         run: |
           set -euo pipefail
