@@ -584,9 +584,82 @@ class ReadOnlySettingsDiagnosis(unittest.TestCase):
         api["identity"] = {"type": "None"}
         report = self.report(api, web, old, baseline)
         self.assertFalse(report["reconstructedBaselineMatches"])
+        self.assertFalse(report["baselineMatched"])
         self.assertNotIn("changedProtectedFields", report)
         self.assertNotIn("onlyMissingToEmptyValueOnRetainedSecretRefs", report)
         self.assertNotIn("onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs", report)
+
+    def test_env_only_proves_baseline_despite_revision_get_extra_template_fields(self):
+        api, web, old, baseline = self.fixture()
+        old["properties"]["template"]["containers"][0]["resources"] = {"ephemeralStorage": "revision-model-default-never-print"}
+        report = self.report(api, web, old, baseline)
+        self.assertFalse(report["reconstructedBaselineMatches"])
+        self.assertTrue(report["baselineMatched"])
+        self.assertIn("old-revision-env-only", report["matchedBaselineBases"])
+        self.assertTrue(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+        shape = report["oldRevisionTemplateShapeComparison"]
+        self.assertEqual(shape["purpose"], "diagnostic-only")
+        self.assertFalse(shape["baselineMatched"])
+        self.assertIn("/template/containers/0/resources", [item["path"] for item in shape["changedProtectedFields"]])
+        self.assertNotIn("revision-model-default-never-print", json.dumps(report))
+
+    def test_absent_representation_matches_full_baseline_when_old_model_uses_null(self):
+        api, web, old, baseline = self.fixture()
+        old["properties"]["template"]["containers"][0]["env"][0]["value"] = None
+        report = self.report(api, web, old, baseline)
+        self.assertFalse(report["reconstructedBaselineMatches"])
+        self.assertEqual(report["matchedBaselineBases"], ["current-empty-secret-values-absent"])
+        self.assertTrue(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+        self.assertEqual(len(report["baselineCandidates"]), 4, "Only the four reviewed hypotheses may be tested")
+
+    def test_null_representation_matches_full_baseline_without_trusting_old_env_values(self):
+        api, web, old, _ = self.fixture()
+        baseline_api = copy.deepcopy(api)
+        baseline_api["properties"]["template"]["containers"][0]["env"][0]["value"] = None
+        old["properties"]["template"]["containers"][0]["env"][1]["value"] = "sensitive-old-model-value-never-print"
+        report = self.report(api, web, old, guard.snapshot(baseline_api)["settingsHash"])
+        self.assertEqual(report["matchedBaselineBases"], ["current-empty-secret-values-null"])
+        self.assertFalse(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+        self.assertTrue(report["onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs"])
+        self.assertEqual(report["changedProtectedFields"][0]["before"]["type"], "null")
+        self.assertNotIn("sensitive-old-model-value-never-print", json.dumps(report))
+
+    def test_old_env_non_value_changes_make_env_only_hash_match_ineligible(self):
+        api, web, old, baseline = self.fixture()
+        old["properties"]["template"]["containers"][0]["resources"] = {"ephemeralStorage": "extra-default"}
+        api["properties"]["template"]["containers"][0]["env"][0]["secretRef"] = "independently-changed-reference-never-print"
+        report = self.report(api, web, old, baseline)
+        env = next(item for item in report["baselineCandidates"] if item["basis"] == "old-revision-env-only")
+        self.assertEqual(env["settingsHash"], baseline)
+        self.assertFalse(env["eligible"])
+        self.assertFalse(env["baselineMatched"])
+        self.assertFalse(report["baselineMatched"])
+        self.assertNotIn("changedProtectedFields", report)
+        self.assertNotIn("independently-changed-reference-never-print", json.dumps(report))
+
+    def test_bounded_blank_representations_cannot_hide_actual_probes_resources_or_values_drift(self):
+        for field in ["probes", "resources", "inline-value"]:
+            api, web, old, baseline = self.fixture()
+            old["properties"]["template"]["containers"][0]["resources"] = {"ephemeralStorage": "extra-model-default"}
+            container = api["properties"]["template"]["containers"][0]
+            if field == "inline-value": container["env"][1]["value"] = "actual-sensitive-new-value-never-print"
+            else: container[field] = [{"type": "changed-probe"}] if field == "probes" else {"cpu": 2}
+            report = self.report(api, web, old, baseline)
+            with self.subTest(field=field):
+                blank_candidates = [item for item in report["baselineCandidates"] if item["basis"].startswith("current-empty-secret-values-")]
+                self.assertTrue(all(not item["baselineMatched"] for item in blank_candidates))
+                if field == "inline-value":
+                    # Restoring all historical env values can identify true value
+                    # drift; it must never classify that drift as secretRef syntax.
+                    self.assertEqual(report["matchedBaselineBases"], ["old-revision-env-only"])
+                    self.assertFalse(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
+                    self.assertFalse(report["onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs"])
+                    self.assertIn("/template/containers/0/env/1/value", [item["path"] for item in report["changedProtectedFields"]])
+                else:
+                    self.assertFalse(report["baselineMatched"])
+                    self.assertEqual(report["matchedBaselineBases"], [])
+                    self.assertNotIn("changedProtectedFields", report)
+                self.assertNotIn("actual-sensitive-new-value-never-print", json.dumps(report))
 
     def test_null_value_presence_is_reported_separately_from_missing(self):
         api, web, old, _ = self.fixture()

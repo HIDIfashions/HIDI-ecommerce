@@ -81,6 +81,51 @@ def changed_field_digests(before, after, key, path="/template"):
     return compare(before, after, path)
 
 
+def template_change_report(before_template, after_template, key):
+    before, after = protected_template(before_template), protected_template(after_template)
+    changes = changed_field_digests(before, after, key)
+    before_env, after_env = before["containers"][0]["env"], after["containers"][0]["env"]
+    blank_secret_paths, absent_or_null_paths = set(), set()
+    for index, (old, current) in enumerate(zip(before_env, after_env)):
+        reference = old.get("secretRef")
+        if isinstance(reference, str) and reference and old.get("value") is None and current.get("value") == "" and {name: value for name, value in current.items() if name != "value"} == {name: value for name, value in old.items() if name != "value"}:
+            path = "/template/containers/0/env/" + str(index) + "/value"
+            absent_or_null_paths.add(path)
+            if "value" not in old:
+                blank_secret_paths.add(path)
+    return {
+        "changedProtectedFields": changes,
+        "onlyMissingToEmptyValueOnRetainedSecretRefs": bool(changes) and {item["path"] for item in changes} == blank_secret_paths,
+        "onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs": bool(changes) and {item["path"] for item in changes} == absent_or_null_paths,
+    }
+
+
+def baseline_reconstructions(api, old_template):
+    """Exactly four read-only hypotheses; none changes the deployed snapshot algorithm."""
+    candidates = []
+    full = copy.deepcopy(api)
+    full["properties"]["template"] = copy.deepcopy(old_template)
+    candidates.append(("old-revision-full-template", full, True))
+    current_env = protected_template(api["properties"]["template"])["containers"][0]["env"]
+    old_env = protected_template(old_template)["containers"][0]["env"]
+    without_values = lambda env: [{name: value for name, value in entry.items() if name != "value"} for entry in env]
+    non_value_fields_equal = without_values(current_env) == without_values(old_env)
+    env_only = copy.deepcopy(api)
+    env_only["properties"]["template"]["containers"][0]["env"] = copy.deepcopy(old_env)
+    candidates.append(("old-revision-env-only", env_only, non_value_fields_equal))
+    for basis in ["current-empty-secret-values-absent", "current-empty-secret-values-null"]:
+        candidate = copy.deepcopy(api)
+        for entry in candidate["properties"]["template"]["containers"][0].get("env", []):
+            reference = entry.get("secretRef")
+            if isinstance(reference, str) and reference and entry.get("value") == "":
+                if basis.endswith("-absent"):
+                    del entry["value"]
+                else:
+                    entry["value"] = None
+        candidates.append((basis, candidate, True))
+    return candidates
+
+
 def build_report(api, web, old_revision, key):
     states = {"hidi-api": snapshot(api), "hidi-web": snapshot(web)}
     for app, expected in [("hidi-api", EXPECTED_API), ("hidi-web", EXPECTED_WEB)]:
@@ -90,27 +135,23 @@ def build_report(api, web, old_revision, key):
     assert old_revision["name"] == OLD_REVISION, "Unexpected old API revision"
     old_template = old_revision["properties"]["template"]
     assert old_template["containers"][0]["image"] == OLD_API, "Old revision image differs from the retained baseline"
-    reconstructed = copy.deepcopy(api)
-    reconstructed["properties"]["template"] = copy.deepcopy(old_template)
-    reconstructed_hash = snapshot(reconstructed)["settingsHash"]
-    matched = reconstructed_hash == BASELINE_HASH
-    report = {"schemaVersion": 1, "operation": "read-only", "states": states, "baselineSettingsHash": BASELINE_HASH, "reconstructedSettingsHash": reconstructed_hash, "reconstructedBaselineMatches": matched}
-    if matched:
-        before = protected_template(old_template)
-        after = protected_template(api["properties"]["template"])
-        changes = changed_field_digests(before, after, key)
-        before_env, after_env = before["containers"][0]["env"], after["containers"][0]["env"]
-        blank_secret_paths, absent_or_null_paths = set(), set()
-        for index, (old, current) in enumerate(zip(before_env, after_env)):
-            reference = old.get("secretRef")
-            if isinstance(reference, str) and reference and old.get("value") is None and current.get("value") == "" and {name: value for name, value in current.items() if name != "value"} == {name: value for name, value in old.items() if name != "value"}:
-                path = "/template/containers/0/env/" + str(index) + "/value"
-                absent_or_null_paths.add(path)
-                if "value" not in old:
-                    blank_secret_paths.add(path)
-        report["changedProtectedFields"] = changes
-        report["onlyMissingToEmptyValueOnRetainedSecretRefs"] = bool(changes) and {item["path"] for item in changes} == blank_secret_paths
-        report["onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs"] = bool(changes) and {item["path"] for item in changes} == absent_or_null_paths
+    candidates, matches = [], []
+    for basis, candidate, eligible in baseline_reconstructions(api, old_template):
+        candidate_hash = snapshot(candidate)["settingsHash"]
+        matched = eligible and candidate_hash == BASELINE_HASH
+        entry = {"basis": basis, "eligible": eligible, "settingsHash": candidate_hash, "baselineMatched": matched}
+        if matched:
+            entry.update(template_change_report(candidate["properties"]["template"], api["properties"]["template"], key))
+            matches.append(entry)
+        candidates.append(entry)
+    original = candidates[0]
+    report = {"schemaVersion": 2, "operation": "read-only", "states": states, "baselineSettingsHash": BASELINE_HASH, "reconstructedSettingsHash": original["settingsHash"], "reconstructedBaselineMatches": original["baselineMatched"], "baselineMatched": bool(matches), "baselineCandidates": candidates, "matchedBaselineBases": [entry["basis"] for entry in matches]}
+    # Revision GET and app GET models can expose different default/null fields.
+    # This comparison is informative only until an exact full baseline matches.
+    report["oldRevisionTemplateShapeComparison"] = {"purpose": "diagnostic-only", "baselineMatched": original["baselineMatched"], **template_change_report(old_template, api["properties"]["template"], key)}
+    if matches:
+        for field in ["changedProtectedFields", "onlyMissingToEmptyValueOnRetainedSecretRefs", "onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs"]:
+            report[field] = matches[0][field]
     return report
 
 
@@ -139,7 +180,7 @@ def main():
         output.parent.mkdir(exist_ok=True)
         output.write_text(json.dumps(report, indent=2) + "\n")
         print(json.dumps(report, indent=2))
-        return 0 if report["reconstructedBaselineMatches"] else 2
+        return 0 if report["baselineMatched"] else 2
     except Exception:
         # Neither Azure stderr, response JSON nor exception details are printable.
         print("Read-only settings diagnosis stopped; a pin, read or invariant failed", file=sys.stderr)

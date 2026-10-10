@@ -1,4 +1,6 @@
 name: Read-only account OTP settings diagnosis
+# Stage 2 tests four explicit full-baseline representations; it never normalizes
+# the deployment guard or writes Azure settings/images.
 on:
   push:
     branches: [migration/azure-sql-blob]
