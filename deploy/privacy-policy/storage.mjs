@@ -16,20 +16,36 @@ async function accessToken() {
   return tokenCache.token;
 }
 
-export function createAzurePolicyStore() {
+export function createAzurePolicyStore({ requestFetch = fetch, getToken = accessToken } = {}) {
+  let containerReady;
+  async function ensurePrivateContainer(endpoint, headers) {
+    if (!containerReady) containerReady = (async () => {
+      const container = new URL(endpoint); container.pathname = `/${CONTAINER}`; container.search = '?restype=container';
+      let response = await requestFetch(container, { method: 'HEAD', headers, signal: AbortSignal.timeout(15_000) });
+      if (response.status === 404) {
+        // Omitting x-ms-blob-public-access creates a private container by default.
+        const created = await requestFetch(container, { method: 'PUT', headers, signal: AbortSignal.timeout(15_000) });
+        if (![201, 409].includes(created.status)) throw new Error('Private policy container unavailable');
+        response = await requestFetch(container, { method: 'HEAD', headers, signal: AbortSignal.timeout(15_000) });
+      }
+      if (!response.ok || response.headers.get('x-ms-blob-public-access')) throw new Error('Policy container must be private');
+    })().catch(error => { containerReady = null; throw error; });
+    return containerReady;
+  }
   async function request(method, key, value, etag) {
     const account = (process.env.AZURE_STORAGE_ACCOUNT || "").trim();
     if (!/^[a-z0-9]{3,24}$/.test(account)) throw new Error("Private policy storage unavailable");
     const endpoint = new URL(process.env.AZURE_STORAGE_BLOB_ENDPOINT || `https://${account}.blob.core.windows.net/`);
     if (endpoint.protocol !== "https:" || endpoint.hostname !== `${account}.blob.core.windows.net`) throw new Error("Invalid private storage endpoint");
     endpoint.pathname = `/${CONTAINER}/${key}`;
-    const headers = { Authorization: `Bearer ${await accessToken()}`, "x-ms-version": "2023-11-03", "x-ms-date": new Date().toUTCString() };
+    const headers = { Authorization: `Bearer ${await getToken()}`, "x-ms-version": "2023-11-03", "x-ms-date": new Date().toUTCString() };
+    await ensurePrivateContainer(endpoint, headers);
     if (method === "PUT") {
       headers[etag ? "If-Match" : "If-None-Match"] = etag || "*";
       headers["x-ms-blob-type"] = "BlockBlob";
       headers["Content-Type"] = "application/json";
     }
-    const response = await fetch(endpoint, { method, headers, body: value === undefined ? undefined : JSON.stringify(value), signal: AbortSignal.timeout(15_000) });
+    const response = await requestFetch(endpoint, { method, headers, body: value === undefined ? undefined : JSON.stringify(value), signal: AbortSignal.timeout(15_000) });
     if (response.status === 404 && method === "GET") return { value: null, etag: null };
     if (response.status === 409 || response.status === 412) throw Object.assign(new Error("Policy changed in another session. Reload before saving."), { status: 409 });
     if (!response.ok) throw new Error("Private policy storage unavailable");

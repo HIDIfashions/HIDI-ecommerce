@@ -31,7 +31,7 @@ jobs:
       - name: Test private draft, authorization, publication and conflicting saves
         run: |
           set -euo pipefail
-          node --test tests/privacy-policy.test.mjs
+          node --test tests/privacy-policy.test.mjs tests/privacy-policy-storage.test.mjs
           python3 tests/privacy-policy-release.test.py
           npm install --prefix "$RUNNER_TEMP/privacy-policy-browser" --no-save playwright@1.56.1
           echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/privacy-policy-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
@@ -65,16 +65,6 @@ jobs:
           docker push "$tag"
           docker pull "$tag"
           echo "CANDIDATE_WEB=$(docker image inspect "$tag" --format '{{index .RepoDigests 0}}')" >> "$GITHUB_ENV"
-      - name: Create private policy container with anonymous access disabled
-        run: |
-          set -euo pipefail
-          scope="/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod/providers/Microsoft.Storage/storageAccounts/sthidiprod0927/blobServices/default/containers/hidi-private-policies"
-          if az rest --method get --url "https://management.azure.com${scope}?api-version=2023-05-01" --only-show-errors > "$RUNNER_TEMP/privacy-container.json" 2>/dev/null; then
-            python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["properties"].get("publicAccess", "None")=="None", "Existing policy container must be private"' "$RUNNER_TEMP/privacy-container.json"
-          else
-            az rest --method put --url "https://management.azure.com${scope}?api-version=2023-05-01" --body '{"properties":{"publicAccess":"None"}}' --only-show-errors -o none
-          fi
-          az rest --method get --url "https://management.azure.com${scope}?api-version=2023-05-01" --only-show-errors --query properties.publicAccess -o tsv | python3 -c 'import sys; assert sys.stdin.read().strip()=="None", "Policy storage must remain private"'
       - name: Deploy only web image, verify private persisted draft and preserve settings
         run: python3 deploy/privacy-policy/rollout.py deploy "$CANDIDATE_WEB"
       - name: Preserve sanitized regression and deployment evidence

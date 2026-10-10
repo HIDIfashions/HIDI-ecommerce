@@ -94,6 +94,11 @@ def main():
         assert current['image'] == candidate and current['settingsHash'] == baseline['hidi-web']['settingsHash'], 'Protected web configuration changed'
         get('/health'); get('/'); get('/api/store/health/ready')
         assert json.loads(get('/api/hidi/privacy-policy')) == {'published': False}, 'Draft must remain unpublished'
+        try:
+            urllib.request.urlopen('https://sthidiprod0927.blob.core.windows.net/hidi-private-policies/state.json', timeout=20).close()
+            raise AssertionError('Private draft must not be accessible anonymously from Blob Storage')
+        except urllib.error.HTTPError as error:
+            assert error.code in (401, 403, 404), 'Unexpected private storage response'
         assert b'No published privacy policy' in get('/privacy', 404)
         assert b'Business correspondence address' in get('/admin/privacy-policy')
         get('/api/hidi/privacy-policy/admin', 401)
