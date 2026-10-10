@@ -17,7 +17,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/privacy-policy-browsers
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/privacy-policy-browsers
       ACR: acrhidiprod0927
     steps:
       - uses: actions/checkout@v4
