@@ -1,5 +1,5 @@
 name: COD rewards and app guarded release
-# Reuse identical live API bytes while enabling the authorized COD/rewards flags after candidate verification.
+# Scope checkout verification to its form so the separate footer newsletter stays unambiguous.
 on:
   push:
     branches: [migration/azure-sql-blob]
