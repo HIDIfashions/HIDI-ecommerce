@@ -1,5 +1,5 @@
 name: HIDI verified performance image promotion
-# Promote the exact passed candidate with nullable Azure metadata handled safely.
+# Promote the exact passed candidate after the tested nullable metadata correction.
 on:
   push:
     branches: [migration/azure-sql-blob]
