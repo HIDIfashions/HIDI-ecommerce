@@ -1,10 +1,11 @@
 """Add Ananya's Pick links to the exact retained Vite bundle, without rebuilding."""
 import hashlib
 import json
+from html.parser import HTMLParser
 from pathlib import Path
 
-BASE_BUNDLE = "dist/assets/index-BQ9NoW0w.js"
-BASE_SHA256 = "c1c65750a9707d9a0fed1b62031f405bc4c004a50400980474e3f30ab1d1db31"
+BASE_BUNDLE = "dist/assets/index-W9NUasam.js"
+BASE_SHA256 = "ad84440e2ec679e139907fa639ee64a79c09bf992cb0fa0eaf1800a4e2086676"
 CTA_BEFORE = 'className:"button button--gold meet-cinematic__button",href:"/collections/all"'
 CTA_AFTER = CTA_BEFORE.replace('/collections/all', '/collections/ananyas-pick')
 MENU_BEFORE = ('o.jsxs("nav",{className:"campaign-panel-nav","aria-label":"Explore HIDI",children:['
@@ -17,6 +18,29 @@ BANNER_CTA = 'className:"button button--burgundy edit-campaign__button",href:"/c
 
 def sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
+
+
+class ModuleScripts(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.sources = []
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "script" and attributes.get("type", "").lower() == "module":
+            self.sources.append(attributes.get("src"))
+
+
+def active_bundle_reference(html: bytes) -> bytes:
+    scripts = ModuleScripts()
+    scripts.feed(html.decode("utf-8"))
+    basename = Path(BASE_BUNDLE).name
+    assert len(scripts.sources) == 1, "Live landing index must reference exactly one active module bundle"
+    source = scripts.sources[0]
+    assert source in {"./assets/" + basename, "/assets/" + basename}, "Active landing module must reference the verified bundle"
+    reference = source.encode("ascii")
+    assert html.count(reference) == 1, "Live landing index must reference the verified bundle exactly once"
+    return reference
 
 
 def patch_bundle(content: bytes) -> bytes:
@@ -39,14 +63,13 @@ def patch_landing(base: Path, overlay: Path) -> dict:
     index = base / "dist/index.html"
     assert bundle.is_file() and not bundle.is_symlink(), "Verified retained landing bundle required"
     assert index.is_file() and not index.is_symlink(), "Retained landing index required"
+    html = index.read_bytes()
+    before = active_bundle_reference(html)
     old = bundle.read_bytes()
     new = patch_bundle(old)
     destination = "dist/assets/index-" + sha256(new)[:16] + ".js"
     assert not (base / destination).exists(), "New immutable landing asset already exists; stop for review"
-    html = index.read_bytes()
-    before = ("./assets/" + Path(BASE_BUNDLE).name).encode("ascii")
-    after = ("./assets/" + Path(destination).name).encode("ascii")
-    assert html.count(before) == 1, "Live landing index must reference the verified bundle exactly once"
+    after = before.replace(Path(BASE_BUNDLE).name.encode("ascii"), Path(destination).name.encode("ascii"))
     updated_html = html.replace(before, after)
     assert updated_html.replace(after, before) == html, "Unrelated landing index edit"
     files = {}
@@ -66,6 +89,7 @@ def patch_landing(base: Path, overlay: Path) -> dict:
         "files": files,
         "allowedFiles": sorted(files),
         "renamedAssets": {BASE_BUNDLE: destination},
+        "activeModuleSource": before.decode("ascii"),
         "oldAssetsRetained": True,
         "existingCategoryViewsRetained": True,
         "unrelatedBannerRetained": True,

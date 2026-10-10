@@ -81,6 +81,7 @@ jobs:
           python3 deploy/product-skn/release.py capture
           python3 deploy/product-skn/release.py backup
       - name: Compose reviewed additive overlays over the actual live images
+        # Verify and patch the active performance homepage bundle retained in production.
         run: |
           set -euo pipefail
           for app in api web; do
