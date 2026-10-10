@@ -25,7 +25,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import copy, hashlib, importlib.util, json, os, re, subprocess, sys, time
+          import copy, hashlib, importlib.util, json, os, re, subprocess, sys, time, traceback
           import urllib.error, urllib.parse, urllib.request
           from datetime import datetime, timezone
           from pathlib import Path
@@ -224,6 +224,7 @@ jobs:
 
           try: main()
           except Exception as error:
+              print('Stopped with ' + type(error).__name__ + '; frames=' + json.dumps([{'file': Path(f.filename).name, 'line': f.lineno, 'function': f.name} for f in traceback.extract_tb(error.__traceback__)]), file=sys.stderr)
               print(str(error) if isinstance(error, (AssertionError, retained.AzureOperationError)) else 'Domain preparation stopped; inspect sanitized evidence', file=sys.stderr)
               sys.exit(1)
           PY
