@@ -1,0 +1,118 @@
+name: Admin product deletion and clear tools guarded release
+
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/admin-product-delete-release.yml]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+
+jobs:
+  regression-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env: {ACCEPT_EULA: Y, MSSQL_SA_PASSWORD: Disposable-CI-Only_2026!}
+        ports: [1433:1433]
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=fixture;password=fixture;encrypt=true
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-admin-delete-browsers
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-admin-delete-browser/node_modules/playwright/index.mjs
+      ADMIN_DELETE_TEST_SQL_HOST: 127.0.0.1
+      ADMIN_DELETE_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Install unchanged dependencies and generate the retained SQL client
+        run: pnpm install --frozen-lockfile && pnpm db:generate
+      - name: Compile immutable baseline before the reviewed API changes
+        run: python3 deploy/admin-delete/release.py baseline
+      - name: Run service, storage, auth and deployment guard regression
+        run: |
+          set -euo pipefail
+          pnpm --filter @hidi/api test:customer-experience
+          node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
+          node --test tests/admin-quick-tools.test.mjs tests/admin-product-bulk.test.mjs
+          node --test tests/admin-product-delete-handler.test.mjs
+          python3 tests/admin-delete-release.test.py
+          pnpm --filter @hidi/api build
+          node tests/admin-product-delete.sqlserver.mjs
+      - name: Install browser verification tools
+        run: |
+          set -euo pipefail
+          npm install --prefix /tmp/hidi-admin-delete-browser --no-save playwright@1.56.1
+          node /tmp/hidi-admin-delete-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Back up fresh immutable live images and compose admin-only overlays
+        run: |
+          set -euo pipefail
+          python3 deploy/admin-delete/release.py capture
+          az acr login --name acrhidiprod0927 --only-show-errors
+          for app in api web; do
+            key="EXPECTED_${app^^}"
+            docker pull "${!key}"
+            backup="acrhidiprod0927.azurecr.io/hidi-$app:backup-admin-delete-${GITHUB_RUN_ID}"
+            docker tag "${!key}" "$backup"
+            docker push "$backup"
+            backup_digest="$(az acr repository show --name acrhidiprod0927 --image "hidi-$app:backup-admin-delete-${GITHUB_RUN_ID}" --query digest -o tsv --only-show-errors)"
+            expected_image="${!key}"
+            test "$backup_digest" = "${expected_image##*@}"
+            python3 - "$backup" "$backup_digest" "$expected_image" "evidence/admin-delete/$app-backup.json" <<'PY'
+          import json, pathlib, sys
+          image, digest, original, destination = sys.argv[1:]
+          assert digest == original.split('@', 1)[1]
+          pathlib.Path(destination).write_text(json.dumps({'image': image, 'digest': digest, 'originalImage': original, 'verified': True}, indent=2))
+          PY
+            echo "$backup" > "evidence/admin-delete/$app-backup-tag.txt"
+            candidate="acrhidiprod0927.azurecr.io/hidi-$app:admin-delete-${GITHUB_RUN_ID}"
+            python3 deploy/admin-delete/release.py compose --app "$app" --image "$candidate"
+            echo "CANDIDATE_${app^^}=$candidate" >> "$GITHUB_ENV"
+          done
+      - name: Run regression against the actual preserved-image candidates
+        env:
+          HIDI_CANDIDATE_RUNTIME: ${{ runner.temp }}/hidi-admin-delete-private/web/candidate-app
+          HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+        run: |
+          set -euo pipefail
+          node deploy/admin-delete/candidate.mjs
+          node tests/admin-quick-tools.runtime.mjs
+          node --test tests/admin-product-delete-handler.test.mjs
+          node tests/admin-product-delete.browser.mjs
+          node tests/admin-navigation.browser.mjs
+      - name: Publish verified immutable candidates
+        run: |
+          set -euo pipefail
+          for app in api web; do
+            key="CANDIDATE_${app^^}"
+            docker push "${!key}"
+            digest="$(az acr repository show --name acrhidiprod0927 --image "hidi-$app:admin-delete-${GITHUB_RUN_ID}" --query digest -o tsv --only-show-errors)"
+            image="acrhidiprod0927.azurecr.io/hidi-$app@$digest"
+            echo "IMAGE_${app^^}=$image" >> "$GITHUB_ENV"
+          done
+      - name: Deploy with exact-state guards and automatic rollback
+        run: python3 deploy/admin-delete/release.py apply --api "$IMAGE_API" --web "$IMAGE_WEB"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-product-delete-release-${{ github.run_id }}
+          path: |
+            evidence/admin-delete
+            test-results/admin-product-delete
+            test-results/admin-navigation
+          retention-days: 30

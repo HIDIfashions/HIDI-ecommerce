@@ -133,6 +133,42 @@ export function parseStatus(value: unknown) {
   if (!["DRAFT", "ACTIVE", "ARCHIVED"].includes(String(input.status))) throw new ProductInputError("Invalid product status.");
   return { status: input.status as ProductState, expectedUpdatedAt: revision(input.expectedUpdatedAt) };
 }
+export function parseDelete(value: unknown) {
+  const input = record(value); only(input, ["expectedUpdatedAt", "confirmName"]);
+  return {
+    expectedUpdatedAt: revision(input.expectedUpdatedAt),
+    confirmName: text(input.confirmName, "Product name confirmation", 160, true)!,
+  };
+}
+export function parseDeleteCleanup(value: unknown) {
+  const input = record(value); only(input, ["productImageIds", "variantImageIds"]);
+  const ids = (value: unknown, label: string) => {
+    if (!Array.isArray(value) || value.length > 200) throw new ProductInputError(`${label} must contain at most 200 identifiers.`);
+    return [...new Set(value.map(item => identifier(item, label)))];
+  };
+  const productImageIds = ids(input.productImageIds ?? [], "Product photos");
+  const variantImageIds = ids(input.variantImageIds ?? [], "SKU photos");
+  if (!productImageIds.length && !variantImageIds.length) throw new ProductInputError("Choose at least one completed photo cleanup.");
+  return { productImageIds, variantImageIds };
+}
+/** Conservative object identity for sharing checks; this never grants deletion ownership. */
+export function productMediaKeys(url: string, storagePath?: string | null): string[] {
+  const keys = new Set<string>();
+  for (const value of [url, storagePath]) {
+    if (!value) continue;
+    try {
+      const parsed = new URL(value, "https://local.invalid");
+      let path = decodeURIComponent(parsed.pathname);
+      if (parsed.protocol === "azure:") path = `/${parsed.hostname}${path}`;
+      const marker = path.indexOf("/products/");
+      if (marker < 0) continue;
+      const key = path.slice(marker + 1);
+      if (key.length > 2048 || /[\u0000-\u001f\u007f\\]/.test(key) || key.split("/").some(part => !part || part === "." || part === "..")) continue;
+      keys.add(key);
+    } catch { /* Unparseable external URLs are compared by their exact value. */ }
+  }
+  return [...keys];
+}
 export function makeSku(productId: string, productSlug: string, color: string, size: string): string {
   // The product token plus untruncated colour/size tokens give readable identifiers.
   // Database uniqueness is authoritative; existing SKUs are never regenerated on edit.

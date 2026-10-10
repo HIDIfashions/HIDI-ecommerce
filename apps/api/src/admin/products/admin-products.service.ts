@@ -3,7 +3,7 @@ import type { Prisma } from "../../generated/prisma/client.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import {
   canonical, identifier, makeSku, MAX_VARIANTS, only, parseAddVariants, parseCreate, parseEdit,
-  parseStatus, parseVariantEdit, ProductInputError, record, slugify, text,
+  parseStatus, parseVariantEdit, parseDelete, parseDeleteCleanup, productMediaKeys, ProductInputError, record, slugify, text,
   type MatrixInput, type ProductFields,
 } from "./product-input.js";
 
@@ -74,7 +74,7 @@ export class AdminProductsService {
     const suffix = barcodeSuffix(query);
     if (suffix) search.push({ variants: { some: { id: { endsWith: suffix } } } });
     const where: Prisma.ProductWhereInput = {
-      ...(status && status !== "ALL" ? { status: status as "DRAFT" | "ACTIVE" | "ARCHIVED" } : {}),
+      status: status && status !== "ALL" ? status : { not: "DELETED" },
       ...(query ? { OR: search } : {}),
     };
     const [products, total] = await Promise.all([
@@ -170,7 +170,102 @@ export class AdminProductsService {
     };
   }
 
-  get(productId: string) { return this.find(this.prisma, id(productId)); }
+  async get(productId: string) {
+    const product = await this.find(this.prisma, id(productId));
+    if (product.status === "DELETED") throw new NotFoundException("Product has been deleted.");
+    return product;
+  }
+
+  async getDeletion(productId: string) {
+    const product = await this.find(this.prisma, id(productId));
+    if (product.status !== "DELETED") throw new ConflictException("This product has not been deleted.");
+    const pendingMediaCount = product.images.length + product.variants.reduce((sum, variant) => sum + variant.images.length, 0);
+    return { productId: product.id, name: product.name, status: "DELETED", updatedAt: product.updatedAt, pendingMediaCount, complete: pendingMediaCount === 0, historyPreserved: true };
+  }
+
+  private requireNotDeleted(product: ProductDetail) {
+    if (product.status === "DELETED") throw new ConflictException("This product has been deleted. It cannot be edited or republished.");
+  }
+
+  /** Photo rows remain the durable cleanup queue until storage confirms each result. */
+  private async deletionMedia(tx: DB, product: ProductDetail) {
+    const media = [
+      ...product.images.map(image => ({ kind: "product" as const, id: image.id, url: image.url, storagePath: null as string | null })),
+      ...product.variants.flatMap(variant => variant.images.map(image => ({ kind: "variant" as const, id: image.id, url: image.url, storagePath: image.storagePath }))),
+    ];
+    const sharedUrls = new Set<string>();
+    const sharedPaths = new Set<string>();
+    const sharedKeys = new Set<string>();
+    // Compare lightweight reference projections after decoding object keys. Filtering by
+    // a raw URL can miss a shared object referenced through another CDN or percent encoding.
+    if (media.length) {
+      const [productImages, variantImages] = await Promise.all([
+        tx.productImage.findMany({ where: { productId: { not: product.id } }, select: { url: true } }),
+        tx.productVariantImage.findMany({
+          where: { variant: { is: { productId: { not: product.id } } } },
+          select: { url: true, storagePath: true },
+        }),
+      ]);
+      for (const image of productImages) {
+        sharedUrls.add(image.url);
+        for (const key of productMediaKeys(image.url)) sharedKeys.add(key);
+      }
+      for (const image of variantImages) {
+        sharedUrls.add(image.url);
+        if (image.storagePath) sharedPaths.add(image.storagePath);
+        for (const key of productMediaKeys(image.url, image.storagePath)) sharedKeys.add(key);
+      }
+    }
+    return media.map(image => ({ ...image, shared: sharedUrls.has(image.url) || Boolean(image.storagePath && sharedPaths.has(image.storagePath)) || productMediaKeys(image.url, image.storagePath).some(key => sharedKeys.has(key)) }));
+  }
+
+  async beginDeletion(productId: string, value: unknown) {
+    const data = input(parseDelete, value); const key = id(productId);
+    return this.write(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Product" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${key}`;
+      let product = await this.find(tx, key);
+      if (canonical(data.confirmName) !== canonical(product.name)) throw new BadRequestException("Type this product's name to confirm deletion.");
+      const repeated = product.status === "DELETED";
+      if (!repeated && product.updatedAt.getTime() !== data.expectedUpdatedAt.getTime()) throw new ConflictException("This product changed after you opened it. Reload before deleting; nothing was deleted.");
+      for (const variant of [...product.variants].sort((a, b) => a.id.localeCompare(b.id))) {
+        const inventory = await tx.$queryRaw<Array<{ reserved: number }>>`SELECT "reserved" FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "variantId" = ${variant.id}`;
+        if (inventory.some(row => row.reserved > 0)) throw new ConflictException("This product has reserved pieces. Complete or release those checkouts before deleting it.");
+      }
+      if (await tx.inventoryReservation.count({ where: { variant: { is: { productId: key } }, status: "ACTIVE" } })) throw new ConflictException("This product has an active checkout. Complete or release it before deleting the product.");
+      if (!repeated) {
+        await tx.productVariant.updateMany({ where: { productId: key }, data: { active: false } });
+        await tx.cartItem.deleteMany({ where: { productId: key } });
+        product = await tx.product.update({ where: { id: key }, data: { status: "DELETED", updatedAt: versionTime(product.updatedAt) }, include: detailInclude });
+      }
+      return {
+        productId: key, name: product.name, status: "DELETED", updatedAt: product.updatedAt,
+        historyPreserved: true, repeated, media: await this.deletionMedia(tx, product),
+      };
+    });
+  }
+
+  async finishDeletionCleanup(productId: string, value: unknown) {
+    const data = input(parseDeleteCleanup, value); const key = id(productId);
+    return this.write(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Product" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${key}`;
+      const product = await this.find(tx, key);
+      if (product.status !== "DELETED") throw new ConflictException("Delete the product before confirming its photo cleanup.");
+      const productIds = new Set(product.images.map(image => image.id));
+      const variantIds = new Set(product.variants.flatMap(variant => variant.images.map(image => image.id)));
+      // Missing IDs are successful replays; IDs belonging to another product are denied.
+      const [foreignProductImages, foreignVariantImages] = await Promise.all([
+        tx.productImage.count({ where: { id: { in: data.productImageIds }, productId: { not: key } } }),
+        tx.productVariantImage.count({ where: { id: { in: data.variantImageIds }, variant: { is: { productId: { not: key } } } } }),
+      ]);
+      if (foreignProductImages || foreignVariantImages) throw new BadRequestException("Photo cleanup identifiers must belong to the deleted product.");
+      const [products, variants] = await Promise.all([
+        tx.productImage.deleteMany({ where: { productId: key, id: { in: data.productImageIds.filter(value => productIds.has(value)) } } }),
+        tx.productVariantImage.deleteMany({ where: { variant: { is: { productId: key } }, id: { in: data.variantImageIds.filter(value => variantIds.has(value)) } } }),
+      ]);
+      const pendingMediaCount = productIds.size + variantIds.size - products.count - variants.count;
+      return { productId: key, status: "DELETED", removedMetadataCount: products.count + variants.count, pendingMediaCount, complete: pendingMediaCount === 0, historyPreserved: true };
+    });
+  }
 
   private async find(db: Pick<DB, "product">, productId: string) {
     const product = await db.product.findUnique({ where: { id: productId }, include: detailInclude });
@@ -204,6 +299,7 @@ export class AdminProductsService {
   private async locked(tx: DB, productId: string, expected: Date) {
     await tx.$queryRaw`SELECT "id" FROM "Product" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${productId} `;
     const product = await this.find(tx, productId);
+    this.requireNotDeleted(product);
     if (product.updatedAt.getTime() !== expected.getTime()) throw new ConflictException("This product changed after you opened it. Reload the product before saving; your changes were not applied.");
     return product;
   }
@@ -233,6 +329,7 @@ export class AdminProductsService {
     const replay = async () => {
       const p = await this.prisma.product.findUnique({ where: { id: productId }, include: detailInclude });
       if (!p) return null;
+      this.requireNotDeleted(p);
       if (!this.sameCreation(p, data)) throw new ConflictException("This request already created a product. Find it in Products before starting another creation.");
       return p;
     };
