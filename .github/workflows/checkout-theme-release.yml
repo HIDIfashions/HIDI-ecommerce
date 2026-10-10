@@ -1,4 +1,5 @@
 name: Checkout shipping and theme guarded release
+# Serve the product-review fixture before the general product-route fixture.
 # Respect component-owned phone validation in the preserved Azure wrapper.
 on:
   push:

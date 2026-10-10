@@ -6,7 +6,7 @@ RUN_ID = 38045636956
 WORKFLOW = '.github/workflows/checkout-theme-release.yml'
 REQUIRED = ['Install unchanged dependencies and generate existing SQL client', 'Run complete service and frontend regression', 'Build the storefront with retained public auth configuration', 'Verify desktop, mobile, cart, checkout and admin in three engines']
 # These release-only files cannot change the application build or source fixtures.
-RELEASE_FILES = {WORKFLOW, 'deploy/checkout-theme-release.py', 'deploy/checkout-theme-probes.mjs', 'deploy/checkout-theme-candidate.mjs', 'deploy/checkout-theme/runtime-compat.py', 'deploy/checkout-theme/browser-gate.py', '.github/workflows/cod-rewards-release.yml', 'deploy/cod-rewards-browser-gate.py', 'deploy/cod-rewards-probes.mjs', 'deploy/cod-rewards-release.py'}
+RELEASE_FILES = {WORKFLOW, 'deploy/checkout-theme-release.py', 'deploy/checkout-theme-probes.mjs', 'deploy/checkout-theme-candidate.mjs', 'deploy/checkout-theme/runtime-compat.py', 'deploy/checkout-theme/browser-gate.py', '.github/workflows/cod-rewards-release.yml', 'deploy/cod-rewards-browser-gate.py', 'deploy/cod-rewards-probes.mjs', 'deploy/cod-rewards-candidate.mjs', 'deploy/cod-rewards-release.py'}
 
 def git(*args):
     return subprocess.check_output(['git', *args], text=True)

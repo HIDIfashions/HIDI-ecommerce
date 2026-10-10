@@ -12,7 +12,7 @@ export async function probe(base,output,engines=['chromium','firefox','webkit'])
    const pending=new Set();let activity=0;const navigation=r=>new URL(r.url()).searchParams.has('_rsc');
    page.on('request',r=>{if(navigation(r)){pending.add(r);activity=Date.now();}});
    const finished=r=>{if(navigation(r)){pending.delete(r);activity=Date.now();}};page.on('requestfinished',finished);page.on('requestfailed',finished);
-   const go=async path=>{const start=Date.now();while(pending.size||Date.now()-Math.max(start,activity)<500){assert(Date.now()-start<15000,'Navigation requests did not settle');await new Promise(r=>setTimeout(r,50));}const response=await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:30000});assert(response?.ok(),'Route must load: '+path);};
+   const go=async path=>{const start=Date.now();while(pending.size||Date.now()-Math.max(start,activity)<500){assert(Date.now()-start<15000,'Navigation requests did not settle');await new Promise(r=>setTimeout(r,50));}const response=await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:30000});assert(response?.ok(),'Route must load: '+path+' (HTTP '+response?.status()+')');};
    await context.route('**/*',r=>['GET','HEAD'].includes(r.request().method())&&r.request().resourceType()!=='media'?r.continue():r.abort());
    const cart={items:[{id:'read-only-fixture',quantity:1,lineTotalPaise:100000,product:{id:product.id,slug:product.slug,name:product.name,image:product.images?.[0]?.url||null},variant:{id:'read-only-size',size:'M',color:'Fixture',available:1}}],itemCount:1,subtotalPaise:100000,shippingPaise:9900,totalPaise:109900};
    await context.route('**/api/store/carts/**',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(cart)}));
