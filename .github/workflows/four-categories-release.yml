@@ -63,7 +63,7 @@ jobs:
             echo "CANDIDATE_${app^^}=$tag" >> "$GITHUB_ENV"
           done
       - name: Verify category filters and actual desktop/mobile navigation
-        # Drain Next category prefetches before navigating; performance reports remain blocked.
+        # Wait for actual page scripts before interacting, then drain prefetches before navigating.
         run: |
           set -euo pipefail
           node deploy/four-categories/candidate.mjs

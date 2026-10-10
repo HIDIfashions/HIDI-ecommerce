@@ -19,7 +19,11 @@ export async function probe(base,output,{candidate=false}={}){
    const completed=request=>{if(tracked(request)){pendingRsc.delete(request);navigationActivity=Date.now();}};
    page.on('requestfinished',completed);page.on('requestfailed',completed);
    async function settle(){const started=Date.now();while(pendingRsc.size||Date.now()-Math.max(started,navigationActivity)<350){assert(Date.now()-started<20000,'Category prefetch requests did not settle');await new Promise(resolve=>setTimeout(resolve,40));}}
-   async function go(path){await settle();return page.goto(base+path,{waitUntil:'domcontentloaded'});}
+   async function go(path){
+    await settle();const response=await page.goto(base+path,{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>Array.from(document.querySelectorAll('script[src]:not([nomodule])')).filter(script=>new URL(script.src).origin===location.origin&&(new URL(script.src).pathname.startsWith('/_next/')||script.type==='module')).every(script=>performance.getEntriesByName(script.src).length>0),null,{timeout:45000});
+    await new Promise(resolve=>setTimeout(resolve,200));return response;
+   }
    const writes=[],telemetryBlocked=[];
    await context.route('**/*',route=>{
     const url=route.request().url();if(/google-analytics|googletagmanager|facebook\.net/.test(url))return route.abort();
