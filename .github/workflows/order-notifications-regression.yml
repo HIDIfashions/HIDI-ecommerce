@@ -90,7 +90,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: order-notification-install-${{ github.run_id }}
+          name: order-notification-install-${{ github.run_id }}-${{ github.run_attempt }}
           path: evidence
           retention-days: 90
           if-no-files-found: ignore

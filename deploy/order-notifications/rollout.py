@@ -38,7 +38,20 @@ def deploy(candidate):
     assert re.fullmatch('acrhidiprod0927.azurecr.io/hidi-api@sha256:[0-9a-f]{64}',candidate)
     old={name:json.loads((Path(os.environ['RUNNER_TEMP'])/PRIVATE/(name+'.json')).read_text()) for name in ['hidi-api','hidi-web']}
     before={name:base.snapshot(data) for name,data in old.items()}
-    for name in old:assert base.snapshot(base.app(name))==before[name], 'Live '+name+' changed during preparation; refusing to overwrite it'
+    for name in old:
+        current_data=base.app(name)
+        if base.snapshot(current_data)!=before[name]:
+            # Identify changed JSON paths only; never print configuration values.
+            def changes(a,b,path=''):
+                if isinstance(a,dict) and isinstance(b,dict):
+                    return sum((changes(a.get(k),b.get(k),path+'/'+k) for k in sorted(a.keys()|b.keys())),[])
+                if isinstance(a,list) and isinstance(b,list):
+                    return [path] if len(a)!=len(b) else sum((changes(x,y,path+'/'+str(i)) for i,(x,y) in enumerate(zip(a,b))),[])
+                return [] if a==b else [path]
+            paths=changes(old[name]['properties']['template'],current_data['properties']['template'],'template')
+            paths+=changes(old[name]['properties']['configuration'],current_data['properties']['configuration'],'configuration')
+            Path('evidence/notification-drift-paths.json').write_text(json.dumps({'app':name,'changedPaths':paths},indent=2))
+            raise AssertionError('Live '+name+' changed during preparation; refusing to overwrite it')
     changed=False
     try:
         suffix='notify'+os.environ['GITHUB_RUN_ID'];changed=True
