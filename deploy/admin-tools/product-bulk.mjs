@@ -1,11 +1,12 @@
 import {readWorkbook} from './workbook-reader.mjs';
+import './product-publication-panel.mjs';
 import {parseWorkbook,exactMatch,identityConflict,batchPayload,duplicateTargets,creationId,alreadyApplied,blankTemplate,categoryOption,savedIdentity,resultsCsv,sknMappingCsv,photoFileExample} from './product-batch.mjs';
 const $=id=>document.getElementById(id),labels={name:'Product name',categoryId:'Category',shortDescription:'Short description',fabric:'Fabric',care:'Wash care',description:'Full product details'};
 let items=[],catalog=[],options={categories:[],collections:[]},busy=false,ready=false,stop=false;
 function say(message,type=''){ $('status').textContent=message;$('status').className='notice '+type; }
-function lock(value){busy=value;for(const el of document.querySelectorAll('input,select,textarea,button'))el.disabled=value||(!ready&&el.id==='preview');$('stop').disabled=false;$('stop').hidden=!value||!items.length;}
+function lock(value){busy=value;for(const el of document.querySelectorAll('input:not(#hidi-bulk-publish input),select,textarea,button:not(#hidi-bulk-publish button)'))el.disabled=value||(!ready&&el.id==='preview');$('stop').disabled=false;$('stop').hidden=!value||!items.length;}
 async function api(path='',method='GET',body){const r=await fetch('/api/admin/products'+path,{method,credentials:'same-origin',cache:'no-store',...(body?{headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{})});const data=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401||r.status===403)$('auth').hidden=false;const e=new Error(Array.isArray(data.message)?data.message.join('. '):data.message||'Product request failed ('+r.status+').');e.status=r.status;throw e;}return data;}
-async function run(fn){if(busy)return;lock(true);try{await fn();}catch(e){say(e.message,'bad');}finally{lock(false);for(const row of items)if(row.status==='saved')row.ui?.querySelectorAll('input,select,textarea').forEach(e=>e.disabled=true);}}
+async function run(fn){if(busy)return;lock(true);window.dispatchEvent(new CustomEvent('hidi:bulk-busy',{detail:{busy:true}}));try{await fn();}catch(e){say(e.message,'bad');}finally{lock(false);window.dispatchEvent(new CustomEvent('hidi:bulk-busy',{detail:{busy:false}}));for(const row of items)if(row.status==='saved')row.ui?.querySelectorAll('input,select,textarea').forEach(e=>e.disabled=true);}}
 async function loadCatalog(){const next=[];let page=1;for(;;){const result=await api('?status=ALL&page='+page);next.push(...(result.items||[]));if(next.length>=result.total||!result.items?.length)break;if(next.length>=5000)throw new Error('Catalogue exceeds 5,000 products. Use the existing product editor until catalogue pagination is extended.');page++;}catalog=next;}
 const defaults=()=>Object.fromEntries(['color','sizes','price','mrp'].map(k=>[k,$('default-'+k).value.trim()]));
 function state(row,message,type=''){row.resultMessage=message;row.ui.querySelector('.batch-state').textContent=message;row.ui.querySelector('.batch-state').className='batch-state notice '+type;}
@@ -60,6 +61,7 @@ $('save').onclick=()=>run(async()=>{
     }catch(e){row.status='failed';state(row,'Failed: '+e.message,'bad');if([401,403].includes(e.status)){stop=true;}}
     summary();
   }
+  window.dispatchEvent(new CustomEvent('hidi:bulk-products-saved',{detail:{ids:items.filter(r=>r.status==='saved').map(r=>r.record.id)}}));
   const failed=items.filter(r=>r.status==='failed').length;say((stop?'Batch paused. ':'Batch finished. ')+items.filter(r=>r.status==='saved').length+' saved'+(failed?', '+failed+' failed. Review errors and save again to retry unsaved products.':'. Unsaved products remain in the preview.'),failed?'bad':'good');
 });
 $('report').onclick=()=>download('hidi-product-import-results.csv',resultsCsv(items));

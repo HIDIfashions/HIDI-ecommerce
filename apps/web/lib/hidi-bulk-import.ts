@@ -41,6 +41,15 @@ function canonical(value: string) { return value.normalize("NFKC").trim().replac
 export function comboKey(color: string, size: string) { return `${canonical(color)}\u0000${canonical(size)}`; }
 export function skuKey(value: string) { return value.normalize("NFKC").trim().toUpperCase(); }
 
+export function importDetails(row: BulkProductRow, product: ProductRecord, categoryId: string | null) {
+  const payload = { name: row.productName, slug: product.slug, categoryId: row.category ? categoryId : product.categoryId,
+    collectionIds: product.collections.map(value => value.collectionId), expectedUpdatedAt: product.updatedAt,
+    shortDescription: row.shortDescription || product.shortDescription || null, description: row.description || product.description || null,
+    fabric: row.fabric || product.fabric || null, care: row.care || product.care || null };
+  return payload.name !== product.name || payload.categoryId !== product.categoryId || payload.shortDescription !== product.shortDescription ||
+    payload.description !== product.description || payload.fabric !== product.fabric || payload.care !== product.care ? payload : null;
+}
+
 export function normalizeProductRows(sheet: SheetRow[]): BulkProductRow[] {
   const rows = sheet.map((raw, index) => {
     const productName = take(raw, "product_name", "product");
@@ -73,12 +82,12 @@ export function normalizeProductRows(sheet: SheetRow[]): BulkProductRow[] {
     }
     return row;
   });
-  const productShape = new Map<string, { row: number; name: string; category: string; shortDescription: string; fabric: string; care: string }>();
+  const productShape = new Map<string, { row: number; name: string; category: string; shortDescription: string; description: string; fabric: string; care: string }>();
   for (const row of rows) if (row.mode === "NEW" && row.productSlug) {
     const existing = productShape.get(row.productSlug);
-    const shape = { row: row.rowNumber, name: canonical(row.productName), category: canonical(row.category), shortDescription: canonical(row.shortDescription), fabric: canonical(row.fabric), care: canonical(row.care) };
+    const shape = { row: row.rowNumber, name: canonical(row.productName), category: canonical(row.category), shortDescription: canonical(row.shortDescription), description: row.description.trim(), fabric: canonical(row.fabric), care: canonical(row.care) };
     if (!existing) productShape.set(row.productSlug, shape);
-    else if (existing.name !== shape.name || existing.category !== shape.category || existing.shortDescription !== shape.shortDescription || existing.fabric !== shape.fabric || existing.care !== shape.care) row.errors.push(`Product-level fields differ from row ${existing.row} for the same product_slug.`);
+    else if (existing.name !== shape.name || existing.category !== shape.category || existing.shortDescription !== shape.shortDescription || existing.description !== shape.description || existing.fabric !== shape.fabric || existing.care !== shape.care) row.errors.push(`Product-level fields differ from row ${existing.row} for the same product_slug.`);
   }
   const combinations = new Map<string, number>(); const stockSkus = new Map<string, number>();
   for (const row of rows) {

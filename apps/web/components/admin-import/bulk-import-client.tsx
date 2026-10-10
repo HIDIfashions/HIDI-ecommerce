@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { productApi } from "@/lib/admin-products-client";
 import type { Option, ProductList, ProductOptions, ProductRecord } from "@/lib/admin-products-contract";
 import { rupeesToPaise } from "@/lib/admin-products-contract";
-import { normalizeProductRows, comboKey, skuKey, variantFor, sha256Text } from "@/lib/hidi-bulk-import";
+import { normalizeProductRows, comboKey, skuKey, variantFor, sha256Text, importDetails } from "@/lib/hidi-bulk-import";
 import type { BulkProductRow, InventoryRowLite } from "@/lib/hidi-bulk-import";
 import { downloadCsv, makeCsv, readSpreadsheet } from "@/lib/hidi-spreadsheet";
 import { photoCandidatesFromFiles, photoCandidatesFromZip, uploadPhotoCandidate } from "@/lib/hidi-bulk-photos";
@@ -99,7 +99,9 @@ export function BulkImportClient() {
     if (!rows.length || invalidRows.length || importing) return;
     if (!window.confirm(`Import ${rows.length} rows? This can create draft products/SKUs and add ${counts.openingPieces} opening-stock pieces. Purchase cost is NOT recorded here; use Bulk Receipt for supplier deliveries.`)) return;
     setImporting(true); setError(null); setMessage(null); setLogs([]); setProgress("");
+    window.dispatchEvent(new CustomEvent("hidi:bulk-busy", { detail: { busy: true } }));
     const report: ImportLog[] = []; const productCache = new Map<string, ProductRecord | null>();
+    const detailsSaved = new Set<string>(); const failedProducts = new Set<string>();
     try {
       let options = await productApi<ProductOptions>("/options");
       const inventory = await adminJson<InventoryResponse>("/api/admin/inventory?status=ALL"); let inventoryBySku = new Map((inventory.rows ?? []).map(row => [skuKey(row.sku), row]));
@@ -118,7 +120,12 @@ export function BulkImportClient() {
               description: row.description || null, fabric: row.fabric || null, care: row.care || null, colors: [{ name: row.color, hex: row.colorHex || null }], sizes: [row.size], ...rowPrices(row),
             });
             productCache.set(row.productSlug, product);
+          } else if (!detailsSaved.has(row.productSlug)) {
+            const category = row.category ? await ensureCategory(row.category, options) : { id: product.categoryId, options }; options = category.options;
+            const payload = importDetails(row, product, category.id);
+            if (payload) { product = await productApi<ProductRecord>(`/${encodeURIComponent(product.id)}`, "PATCH", payload); productCache.set(row.productSlug, product); }
           }
+          detailsSaved.add(row.productSlug);
           let variant = variantFor(product, row.color, row.size);
           if (!variant) {
             product = await productApi<ProductRecord>(`/${encodeURIComponent(product.id)}/variants`, "POST", { expectedUpdatedAt: product.updatedAt, colors: [{ name: row.color, hex: row.colorHex || null }], sizes: [row.size], ...rowPrices(row) });
@@ -134,13 +141,14 @@ export function BulkImportClient() {
           const stockResult = await receiveOpening(variant.id, row.openingQty, batchRef);
           report.push({ row: row.rowNumber, state: stockResult.startsWith("Opening stock already") ? "SKIPPED" : "DONE", message: `SKN ${product.skn} · ${product.name} · ${variant.color}/${variant.size} · ${variant.sku}: ${stockResult}.` });
           inventoryBySku.set(skuKey(variant.sku), { variantId: variant.id, productName: product.name, sku: variant.sku, color: variant.color, size: variant.size, onHand: variant.inventory?.onHand ?? 0 });
-        } catch (caught) { report.push({ row: row.rowNumber, state: "FAILED", message: caught instanceof Error ? caught.message : "Import failed." }); }
+        } catch (caught) { if (row.mode === "NEW") failedProducts.add(row.productSlug); report.push({ row: row.rowNumber, state: "FAILED", message: caught instanceof Error ? caught.message : "Import failed." }); }
         setLogs([...report]);
       }
-      const failed = report.filter(item => item.state === "FAILED").length; setMessage(failed ? `Import finished with ${failed} failed row${failed === 1 ? "" : "s"}. Correct only those rows and retry.` : `Import complete. ${report.length} rows processed. Products remain Draft until you publish them.`);
+      const failed = report.filter(item => item.state === "FAILED").length; setMessage(failed ? `Import finished with ${failed} failed row${failed === 1 ? "" : "s"}. Correct only those rows and retry.` : `Import complete. ${report.length} rows saved. Upload photos, then use Publish products in bulk below. Existing publication status is retained until you choose to publish.`);
+      window.dispatchEvent(new CustomEvent("hidi:bulk-products-saved", { detail: { ids: [...productCache.entries()].filter(([slug, product]) => product && !failedProducts.has(slug)).map(([, product]) => product!.id) } }));
       await refreshVariants();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Bulk import stopped unexpectedly."); }
-    finally { setLogs([...report]); setProgress(""); setImporting(false); }
+    finally { setLogs([...report]); setProgress(""); setImporting(false); window.dispatchEvent(new CustomEvent("hidi:bulk-busy", { detail: { busy: false } })); }
   }
 
   async function choosePhotoFiles(files: File[]) {
@@ -163,7 +171,7 @@ export function BulkImportClient() {
       }
       setMessage(`${uploaded} photo${uploaded === 1 ? "" : "s"} uploaded successfully.`); setPhotos([]); setPhotoSource(""); await refreshVariants();
     } catch (caught) { setError(`${caught instanceof Error ? caught.message : "Photo upload failed."} ${uploaded} upload${uploaded === 1 ? "" : "s"} were confirmed before the stop. Check saved photos before retrying.`); }
-    finally { setPhotoProgress(""); setPhotoBusy(false); }
+    finally { setPhotoProgress(""); setPhotoBusy(false); if (uploaded) window.dispatchEvent(new CustomEvent("hidi:bulk-photos-saved")); }
   }
 
   const invalidPhotos = photos.filter(item => item.error).length; const matchedSkus = new Set(photos.filter(item => item.sku).map(item => item.sku)).size;

@@ -60,6 +60,7 @@
   },true);
   function addTools(){
     const path=location.pathname;if(!path.startsWith('/admin'))return;
+    if(['/admin/import','/admin/product-bulk'].includes(path.replace(/\/$/,''))&&!document.getElementById('hidi-bulk-publish-loader')){const script=document.createElement('script');script.id='hidi-bulk-publish-loader';script.type='module';script.src='/admin-tools-assets/product-publication-panel.mjs';document.head.append(script);}
     toolNavigation();
     const match=path.match(/^\/admin\/products(?:\/([^/]+))?\/?$/),heading=document.querySelector('main h1');
     if(match&&(!match[1]||!['price-tags','bulk-import'].includes(match[1]))&&heading&&!document.getElementById('hidi-product-quick-fill-link')){
