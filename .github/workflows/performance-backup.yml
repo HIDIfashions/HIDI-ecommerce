@@ -8,7 +8,7 @@ permissions:
   contents: read
   id-token: write
 concurrency:
-  group: hidi-hero-guarded-release
+  group: hidi-performance-backup
   cancel-in-progress: false
 jobs:
   backup:

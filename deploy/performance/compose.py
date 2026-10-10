@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import re
 
 HERE = Path(__file__).resolve().parent
 def module(name, path):
@@ -21,12 +22,24 @@ def main(args):
     assert all((base / name).is_file() for name in ['server.mjs','hero-media.mjs','dist/index.html','apps/web/server.js','privacy-policy/handler.mjs'])
     before, after = Path(args.landing_before)/'apps/web/dist', Path(args.landing_after)/'apps/web/dist'
     before_hashes, after_hashes = helpers.fingerprints(before), helpers.fingerprints(after)
-    assert all(old.get('dist/'+key)==value for key,value in before_hashes.items()), 'Live landing does not match the social release baseline'
+    assert all(old.get('dist/'+key)==value for key,value in before_hashes.items() if key!='index.html'), 'Live landing code/assets do not match the social release baseline'
+    live_html=(base/'dist/index.html').read_text();source_html=(before/'index.html').read_text()
+    # A separate guarded mobile release can append exactly one versioned CSS
+    # link. Preserve it byte-for-byte while changing the reviewed banner bundle.
+    mobile_link=r'<link rel="stylesheet" data-hidi-homepage-responsive href="/(homepage-responsive-[0-9a-f]{16}\.css)">\n'
+    matches=list(re.finditer(mobile_link,live_html));assert len(matches)<=1
+    assert re.sub(mobile_link,'',live_html)==source_html, 'Unreviewed homepage HTML change'
+    for match in matches:assert (base/'dist'/match.group(1)).is_file(), 'Mobile stylesheet missing'
     landing_delta = {key for key in after_hashes if before_hashes.get(key)!=after_hashes[key]}
     assert 'index.html' in landing_delta and len(landing_delta) <= 8
     assert all(key=='index.html' or key.startswith('assets/index-') or key.startswith('assets/images/performance/banner-') for key in landing_delta), landing_delta
     for key in landing_delta:
         dest=overlay/'dist'/key;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(after/key,dest)
+    candidate_html=(overlay/'dist/index.html').read_text()
+    for match in matches:
+        assert candidate_html.count('</head>')==1
+        candidate_html=candidate_html.replace('</head>',match.group(0)+'</head>')
+    (overlay/'dist/index.html').write_text(candidate_html)
     helpers.copy_web_overlay(Path('apps/web/.next/standalone'), Path('apps/web/.next/static'), overlay)
     (overlay/'server.mjs').write_text(runtime.patch((base/'server.mjs').read_text()))
     shutil.copytree(HERE/'public', overlay/'performance/public')
