@@ -20,9 +20,6 @@ jobs:
       PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-four-category-browsers
       HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-four-category-browser/node_modules/playwright/index.mjs
       HIDI_BROWSER_ENGINES: chromium,firefox,webkit
-      HIDI_CANDIDATE_RUNTIME: ${{ runner.temp }}/hidi-four-categories-private/web/candidate-app
-      HIDI_CANDIDATE_API: ${{ runner.temp }}/hidi-four-categories-private/api/candidate-app
-      HIDI_CATEGORY_PRIVATE: ${{ runner.temp }}/hidi-four-categories-private
       HIDI_BUTTON_OUTPUT: evidence/four-categories/retained-commerce
     steps:
       - uses: actions/checkout@v4
@@ -51,8 +48,12 @@ jobs:
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Capture live images, settings and media and verify rollback backups
         run: |
+          set -euo pipefail
           az acr login --name acrhidiprod0927 --only-show-errors
           python3 deploy/four-categories/release.py capture
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-four-categories-private/web/candidate-app" >> "$GITHUB_ENV"
+          echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-four-categories-private/api/candidate-app" >> "$GITHUB_ENV"
+          echo "HIDI_CATEGORY_PRIVATE=$RUNNER_TEMP/hidi-four-categories-private" >> "$GITHUB_ENV"
       - name: Compose the four categories over the exact retained applications
         run: |
           set -euo pipefail
