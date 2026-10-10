@@ -67,6 +67,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 deploy/checkout-theme-release.py capture
+          export EXPECTED_API="$(python3 -c 'import json; print(json.load(open("evidence/checkout-theme/before.json"))["hidi-api"]["image"])')"
+          export EXPECTED_WEB="$(python3 -c 'import json; print(json.load(open("evidence/checkout-theme/before.json"))["hidi-web"]["image"])')"
           az acr login --name acrhidiprod0927 --only-show-errors
           for app in api web; do
             key="EXPECTED_${app^^}"
