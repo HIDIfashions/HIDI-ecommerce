@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 
 const labels: Record<string, { title: string; copy: string }> = {
   all: { title: "Shop All", copy: "Explore the complete HIDI edit in one place." },
-  "new-arrivals": { title: "New Arrivals", copy: "Fresh HIDI pieces, added in small considered edits." },
-  "work-edit": { title: "Workwear Edit", copy: "Polished Indian wear for meetings, commutes and everything after." },
-  everyday: { title: "Everyday", copy: "Easy silhouettes designed to earn their place in your weekly rotation." },
-  occasion: { title: "Occasion", copy: "Elevated colour and detail, without the noise." },
+  "new-arrivals": { title: "All Products", copy: "Explore the complete HIDI edit in one place." },
+  "work-edit": { title: "Work Wear", copy: "Considered Indian wear for your working week." },
+  everyday: { title: "Casual Wear", copy: "Easy HIDI styles for everyday plans." },
+  occasion: { title: "Occasional Wear", copy: "HIDI styles for celebrations and special occasions." },
   "casual-wear": { title: "Casual Wear", copy: "Easy HIDI styles for everyday plans." },
   "work-wear": { title: "Work Wear", copy: "Considered Indian wear for your working week." },
   "occasional-wear": { title: "Occasional Wear", copy: "HIDI styles for celebrations and special occasions." },

@@ -5,7 +5,7 @@ import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
-const title = "Shop All";
+const title = "All Products";
 const description = "Shop HIDI women's kurta sets and Indian wear for work, everyday dressing and special occasions. Explore colours, sizes and the complete collection.";
 
 export const metadata: Metadata = {

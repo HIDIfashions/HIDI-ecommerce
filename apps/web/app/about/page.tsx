@@ -41,11 +41,11 @@ export default function AboutPage() {
             ease, confidence and quiet elegance.
           </p>
           <div className={styles.actions}>
-            <Link href="/collections/work-edit" className={styles.primaryButton}>
-              Shop Workwear Edit
+            <Link href="/collections/work-wear" className={styles.primaryButton}>
+              Shop Work Wear
             </Link>
-            <Link href="/collections/everyday" className={styles.secondaryButton}>
-              Explore Everyday
+            <Link href="/collections/casual-wear" className={styles.secondaryButton}>
+              Explore Casual Wear
             </Link>
           </div>
         </div>
@@ -78,7 +78,7 @@ export default function AboutPage() {
         </article>
         <article className={styles.valueCard}>
           <span>03</span>
-          <h3>Everyday elegance</h3>
+          <h3>Casual Wear elegance</h3>
           <p>Quiet pieces you can return to across work, weekends and occasions.</p>
         </article>
       </section>

@@ -82,8 +82,20 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getRelatedProducts(product.slug, 4),
   ]);
 
-  const sourceCollection = product.collections[0] ?? { slug: "new-arrivals", name: "New Arrivals" };
-  const collection = sourceCollection.slug === "work-edit" ? { ...sourceCollection, name: "Workwear Edit" } : sourceCollection;
+  const collection = (() => {
+    const groups: Record<string, { slug: string; name: string }> = {
+      "casual-wear": { slug: "casual-wear", name: "Casual Wear" },
+      everyday: { slug: "casual-wear", name: "Casual Wear" },
+      "work-wear": { slug: "work-wear", name: "Work Wear" },
+      "work-edit": { slug: "work-wear", name: "Work Wear" },
+      "occasional-wear": { slug: "occasional-wear", name: "Occasional Wear" },
+      occasion: { slug: "occasional-wear", name: "Occasional Wear" },
+      "ananyas-pick": { slug: "ananyas-pick", name: "Ananya’s Pick" },
+    };
+    return groups[product.category?.slug ?? ""]
+      ?? product.collections.map(item => groups[item.slug]).find(Boolean)
+      ?? { slug: "all", name: "All Products" };
+  })();
 
   const canonicalUrl = absoluteUrl(`/products/${encodeURIComponent(product.slug)}`);
   const schemaImages = product.images
