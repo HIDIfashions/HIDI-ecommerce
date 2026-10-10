@@ -30,6 +30,7 @@ jobs:
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Back up and repair the single photo-upload environment setting
+        # Use valid Azure metadata names for the disposable ownership-checked image probe.
         run: |
           az acr login --name acrhidiprod0927 --only-show-errors
           python3 deploy/media-upload-config/repair.py repair

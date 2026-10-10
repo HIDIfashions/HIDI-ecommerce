@@ -13,13 +13,17 @@ function fixture({ lostPut = false, badRead = false, foreign = false } = {}) {
     assert.equal(path, key); calls.push({ method, headers });
     if (method === 'PUT') {
       assert.equal(headers['If-None-Match'], '*');
+      for (const name of Object.keys(headers).filter(name => name.startsWith('x-ms-meta-'))) {
+        // Azure metadata names follow identifier rules, rather than general HTTP header rules.
+        assert.match(name.slice('x-ms-meta-'.length), /^[a-z_][a-z0-9_]*$/i);
+      }
       if (blob) return new Response(null, { status: 409 });
-      blob = { bytes, run: headers['x-ms-meta-hidi-media-probe'], nonce: headers['x-ms-meta-hidi-media-nonce'], etag: 'owned-etag' };
+      blob = { bytes, run: headers['x-ms-meta-hidi_media_probe'], nonce: headers['x-ms-meta-hidi_media_nonce'], etag: 'owned-etag' };
       if (lostPut) throw new Error('lost response');
       return new Response(null, { status: 201, headers: { etag: blob.etag } });
     }
     if (method === 'HEAD') return new Response(null, { status: blob ? 200 : 404,
-      headers: blob ? { etag: blob.etag, 'x-ms-meta-hidi-media-probe': blob.run, 'x-ms-meta-hidi-media-nonce': blob.nonce } : {} });
+      headers: blob ? { etag: blob.etag, 'x-ms-meta-hidi_media_probe': blob.run, 'x-ms-meta-hidi_media_nonce': blob.nonce } : {} });
     assert.equal(method, 'DELETE');
     assert.equal(headers['If-Match'], blob.etag); blob = null;
     return new Response(null, { status: 202 });
@@ -52,7 +56,7 @@ test('lost PUT response uses matching ownership metadata for cleanup', async () 
 });
 test('a collision never overwrites or removes an unrelated object', async () => {
   const f = fixture({ foreign: true });
-  await assert.rejects(verifyOwnedUpload({ ...f, baseUrl, runId, nonce }), { code: 'EXISTING_IDENTITY_BLOB_WRITE_REJECTED' });
+  await assert.rejects(verifyOwnedUpload({ ...f, baseUrl, runId, nonce }), { code: 'BLOB_WRITE_HTTP_409_ERROR' });
   assert.equal(f.remaining().etag, 'foreign-etag');
   assert.deepEqual(f.calls.map(c => c.method), ['PUT', 'HEAD']);
 });

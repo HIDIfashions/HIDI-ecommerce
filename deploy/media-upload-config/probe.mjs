@@ -35,9 +35,12 @@ export async function verifyOwnedUpload({ request, requestFetch = fetch, baseUrl
     const created = await request('PUT', key, PIXEL, {
       'If-None-Match': '*', 'x-ms-blob-type': 'BlockBlob', 'Content-Type': 'image/png',
       'x-ms-blob-cache-control': 'public, max-age=31536000, immutable',
-      'x-ms-meta-hidi-media-probe': runId, 'x-ms-meta-hidi-media-nonce': nonce,
+      'x-ms-meta-hidi_media_probe': runId, 'x-ms-meta-hidi_media_nonce': nonce,
     });
-    if (created.status !== 201) throw fail('EXISTING_IDENTITY_BLOB_WRITE_REJECTED');
+    if (created.status !== 201) {
+      const serviceCode = String(created.headers.get('x-ms-error-code') || 'ERROR').toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 40);
+      throw fail(`BLOB_WRITE_HTTP_${created.status}_${serviceCode}`);
+    }
     etag = created.headers.get('etag');
     if (!etag) throw fail('MEDIA_PROBE_UPLOAD_ETAG_MISSING');
     const downloaded = await requestFetch(`${baseUrl}/${key}`, { signal: AbortSignal.timeout(30000) });
@@ -51,8 +54,8 @@ export async function verifyOwnedUpload({ request, requestFetch = fetch, baseUrl
     // A lost PUT response can leave an object. Delete only confirmed ownership.
     if (attempted && !etag) {
       const found = await request('HEAD', key);
-      if (found.status === 200 && found.headers.get('x-ms-meta-hidi-media-probe') === runId
-          && found.headers.get('x-ms-meta-hidi-media-nonce') === nonce) etag = found.headers.get('etag');
+      if (found.status === 200 && found.headers.get('x-ms-meta-hidi_media_probe') === runId
+          && found.headers.get('x-ms-meta-hidi_media_nonce') === nonce) etag = found.headers.get('etag');
       else if (found.status !== 404 && found.status !== 200) throw fail('MEDIA_PROBE_OWNERSHIP_UNCONFIRMED');
     }
     if (etag) {
