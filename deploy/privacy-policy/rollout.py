@@ -15,9 +15,20 @@ GROUP = 'rg-hidi-prod'
 BASE = 'https://thidigk.thehidi.com'
 API_VERSION = '2024-03-01'
 
+class AzureOperationError(RuntimeError):
+    pass
+
 def azure(*args):
     result = subprocess.run(['az', *args, '--only-show-errors', '-o', 'json'], capture_output=True, text=True, timeout=180)
-    if result.returncode: raise RuntimeError('Azure operation failed')
+    if result.returncode:
+        code = 'unclassified'
+        for match in re.finditer(r'\{', result.stderr):
+            try:
+                error = json.JSONDecoder().raw_decode(result.stderr[match.start():])[0].get('error', {})
+                candidate = error.get('code')
+                if isinstance(candidate, str) and re.fullmatch(r'[A-Za-z0-9_.-]{1,100}', candidate): code = candidate; break
+            except (ValueError, AttributeError): pass
+        raise AzureOperationError('Azure operation rejected: ' + code)
     return json.loads(result.stdout or '{}')
 
 def app(name):
@@ -119,6 +130,8 @@ def main():
                 suffix = 'privacyrollback' + os.environ['GITHUB_RUN_ID']
                 write_image(current_data, baseline['hidi-web']['image'], suffix); wait_ready(baseline['hidi-web']['image'], suffix)
                 print('Release validation failed; the owned web image was rolled back', file=sys.stderr)
+            elif current['image'] == baseline['hidi-web']['image'] and current['settingsHash'] == baseline['hidi-web']['settingsHash']:
+                print('Original web image and settings remain active; no rollback needed', file=sys.stderr)
             else: print('Live state changed independently; refusing to overwrite it', file=sys.stderr)
         raise
 
@@ -126,5 +139,5 @@ if __name__ == '__main__':
     try: main()
     except Exception as error:
         # State values and Azure stderr remain private. Invariants contain no secrets.
-        print(str(error) if isinstance(error, AssertionError) else 'Privacy rollout stopped; inspect sanitized release evidence', file=sys.stderr)
+        print(str(error) if isinstance(error, (AssertionError, AzureOperationError)) else 'Privacy rollout stopped; inspect sanitized release evidence', file=sys.stderr)
         sys.exit(1)
