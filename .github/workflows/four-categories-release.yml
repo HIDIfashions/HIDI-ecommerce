@@ -63,7 +63,7 @@ jobs:
             echo "CANDIDATE_${app^^}=$tag" >> "$GITHUB_ENV"
           done
       - name: Verify category filters and actual desktop/mobile navigation
-        # Check the retained JSON-LD array and the four visible desktop/mobile category menus.
+        # Known performance reports stay blocked; all unexpected writes must be absent.
         run: |
           set -euo pipefail
           node deploy/four-categories/candidate.mjs

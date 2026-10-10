@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
+import {isBlockedTelemetry} from '../button-states/request-policy.mjs';
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
 export const categories=[['casual-wear','Casual Wear'],['work-wear','Work Wear'],['occasional-wear','Occasional Wear'],['ananyas-pick','Ananya’s Pick']];
 const old=/^(New Arrivals|New arrivals|Workwear Edit|Everyday|Occasion|Shop All|Occasion Collection)$/;
@@ -12,11 +13,15 @@ export async function probe(base,output,{candidate=false}={}){
   try{for(const [width,height] of [[320,740],[390,844],[1440,900]]){
    const context=await browser.newContext({viewport:{width,height},reducedMotion:'reduce',hasTouch:width<1000});
    const page=await context.newPage();page.setDefaultTimeout(25000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
-   let writes=0;
+   const writes=[],telemetryBlocked=[];
    await context.route('**/*',route=>{
     const url=route.request().url();if(/google-analytics|googletagmanager|facebook\.net/.test(url))return route.abort();
     if(candidate&&url.includes('/api/hidi/')){const name=new URL(url).pathname.split('/').at(-1);if(cms[name])return route.fulfill({status:200,contentType:'application/json',body:cms[name]});}
-    if(!['GET','HEAD'].includes(route.request().method())){writes++;return route.abort();}
+    if(!['GET','HEAD'].includes(route.request().method())){
+     const request=route.request(),parsed=new URL(url);
+     (isBlockedTelemetry(request.method(),url,new URL(base).origin)?telemetryBlocked:writes).push({method:request.method(),host:parsed.hostname,path:parsed.pathname});
+     return route.abort();
+    }
     if(route.request().resourceType()==='media')return route.abort();
     return route.continue();
    });
@@ -54,13 +59,13 @@ export async function probe(base,output,{candidate=false}={}){
     assert.deepEqual(await suggestions.locator('a').allTextContents(),categories.map(([,title])=>title));
     await page.keyboard.press('Escape');
     assert.deepEqual(errors.filter(error=>!error.startsWith('Minified React error #418;')),[],'No new browser exceptions');
-    assert.equal(writes,0,'Live category verification may not submit any writes');
-    results.push({engine,width,height,passed:true,fourCategoryMenu:true,fourCarouselItems:true,fourFooterLinks:true,allCategoryViews:true,searchSuggestions:true});
+    assert.deepEqual(writes,[],'Live category verification may not submit any writes');
+    results.push({engine,width,height,passed:true,fourCategoryMenu:true,fourCarouselItems:true,fourFooterLinks:true,allCategoryViews:true,searchSuggestions:true,telemetryRequestsBlocked:telemetryBlocked.length});
     console.log(`PASS ${candidate?'candidate':'live'} ${engine} ${width}: exactly four categories, menu/footer/carousel, filtered views, search and viewport bounds`);
    }catch(error){
     await page.screenshot({path:`${output}/${engine}-${width}-failure.png`,fullPage:true}).catch(()=>{});
     await writeFile(`${output}/${engine}-${width}-failure.html`,await page.content()).catch(()=>{});
-    await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({url:page.url(),errors,headings:await page.locator('h1,h2,h3').allTextContents()},null,2)).catch(()=>{});
+    await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({url:page.url(),errors,writes,telemetryBlocked,headings:await page.locator('h1,h2,h3').allTextContents()},null,2)).catch(()=>{});
     throw error;
    }finally{await context.close();}
   }}finally{await browser.close();}
