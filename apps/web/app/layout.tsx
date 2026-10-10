@@ -6,7 +6,6 @@ import "./typography.css";
 import "./storefront-surfaces.css";
 import "./editorial-chrome.css";
 import "./storefront-quality.css";
-import "../public/button-states/buttons.css";
 import { Suspense } from "react";
 import { AnalyticsTags } from "@/components/analytics-tags";
 import { SiteShell } from "@/components/site-shell";
@@ -39,5 +38,5 @@ const organizationJsonLd = { "@context": "https://schema.org", "@type": "Organiz
 const websiteJsonLd = { "@context": "https://schema.org", "@type": "WebSite", "@id": absoluteUrl("/#website"), name: "HIDI", url: absoluteUrl("/"), publisher: { "@id": absoluteUrl("/#organization") } };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const analyticsEnabled = isSearchIndexingEnabled();
-  return <html lang="en-IN" data-hidi-button-theme="site" suppressHydrationWarning><body suppressHydrationWarning><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd([organizationJsonLd, websiteJsonLd]) }} />{analyticsEnabled ? <Suspense fallback={null}><AnalyticsTags gaMeasurementId={gaMeasurementId()} metaPixelId={metaPixelId()} /></Suspense> : null}<SiteShell>{children}</SiteShell><script defer src="/button-states/buttons.js" data-hidi-button-states="v1" /></body></html>;
+  return <html lang="en-IN" suppressHydrationWarning><body suppressHydrationWarning><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd([organizationJsonLd, websiteJsonLd]) }} />{analyticsEnabled ? <Suspense fallback={null}><AnalyticsTags gaMeasurementId={gaMeasurementId()} metaPixelId={metaPixelId()} /></Suspense> : null}<SiteShell>{children}</SiteShell></body></html>;
 }

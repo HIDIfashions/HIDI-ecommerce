@@ -1,12 +1,11 @@
 name: Global button states guarded web-only release
+# Historical theme rollout, manual only after the requested button revert.
 # Preserve the latest admin deletion image and every compiled storefront byte.
 # Verify both retained homepage controls and compiled Next storefront controls.
 # Readiness checks must verify interaction on retained and source PDP variants.
 # Protected Admin pages are verified in both signed-out and fixture-authenticated states.
 on:
-  push:
-    branches: [migration/azure-sql-blob]
-    paths: [.github/workflows/button-states-release.yml]
+  workflow_dispatch:
 permissions:
   contents: read
   id-token: write

@@ -208,12 +208,12 @@ export function ReturnExchangeRequest({ orderNumber, item, eligible, returnWindo
 
             <form onSubmit={submit} className={styles.form}>
               <div className={styles.choiceGrid}>
-                <button type="button" aria-pressed={type === "EXCHANGE"} className={type === "EXCHANGE" ? styles.choiceActive : styles.choice} onClick={() => setType("EXCHANGE")}>
+                <button type="button" className={type === "EXCHANGE" ? styles.choiceActive : styles.choice} onClick={() => setType("EXCHANGE")}>
                   <ArrowLeftRight size={18} />
                   <strong>Exchange</strong>
                   <span>Choose another available size.</span>
                 </button>
-                <button type="button" aria-pressed={type === "RETURN"} className={type === "RETURN" ? styles.choiceActive : styles.choice} onClick={() => setType("RETURN")}>
+                <button type="button" className={type === "RETURN" ? styles.choiceActive : styles.choice} onClick={() => setType("RETURN")}>
                   <RotateCcw size={18} />
                   <strong>Return</strong>
                   <span>Choose where you want the refund.</span>

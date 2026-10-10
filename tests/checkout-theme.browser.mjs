@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 const brown='rgb(89, 29, 32)';
 export async function runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products,settleFixtureNetwork}) {
- const resting=page=>page.evaluate(()=>document.documentElement.hasAttribute('data-hidi-button-theme')?'rgb(251, 246, 242)':'rgb(89, 29, 32)');
  const phone={viewport:{width:390,height:844},isMobile:engine!=='firefox',hasTouch:true};
  const navigate=async(page,path)=>{
   await settleFixtureNetwork(page,{prefetchOnly:true});
@@ -21,12 +20,12 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
   assert(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),'Charged shipping must be visible without an extra tap');
   for(const width of [320,390,768,1440]){
    await page.setViewportSize({width,height:844});const sign=card.getByRole('link',{name:'Sign In',exact:true}),guest=card.getByRole('button',{name:'Continue as Guest',exact:true});
-   assert.equal(await color(sign),await resting(page));assert.equal(await sign.getAttribute('href'),'/account?returnTo=%2Fcheckout');
+   assert.equal(await color(sign),brown);assert.equal(await sign.getAttribute('href'),'/account?returnTo=%2Fcheckout');
    const [s,g]=await Promise.all([sign.boundingBox(),guest.boundingBox()]);assert(g.y>=s.y+s.height,'Guest option must be on its own line below Sign In');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Checkout overflow '+width);
    const summary=width<=720?page.locator('.checkout-mobile-summary'):page.locator('.checkout-summary');if(width<=720)await page.locator('.checkout-mobile-summary').evaluate(e=>e.open=true);
    assert.match(await summary.innerText(),/Shipping[\s\S]*₹99/);assert.match(await summary.innerText(),/1,099/);
-   assert.equal(await color(page.locator('.checkout-pay-button')),await resting(page));
+   assert.equal(await color(page.locator('.checkout-pay-button')),brown);
   }
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(output,`${engine}-checkout-fixed.png`),fullPage:true});
   await card.getByRole('button',{name:'Continue as Guest',exact:true}).click();await page.getByText('Continuing as guest.',{exact:false}).waitFor();assert.equal(await card.count(),0);
@@ -42,7 +41,7 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
   await page.getByRole('button',{name:'Filter & Sort',exact:true}).waitFor();
   for(const viewport of [{width:320,height:568},{width:390,height:360},{width:390,height:844}]){
    await page.setViewportSize(viewport);await page.getByRole('button',{name:'Filter & Sort',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Product filters'});await dialog.waitFor();
-   const show=dialog.getByRole('button',{name:/Show \d+ styles/});assert.equal(await color(show),await resting(page));
+   const show=dialog.getByRole('button',{name:/Show \d+ styles/});assert.equal(await color(show),brown);
    const geometry=()=>dialog.evaluate(d=>{const scroll=d.querySelector('[class*="filterScroll"]'),footer=d.querySelector('[class*="drawerApply"]'),b=footer.querySelector('button'),r=b.getBoundingClientRect(),s=scroll.getBoundingClientRect(),f=footer.getBoundingClientRect();return {scrollBottom:s.bottom,footerTop:f.top,bottom:r.bottom,height:innerHeight,hit:b.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};});
    let g=await geometry();assert(g.scrollBottom<=g.footerTop+1);assert(g.bottom<=g.height&&g.hit);
    await dialog.locator('[class*="filterScroll"]').evaluate(e=>e.scrollTop=e.scrollHeight);g=await geometry();assert(g.scrollBottom<=g.footerTop+1&&g.hit);
@@ -58,8 +57,8 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
    const link=section.getByRole('link',{name:/View Shipping, Returns & Exchange Policy/});await link.click();await page.waitForURL('**/returns#shipping-returns-exchange');assert.match(await page.locator('#shipping-returns-exchange').innerText(),/₹99/);
   }
  },{...phone,startPath:'/products/'+products[0].slug});
- await scenario(browser,engine,'FIX-07','Mobile Quick add maintains the current default palette through selection and success',async page=>{
-  await page.getByRole('button',{name:'Quick add — '+products[0].name,exact:true}).click();const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:products[0].name,exact:true})});await dialog.waitFor();const add=dialog.getByRole('button',{name:'Add to bag',exact:true});assert.equal(await color(add),await resting(page));await dialog.getByRole('button',{name:'M',exact:true}).click();assert.equal(await color(add),await resting(page));await add.click();await dialog.getByRole('button',{name:'Added to bag',exact:true}).waitFor();assert.equal(await color(dialog.getByRole('button',{name:'Added to bag',exact:true})),await resting(page));await page.screenshot({path:resolve(output,`${engine}-quick-add-fixed.png`)});
+ await scenario(browser,engine,'FIX-07','Mobile Quick add maintains brown Add to bag through selection and success',async page=>{
+  await page.getByRole('button',{name:'Quick add — '+products[0].name,exact:true}).click();const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:products[0].name,exact:true})});await dialog.waitFor();const add=dialog.getByRole('button',{name:'Add to bag',exact:true});assert.equal(await color(add),brown);await dialog.getByRole('button',{name:'M',exact:true}).click();assert.equal(await color(add),brown);await add.click();await dialog.getByRole('button',{name:'Added to bag',exact:true}).waitFor();assert.equal(await color(dialog.getByRole('button',{name:'Added to bag',exact:true})),brown);await page.screenshot({path:resolve(output,`${engine}-quick-add-fixed.png`)});
  },{...phone,startPath:'/collections/all'});
  await scenario(browser,engine,'FIX-05','Boundary shipping summaries and bag quantity recalculation agree on both screens',async page=>{
   for(const [price,shipping] of [[149899,9900],[149900,0],[149901,0]]){
