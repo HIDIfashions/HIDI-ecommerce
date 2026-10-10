@@ -1,0 +1,87 @@
+name: Privacy policy admin guarded release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [deploy/privacy-policy/**, tests/privacy-policy*, .github/workflows/privacy-policy-release.yml]
+permissions:
+  contents: read
+concurrency:
+  group: hidi-msg91-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: contains(github.event.head_commit.message, '[deploy-privacy-admin]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/privacy-policy-browsers
+      ACR: acrhidiprod0927
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/checkout@v4
+        with:
+          ref: 6af6ec850ef470f09f6c6cd70d7b50723727ddba
+          path: landing-regression
+      - name: Test private draft, authorization, publication and conflicting saves
+        run: |
+          set -euo pipefail
+          node --test tests/privacy-policy.test.mjs
+          python3 tests/privacy-policy-release.test.py
+          npm install --prefix "$RUNNER_TEMP/privacy-policy-browser" --no-save playwright@1.56.1
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/privacy-policy-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          node "$RUNNER_TEMP/privacy-policy-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Test owner editor and footer behavior in three browser engines
+        run: node tests/privacy-policy.browser.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh ready images and preserve exact rollback image
+        run: |
+          set -euo pipefail
+          python3 deploy/privacy-policy/rollout.py capture
+          az acr login --name "$ACR" --only-show-errors
+          image="$(python3 -c 'import json; print(json.load(open("evidence/privacy-before.json"))["hidi-web"]["image"])')"
+          docker pull "$image"
+          docker tag "$image" "$ACR.azurecr.io/hidi-web:backup-privacy-${GITHUB_RUN_ID}"
+          docker push "$ACR.azurecr.io/hidi-web:backup-privacy-${GITHUB_RUN_ID}"
+      - name: Compose only policy files and prove all other live bytes unchanged
+        run: |
+          set -euo pipefail
+          tag="$ACR.azurecr.io/hidi-web:privacy-admin-${GITHUB_RUN_ID}"
+          python3 deploy/privacy-policy/compose.py --base "$EXPECTED_WEB" --tag "$tag" --work "$RUNNER_TEMP/privacy-policy-compose" --report evidence/privacy-image-preservation.json
+          cp "$RUNNER_TEMP/privacy-policy-compose/candidate-app/server.mjs" landing-regression/deploy/hidi-web-new/server.mjs
+          cp "$RUNNER_TEMP/privacy-policy-compose/candidate-app/hero-media.mjs" landing-regression/deploy/hidi-web-new/hero-media.mjs
+          cp -R "$RUNNER_TEMP/privacy-policy-compose/candidate-app/privacy-policy" landing-regression/deploy/hidi-web-new/privacy-policy
+          node --test landing-regression/deploy/hidi-web-new/runtime.test.mjs
+          PRIVACY_HANDLER_FILE="$RUNNER_TEMP/privacy-policy-compose/candidate-app/privacy-policy/handler.mjs" node tests/privacy-policy.browser.mjs
+          docker push "$tag"
+          docker pull "$tag"
+          echo "CANDIDATE_WEB=$(docker image inspect "$tag" --format '{{index .RepoDigests 0}}')" >> "$GITHUB_ENV"
+      - name: Create private policy container with anonymous access disabled
+        run: |
+          set -euo pipefail
+          scope="/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod/providers/Microsoft.Storage/storageAccounts/sthidiprod0927/blobServices/default/containers/hidi-private-policies"
+          if az rest --method get --url "https://management.azure.com${scope}?api-version=2023-05-01" --only-show-errors > "$RUNNER_TEMP/privacy-container.json" 2>/dev/null; then
+            python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["properties"].get("publicAccess", "None")=="None", "Existing policy container must be private"' "$RUNNER_TEMP/privacy-container.json"
+          else
+            az rest --method put --url "https://management.azure.com${scope}?api-version=2023-05-01" --body '{"properties":{"publicAccess":"None"}}' --only-show-errors -o none
+          fi
+          az rest --method get --url "https://management.azure.com${scope}?api-version=2023-05-01" --only-show-errors --query properties.publicAccess -o tsv | python3 -c 'import sys; assert sys.stdin.read().strip()=="None", "Policy storage must remain private"'
+      - name: Deploy only web image, verify private persisted draft and preserve settings
+        run: python3 deploy/privacy-policy/rollout.py deploy "$CANDIDATE_WEB"
+      - name: Preserve sanitized regression and deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: privacy-policy-release-${{ github.run_id }}
+          path: evidence
+          retention-days: 30
+          if-no-files-found: ignore
