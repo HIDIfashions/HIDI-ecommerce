@@ -19,12 +19,18 @@ PUBLIC=['/api/hidi/privacy-policy','/privacy','/api/hidi/hero-config','/api/hidi
 def stable_public():
     result={}
     for path in PUBLIC:
-        body=guard.get(path)
+        body=guard.get(path,headers={'Cache-Control':'no-cache'})
         if path.startswith('/api/'):
             body=json.dumps(json.loads(body),sort_keys=True,separators=(',',':')).encode()
         result[path]=hashlib.sha256(body).hexdigest()
     assert json.loads(guard.get('/api/hidi/privacy-policy')).get('published') is True, 'Previously published policy must remain live'
     return result
+
+def assert_public(expected, message):
+    actual=stable_public()
+    changed=[path for path in PUBLIC if actual.get(path)!=expected.get(path)]
+    Path('evidence/public-content-check.json').write_text(json.dumps({'hashes':actual,'changedPaths':changed},indent=2))
+    assert not changed, message+': '+', '.join(changed)
 
 def verify_live():
     for path in ['/health','/healthz','/collections/all','/cart','/account','/wishlist','/checkout','/admin','/admin/landing-media','/admin/packing-scanner','/admin/privacy-policy']:
@@ -48,7 +54,8 @@ def main():
             data=guard.app(name);state=guard.snapshot(data);guard.ready(state)
             assert all(state[key]==value for key,value in expected.items()), 'Live '+name+' changed after backup; refusing to overwrite a newer release'
             file=work/(name+'.json');file.write_text(json.dumps(data));file.chmod(0o600);states[name]=state
-        (work/'public.json').write_text(json.dumps(stable_public()))
+        public=stable_public();(work/'public.json').write_text(json.dumps(public))
+        (evidence/'public-content-before.json').write_text(json.dumps(public,indent=2))
         (evidence/'performance-before.json').write_text(json.dumps(states,indent=2));print('PASS: backed-up web/API/settings and published privacy/media preserved baseline')
         return
     candidate=sys.argv[2];assert candidate.startswith('acrhidiprod0927.azurecr.io/hidi-web@sha256:')
@@ -56,13 +63,13 @@ def main():
     baseline={name:guard.snapshot(data) for name,data in old.items()}
     public=json.loads((work/'public.json').read_text())
     for name,state in baseline.items():assert guard.snapshot(guard.app(name))==state, 'Live drift while preparing candidate'
-    assert stable_public()==public,'Published policy, media or social configuration changed independently'
+    assert_public(public,'Published policy, media or social configuration changed independently')
     changed=False
     try:
         changed=True;suffix='perf'+os.environ['GITHUB_RUN_ID'];guard.write_image(old['hidi-web'],candidate,suffix)
         state=guard.snapshot(guard.wait_ready(candidate,suffix));assert state['settingsHash']==baseline['hidi-web']['settingsHash']
         assert guard.snapshot(guard.app('hidi-api'))==baseline['hidi-api'], 'API drift'
-        verify_live();assert stable_public()==public, 'Published policy, media or social configuration changed'
+        verify_live();assert_public(public,'Published policy, media or social configuration changed')
         subprocess=__import__('subprocess');subprocess.run(['node','deploy/performance/live-check.mjs'],check=True)
         after={name:guard.snapshot(guard.app(name)) for name in baseline};guard.ready(after['hidi-web'])
         assert after['hidi-web']['image']==candidate and after['hidi-web']['settingsHash']==baseline['hidi-web']['settingsHash']

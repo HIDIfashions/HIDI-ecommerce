@@ -1,0 +1,91 @@
+name: HIDI verified performance image promotion
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/performance-promote.yml]
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+concurrency:
+  group: ${{ contains(github.event.head_commit.message, '[promote-performance]') && 'hidi-hero-guarded-release' || format('hidi-performance-promotion-review-{0}', github.sha) }}
+  cancel-in-progress: false
+jobs:
+  promote:
+    if: contains(github.event.head_commit.message, '[promote-performance]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VERIFIED_IMAGE: acrhidiprod0927.azurecr.io/hidi-web@sha256:c63c9e7d5566a96ff0b26679f05edb1c029921ecb76f60838193b856d77aa7dc
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/performance-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require exact successful regression gates and retained backup provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          gh api repos/HIDIfashions/HIDI-ecommerce/actions/runs/38023652045 > evidence/verified-run.json
+          gh api repos/HIDIfashions/HIDI-ecommerce/actions/runs/38023652045/jobs > evidence/verified-jobs.json
+          gh api repos/HIDIfashions/HIDI-ecommerce/actions/runs/38023652045/artifacts > evidence/verified-artifacts.json
+          gh api repos/HIDIfashions/HIDI-ecommerce/actions/runs/38023142889 > evidence/backup-run.json
+          python3 - <<'PY'
+          import json
+          read=lambda name:json.load(open('evidence/'+name+'.json'))
+          run=read('verified-run');assert run['head_sha']=='90ebd76779ee270a99dfe888819f1bff7d8e94ec' and run['conclusion']=='failure'
+          jobs=read('verified-jobs')['jobs'];assert len(jobs)==1
+          steps={s['number']:s for s in jobs[0]['steps']}
+          assert all(steps[n]['conclusion']=='success' for n in range(1,18)), 'Exact-image regression gates must all have passed'
+          assert steps[18]['conclusion']=='failure' and steps[18]['name']=='Push verified immutable candidate and deploy with automatic owned rollback'
+          artifacts=read('verified-artifacts')['artifacts'];artifact=next(a for a in artifacts if a['id']==11659136879)
+          assert artifact['digest']=='sha256:dabfa54173edbea584bef89b058dc73bb9341acca092c4f693fcc0248bc8b15f' and not artifact['expired']
+          assert read('backup-run')['conclusion']=='success'
+          print('PASS: immutable regression run, artifact and completed backup provenance')
+          PY
+          gh run download 38023652045 -R HIDIfashions/HIDI-ecommerce -n performance-release-38023652045 -D "$RUNNER_TEMP/performance-verified"
+          python3 - <<'PY'
+          import json,pathlib,os
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'performance-verified/evidence'
+          assert (root/'candidate-image.txt').read_text().strip()==os.environ['VERIFIED_IMAGE']
+          proof=json.loads((root/'image-preservation.json').read_text())
+          assert proof['passed'] and proof['runtimeConfigIdentical'] and proof['baseLayersPreserved'] and proof['apiUntouched'] and proof['protectedFilesIdentical']==2576
+          assert proof['baseImage']=='acrhidiprod0927.azurecr.io/hidi-web@sha256:800ccb5374a9cc8a46d268c86e57221af9150bd9671b6d5c749fad3a39b873ed'
+          (pathlib.Path('evidence')/'image-preservation.json').write_text(json.dumps(proof,indent=2))
+          print('PASS: promotion uses the exact tested immutable image; no rebuild or application changes')
+          PY
+          git diff --quiet 90ebd76779ee270a99dfe888819f1bff7d8e94ec HEAD -- 'deploy/performance/*.mjs' deploy/performance/public deploy/privacy-policy
+          python3 tests/shopping-ux-deploy.test.py
+          python3 -m py_compile deploy/performance/rollout.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install isolated live-check browser
+        run: |
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/performance-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          npm install --prefix "$RUNNER_TEMP/performance-browser" --no-save playwright@1.56.1
+          node "$RUNNER_TEMP/performance-browser/node_modules/playwright/cli.js" install --with-deps chromium
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh protected state and stable public content
+        run: |
+          python3 deploy/performance/rollout.py capture
+          python3 - <<'PY'
+          import importlib.util,json,os,pathlib,time
+          spec=importlib.util.spec_from_file_location('release','deploy/performance/rollout.py');release=importlib.util.module_from_spec(spec);spec.loader.exec_module(release)
+          expected=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'performance-private/public.json').read_text())
+          time.sleep(5);release.assert_public(expected,'Public content is unstable; refusing image promotion')
+          PY
+      - name: Deploy exact tested image with protected state checks and owned rollback
+        run: python3 deploy/performance/rollout.py deploy "$VERIFIED_IMAGE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-promotion-${{ github.run_id }}
+          path: evidence
+          retention-days: 90
