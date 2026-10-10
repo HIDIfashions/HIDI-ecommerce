@@ -6,6 +6,7 @@ on:
     paths: [.github/workflows/cod-rewards-release.yml]
 permissions:
   contents: read
+  actions: read
   id-token: write
 concurrency:
   group: ${{ contains(github.event.head_commit.message, '[validate-cod]') && format('hidi-cod-readonly-{0}', github.sha) || 'hidi-hero-guarded-release' }}
@@ -63,15 +64,22 @@ jobs:
           pnpm --filter @hidi/web build
       - name: Verify desktop, mobile, cart, checkout and admin in three engines
         if: ${{ !contains(github.event.head_commit.message, '[validate-cod]') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          COD_REUSE_BROWSER_REGRESSION: ${{ contains(github.event.head_commit.message, '[resume-cod]') }}
         # Font readiness and navigation settlement are checked in the page context.
         run: |
           set -euo pipefail
           npm install --prefix /tmp/hidi-checkout-browser --no-save playwright@1.56.1
           node /tmp/hidi-checkout-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
-          HIDI_BROWSER_ENGINES=chromium,firefox,webkit HIDI_BROWSER_CASES=FIX-04 timeout 180s node tests/editorial-storefront.browser.mjs
-          HIDI_BROWSER_ENGINES=chromium,firefox,webkit timeout 1200s node tests/editorial-storefront.browser.mjs
-          for engine in chromium firefox webkit; do HIDI_BROWSER_ENGINE="$engine" timeout 240s node tests/admin-workspace.browser.mjs; done
-          HIDI_BROWSER_ENGINES=chromium,firefox,webkit timeout 600s node tests/auth-otp-resend.browser.mjs
+          if [[ "$COD_REUSE_BROWSER_REGRESSION" == "true" ]]; then
+            python3 deploy/cod-rewards-browser-gate.py
+          else
+            HIDI_BROWSER_ENGINES=chromium,firefox,webkit HIDI_BROWSER_CASES=FIX-04 timeout 180s node tests/editorial-storefront.browser.mjs
+            HIDI_BROWSER_ENGINES=chromium,firefox,webkit timeout 1200s node tests/editorial-storefront.browser.mjs
+            for engine in chromium firefox webkit; do HIDI_BROWSER_ENGINE="$engine" timeout 240s node tests/admin-workspace.browser.mjs; done
+            HIDI_BROWSER_ENGINES=chromium,firefox,webkit timeout 600s node tests/auth-otp-resend.browser.mjs
+          fi
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
