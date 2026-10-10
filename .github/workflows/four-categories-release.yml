@@ -1,0 +1,36 @@
+name: Four customer categories guarded Azure release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/four-categories-release.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  inspect-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture live category modules and verify rollback backups
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/four-categories/release.py inspect
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: four-categories-${{ github.run_id }}
+          path: evidence/four-categories
+          retention-days: 30
