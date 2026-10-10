@@ -88,6 +88,9 @@ jobs:
               assert same_protected(fake, desired(candidate, {k: env(fake).get(k) for k in TARGET}))
               assert env(desired(candidate, {k: env(fake).get(k) for k in TARGET})) == env(fake)
               assert not verify_owned(candidate, candidate, 'unowned')
+              internal = copy.deepcopy(fake)
+              internal['properties']['configuration']['ingress']['customDomains'] = None
+              assert safe_record(internal)['hostnames'] == [], 'Internal API null hostname list must be retained'
               print('Image, secrets, certificates, ingress, unrelated settings and rollback ownership guards passed')
 
           def safe_record(data):
@@ -95,7 +98,7 @@ jobs:
               state['publicDomainControls'] = {k: env(data).get(k, {}).get('value', '<absent>') for k in TARGET}
               state['deploymentStage'] = env(data).get('DEPLOYMENT_STAGE', {}).get('value')
               state['siteUrl'] = env(data).get('SITE_URL', {}).get('value')
-              state['hostnames'] = sorted(x['name'] for x in data['properties']['configuration']['ingress'].get('customDomains', []))
+              state['hostnames'] = sorted(x['name'] for x in (data['properties']['configuration']['ingress'].get('customDomains') or []))
               return state
 
           def persist(name, data):
