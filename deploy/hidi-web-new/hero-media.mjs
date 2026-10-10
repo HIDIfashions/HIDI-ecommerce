@@ -517,8 +517,73 @@ function objectKey(mimeType, prefix = MEDIA_KEY_PREFIX) {
   return `${prefix}${day}/${Date.now()}-${randomUUID()}.${media.ext}`;
 }
 
+function heroAssetUrl(key) {
+  return `${HERO_ASSET_PREFIX}${key.split("/").map(encodeURIComponent).join("/")}`;
+}
+
 function publicUrl(config, key) {
+  // Product photos use MEDIA_PUBLIC_BASE_URL=/media, but that Next route only
+  // serves products/*. Brand CMS assets stay private and must use this
+  // managed-identity proxy instead of sharing the product-media base URL.
+  if (config.provider === "azure") return heroAssetUrl(key);
   return `${config.publicBaseUrl}/${key.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function ownedBrandKeyFromUrl(value, config) {
+  if (typeof value !== "string" || !value) return "";
+  let parsed;
+  try {
+    parsed = new URL(value, "https://hidi.invalid");
+  } catch {
+    return "";
+  }
+  const { pathname } = parsed;
+
+  let encodedKey = "";
+  if (pathname.startsWith(HERO_ASSET_PREFIX)) {
+    encodedKey = pathname.slice(HERO_ASSET_PREFIX.length);
+  } else if (pathname.startsWith("/media/brand/")) {
+    encodedKey = pathname.slice("/media/".length);
+  } else {
+    let blobHost = "";
+    try {
+      blobHost = new URL(config.blobEndpoint).hostname;
+    } catch {
+      return "";
+    }
+    const marker = ALLOWED_MEDIA_KEY_PREFIXES
+      .map(prefix => `/${prefix}`)
+      .find(prefix => pathname.includes(prefix));
+    if (!marker || parsed.hostname !== blobHost) return "";
+    encodedKey = pathname.slice(pathname.indexOf(marker) + 1);
+  }
+
+  let key;
+  try {
+    key = encodedKey.split("/").map(decodeURIComponent).join("/");
+  } catch {
+    return "";
+  }
+  if (
+    !ALLOWED_MEDIA_KEY_PREFIXES.some(prefix => key.startsWith(prefix))
+    || key.includes("..")
+    || key.includes("\\")
+    || key.includes("\0")
+  ) return "";
+  return key;
+}
+
+function canonicalMediaUrl(value) {
+  let config;
+  try {
+    config = storageConfig();
+  } catch {
+    return value;
+  }
+  // R2 uses its public origin directly; /api/hidi/hero-asset is Azure-only.
+  if (config.provider !== "azure") return value;
+  const key = ownedBrandKeyFromUrl(value, config);
+  return key ? heroAssetUrl(key) : value;
 }
 
 function storagePath(config, key) {
@@ -584,7 +649,7 @@ function sequenceSettings(raw, fallbackAutoplay = false) {
 
 function publicMediaItem(raw, imagesOnly = false) {
   if (!raw || !["image", ...(imagesOnly ? [] : ["video"])].includes(raw.type) || typeof raw.url !== "string" || !raw.url) return null;
-  return { assetId: typeof raw.assetId === "string" ? raw.assetId : "", type: raw.type, url: raw.url,
+  return { assetId: typeof raw.assetId === "string" ? raw.assetId : "", type: raw.type, url: canonicalMediaUrl(raw.url),
     originalName: typeof raw.originalName === "string" ? raw.originalName : "",
     altText: typeof raw.altText === "string" ? raw.altText : "",
     desktopPosition: normalizePosition(raw.desktopPosition), mobilePosition: normalizePosition(raw.mobilePosition), fitMode: normalizeFitMode(raw.fitMode) };
@@ -635,7 +700,7 @@ function publicLandingSlot(raw) {
     source: "uploaded",
     assetId: typeof raw.assetId === "string" ? raw.assetId : "",
     type: "image",
-    url: raw.url,
+    url: canonicalMediaUrl(raw.url),
     originalName: typeof raw.originalName === "string" ? raw.originalName : "",
     altText: typeof raw.altText === "string" ? raw.altText : "",
     desktopPosition: normalizePosition(raw.desktopPosition),
@@ -664,7 +729,7 @@ async function loadLibrary() {
       && typeof item.id === "string"
       && typeof item.url === "string"
       && ["image", "video"].includes(item.type)
-    )
+    ).map(item => ({ ...item, url: canonicalMediaUrl(item.url) }))
     : [];
 
   return {
@@ -681,7 +746,7 @@ async function loadLandingLibrary() {
       && typeof item.id === "string"
       && typeof item.url === "string"
       && item.type === "image"
-    )
+    ).map(item => ({ ...item, url: canonicalMediaUrl(item.url) }))
     : [];
 
   return {

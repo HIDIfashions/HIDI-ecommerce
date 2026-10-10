@@ -83,13 +83,15 @@ For Azure Blob, set the Container App environment to:
 MEDIA_STORAGE_PROVIDER=azure
 AZURE_STORAGE_ACCOUNT=sthidiprod0927
 AZURE_STORAGE_CONTAINER=<hero media container>
-MEDIA_PUBLIC_BASE_URL=/api/hidi/hero-asset
+MEDIA_PUBLIC_BASE_URL=https://hidiindia.com/media
 AZURE_CLIENT_ID=<hidi-web managed identity client id>
 ```
 
 The managed identity needs Blob data read/write access on the storage account
-or container. Uploaded hero and landing assets are streamed back through the
-landing runtime at `/api/hidi/hero-asset/brand/hero/media/...` and
+or container. `MEDIA_PUBLIC_BASE_URL` remains the product-photo base used by
+the retained storefront. Azure hero and landing uploads do not reuse that
+product-only route: they are always streamed back through the landing runtime
+at `/api/hidi/hero-asset/brand/hero/media/...` and
 `/api/hidi/hero-asset/brand/landing-media/media/...`, so the storage account can
 keep public network and anonymous blob access disabled.
 `AZURE_STORAGE_CONTAINER` can also be supplied as `MEDIA_STORAGE_CONTAINER`,

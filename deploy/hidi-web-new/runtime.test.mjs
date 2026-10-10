@@ -554,7 +554,9 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
       AZURE_STORAGE_ACCOUNT: "unitstore",
       AZURE_STORAGE_CONTAINER: "hero",
       AZURE_CLIENT_ID: "client-id-123",
-      MEDIA_PUBLIC_BASE_URL: "/api/hidi/hero-asset",
+      // Production uses this HTTPS base for product photos. Hero and landing
+      // media must still use their dedicated private-Blob proxy.
+      MEDIA_PUBLIC_BASE_URL: "https://thidigk.thehidi.com/media",
       AZURE_IMDS_ENDPOINT: `${identityUrl}/metadata/identity/oauth2/token`,
       AZURE_STORAGE_BLOB_ENDPOINT: blobUrl,
     });
@@ -674,6 +676,46 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     assert.equal(liveSlot.assetId, landingAsset.id);
     assert.equal(liveSlot.fitMode, "contain");
     assert.equal(liveSlot.altText, "Orange range card");
+
+    // Repair URLs saved while MEDIA_PUBLIC_BASE_URL was shared with the
+    // product-only /media route. The Blob and saved selection stay untouched;
+    // public config and the admin library expose the working proxy URL.
+    const heroCurrentKey = "/hero/brand/hero/current.json";
+    const landingCurrentKey = "/hero/brand/landing-media/current.json";
+    const landingLibraryKey = "/hero/brand/landing-media/library.json";
+    const legacyLandingUrl = `https://thidigk.thehidi.com/media/${landingAsset.url.slice("/api/hidi/hero-asset/".length)}`;
+    const directHeroBlobUrl = `${blobUrl}/hero/${asset.url.slice("/api/hidi/hero-asset/".length)}`;
+    const directLandingBlobUrl = `${blobUrl}/hero/${landingAsset.url.slice("/api/hidi/hero-asset/".length)}`;
+    const savedHero = blobs.get(heroCurrentKey);
+    const legacyHero = JSON.parse(savedHero.body.toString("utf8"));
+    legacyHero.url = directHeroBlobUrl;
+    legacyHero.items = legacyHero.items.map(item => ({ ...item, url: directHeroBlobUrl }));
+    blobs.set(heroCurrentKey, { ...savedHero, body: Buffer.from(JSON.stringify(legacyHero)) });
+    const savedLanding = blobs.get(landingCurrentKey);
+    const legacyLanding = JSON.parse(savedLanding.body.toString("utf8"));
+    legacyLanding.slots["range-occasion"].url = legacyLandingUrl;
+    legacyLanding.ananya = {
+      version: 1,
+      active: true,
+      source: "uploaded",
+      items: [{ ...legacyLanding.slots["range-occasion"], url: legacyLandingUrl }],
+      autoPlay: false,
+      intervalSeconds: 6,
+    };
+    blobs.set(landingCurrentKey, { ...savedLanding, body: Buffer.from(JSON.stringify(legacyLanding)) });
+    const savedLibrary = blobs.get(landingLibraryKey);
+    const legacyLibrary = JSON.parse(savedLibrary.body.toString("utf8"));
+    legacyLibrary.assets[0].url = directLandingBlobUrl;
+    blobs.set(landingLibraryKey, { ...savedLibrary, body: Buffer.from(JSON.stringify(legacyLibrary)) });
+    const repairedHero = JSON.parse((await send(azure.url, "/api/hidi/hero-config")).body);
+    assert.equal(repairedHero.url, asset.url);
+    assert.equal(repairedHero.items[0].url, asset.url);
+    const repairedLive = JSON.parse((await send(azure.url, "/api/hidi/landing-media-config")).body);
+    assert.equal(repairedLive.slots["range-occasion"].url, landingAsset.url);
+    assert.equal(repairedLive.ananya.items[0].url, landingAsset.url);
+    const repairedLibrary = JSON.parse((await send(azure.url, "/api/hidi/landing-media-library")).body);
+    assert.equal(repairedLibrary.assets[0].url, landingAsset.url);
+    assert.equal((await send(azure.url, repairedLive.slots["range-occasion"].url)).body, "landing image bytes");
 
     const post = async (path, value) => {
       const body=JSON.stringify(value);
