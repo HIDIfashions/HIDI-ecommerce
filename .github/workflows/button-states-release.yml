@@ -1,0 +1,95 @@
+name: Global button states guarded web-only release
+# Preserve the latest admin deletion image and every compiled storefront byte.
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/button-states-release.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  regression-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=fixture;password=fixture;encrypt=true
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-button-states-browsers
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-button-states-browser/node_modules/playwright/index.mjs
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+      CANDIDATE_WEB: acrhidiprod0927.azurecr.io/hidi-web:button-states-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Install retained dependencies for source regression only
+        run: pnpm install --frozen-lockfile && pnpm db:generate
+      - name: Run full source regression and real HTTP/theme release guards
+        run: |
+          set -euo pipefail
+          pnpm --filter @hidi/api test:customer-experience
+          node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
+          node --test tests/admin-quick-tools.test.mjs tests/admin-product-bulk.test.mjs
+          node --test tests/admin-product-delete-handler.test.mjs tests/button-theme-handler.test.mjs
+          python3 tests/button-states-release.test.py
+      - name: Verify source asset parity and build web source with an isolated API origin
+        env:
+          API_URL: http://127.0.0.1:4107/v1
+          INTERNAL_API_URL: http://127.0.0.1:4107/v1
+          NEXT_TELEMETRY_DISABLED: 1
+        run: |
+          set -euo pipefail
+          cmp deploy/button-states/buttons.css apps/web/public/button-states/buttons.css
+          cmp deploy/button-states/buttons.js apps/web/public/button-states/buttons.js
+          pnpm --filter @hidi/web build
+          # Built files are regression evidence only; composition retains live Next bytes.
+      - name: Install browser verification tools
+        run: |
+          set -euo pipefail
+          npm install --prefix /tmp/hidi-button-states-browser --no-save playwright@1.56.1
+          node /tmp/hidi-button-states-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Verify selected, disabled, keyboard, WhatsApp and responsive source button states
+        run: HIDI_BUTTON_OUTPUT=evidence/button-states/source-fixtures node tests/button-states.browser.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh ready API and web without modifying applications
+        run: python3 deploy/button-states/release.py capture
+      - name: Verify exact backups of both images and compose only four web files
+        run: |
+          set -euo pipefail
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/button-states/release.py backup
+          python3 deploy/button-states/release.py compose --image "$CANDIDATE_WEB"
+      - name: Run browser and retained admin regressions against the actual web candidate
+        env:
+          HIDI_CANDIDATE_RUNTIME: ${{ runner.temp }}/hidi-button-states-private/web/candidate-app
+        run: |
+          set -euo pipefail
+          node deploy/button-states/candidate.mjs
+          HIDI_BUTTON_OUTPUT=evidence/button-states/candidate-fixtures node tests/button-states.browser.mjs
+          node --test tests/button-theme-handler.test.mjs tests/admin-product-delete-handler.test.mjs
+          node tests/admin-quick-tools.runtime.mjs
+          node tests/admin-product-delete.browser.mjs
+          node tests/admin-navigation.browser.mjs
+          python3 deploy/button-states/release.py mark-tested --image "$CANDIDATE_WEB"
+      - name: Publish only the exact tested immutable web image
+        run: python3 deploy/button-states/release.py publish --image "$CANDIDATE_WEB"
+      - name: Deploy only web with API invariants and automatic owned-image rollback
+        run: python3 deploy/button-states/release.py apply --image "$IMAGE_WEB"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: button-states-web-release-${{ github.run_id }}
+          path: |
+            evidence/button-states
+            test-results/admin-product-delete
+            test-results/admin-navigation
+          retention-days: 30
