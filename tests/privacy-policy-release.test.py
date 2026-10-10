@@ -1,8 +1,11 @@
 import copy
 import importlib.util
+import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -48,6 +51,22 @@ class PrivacyReleaseTest(unittest.TestCase):
         expected['containers'][0]['image'] = 'candidate-image'; expected['revisionSuffix'] = 'privacy-reviewed'
         self.assertEqual(patch['properties']['template'], expected)
         self.assertEqual(original['properties']['template']['containers'][0]['image'], 'old-image')
+
+    def test_null_azure_secrets_allow_image_write_without_configuration_changes(self):
+        original = self.state(); original['properties']['configuration']['secrets'] = None
+        retained = copy.deepcopy(original); calls = []
+        def azure_stub(*args, redact=()):
+            body = json.loads(Path(args[args.index('--body') + 1][1:]).read_text())
+            calls.append((body, list(redact))); return {}
+        with tempfile.TemporaryDirectory() as work, mock.patch.dict(os.environ, {'RUNNER_TEMP': work}), mock.patch.object(rollout, 'azure', azure_stub):
+            rollout.write_image(original, 'candidate-image', 'mobile-reviewed')
+            self.assertFalse((Path(work) / 'privacy-policy-image-patch.json').exists())
+        self.assertEqual(original, retained)
+        self.assertEqual(len(calls), 1)
+        body, protected = calls[0]
+        self.assertEqual(body, rollout.image_patch(original, 'candidate-image', 'mobile-reviewed'))
+        self.assertNotIn('configuration', body['properties'])
+        self.assertIn('kept', protected)
 
     def test_image_guard_protects_shopping_media_api_dependencies_and_config(self):
         with tempfile.TemporaryDirectory() as work:
