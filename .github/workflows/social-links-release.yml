@@ -17,7 +17,7 @@ jobs:
     env:
       RG: rg-hidi-prod
       ACR: acrhidiprod0927
-      HERO_SOURCE_SHA: 5c11d5544b3a10b9b461d042caf94825f852c730
+      HERO_SOURCE_SHA: 4fa75f629a35cf39ce6409ba4522b3a8e5c9caa6
       HERO_BASE_SHA: 6af6ec850ef470f09f6c6cd70d7b50723727ddba
     steps:
       - uses: actions/checkout@v4
@@ -28,15 +28,20 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           gh api repos/HIDIfashions/HIDI-ecommerce/actions/jobs/114100688909 > evidence/commerce-gate.json
+          gh api repos/HIDIfashions/HIDI-ecommerce/actions/jobs/114112710743 > evidence/previous-candidate-regression.json
           python3 - <<'PYCODE'
           import json
+          previous=json.load(open('evidence/previous-candidate-regression.json'))
+          assert previous['head_sha']=='7eaa7b76aa797029e9fc8c44ca759b281ceeb18f'
+          full=next(step for step in previous['steps'] if step['name']=='Full regression against the actual candidate container')
+          assert full['conclusion']=='success', 'Prior full media/layout regression must have completed successfully'
           commerce=json.load(open('evidence/commerce-gate.json'))
           assert commerce['conclusion']=='success' and commerce['name']=='source-and-test' and commerce['head_sha']=='3c16e20f7c1971448953113e2d9750d87d193527'
           print('PASS: current API/admin source, TypeScript, customer safeguards and three-browser commerce regression completed')
           PYCODE
       - uses: actions/checkout@v4
         with:
-          ref: 5c11d5544b3a10b9b461d042caf94825f852c730
+          ref: 4fa75f629a35cf39ce6409ba4522b3a8e5c9caa6
           fetch-depth: 0
           path: hero-source
       - uses: actions/checkout@v4
@@ -57,6 +62,9 @@ jobs:
           import os,subprocess
           changed=subprocess.check_output(['git','diff','--name-only',os.environ['HERO_BASE_SHA'],os.environ['HERO_SOURCE_SHA'],'--','apps/web/src','apps/web/index.html','apps/web/public','deploy/hidi-web-new'],cwd='hero-source',text=True).splitlines()
           assert changed==['apps/web/public/config.js'], changed
+          retest=subprocess.check_output(['git','diff','--name-only','5c11d5544b3a10b9b461d042caf94825f852c730',os.environ['HERO_SOURCE_SHA']],cwd='hero-source',text=True).splitlines()
+          assert retest==['apps/web/scripts/test-social-links.mjs'], retest
+          print('PASS: production files exactly match the candidate that already passed all media, layout and responsive regressions')
           print('PASS: only the four supplied social account URLs change in production source')
           PYCODE
           echo "PLAYWRIGHT_BROWSERS_PATH=$GITHUB_WORKSPACE/.cache/hidi-layout-browsers" >> "$GITHUB_ENV"
@@ -163,7 +171,7 @@ jobs:
           report={'passed':True,'protected_files_identical':len(a)-1,'changed_files':sorted(changed),'runtime_config_identical':True,'base_layers_preserved':True}
           pathlib.Path('evidence/image-preservation.json').write_text(json.dumps(report,indent=2)); print(json.dumps(report))
           PY
-      - name: Full regression against the actual candidate container
+      - name: Verify isolated social navigation against the actual candidate container
         shell: bash
         run: |
           set -euo pipefail
@@ -176,11 +184,6 @@ jobs:
           for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:3192/health >/dev/null; then break; fi; sleep 1; done
           cd hero-source/apps/web
           HIDI_SOCIAL_BASE_URL=http://127.0.0.1:3192 node scripts/test-social-links.mjs
-          HIDI_LANDING_BASE_URL=http://127.0.0.1:3192 node scripts/test-landing-first-paint.mjs
-          HIDI_SEQUENCE_BASE_URL=http://127.0.0.1:3192 node scripts/test-media-sequences.mjs
-          HIDI_LAYOUT_BASE_URL=http://127.0.0.1:3192 node scripts/test-landscape-hover.mjs
-          HERO_TEST_BASE_URL=http://127.0.0.1:3192 node scripts/test-hero-first-paint.mjs
-          HIDI_BROWSER_ENGINES=chromium,firefox,webkit HIDI_RESPONSIVE_BASE_URL=http://127.0.0.1:3192 node scripts/test-responsive.mjs
       - name: Install read-only post-release browser verification
         shell: bash
         run: |
