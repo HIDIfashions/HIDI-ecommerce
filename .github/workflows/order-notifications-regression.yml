@@ -1,0 +1,38 @@
+name: Order notification regression
+on:
+  push:
+    branches: [feat/order-notifications-20261010, migration/azure-sql-blob]
+    paths: [apps/api/src/order-notifications/**, apps/api/src/app.module.ts, apps/api/prisma/**, tests/order-notifications*, deploy/order-notifications/**, .github/workflows/order-notifications-*.yml]
+  pull_request:
+    branches: [migration/azure-sql-blob]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Disposable-CI-Only_2026!
+        ports: [1433:1433]
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true
+      NOTIFICATION_TEST_SQL_HOST: 127.0.0.1
+      NOTIFICATION_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:customer-experience
+      - run: pnpm --filter @hidi/api build
+      - name: Verify migration, concurrent claims and recovery in disposable SQL Server
+        run: node tests/order-notifications.sqlserver.mjs

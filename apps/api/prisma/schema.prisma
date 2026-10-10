@@ -374,6 +374,7 @@ model Order {
   walletEntries   WalletLedger[]
   returnRequests  ReturnRequest[]
   auditEvents     OrderAuditEvent[]
+  notifications   OrderNotificationOutbox[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -791,4 +792,28 @@ model BackgroundLease {
   id String @id @db.NVarChar(64)
   owner String? @db.NVarChar(64)
   expiresAt DateTime
+}
+
+// The worker uses atomic SQL claims; expose its additive table for future Prisma migrations.
+model OrderNotificationOutbox {
+  id                String    @id @db.NVarChar(64)
+  orderId           String    @db.NVarChar(64)
+  channel           String    @db.NVarChar(40)
+  status            String    @default("PENDING") @db.NVarChar(40)
+  provider          String?   @db.NVarChar(40)
+  payload           String?   @db.NVarChar(Max)
+  attempts          Int      @default(0)
+  dueAt             DateTime @default(dbgenerated("SYSUTCDATETIME()"))
+  firstAttemptAt    DateTime?
+  sentAt            DateTime?
+  providerMessageId String?   @db.NVarChar(191)
+  lastError         String?   @db.NVarChar(191)
+  leaseOwner        String?   @db.NVarChar(64)
+  leaseUntil        DateTime?
+  createdAt         DateTime @default(dbgenerated("SYSUTCDATETIME()"))
+  updatedAt         DateTime @default(dbgenerated("SYSUTCDATETIME()"))
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([orderId, channel])
+  @@index([status, dueAt])
 }
