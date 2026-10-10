@@ -103,7 +103,7 @@ try{
     page.on('response',result=>{const path=new URL(result.url()).pathname;if((path.startsWith('/api/hidi/hero')||path.startsWith('/api/hidi/landing-media'))&&result.status()>=400)mediaFailures.push({path,status:result.status()});});
     try{
       await page.goto(base+'/',{waitUntil:'domcontentloaded'});
-      await page.waitForFunction(()=>{const image=document.querySelector('.hero-live-media');return image instanceof HTMLImageElement&&image.complete&&image.naturalWidth>0&&image.style.visibility!=='hidden';},null,{timeout:30000});
+      await page.waitForFunction(()=>{const image=document.querySelector('.hero-live-media');return image instanceof HTMLImageElement&&image.complete&&image.naturalWidth>0&&getComputedStyle(image).visibility==='visible';},null,{timeout:30000});
       const heroPaint=await page.evaluate(()=>{const image=document.querySelector('.hero-live-media');const media=document.querySelector('.hero-media');return {src:new URL(image.src).pathname,frameReady:media.dataset.frameReady,naturalWidth:image.naturalWidth,visibility:getComputedStyle(image).visibility};});
       assert.equal(heroPaint.src,proxy(heroKey));assert.equal(heroPaint.frameReady,'true');assert(heroPaint.naturalWidth>0);assert.equal(heroPaint.visibility,'visible');
       const casual=page.locator('.hidi-collection-card[aria-label$=": Casual Wear"] img');await casual.waitFor();await casual.scrollIntoViewIfNeeded();await casual.evaluate(image=>image.decode());
