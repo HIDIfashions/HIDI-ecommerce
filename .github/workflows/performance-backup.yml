@@ -1,5 +1,5 @@
 name: HIDI performance live backup
-# Refresh the ready baseline after the independent mobile release, before performance deployment.
+# Capture protected images and diagnose public content stability before the performance rollout.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -58,6 +58,23 @@ jobs:
               dest=out/filename;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(src,dest)
           pathlib.Path('evidence/source-summary.json').write_text(json.dumps({'files':len(manifest),'buildId':(root/'apps/web/.next/BUILD_ID').read_text().strip()},indent=2))
           PY
+      - name: Record public content stability without exposing policy details
+        run: |
+          python3 - <<'PYTHON'
+          import importlib.util,hashlib,json,pathlib,time
+          spec=importlib.util.spec_from_file_location('guard','deploy/privacy-policy/rollout.py');guard=importlib.util.module_from_spec(spec);spec.loader.exec_module(guard)
+          paths=['/api/hidi/privacy-policy','/privacy','/api/hidi/hero-config','/api/hidi/landing-media-config','/config.js']
+          def sample():
+            result={}
+            for path in paths:
+              raw=guard.get(path,headers={'Cache-Control':'no-cache'})
+              if path.startswith('/api/'):raw=json.dumps(json.loads(raw),sort_keys=True,separators=(',',':')).encode()
+              result[path]={'sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw)}
+            return result
+          first=sample();time.sleep(5);second=sample()
+          result={'samples':[first,second],'changedPaths':[p for p in paths if first[p]!=second[p]]}
+          pathlib.Path('evidence/public-content-stability.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
+          PYTHON
       - uses: actions/upload-artifact@v4
         if: always()
         with:
