@@ -1,6 +1,7 @@
 import type { ProductRecord, ProductVariant } from "./admin-products-contract";
 import { productSlug, rupeesToPaise } from "./admin-products-contract";
 import type { SheetRow } from "./hidi-spreadsheet";
+import { validateImageSkuRows } from "../../../deploy/admin-tools/image-sku-client.mjs";
 
 export type BulkProductMode = "NEW" | "STOCK";
 export type BulkProductRow = {
@@ -21,6 +22,7 @@ export type BulkProductRow = {
   weightGrams: string;
   openingQty: number;
   sku: string;
+  imageSku?: string;
   errors: string[];
 };
 export type ReceiptCsvRow = { rowNumber: number; sku: string; acceptedQuantity: string; rejectedQuantity: string; unitCostRupees: string; errors: string[] };
@@ -63,7 +65,7 @@ export function normalizeProductRows(sheet: SheetRow[]): BulkProductRow[] {
       description: take(raw, "description"), fabric: take(raw, "fabric"), care: take(raw, "care", "wash_care"),
       color: take(raw, "color", "colour"), colorHex: take(raw, "color_hex", "colour_hex"), size: take(raw, "size").toUpperCase(),
       sellingPrice: take(raw, "selling_price", "price"), mrp: take(raw, "mrp"), weightGrams: take(raw, "weight_grams", "weight"),
-      openingQty: 0, sku, errors: [],
+      openingQty: 0, sku, imageSku: skuKey(take(raw, "image_sku", "photo_sku", "image_code", "photo_code")), errors: [],
     };
     try { row.openingQty = whole(take(raw, "opening_qty", "quantity", "qty"), "Opening quantity"); } catch (e) { row.errors.push(e instanceof Error ? e.message : "Invalid opening quantity."); }
     if (mode === "STOCK") {
@@ -101,7 +103,7 @@ export function normalizeProductRows(sheet: SheetRow[]): BulkProductRow[] {
       else stockSkus.set(key, row.rowNumber);
     }
   }
-  return rows;
+  return validateImageSkuRows(rows);
 }
 
 export function normalizeReceiptRows(sheet: SheetRow[]): ReceiptCsvRow[] {

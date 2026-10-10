@@ -9,9 +9,10 @@ import type { BulkProductRow, InventoryRowLite } from "@/lib/hidi-bulk-import";
 import { downloadCsv, makeCsv, readSpreadsheet } from "@/lib/hidi-spreadsheet";
 import { photoCandidatesFromFiles, photoCandidatesFromZip, uploadPhotoCandidate } from "@/lib/hidi-bulk-photos";
 import type { PhotoCandidate } from "@/lib/hidi-bulk-photos";
+import { preflightMappings, saveImageSku } from "../../../../deploy/admin-tools/image-sku-client.mjs";
 import styles from "./bulk-import.module.css";
 
-const PRODUCT_HEADERS = ["mode", "product_name", "product_slug", "category", "short_description", "description", "fabric", "care", "color", "color_hex", "size", "selling_price", "mrp", "weight_grams", "opening_qty", "sku"];
+const PRODUCT_HEADERS = ["mode", "product_name", "product_slug", "category", "short_description", "description", "fabric", "care", "color", "color_hex", "size", "selling_price", "mrp", "weight_grams", "opening_qty", "sku", "image_sku"];
 const PRODUCT_SAMPLE = [
   ["NEW", "HIDI Meera Cotton Kurta", "hidi-meera-cotton-kurta", "Kurtas", "Soft cotton workwear kurta", "", "Cotton", "Gentle wash", "Maroon", "#800000", "M", "1499.00", "1799.00", 350, 10, ""],
   ["NEW", "HIDI Meera Cotton Kurta", "hidi-meera-cotton-kurta", "Kurtas", "Soft cotton workwear kurta", "", "Cotton", "Gentle wash", "Maroon", "#800000", "L", "1499.00", "1799.00", 350, 8, ""],
@@ -101,8 +102,9 @@ export function BulkImportClient() {
     setImporting(true); setError(null); setMessage(null); setLogs([]); setProgress("");
     window.dispatchEvent(new CustomEvent("hidi:bulk-busy", { detail: { busy: true } }));
     const report: ImportLog[] = []; const productCache = new Map<string, ProductRecord | null>();
-    const detailsSaved = new Set<string>(); const failedProducts = new Set<string>();
+    const detailsSaved = new Set<string>(); const failedProducts = new Set<string>(); const savedImageSkus = new Set<string>();
     try {
+      await preflightMappings(rows);
       let options = await productApi<ProductOptions>("/options");
       const inventory = await adminJson<InventoryResponse>("/api/admin/inventory?status=ALL"); let inventoryBySku = new Map((inventory.rows ?? []).map(row => [skuKey(row.sku), row]));
       for (let index = 0; index < rows.length; index++) {
@@ -138,8 +140,9 @@ export function BulkImportClient() {
               productCache.set(row.productSlug, product); variant = variantFor(product, row.color, row.size)!;
             }
           }
+          if (row.imageSku && !savedImageSkus.has(row.imageSku)) { await saveImageSku(row, product); savedImageSkus.add(row.imageSku); }
           const stockResult = await receiveOpening(variant.id, row.openingQty, batchRef);
-          report.push({ row: row.rowNumber, state: stockResult.startsWith("Opening stock already") ? "SKIPPED" : "DONE", message: `SKN ${product.skn} · ${product.name} · ${variant.color}/${variant.size} · ${variant.sku}: ${stockResult}.` });
+          report.push({ row: row.rowNumber, state: stockResult.startsWith("Opening stock already") ? "SKIPPED" : "DONE", message: `${row.imageSku ? `Image SKU ${row.imageSku}` : product.name} · ${variant.color}/${variant.size} · ${variant.sku}: ${stockResult}.` });
           inventoryBySku.set(skuKey(variant.sku), { variantId: variant.id, productName: product.name, sku: variant.sku, color: variant.color, size: variant.size, onHand: variant.inventory?.onHand ?? 0 });
         } catch (caught) { if (row.mode === "NEW") failedProducts.add(row.productSlug); report.push({ row: row.rowNumber, state: "FAILED", message: caught instanceof Error ? caught.message : "Import failed." }); }
         setLogs([...report]);
@@ -194,7 +197,7 @@ export function BulkImportClient() {
 
     <section id="photos" className={styles.card}>
       <div className={styles.sectionTitle}><span>02</span><div><h2>Bulk SKU photos</h2><p>Upload hundreds of images together, or a ZIP. HIDI matches each filename to the SKU automatically.</p></div></div>
-      <div className={styles.photoRule}><strong>Filename rule</strong><code>FULL-SKU_01.jpg</code><code>FULL-SKU_02.jpg</code><span>Use the exact HIDI SKU first, then an underscore and sequence number.</span></div>
+      <div className={styles.photoRule}><strong>Filename rule</strong><code>KUR_001_1.jpeg</code><code>KUR_001_2.webp</code><span>Add image_sku to the product Excel, for example KUR_001. Numbered photos automatically attach to all sizes of that colour. Existing HIDI SKU filenames also work.</span></div>
       <label className={styles.check}><input type="checkbox" checked={applyToColor} disabled={photoBusy} onChange={event => setApplyToColor(event.target.checked)} /> Apply every uploaded image to all existing sizes of the matched SKU's colour</label>
       <div className={styles.actionRow}><button type="button" disabled={photoBusy} onClick={() => imagesInput.current?.click()}>Select many photos</button><button type="button" disabled={photoBusy} onClick={() => zipInput.current?.click()}>Choose photo ZIP</button><input ref={imagesInput} className={styles.hiddenInput} type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void choosePhotoFiles(files); }} /><input ref={zipInput} className={styles.hiddenInput} type="file" accept=".zip,application/zip" onChange={event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void chooseZip(file); }} /></div>
       <p className={styles.muted}>{variants.length.toLocaleString("en-IN")} inventory SKUs available for filename matching. Images: JPG/PNG/WebP/AVIF, max 12 MB each, up to 1,000 per batch.</p>

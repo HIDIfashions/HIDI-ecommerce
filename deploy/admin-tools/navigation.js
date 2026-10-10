@@ -50,7 +50,7 @@
   }
   // Blank templates replace the older sample-filled downloads in the retained Next runtime.
   const blankTemplates={
-    'products-stock':['HIDI-products-stock-import-template.csv',['mode','product_name','product_slug','category','short_description','description','fabric','care','color','color_hex','size','selling_price','mrp','weight_grams','opening_qty','sku']],
+    'products-stock':['HIDI-products-stock-import-template.csv',['mode','product_name','product_slug','category','short_description','description','fabric','care','color','color_hex','size','selling_price','mrp','weight_grams','opening_qty','sku','image_sku']],
     receipt:['HIDI-receipt-import-template.csv',['sku','accepted_qty','rejected_qty','unit_cost']]
   };
   document.addEventListener('click',event=>{

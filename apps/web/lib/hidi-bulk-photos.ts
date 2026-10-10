@@ -1,8 +1,9 @@
-import { unzipEntries } from "@/lib/hidi-spreadsheet";
-import type { InventoryRowLite } from "@/lib/hidi-bulk-import";
-import { skuKey } from "@/lib/hidi-bulk-import";
+import { unzipEntries } from "./hidi-spreadsheet";
+import type { InventoryRowLite } from "./hidi-bulk-import";
+import { skuKey } from "./hidi-bulk-import";
+import { prepareMappedPhotos, uploadMappedPhotoCandidate } from "../../../deploy/admin-tools/image-sku-client.mjs";
 
-export type PhotoCandidate = { file: File; sourceName: string; sku: string | null; variantId: string | null; error: string | null };
+export type PhotoCandidate = { file: File; sourceName: string; sku: string | null; variantId: string | null; error: string | null; imageSku?: string; sequence?: number; isMain?: boolean; productId?: string; color?: string; targetVariantIds?: string[] };
 const IMAGE_TYPES: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", avif: "image/avif" };
 const MAX_FILE = 12 * 1024 * 1024;
 const MAX_PHOTOS = 1000;
@@ -30,7 +31,7 @@ function candidate(file: File, sourceName: string, variants: InventoryRowLite[])
 
 export async function photoCandidatesFromFiles(files: File[], variants: InventoryRowLite[]) {
   if (files.length > MAX_PHOTOS) throw new Error(`Select at most ${MAX_PHOTOS.toLocaleString("en-IN")} photos per batch.`);
-  return files.map(file => candidate(file, file.name, variants));
+  return prepareMappedPhotos(files.map(file => candidate(file, file.name, variants)));
 }
 
 export async function photoCandidatesFromZip(file: File, variants: InventoryRowLite[]) {
@@ -44,10 +45,11 @@ export async function photoCandidatesFromZip(file: File, variants: InventoryRowL
   }
   if (!images.length) throw new Error("No JPG, PNG, WebP or AVIF images were found in the ZIP.");
   if (images.length > MAX_PHOTOS) throw new Error(`ZIP contains ${images.length} images. Split it into batches of at most ${MAX_PHOTOS}.`);
-  return images;
+  return prepareMappedPhotos(images);
 }
 
 export async function uploadPhotoCandidate(item: PhotoCandidate, applyToColor: boolean) {
+  if (item.imageSku) return uploadMappedPhotoCandidate(item);
   if (!item.variantId || item.error) throw new Error(item.error ?? "Photo is not matched to a SKU.");
   const form = new FormData(); form.set("file", item.file); form.set("applyToColor", String(applyToColor));
   const response = await fetch(`/api/admin/inventory/${encodeURIComponent(item.variantId)}/images`, { method: "POST", body: form, credentials: "same-origin" });
