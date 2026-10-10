@@ -20,6 +20,9 @@ for (const engine of ['chromium', 'firefox', 'webkit']) {
       await context.route('**/*', route => {
         const request = route.request(), url = new URL(request.url());
         if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
+        // Playback is covered by the separate media suite. Keep repeated footer
+        // popup/reload checks independent of large live video downloads.
+        if (request.resourceType() === 'media') return route.abort();
         if (url.origin !== base) {
           if (channels.some(([, target]) => request.url() === target)) {
             outgoing.push(request.url());
