@@ -17,7 +17,7 @@ jobs:
       DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=fixture;password=fixture;encrypt=true
       API_URL: http://127.0.0.1:4107/v1
       INTERNAL_API_URL: http://127.0.0.1:4107/v1
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/hidi-checkout-browsers
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-checkout-browsers
       HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-checkout-browser/node_modules/playwright/index.mjs
       NEXT_PUBLIC_WALLET_ENABLED: 'true'
     steps:
