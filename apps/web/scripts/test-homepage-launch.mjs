@@ -32,7 +32,7 @@ async function fixture(browser,width,height,shape='landscape',multiple=false){
  });
  const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base,{waitUntil:'networkidle'});await page.locator('#hidi-edit').scrollIntoViewIfNeeded();
- await page.locator('#hidi-edit img').evaluate(i=>i.decode());
+ await page.waitForFunction(()=>{const i=document.querySelector('#hidi-edit img');return i?.complete&&i.naturalWidth>0;},{},{timeout:20000});await page.locator('#hidi-edit img').evaluate(i=>i.decode());
  await page.locator('#footer').scrollIntoViewIfNeeded();
  await page.locator('#meet-hidi img').evaluate(i=>i.decode());
  return{page,context,calls,errors};
@@ -76,7 +76,7 @@ for(const engine of(process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit')
    await page.getByRole('button',{name:'Open HIDI menu',exact:true}).click();assert(await page.getByRole('dialog').isVisible());assert.equal(await page.locator('.campaign-panel-nav>a').count(),2);await page.keyboard.press('Escape');assert.equal(await page.locator('dialog[open]').count(),0);
    await page.getByRole('button',{name:'Search HIDI products',exact:true}).click();await page.getByLabel('Search products',{exact:true}).fill('cotton');await page.getByText('Fixture cotton kurta',{exact:true}).waitFor();await page.keyboard.press('Escape');
    await page.locator('#footer').scrollIntoViewIfNeeded();await page.getByRole('textbox',{name:'Email address',exact:true}).fill('fixture@example.test');await page.getByRole('button',{name:'Subscribe to HIDI updates',exact:true}).click();await page.getByText('Your newsletter subscription has been confirmed.',{exact:true}).waitFor();assert.equal(calls.length,1);assert(calls[0].path.includes('newsletter'));await page.keyboard.press('Escape');
-   await page.reload({waitUntil:'networkidle'});await page.locator('#hidi-edit').scrollIntoViewIfNeeded();await page.locator('#hidi-edit img').evaluate(i=>i.decode());await page.locator('#footer').scrollIntoViewIfNeeded();await page.locator('#meet-hidi img').evaluate(i=>i.decode());await geometry(page,390,844);assert.deepEqual(errors,[]);
+   await page.reload({waitUntil:'networkidle'});await page.locator('#hidi-edit').scrollIntoViewIfNeeded();await page.waitForFunction(()=>{const i=document.querySelector('#hidi-edit img');return i?.complete&&i.naturalWidth>0;},{},{timeout:20000});await page.locator('#hidi-edit img').evaluate(i=>i.decode());await page.locator('#footer').scrollIntoViewIfNeeded();await page.locator('#meet-hidi img').evaluate(i=>i.decode());await geometry(page,390,844);assert.deepEqual(errors,[]);
    if(engine==='chromium')for(const id of['our-range','meet-hidi','hidi-edit','our-promises']){
     await page.locator('#'+id).scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);const cdp=await context.newCDPSession(page);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,x:195,y:650}]});

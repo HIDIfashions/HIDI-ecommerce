@@ -1,5 +1,5 @@
 /* Natural uploaded banner proportions, including replacements made in Admin. */
-.hidi-page .edit-campaign > img { aspect-ratio: auto; }
+.hidi-page .edit-campaign > img { aspect-ratio: auto 5460 / 2048; }
 .hidi-page .range-section--spotlight { isolation: isolate; }
 .hidi-page main > section:not(.hero),
 .hidi-page #footer { scroll-margin-top: calc(var(--header-height) + 16px); }
