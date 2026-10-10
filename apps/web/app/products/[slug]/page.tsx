@@ -17,6 +17,7 @@ import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 import { productOffers } from "@/lib/seo";
 import { productNarrative } from "@/lib/product-facts";
 import { DeliveryCheck } from "@/components/delivery-check";
+import { ProductPageShell } from "@/components/product-page-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -133,7 +134,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     ],
   };
 
-  return <div className="container product-page">
+  return <ProductPageShell key={product.id}>
     <script
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: safeJsonLd([productJsonLd, breadcrumbJsonLd]) }}
@@ -176,5 +177,5 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <RecentlyViewedProducts currentSlug={product.slug} />
 
     <ProductReviews data={reviews} />
-  </div>;
+  </ProductPageShell>;
 }

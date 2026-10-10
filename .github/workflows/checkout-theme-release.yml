@@ -1,4 +1,5 @@
 name: Checkout shipping and theme guarded release
+# Preserve the PDP enhancements while waiting for the React product page to hydrate.
 # Serve the product-review fixture before the general product-route fixture.
 # Respect component-owned phone validation in the preserved Azure wrapper.
 on:

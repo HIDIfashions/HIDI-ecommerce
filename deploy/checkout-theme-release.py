@@ -41,7 +41,7 @@ def compose(app,tag):
   css=(ROOT/'checkout-theme/home-buttons.css').read_bytes();cssname='checkout-theme-'+hashlib.sha256(css).hexdigest()[:16]+'.css'
   (overlay/'dist').mkdir();(overlay/'dist'/cssname).write_bytes(css)
   (overlay/'dist/index.html').write_text(re.sub(r'</head>',f'<link rel="stylesheet" data-hidi-checkout-theme href="/{cssname}">\n</head>',html,count=1,flags=re.I))
-  runtime=(old/'server.mjs').read_text();patched_runtime=compat.patch_checkout_phone(runtime)
+  runtime=(old/'server.mjs').read_text();patched_runtime=compat.patch_checkout_runtime(runtime)
   (overlay/'server.mjs').write_text(patched_runtime)
  (folder/'Dockerfile').write_text('FROM '+base+'\nCOPY --chown=node:node overlay/ /app/\n')
  subprocess.run(['docker','build','--pull=false','-t',tag,str(folder)],check=True);helpers.extract(tag,candidate)
@@ -51,7 +51,7 @@ def compose(app,tag):
   if not delta:subprocess.run(['docker','tag',base,tag],check=True)
  else:
   assert delta and all(p.startswith('apps/web/.next/') or p in {'apps/web/server.js','server.mjs','dist/index.html','dist/'+cssname} for p in delta),'Unreviewed web file changed'
-  assert (candidate/'server.mjs').read_text()==patched_runtime,'Runtime differs from the single reviewed phone-validation predicate'
+  assert (candidate/'server.mjs').read_text()==patched_runtime,'Runtime differs from the reviewed hydration and phone compatibility guards'
   assert all(b.get(p)==value for p,value in a.items() if not p.startswith('apps/web/.next/') and p not in {'apps/web/server.js','server.mjs','dist/index.html'}),'Protected homepage, admin, media or runtime changed'
  configs=json.loads(helpers.docker('image','inspect',base,tag));assert configs[0]['Config']==configs[1]['Config'];layers=configs[0]['RootFS']['Layers'];assert configs[1]['RootFS']['Layers'][:len(layers)]==layers
  save(app+'-preservation.json',{'passed':True,'changedFiles':sorted(delta),'protectedFilesIdentical':len(a)-len(delta&a.keys()),'baseImage':base,'settingsPreserved':True,'baseLayersPreserved':True})
