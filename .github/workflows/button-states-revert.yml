@@ -1,5 +1,6 @@
 name: Button theme only guarded revert
 # Restore the exact pretheme image only after proving its four-file inverse.
+# Verify the retained homepage gold/burgundy CTA variants and original Next action palettes.
 # Existing compiled storefront, API, product deletion, media cleanup and tabs stay intact.
 on:
   push:

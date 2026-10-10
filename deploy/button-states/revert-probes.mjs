@@ -84,8 +84,23 @@ export async function probe(base, output, engines=(process.env.HIDI_BROWSER_ENGI
         const styles=await locator.evaluateAll(elements=>elements.map(element=>{const style=getComputedStyle(element);return {background:style.backgroundColor,color:style.color,border:style.borderTopColor};}));
         for(const style of styles){assert.equal(style.background,brown,label+' original header-color background');assert.equal(style.color,ivory,label+' original ivory text');if(checkBorder)assert.equal(style.border,brown,label+' original header-color border');}
       }
+      async function originalHomePalette(){
+        // The retained Vite landing page predates the Next commerce palette.
+        // Exact original asset: dist/assets/index-yOknTVcM.css, SHA-256
+        // 642ee7cd71456af76aac15c566be39e3360631ce8bd90cbae28faab489b3dac2.
+        const originals={
+          'button--gold':{background:'rgb(232, 192, 111)',color:'rgb(67, 27, 29)',border:'rgb(232, 192, 111)'},
+          'button--burgundy':{background:'rgb(96, 33, 36)',color:'rgb(250, 249, 245)',border:'rgb(96, 33, 36)'},
+        };
+        const buttons=await page.locator('.button:visible').evaluateAll(elements=>elements.map(element=>{const style=getComputedStyle(element);return {classes:[...element.classList],text:element.textContent.trim(),background:style.backgroundColor,color:style.color,border:style.borderTopColor};}));
+        assert(buttons.length>0,'Home retains its original calls to action');
+        for(const button of buttons){
+          const variant=Object.keys(originals).find(name=>button.classes.includes(name));assert(variant,'Home CTA retains an original supported variant: '+button.classes.join(' '));
+          for(const field of ['background','color','border'])assert.equal(button[field],originals[variant][field],'Home '+variant+' '+button.text+' original '+field);
+        }
+      }
       try{
-        await go('/');await page.locator('.site-header').waitFor();await assess('home');await primaryPalette(page.locator('.button:visible'),'Home calls to action',false);
+        await go('/');await page.locator('.site-header').waitFor();await assess('home');await originalHomePalette();
         await verifyHeaderDialogs(page,assess);
         await go('/collections/all');await assess('collection');
         const filter=page.getByRole('button',{name:viewport.width<=720?'Filter & Sort':'Filter',exact:true});
