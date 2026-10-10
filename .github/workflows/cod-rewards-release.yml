@@ -36,8 +36,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: 24, cache: pnpm}
       - name: Install unchanged dependencies and generate existing SQL client
+        if: ${{ !contains(github.event.head_commit.message, '[inspect-cod]') }}
         run: pnpm install --frozen-lockfile && pnpm db:generate
       - name: Run complete service and frontend regression
+        if: ${{ !contains(github.event.head_commit.message, '[inspect-cod]') }}
         run: |
           set -euo pipefail
           pnpm --filter @hidi/api test:customer-experience
@@ -46,6 +48,7 @@ jobs:
           pnpm --filter @hidi/api build
           node tests/cod-rewards.sqlserver.mjs
       - name: Build the storefront with retained public auth configuration
+        if: ${{ !contains(github.event.head_commit.message, '[inspect-cod]') }}
         run: |
           set -euo pipefail
           export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"

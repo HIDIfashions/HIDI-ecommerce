@@ -13,9 +13,8 @@ master, slave = pty.openpty()
 process = subprocess.Popen(['az','containerapp','exec','-g','rg-hidi-prod','-n','hidi-api','--revision',data['properties']['latestReadyRevisionName'],'--container',data['properties']['template']['containers'][0]['name'],'--command','/bin/sh','--only-show-errors'],stdin=slave,stdout=slave,stderr=slave,start_new_session=True)
 os.close(slave)
 output = b''
+sent = False
 try:
-    # The pseudo-terminal buffers input until the console connection is ready.
-    os.write(master, command.encode())
     deadline = time.monotonic() + 150
     while time.monotonic() < deadline:
         if select.select([master], [], [], 1)[0]:
@@ -23,12 +22,19 @@ try:
             except OSError: break
             if not chunk: break
             output += chunk
-            if b'HIDI_SQL_READINESS::{' in output or b'HIDI_SQL_READINESS_FAILED::' in output: break
+            # Wait for the actual remote shell prompt: the CLI switches the
+            # terminal to raw mode during connection and can flush early input.
+            plain = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output.decode(errors='replace'))
+            if not sent and re.search(r'(?:^|[\r\n])[^\r\n]{0,160}[#$] $', plain):
+                os.write(master, command.encode()); sent = True
+            if re.search(rb'HIDI_SQL_READINESS::\{[^\r\n]+\}', output) or re.search(rb'HIDI_SQL_READINESS_FAILED::[A-Za-z0-9_]+\r?\n', output): break
         if process.poll() is not None: break
     text = output.decode(errors='replace')
     match = re.search(r'HIDI_SQL_READINESS::(\{[^\r\n]+\})', text)
     if not match:
         failure = re.search(r'HIDI_SQL_READINESS_FAILED::([A-Za-z0-9_]+)', text)
+        codes = re.findall(r'ERROR:\s*\(([A-Za-z0-9_.-]+)\)', text)
+        print(json.dumps({'consoleCommandSent':sent,'consoleExitCode':process.poll(),'azureErrorCodes':codes}))
         raise RuntimeError('Private runtime wallet readiness failed: ' + (failure.group(1) if failure else 'CONSOLE_CHECK_INCOMPLETE'))
     report = json.loads(match.group(1))
     assert report['passed'] and report['readOnly'] and report['database'] == database
