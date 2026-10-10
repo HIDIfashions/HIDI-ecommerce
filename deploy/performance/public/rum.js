@@ -9,10 +9,10 @@
   const report = metric => {
     if (!['LCP', 'INP', 'CLS'].includes(metric.name)) return;
     const body = JSON.stringify({ route, device, name: metric.name, value: Math.round(metric.value * 1000) / 1000 });
-    fetch('/api/hidi/performance', { method: 'POST', body, keepalive: true, credentials: 'omit', headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
+    fetch('/api/hidi/performance', { method: 'POST', body, keepalive: true, credentials: 'omit', referrerPolicy: 'no-referrer', headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
   };
   const script = document.createElement('script');
-  script.src = '/performance/web-vitals.js?v=fa26173f4663';
+  script.src = '/performance/web-vitals.js?v=01b5530d2fe7';
   script.onload = () => { const v = window.hidiWebVitals; if (v) { v.onLCP(report); v.onINP(report); v.onCLS(report); } };
   document.head.append(script);
 })();

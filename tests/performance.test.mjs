@@ -23,11 +23,11 @@ test('negotiation respects q=0 and keeps gzip-only/identity clients usable', () 
 });
 test('real HTTP gzip/Brotli preserve bytes, Vary, HEAD and media ranges', async () => {
   const body = Buffer.from('<html>हैदराबाद ' + 'hello '.repeat(2000) + '</html>');
-  const {http,base} = await server((req,res) => sendBuffer(req,res,req.headers.range?206:200,{'content-type':'text/html','content-length':body.length,vary:'RSC, Next-Router-State-Tree',etag:'"master"',...(req.headers.range?{'content-range':'bytes 0-9/100'}:{})},body));
+  const {http,base} = await server((req,res) => { res.setHeader('Content-Length',body.length); sendBuffer(req,res,req.headers.range?206:200,{'content-type':'text/html','content-length':body.length,vary:'RSC, Next-Router-State-Tree',etag:'"master"',...(req.headers.range?{'content-range':'bytes 0-9/100'}:{})},body); });
   try {
     for (const [accept, encoding, decode] of [['gzip','gzip',gunzipSync],['br, gzip','br',brotliDecompressSync]]) {
       const result = await get(base, { 'Accept-Encoding': accept }); assert.equal(result.headers['content-encoding'],encoding); assert.deepEqual(decode(result.body),body);
-      assert(result.body.length<body.length/5); assert.match(result.headers.vary,/RSC/); assert.match(result.headers.vary,/Accept-Encoding/); assert.equal(result.headers.etag,'W/"master"');
+      assert(result.body.length<body.length/5); assert.equal(result.headers['content-length'],undefined); assert.match(result.headers.vary,/RSC/); assert.match(result.headers.vary,/Accept-Encoding/); assert.equal(result.headers.etag,'W/"master"');
     }
     const plain=await get(base,{'Accept-Encoding':'gzip;q=0,br;q=0'});assert.deepEqual(plain.body,body);assert.equal(plain.headers['content-encoding'],undefined);
     const range=await get(base,{'Accept-Encoding':'gzip',Range:'bytes=0-9'});assert.equal(range.headers['content-encoding'],undefined);assert.deepEqual(range.body,body);
@@ -48,7 +48,7 @@ test('HTML arrives before upstream completion, with split Unicode and head/body 
   } finally {http.close();}
 });
 test('overlarge/missing head streams without losing bytes or retaining an unbounded cache', async () => {
-  const text='x'.repeat(150000)+'हैदराबाद'; let captured;
+  const text='x'.repeat(150001)+'🚚'.repeat(300)+'हैदराबाद'; let captured;
   const transform=htmlTransform(x=>'<meta name="hook">'+x,x=>x+'<script></script>',bytes=>captured=bytes,1000);
   const chunks=[];transform.on('data',x=>chunks.push(x));Readable.from([Buffer.from(text)]).pipe(transform);await once(transform,'end');
   assert.equal(Buffer.concat(chunks).toString(),'<meta name="hook">'+text+'<script></script>');assert.equal(captured,null);

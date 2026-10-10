@@ -29,6 +29,7 @@ def patch(source):
     const eligible = cacheable && status === 200 && !responseHeaders["set-cookie"];
     if (eligible) responseHeaders["x-hidi-cache"] = "MISS";
     streamHtml(request, response, incoming, status, responseHeaders, {
+      cacheLimit: eligible ? Math.min(adminHtmlInjectionLimit, 2 * 1024 * 1024) : 0,
       head: html => {
         if (injectLayerFix) html = injectStorefrontLayerFix(html);
         if (injectSeoTags) html = injectSeo(html, request, pathname);

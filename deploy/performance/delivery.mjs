@@ -38,6 +38,9 @@ export function prepareHeaders(request, headers, status = 200) {
 
 export function sendBuffer(request, response, status, headers, body) {
   const prepared = prepareHeaders(request, headers, status);
+  // Static handlers may already have set the decoded length on the response.
+  // Omitting it from writeHead's object does not remove that earlier header.
+  if (prepared.encoding) response.removeHeader('Content-Length');
   response.writeHead(status, prepared.headers);
   if (request.method === 'HEAD' || [204, 304].includes(status)) return response.end();
   if (!prepared.encoding) return response.end(body);
@@ -51,7 +54,7 @@ export function sendBuffer(request, response, status, headers, body) {
 // Backpressure flows through pipe; UTF-8 split across chunks is preserved.
 export function htmlTransform(head, tail, onComplete, maxCache = 2 * 1024 * 1024) {
   const decoder = new StringDecoder('utf8');
-  let pending = '', opened = false, size = 0, captured = [];
+  let pending = '', opened = false, size = 0, captured = maxCache > 0 ? [] : null;
   const emit = (stream, text) => {
     if (!text) return;
     const bytes = Buffer.from(text); size += bytes.length;
@@ -71,7 +74,12 @@ export function htmlTransform(head, tail, onComplete, maxCache = 2 * 1024 * 1024
       } else return;
     }
     if (final) { emit(stream, tail(pending)); pending = ''; }
-    else if (pending.length > 512) { emit(stream, pending.slice(0, -512)); pending = pending.slice(-512); }
+    else if (pending.length > 512) {
+      let cut = pending.length - 512;
+      const code = pending.charCodeAt(cut);
+      if (code >= 0xDC00 && code <= 0xDFFF) cut--; // Never split an emoji surrogate pair.
+      emit(stream, pending.slice(0, cut)); pending = pending.slice(cut);
+    }
   };
   return new Transform({
     transform(chunk, _encoding, done) { try { consume(this, decoder.write(chunk)); done(); } catch (error) { done(error); } },
@@ -86,7 +94,7 @@ export function streamHtml(request, response, incoming, status, headers, options
   const clean = { ...headers }; delete clean['content-length']; delete clean.etag;
   const prepared = prepareHeaders(request, clean, status);
   response.writeHead(status, prepared.headers);
-  const transform = htmlTransform(options.head, options.tail, options.onComplete);
+  const transform = htmlTransform(options.head, options.tail, options.onComplete, options.cacheLimit ?? 0);
   const zip = prepared.encoding ? compressor(prepared.encoding) : null;
   const stop = () => { incoming.destroy(); transform.destroy(); zip?.destroy(); };
   incoming.on('error', () => response.destroy()); transform.on('error', () => response.destroy());

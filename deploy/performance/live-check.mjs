@@ -9,7 +9,10 @@ for(const host of ['thidigk.thehidi.com','thehidi.com','www.thehidi.com','hidiin
     try {
       const response=await fetch('https://'+host+path,{redirect:'follow',signal:AbortSignal.timeout(20000)});
       const row={host,path,status:response.status,finalUrl:response.url,server:response.headers.get('server'),cfRay:response.headers.get('cf-ray'),cfCacheStatus:response.headers.get('cf-cache-status'),cacheControl:response.headers.get('cache-control'),encoding:response.headers.get('content-encoding'),timing:response.headers.get('server-timing'),age:response.headers.get('age')};
-      if(path.includes('analytics-config')&&response.ok)row.analytics=await response.json();else {const text=await response.text();row.privateLanding=text.includes('HIDI is temporarily private');}
+      const text=await response.text();row.privateLanding=text.includes('HIDI is temporarily private');
+      if(path.includes('analytics-config')&&response.ok) {
+        try {row.analytics=JSON.parse(text);} catch {row.analyticsUnavailable=true;}
+      }
       evidence.push(row);
     } catch(error) {evidence.push({host,path,error:error.cause?.code||error.name});}
   }

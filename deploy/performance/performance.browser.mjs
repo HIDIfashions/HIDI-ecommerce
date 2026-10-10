@@ -10,7 +10,15 @@ for(const engine of (process.env.HIDI_PERF_ENGINES||'chromium,firefox,webkit').s
   try {for(const width of [390,1440]) {
     const context=await browser.newContext({viewport:{width,height:844},hasTouch:width===390,reducedMotion:'reduce'});
     const page=await context.newPage();const errors=[],requests=[];
-    page.on('pageerror',error=>errors.push(error.message));page.on('request',r=>requests.push({path:new URL(r.url()).pathname,prefetch:r.headers()['next-router-prefetch']==='1',rsc:r.headers().rsc,type:r.resourceType()}));
+    page.on('pageerror',error=>errors.push(error.message));page.on('request',r=>{
+      const path=new URL(r.url()).pathname;
+      requests.push({path,prefetch:r.headers()['next-router-prefetch']==='1',rsc:r.headers().rsc,type:r.resourceType()});
+      if(path==='/api/hidi/performance'&&r.method()==='POST') {
+        const metric=JSON.parse(r.postData());assert.deepEqual(Object.keys(metric).sort(),['device','name','route','value']);
+        assert(!r.headers().cookie&&!r.headers().referer,'Performance reporting must omit cookies and referrers');
+        report.push({engine,width,page:'browser-metric',...metric});
+      }
+    });
     await page.addInitScript(()=>{
       window.__hidiLongTasks=[];
       try {new PerformanceObserver(list=>list.getEntries().forEach(entry=>window.__hidiLongTasks.push(entry.duration))).observe({type:'longtask',buffered:true});}catch{}
@@ -46,11 +54,12 @@ for(const engine of (process.env.HIDI_PERF_ENGINES||'chromium,firefox,webkit').s
       await page.goto(base+'/collections/all',{waitUntil:'networkidle'});
       await page.locator('footer.footer').scrollIntoViewIfNeeded();await page.waitForTimeout(1200);
       assert(!requests.some(r=>r.prefetch&&['/','/account','/wishlist','/cart','/shipping','/returns','/contact','/lookbook','/collections/all'].includes(r.path)),'Unnecessary private/footer/current-route prefetch remains');
+      const prefetchRequests=requests.filter(r=>r.prefetch).length;
       await page.locator('.site-header .wordmark').scrollIntoViewIfNeeded();
       requests.length=0;const start=Date.now();await page.locator('.site-header .wordmark').click();await page.waitForURL(base+'/');await page.locator('#hidi-edit').waitFor();
       assert(requests.some(r=>r.path==='/'&&r.type==='document'&&!r.rsc),'Home must be a real document navigation');
       assert(!requests.some(r=>r.path==='/'&&r.rsc),'Landing must not receive an RSC client transition');
-      report.push({engine,width,page:'collection-to-home',clickMs:Date.now()-start,documentNavigation:true,unnecessaryPrefetches:0});
+      report.push({engine,width,page:'collection-to-home',clickMs:Date.now()-start,documentNavigation:true,unnecessaryPrefetches:0,prefetchRequests});
       assert.deepEqual(errors,[]);
     } finally {await context.close();}
   }} finally {await browser.close();}

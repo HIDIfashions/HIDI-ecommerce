@@ -29,6 +29,7 @@ export function createPerformanceHandler({ origin, root, assetRoot = new URL('./
     counts = {}; accepted = 0; windowStart = Date.now();
   }
   const timer = setInterval(flush, 300000); timer.unref();
+  process.once('SIGTERM', flush); process.once('SIGINT', flush);
   return {
     links, logo, rum,
     async handle(request, response, pathname) {
