@@ -1,4 +1,5 @@
 name: HIDI performance guarded release
+# Re-run the complete exact-image gate after compression/streaming corrections.
 on:
   push:
     branches: [migration/azure-sql-blob]
