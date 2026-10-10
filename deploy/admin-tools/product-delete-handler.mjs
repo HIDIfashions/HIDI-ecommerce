@@ -65,6 +65,17 @@ export function createProductDeletionHandler({ origin, hasStorefront, env = proc
         return true;
       }
       const body = await readBody(request);
+      // Reject malformed owned metadata while the product can still be edited.
+      // An external storage account is detached without deleting its objects.
+      let current;
+      try { current = await backend(request, id, 'GET'); }
+      catch (e) { if (e.status !== 404) throw e; }
+      if (current && current.status !== 'DELETED') {
+        for (const image of [...(current.images || []), ...(current.variants || []).flatMap(variant => variant.images || [])]) {
+          try { storage.key(image); }
+          catch { throw error(409, 'A stored photo path is invalid. Correct or remove that photo before deleting this product.'); }
+        }
+      }
       const deleted = await backend(request, id, 'DELETE', '', body);
       const media = deleted.media || [];
       const completed = { productImageIds: [], variantImageIds: [] };
@@ -81,14 +92,19 @@ export function createProductDeletionHandler({ origin, hasStorefront, env = proc
         // A bounded batch keeps retries safe even for large colour/size matrices.
         const cleanupStarted = Date.now();
         for (const { key, refs } of [...groups.values()].slice(0, 8)) {
-          if (Date.now() - cleanupStarted > 15000 || completed.productImageIds.length + refs.filter(r => r.kind === 'product').length > 200 || completed.variantImageIds.length + refs.filter(r => r.kind === 'variant').length > 200) break;
+          if (Date.now() - cleanupStarted > 15000) break;
+          const remaining = { product: 200 - completed.productImageIds.length, variant: 200 - completed.variantImageIds.length };
+          const acknowledged = refs.filter(ref => remaining[ref.kind === 'product' ? 'product' : 'variant']-- > 0);
+          if (!acknowledged.length) continue;
           if (refs.some(r => r.shared) || protectedKeys.has(key)) shared++;
           else if (!key) external++;
           else { await storage.remove(key); removed++; }
-          for (const ref of refs) completed[ref.kind === 'product' ? 'productImageIds' : 'variantImageIds'].push(ref.id);
+          for (const ref of acknowledged) completed[ref.kind === 'product' ? 'productImageIds' : 'variantImageIds'].push(ref.id);
         }
       } catch { pendingError = true; }
-      const cleanup = await backend(request, id, 'POST', '/deletion/cleanup', completed);
+      const cleanup = completed.productImageIds.length || completed.variantImageIds.length
+        ? await backend(request, id, 'POST', '/deletion/cleanup', completed)
+        : await backend(request, id, 'GET', '/deletion');
       const pending = cleanup.pendingMediaCount || 0;
       send(response, 200, { productId: id, deleted: true, historyPreserved: true, photosDeleted: removed, sharedPhotosPreserved: shared, externalPhotosDetached: external, pendingMediaCount: pending, cleanupComplete: pending === 0, message: pending === 0 ? 'Product deleted. Dedicated storage photos were removed; shared photos and past order records were preserved.' : pendingError ? 'Product removed from sale. Photo cleanup is pending; retry to finish.' : 'Product removed from sale. Continue cleanup to finish the remaining photos.' });
     } catch (e) { send(response, e.status || 503, { message: typeof e.status === 'number' ? e.message : 'Deletion could not finish. Reload and retry; no success was confirmed.' }); }

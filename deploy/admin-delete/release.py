@@ -2,7 +2,8 @@
 
 The current API must match the pinned source compilation before changed JavaScript
 is copied. All other application files, image layers and app settings are retained.
-This release performs no product, order, database or Blob mutation.
+This release performs no product, order or Blob mutation. A separately gated
+additive Product status CHECK migration is retained even if images roll back.
 """
 import argparse
 import copy
@@ -26,6 +27,7 @@ API_FILES = {'apps/api/dist/' + name + ext for name in API_STEMS for ext in ('.j
 API_SOURCES = {'apps/api/src/' + name + '.ts' for name in API_STEMS}
 WEB_ASSETS = {'handler.mjs', 'navigation.js', 'product-delete-handler.mjs', 'product-delete.html', 'product-delete.mjs', 'product-delete-links.js', 'product-delete-storage.mjs'}
 WEB_FILES = {'server.mjs'} | {'admin-tools/' + name for name in WEB_ASSETS}
+SCHEMA_MIGRATION = pathlib.Path('apps/api/prisma/migrations-sqlserver/20261010120000_admin_product_deletion/migration.sql')
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -45,6 +47,18 @@ def save(name, value):
 
 def immutable(image, app):
     assert re.fullmatch(re.escape(helpers.REGISTRY + '/hidi-' + app) + r'@sha256:[0-9a-f]{64}', image), 'Expected an immutable HIDI image digest'
+
+def require_schema_ready(api_state):
+    target = evidence / 'schema-ready.json'
+    assert target.is_file(), 'Verified private Product schema readiness is required before image rollout'
+    report = json.loads(target.read_text())
+    assert report.get('passed') is True and report.get('apiImage') == api_state['image'] and report.get('apiSettingsHash') == api_state['settingsHash'], 'Schema readiness does not match the captured API'
+    assert report.get('migrationSha256') == hashlib.sha256(SCHEMA_MIGRATION.read_bytes()).hexdigest(), 'Schema readiness does not match the reviewed migration'
+    assert report.get('allowedStatuses') == ['ACTIVE', 'ARCHIVED', 'DELETED', 'DRAFT']
+    for field in ['trustedConstraint', 'foreignKeysPreserved', 'unrelatedChecksPreserved', 'columnPreserved', 'privateNetwork', 'managedIdentity', 'keepOnImageRollback']:
+        assert report.get(field) is True, 'Schema readiness invariant missing: ' + field
+    assert report.get('applicationRowsModified') is False, 'Unexpected application row changes'
+    return report
 
 def baseline():
     """Compile immutable source independently of the reviewed working tree."""
@@ -168,6 +182,7 @@ def apply(api, web):
     for name, image in images.items():
         immutable(image, name.removeprefix('hidi-'))
         assert cloud.snapshot(cloud.app(name)) == before[name], 'Concurrent deployment changed ' + name + '; refusing rollout'
+    require_schema_ready(before['hidi-api'])
     public = public_state(); owned = {}; run = os.environ['GITHUB_RUN_ID']
     try:
         # The API accepts no anonymous deletion; publishing it first allows the UI
@@ -185,7 +200,7 @@ def apply(api, web):
         for name, state in after.items():
             assert state['image'] == images[name] and state['settingsHash'] == before[name]['settingsHash']
             cloud.ready(state)
-        save('after.json', {'states': after, 'publicContentPreserved': True, 'appSettingsPreserved': True, 'productOrStorageMutations': False, 'anonymousAdminWritesDenied': True})
+        save('after.json', {'states': after, 'publicContentPreserved': True, 'appSettingsPreserved': True, 'productOrStorageMutations': False, 'anonymousAdminWritesDenied': True, 'additiveProductConstraintVerified': True, 'schemaConstraintKeptOnImageRollback': True})
         print('PASS: ready admin deletion and clear tools deployed; protected content and settings retained')
     except Exception:
         restored = []; failed = []
@@ -200,7 +215,7 @@ def apply(api, web):
                 # An independent restoration failure must not prevent restoring
                 # the other owned app. Never record private Azure error content.
                 failed.append(name)
-        save('rollback.json', {'restoredApps': restored, 'failedApps': failed})
+        save('rollback.json', {'restoredApps': restored, 'failedApps': failed, 'schemaConstraintRetained': True, 'reason': 'Existing deleted-product history may depend on the additive allowed status'})
         raise
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 name: Admin product deletion and clear tools guarded release
+# Verify shared-photo cleanup and the trusted additive Product status CHECK.
 
 on:
   push:
@@ -46,6 +47,7 @@ jobs:
           node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
           node --test tests/admin-quick-tools.test.mjs tests/admin-product-bulk.test.mjs
           node --test tests/admin-product-delete-handler.test.mjs
+          node --test tests/admin-product-delete-schema.test.mjs
           python3 tests/admin-delete-release.test.py
           pnpm --filter @hidi/api build
           node tests/admin-product-delete.sqlserver.mjs
@@ -105,6 +107,8 @@ jobs:
             image="acrhidiprod0927.azurecr.io/hidi-$app@$digest"
             echo "IMAGE_${app^^}=$image" >> "$GITHUB_ENV"
           done
+      - name: Verify and apply the minimal Product CHECK through the private managed identity
+        run: python3 deploy/admin-delete/schema-readiness.py
       - name: Deploy with exact-state guards and automatic rollback
         run: python3 deploy/admin-delete/release.py apply --api "$IMAGE_API" --web "$IMAGE_WEB"
       - uses: actions/upload-artifact@v4

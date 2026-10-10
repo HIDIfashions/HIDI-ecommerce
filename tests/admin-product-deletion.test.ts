@@ -8,7 +8,8 @@ import { AdminInventoryService } from "../apps/api/src/admin/admin-inventory.ser
 const timestamp = "2026-10-10T10:00:00.000Z";
 const confirmation = () => ({ confirmName: "Olive Kurta", expectedUpdatedAt: timestamp });
 
-function fixture(options: { status?: string; reserved?: number; reservations?: number; shared?: boolean; sharedAlias?: boolean; transactionFailure?: boolean } = {}) {
+function fixture(options: { status?: string; reserved?: number; reservations?: number; tickets?: number; shared?: boolean; sharedAlias?: boolean; otherDeleted?: boolean; transactionFailure?: boolean } = {}) {
+  let activeTickets = options.tickets ?? 0;
   let state: any = {
     product: { id: "product_1", name: "Olive Kurta", slug: "olive-kurta", status: options.status ?? "ACTIVE", updatedAt: new Date(timestamp), category: null, collections: [] },
     variants: [{ id: "variant_1", productId: "product_1", sku: "OLIVE-M", size: "M", color: "Olive", active: true, pricePaise: 249900, inventory: { onHand: 12, reserved: options.reserved ?? 0 } }],
@@ -24,7 +25,7 @@ function fixture(options: { status?: string; reserved?: number; reservations?: n
   const calls: any[] = [];
   const record = (name: string, args: unknown) => calls.push({ name, args: structuredClone(args) });
   const detail = () => ({ ...structuredClone(state.product), images: structuredClone(state.productImages), variants: structuredClone(state.variants).map((variant: any) => ({ ...variant, images: structuredClone(state.variantImages.filter((image: any) => image.variantId === variant.id)) })) });
-  const foreignMatches = (row: any, query: any) => query.where.id?.in ? query.where.id.in.includes(row.id) : query.where.OR
+  const foreignMatches = (row: any, query: any) => options.otherDeleted && (query.where.product?.is?.status?.not === "DELETED" || query.where.variant?.is?.product?.is?.status?.not === "DELETED") ? false : query.where.id?.in ? query.where.id.in.includes(row.id) : query.where.OR
     ? query.where.OR.some((condition: any) => condition.url?.in?.includes(row.url) || condition.storagePath?.in?.includes(row.storagePath) || (condition.url?.contains && row.url?.includes(condition.url.contains)) || (condition.storagePath?.contains && row.storagePath?.includes(condition.storagePath.contains)))
     : query.where.url?.in ? query.where.url.in.includes(row.url) : true;
   const db: any = {
@@ -37,6 +38,7 @@ function fixture(options: { status?: string; reserved?: number; reservations?: n
     productVariant: { updateMany: async (args: any) => { record("productVariant.updateMany", args); state.variants.forEach((row: any) => Object.assign(row, args.data)); return { count: state.variants.length }; } },
     cartItem: { deleteMany: async (args: any) => { record("cartItem.deleteMany", args); const previous = state.cartItems.length; state.cartItems = state.cartItems.filter((row: any) => row.productId !== args.where.productId); return { count: previous - state.cartItems.length }; } },
     inventoryReservation: { count: async (args: any) => { record("inventoryReservation.count", args); return options.reservations ?? 0; } },
+    adminMediaUploadTicket: { count: async (args: any) => { record("adminMediaUploadTicket.count", args); return activeTickets; } },
     productImage: {
       findMany: async (args: any) => state.foreignProductImages.filter((row: any) => foreignMatches(row, args)),
       count: async (args: any) => state.foreignProductImages.filter((row: any) => foreignMatches(row, args)).length,
@@ -57,7 +59,7 @@ function fixture(options: { status?: string; reserved?: number; reservations?: n
     try { const result = await callback(db); if (options.transactionFailure) throw new Error("Simulated commit failure"); return result; }
     catch (error) { state = previous; throw error; }
   };
-  return { service: new AdminProductsService(db), calls, state: () => structuredClone(state) };
+  return { service: new AdminProductsService(db), calls, expireTickets: () => { activeTickets = 0; }, state: () => structuredClone(state) };
 }
 
 test("deletion validates an explicit name and version and cleanup rejects unbounded or unknown input", () => {
@@ -99,6 +101,16 @@ test("storage failure leaves a durable queue and same deletion retries safely wi
   await assert.rejects(() => f.service.get("product_1"), { name: "NotFoundException" });
 });
 
+test("recent upload authorization prevents deletion between blob upload and metadata attach, then expiry allows deletion", async () => {
+  const f = fixture({ tickets: 1 }); const before = f.state();
+  await assert.rejects(() => f.service.beginDeletion("product_1", confirmation()), /photo upload recently started/);
+  assert.deepEqual(f.state(), before);
+  const query = f.calls.find(row => row.name === "adminMediaUploadTicket.count").args;
+  assert.ok(query.where.expiresAt.gt instanceof Date); assert.equal(query.where.usedAt, null);
+  f.expireTickets();
+  assert.equal((await f.service.beginDeletion("product_1", confirmation())).status, "DELETED");
+});
+
 test("shared product-level URLs and variant-level storage paths are preserved across products", async () => {
   const f = fixture({ shared: true }); const result = await f.service.beginDeletion("product_1", confirmation());
   assert.ok(result.media.every(row => row.shared));
@@ -111,6 +123,13 @@ test("shared media aliases protect the same object across /media, public HTTPS a
   assert.deepEqual(productMediaKeys("/media/products/olive.jpg"), ["products/olive.jpg"]);
   assert.deepEqual(productMediaKeys("https://store.blob.core.windows.net/product-media/products/olive.jpg", "azure://account/product-media/products/olive.jpg"), ["products/olive.jpg"]);
   assert.deepEqual(productMediaKeys("https://evil.test/not-products.jpg", "azure://product-media/brand/hero/media/a.mp4"), []);
+});
+
+test("another deleted product's queued photos do not orphan blobs by being treated as protected shared media", async () => {
+  const f = fixture({ shared: true, sharedAlias: true, otherDeleted: true });
+  const result = await f.service.beginDeletion("product_1", confirmation());
+  assert.ok(result.media.every(row => row.shared === false));
+  assert.equal(f.state().foreignProductImages.length, 1); assert.equal(f.state().foreignVariantImages.length, 1);
 });
 
 test("normal photo upload, attachment and removal cannot bypass a product tombstone", async () => {

@@ -200,9 +200,9 @@ export class AdminProductsService {
     // a raw URL can miss a shared object referenced through another CDN or percent encoding.
     if (media.length) {
       const [productImages, variantImages] = await Promise.all([
-        tx.productImage.findMany({ where: { productId: { not: product.id } }, select: { url: true } }),
+        tx.productImage.findMany({ where: { productId: { not: product.id }, product: { is: { status: { not: "DELETED" } } } }, select: { url: true } }),
         tx.productVariantImage.findMany({
-          where: { variant: { is: { productId: { not: product.id } } } },
+          where: { variant: { is: { productId: { not: product.id }, product: { is: { status: { not: "DELETED" } } } } } },
           select: { url: true, storagePath: true },
         }),
       ]);
@@ -232,6 +232,7 @@ export class AdminProductsService {
         if (inventory.some(row => row.reserved > 0)) throw new ConflictException("This product has reserved pieces. Complete or release those checkouts before deleting it.");
       }
       if (await tx.inventoryReservation.count({ where: { variant: { is: { productId: key } }, status: "ACTIVE" } })) throw new ConflictException("This product has an active checkout. Complete or release it before deleting the product.");
+      if (await tx.adminMediaUploadTicket.count({ where: { variant: { is: { productId: key } }, expiresAt: { gt: new Date() }, usedAt: null } })) throw new ConflictException("A photo upload recently started for this product. Wait for its five-minute authorization to expire, then retry deletion.");
       if (!repeated) {
         await tx.productVariant.updateMany({ where: { productId: key }, data: { active: false } });
         await tx.cartItem.deleteMany({ where: { productId: key } });

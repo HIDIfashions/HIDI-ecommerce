@@ -30,7 +30,7 @@ export function ownedProductKey(image, env = process.env) {
   if (path.startsWith('azure://')) {
     const prefixes = ['azure://product-media/', `azure://${account}/product-media/`];
     const prefix = prefixes.find(p => path.startsWith(p));
-    if (!prefix) throw fail('Stored photo belongs to a different storage location.');
+    if (!prefix) return null;
     fromPath = safeKey(path.slice(prefix.length));
   }
   let fromUrl;
@@ -57,7 +57,7 @@ export function createProductPhotoStorage({ env = process.env, requestFetch = fe
   async function request(method, container, key) {
     if (!/^[a-z0-9]{3,24}$/.test(account)) throw fail('Product storage is unavailable. Retry photo cleanup.');
     const url = new URL(`https://${account}.blob.core.windows.net/${container}/${key.split('/').map(encodeURIComponent).join('/')}`);
-    return requestFetch(url, { method, redirect: 'error', headers: { Authorization: `Bearer ${await getToken()}`, 'x-ms-version': '2023-11-03', 'x-ms-date': new Date().toUTCString() }, signal: AbortSignal.timeout(10000) });
+    return requestFetch(url, { method, redirect: 'error', headers: { Authorization: `Bearer ${await getToken()}`, 'x-ms-version': '2023-11-03', 'x-ms-date': new Date().toUTCString(), ...(method === 'DELETE' ? { 'x-ms-delete-snapshots': 'include' } : {}) }, signal: AbortSignal.timeout(10000) });
   }
   return {
     key: image => ownedProductKey(image, env),
