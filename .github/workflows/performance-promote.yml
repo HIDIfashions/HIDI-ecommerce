@@ -1,4 +1,5 @@
 name: HIDI verified performance image promotion
+# Promote the exact passed candidate after fresh stable public-content capture.
 on:
   push:
     branches: [migration/azure-sql-blob]
