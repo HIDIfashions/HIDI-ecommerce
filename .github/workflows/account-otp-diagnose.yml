@@ -1,6 +1,7 @@
 name: Read-only account OTP settings diagnosis
-# Stage 2 tests four explicit full-baseline representations; it never normalizes
-# the deployment guard or writes Azure settings/images.
+# Stage 3 adds nine explicit env/scale-null forms to the four prior hypotheses.
+# Only historical null / documented 300/30 defaults qualify; generated storage
+# remains intact. No deployment-guard normalization or Azure writes occur.
 on:
   push:
     branches: [migration/azure-sql-blob]

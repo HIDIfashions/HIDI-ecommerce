@@ -610,7 +610,90 @@ class ReadOnlySettingsDiagnosis(unittest.TestCase):
         self.assertFalse(report["reconstructedBaselineMatches"])
         self.assertEqual(report["matchedBaselineBases"], ["current-empty-secret-values-absent"])
         self.assertTrue(report["onlyMissingToEmptyValueOnRetainedSecretRefs"])
-        self.assertEqual(len(report["baselineCandidates"]), 4, "Only the four reviewed hypotheses may be tested")
+        self.assertEqual(len(report["baselineCandidates"]), 13, "Only four prior and nine reviewed scale forms may be represented")
+
+    def scale_fixture(self):
+        api, web, old, _ = self.fixture()
+        api["properties"]["template"]["containers"][0]["resources"] = {"cpu": 0.5, "memory": "1Gi", "ephemeralStorage": "4Gi"}
+        old["properties"]["template"]["containers"][0]["resources"] = {"cpu": 0.5, "memory": "1Gi"}
+        api["properties"]["template"]["scale"] = {"cooldownPeriod": 300, "pollingInterval": 30, "minReplicas": 1}
+        old["properties"]["template"]["scale"] = {"cooldownPeriod": None, "pollingInterval": None, "minReplicas": 1}
+        return api, web, old
+
+    def test_nine_bounded_scale_forms_preserve_generated_storage_and_match_exact_full_hash(self):
+        api, web, old = self.scale_fixture()
+        original = copy.deepcopy(api)
+        forms = diagnostic.baseline_reconstructions(api, old["properties"]["template"])
+        self.assertEqual(len(forms), 13)
+        self.assertEqual(len({basis for basis, _, _ in forms}), 13)
+        for basis, candidate, eligible in forms[4:]:
+            with self.subTest(basis=basis):
+                self.assertTrue(eligible)
+                self.assertEqual(candidate["properties"]["template"]["containers"][0]["resources"], api["properties"]["template"]["containers"][0]["resources"])
+                self.assertEqual(candidate["properties"]["template"]["scale"]["minReplicas"], 1)
+                baseline = guard.snapshot(candidate)["settingsHash"]
+                report = self.report(api, web, old, baseline)
+                match = next(item for item in report["baselineCandidates"] if item["basis"] == basis)
+                self.assertTrue(match["baselineMatched"])
+                self.assertTrue(report["baselineMatched"])
+                self.assertTrue(report["onlyAbsentOrNullSecretRefValuesAndDocumentedScaleDefaults"])
+                self.assertEqual(report["onlyMissingSecretRefValuesAndDocumentedScaleDefaults"], not basis.startswith("current-empty-secret-values-null"))
+                self.assertFalse(report["onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs"])
+                self.assertTrue(all(item["path"] in {"/template/containers/0/env/0/value", "/template/scale/cooldownPeriod", "/template/scale/pollingInterval"} for item in report["changedProtectedFields"]))
+                self.assertFalse(report["reconstructedBaselineMatches"], "Historical revision storage shape must not be discarded")
+        self.assertEqual(api, original, "Read-only hypotheses must not mutate supplied Azure model")
+
+    def test_scale_hypotheses_require_explicit_historical_null_and_exact_integer_default(self):
+        for mutation in ["absent", "historical-value", "wrong-default", "float-default", "non-value-env"]:
+            api, web, old = self.scale_fixture()
+            current_scale = api["properties"]["template"]["scale"]
+            historical_scale = old["properties"]["template"]["scale"]
+            if mutation == "absent": del historical_scale["cooldownPeriod"]
+            elif mutation == "historical-value": historical_scale["cooldownPeriod"] = 300
+            elif mutation == "wrong-default": current_scale["cooldownPeriod"] = 299
+            elif mutation == "float-default": current_scale["cooldownPeriod"] = 300.0
+            else: api["properties"]["template"]["containers"][0]["env"][0]["secretRef"] = "changed-private-reference"
+            report = self.report(api, web, old, "0" * 64)
+            for entry in report["baselineCandidates"][4:]:
+                restricted = "cooldownPeriod" in entry["basis"] if mutation != "non-value-env" else entry["basis"].startswith("old-revision-env-only")
+                if restricted:
+                    with self.subTest(mutation=mutation, basis=entry["basis"]):
+                        self.assertFalse(entry["eligible"])
+                        self.assertIsNone(entry["settingsHash"], "Unsupported phase 3 forms must not be tested")
+                        self.assertFalse(entry["baselineMatched"])
+            self.assertFalse(report["baselineMatched"])
+            self.assertNotIn("onlyAbsentOrNullSecretRefValuesAndDocumentedScaleDefaults", report)
+
+    def test_compound_classification_rejects_other_changes_and_exposes_only_three_safe_scalars(self):
+        api, web, old = self.scale_fixture()
+        baseline_model = next(candidate for basis, candidate, _ in diagnostic.baseline_reconstructions(api, old["properties"]["template"]) if basis == "current-empty-secret-values-absent-scale-null-cooldownPeriod-pollingInterval")
+        baseline = guard.snapshot(baseline_model)["settingsHash"]
+        report = self.report(api, web, old, baseline)
+        scalars = report["observedNonsecretScalars"]
+        self.assertEqual(set(scalars), {"/template/containers/0/resources/ephemeralStorage", "/template/scale/cooldownPeriod", "/template/scale/pollingInterval"})
+        self.assertEqual(scalars["/template/containers/0/resources/ephemeralStorage"], {"before": {"present": False}, "after": {"present": True, "type": "string", "value": "4Gi"}})
+        for field, default in diagnostic.SCALE_DEFAULTS.items():
+            self.assertEqual(scalars["/template/scale/" + field], {"before": {"present": True, "type": "null", "value": None}, "after": {"present": True, "type": "number", "value": default}})
+        for mutation in ["probe", "cpu", "inline-value", "secretRef", "wrong-scale"]:
+            changed = copy.deepcopy(api["properties"]["template"])
+            container = changed["containers"][0]
+            if mutation == "probe": container["probes"] = [{"type": "Readiness", "periodSeconds": 20}]
+            elif mutation == "cpu": container["resources"]["cpu"] = 2
+            elif mutation == "inline-value": container["env"][1]["value"] = "different-sensitive-inline-value"
+            elif mutation == "secretRef": container["env"][0]["secretRef"] = "different-sensitive-reference"
+            else: changed["scale"]["pollingInterval"] = 31
+            classification = diagnostic.template_change_report(baseline_model["properties"]["template"], changed, b"private-key")
+            with self.subTest(mutation=mutation):
+                self.assertFalse(classification["onlyMissingSecretRefValuesAndDocumentedScaleDefaults"])
+                self.assertFalse(classification["onlyAbsentOrNullSecretRefValuesAndDocumentedScaleDefaults"])
+                self.assertNotIn("different-sensitive", json.dumps(classification))
+        malformed = copy.deepcopy(old["properties"]["template"])
+        malformed["containers"][0]["resources"]["ephemeralStorage"] = "malformed-private-scalar"
+        safe = diagnostic.observed_nonsecret_scalars(malformed, api["properties"]["template"], b"private-key")
+        self.assertNotIn("malformed-private-scalar", json.dumps(safe))
+        self.assertIn("hmac", safe["/template/containers/0/resources/ephemeralStorage"]["before"])
+        for private in ["sensitive-reference-never-print", "sensitive-inline-value-never-print", "AUTH_KEY", "INLINE_SECRET"]:
+            self.assertNotIn(private, json.dumps(report))
 
     def test_null_representation_matches_full_baseline_without_trusting_old_env_values(self):
         api, web, old, _ = self.fixture()

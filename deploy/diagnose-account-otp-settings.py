@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 from pathlib import Path
+import re
 import secrets
 import subprocess
 import sys
@@ -28,6 +29,10 @@ PUBLIC_GETS = (
     "https://thidigk.thehidi.com/api/store/health/ready",
     "https://thidigk.thehidi.com/api/store/auth/config",
 )
+# API 2025-07-01 CommonDefinitions.json Scale documents these unset defaults.
+# Its ContainerResources.ephemeralStorage is readOnly; retain the current value.
+SCALE_DEFAULTS = {"cooldownPeriod": 300, "pollingInterval": 30}
+DEFAULTS_SOURCE = "https://github.com/Azure/azure-rest-api-specs/blob/main/specification/app/resource-manager/Microsoft.App/ContainerApps/stable/2025-07-01/CommonDefinitions.json"
 
 
 def azure_read(arguments):
@@ -93,15 +98,24 @@ def template_change_report(before_template, after_template, key):
             absent_or_null_paths.add(path)
             if "value" not in old:
                 blank_secret_paths.add(path)
+    before_scale, after_scale = before.get("scale", {}), after.get("scale", {})
+    default_scale_paths = {
+        "/template/scale/" + field for field, default in SCALE_DEFAULTS.items()
+        if field in before_scale and before_scale[field] is None
+        and type(after_scale.get(field)) is int and after_scale[field] == default
+    }
+    paths = {item["path"] for item in changes}
     return {
         "changedProtectedFields": changes,
-        "onlyMissingToEmptyValueOnRetainedSecretRefs": bool(changes) and {item["path"] for item in changes} == blank_secret_paths,
-        "onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs": bool(changes) and {item["path"] for item in changes} == absent_or_null_paths,
+        "onlyMissingToEmptyValueOnRetainedSecretRefs": bool(changes) and paths == blank_secret_paths,
+        "onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs": bool(changes) and paths == absent_or_null_paths,
+        "onlyMissingSecretRefValuesAndDocumentedScaleDefaults": bool(blank_secret_paths) and bool(default_scale_paths) and paths == blank_secret_paths | default_scale_paths,
+        "onlyAbsentOrNullSecretRefValuesAndDocumentedScaleDefaults": bool(absent_or_null_paths) and bool(default_scale_paths) and paths == absent_or_null_paths | default_scale_paths,
     }
 
 
 def baseline_reconstructions(api, old_template):
-    """Exactly four read-only hypotheses; none changes the deployed snapshot algorithm."""
+    """Four prior hypotheses plus nine bounded env/scale forms; never normalize snapshot."""
     candidates = []
     full = copy.deepcopy(api)
     full["properties"]["template"] = copy.deepcopy(old_template)
@@ -123,7 +137,46 @@ def baseline_reconstructions(api, old_template):
                 else:
                     entry["value"] = None
         candidates.append((basis, candidate, True))
+    current_scale = api["properties"]["template"].get("scale", {})
+    old_scale = old_template.get("scale", {})
+    scale_forms = (("cooldownPeriod",), ("pollingInterval",), ("cooldownPeriod", "pollingInterval"))
+    for env_basis, env_candidate, env_eligible in candidates[1:].copy():
+        for fields in scale_forms:
+            candidate = copy.deepcopy(env_candidate)
+            eligible = env_eligible and all(
+                field in old_scale and old_scale[field] is None
+                and type(current_scale.get(field)) is int and current_scale[field] == SCALE_DEFAULTS[field]
+                for field in fields
+            )
+            if eligible:
+                for field in fields:
+                    candidate["properties"]["template"]["scale"][field] = None
+            candidates.append((env_basis + "-scale-null-" + "-".join(fields), candidate, eligible))
     return candidates
+
+
+def observed_nonsecret_scalars(before_template, after_template, key):
+    """Expose only the three reviewed resource/default scalars; malformed data stays keyed."""
+    observations = {}
+    for field, path in [
+        ("ephemeralStorage", "/template/containers/0/resources/ephemeralStorage"),
+        ("cooldownPeriod", "/template/scale/cooldownPeriod"),
+        ("pollingInterval", "/template/scale/pollingInterval"),
+    ]:
+        pair = {}
+        for label, template in [("before", before_template), ("after", after_template)]:
+            parent = template["containers"][0].get("resources", {}) if field == "ephemeralStorage" else template.get("scale", {})
+            if field not in parent:
+                pair[label] = {"present": False}
+                continue
+            value = parent[field]
+            safe = value is None or (field != "ephemeralStorage" and type(value) is int) or (field == "ephemeralStorage" and isinstance(value, str) and re.fullmatch(r"\d+(?:\.\d+)?(?:Ki|Mi|Gi|Ti|Pi|Ei)", value))
+            description = changed_field_digests({}, {field: value}, key, path)[0]["after"]
+            if safe:
+                description = {"present": True, "type": description["type"], "value": value}
+            pair[label] = description
+        observations[path] = pair
+    return observations
 
 
 def build_report(api, web, old_revision, key):
@@ -137,7 +190,8 @@ def build_report(api, web, old_revision, key):
     assert old_template["containers"][0]["image"] == OLD_API, "Old revision image differs from the retained baseline"
     candidates, matches = [], []
     for basis, candidate, eligible in baseline_reconstructions(api, old_template):
-        candidate_hash = snapshot(candidate)["settingsHash"]
+        # Phase 3 does not test unsupported historical/default representations.
+        candidate_hash = snapshot(candidate)["settingsHash"] if eligible or "-scale-null-" not in basis else None
         matched = eligible and candidate_hash == BASELINE_HASH
         entry = {"basis": basis, "eligible": eligible, "settingsHash": candidate_hash, "baselineMatched": matched}
         if matched:
@@ -145,12 +199,14 @@ def build_report(api, web, old_revision, key):
             matches.append(entry)
         candidates.append(entry)
     original = candidates[0]
-    report = {"schemaVersion": 2, "operation": "read-only", "states": states, "baselineSettingsHash": BASELINE_HASH, "reconstructedSettingsHash": original["settingsHash"], "reconstructedBaselineMatches": original["baselineMatched"], "baselineMatched": bool(matches), "baselineCandidates": candidates, "matchedBaselineBases": [entry["basis"] for entry in matches]}
+    report = {"schemaVersion": 3, "operation": "read-only", "states": states, "baselineSettingsHash": BASELINE_HASH, "reconstructedSettingsHash": original["settingsHash"], "reconstructedBaselineMatches": original["baselineMatched"], "baselineMatched": bool(matches), "baselineCandidates": candidates, "matchedBaselineBases": [entry["basis"] for entry in matches]}
+    report["documentedDefaultsSource"] = DEFAULTS_SOURCE
+    report["observedNonsecretScalars"] = observed_nonsecret_scalars(old_template, api["properties"]["template"], key)
     # Revision GET and app GET models can expose different default/null fields.
     # This comparison is informative only until an exact full baseline matches.
     report["oldRevisionTemplateShapeComparison"] = {"purpose": "diagnostic-only", "baselineMatched": original["baselineMatched"], **template_change_report(old_template, api["properties"]["template"], key)}
     if matches:
-        for field in ["changedProtectedFields", "onlyMissingToEmptyValueOnRetainedSecretRefs", "onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs"]:
+        for field in ["changedProtectedFields", "onlyMissingToEmptyValueOnRetainedSecretRefs", "onlyAbsentOrNullToEmptyValueOnRetainedSecretRefs", "onlyMissingSecretRefValuesAndDocumentedScaleDefaults", "onlyAbsentOrNullSecretRefValuesAndDocumentedScaleDefaults"]:
             report[field] = matches[0][field]
     return report
 
