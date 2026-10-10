@@ -1,5 +1,5 @@
 name: Mobile homepage guarded release
-# Verify the actual live-image overlay and preserve all existing integrations.
+# Verify the tested overlay using the guarded Azure null-secret deployment fix.
 on:
   push:
     branches: [migration/azure-sql-blob]
