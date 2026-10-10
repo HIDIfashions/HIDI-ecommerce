@@ -1,0 +1,237 @@
+name: Prepare HIDI India domain for merchant review
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/domain-review-20261011.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Preserve running images and prepare only the public domain controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import copy, hashlib, importlib.util, json, os, re, subprocess, sys, time
+          import urllib.error, urllib.parse, urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('retained_rollout', 'deploy/privacy-policy/rollout.py')
+          retained = importlib.util.module_from_spec(spec); spec.loader.exec_module(retained)
+          HOSTS = ['hidiindia.com', 'www.hidiindia.com', 'thidigk.thehidi.com', 'azure-preview.thehidi.com']
+          TARGET = {'ALLOW_PUBLIC_DOMAIN': 'true', 'HIDI_PRIMARY_DOMAIN': 'hidiindia.com'}
+          run = os.environ.get('GITHUB_RUN_ID', 'selftest')
+          work = Path(os.environ.get('RUNNER_TEMP', '/tmp')) / ('hidi-domain-private-' + run)
+          evidence = Path('evidence/domain-review')
+
+          def env(data):
+              items = data['properties']['template']['containers'][0].get('env', [])
+              assert len({i['name'] for i in items}) == len(items), 'Duplicate environment variable names'
+              return {i['name']: i for i in items}
+
+          def desired(data, target):
+              result = copy.deepcopy(data)
+              items = env(result)
+              for name, value in target.items():
+                  if value is None: items.pop(name, None)
+                  else: items[name] = copy.deepcopy(value)
+              result['properties']['template']['containers'][0]['env'] = list(items.values())
+              return result
+
+          def protected(data):
+              clean = desired(data, {name: None for name in TARGET})
+              return retained.snapshot(clean)
+
+          def same_protected(before, after):
+              a, b = protected(before), protected(after)
+              return all(a[k] == b[k] for k in ['image', 'settingsHash', 'mode'])
+
+          def equal_env(a, b):
+              def normalized(data):
+                  items = copy.deepcopy(env(data))
+                  for item in items.values():
+                      if item.get('secretRef') and item.get('value') in (None, ''): item.pop('value', None)
+                  return items
+              return normalized(a) == normalized(b)
+
+          def verify_owned(data, candidate, suffix):
+              return same_protected(data, candidate) and equal_env(data, candidate) and data['properties']['latestRevisionName'] == 'hidi-web--' + suffix
+
+          def selftest():
+              fake = {'location': 'centralindia', 'properties': {
+                  'template': {'containers': [{'image': 'immutable', 'env': [{'name': 'KEEP', 'secretRef': 'retained'}]}]},
+                  'configuration': {'activeRevisionsMode': 'Single', 'ingress': {'external': True, 'customDomains': [{'name': 'existing'}]}},
+                  'latestRevisionName': 'old', 'latestReadyRevisionName': 'old'}}
+              candidate = desired(fake, {k: {'name': k, 'value': v} for k, v in TARGET.items()})
+              assert same_protected(fake, candidate)
+              for change in ['image', 'secret', 'domain', 'other-value', 'ingress']:
+                  bad = copy.deepcopy(candidate)
+                  if change == 'image': bad['properties']['template']['containers'][0]['image'] = 'different'
+                  if change == 'secret': bad['properties']['template']['containers'][0]['env'][0]['secretRef'] = 'different'
+                  if change == 'domain': bad['properties']['configuration']['ingress']['customDomains'] = []
+                  if change == 'other-value': bad['properties']['template']['containers'][0]['env'].append({'name': 'UNWANTED', 'value': 'x'})
+                  if change == 'ingress': bad['properties']['configuration']['ingress']['external'] = False
+                  assert not same_protected(fake, bad), 'Preservation guard failed: ' + change
+              assert same_protected(fake, desired(candidate, {k: env(fake).get(k) for k in TARGET}))
+              assert env(desired(candidate, {k: env(fake).get(k) for k in TARGET})) == env(fake)
+              assert not verify_owned(candidate, candidate, 'unowned')
+              print('Image, secrets, certificates, ingress, unrelated settings and rollback ownership guards passed')
+
+          def safe_record(data):
+              state = retained.snapshot(data)
+              state['publicDomainControls'] = {k: env(data).get(k, {}).get('value', '<absent>') for k in TARGET}
+              state['deploymentStage'] = env(data).get('DEPLOYMENT_STAGE', {}).get('value')
+              state['siteUrl'] = env(data).get('SITE_URL', {}).get('value')
+              state['hostnames'] = sorted(x['name'] for x in data['properties']['configuration']['ingress'].get('customDomains', []))
+              return state
+
+          def persist(name, data):
+              path = work / name; path.write_text(json.dumps(data)); path.chmod(0o600)
+
+          def write(data, suffix):
+              body = {'location': data['location'], 'properties': {'template': {
+                  'containers': copy.deepcopy(data['properties']['template']['containers']), 'revisionSuffix': suffix}}}
+              path = work / 'patch.json'; persist('patch.json', body)
+              redact = [x.get('value') for x in env(data).values()]
+              redact += [x.get('value') for x in data['properties']['configuration'].get('secrets', [])]
+              try:
+                  retained.azure('rest', '--method', 'patch', '--url', 'https://management.azure.com' + data['id'] + '?api-version=' + retained.API_VERSION, '--body', '@' + str(path), redact=redact)
+              finally: path.unlink(missing_ok=True)
+
+          def request(host, path, expected=200, method='GET', headers=None, body=None):
+              url = 'https://' + host + path
+              req = urllib.request.Request(url, data=body, method=method, headers=headers or {})
+              for attempt in range(3):
+                  try:
+                      try: response = urllib.request.urlopen(req, timeout=30)
+                      except urllib.error.HTTPError as error: response = error
+                      with response:
+                          status, final, hdr, data = response.status, response.url, dict(response.headers), response.read(4*1024*1024)
+                      assert status in (expected if isinstance(expected, tuple) else (expected,)), 'Unexpected status for ' + host + path + ': ' + str(status)
+                      assert urllib.parse.urlparse(final).hostname in ({'hidiindia.com', 'www.hidiindia.com'} if host in HOSTS[:2] else {host}), 'Unexpected host redirect'
+                      row = {'host': host, 'path': path, 'method': method, 'status': status, 'finalUrl': final,
+                             'contentType': hdr.get('Content-Type', ''), 'robots': hdr.get('X-Robots-Tag', ''),
+                             'bodySha256': hashlib.sha256(data).hexdigest()}
+                      checks.append(row)
+                      return data, hdr
+                  except (AssertionError, urllib.error.URLError, TimeoutError):
+                      if attempt == 2: raise
+                      time.sleep(5)
+
+          def probe(host):
+              for path in ['/', '/collections/all', '/account', '/cart', '/checkout']:
+                  body, hdr = request(host, path)
+                  assert 'noindex' in hdr.get('X-Robots-Tag', '').lower(), 'Indexing protection missing: ' + host + path
+                  assert b'HIDI is temporarily private' not in body, 'Storefront remains gated: ' + host
+              body, hdr = request(host, '/robots.txt')
+              assert re.search(rb'Disallow:\s*/\s*(?:\r?\n|$)', body), 'Robots protection missing'
+              health, _ = request(host, '/api/store/health')
+              assert json.loads(health).get('status') == 'ok', 'API health is not OK'
+              config, _ = request(host, '/api/store/auth/config')
+              parsed = json.loads(config)
+              assert parsed.get('provider') == 'msg91' and parsed.get('fallbackProvider') == 'firebase', 'Active OTP providers changed'
+              request(host, '/api/admin/session', 401)
+              request(host, '/api/hidi/privacy-policy/admin', 401)
+              policy, _ = request(host, '/api/hidi/privacy-policy')
+              assert isinstance(json.loads(policy), dict)
+              media, _ = request(host, '/api/hidi/landing-media-config')
+              assert isinstance(json.loads(media), dict)
+              request(host, '/v1/payments/razorpay/webhook', 400, method='POST', headers={'Content-Type': 'application/json', 'X-Razorpay-Signature': '0'*64}, body=b'{}')
+              return {'authConfig': hashlib.sha256(config).hexdigest(), 'policy': hashlib.sha256(policy).hexdigest(), 'landingMedia': hashlib.sha256(media).hexdigest()}
+
+          def main():
+              global checks
+              selftest()
+              if os.environ.get('DOMAIN_GUARD_SELFTEST') == 'true': return
+              work.mkdir(mode=0o700, exist_ok=True); work.chmod(0o700)
+              evidence.mkdir(parents=True, exist_ok=True); checks = []
+              old = {name: retained.app(name) for name in ['hidi-web', 'hidi-api']}
+              baseline = {name: retained.snapshot(data) for name, data in old.items()}
+              for name, data in old.items():
+                  retained.ready(baseline[name]); persist(name + '-before.json', data)
+                  assert re.fullmatch(r'acrhidiprod0927\.azurecr\.io/hidi-(web|api)@sha256:[0-9a-f]{64}', baseline[name]['image']), 'Live image is not immutable'
+              web = old['hidi-web']; values = env(web)
+              assert values.get('DEPLOYMENT_STAGE', {}).get('value') == 'validation', 'Validation stage must already be active'
+              assert values.get('SITE_URL', {}).get('value') == 'https://thidigk.thehidi.com', 'Build-site URL changed independently'
+              assert not any(values.get(k, {}).get('secretRef') for k in TARGET), 'Domain controls unexpectedly reference secrets'
+              assert set(safe_record(web)['hostnames']) == set(HOSTS), 'Unexpected hostname bindings'
+              assert old['hidi-api']['properties']['configuration']['ingress']['external'] is False, 'API must remain internal'
+              (evidence / 'before.json').write_text(json.dumps({name: safe_record(data) for name, data in old.items()}, indent=2))
+              previous = {host: probe(host) for host in HOSTS[2:]}
+              image = baseline['hidi-web']['image']
+              subprocess.run(['az', 'acr', 'login', '--name', 'acrhidiprod0927', '--only-show-errors'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+              subprocess.run(['docker', 'pull', image], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+              container = subprocess.check_output(['docker', 'create', image], text=True).strip()
+              try:
+                  runtime = work / 'runtime'
+                  subprocess.run(['docker', 'cp', container + ':/app/.', str(runtime)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+              finally: subprocess.run(['docker', 'rm', container], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+              middleware = [p for p in runtime.rglob('middleware.js') if '.next/server' in str(p)]
+              assert middleware, 'Compiled middleware missing'
+              assert any(all('process.env.' + key in p.read_text() for key in ['ALLOW_PUBLIC_DOMAIN', 'HIDI_PRIMARY_DOMAIN', 'DEPLOYMENT_STAGE']) for p in middleware), 'Exact live image does not support runtime domain controls'
+              assert any('hidiindia.com' in p.read_text() for p in middleware), 'New host absent from actual compiled middleware'
+              (evidence / 'compiled-controls.json').write_text(json.dumps({'image': image, 'runtimeFlagsVerified': True, 'compiledMiddleware': [{'path': str(p.relative_to(runtime)), 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()} for p in middleware]}, indent=2))
+              for name in old: assert retained.snapshot(retained.app(name)) == baseline[name], 'Live configuration changed during preparation'
+              candidate = desired(web, {k: {'name': k, 'value': v} for k, v in TARGET.items()})
+              assert same_protected(web, candidate)
+              suffix = 'domainreview' + run
+              changed = False
+              try:
+                  changed = True; write(candidate, suffix)
+                  current = retained.wait_ready(image, suffix)
+                  assert verify_owned(current, candidate, suffix), 'Unexpected post-change web settings'
+                  for host in HOSTS:
+                      result = probe(host)
+                      assert result == previous[HOSTS[2]], 'Public provider, policy or media configuration differs by hostname'
+                  assert retained.snapshot(retained.app('hidi-api')) == baseline['hidi-api'], 'API changed independently'
+                  current = retained.app('hidi-web')
+                  assert verify_owned(current, candidate, suffix)
+                  retained.ready(retained.snapshot(current))
+                  (evidence / 'after.json').write_text(json.dumps({'verifiedAt': datetime.now(timezone.utc).isoformat(), 'states': {'hidi-web': safe_record(current), 'hidi-api': safe_record(old['hidi-api'])}, 'onlyWebEnvChanged': TARGET, 'applicationImagePreserved': True, 'indexingDisabled': True, 'currentHostsRetained': True, 'merchantWebsiteRequestSubmitted': False, 'webhookProviderSubscriptionUnchanged': True}, indent=2))
+                  print('New storefront hosts serve the retained application; old domains, API and images preserved; indexing remains disabled')
+              except Exception:
+                  if changed:
+                      current = retained.app('hidi-web')
+                      if verify_owned(current, candidate, suffix):
+                          restored = desired(current, {k: values.get(k) for k in TARGET})
+                          rollback_suffix = 'domainrollback' + run
+                          write(restored, rollback_suffix)
+                          restored = retained.wait_ready(image, rollback_suffix)
+                          assert same_protected(web, restored) and equal_env(web, restored), 'Rollback verification failed'
+                          for host in HOSTS[2:]: request(host, '/api/store/health')
+                          (evidence / 'rollback.json').write_text(json.dumps({'restored': safe_record(restored), 'settingsRestored': True}, indent=2))
+                          print('Validation failed; original domain controls restored with the original immutable image', file=sys.stderr)
+                      elif retained.snapshot(current) == baseline['hidi-web']:
+                          print('Original web revision remains unchanged', file=sys.stderr)
+                      else:
+                          print('Concurrent deployment detected; refusing to overwrite its configuration', file=sys.stderr)
+                  raise
+              finally:
+                  (evidence / 'http-checks.json').write_text(json.dumps(checks, indent=2))
+
+          try: main()
+          except Exception as error:
+              print(str(error) if isinstance(error, (AssertionError, retained.AzureOperationError)) else 'Domain preparation stopped; inspect sanitized evidence', file=sys.stderr)
+              sys.exit(1)
+          PY
+      - name: Retain sanitized domain verification
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hidi-domain-review-${{ github.run_id }}
+          path: evidence/domain-review
+          retention-days: 30
+          if-no-files-found: ignore
