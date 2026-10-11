@@ -14,7 +14,9 @@ export async function probe(base,output){
   // its retained amount after the customer intentionally collapses the panel.
   source=source.replace(anchor,anchor+`
         if(viewport.width<=720&&await page.locator('.checkout-mobile-summary').count())assert(await page.locator('.checkout-mobile-summary').evaluate(element=>element.open),'Charged shipping opens the mobile summary by default');
-        assert.match(await page.locator('.checkout-summary').innerText(),/Shipping\\s*₹99/,'Shipping fee is visible before the customer collapses the summary');
+        const visibleShipping=page.locator(viewport.width<=720?'.checkout-mobile-shipping-row':'.checkout-summary');
+        await visibleShipping.waitFor({state:'visible'});
+        assert.match(await visibleShipping.innerText(),/Shipping\\s*₹99/,'Shipping fee is visible before the customer collapses the summary');
   `);
   source=source.replace("from './request-policy.mjs'","from '../button-states/request-policy.mjs'");
   const generated=new URL('./retained-generated.mjs',import.meta.url);
