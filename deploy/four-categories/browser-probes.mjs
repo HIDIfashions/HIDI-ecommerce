@@ -39,8 +39,8 @@ export async function probe(base,output,{candidate=false}={}){
    try{
     assert.equal((await go('/')).status(),200);
     await page.locator('#our-range .hidi-collection-card').first().waitFor();
-    assert.deepEqual(await page.locator('#our-range .hidi-collection-caption h3').allTextContents(),categories.map(([,title])=>title));
-    assert.equal(await page.locator('#our-range .hidi-collection-dot').count(),4);
+    assert.deepEqual(await page.locator('#our-range .hidi-collection-caption h3').allTextContents(),(process.env.HIDI_RANGE_FIVE==='1'?[...categories.slice(0,3).map(([,title])=>title),'Ananya’s Pick','Ananya’s Pick']:categories.map(([,title])=>title)));
+    assert.equal(await page.locator('#our-range .hidi-collection-dot').count(),process.env.HIDI_RANGE_FIVE==='1'?5:4);
     const footer=page.locator('.footer-column').filter({has:page.getByRole('heading',{name:'Collections',exact:true})});
     assert.deepEqual(await footer.locator('button').allTextContents(),categories.map(([,title])=>title));
     await page.getByRole('button',{name:'Open HIDI menu',exact:true}).click();
