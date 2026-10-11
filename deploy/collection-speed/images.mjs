@@ -45,6 +45,25 @@ async function boundedBody(response){
   return Buffer.concat(parts,count);
 }
 
+/** Retry only browser-readable JPEG end-of-stream errors; retain size/pixel limits. */
+export async function resizedImage(sharp,input,width,format,quality) {
+  async function render(failOn='warning') {
+    const pipeline=sharp(input,{limitInputPixels:100000000,sequentialRead:true,failOn}).rotate().resize({width,withoutEnlargement:true}).timeout({seconds:30});
+    return (format==='webp'?pipeline.webp({quality,effort:2}):pipeline.jpeg({quality})).toBuffer();
+  }
+  try{return await render();}
+  catch(error) {
+    const jpeg=input.length>2&&input[0]===0xff&&input[1]===0xd8;
+    if(!jpeg||!/VipsJpeg: (?:premature end of JPEG image|Corrupt JPEG data: premature end of data segment)/i.test(error.message))throw error;
+    // libjpeg's tolerant mode matches browsers for this specific recoverable JPEG.
+    // Pixel limits, timeout, resize and output verification still apply.
+    const output=await render('none');
+    const metadata=await sharp(output).metadata();
+    if(!metadata.width||!metadata.height||metadata.width>width)throw new Error('JPEG display recovery failed');
+    return output;
+  }
+}
+
 /** Each full photo is decoded once; smaller derivatives reuse the bounded master. */
 export function createImageStore({sharp,fetchSource,cacheDir=join(tmpdir(),'hidi-product-images-v2'),seedDir=join(ROOT,'seed')}) {
   const jobs=new Map();let tail=Promise.resolve();let pending=0;
@@ -75,7 +94,7 @@ export function createImageStore({sharp,fetchSource,cacheDir=join(tmpdir(),'hidi
     return single('master:'+source,async()=>{
       const prior=await existing(join(cacheDir,key));if(prior)return prior;
       const original=await fetchSource(source);
-      const bytes=await sharp(original,{limitInputPixels:100000000,sequentialRead:true}).rotate().resize({width:MASTER_WIDTH,withoutEnlargement:true}).jpeg({quality:88}).timeout({seconds:30}).toBuffer();
+      const bytes=await resizedImage(sharp,original,MASTER_WIDTH,'jpeg',88);
       await save(key,bytes);return bytes;
     });
   }
@@ -86,8 +105,7 @@ export function createImageStore({sharp,fetchSource,cacheDir=join(tmpdir(),'hidi
     const input=spec.width<=MASTER_WIDTH?await master(spec.source):await fetchSource(spec.source);
     const bytes=await single(key,async()=>{
       const prior=await existing(join(cacheDir,key));if(prior)return prior;
-      const pipeline=sharp(input,{limitInputPixels:100000000,sequentialRead:true}).rotate().resize({width:spec.width,withoutEnlargement:true}).timeout({seconds:30});
-      const output=await (spec.format==='webp'?pipeline.webp({quality:spec.quality,effort:2}):pipeline.jpeg({quality:spec.quality})).toBuffer();
+      const output=await resizedImage(sharp,input,spec.width,spec.format,spec.quality);
       // A processing failure is an error, never a multi-megabyte original thumbnail.
       const metadata=await sharp(output).metadata();
       if(!metadata.width||metadata.width>spec.width)throw new Error('Image resizing failed');
