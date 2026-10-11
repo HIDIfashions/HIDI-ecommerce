@@ -51,3 +51,11 @@ html { scroll-padding-top: calc(var(--hidi-header-height, 105px) + 24px); }
 
 .pdp-mrp { margin-left: 12px; color: var(--muted); font-size: var(--type-ui); font-weight: 400; }
 .pdp-selected-detail { margin: 8px 0 16px; color: var(--muted); font-size: var(--type-ui); overflow-wrap: anywhere; }
+
+/* hidi-product-footer-clearance */
+/* Keep product footer links above the two-row fixed mobile purchase bar. */
+@media (max-width: 620px) {
+  body:has([class*="add-to-cart_mobileBar__"]) footer.footer {
+    padding-bottom: calc(126px + env(safe-area-inset-bottom, 0px));
+  }
+}
