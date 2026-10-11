@@ -11,6 +11,7 @@ import { CatalogImage } from "@/components/catalog-image";
 import { checkoutFingerprint, formatWalletPaise, parsePreparedCheckout, walletAccountId, walletAmountPaise, walletEnabled, WALLET_UPDATED_EVENT, type PreparedCheckout } from "@/lib/wallet-client";
 import walletStyles from "./wallet.module.css";
 import { sanitizeCheckoutPhone } from "@/lib/checkout-phone";
+import { observeCheckoutPin } from "@/lib/checkout-pin";
 
 import { BROWSER_API_URL } from "@/lib/browser-api";
 const API = BROWSER_API_URL;
@@ -82,11 +83,18 @@ export function CheckoutClient() {
   }
 
   useEffect(() => {
+    const stopPin = observeCheckoutPin(checkDeliveryPin, () => {
+      deliveryController.current?.abort();
+      setPaymentMethod("RAZORPAY");
+      setDeliveryCheck({ status: "idle" });
+      invalidate(false);
+      setError("");
+    });
     const controller = new AbortController();
     fetch(`${API}/checkout/payment-options`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => { const value = await response.json(); if (!controller.signal.aborted) setCodEnabled(response.ok && value.cod === true); })
       .catch(() => undefined);
-    return () => controller.abort();
+    return () => { controller.abort(); stopPin(); };
   }, []);
 
   useEffect(() => {
@@ -160,7 +168,7 @@ export function CheckoutClient() {
     const pin = pinValue.replace(/\D/g, "").slice(0, 6);
     deliveryController.current?.abort();
 
-    if (!/^\d{6}$/.test(pin)) {
+    if (!/^[1-9][0-9]{5}$/.test(pin)) {
       setDeliveryCheck({ status: "idle" });
       return;
     }
@@ -175,7 +183,7 @@ export function CheckoutClient() {
         signal: controller.signal,
       });
       const payload = await response.json().catch(() => ({}));
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || (form && (form.elements.namedItem("postalCode") as HTMLInputElement | null)?.value !== pin)) return;
 
       if (!response.ok || typeof payload?.serviceable !== "boolean") {
         setDeliveryCheck({ status: "unavailable", pin });
@@ -209,7 +217,7 @@ export function CheckoutClient() {
         ? { status: "serviceable", ...next }
         : { status: "alternate", ...next });
     } catch {
-      if (!controller.signal.aborted) setDeliveryCheck({ status: "unavailable", pin });
+      if (!controller.signal.aborted && (!form || (form.elements.namedItem("postalCode") as HTMLInputElement | null)?.value === pin)) setDeliveryCheck({ status: "unavailable", pin });
     }
   }
 
@@ -512,7 +520,6 @@ export function CheckoutClient() {
                       setDeliveryCheck({ status: "idle" });
                     }
                   }}
-                  onBlur={(event) => void checkDeliveryPin(event.currentTarget.value, event.currentTarget.form)}
                   required
                 />
               </label>
