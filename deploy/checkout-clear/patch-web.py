@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import posixpath
 import re
 import subprocess
 import tempfile
@@ -13,12 +14,20 @@ def patch_runtime(base, overlay):
     original = {p.relative_to(base).as_posix(): p.read_text() for p in (base/'apps/web/.next').rglob('*')
                 if p.is_file() and not p.is_symlink() and p.suffix in {'.js','.json','.html','.rsc','.meta'}}
     semantic = dict(original)
+    page_path = 'apps/web/.next/server/app/checkout/page.js'
+    manifest = original[page_path.removesuffix('.js') + '_client-reference-manifest.js']
+    active_browser = {'apps/web/.next/' + value for value in re.findall(r'static/chunks/app/checkout/page-[a-f0-9]{16}\.js', manifest)}
+    assert len(active_browser)==1, 'Exactly one current checkout browser chunk required'
+    trace = json.loads(original[page_path + '.nft.json'])
+    active_server = {page_path} | {posixpath.normpath(posixpath.join(posixpath.dirname(page_path), value)) for value in trace['files']}
     patched = []
     client_modules = []
     page_modules = []
     with tempfile.TemporaryDirectory() as folder:
         source, target = Path(folder)/'input.js', Path(folder)/'output.js'
         for name, text in original.items():
+            if name not in active_browser and name not in active_server:
+                continue
             if name.endswith('.js') and (('Enjoy your HIDI Rewards' in text and 'checkout-form' in text) or ('container checkout-page' in text and '/server/' in name)):
                 assert name.endswith('/checkout/page.js') or re.fullmatch(r'apps/web/\.next/server/chunks/[^/]+\.js',name) or re.fullmatch(r'apps/web/\.next/static/chunks/app/checkout/page-[a-f0-9]{16}\.js',name), 'Unexpected checkout module location: '+name
                 source.write_text(text)
