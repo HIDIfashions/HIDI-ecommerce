@@ -5,6 +5,7 @@ import { useMediaQuery, useReducedMotion } from '../hooks/useMediaQuery.js';
 import { useDocumentVisible, useInView } from '../hooks/useVisibility.js';
 import useMediaSequence from '../hooks/useMediaSequence.js';
 import MediaSequenceControls from './MediaSequenceControls.jsx';
+import '../styles/hero-sound.css';
 
 function saveDataEnabled() {
   return typeof navigator !== 'undefined' && Boolean(navigator.connection?.saveData);
@@ -25,6 +26,8 @@ export default function VideoHero() {
   const [heroInterval, setHeroInterval] = useState(6);
   const [failedSource, setFailedSource] = useState('');
   const liveVideoRef = useRef(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [manualPlayback, setManualPlayback] = useState(false);
   // Pending is NOT a request to display the previous built-in campaign.
   const [heroConfigStatus, setHeroConfigStatus] = useState('loading');
   const [liveReadySource, setLiveReadySource] = useState('');
@@ -197,10 +200,32 @@ export default function VideoHero() {
   useEffect(() => {
     const video = liveVideoRef.current;
     if (!video) return undefined;
-    if (reduced || saveDataEnabled() || sequence.paused || !heroVisible || !pageVisible || dialogOpen) video.pause();
-    else video.play().catch(() => {});
+    if (((reduced || saveDataEnabled()) && !manualPlayback) || sequence.paused || !heroVisible || !pageVisible || dialogOpen) video.pause();
+    else video.play().catch(() => {
+      if (soundEnabled) {
+        video.muted = true;
+        setSoundEnabled(false);
+        video.play().catch(() => {});
+      }
+    });
     return () => video.pause();
-  }, [liveHero?.url, reduced, sequence.paused, heroVisible, pageVisible, dialogOpen]);
+  }, [liveHero?.url, reduced, sequence.paused, heroVisible, pageVisible, dialogOpen, soundEnabled, manualPlayback]);
+
+  const toggleSound = async () => {
+    const video = liveVideoRef.current;
+    if (!video) return;
+    const enabled = !soundEnabled;
+    setManualPlayback(true);
+    video.muted = !enabled;
+    setSoundEnabled(enabled);
+    try {
+      await video.play();
+    } catch {
+      video.muted = true;
+      setSoundEnabled(false);
+      video.play().catch(() => {});
+    }
+  };
 
   const revealLiveVideo = (event) => {
     const video = event.currentTarget;
@@ -216,8 +241,8 @@ export default function VideoHero() {
             className="hero-live-media"
             ref={liveVideoRef}
             src={liveHero.url}
-            autoPlay={!reduced && !sequence.paused && heroVisible && pageVisible && !dialogOpen}
-            muted
+            autoPlay={(!reduced || manualPlayback) && !sequence.paused && heroVisible && pageVisible && !dialogOpen}
+            muted={!soundEnabled}
             loop={liveItems.length === 1}
             onEnded={sequence.ended}
             playsInline
@@ -279,6 +304,11 @@ export default function VideoHero() {
       </div>
       <div className="hero-shade" />
       <MediaSequenceControls items={liveItems} sequence={sequence} label="hero media" />
+      {heroConfigStatus === 'uploaded' && liveHero?.type === 'video' && !liveFailed ? (
+        <button type="button" className="hero-sound-toggle" aria-label={soundEnabled ? 'Mute video sound' : 'Turn video sound on'} aria-pressed={soundEnabled} onClick={toggleSound}>
+          {soundEnabled ? 'Mute sound' : 'Turn sound on'}
+        </button>
+      ) : null}
       <h1 id="hero-title" className="sr-only">HIDI — Wear the feeling. Indian wear for work, everyday and occasions.</h1>
       <div className="campaign-hero-action">
         <button type="button" className="campaign-shop-button" onClick={() => openCollection()}>Shop Now</button>
