@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { config } from '../config.js';
-import { collections } from '../data/collections.js';
+import { rangeCards as collections } from '../data/rangeCards.js';
 import { useHidi } from '../context/HidiContext.jsx';
 import { landingImageProps, useLandingMedia } from '../context/LandingMediaContext.jsx';
 import { useMediaQuery, useReducedMotion } from '../hooks/useMediaQuery.js';
@@ -32,7 +32,7 @@ export default function RangeCarousel() {
   });
   const resolvedCollections = useMemo(() => collections.map((item) => ({
     ...item,
-    imageProps: landingImageProps(landingMedia, `range-${item.id}`, item.image, item.alt),
+    imageProps: landingImageProps(landingMedia, item.mediaSlot, item.image, item.alt),
   })), [landingMedia]);
 
   useEffect(() => { setPaused(mobile || reduced); }, [mobile, reduced]);
@@ -71,7 +71,7 @@ export default function RangeCarousel() {
   const handleCollectionClick = (index) => {
     if (!canOpen()) return;
     setPaused(true);
-    openCollection(collections[index].id);
+    window.location.assign(`/collections/${collections[index].collectionId}`);
   };
   const keyboard = (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -109,7 +109,7 @@ export default function RangeCarousel() {
               <article key={item.id} className="hidi-collection-card" data-card={index}
                 data-hovered={hoveredCard === index ? 'true' : undefined}
                 role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${count}: ${item.name}`}>
-                <button type="button" className="hidi-collection-link" aria-label={`Explore ${item.name}`} onClick={() => handleCollectionClick(index)}>
+                <button type="button" className="hidi-collection-link" aria-label={`Explore ${item.controlName || item.name}`} onClick={() => handleCollectionClick(index)}>
                   <div className="hidi-collection-photo"
                     onMouseEnter={() => { if (window.matchMedia('(hover: hover)').matches) setHoveredCard(index); }}
                     onMouseLeave={() => setHoveredCard(null)}>
@@ -135,7 +135,7 @@ export default function RangeCarousel() {
           <div className="hidi-collection-dots" role="group" aria-label="Choose a collection">
             {resolvedCollections.map((item, index) => <button key={item.id} type="button"
               className={`hidi-collection-dot${active === index ? ' is-active' : ''}`}
-              aria-label={`Show ${item.name}`} aria-pressed={active === index} onClick={() => select(index)}><span /></button>)}
+              aria-label={`Show ${item.controlName || item.name}`} aria-pressed={active === index} onClick={() => select(index)}><span /></button>)}
           </div>
         </div>
         <p className="sr-only" id="collection-keyboard-help">Use the arrow keys to browse. Automatic rotation pauses on hover or focus. Press Space while this carousel is focused to pause or resume rotation.</p>

@@ -767,6 +767,19 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya,listConfig.ananya,"Editing another slot preserves the photo list");
     assert.equal((await post("/api/hidi/landing-media-restore",{slotId:"range-occasion"})).status,200);
     assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya,listConfig.ananya,"Restoring another slot preserves the photo list");
+    for (const [slotId,photo] of [["range-new-arrivals",photos[1]],["range-shop-all",photos[2]]]) {
+      const before=JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body);
+      assert.equal((await post("/api/hidi/landing-media-publish",{slotId,assetId:photo.id,fitMode:"contain",mobilePosition:"66% 50%"})).status,200);
+      const after=JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body);
+      assert.equal(after.slots[slotId].assetId,photo.id);
+      assert.equal(after.slots[slotId].fitMode,"contain");
+      assert.deepEqual(after.ananya,before.ananya,"Range photo publishing preserves the full-page Ananya list");
+      for (const other of Object.keys(before.slots)) if(other!==slotId) assert.deepEqual(after.slots[other],before.slots[other],"Range photos publish independently");
+      assert.equal((await post("/api/hidi/landing-media-reset",{slotId})).status,200);
+      assert.equal(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).slots[slotId].active,false);
+      assert.equal((await post("/api/hidi/landing-media-restore",{slotId})).status,200);
+      assert.equal(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).slots[slotId].assetId,photo.id);
+    }
     assert.equal((await post("/api/hidi/landing-media-ananya-restore",{})).status,200);
     const restoredLegacy=JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body);
     assert.deepEqual(restoredLegacy.ananya.items.map(item=>item.assetId),[landingAsset.id],"Previous single photo is restorable");
