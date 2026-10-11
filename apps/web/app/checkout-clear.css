@@ -62,7 +62,20 @@ body:has(.checkout-page) .footer-bottom { gap: 16px; flex-wrap: wrap; padding-bl
   .checkout-page > .collection-header { margin-bottom: 16px; }
   .checkout-page .checkout-grid { display: block; }
   .checkout-page .checkout-form fieldset > section { padding: 16px; margin-bottom: 14px; }
-  .checkout-page .checkout-mobile-summary { display: block !important; position: static !important; margin-bottom: 18px; border-radius: 8px; }
+  .checkout-page .checkout-mobile-summary { display: block !important; position: static !important; margin: 0 0 18px; padding: 0; border: 1px solid var(--line, #e2d8cf); border-radius: 8px; background: #fff8ef; }
+  .checkout-page .checkout-mobile-summary > summary { min-height: 54px; padding: 0 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; list-style: none; cursor: pointer; }
+  .checkout-page .checkout-mobile-summary > summary::-webkit-details-marker { display: none; }
+  .checkout-page .checkout-mobile-summary > summary > span { min-width: 0; display: grid; gap: 2px; }
+  .checkout-page .checkout-mobile-summary > summary :is(b,strong) { font-size: 14px; }
+  .checkout-page .checkout-mobile-summary > summary small { color: #83776d; font-size: 13px; }
+  .checkout-page .checkout-mobile-summary-body { padding: 2px 12px 12px; border-top: 1px solid #eee6df; }
+  .checkout-page .checkout-mobile-summary-item { padding: 9px 0; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px; align-items: center; border-bottom: 1px solid #f0e8e1; }
+  .checkout-page .checkout-mobile-summary-thumb { position: relative; display: block; width: 48px; height: 60px; overflow: hidden; background: #fff; }
+  .checkout-page .checkout-mobile-summary-item > span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
+  .checkout-page .checkout-mobile-summary-item b { font-family: var(--font-sans); font-size: 14px; font-weight: 500; line-height: 1.2; }
+  .checkout-page .checkout-mobile-summary-item small { color: #83776d; font-size: 13px; }
+  .checkout-page .checkout-mobile-summary-item > strong { font-size: 14px; white-space: nowrap; }
+  .checkout-page .checkout-mobile-total-row { padding: 12px 0 2px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
   .checkout-page .checkout-section-heading h2 { font-size: 18px; }
   .checkout-page .checkout-summary { display: block !important; position: static; padding: 0; margin: 0; border: 0; background: transparent; }
   .checkout-page .checkout-summary > :not(.checkout-payment-action) { display: none !important; }

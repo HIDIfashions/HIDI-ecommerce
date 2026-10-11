@@ -2,7 +2,7 @@ name: Guarded clean checkout and mobile chrome release
 on:
   push:
     branches: [migration/azure-sql-blob]
-    paths: [.github/workflows/checkout-clear-release.yml, deploy/checkout-clear/**]
+    paths: [.github/workflows/checkout-clear-release.yml, deploy/checkout-clear/**, apps/web/app/checkout-clear.css]
   workflow_dispatch:
 permissions:
   contents: read
