@@ -1,0 +1,79 @@
+name: Guarded clean checkout and mobile chrome release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/checkout-clear-release.yml, deploy/checkout-clear/**]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/migration/azure-sql-blob'
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=fixture;password=fixture;encrypt=true
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-checkout-clear-browsers
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-checkout-clear-browser/node_modules/playwright/index.mjs
+      HIDI_RANGE_FIVE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Install existing dependencies and run checkout, auth, cart and rewards regression
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm db:generate
+          pnpm --filter @hidi/api test:customer-experience
+          node --test tests/wallet-frontend.test.cjs tests/auth-refresh.test.cjs tests/auth-otp-frontend.test.cjs
+          python3 -m py_compile deploy/checkout-clear/release.py deploy/checkout-clear/patch-web.py
+          node --check deploy/checkout-clear/patch-module.mjs
+          node --check deploy/checkout-clear/probes.mjs
+      - name: Install desktop and mobile browser engines
+        run: |
+          npm install --prefix /tmp/hidi-checkout-clear-browser --no-save playwright@1.56.1
+          node /tmp/hidi-checkout-clear-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture current live release and verify an immutable rollback backup
+        run: |
+          set -euo pipefail
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/checkout-clear/release.py capture
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-checkout-clear-private/web/candidate-app" >> "$GITHUB_ENV"
+      - name: Compose only reviewed checkout presentation over the fresh live image
+        run: python3 deploy/checkout-clear/release.py compose
+      - name: Verify actual candidate in Chromium, Firefox and WebKit across desktop and mobile
+        run: |
+          set -euo pipefail
+          node deploy/checkout-clear/candidate.mjs
+          python3 deploy/checkout-clear/release.py seal
+      - name: Publish the exact tested image
+        run: python3 deploy/checkout-clear/release.py publish
+      - name: Release web only and run live regression with guarded rollback
+        id: apply
+        timeout-minutes: 60
+        run: timeout --signal=TERM --kill-after=20m 40m python3 deploy/checkout-clear/release.py apply --image "$WEB_IMAGE"
+      - name: Reconcile interrupted release without overwriting independent changes
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        timeout-minutes: 15
+        run: python3 deploy/checkout-clear/release.py recover --image "$WEB_IMAGE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkout-clear-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/checkout-clear
+          retention-days: 30

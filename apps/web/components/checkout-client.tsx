@@ -355,6 +355,7 @@ export function CheckoutClient() {
   return <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
 
+    <a href="/cart" className="checkout-back-link">← Back to bag</a>
     <details className="checkout-mobile-summary" open={!complimentaryShipping}>
       <summary>
         <span><b>Order summary</b><small>{cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}</small></span>
@@ -386,7 +387,7 @@ export function CheckoutClient() {
     </details>
 
     <div className="checkout-grid">
-      <form className="checkout-form" onSubmit={submit} onChange={() => { if (!lock.current) { invalidate(false); setError(""); } }}>
+      <form id="hidi-checkout-form" className="checkout-form" onSubmit={submit} onChange={() => { if (!lock.current) { invalidate(false); setError(""); } }}>
         <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <section>
             <div className="checkout-section-heading">
@@ -560,15 +561,14 @@ export function CheckoutClient() {
               </div>
             </div>
             {!accountId && !guestConfirmed && <div className="checkout-signin-card">
-              <h3>Enjoy your HIDI Rewards</h3>
-              <p>Sign in to access your rewards and redeem available benefits on your order.</p>
+              <h3>Use your HIDI Rewards</h3>
+              <p>Sign in to redeem your rewards.</p>
               <Link href="/account?returnTo=%2Fcheckout" className="button button-dark checkout-signin-button">Sign In</Link>
-              <p className="checkout-guest-prompt">Prefer not to sign in?</p>
               <button type="button" className="checkout-guest-link" onClick={() => { setGuestConfirmed(true); document.querySelector<HTMLButtonElement>(".checkout-pay-button")?.focus({ preventScroll: true }); }}>Continue as Guest</button>
             </div>}
             {!accountId && guestConfirmed && <p className="checkout-guest-status" role="status">Continuing as guest. <Link href="/account?returnTo=%2Fcheckout">Sign in for HIDI rewards</Link></p>}
             <div className="checkout-payment-methods" role="group" aria-label="Payment method">
-              <label><input type="radio" name="paymentMethod" value="RAZORPAY" checked={paymentMethod === "RAZORPAY"} onChange={() => { invalidate(true); setPaymentMethod("RAZORPAY"); }} /><span><strong>Pay online</strong><small>UPI, cards, net banking and HIDI rewards</small></span></label>
+              <label><input type="radio" name="paymentMethod" value="RAZORPAY" checked={paymentMethod === "RAZORPAY"} onChange={() => { invalidate(true); setPaymentMethod("RAZORPAY"); }} /><span><strong>Pay online</strong><small>UPI, cards & net banking</small></span></label>
               <label><input type="radio" name="paymentMethod" value="COD" checked={paymentMethod === "COD"} disabled={!codEnabled || !("cod" in deliveryCheck) || !deliveryCheck.cod} onChange={() => { invalidate(true); setPaymentMethod("COD"); }} /><span><strong>Cash on delivery</strong><small>{!codEnabled ? "Temporarily unavailable" : "cod" in deliveryCheck ? deliveryCheck.cod ? "Pay the full amount when your order arrives" : "Unavailable for this PIN code" : "Enter your PIN code to check availability"}</small></span></label>
             </div>
             {walletEnabled && accountId && paymentMethod === "RAZORPAY" && <div className={walletStyles.checkoutWallet}>
@@ -585,7 +585,7 @@ export function CheckoutClient() {
             {paymentMethod === "COD" ? <div className="payment-placeholder checkout-payment-trust"><div><strong>Pay on delivery</strong><span>{formatWalletPaise(payable)} due when your order arrives. No online payment required.</span></div><p>Sign in before ordering to earn eligible rewards after delivery. Rewards redemption is available with online payment.</p></div> : payable > 0 ? (
               <div className="payment-placeholder checkout-payment-trust">
                 <div>
-                  <strong>Razorpay secure payment</strong>
+                  <strong>Secure payments powered by Razorpay</strong>
                   <span>UPI · Cards · Net banking · Wallets</span>
                 </div>
                 <ul>
@@ -601,15 +601,11 @@ export function CheckoutClient() {
                 </div>
               </div>
             )}
-            {paymentMethod !== "COD" && <p className="fine-print left">{walletEnabled && useWallet ? "Stock and selected rewards are" : "Stock is"} reserved for 15 minutes when checkout is prepared. Closing payment does not immediately release a reservation; retry the same checkout or wait for it to expire.</p>}
+            {paymentMethod !== "COD" && <details className="checkout-reservation-details"><summary>About your checkout reservation</summary><p className="fine-print left">{walletEnabled && useWallet ? "Stock and selected rewards are" : "Stock is"} reserved for 15 minutes when checkout is prepared. Closing payment does not immediately release a reservation; retry the same checkout or wait for it to expire.</p></details>}
           </section>
         </fieldset>
         {error && <p className="form-error" role="alert">{error}</p>}
         {error === "This bag belongs to another account" && <div><p className={walletStyles.note}>Sign in to the account that owns this bag, or start a new bag. The original bag will not be deleted.</p><button className={walletStyles.textButton} type="button" onClick={() => { invalidate(true); startNewCartSession(); router.push("/collections/new-arrivals"); }}>Start a new bag</button></div>}
-        <button className="button checkout-pay-button" type="submit" disabled={busy || (useWallet && (wallet.loading || !wallet.summary?.enabled || !!wallet.error))}>
-          <span>{busy ? "Preparing your order…" : paymentMethod === "COD" ? "Place cash on delivery order" : payable === 0 ? "Place order with rewards" : "Pay securely"}</span>
-          <strong className="checkout-mobile-pay-amount">{formatWalletPaise(payable)}</strong>
-        </button>
       </form>
       <aside className="checkout-summary">
         <div className="checkout-summary-head">
@@ -617,7 +613,7 @@ export function CheckoutClient() {
           <Link href="/cart" className="checkout-edit-bag">Edit bag</Link>
         </div>
         <strong>{formatWalletPaise(prepared?.totalPaise ?? gross)}</strong>
-        <span>{cart.itemCount} item(s) · Taxes included</span>
+        <span>{cart.itemCount} item(s)</span>
 
         <div className="checkout-summary-items">
           {cart.items.map((item) => (
@@ -643,6 +639,14 @@ export function CheckoutClient() {
         <p className="checkout-shipping-policy">₹99 shipping below ₹1,499. Free shipping from ₹1,499 before rewards.</p>
         {useWallet && !prepared && <p className={walletStyles.note}>Rewards are applied only after server confirmation.</p>}
         {!!prepared?.walletAppliedPaise && prepared.provider === "RAZORPAY" && <p className={walletStyles.note}>{formatWalletPaise(prepared.walletAppliedPaise)} is reserved for this checkout while the remaining payment is completed.</p>}
+        <div className="checkout-payment-action">
+          <span className="checkout-action-label">Total to pay</span>
+          <strong className="checkout-action-total">{formatWalletPaise(payable)}</strong>
+          <button className="button checkout-pay-button" form="hidi-checkout-form" type="submit" disabled={busy || (useWallet && (wallet.loading || !wallet.summary?.enabled || !!wallet.error))}>
+            <span>{busy ? "Preparing your order…" : paymentMethod === "COD" ? "Place cash on delivery order" : payable === 0 ? "Place order with rewards" : "Pay securely"}</span>
+            <strong className="checkout-mobile-pay-amount">{formatWalletPaise(payable)}</strong>
+          </button>
+        </div>
       </aside>
     </div>
   </>;
