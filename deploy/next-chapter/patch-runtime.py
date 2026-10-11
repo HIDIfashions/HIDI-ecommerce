@@ -20,7 +20,11 @@ def bundle(source):
     signature = re.match(r'function ([\w$]+)\(\)\{const ([\w$]+)=([\w$]+)\(\),([\w$]+)=([\w$]+)\(', old)
     assert signature, 'Campaign hook bindings must match retained source'
     name, media_var, media_hook, image_var, image_hook = signature.groups()
-    react = re.search(r'([\w$]+)\.useState\(', text).group(1)
+    # Bind to the namespace used by the retained landing-media hook, rather
+    # than React's internal dispatcher (which also contains useState calls).
+    context = re.search(r'function ' + re.escape(media_hook) + r'\(\)\{return ([\w$]+)\.useContext\(', text)
+    assert context, 'Retained landing-media React namespace required'
+    react = context.group(1)
     assert all(value not in text for value in ['HidiNextChapterReact', 'HidiNextChapterMedia', 'HidiNextChapterImage'])
     component = (HERE / 'component.runtime.js').read_text().replace('function HidiNextChapterComponent()', 'function ' + name + '()')
     # Keep production's responsive fallback image optimization, if present.
