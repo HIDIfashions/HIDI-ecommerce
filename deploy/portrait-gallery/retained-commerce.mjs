@@ -5,6 +5,12 @@ import {join} from 'node:path';
 
 export async function probe(base,output){
   let source=await readFile(new URL('../button-states/revert-probes.mjs',import.meta.url),'utf8');
+  const homeSelector = "page.locator('.button:visible')";
+  assert.equal(source.split(homeSelector).length - 1, 1);
+  source = source.replace(homeSelector, "page.locator('.button:visible,.portrait-gallery__shop:visible')");
+  const paletteAnchor = 'const originals={';
+  assert.equal(source.split(paletteAnchor).length - 1, 1);
+  source = source.replace(paletteAnchor, paletteAnchor + "\n          'portrait-gallery__shop':{background:'rgb(98, 49, 73)',color:'rgb(255, 248, 241)',border:'rgb(255, 248, 241)'},");
   const old="page.locator('.checkout-summary').innerText()";
   assert.equal(source.split(old).length-1,2,'Expected two retained shipping/total summary assertions');
   source=source.replaceAll(old,"page.locator('.checkout-summary').textContent()");
