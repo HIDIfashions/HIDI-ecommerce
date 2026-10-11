@@ -13,13 +13,18 @@ SLOTS=(HERE/'admin-slots.txt').read_text()
 OLD_IMAGE='imageProps:w.id==="ananyas-pick"&&a.ananya?.active&&a.ananya.items?.[0]?.type==="image"?ei({ananya:a.ananya.items[0]},"ananya",w.image,w.alt):ei(a,w.mediaSlot,w.image,w.alt)'
 NEW_IMAGE='imageProps:ei(a,w.mediaSlot,w.image,w.alt)'
 OLD_CLICK='m(Hr[w].id)'
-NEW_CLICK='m(Hr[w].collectionId||Hr[w].id)'
+NEW_CLICK='m(HidiRangeCards[w].collectionId||HidiRangeCards[w].id)'
 def bundle(source):
     text=source.decode();match=re.search(r'const Hr=(\[.*?\]);function Xn',text)
     assert match, 'Expected retained range data anchor'
     old=json.loads(match[1]);assert [c['id'] for c in old]==['casual-wear','work-wear','occasional-wear','ananyas-pick'], 'Unexpected current range cards'
     updated=json.dumps(CARDS,ensure_ascii=True,separators=(',',':'))
-    changes=[(match[1],updated),(OLD_IMAGE,NEW_IMAGE),(OLD_CLICK,NEW_CLICK),
+    assert 'HidiRangeCards' not in text, 'Owned range identifier collision'
+    changes=[(match[0],match[0].replace(';function Xn',';const HidiRangeCards='+updated+';function Xn')),
+        ('const Jl=Hr.length','const Jl=HidiRangeCards.length'),
+        ('Se=P.useMemo(()=>Hr.map','Se=P.useMemo(()=>HidiRangeCards.map'),
+        ('`${Hr[w].name} selected.`','`${HidiRangeCards[w].name} selected.`'),
+        (OLD_IMAGE,NEW_IMAGE),(OLD_CLICK,NEW_CLICK),
         ('`Explore ${w.name}`','`Explore ${w.controlName||w.name}`'),
         ('`Show ${w.name}`','`Show ${w.controlName||w.name}`')]
     for before,after in changes:
@@ -52,7 +57,7 @@ def patch_runtime(base,overlay):
         p=overlay/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(content)
     return {'passed':True,'allowedFiles':sorted(files),'renamedAssets':{'dist/'+reference.decode().removeprefix('./').removeprefix('/'):'dist/'+destination},'fiveIndependentRangeSlots':True,'sameAnanyaCollectionRoute':True,'inverseTransformsVerified':True,'unrelatedRuntimeBytesPreserved':True}
 def self_test():
-    source=('const Hr='+json.dumps([{'id':id} for id in ['casual-wear','work-wear','occasional-wear','ananyas-pick']])+';function Xn(){}\n'+OLD_IMAGE+'\n'+OLD_CLICK+'\n`Explore ${w.name}`\n`Show ${w.name}`').encode()
+    source=('const Hr='+json.dumps([{'id':id} for id in ['casual-wear','work-wear','occasional-wear','ananyas-pick']])+';function Xn(){}\n'+OLD_IMAGE+'\n'+OLD_CLICK+'\n`Explore ${w.name}`\n`Show ${w.name}`\nconst Jl=Hr.length\nSe=P.useMemo(()=>Hr.map\n`${Hr[w].name} selected.`').encode()
     patched=bundle(source);assert NEW_CLICK.encode() in patched
     assert len(CARDS)==5 and len({c['id'] for c in CARDS})==5 and len({c['mediaSlot'] for c in CARDS})==5
     assert [c['collectionId'] for c in CARDS[-2:]]==['ananyas-pick']*2

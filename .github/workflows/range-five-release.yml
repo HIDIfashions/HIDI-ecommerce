@@ -11,7 +11,7 @@ permissions:
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
-  cancel-in-progress: false
+  cancel-in-progress: ${{ contains(github.event.head_commit.message, '[range-five-supersede]') }}
 jobs:
   release:
     if: github.ref == 'refs/heads/migration/azure-sql-blob'
