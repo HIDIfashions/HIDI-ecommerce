@@ -21,7 +21,7 @@ export function patch(source) {
   assert(inline||ts.isIdentifier(lookupExpression),'Known inline or declared PIN lookup');
   const lookupName=inline?'hidiCheckDeliveryPin':lookupExpression.text;
   let component=pinObject.parent;
-  while(component && !(ts.isFunctionLike(component)&&component.body&&ts.isBlock(component.body)&&component.body.getText(tree).includes('/checkout/payment-options')))component=component.parent;
+  while(component && !(ts.isFunctionLike(component)&&component.body&&ts.isBlock(component.body)))component=component.parent;
   assert(component,'Checkout component boundary');
   const scoped=descendants(component);
   const lookup=inline?lookupExpression:one(scoped.filter(n=>ts.isFunctionDeclaration(n)&&n.name?.text===lookupName),'PIN lookup declaration');
@@ -44,7 +44,9 @@ export function patch(source) {
   const helper=ts.transpileModule(readFileSync(new URL('../../apps/web/lib/checkout-pin.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText.replace('export function observeCheckoutPin','function observeCheckoutPin');
   assert(!source.includes('observeCheckoutPin'),'PIN observer already installed');
   edit(effect.body.getStart(tree)+1,effect.body.getStart(tree)+1,`const hidiStopPin=observeCheckoutPin(${lookupName},()=>{${abort};${payment}("RAZORPAY");${delivery}({status:"idle"});${invalidate}(false);${error}("");});`);
-  edit(cleanup.getStart(tree),cleanup.end,`return ()=>{(${cleanup.expression.getText(tree)})();hidiStopPin();};`);
+  // The minifier can move setup side effects into the cleanup return's comma expression.
+  // Evaluate that expression now, then wrap only the returned cleanup function.
+  edit(cleanup.getStart(tree),cleanup.end,`return ((hidiOriginalCleanup)=>()=>{hidiOriginalCleanup();hidiStopPin();})((${cleanup.expression.getText(tree)}));`);
   // Remove the trailing property comma as well, leaving the original input sanitizer intact.
   const following=source.slice(blur.end).match(/^\s*,/);assert(following,'PIN blur property separator');
   edit(blur.getStart(tree),blur.end+following[0].length,'');

@@ -18,6 +18,14 @@ test('patch both readable and minified actual checkout, preserving every other b
     assert(result.inverseTransformsVerified&&result.paymentSubmissionPreserved);
     assert(result.output.includes('observeCheckoutPin'));
     assert.throws(()=>patch(result.output));
+    const effects=[],requests=[],document=new EventTarget(),window=new EventTarget(),exports={};
+    document.visibilityState='visible';document.querySelector=()=>null;
+    const stubRequire=name=>name==='react'?{useEffect:callback=>effects.push(callback),useState:value=>[value,()=>{}],useRef:value=>({current:value})}:name==='next/navigation'?{useRouter:()=>({})}:name==='react/jsx-runtime'?{jsx:()=>null,jsxs:()=>null}:name==='@/components/wallet-balance'?{useWalletSummary:()=>({})}:{};
+    runInNewContext(result.output,{exports,require:stubRequire,document,window,AbortController,setTimeout,clearTimeout,setInterval,clearInterval,fetch:(url,options)=>{requests.push({url,signal:options.signal});return Promise.resolve({ok:true,json:async()=>({cod:true})});}});
+    exports.CheckoutClient();
+    const cleanup=effects[0]();
+    try{assert.equal(requests.length,1,'Payment options fetch still starts on mount');assert(requests[0].url.endsWith('/checkout/payment-options'));assert.equal(requests[0].signal.aborted,false);}finally{cleanup();}
+    assert.equal(requests[0].signal.aborted,true,'Original cleanup still aborts its fetch');
   }
 });
 test('restored PINs and silent changes trigger one lookup per value, and cleanup stops observation',async()=>{

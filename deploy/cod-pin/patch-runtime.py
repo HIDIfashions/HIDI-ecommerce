@@ -1,4 +1,4 @@
-"""Apply PIN synchronization to the two active retained checkout modules."""
+"""Apply PIN synchronization only to the active browser checkout, retaining server payment code."""
 from pathlib import Path
 import hashlib
 import json
@@ -26,7 +26,7 @@ def patch_runtime(base, overlay):
     with tempfile.TemporaryDirectory() as folder:
         source, target = Path(folder)/'input.js', Path(folder)/'output.js'
         for name, text in original.items():
-            if name not in active_browser and name not in active_server:
+            if name not in active_browser:
                 continue
             if name.endswith('.js') and ('checkout-form' in text and '/checkout/delivery-serviceability' in text):
                 assert name.endswith('/checkout/page.js') or re.fullmatch(r'apps/web/\.next/server/chunks/[^/]+\.js',name) or re.fullmatch(r'apps/web/\.next/static/chunks/app/checkout/page-[a-f0-9]{16}\.js',name), 'Unexpected checkout module location: '+name
@@ -40,7 +40,7 @@ def patch_runtime(base, overlay):
                 assert report['inverseTransformsVerified'] and report['paymentSubmissionPreserved']
                 client_modules.append(name)
                 semantic[name] = target.read_text(); patched.append(name)
-    assert len(client_modules) == 2 and sum('/server/' in name for name in client_modules)==1, 'Both retained server and browser checkout components required: '+repr(client_modules)
+    assert len(client_modules) == 1 and client_modules[0] in active_browser, 'Exactly the active browser checkout is required: '+repr(client_modules)
     mapping = {}
     for _ in range(8):
         final = {}
@@ -64,7 +64,7 @@ def patch_runtime(base, overlay):
         destination=overlay/name; destination.parent.mkdir(parents=True,exist_ok=True); destination.write_text(text)
         if name.endswith('.js') or name=='server.mjs': subprocess.run(['node','--check',str(destination)],check=True)
     return {'passed':True,'allowedFiles':sorted(files),'renamedAssets':mapping,'checkoutModules':patched,
-            'paymentSubmissionPreserved':True,'apiUnchanged':True,'oldAssetsRetained':True,'inverseTransformsVerified':True}
+            'paymentSubmissionPreserved':True,'apiUnchanged':True,'oldAssetsRetained':True,'serverCheckoutHandlersPreserved':True,'inverseTransformsVerified':True}
 if __name__=='__main__':
     import sys
     result=patch_runtime(sys.argv[1],sys.argv[2]); Path(sys.argv[3]).write_text(json.dumps(result,indent=2))
