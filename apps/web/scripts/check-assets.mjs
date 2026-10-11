@@ -38,7 +38,13 @@ const carouselSource = await readFile(path.join(root, 'src/components/RangeCarou
 assert.ok(!carouselSource.includes('hidi-collection-counter'), 'Visible collection counter must remain removed.');
 assert.ok(!carouselSource.includes('hidi-collection-motion'), 'Visible collection play control must remain removed.');
 const portraitSource = await readFile(path.join(root, 'src/components/MeetHidi.jsx'), 'utf8');
-assert.ok(portraitSource.includes('meet-cinematic'), 'Meet HIDI cinematic banner missing.');
+assert.ok(portraitSource.includes('portrait-gallery'), 'Ananya portrait gallery missing.');
+for (const name of ['DSC01671', 'DSC01431', 'DSC01567', 'DSC01529', 'DSC01849']) {
+  await access(path.join(root, 'public/assets/images/ananya-portraits', name + '.jpg'));
+  assert.ok(portraitSource.includes(name), 'Supplied portrait missing: ' + name);
+}
+assert.ok(portraitSource.includes('Many versions ') && portraitSource.includes('of her'));
+assert.ok(portraitSource.includes('/collections/ananyas-pick'));
 for (const token of ['Glasshouse edit', 'Shop the edit', 'meet-cinematic__next', 'chevronLeft', 'chevronRight', 'meet-cinematic__scroll', 'meet-cinematic__count', 'meet-cinematic__pick-control']) {
   assert.ok(!portraitSource.includes(token), `Unexpected Ananya pick artifact: ${token}`);
 }
