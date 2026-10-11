@@ -1,0 +1,32 @@
+name: Audit Safari footer layout
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [deploy/safari-footer-audit/**, .github/workflows/safari-footer-audit.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-footer-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-footer-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Install Safari engine and Chrome comparison engine
+        run: |
+          npm install --prefix /tmp/hidi-footer-browser --no-save playwright@1.56.1
+          node /tmp/hidi-footer-browser/node_modules/playwright/cli.js install --with-deps webkit chromium
+      - name: Inspect live footer without commerce writes
+        run: node deploy/safari-footer-audit/audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safari-footer-audit-${{ github.run_id }}
+          path: evidence/safari-footer-audit
+          retention-days: 30
