@@ -25,8 +25,8 @@ export async function probe(base, output) {
         });
         const page = await context.newPage();
         page.setDefaultTimeout(45000);
-        const cards = page.locator('.product-grid article');
-        const productPaths = async () => (await page.locator('.product-grid h3 a').evaluateAll(links => links.map(link => new URL(link.href).pathname))).sort();
+        const cards = page.locator('main article');
+        const productPaths = async () => (await page.locator('main article h3 a').evaluateAll(links => links.map(link => new URL(link.href).pathname))).sort();
         try {
           // The hero destination supplies the authoritative catalogue for comparison.
           assert((await page.goto(base + '/collections/all', { waitUntil: 'domcontentloaded' })).ok());
@@ -47,7 +47,7 @@ export async function probe(base, output) {
             await sort.selectOption({ label: 'Price: Low to high' });
             assert.deepEqual(await productPaths(), expected, 'Sorting retains all published products');
           }
-          await page.locator('.product-grid h3 a').first().click();
+          await page.locator('main article h3 a').first().click();
           await page.locator('main h1').waitFor();
           assert(new URL(page.url()).pathname.startsWith('/products/'), 'Product details remain reachable');
           // Existing bookmarks and plain full-page navigation are repaired too.
