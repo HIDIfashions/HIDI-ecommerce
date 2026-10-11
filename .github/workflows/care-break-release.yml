@@ -79,7 +79,7 @@ jobs:
           node deploy/care-break/candidate.mjs
           node tests/admin-quick-tools.runtime.mjs | tee evidence/care-break/admin-quick-tools.json
           node deploy/four-categories/candidate.mjs
-          node deploy/button-states/revert-candidate.mjs
+          node deploy/care-break/commerce-candidate.mjs
           python3 deploy/care-break/release.py mark-tested --tag "$CANDIDATE_WEB"
       - name: Publish the exact tested immutable image
         run: python3 deploy/care-break/release.py publish --tag "$CANDIDATE_WEB"

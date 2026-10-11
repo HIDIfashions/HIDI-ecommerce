@@ -288,6 +288,7 @@ def mark_tested(tag):
     assert all(item.get("passed") and not item.get("blockingPageErrors") for item in browsers)
     assert categories.get("passed") is True and categories.get("actualRetainedNextAndLanding") is True
     assert commerce.get("passed") is True and commerce.get("liveWrites") == 0
+    assert commerce.get("shippingDisclosureBeforeCollapse") is True
     assert admin_tools.get("passed") is True and admin_tools.get("customerRoutesRetained") is True
     manifest = {name: sha256_file(path) for name, path in REPORT_PATHS.items()}
     save("candidate-regression.json", {
