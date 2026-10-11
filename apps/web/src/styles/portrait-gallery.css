@@ -23,7 +23,7 @@
 @media (max-width: 700px) {
   #meet-hidi.portrait-gallery { padding: 36px 16px 44px; }
   #meet-hidi .portrait-gallery__layout { grid-template-columns: minmax(0, 1fr); gap: 32px; max-width: 420px; }
-  #meet-hidi .portrait-gallery__visual { width: min(100%, 360px); margin: 0 auto; }
+  #meet-hidi .portrait-gallery__visual { width: min(100%, 420px); margin: 0 auto; }
   #meet-hidi .portrait-gallery__previews { gap: 7px; margin-top: 12px; }
   #meet-hidi .portrait-gallery__copy { padding: 0 8px; }
   #meet-hidi .portrait-gallery__eyebrow { margin-bottom: 17px; }
@@ -31,4 +31,8 @@
   #meet-hidi .portrait-gallery__intro { margin: 20px 0 26px; font-size: 15px; }
   #meet-hidi .portrait-gallery__story { padding-top: 22px; min-height: 105px; }
   #meet-hidi .portrait-gallery__shop { margin-top: 24px; }
+}
+
+@media (min-width: 1100px) {
+  #meet-hidi .portrait-gallery__layout { width: min(100%, 1320px); grid-template-columns: minmax(0, min(40vw, 540px)) minmax(0, 1fr); gap: clamp(100px, 14vw, 240px); }
 }
