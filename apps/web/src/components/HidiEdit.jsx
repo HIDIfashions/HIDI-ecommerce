@@ -27,7 +27,7 @@ export default function HidiEdit() {
     const match = /^(\d{1,3})%\s+(\d{1,3})%$/.exec(value || '');
     // Frame the model on the right of a landscape image. Explicit Admin
     // focal-point settings still take precedence over the neutral default.
-    return !match || value === '50% 50%' ? '72% 50%' : value;
+    return !match || value === '50% 50%' ? '84% 50%' : value;
   };
   const desktopPosition = position(slot?.desktopPosition);
   const mobilePosition = position(slot?.mobilePosition);
