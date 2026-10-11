@@ -12,6 +12,13 @@ export async function probe(base,output,engines=(process.env.HIDI_BROWSER_ENGINE
       const context=await browser.newContext({viewport,hasTouch:viewport.width<=844,reducedMotion:'reduce'}),page=await context.newPage(); page.setDefaultTimeout(20000);
       const errors=[],unexpectedWrites=[],prepares=[]; let subtotal=100000,shipping=9900,codPin=true,codOption=true,failPrepare=false,empty=false;
       page.on('pageerror',error=>errors.push(error.message));
+      const pending=new Set(),navigationFailures=[];let navigationActivity=0;
+      const tracked=request=>new URL(request.url()).searchParams.has('_rsc');
+      page.on('request',request=>{if(tracked(request)){pending.add(request);navigationActivity=Date.now();}});
+      const completed=request=>{if(tracked(request)){pending.delete(request);navigationActivity=Date.now();}};
+      page.on('requestfinished',completed);
+      page.on('requestfailed',request=>{if(tracked(request))navigationFailures.push({url:request.url(),reason:request.failure()?.errorText});completed(request);});
+      const settle=async()=>{const started=Date.now();while(pending.size||Date.now()-Math.max(started,navigationActivity)<500){assert(Date.now()-started<25000,'Next navigation and prefetch requests settle');await pause(40);}};
       const cart=()=>({itemCount:empty?0:1,subtotalPaise:subtotal,shippingPaise:shipping,totalPaise:subtotal+shipping,items:empty?[]:[{id:'isolated-checkout-line',quantity:1,lineTotalPaise:subtotal,product:{id:'fixture-product',slug:'fixture-checkout-style',name:'Floral Kurta Set',image:null},variant:{id:'fixture-size',size:'L',color:'Burnt Orange',available:4}}]});
       await context.addInitScript(()=>{localStorage.removeItem('hidi_supabase_session');localStorage.setItem('hidi_cart_session','b4acfcb8-010e-4afa-9ba5-987890bcc417');});
       await context.route('**/*',async route=>{
@@ -31,7 +38,7 @@ export async function probe(base,output,engines=(process.env.HIDI_BROWSER_ENGINE
         if(request.resourceType()==='media')return route.abort();
         return route.continue();
       });
-      const go=async()=>{const response=await page.goto(base+'/checkout',{waitUntil:'domcontentloaded'});assert(response.ok());await page.locator('.checkout-pay-button').waitFor();await pause(250);};
+      const go=async()=>{await settle();const response=await page.goto(base+'/checkout',{waitUntil:'domcontentloaded'});assert(response.ok());await page.locator('.checkout-pay-button').waitFor();await pause(250);await settle();};
       const geometry=async()=>{
         assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow');
         const header=await page.locator('.site-header').boundingBox();assert(header.y>=-1 && header.y<2,'Header fixed at the top');
@@ -47,6 +54,7 @@ export async function probe(base,output,engines=(process.env.HIDI_BROWSER_ENGINE
         assert.equal(await page.locator('.checkout-pay-button').count(),1,'Single submit action');assert.equal(await page.locator('.checkout-pay-button').evaluate(e=>e.form?.id),'hidi-checkout-form','External action uses original native form');
         assert.equal(await page.locator('.checkout-back-link').getAttribute('href'),'/cart');
         const sign=page.getByRole('link',{name:'Sign In',exact:true}),guest=page.getByRole('button',{name:'Continue as Guest',exact:true});
+        await sign.scrollIntoViewIfNeeded();await settle();
         assert.equal(await sign.getAttribute('href'),'/account?returnTo=%2Fcheckout');const sb=await sign.boundingBox(),gb=await guest.boundingBox();assert(gb.y>=sb.y+sb.height,'Guest is below highlighted sign-in');
         assert.equal(await sign.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(89, 29, 32)');
         assert.equal(await page.locator('.checkout-pay-button > span').evaluate(e=>getComputedStyle(e).color),'rgb(255, 248, 239)','Payment button copy has high contrast');
@@ -67,16 +75,16 @@ export async function probe(base,output,engines=(process.env.HIDI_BROWSER_ENGINE
         failPrepare=true;await page.locator('.checkout-pay-button').click();await page.getByRole('alert').filter({hasText:'Payment fixture unavailable'}).waitFor();assert.equal(prepares[1].checkoutToken,prepares[0].checkoutToken,'Retry keeps idempotency token');assert(await page.locator('.checkout-pay-button').isEnabled());failPrepare=false;
         await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));await geometry();
         if(viewport.width<=720){const footer=page.locator('.footer-bottom');await footer.scrollIntoViewIfNeeded();const fb=await footer.boundingBox(),bar=await page.locator('.checkout-payment-action').boundingBox();assert(fb.y+fb.height<=bar.y+2,'Footer support/policy links are clear of payment bar');}
-        await cod.check();await page.locator('.checkout-pay-button').click();await page.waitForURL(/order-confirmed\?order=ISOLATED-UI-COD/);await page.getByText('ISOLATED-UI-COD',{exact:true}).waitFor();assert.equal(prepares.at(-1).paymentMethod,'COD');assert.equal(await page.evaluate(()=>window.__checkoutOpened||0),1,'COD does not open the gateway');
+        await cod.check();await settle();await page.locator('.checkout-pay-button').click();await page.waitForURL(/order-confirmed\?order=ISOLATED-UI-COD/);await page.getByText('ISOLATED-UI-COD',{exact:true}).waitFor();assert.equal(prepares.at(-1).paymentMethod,'COD');assert.equal(await page.evaluate(()=>window.__checkoutOpened||0),1,'COD does not open the gateway');
         for(const [value,fee,label] of [[149899,9900,'1,597.99'],[149900,0,'1,499'],[249900,0,'2,499']]) {subtotal=value;shipping=fee;await go();assert.match(await page.locator('.checkout-payment-action').innerText(),new RegExp(label.replace('.','\\.')));assert.match(await page.locator('.checkout-summary').textContent(),fee?/Shipping\s*₹99/:/Shipping\s*Complimentary/);await geometry();}
         codOption=false;await go();assert(await page.getByRole('radio',{name:/Cash on delivery/}).isDisabled());assert.match(await page.locator('.checkout-payment-methods').innerText(),/Temporarily unavailable/);
         await page.locator('.checkout-payment-methods').scrollIntoViewIfNeeded();await geometry();
         await page.evaluate(()=>document.activeElement?.blur());
         await page.screenshot({path:output+'/'+engine+'-'+viewport.width+'-checkout.png'});
-        empty=true;await page.goto(base+'/checkout',{waitUntil:'domcontentloaded'});await page.getByText('Your bag is empty.',{exact:true}).waitFor();assert(await page.locator('.checkout-back-link').isVisible(),'Empty bag retains Back to bag');assert.equal(await page.locator('.checkout-pay-button').count(),0,'Empty bag has no stale submit action');
+        await settle();empty=true;await page.goto(base+'/checkout',{waitUntil:'domcontentloaded'});await page.getByText('Your bag is empty.',{exact:true}).waitFor();await settle();assert(await page.locator('.checkout-back-link').isVisible(),'Empty bag retains Back to bag');assert.equal(await page.locator('.checkout-pay-button').count(),0,'Empty bag has no stale submit action');
         assert.deepEqual(unexpectedWrites,[],'No production write escaped interception');assert.deepEqual(errors,[],'No checkout JavaScript exceptions');
         results.push({engine,...viewport,passed:true,checks:['native-form-validation','shipping-thresholds','fixed-header','fixed-mobile-payment-footer','guest','COD-PIN-reset','COD-unavailable','online-payment-total','double-submit','idempotent-retry','COD-no-gateway','footer-clearance','no-overflow'],isolatedPrepares:prepares.length,realWrites:0});console.log('PASS '+engine+' '+viewport.width+': checkout layout and isolated payment regression');
-      } catch(error) { await writeFile(output+'/'+engine+'-'+viewport.width+'-failure.html',await page.content());await page.screenshot({path:output+'/'+engine+'-'+viewport.width+'-failure.png',fullPage:true}).catch(()=>{});await writeFile(output+'/report.json',JSON.stringify({passed:false,engine,viewport,error:error.stack,errors,results},null,2));throw error; }
+      } catch(error) { await writeFile(output+'/'+engine+'-'+viewport.width+'-failure.html',await page.content());await page.screenshot({path:output+'/'+engine+'-'+viewport.width+'-failure.png',fullPage:true}).catch(()=>{});await writeFile(output+'/report.json',JSON.stringify({passed:false,engine,viewport,error:error.stack,errors,navigationFailures,results},null,2));throw error; }
       finally {await context.close();}
     } } finally {await browser.close();}
   }
