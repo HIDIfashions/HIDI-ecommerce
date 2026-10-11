@@ -42,7 +42,7 @@ digest = subprocess.check_output(['az','acr','repository','show','--name','acrhi
 assert previous.endswith('@'+digest), 'Recovery backup must match exact parent digest'
 suffix = 'portraitsourcefix' + r.run_key('a')
 r.conditional_write_image(current, previous, suffix, 'source-recovery-write.json')
-recovered = r.cloud.snapshot(r.wait_ready(previous, suffix, {'hidi-web': state}))
+recovered = r.cloud.snapshot(r.wait_ready(previous, suffix, {'hidi-web': state, 'hidi-api': api}))
 assert recovered['settingsHash'] == state['settingsHash'], 'Recovery must preserve current app settings'
 assert r.cloud.snapshot(r.cloud.app('hidi-api')) == api, 'Recovery leaves API untouched'
 r.save('source-recovery.json', {'passed': True, 'ownedRevision': owned_revision, 'exactParentLayersVerified': True, 'restoredImage': previous, 'settingsPreserved': True, 'apiUnchanged': True})
