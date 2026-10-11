@@ -205,7 +205,7 @@ def capture():
     setup()
     photo.capture()
     before = photo.states()
-    assert not re.fullmatch(r"hidi-web--herosound\d+a\d+", before["hidi-web"]["latest"]), "Refusing to recapture an owned landing candidate as a new baseline"
+    assert not re.fullmatch(r"hidi-web--herosoundicon" + os.environ["GITHUB_RUN_ID"] + r"a\d+", before["hidi-web"]["latest"]), "Refusing to recapture this run's owned icon candidate as a new baseline"
     for name, state in before.items():
         immutable(state["image"], name.removeprefix("hidi-"))
     backup(before)
@@ -592,7 +592,7 @@ def owned_state_active(state, candidate, owned_revision, rollback_revision):
 
 def reconcile_failure(image, before, captured, candidate_public, suffix, forward_may_complete=False):
     owned_revision = "hidi-web--" + suffix
-    rollback_suffix = "herosoundrb" + run_key("a")
+    rollback_suffix = "herosoundiconrb" + run_key("a")
     rollback_revision = "hidi-web--" + rollback_suffix
     deadline = time.monotonic() + 600
     last_state = None
@@ -687,7 +687,7 @@ def apply(image):
     assert public_snapshot() == captured, "Published media or policy changed after capture"
     normalization = private_json("normalization-config.json")
     expected = proposed_public(captured)
-    suffix = "herosound" + run_key("a")
+    suffix = "herosoundicon" + run_key("a")
     write_private("forward-write.json", {"attempted": False, "mayComplete": False})
     install_interrupt_handler()
     try:
@@ -734,7 +734,7 @@ def recover(image):
     # intent marker was never flushed.
     result = reconcile_failure(
         image, before, captured, candidate_public,
-        "herosound" + run_key("a"), forward_may_complete=True,
+        "herosoundicon" + run_key("a"), forward_may_complete=True,
     )
     result.update({"externalRecovery": True, "apiWrites": False, "databaseWrites": False, "blobWrites": False})
     save("external-recovery.json", result)
