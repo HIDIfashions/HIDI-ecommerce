@@ -245,6 +245,15 @@ const storefrontLayerFix = `
       row-gap: 38px !important;
     }
   }
+
+/* hidi-product-footer-clearance */
+/* Keep product footer links above the two-row fixed mobile purchase bar. */
+@media (max-width: 620px) {
+  body:has([class*="add-to-cart_mobileBar__"]) footer.footer {
+    padding-bottom: calc(126px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 </style>
 <script data-hidi-pdp-gallery-controls="true">
 (() => {
