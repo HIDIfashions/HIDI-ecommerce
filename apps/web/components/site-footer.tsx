@@ -13,7 +13,7 @@ export function Footer() {
     <div><h3>Help</h3><Link href="/shipping">Shipping</Link><Link href="/returns">Returns & Exchanges</Link><Link href="/account">My Account</Link><Link href="/contact">Contact</Link></div>
     <div><h3>Stay close</h3><p className="muted">Subscribe for launch offers, rewards updates, new edits and restocks.</p>
       {(instagram || facebook || x || youtube) && <div className="social-links" aria-label="HIDI social channels"><SocialLink href={instagram} label="HIDI on Instagram"><InstagramIcon size={18} /></SocialLink><SocialLink href={facebook} label="HIDI on Facebook"><FacebookIcon size={18} /></SocialLink><SocialLink href={x} label="HIDI on X"><XIcon size={17} /></SocialLink><SocialLink href={youtube} label="HIDI on YouTube"><YouTubeIcon size={19} /></SocialLink></div>}
-      <Link href="/lookbook" className="footer-lookbook-link">Explore our editorial archive →</Link><NewsletterSignup /><p className="footer-small">By subscribing, you agree to receive HIDI updates. You can unsubscribe anytime.</p><p className="footer-motto">Good clothes. Brighter days.</p>
+      <NewsletterSignup /><p className="footer-small">By subscribing, you agree to receive HIDI updates. You can unsubscribe anytime.</p><p className="footer-motto">Good clothes. Brighter days.</p>
     </div>
   </div></div><div className="footer-bottom-shell"><div className="footer-bottom container"><span>© 2026 HIDI. All rights reserved.</span><span><Link href="/shipping">Delivery</Link> · <Link href="/returns">Returns &amp; exchanges</Link> · <Link href="/contact">Order support</Link></span></div></div></footer>;
 }
