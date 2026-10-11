@@ -35,10 +35,14 @@ export function patch(source) {
     render('span', 'className:"checkout-action-label",children:"Total to pay"') + ',' +
     render('strong', 'className:"checkout-action-total",children:' + amount) + ',' + submit + ']');
   edit(aside.end - 1, aside.end - 1, ',' + action);
-  const grid = one('checkout-grid').parent;
-  assert(ts.isCallExpression(grid) && ts.isArrayLiteralExpression(grid.parent));
-  edit(grid.parent.getStart(tree) + 1, grid.parent.getStart(tree) + 1,
-    render('a', 'href:"/cart",className:"checkout-back-link",children:"← Back to bag"') + ',');
+  const page = object('container checkout-page');
+  assert(page.length <= 1);
+  if (page.length) {
+    const children = prop(page[0], 'children').initializer;
+    assert(ts.isArrayLiteralExpression(children));
+    edit(children.getStart(tree) + 1, children.getStart(tree) + 1,
+      render('a', 'href:"/cart",className:"checkout-back-link",children:"← Back to bag"') + ',');
+  }
   const prompt = one('checkout-guest-prompt').parent;
   assert(ts.isCallExpression(prompt) && ts.isArrayLiteralExpression(prompt.parent));
   const promptIndex = prompt.parent.elements.indexOf(prompt);
@@ -70,11 +74,11 @@ export function patch(source) {
   assert.equal(restored, source, 'Every unrelated byte is preserved');
   const check = ts.createSourceFile('patched.js', output, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
   assert.equal(check.parseDiagnostics.length, 0, 'Patched module parses');
-  return {output, changes: edits.length, sourceRestored: true};
+  return {output, changes: edits.length, sourceRestored: true, checkoutBackLink: page.length === 1};
 }
 if (process.argv[2]) {
   const result=patch(readFileSync(process.argv[2], 'utf8'));
   if (!result) process.exit(2);
   writeFileSync(process.argv[3], result.output);
-  console.log(JSON.stringify({passed:true,changes:result.changes,sourceRestored:result.sourceRestored}));
+  console.log(JSON.stringify({passed:true,changes:result.changes,sourceRestored:result.sourceRestored,checkoutBackLink:result.checkoutBackLink}));
 }

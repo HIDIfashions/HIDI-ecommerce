@@ -43,6 +43,7 @@ body:has(.checkout-page) #main-content { padding-top: var(--checkout-top); }
 .checkout-page .checkout-payment-action { margin-top: 22px; width: 100%; }
 .checkout-page :is(.checkout-action-label,.checkout-action-total) { display: none; }
 .checkout-page .checkout-pay-button { position: static !important; display: flex !important; justify-content: center; align-items: center; gap: 10px; width: 100% !important; min-height: 54px; margin: 0 !important; padding: 12px !important; border-radius: 6px; background: #591d20 !important; border: 1px solid #591d20 !important; color: #fff8ef !important; box-shadow: none; font-size: 14px; letter-spacing: 0; text-transform: none; line-height: 1.4; }
+.checkout-page .checkout-pay-button :is(span,strong) { color: inherit !important; }
 .checkout-page .checkout-mobile-pay-amount { display: inline !important; white-space: nowrap; font-size: 16px; }
 .checkout-page .checkout-action-note { text-align: center; margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
 body:has(.checkout-page) .footer-main { display: none; }
@@ -61,7 +62,7 @@ body:has(.checkout-page) .footer-bottom { gap: 16px; flex-wrap: wrap; padding-bl
   .checkout-page > .collection-header { margin-bottom: 16px; }
   .checkout-page .checkout-grid { display: block; }
   .checkout-page .checkout-form fieldset > section { padding: 16px; margin-bottom: 14px; }
-  .checkout-page .checkout-mobile-summary { position: static !important; margin-bottom: 18px; border-radius: 8px; }
+  .checkout-page .checkout-mobile-summary { display: block !important; position: static !important; margin-bottom: 18px; border-radius: 8px; }
   .checkout-page .checkout-section-heading h2 { font-size: 18px; }
   .checkout-page .checkout-summary { display: block !important; position: static; padding: 0; margin: 0; border: 0; background: transparent; }
   .checkout-page .checkout-summary > :not(.checkout-payment-action) { display: none !important; }

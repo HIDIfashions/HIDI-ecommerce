@@ -20,7 +20,9 @@ def patch_runtime(base, overlay):
             if name.endswith('.js') and 'Enjoy your HIDI Rewards' in text and 'className:"checkout-form"' in text:
                 assert name.endswith('/checkout/page.js') or re.fullmatch(r'apps/web/\.next/static/chunks/app/checkout/page-[a-f0-9]{16}\.js',name), 'Unexpected checkout module location: '+name
                 source.write_text(text)
-                subprocess.run(['node',str(HERE/'patch-module.mjs'),str(source),str(target)],check=True)
+                result=subprocess.run(['node',str(HERE/'patch-module.mjs'),str(source),str(target)],check=True,capture_output=True,text=True)
+                report=json.loads(result.stdout)
+                assert report['checkoutBackLink']==('/server/' in name), 'Back to bag belongs to the server page including loading/empty states'
                 semantic[name] = target.read_text(); patched.append(name)
     assert len(patched) == 2 and any('/server/' in name for name in patched), 'Both retained server and browser checkout modules required'
     mapping = {}
