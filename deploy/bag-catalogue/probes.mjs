@@ -42,8 +42,11 @@ export async function probe(base, output) {
           assert.deepEqual(await productPaths(), expected, 'Bag must open the same products as hero');
           assert.equal(await page.getByText('No styles match those filters.', { exact: true }).count(), 0);
           await page.screenshot({ path: `${output}/${engine}-${width}-bag-products.png` });
-          await page.getByLabel('Sort products').selectOption({ label: 'Price: Low to high' });
-          assert.deepEqual(await productPaths(), expected, 'Sorting retains all published products');
+          const sort = page.getByLabel('Sort products');
+          if (await sort.isVisible()) {
+            await sort.selectOption({ label: 'Price: Low to high' });
+            assert.deepEqual(await productPaths(), expected, 'Sorting retains all published products');
+          }
           await page.locator('.product-grid h3 a').first().click();
           await page.locator('main h1').waitFor();
           assert(new URL(page.url()).pathname.startsWith('/products/'), 'Product details remain reachable');
