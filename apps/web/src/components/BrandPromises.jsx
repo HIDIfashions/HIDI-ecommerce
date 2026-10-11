@@ -6,7 +6,7 @@ import { useHidi } from '../context/HidiContext.jsx';
 export default function BrandPromises() {
   const { openPolicy, openPayments } = useHidi();
   return (
-    <section className="promises-section section-space" id="our-promises" aria-labelledby="promises-title">
+    <section className="promises-section section-space care-break" id="our-promises" aria-labelledby="promises-title">
     <div className="container">
     <Reveal as="div" className="section-heading">
     <p className="eyebrow">THE LITTLE THINGS MATTER</p>

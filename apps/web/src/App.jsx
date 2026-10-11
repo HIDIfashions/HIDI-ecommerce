@@ -11,6 +11,7 @@ import MeetHidi from './components/MeetHidi.jsx';
 import RangeCarousel from './components/RangeCarousel.jsx';
 import HidiEdit from './components/HidiEdit.jsx';
 import BrandPromises from './components/BrandPromises.jsx';
+import './styles/care-break.css';
 import Footer from './components/Footer.jsx';
 import HidiDialog from './components/HidiDialog.jsx';
 import CategoriesPage from './pages/CategoriesPage.jsx';
@@ -75,8 +76,8 @@ export default function App() {
             <VideoHero />
             <RangeCarousel />
             <MeetHidi />
-            <HidiEdit />
             <BrandPromises />
+            <HidiEdit />
           </main>
           <Footer />
         </div>}
