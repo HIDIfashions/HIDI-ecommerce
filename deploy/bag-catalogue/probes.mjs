@@ -47,9 +47,11 @@ export async function probe(base, output) {
             await sort.selectOption({ label: 'Price: Low to high' });
             assert.deepEqual(await productPaths(), expected, 'Sorting retains all published products');
           }
-          await page.locator('main article h3 a').first().click();
-          await page.locator('main h1').waitFor();
-          assert(new URL(page.url()).pathname.startsWith('/products/'), 'Product details remain reachable');
+          const productLink = page.locator('main article h3 a').first();
+          const productName = await productLink.innerText();
+          await productLink.click();
+          await page.waitForURL('**/products/**');
+          await page.getByRole('heading', { level: 1, name: productName, exact: true }).waitFor();
           // Existing bookmarks and plain full-page navigation are repaired too.
           await page.goto(base + '/collections/new-arrivals?sort=featured', { waitUntil: 'domcontentloaded' });
           await cards.first().waitFor();
