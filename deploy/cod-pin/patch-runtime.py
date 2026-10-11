@@ -31,7 +31,11 @@ def patch_runtime(base, overlay):
             if name.endswith('.js') and ('checkout-form' in text and '/checkout/delivery-serviceability' in text):
                 assert name.endswith('/checkout/page.js') or re.fullmatch(r'apps/web/\.next/server/chunks/[^/]+\.js',name) or re.fullmatch(r'apps/web/\.next/static/chunks/app/checkout/page-[a-f0-9]{16}\.js',name), 'Unexpected checkout module location: '+name
                 source.write_text(text)
-                result=subprocess.run(['node',str(HERE/'patch-module.mjs'),str(source),str(target)],check=True,capture_output=True,text=True)
+                result=subprocess.run(['node',str(HERE/'patch-module.mjs'),str(source),str(target)],capture_output=True,text=True)
+                if result.returncode:
+                    print('Retained checkout patch failed in '+name, flush=True)
+                    print(result.stderr, flush=True)
+                    result.check_returncode()
                 report=json.loads(result.stdout)
                 assert report['inverseTransformsVerified'] and report['paymentSubmissionPreserved']
                 client_modules.append(name)
