@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { config } from '../config.js';
 import { rangeCards as collections } from '../data/rangeCards.js';
+import { publicRangeText } from '../data/rangeText.js';
 import { useHidi } from '../context/HidiContext.jsx';
 import { landingImageProps, useLandingMedia } from '../context/LandingMediaContext.jsx';
 import { useMediaQuery, useReducedMotion } from '../hooks/useMediaQuery.js';
@@ -14,6 +15,7 @@ const count = collections.length;
 
 export default function RangeCarousel() {
   const landingMedia = useLandingMedia();
+  const rangeText = useMemo(() => publicRangeText(landingMedia.rangeText), [landingMedia.rangeText]);
   const { openCollection, dialogOpen } = useHidi();
   const mobile = useMediaQuery('(max-width: 700px)');
   const reduced = useReducedMotion();
@@ -32,8 +34,10 @@ export default function RangeCarousel() {
   });
   const resolvedCollections = useMemo(() => collections.map((item) => ({
     ...item,
+    name: rangeText.cards[item.mediaSlot].title,
+    controlName: item.controlName ? `${rangeText.cards[item.mediaSlot].title} - Photo ${item.id.endsWith("-2") ? 2 : 1}` : rangeText.cards[item.mediaSlot].title,
     imageProps: landingImageProps(landingMedia, item.mediaSlot, item.image, item.alt),
-  })), [landingMedia]);
+  })), [landingMedia, rangeText]);
 
   useEffect(() => { setPaused(mobile || reduced); }, [mobile, reduced]);
   useEffect(() => {
@@ -66,7 +70,7 @@ export default function RangeCarousel() {
   };
   const select = (index) => {
     goTo(index);
-    setStatus(`${collections[index].name} selected.`);
+    setStatus(`${resolvedCollections[index].name} selected.`);
   };
   const handleCollectionClick = (index) => {
     if (!canOpen()) return;
@@ -90,9 +94,9 @@ export default function RangeCarousel() {
   return (
     <section ref={section} className="range-section range-section--spotlight" id="our-range" aria-labelledby="range-title" aria-busy={landingMedia.status === 'loading'} data-landing-config-status={landingMedia.status}>
       <Reveal className="section-heading container">
-        <p className="eyebrow">A WARDROBE FOR EVERY YOU</p>
-        <h2 id="range-title">Explore our <em>range.</em></h2>
-        <p>Your next favourite is waiting to be found.</p>
+        <p className="eyebrow">{rangeText.eyebrow}</p>
+        <h2 id="range-title">{rangeText.heading} <em>{rangeText.accent}</em></h2>
+        <p>{rangeText.subtitle}</p>
       </Reveal>
       <div ref={galleryRef} id="range-carousel" className="hidi-collection-gallery"
         role="region" tabIndex={0} aria-roledescription="carousel" aria-label="HIDI collection previews" aria-describedby="collection-keyboard-help"
@@ -141,8 +145,8 @@ export default function RangeCarousel() {
         <p className="sr-only" id="collection-keyboard-help">Use the arrow keys to browse. Automatic rotation pauses on hover or focus. Press Space while this carousel is focused to pause or resume rotation.</p>
         <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{status}</p>
       </div>
-      <p className="range-join">A little preview of what’s inside.
-        <button type="button" className="text-link" onClick={() => openCollection()}>Explore the collections <Icon name="arrow" /></button>
+      <p className="range-join">{rangeText.footer}
+        <button type="button" className="text-link" onClick={() => openCollection()}>{rangeText.buttonLabel} <Icon name="arrow" /></button>
       </p>
     </section>
   );

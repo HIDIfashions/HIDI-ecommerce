@@ -20,6 +20,7 @@
 @media(max-width:900px){.layout{grid-template-columns:1fr}.slots{max-height:none}.library{grid-template-columns:repeat(2,minmax(0,1fr))}.heading{align-items:flex-start;flex-direction:column}.wrap{width:min(100% - 20px,1180px);margin-top:14px}.top{padding:14px 16px}}
 @media(max-width:560px){.row,.previews,.library{grid-template-columns:1fr}.btn{flex-basis:100%}}
 .sequence-list{display:grid;gap:8px;margin-bottom:12px}.sequence-item{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:9px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:9px;background:#fff}.sequence-item.is-selected{border-color:var(--wine)}.sequence-item img,.sequence-item video{width:44px;height:44px;object-fit:cover;border-radius:5px}.sequence-name{min-width:0;font-size:12px;color:var(--wine);border:0;background:none;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px 0}.sequence-actions{display:flex;gap:2px}.sequence-actions button{width:36px;min-height:44px;border:1px solid var(--line);background:#fff;border-radius:6px;color:var(--wine)}.sequence-actions button:disabled{opacity:.35}.rotation-option{display:flex;align-items:center;gap:8px;min-height:44px}.rotation-option input{width:18px;height:18px}.preview-heading{text-align:center;padding:14px 8px;background:var(--soft);color:var(--wine);font:24px Georgia,serif;margin-bottom:12px}.preview.ananya.desktop{aspect-ratio:16/10;background:#fffaf2}.preview.ananya.mobile{aspect-ratio:9/16;background:#fffaf2}[hidden]{display:none!important}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--wine);outline-offset:2px}
+.range-copy-card{margin-bottom:18px}.range-copy-card summary{cursor:pointer;color:var(--wine);font-size:18px;font-weight:600;padding:4px 0;min-height:44px}.range-copy-card fieldset{border:0;padding:0;margin:0;min-width:0}.range-copy-card legend{font-weight:600;margin-bottom:12px}.range-copy-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.range-copy-preview{padding:20px;background:var(--soft);border:1px solid var(--line);border-radius:10px;color:var(--wine);overflow-wrap:anywhere}.range-copy-preview h2{font-family:Georgia,serif;font-size:28px;font-weight:400}.range-copy-preview .range-preview-captions{display:flex;flex-wrap:wrap;gap:8px}.range-copy-preview .range-preview-captions span{padding:5px 9px;border:1px solid var(--line);border-radius:6px;font-size:12px}@media(max-width:560px){.range-copy-fields{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -30,6 +31,27 @@
 <div id="workspace" class="layout" hidden>
 <section class="card"><h2>Media slots</h2><div id="slots" class="slots"></div></section>
 <div class="workspace">
+<details class="card range-copy-card" id="rangeTextEditor">
+<summary>Edit Explore our range text</summary>
+<p class="hint">Edit the section text and all five photo captions. Save Text publishes these words independently of your photos.</p>
+<form id="rangeTextForm"><fieldset id="rangeTextFields" disabled>
+<legend>Section text</legend><div class="range-copy-fields">
+<label for="rangeText-eyebrow">Small top line<input id="rangeText-eyebrow" type="text" maxlength="80"></label>
+<label for="rangeText-heading">Main heading<input id="rangeText-heading" type="text" maxlength="80" required></label>
+<label for="rangeText-accent">Italic heading text<input id="rangeText-accent" type="text" maxlength="40"></label>
+<label for="rangeText-subtitle">Subtitle<input id="rangeText-subtitle" type="text" maxlength="200"></label>
+<label for="rangeText-footer">Bottom text<input id="rangeText-footer" type="text" maxlength="160"></label>
+<label for="rangeText-buttonLabel">Browse button text<input id="rangeText-buttonLabel" type="text" maxlength="60" required></label>
+</div><h3>Photo captions</h3><div class="range-copy-fields">
+<label for="rangeText-range-everyday">Casual Wear photo caption<input id="rangeText-range-everyday" type="text" maxlength="60" required></label>
+<label for="rangeText-range-work-edit">Work Wear photo caption<input id="rangeText-range-work-edit" type="text" maxlength="60" required></label>
+<label for="rangeText-range-occasion">Occasional Wear photo caption<input id="rangeText-range-occasion" type="text" maxlength="60" required></label>
+<label for="rangeText-range-new-arrivals">Ananya’s Pick — Photo 1 caption<input id="rangeText-range-new-arrivals" type="text" maxlength="60" required></label>
+<label for="rangeText-range-shop-all">Ananya’s Pick — Photo 2 caption<input id="rangeText-range-shop-all" type="text" maxlength="60" required></label>
+</div><h3>Text preview</h3><div id="rangeTextPreview" class="range-copy-preview" aria-label="Explore our range text preview"></div>
+<div class="actions"><button id="rangeTextSave" class="btn" type="submit">Save Text</button><button id="rangeTextRestore" class="btn secondary" type="button">Restore Previous Text</button><button id="rangeTextReset" class="btn secondary" type="button">Reset Default Text</button></div>
+</fieldset></form><p class="hint" id="rangeTextStatus" role="status" aria-live="polite">Loading current text...</p>
+</details>
 <div class="work-grid">
 <section class="card">
 <h2 id="slotTitle">Select a section</h2>
@@ -212,6 +234,54 @@ async function operation(action) { if (busy) return;busy=true;updateButtons();re
 async function request(endpoint,body) {
   const res=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:body ? JSON.stringify(body) : undefined});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.message || "Unable to update media");return data;
 }
+const rangeTextDefaults = {"version":1,"eyebrow":"A WARDROBE FOR EVERY YOU","heading":"Explore our","accent":"range.","subtitle":"Your next favourite is waiting to be found.","footer":"A little preview of what’s inside.","buttonLabel":"Explore the collections","cards":{"range-everyday":{"title":"Casual Wear"},"range-work-edit":{"title":"Work Wear"},"range-occasion":{"title":"Occasional Wear"},"range-new-arrivals":{"title":"Ananya’s Pick"},"range-shop-all":{"title":"Ananya’s Pick"}}};
+const rangeTextKeys = ["eyebrow", "heading", "accent", "subtitle", "footer", "buttonLabel"];
+const rangeTextCardIds = ["range-everyday", "range-work-edit", "range-occasion", "range-new-arrivals", "range-shop-all"];
+let rangeTextCurrent=structuredClone(rangeTextDefaults),rangeTextPrevious=null,rangeTextLoaded=false,rangeTextDirty=false,rangeTextBusy=false;
+function rangeTextMessage(message,error=false){$("rangeTextStatus").textContent=message;$("rangeTextStatus").style.color=error ? "#9b2424" : "#602124";}
+function rangeTextFormValue(){const value={cards:{}};for(const key of rangeTextKeys)value[key]=$("rangeText-"+key).value;for(const id of rangeTextCardIds)value.cards[id]={title:$("rangeText-"+id).value};return value;}
+function rangeTextPreview(){
+  const value=rangeTextFormValue(),host=$("rangeTextPreview");host.replaceChildren();
+  const add=(tag,text)=>{const node=document.createElement(tag);node.textContent=text;host.append(node);return node;};
+  add("p",value.eyebrow);const heading=add("h2",value.heading+" "),accent=document.createElement("em");accent.textContent=value.accent;heading.append(accent);add("p",value.subtitle);
+  const captions=add("div","");captions.className="range-preview-captions";
+  for(const id of rangeTextCardIds){const caption=document.createElement("span");caption.textContent=value.cards[id].title;captions.append(caption);}
+  add("p",value.footer);add("p",value.buttonLabel+" →");
+}
+function rangeTextButtons(){
+  $("rangeTextFields").disabled=!rangeTextLoaded || rangeTextBusy;
+  $("rangeTextSave").disabled=demoMode || !rangeTextDirty || rangeTextBusy;
+  $("rangeTextReset").disabled=demoMode || rangeTextBusy;
+  $("rangeTextRestore").disabled=demoMode || !rangeTextPrevious || rangeTextBusy;
+}
+function rangeTextFill(value){
+  rangeTextCurrent=value || structuredClone(rangeTextDefaults);
+  for(const key of rangeTextKeys)$("rangeText-"+key).value=rangeTextCurrent[key] ?? rangeTextDefaults[key];
+  for(const id of rangeTextCardIds)$("rangeText-"+id).value=rangeTextCurrent.cards?.[id]?.title || rangeTextDefaults.cards[id].title;
+  rangeTextDirty=false;rangeTextLoaded=true;rangeTextPreview();rangeTextButtons();
+}
+async function loadRangeText(){
+  if(demoMode){rangeTextFill(rangeTextDefaults);rangeTextMessage("Local text preview only.");return;}
+  const response=await fetch("/api/hidi/landing-media-range-text",{cache:"no-store"});const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.message || "Unable to load range text");
+  rangeTextPrevious=data.previous;rangeTextFill(data.current);rangeTextMessage("Current text loaded. Edit and Save Text to publish.");
+}
+async function changeRangeText(action){
+  if(rangeTextBusy || !rangeTextLoaded || demoMode)return;
+  if(action==="publish" && !$("rangeTextForm").reportValidity())return;
+  if(action!=="publish" && rangeTextDirty && !window.confirm("Replace your unsaved text edits?"))return;
+  rangeTextBusy=true;rangeTextButtons();rangeTextMessage("Saving text...");
+  try{
+    const before=rangeTextCurrent;
+    const data=await request("/api/hidi/landing-media-range-text-"+action,action==="publish"?rangeTextFormValue():{});
+    rangeTextPrevious=before;rangeTextFill(data.current);rangeTextMessage(action==="publish"?"Text saved and published. Refresh the storefront to see it.":action==="restore"?"Previous text restored and published.":"Default text restored and published.");
+  }catch(error){rangeTextMessage(error.message || "Unable to save text",true);}
+  finally{rangeTextBusy=false;rangeTextButtons();}
+}
+$("rangeTextForm").addEventListener("input",()=>{rangeTextDirty=true;rangeTextPreview();rangeTextButtons();rangeTextMessage("Unsaved text changes — use Save Text to publish.");});
+$("rangeTextForm").addEventListener("submit",event=>{event.preventDefault();changeRangeText("publish");});
+$("rangeTextReset").onclick=()=>changeRangeText("reset");$("rangeTextRestore").onclick=()=>changeRangeText("restore");
+
 function updateCurrent(current) { if (isHero()) heroCurrent=current;else if(selectedSlot.id==="ananya") landingCurrent.ananya=current;else landingCurrent.slots[selectedSlot.id]=current;drafts.delete(selectedSlot.id);const draft=draftFor();selected=isSequence() ? draft.items[0] || null : current?.active ? {...current,id:current.assetId} : null;setFields(selected);renderPreview(); }
 async function load() {
   if (!demoMode) {const session=await fetch("/api/admin/session",{cache:"no-store"});if(!session.ok){$("signin").hidden=false;$("status").textContent="Signed out";return;}}
@@ -222,6 +292,7 @@ async function load() {
     if (!heroRes.ok || !landingRes.ok) throw new Error(heroData.message || landingData.message || "Media storage is unavailable");
     heroLibrary=heroData.assets || [];heroCurrent=heroData.current || null;landingLibrary=landingData.assets || [];landingCurrent=landingData.current || {slots:{}};
   }
+  loadRangeText().catch(error=>rangeTextMessage(error.message,true));
   selectSlot(new URLSearchParams(location.search).get("section") || "hero");
 }
 $("file").onchange=()=>operation(async()=>{

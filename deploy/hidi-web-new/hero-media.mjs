@@ -724,7 +724,45 @@ function publicLandingSlot(raw) {
   };
 }
 
-function publicLandingConfig(raw) {
+const RANGE_TEXT_DEFAULTS = {"version":1,"eyebrow":"A WARDROBE FOR EVERY YOU","heading":"Explore our","accent":"range.","subtitle":"Your next favourite is waiting to be found.","footer":"A little preview of what’s inside.","buttonLabel":"Explore the collections","cards":{"range-everyday":{"title":"Casual Wear"},"range-work-edit":{"title":"Work Wear"},"range-occasion":{"title":"Occasional Wear"},"range-new-arrivals":{"title":"Ananya’s Pick"},"range-shop-all":{"title":"Ananya’s Pick"}}};
+const RANGE_TEXT_LIMITS = {eyebrow:80,heading:80,accent:40,subtitle:200,footer:160,buttonLabel:60};
+function publicRangeText(raw) {
+  const result={version:1,cards:{}};
+  for(const [key,limit] of Object.entries(RANGE_TEXT_LIMITS)) result[key]=typeof raw?.[key]==="string" && raw[key].length<=limit ? raw[key] : RANGE_TEXT_DEFAULTS[key];
+  for(const id of Object.keys(RANGE_TEXT_DEFAULTS.cards)) result.cards[id]={title:typeof raw?.cards?.[id]?.title==="string" && raw.cards[id].title.trim() && raw.cards[id].title.length<=60 ? raw.cards[id].title : RANGE_TEXT_DEFAULTS.cards[id].title};
+  return result;
+}
+
+const RANGE_TEXT_KEY = "brand/landing-media/range-text.json";
+const RANGE_TEXT_PREVIOUS_KEY = "brand/landing-media/range-text-previous.json";
+function requestedRangeText(raw) {
+  if(!raw || typeof raw!=="object" || Array.isArray(raw)) throw new Error("Use a valid range text form");
+  if(Object.keys(raw).some(key=>!Object.hasOwn(RANGE_TEXT_LIMITS,key) && key!=="cards")) throw new Error("Only Explore our range text can be changed");
+  const next={};
+  for(const [key,limit] of Object.entries(RANGE_TEXT_LIMITS)) {
+    if(typeof raw[key]!=="string") throw new Error("Complete all range text fields");
+    const value=raw[key].trim();
+    if(value.length>limit || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)) throw new Error(key+" must be valid plain text within "+limit+" characters");
+    if(["heading","buttonLabel"].includes(key) && !value) throw new Error(key+" cannot be empty");
+    next[key]=value;
+  }
+  if(!raw.cards || typeof raw.cards!=="object" || Array.isArray(raw.cards) || Object.keys(raw.cards).some(id=>!Object.hasOwn(RANGE_TEXT_DEFAULTS.cards,id))) throw new Error("Use the five existing range photo captions");
+  next.cards={};
+  for(const id of Object.keys(RANGE_TEXT_DEFAULTS.cards)) {
+    const card=raw.cards[id];
+    if(!card || Object.keys(card).some(key=>key!=="title") || typeof card.title!=="string" || !card.title.trim() || card.title.trim().length>60 || /[\u0000-\u001f]/.test(card.title)) throw new Error("Each photo caption needs 1 to 60 characters");
+    next.cards[id]={title:card.title.trim()};
+  }
+  return {version:1,...next};
+}
+async function saveRangeText(next) {
+  // Dedicated copy documents cannot overwrite media selections or libraries.
+  const before=publicRangeText(await storageGetJson(RANGE_TEXT_KEY));
+  await storagePutJson(RANGE_TEXT_PREVIOUS_KEY,before);
+  await storagePutJson(RANGE_TEXT_KEY,{...next,updatedAt:new Date().toISOString()});
+}
+
+function publicLandingConfig(raw, rangeText = null) {
   const sourceSlots = raw?.slots && typeof raw.slots === "object" ? raw.slots : {};
   const slots = {};
   for (const id of LANDING_SLOT_IDS) slots[id] = publicLandingSlot(sourceSlots[id]);
@@ -732,6 +770,7 @@ function publicLandingConfig(raw) {
     version: 1,
     slots,
     ananya: raw?.ananya ? publicSequence(raw.ananya, true) : null,
+    rangeText: publicRangeText(rangeText),
   };
 }
 
@@ -867,7 +906,8 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
 
       let value = publicLandingConfig(null);
       try {
-        value = publicLandingConfig(await storageGetJson(LANDING_CURRENT_KEY));
+        const [media,text]=await Promise.all([storageGetJson(LANDING_CURRENT_KEY),storageGetJson(RANGE_TEXT_KEY)]);
+        value = publicLandingConfig(media,text);
       } catch {
         response.setHeader("Retry-After", "1");
         sendJson(response, 503, { message: "Media is temporarily unavailable" });
@@ -918,6 +958,26 @@ export function createHeroMediaHandler({ origin, hasStorefront }) {
     }
 
     try {
+      if (pathname === "/api/hidi/landing-media-range-text") {
+        if(request.method!=="GET") { response.setHeader("Allow","GET");sendJson(response,405,{message:"Method not allowed"});return true; }
+        const [current,previous]=await Promise.all([storageGetJson(RANGE_TEXT_KEY),storageGetJson(RANGE_TEXT_PREVIOUS_KEY)]);
+        sendJson(response,200,{current:publicRangeText(current),previous:previous?publicRangeText(previous):null});return true;
+      }
+      if (["/api/hidi/landing-media-range-text-publish","/api/hidi/landing-media-range-text-reset","/api/hidi/landing-media-range-text-restore"].includes(pathname)) {
+        if(request.method!=="POST") {response.setHeader("Allow","POST");sendJson(response,405,{message:"Method not allowed"});return true;}
+        let next;
+        if(pathname.endsWith("-publish")) {
+          try {next=requestedRangeText(await readJsonBody(request));}
+          catch(error) {sendJson(response,400,{message:error.message || "Use valid range text"});return true;}
+        } else if(pathname.endsWith("-reset")) next=publicRangeText(null);
+        else {
+          const previous=await storageGetJson(RANGE_TEXT_PREVIOUS_KEY);
+          if(!previous) {sendJson(response,404,{message:"There is no previous range text yet"});return true;}
+          next=publicRangeText(previous);
+        }
+        await saveRangeText(next);sendJson(response,200,{current:publicRangeText(next)});return true;
+      }
+
       if (pathname === "/api/hidi/hero-library" && request.method === "GET") {
         const [library, current, previous] = await Promise.all([
           loadLibrary(),

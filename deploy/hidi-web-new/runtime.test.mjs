@@ -790,6 +790,35 @@ test("hero media stores uploads and live config in Azure Blob with managed ident
     assert.equal((await post("/api/hidi/landing-media-ananya-restore",{})).status,200);
     assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).ananya.items,listConfig.ananya.items);
 
+    const copyPath="/api/hidi/landing-media-range-text";
+    const copyResponse=await send(azure.url,copyPath,{headers:{Cookie:"session=fixture"}});
+    assert.equal(copyResponse.status,200);
+    const defaultCopy=JSON.parse(copyResponse.body).current;
+    assert.equal(defaultCopy.heading,"Explore our");
+    assert.equal(Object.keys(defaultCopy.cards).length,5);
+    assert.equal((await post(copyPath+"-restore",{})).status,404);
+    const {version:copyVersion,...copy}=structuredClone(defaultCopy);
+    copy.heading="Our new range";copy.cards["range-new-arrivals"].title="Ananya ♥ 1";
+    copy.cards["range-shop-all"].title="అనన్య ఎంపిక 2";
+    const retainedBlobs=new Map([...blobs].map(([key,value])=>[key,Buffer.from(value.body)]));
+    const retainedConfig=JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body);
+    const beforeCopyWrites=blobRequests.filter(item=>item.method==="PUT").length;
+    for(const invalid of [{...copy,heading:""},{...copy,heading:"x".repeat(81)},{...copy,cards:{...copy.cards,"range-new-arrivals":{title:"x",collectionId:"workwear"}}}])
+      assert.equal((await post(copyPath+"-publish",invalid)).status,400);
+    assert.equal(blobRequests.filter(item=>item.method==="PUT").length,beforeCopyWrites,"Invalid text never writes storage");
+    assert.equal((await post(copyPath+"-publish",copy)).status,200);
+    const withCopy=JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body);
+    assert.deepEqual(withCopy.rangeText,{version:copyVersion,...copy});
+    assert.deepEqual(withCopy.slots,retainedConfig.slots);assert.deepEqual(withCopy.ananya,retainedConfig.ananya);
+    for(const [key,bytes] of retainedBlobs)assert.deepEqual(blobs.get(key).body,bytes,"Text publishing preserves every existing blob: "+key);
+    assert.equal((await post(copyPath+"-reset",{})).status,200);
+    assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).rangeText,defaultCopy);
+    assert.equal((await post(copyPath+"-restore",{})).status,200);
+    assert.deepEqual(JSON.parse((await send(azure.url,"/api/hidi/landing-media-config")).body).rangeText,{version:copyVersion,...copy});
+    const copyWrites=blobRequests.filter(item=>item.method==="PUT").slice(beforeCopyWrites);
+    assert.equal(copyWrites.length,6);
+    assert(copyWrites.every(item=>["/hero/brand/landing-media/range-text.json","/hero/brand/landing-media/range-text-previous.json"].includes(item.url)),"Text changes only dedicated copy documents");
+
     for (const fault of [503, 403, "disconnect", "malformed"]) {
       configReadFault = fault;
       for (const path of ["/api/hidi/hero-config", "/api/hidi/landing-media-config"]) {
@@ -824,9 +853,9 @@ test("media lists and libraries require an authenticated admin", async () => {
   const origin=await listen(denied);
   try {
     const web=await launch({STOREFRONT_ORIGIN:origin});
-    for(const path of ["/api/hidi/hero-publish","/api/hidi/hero-reset","/api/hidi/hero-restore","/api/hidi/landing-media-ananya-publish","/api/hidi/landing-media-ananya-reset","/api/hidi/landing-media-ananya-restore"])
+    for(const path of ["/api/hidi/hero-publish","/api/hidi/hero-reset","/api/hidi/hero-restore","/api/hidi/landing-media-ananya-publish","/api/hidi/landing-media-ananya-reset","/api/hidi/landing-media-ananya-restore","/api/hidi/landing-media-range-text-publish","/api/hidi/landing-media-range-text-reset","/api/hidi/landing-media-range-text-restore"])
       assert.equal((await send(web.url,path,{method:"POST",body:"{}"})).status,401,path);
-    for(const path of ["/api/hidi/hero-library","/api/hidi/landing-media-library"])
+    for(const path of ["/api/hidi/hero-library","/api/hidi/landing-media-library","/api/hidi/landing-media-range-text"])
       assert.equal((await send(web.url,path)).status,401,path);
   } finally { await new Promise(resolve=>denied.close(resolve)); }
 });

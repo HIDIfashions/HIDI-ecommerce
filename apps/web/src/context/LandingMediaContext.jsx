@@ -43,7 +43,7 @@ export function LandingMediaProvider({ children }) {
         if (!response.ok) throw new Error('Landing media unavailable');
         const value = await response.json();
         if (!value?.slots || typeof value.slots !== 'object' || Array.isArray(value.slots)) throw new Error('Invalid landing configuration');
-        const next = { status: 'ready' };
+        const next = { status: 'ready', rangeText: value.rangeText || null };
         for (const [id, slot] of Object.entries(value.slots)) {
           const clean = cleanSlot(slot);
           if (clean) next[id] = clean;
