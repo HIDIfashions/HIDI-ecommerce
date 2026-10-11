@@ -21,8 +21,9 @@ r.immutable(state['image'], 'web')
 api = r.cloud.snapshot(r.cloud.app('hidi-api'))
 subprocess.run(['docker', 'pull', state['image']], check=True)
 active_layers = json.loads(r.images.docker('image', 'inspect', state['image']))[0]['RootFS']['Layers']
-revisions = r.cloud.azure('containerapp', 'revision', 'list', '-g', r.cloud.GROUP, '-n', 'hidi-web')
+revisions = r.cloud.azure('containerapp', 'revision', 'list', '-g', r.cloud.GROUP, '-n', 'hidi-web', '--all')
 prior = sorted((entry for entry in revisions if entry['name'] != owned_revision), key=lambda entry: entry['properties'].get('createdTime', ''), reverse=True)
+prior.append({'properties': {'template': {'containers': [{'image': 'acrhidiprod0927.azurecr.io/hidi-web@sha256:5ac5783da15cf3b2359f1a26c0e341b981db4852335479124851ad5dfddac57b'}]}}})
 previous = None
 for revision in prior:
     image = revision['properties']['template']['containers'][0]['image']

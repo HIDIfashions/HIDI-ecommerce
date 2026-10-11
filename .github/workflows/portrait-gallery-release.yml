@@ -29,6 +29,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Recover the owned accidental source deployment if present
+        run: |
+          set -euo pipefail
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/portrait-gallery/recover-source.py
       - uses: pnpm/action-setup@v4
         with: {version: 10.15.1}
       - uses: actions/setup-node@v4
@@ -54,16 +64,6 @@ jobs:
           set -euo pipefail
           npm install --prefix /tmp/hidi-landing-media-browser --no-save playwright@1.56.1
           node /tmp/hidi-landing-media-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
-      - uses: azure/login@v2
-        with:
-          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
-          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
-          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Recover the owned accidental source deployment if present
-        run: |
-          set -euo pipefail
-          az acr login --name acrhidiprod0927 --only-show-errors
-          python3 deploy/portrait-gallery/recover-source.py
       - name: Capture and back up live runtime, media and settings
         run: |
           set -euo pipefail
