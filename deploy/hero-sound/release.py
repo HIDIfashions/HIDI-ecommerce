@@ -282,6 +282,7 @@ def mark_tested(tag):
     assert candidate.get("singleCareSection") is True and candidate.get("correctSectionOrder") is True
     assert candidate.get("fivePhotographs") is True and candidate.get("originalPhotosPreserved") is True
     assert candidate.get("audioToggleVerified") is True and candidate.get("sampleRemoved") is True
+    assert candidate.get("soundIconVerified") is True
     assert candidate.get("reducedMotion") is True and candidate.get("mediaFailureRecovery") is True
     assert candidate.get("blobWrites") == 0 and candidate.get("databaseWrites") == 0
     browsers = candidate.get("browserResults", [])
@@ -706,7 +707,7 @@ def apply(image):
             "mediaSelectionsPreserved": True, "heroSoundOnly": True,
             "databaseWrites": False, "blobWrites": False,
         })
-        print("PASS: Single selected hero video and visitor-controlled audio deployed; care spacing, selections, API, settings, SQL and Blob content preserved")
+        print("PASS: Compact mute/speaker icon deployed; audio behavior, photographs, care spacing, selections, API, settings, SQL and Blob content preserved")
     except Exception:
         try:
             marker = private_json("forward-write.json")

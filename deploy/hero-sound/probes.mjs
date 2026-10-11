@@ -49,11 +49,19 @@ export async function probe(base,output,{candidate=false,retained=true}={}){
         assert.equal(await video.count(),1);assert((await video.getAttribute('src')).endsWith('1791716760991-e92e5c8a-9f8a-46d9-8cad-c6ba3cd9e0cb.mp4'));
         assert(await video.evaluate(v=>v.muted));assert(await video.evaluate(v=>v.loop));
         assert(!mediaRequests.some(url=>url.includes('1791606631003')||url.includes('luminous-v1.mp4')),'Removed or fallback video requested');
+        assert.equal((await sound.textContent()).trim(),'');
+        assert.equal(await sound.getAttribute('title'),'Turn sound on');
+        const icon=sound.locator('svg');assert.equal(await icon.count(),1);
+        assert.equal(await icon.getAttribute('aria-hidden'),'true');
+        const glyph=await icon.boundingBox();assert.equal(glyph.width,20);assert.equal(glyph.height,20);
+        const mutedDrawing=await icon.innerHTML();
         const button=await sound.boundingBox(),shop=await heroSection.getByRole('button',{name:'Shop Now',exact:true}).boundingBox();
-        assert(button.width>=44&&button.height>=44&&button.x>=0&&button.x+button.width<=width);
+        assert(Math.abs(button.width-44)<.1&&Math.abs(button.height-44)<.1&&button.x>=0&&button.x+button.width<=width);
         assert(button.x+button.width<=shop.x||shop.x+shop.width<=button.x||button.y+button.height<=shop.y||shop.y+shop.height<=button.y,'Sound and Shop Now must not overlap');
         await sound.click();await page.waitForFunction(()=>{const v=document.querySelector('video.hero-live-media');return v&&!v.muted&&!v.paused&&v.currentTime>0;});
-        assert.equal(await heroSection.getByRole('button',{name:'Mute video sound'}).getAttribute('aria-pressed'),'true');
+        const audible=heroSection.getByRole('button',{name:'Mute video sound'});
+        assert.equal(await audible.getAttribute('aria-pressed'),'true');assert.equal(await audible.getAttribute('title'),'Mute sound');
+        assert.notEqual(await audible.locator('svg').innerHTML(),mutedDrawing);
         await heroSection.getByRole('button',{name:'Mute video sound'}).click();assert(await video.evaluate(v=>v.muted));
         await sound.focus();await page.keyboard.press('Space');await page.waitForFunction(()=>!document.querySelector('video.hero-live-media').muted);
         await page.locator('#our-promises').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.querySelector('video.hero-live-media').paused);
@@ -77,6 +85,6 @@ export async function probe(base,output,{candidate=false,retained=true}={}){
   }
   let gallery={};
   if(retained){const engines=process.env.HIDI_BROWSER_ENGINES;try{process.env.HIDI_BROWSER_ENGINES='chromium';gallery=await galleryProbe(base,output+'/retained-gallery',{candidate});}finally{process.env.HIDI_BROWSER_ENGINES=engines;}}
-  const report={...gallery,passed:true,heroSoundOnly:true,audioToggleVerified:true,sampleRemoved:true,reducedMotion:true,mediaFailureRecovery:candidate,browserResults:results,blobWrites:0,databaseWrites:0};
+  const report={...gallery,passed:true,heroSoundOnly:true,soundIconVerified:true,audioToggleVerified:true,sampleRemoved:true,reducedMotion:true,mediaFailureRecovery:candidate,browserResults:results,blobWrites:0,databaseWrites:0};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
