@@ -43,8 +43,8 @@ export async function probe(base,output,{candidate=false}={}){
       try{
         assert.equal((await page.goto(base+'/',{waitUntil:'domcontentloaded'})).status(),200);
         await section.scrollIntoViewIfNeeded();
-        await image.waitFor();await image.evaluate(image=>image.decode());
-        await page.waitForFunction(()=>document.querySelector('#hidi-edit img')?.dataset.photoReady==='true');
+        await image.waitFor();
+        await page.waitForFunction(()=>document.querySelector('#hidi-edit img')?.dataset.photoReady==='true');await image.evaluate(image=>image.decode());
         assert.equal(await section.locator('#edit-title').textContent(),'For whereveryou go next.');
         assert.equal(await image.evaluate(image=>new URL(image.currentSrc||image.src).pathname),new URL(expected.url,base).pathname);
         assert.equal(await page.locator('#our-range .hidi-collection-card').count(),5);
@@ -77,7 +77,7 @@ export async function probe(base,output,{candidate=false}={}){
         assert.equal(await image.evaluate(image=>getComputedStyle(image).animationName),'none');
         await section.screenshot({path:`${output}/${engine}-${width}-chapter.png`});
         if(candidate&&width===390){
-          custom=true;await page.reload({waitUntil:'domcontentloaded'});await section.scrollIntoViewIfNeeded();await image.evaluate(image=>image.decode());
+          custom=true;await page.reload({waitUntil:'domcontentloaded'});await section.scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.querySelector('#hidi-edit img')?.dataset.photoReady==='true');await image.evaluate(image=>image.decode());
           const fit=await image.evaluate(image=>({fit:getComputedStyle(image).objectFit,position:getComputedStyle(image).objectPosition}));
           assert.equal(fit.fit,'contain');assert.equal(fit.position,'66% 50%');
           assert.equal(await image.getAttribute('data-photo-motion'),'paused');
@@ -85,7 +85,7 @@ export async function probe(base,output,{candidate=false}={}){
           await section.getByRole('img',{name:'HIDI photograph unavailable'}).waitFor();assert.equal(await image.count(),0);
           assert(await section.getByRole('link',{name:'Explore casual wear'}).isVisible());
           failure=false;delay=true;await page.reload({waitUntil:'domcontentloaded'});assert.equal(await image.count(),0,'No stale bundled campaign during configuration loading');
-          await section.scrollIntoViewIfNeeded();await image.waitFor();await image.evaluate(image=>image.decode());
+          await section.scrollIntoViewIfNeeded();await image.waitFor();await page.waitForFunction(()=>document.querySelector('#hidi-edit img')?.dataset.photoReady==='true');await image.evaluate(image=>image.decode());
         }
         const blockingPageErrors=pageErrors.filter(message=>!message.startsWith('Minified React error #418;'));
         assert.deepEqual(blockingPageErrors,[]);assert.deepEqual(writes,[]);

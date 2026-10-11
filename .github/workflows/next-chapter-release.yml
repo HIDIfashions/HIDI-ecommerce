@@ -24,7 +24,7 @@ jobs:
       HIDI_RANGE_FIVE: "1"
       HIDI_BROWSER_ENGINES: chromium,firefox,webkit
       HIDI_BUTTON_OUTPUT: evidence/next-chapter/retained-commerce
-      HIDI_MEDIA_SOURCE_SHA: 835316ddbc568b039e3cc51b9817c4f3c67d22e4
+      HIDI_MEDIA_SOURCE_SHA: 89d747d44cd99f98fe9e6f7eb2436fca6698a410
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}

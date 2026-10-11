@@ -21,7 +21,7 @@ function HidiNextChapterComponent() {
   const slot = landingMedia["hidi-edit-banner"];
   const position = (value) => {
     const match = /^(\d{1,3})%\s+(\d{1,3})%$/.exec(value || "");
-    return !match || value === "50% 50%" ? "72% 50%" : value;
+    return !match || value === "50% 50%" ? "84% 50%" : value;
   };
   const desktopPosition = position(slot?.desktopPosition);
   const mobilePosition = position(slot?.mobilePosition);
