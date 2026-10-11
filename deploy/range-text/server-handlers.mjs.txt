@@ -1,0 +1,20 @@
+      if (pathname === "/api/hidi/landing-media-range-text") {
+        if(request.method!=="GET") { response.setHeader("Allow","GET");sendJson(response,405,{message:"Method not allowed"});return true; }
+        const [current,previous]=await Promise.all([storageGetJson(RANGE_TEXT_KEY),storageGetJson(RANGE_TEXT_PREVIOUS_KEY)]);
+        sendJson(response,200,{current:publicRangeText(current),previous:previous?publicRangeText(previous):null});return true;
+      }
+      if (["/api/hidi/landing-media-range-text-publish","/api/hidi/landing-media-range-text-reset","/api/hidi/landing-media-range-text-restore"].includes(pathname)) {
+        if(request.method!=="POST") {response.setHeader("Allow","POST");sendJson(response,405,{message:"Method not allowed"});return true;}
+        let next;
+        if(pathname.endsWith("-publish")) {
+          try {next=requestedRangeText(await readJsonBody(request));}
+          catch(error) {sendJson(response,400,{message:error.message || "Use valid range text"});return true;}
+        } else if(pathname.endsWith("-reset")) next=publicRangeText(null);
+        else {
+          const previous=await storageGetJson(RANGE_TEXT_PREVIOUS_KEY);
+          if(!previous) {sendJson(response,404,{message:"There is no previous range text yet"});return true;}
+          next=publicRangeText(previous);
+        }
+        await saveRangeText(next);sendJson(response,200,{current:publicRangeText(next)});return true;
+      }
+
