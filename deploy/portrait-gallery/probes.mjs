@@ -46,7 +46,7 @@ export async function probe(base,output,{candidate=false,retained=true}={}){
       try{
         assert.equal((await page.goto(base+'/',{waitUntil:'domcontentloaded'})).status(),200);
         await section.scrollIntoViewIfNeeded();await image.waitFor();
-        assert.equal(await section.locator('#meet-title').innerText(),'Many versions\nof her');
+        assert.equal((await section.locator('#meet-title').textContent()).replace(/\s+/g,' ').trim(),'Many versions of her');
         assert.equal(await section.locator('.portrait-gallery__eyebrow').textContent(),'Ananya’s Pick');
         assert.equal(await previews.count(),5);assert.equal(await section.getByRole('link',{name:'Explore Ananya’s Pick'}).getAttribute('href'),'/collections/ananyas-pick');
         for(let index=0;index<5;index++){
