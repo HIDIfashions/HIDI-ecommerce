@@ -18,6 +18,7 @@ const upstream = createServer((req, res) => {
   const send = (status, value) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(value)); };
   if (!['GET', 'HEAD'].includes(req.method)) { writes.push(path); return send(403, { message: 'Read-only fixture' }); }
   if (path.includes('/health')) return send(200, { status: 'ok' });
+  if (path.startsWith('/carts/')) return send(200, { items: [], itemCount: 0, subtotalPaise: 0, shippingPaise: 0, totalPaise: 0 });
   if (path.includes('/reviews')) return send(200, { averageRating: 0, reviewCount: 0, verifiedReviewCount: 0, reviews: [], ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } });
   if (/^\/products(?:\/(featured|best-sellers))?$/.test(path)) {
     reads.push(url.searchParams.get('category'));

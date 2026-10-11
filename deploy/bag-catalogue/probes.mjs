@@ -56,6 +56,10 @@ export async function probe(base, output) {
           assert.equal(new URL(page.url()).pathname, '/collections/all');
           assert.deepEqual(await productPaths(), expected);
           results.push({ engine, width, height, status: 'PASS', products: expected.length, bagToCatalogue: true, productDetails: true, legacyBookmark: true });
+        } catch (error) {
+          await page.screenshot({ path: `${output}/${engine}-${width}-failure.png` }).catch(() => {});
+          await writeFile(`${output}/${engine}-${width}-failure.txt`, page.url() + '\n' + await page.locator('body').innerText());
+          throw error;
         } finally { await context.close(); }
       }
     } finally { await browser.close(); }
