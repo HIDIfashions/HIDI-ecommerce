@@ -14,17 +14,21 @@ def patch_runtime(base, overlay):
                 if p.is_file() and not p.is_symlink() and p.suffix in {'.js','.json','.html','.rsc','.meta'}}
     semantic = dict(original)
     patched = []
+    client_modules = []
+    page_modules = []
     with tempfile.TemporaryDirectory() as folder:
         source, target = Path(folder)/'input.js', Path(folder)/'output.js'
         for name, text in original.items():
-            if name.endswith('.js') and 'Enjoy your HIDI Rewards' in text and 'className:"checkout-form"' in text:
-                assert name.endswith('/checkout/page.js') or re.fullmatch(r'apps/web/\.next/static/chunks/app/checkout/page-[a-f0-9]{16}\.js',name), 'Unexpected checkout module location: '+name
+            if name.endswith('.js') and (('Enjoy your HIDI Rewards' in text and 'checkout-form' in text) or ('container checkout-page' in text and '/server/' in name)):
+                assert name.endswith('/checkout/page.js') or re.fullmatch(r'apps/web/\.next/server/chunks/[^/]+\.js',name) or re.fullmatch(r'apps/web/\.next/static/chunks/app/checkout/page-[a-f0-9]{16}\.js',name), 'Unexpected checkout module location: '+name
                 source.write_text(text)
                 result=subprocess.run(['node',str(HERE/'patch-module.mjs'),str(source),str(target)],check=True,capture_output=True,text=True)
                 report=json.loads(result.stdout)
-                assert report['checkoutBackLink']==('/server/' in name), 'Back to bag belongs to the server page including loading/empty states'
+                if report['checkoutBackLink']: page_modules.append(name)
+                if report['clientPresentation']: client_modules.append(name)
                 semantic[name] = target.read_text(); patched.append(name)
-    assert len(patched) == 2 and any('/server/' in name for name in patched), 'Both retained server and browser checkout modules required'
+    assert len(client_modules) == 2 and sum('/server/' in name for name in client_modules)==1, 'Both retained server and browser checkout components required: '+repr(client_modules)
+    assert len(page_modules)==1 and page_modules[0].endswith('/server/app/checkout/page.js'), 'Exactly the server checkout page receives Back to bag: '+repr(page_modules)
     mapping = {}
     for _ in range(8):
         final = {}

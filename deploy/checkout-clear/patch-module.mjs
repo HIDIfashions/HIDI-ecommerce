@@ -13,15 +13,20 @@ export function patch(source) {
   const prop = (obj, key) => obj.properties.find(p => ts.isPropertyAssignment(p) && p.name.getText(tree).replace(/^['"]|['"]$/g, '') === key);
   const object = name => nodes.filter(n => ts.isObjectLiteralExpression(n) && prop(n, 'className')?.initializer.text === name);
   const form = object('checkout-form');
-  if (!form.length) return null;
-  assert.equal(form.length, 1); assert(!source.includes('hidi-checkout-form'), 'Checkout already patched');
+  const page = object('container checkout-page');
+  if (!form.length && !page.length) return null;
+  assert(form.length <= 1 && page.length <= 1);
+  assert(!source.includes('hidi-checkout-form') && !source.includes('checkout-back-link'), 'Checkout already patched');
   const one = name => { const found = object(name); assert.equal(found.length, 1, name); return found[0]; };
   const edits = [];
   const edit = (start, end, text) => edits.push({start, end, text, original: source.slice(start, end)});
+  const rootCall = (form.length ? one('button checkout-pay-button') : page[0]).parent;
+  assert(ts.isCallExpression(rootCall));
+  const factory = rootCall.expression.getText(tree);
+  const render = (tag, props) => `${factory}(${JSON.stringify(tag)},{${props}})`;
+  if (form.length) {
   const button = one('button checkout-pay-button'), buttonCall = button.parent;
   assert(ts.isCallExpression(buttonCall));
-  const factory = buttonCall.expression.getText(tree);
-  const render = (tag, props) => `${factory}(${JSON.stringify(tag)},{${props}})`;
   const amount = prop(one('checkout-mobile-pay-amount'), 'children').initializer.getText(tree);
   const submit = buttonCall.getText(tree).replace('{className:', '{form:"hidi-checkout-form",className:');
   assert.notEqual(submit, buttonCall.getText(tree));
@@ -35,14 +40,6 @@ export function patch(source) {
     render('span', 'className:"checkout-action-label",children:"Total to pay"') + ',' +
     render('strong', 'className:"checkout-action-total",children:' + amount) + ',' + submit + ']');
   edit(aside.end - 1, aside.end - 1, ',' + action);
-  const page = object('container checkout-page');
-  assert(page.length <= 1);
-  if (page.length) {
-    const children = prop(page[0], 'children').initializer;
-    assert(ts.isArrayLiteralExpression(children));
-    edit(children.getStart(tree) + 1, children.getStart(tree) + 1,
-      render('a', 'href:"/cart",className:"checkout-back-link",children:"← Back to bag"') + ',');
-  }
   const prompt = one('checkout-guest-prompt').parent;
   assert(ts.isCallExpression(prompt) && ts.isArrayLiteralExpression(prompt.parent));
   const promptIndex = prompt.parent.elements.indexOf(prompt);
@@ -65,6 +62,13 @@ export function patch(source) {
     assert.equal(matches.length, 1, before);
     edit(matches[0].getStart(tree), matches[0].end, JSON.stringify(after));
   }
+  }
+  if (page.length) {
+    const children = prop(page[0], 'children').initializer;
+    assert(ts.isArrayLiteralExpression(children));
+    edit(children.getStart(tree) + 1, children.getStart(tree) + 1,
+      render('a', 'href:"/cart",className:"checkout-back-link",children:"← Back to bag"') + ',');
+  }
   edits.sort((a,b) => a.start - b.start);
   for (let i=1;i<edits.length;i++) assert(edits[i-1].end <= edits[i].start, 'Non-overlapping bounded changes');
   let output = source, restored;
@@ -74,11 +78,11 @@ export function patch(source) {
   assert.equal(restored, source, 'Every unrelated byte is preserved');
   const check = ts.createSourceFile('patched.js', output, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
   assert.equal(check.parseDiagnostics.length, 0, 'Patched module parses');
-  return {output, changes: edits.length, sourceRestored: true, checkoutBackLink: page.length === 1};
+  return {output, changes: edits.length, sourceRestored: true, checkoutBackLink: page.length === 1, clientPresentation: form.length === 1};
 }
 if (process.argv[2]) {
   const result=patch(readFileSync(process.argv[2], 'utf8'));
   if (!result) process.exit(2);
   writeFileSync(process.argv[3], result.output);
-  console.log(JSON.stringify({passed:true,changes:result.changes,sourceRestored:result.sourceRestored,checkoutBackLink:result.checkoutBackLink}));
+  console.log(JSON.stringify({passed:true,changes:result.changes,sourceRestored:result.sourceRestored,checkoutBackLink:result.checkoutBackLink,clientPresentation:result.clientPresentation}));
 }
