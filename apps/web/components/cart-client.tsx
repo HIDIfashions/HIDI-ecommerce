@@ -147,7 +147,7 @@ export function CartClient() {
       <button className="button button-dark" type="button" onClick={() => void load()}>Try again</button>
     </div>
   ) : <p className="muted" role="status">Loading your bag…</p>;
-  if (cart.items.length === 0) return <div className="empty-state"><h2>Your bag is waiting.</h2><p>Find something you love from the latest HIDI edit.</p><Link className="button button-dark" href="/collections/new-arrivals">Browse new arrivals</Link></div>;
+  if (cart.items.length === 0) return <div className="empty-state"><h2>Your bag is waiting.</h2><p>Find something you love from the latest HIDI edit.</p><Link className="button button-dark" href="/collections/all">Browse new arrivals</Link></div>;
 
   const groups = groupCartItems(cart.items);
   const complimentaryShipping = cart.subtotalPaise >= 149900;

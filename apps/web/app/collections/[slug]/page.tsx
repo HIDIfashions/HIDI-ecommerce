@@ -59,7 +59,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const collection = labels[slug];
   if (!collection) notFound();
-  const products = await getProducts(slug === "all" ? undefined : slug);
+  const products = await getProducts(slug === "all" || slug === "new-arrivals" ? undefined : slug);
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
