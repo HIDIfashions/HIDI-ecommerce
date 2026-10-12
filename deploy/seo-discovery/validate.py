@@ -17,7 +17,9 @@ images.extract(image,base);plan=patcher.patch_runtime(base,overlay)
 shutil.copytree(base,candidate,symlinks=True);shutil.copytree(overlay,candidate,dirs_exist_ok=True)
 before,after=images.fingerprints(base),images.fingerprints(candidate)
 changed={p for p in before.keys()|after.keys() if before.get(p)!=after.get(p)}
-assert changed==set(plan['allowedFiles']), 'Changes outside the SEO allowlist: '+str(changed)
+overlay_files=images.fingerprints(overlay)
+expected={p for p in plan['allowedFiles'] if before.get(p)!=overlay_files.get(p)}
+assert changed==expected and changed, 'Changes outside the reviewed SEO overlay: '+str(changed)
 subprocess.run(['node','--check',str(candidate/'server.mjs')],check=True)
 subprocess.run(['node','--test','deploy/seo-discovery/seo.test.mjs'],check=True)
 env={**os.environ,'HIDI_CANDIDATE_RUNTIME':str(candidate)}
