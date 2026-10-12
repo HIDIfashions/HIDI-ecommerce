@@ -1,5 +1,5 @@
 name: Guarded Admin product and image upload release
-# Verify the cached webpack upload helper before guarded browser checks.
+# Repair verified cached upload helpers and require actual HTTP/browser gates.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -47,6 +47,7 @@ jobs:
           node --test tests/product-upload*.test.mjs
           node --test tests/admin-quick-tools.test.mjs tests/admin-product-delete-handler.test.mjs tests/admin-product-delete-schema.test.mjs tests/bulk-publication.test.mjs tests/product-skn-photos.test.mjs tests/product-skn-taxonomy.test.mjs tests/image-sku.test.mjs tests/button-request-policy.test.mjs
           python3 tests/product-upload-release.test.py
+          python3 tests/product-upload-retry-patch.test.py
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
@@ -59,7 +60,7 @@ jobs:
           python3 deploy/product-upload/release.py capture
           echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-product-upload-private/web/candidate-app" >> "$GITHUB_ENV"
           echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-product-upload-private/api/base-app" >> "$GITHUB_ENV"
-      - name: Add only the uploader and additive Admin route and navigation entries
+      - name: Add the uploader and repair only verified cached image retry copies
         run: python3 deploy/product-upload/release.py compose
       - name: Verify actual retained API and Next photo contracts before browser regression
         run: |

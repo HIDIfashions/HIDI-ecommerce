@@ -37,6 +37,14 @@ def uploader_report():
             for engine in sorted(release.ENGINES) for width, height in sorted(release.VIEWPORTS)]}
 
 
+def seed_retry_module(base):
+    relative = 'apps/web/.next/server/chunks/fixture-upload.js'
+    file = Path(base) / relative
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('exports.modules={' + patcher.OLD_UPLOAD_FACTORY + '};\n')
+    return relative
+
+
 def valid_evidence(folder):
     api_module = release.PRIVATE / 'api/base-app/apps/api/dist/admin/admin.service.js'
     api_module.parent.mkdir(parents=True, exist_ok=True)
@@ -48,13 +56,26 @@ def valid_evidence(folder):
         module.parent.mkdir(parents=True, exist_ok=True)
         module.write_text('module.exports = { fixtureOnly: true };\n')
         product_modules.append({'moduleRelativePath': relative, 'moduleSha256': release.sha256(module)})
-    expected = sorted({patcher.HANDLER, patcher.NAVIGATION} | {'admin-tools/product-upload/' + name for name in patcher.FILES})
-    plan = {'passed': True, 'allowedFiles': expected, 'newPage': patcher.PAGE}
-    for key in ['inverseTransformsVerified', 'compiledNextUntouched', 'serverUntouched', 'apiUnchanged', 'retainedPagePoliciesPreserved']:
+    base, candidate = release.PRIVATE / 'web/base-app', release.PRIVATE / 'web/candidate-app'
+    retry_path = seed_retry_module(base)
+    changed = candidate / retry_path
+    changed.parent.mkdir(parents=True, exist_ok=True)
+    changed.write_text((base / retry_path).read_text().replace(patcher.OLD_UPLOAD_FACTORY, patcher.NEW_UPLOAD_FACTORY))
+    repair = {'passed': True, 'moduleId': 80441, 'oldFunctionSha256': patcher.digest(patcher.OLD_UPLOAD_HELPER),
+        'newFunctionSha256': patcher.digest(patcher.NEW_UPLOAD_HELPER), 'copiesScanned': 1, 'copiesPatched': 1,
+        'inverseTransformsVerified': True, 'legacyUploadsPreserved': True, 'apiUnchanged': True,
+        'changedFiles': [retry_path], 'files': [{'path': retry_path, 'copies': 1,
+            'beforeSha256': release.sha256(base / retry_path), 'afterSha256': release.sha256(changed),
+            'inverseTransformsVerified': True}]}
+    expected = sorted({patcher.HANDLER, patcher.NAVIGATION} | {'admin-tools/product-upload/' + name for name in patcher.FILES} | {retry_path})
+    plan = {'passed': True, 'allowedFiles': expected, 'newPage': patcher.PAGE,
+        'compiledNextUntouched': False, 'uploadRetryRepair': repair}
+    for key in ['inverseTransformsVerified', 'compiledNextPreservedExceptUploadRetry', 'serverUntouched', 'apiUnchanged', 'retainedPagePoliciesPreserved']:
         plan[key] = True
     preserved = {'passed': True, 'changedFiles': expected, 'candidateImageId': 'fixture-image-id',
-        'candidateTag': release.own_tag(), 'baseImage': image('web', 'a')}
-    for key in ['runtimeConfigurationPreserved', 'baseLayersPreserved', 'permissionsPreserved', 'compiledNextUnchanged', 'storefrontAndSeoUnchanged', 'apiUnchanged']:
+        'candidateTag': release.own_tag(), 'baseImage': image('web', 'a'),
+        'compiledNextUnchanged': False, 'uploadRetryFiles': [retry_path]}
+    for key in ['runtimeConfigurationPreserved', 'baseLayersPreserved', 'permissionsPreserved', 'compiledNextPreservedExceptUploadRetry', 'storefrontAndSeoUnchanged', 'apiUnchanged']:
         preserved[key] = True
     reports = {
         'patch.json': plan,
@@ -74,7 +95,12 @@ def valid_evidence(folder):
             'checks': [{'name': 'Actual captured API product contracts', 'status': 'PASS'}]},
         'next-hash.json': {'passed': True, 'actualNextHttp': True, 'contentHashVerified': True, 'mainAltVerified': True,
             'duplicateRetryVerified': True, 'coverByFirstUploadVerified': True, 'photoLimitVerified': True,
-            'requestBodyLimitVerified': True, 'photoLimitBytes': 12 * 1024 * 1024, 'requestBodyBytes': 14 * 1024 * 1024,
+            'requestBodyLimitVerified': True, 'loadedStorageHelperVerified': True,
+            'loadedModuleDiagnostic': {'webpackRequireAvailable': True, 'helperModuleId': '80441',
+                'loadedHelper': {'guardInstalled': True, 'source': patcher.NEW_UPLOAD_HELPER,
+                    'sha256': patcher.digest(patcher.NEW_UPLOAD_HELPER)}, 'currentFactory': {'guardInstalled': True},
+                'bundledSdkError': {'statusCode': 409, 'responseStatus': 409, 'code': 'BlobAlreadyExists'}},
+            'photoLimitBytes': 12 * 1024 * 1024, 'requestBodyBytes': 14 * 1024 * 1024,
             'productionDatabaseWrites': 0, 'productionBlobWrites': 0,
             'checks': [{'name': 'Actual Next hash and fixture Blob retry', 'status': 'PASS'}]},
         'admin-deletion.json': {'results': [{'engine': engine, 'mode': mode, 'status': 'PASS'}
@@ -142,6 +168,7 @@ class UploaderGuards(unittest.TestCase):
             shutil.copytree(ROOT / 'deploy/admin-tools', base / 'admin-tools')
             (base / 'apps/web').mkdir(parents=True)
             (base / 'apps/web/server.js').write_text('retained Next')
+            seed_retry_module(base)
             (base / 'server.mjs').write_text("import {handleQuickTools} from './admin-tools/handler.mjs';\nif (await handleQuickTools(request, response, pathname)) return;\n")
             overlay = Path(temp) / 'overlay'
             patcher.patch_runtime(base, overlay)
@@ -173,6 +200,7 @@ try{
             (base / 'admin-tools').mkdir(parents=True)
             (base / 'apps/web').mkdir(parents=True)
             (base / 'apps/web/server.js').write_text('retained Next')
+            seed_retry_module(base)
             (base / 'server.mjs').write_text("import {handleQuickTools} from './admin-tools/handler.mjs';\nif (await handleQuickTools(request, response, pathname)) return;\n")
             for name in ['handler.mjs', 'navigation.js']:
                 shutil.copyfile(ROOT / 'deploy/admin-tools' / name, base / 'admin-tools' / name)
@@ -186,9 +214,10 @@ try{
                     book.writestr('[Content_Types].xml', 'fixture content types')
                     book.writestr('xl/workbook.xml', 'fixture workbook')
                 result = patcher.patch_runtime(base, overlay)
-                self.assertEqual(len(result['allowedFiles']), 8)
+                self.assertEqual(len(result['allowedFiles']), 9)
                 self.assertFalse((overlay / 'server.mjs').exists())
-                self.assertFalse((overlay / 'apps').exists())
+                self.assertFalse(result['compiledNextUntouched'])
+                self.assertEqual(result['uploadRetryRepair']['copiesPatched'], 1)
                 self.assertEqual((overlay / 'admin-tools/product-upload/HIDI_Product_Upload_Template.xlsx').read_bytes(),
                     (source / 'HIDI_Product_Upload_Template.xlsx').read_bytes())
                 (base / 'server.mjs').write_text('unconnected admin server')
@@ -315,6 +344,52 @@ try{
             changed['allowedFiles'].append('server.mjs')
             release.save('patch.json', changed)
             with self.assertRaisesRegex(AssertionError, 'scope'):
+                release.reports_ready()
+
+    def test_retry_proof_rejects_unrelated_bytes_even_with_updated_file_hash(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(release, 'EVIDENCE', Path(temp)):
+            values = valid_evidence(Path(temp))
+            release.reports_ready()
+            row = values['patch.json']['uploadRetryRepair']['files'][0]
+            file = release.PRIVATE / 'web/candidate-app' / row['path']
+            file.write_bytes(file.read_bytes() + b'// unrelated server change\n')
+            row['afterSha256'] = release.sha256(file)
+            release.save('patch.json', values['patch.json'])
+            with self.assertRaisesRegex(AssertionError, 'unrelated server bytes'):
+                release.reports_ready()
+
+    def test_retry_proof_rejects_omitted_original_registered_copy(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(release, 'EVIDENCE', Path(temp)):
+            valid_evidence(Path(temp))
+            file = release.PRIVATE / 'web/base-app/apps/web/.next/server/chunks/omitted.js'
+            file.write_text('exports.modules={' + patcher.OLD_UPLOAD_FACTORY + '};\n')
+            with self.assertRaisesRegex(AssertionError, 'Every exact original helper copy'):
+                release.reports_ready()
+
+    def test_retry_proof_requires_actual_loaded_guard_and_sdk_conflict(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(release, 'EVIDENCE', Path(temp)):
+            values = valid_evidence(Path(temp))
+            for target, key, value in [('loadedHelper', 'guardInstalled', False),
+                ('currentFactory', 'guardInstalled', False), ('bundledSdkError', 'statusCode', 403),
+                ('loadedHelper', 'source', patcher.OLD_UPLOAD_HELPER)]:
+                report = copy.deepcopy(values['next-hash.json'])
+                report['loadedModuleDiagnostic'][target][key] = value
+                release.save('next-hash.json', report)
+                with self.assertRaises(AssertionError):
+                    release.reports_ready()
+            report = copy.deepcopy(values['next-hash.json'])
+            report['loadedStorageHelperVerified'] = False
+            release.save('next-hash.json', report)
+            with self.assertRaises(AssertionError):
+                release.reports_ready()
+
+    def test_retry_proof_rejects_false_unchanged_compiled_claim(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(release, 'EVIDENCE', Path(temp)):
+            values = valid_evidence(Path(temp))
+            report = values['web-preservation.json']
+            report['compiledNextUnchanged'] = True
+            release.save('web-preservation.json', report)
+            with self.assertRaisesRegex(AssertionError, 'Compiled preservation evidence'):
                 release.reports_ready()
 
     def test_image_source_and_report_hashes_are_bound_to_candidate(self):
@@ -464,11 +539,14 @@ try{
             patch.object(release.guard, 'conditional_write_image', side_effect=lambda *args: writes.append(args)), \
             patch.object(release.guard, 'wait_ready', return_value=deployed), patch.object(release.cloud, 'snapshot', side_effect=copy.deepcopy), \
             patch.object(release, 'live_assets'):
+            release.save('web-preservation.json', {'compiledNextUnchanged': False})
             release.apply(image('web', 'b'))
             result = release.read('after.json')
             self.assertTrue(result['apiUnchanged'])
             self.assertFalse(result['databaseWrites'])
             self.assertFalse(result['blobWrites'])
+            self.assertFalse(result['compiledNextUnchanged'])
+            self.assertTrue(result['compiledNextPreservedExceptUploadRetry'])
         self.assertEqual(len(writes), 1)
         self.assertEqual(writes[0][:3], ({'id': 'web-only'}, image('web', 'b'), release.suffix()))
 

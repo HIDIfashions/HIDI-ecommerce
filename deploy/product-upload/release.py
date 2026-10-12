@@ -1,4 +1,4 @@
-"""Release an additive Admin uploader over fresh live images; never change API or data."""
+"""Release the Admin uploader and a verified storage retry repair; never change API or data."""
 import argparse
 import hashlib
 import importlib.util
@@ -195,12 +195,55 @@ def compose():
     assert set(report['changedFiles']) == set(plan['allowedFiles']), 'Uploader runtime delta must be exact'
     permission_report = verify_permissions(metadata(before['hidi-web']['image']), metadata(own_tag()), set(plan['allowedFiles']))
     save('permissions.json', permission_report)
+    repaired_files = verify_upload_retry_report(plan)
     report.update({'baseImage': before['hidi-web']['image'], 'candidateImageId': configs[1]['Id'],
-        'candidateTag': own_tag(), 'permissionsPreserved': True, 'compiledNextUnchanged': True,
+        'candidateTag': own_tag(), 'permissionsPreserved': True, 'compiledNextUnchanged': not repaired_files,
+        'compiledNextPreservedExceptUploadRetry': True, 'uploadRetryFiles': sorted(repaired_files),
         'storefrontAndSeoUnchanged': True, 'apiUnchanged': True})
     save('web-preservation.json', report)
     photo.unchanged(before)
-    print('PASS: only the new Admin page/assets and additive routing/navigation changed; all retained files, permissions and image settings preserved')
+    print('PASS: only the Admin uploader and verified storage retry copies changed; unrelated files, permissions and image settings preserved')
+
+
+def verify_upload_retry_report(plan):
+    repair = plan.get('uploadRetryRepair')
+    assert isinstance(repair, dict) and all(repair.get(key) is True for key in ['passed',
+        'inverseTransformsVerified', 'legacyUploadsPreserved', 'apiUnchanged']), 'Verified upload retry repair required'
+    assert repair.get('moduleId') == 80441, 'Reviewed upload helper module differs'
+    expected_old = 'c8a90498b6228a163576fa02da7b069c98a1afb2b4bd63298ebb45d9d5772f48'
+    assert hashlib.sha256(patcher.OLD_UPLOAD_HELPER.encode()).hexdigest() == expected_old
+    assert repair.get('oldFunctionSha256') == expected_old, 'Original loaded helper must match the reviewed evidence'
+    assert repair.get('newFunctionSha256') == hashlib.sha256(patcher.NEW_UPLOAD_HELPER.encode()).hexdigest(), 'Retry helper replacement differs'
+    files, names = repair.get('files'), repair.get('changedFiles')
+    assert isinstance(files, list) and isinstance(names, list) and len(names) == len(set(names)), 'Unique retry repair files required'
+    assert names == sorted(names) and sorted(row.get('path', '') for row in files) == names, 'Complete retry file proof required'
+    base, candidate = PRIVATE / 'web/base-app', PRIVATE / 'web/candidate-app'
+    server = base / 'apps/web/.next/server'
+    assert server.is_dir() and not server.is_symlink(), 'Captured server module tree required'
+    discovered = set()
+    for module in server.rglob('*.js'):
+        assert not module.is_symlink(), 'Symlinked server modules are outside the repair scope'
+        if patcher.OLD_UPLOAD_FACTORY.encode() in module.read_bytes():
+            discovered.add(module.relative_to(base).as_posix())
+    assert discovered == set(names), 'Every exact original helper copy must be repaired; extra paths are forbidden'
+    total = 0
+    for row in files:
+        relative = Path(row['path'])
+        assert not relative.is_absolute() and '..' not in relative.parts and relative.parts[:4] == ('apps', 'web', '.next', 'server') and relative.suffix == '.js', 'Retry repair must target a reviewed server JS module'
+        before, after = base / relative, candidate / relative
+        assert before.is_file() and after.is_file() and not before.is_symlink() and not after.is_symlink(), 'Regular captured retry modules required'
+        original, saved = before.read_bytes(), after.read_bytes()
+        old_factory, new_factory = patcher.OLD_UPLOAD_FACTORY.encode(), patcher.NEW_UPLOAD_FACTORY.encode()
+        count = original.count(old_factory)
+        assert count == row.get('copies') == 1 and saved.count(new_factory) == 1, 'Exactly one bound helper factory per reviewed file required'
+        assert saved.replace(new_factory, old_factory) == original, 'Retry repair changed unrelated server bytes'
+        assert row.get('beforeSha256') == sha256(before) and row.get('afterSha256') == sha256(after), 'Retry proof must match actual captured file bytes'
+        assert row.get('inverseTransformsVerified') is True, 'Inverse retry proof required'
+        total += count
+    assert repair.get('copiesPatched') == total and isinstance(repair.get('copiesScanned'), int) and repair['copiesScanned'] >= max(total, 1), 'Complete registered helper inventory required'
+    assert plan.get('compiledNextUntouched') is (not names), 'Compiled change claim differs from the verified repair'
+    assert plan.get('compiledNextPreservedExceptUploadRetry') is True, 'All other compiled server bytes must be preserved'
+    return set(names)
 
 
 def verify_uploader_report(report, live=False):
@@ -226,13 +269,15 @@ def verify_uploader_report(report, live=False):
 def reports_ready():
     plan = read('patch.json')
     preserved = read('web-preservation.json')
-    expected = {patcher.HANDLER, patcher.NAVIGATION} | {'admin-tools/product-upload/' + name for name in patcher.FILES}
+    retry_files = verify_upload_retry_report(plan)
+    expected = {patcher.HANDLER, patcher.NAVIGATION} | {'admin-tools/product-upload/' + name for name in patcher.FILES} | retry_files
     assert plan.get('passed') is True and set(plan.get('allowedFiles', [])) == expected, 'Exact additive uploader file scope required'
     assert plan.get('newPage') == patcher.PAGE and all(plan.get(key) is True for key in [
-        'inverseTransformsVerified', 'compiledNextUntouched', 'serverUntouched', 'apiUnchanged', 'retainedPagePoliciesPreserved'])
+        'inverseTransformsVerified', 'compiledNextPreservedExceptUploadRetry', 'serverUntouched', 'apiUnchanged', 'retainedPagePoliciesPreserved'])
     assert preserved.get('passed') is True and set(preserved.get('changedFiles', [])) == expected, 'Runtime preservation delta differs'
     assert all(preserved.get(key) is True for key in ['runtimeConfigurationPreserved', 'baseLayersPreserved',
-        'permissionsPreserved', 'compiledNextUnchanged', 'storefrontAndSeoUnchanged', 'apiUnchanged'])
+        'permissionsPreserved', 'compiledNextPreservedExceptUploadRetry', 'storefrontAndSeoUnchanged', 'apiUnchanged'])
+    assert preserved.get('compiledNextUnchanged') is (not retry_files) and preserved.get('uploadRetryFiles') == sorted(retry_files), 'Compiled preservation evidence differs from the exact repair'
     assert read('permissions.json').get('passed') is True
     uploader = read('candidate/report.json')
     verify_uploader_report(uploader)
@@ -244,7 +289,18 @@ def reports_ready():
     upload_hash = read('next-hash.json')
     assert all(upload_hash.get(key) is True for key in ['passed', 'actualNextHttp', 'contentHashVerified',
         'mainAltVerified', 'duplicateRetryVerified', 'coverByFirstUploadVerified', 'photoLimitVerified',
-        'requestBodyLimitVerified']), 'Actual retained Next cover, limits, content-hash and retry regression required'
+        'requestBodyLimitVerified', 'loadedStorageHelperVerified']), 'Actual retained Next cover, limits, content-hash and loaded retry regression required'
+    loaded = upload_hash.get('loadedModuleDiagnostic', {})
+    assert loaded.get('webpackRequireAvailable') is True and loaded.get('helperModuleId') == '80441', 'Actual loaded helper identity required'
+    helper = loaded.get('loadedHelper', {})
+    assert helper.get('guardInstalled') is True and loaded.get('currentFactory', {}).get('guardInstalled') is True, 'Both cached helper and registered factory must carry the repair'
+    source = helper.get('source')
+    assert isinstance(source, str) and source and helper.get('sha256') == hashlib.sha256(source.encode()).hexdigest(), 'Loaded helper source/hash proof required'
+    sources = [PRIVATE / 'web/candidate-app' / name for name in retry_files]
+    sources.append(PRIVATE / 'web/candidate-app/apps/web/.next/server/app/api/admin/inventory/[variantId]/images/route.js')
+    assert any(file.is_file() and source in file.read_text() for file in sources), 'Loaded helper must match verified candidate bytes'
+    error = loaded.get('bundledSdkError', {})
+    assert error.get('statusCode') == error.get('responseStatus') == 409 and error.get('code') == 'BlobAlreadyExists', 'Actual bundled SDK conflict semantics required'
     assert upload_hash.get('photoLimitBytes') == 12 * 1024 * 1024 and upload_hash.get('requestBodyBytes') == 14 * 1024 * 1024, 'Retained photo limits differ'
     assert upload_hash.get('productionDatabaseWrites') == upload_hash.get('productionBlobWrites') == 0
     hash_checks = upload_hash.get('checks')
@@ -385,7 +441,8 @@ def apply(image):
         photo.unchanged({'hidi-api': before['hidi-api'], 'hidi-web': state})
         save('after.json', {'passed': True, 'states': {'hidi-api': before['hidi-api'], 'hidi-web': state},
             'sourceSha': os.environ['GITHUB_SHA'], 'apiUnchanged': True, 'webSettingsPreserved': True,
-            'publicContentPreserved': True, 'compiledNextUnchanged': True, 'storefrontAndSeoUnchanged': True,
+            'publicContentPreserved': True, 'compiledNextUnchanged': read('web-preservation.json')['compiledNextUnchanged'],
+            'compiledNextPreservedExceptUploadRetry': True, 'storefrontAndSeoUnchanged': True,
             'existingAdminFunctionsPreserved': True, 'databaseWrites': False, 'blobWrites': False})
         print('PASS: Product Upload is live; existing Admin, storefront, SEO, API, settings and product/media data preserved')
     except Exception:

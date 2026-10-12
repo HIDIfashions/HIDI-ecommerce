@@ -132,9 +132,8 @@ const reserve=createServer();await new Promise(resolve=>reserve.listen(0,'127.0.
 // the actual candidate. All dependency origins below are controlled localhost.
 const inherited=Object.fromEntries(Object.entries(process.env).filter(([key])=>! /^(?:AZURE_|IDENTITY_|MSI_|MEDIA_|API_URL$|INTERNAL_API_URL$|R2_)/.test(key)));
 const preloadDir=await mkdtemp(path.join(tmpdir(),'hidi-next-fixture-trace-')),preloadPath=path.join(preloadDir,'preload.cjs');
-const fixtureTrace=`\n// Transparent diagnostics for this exact disposable Azure error only.\nconst HidiOriginalError=global.Error;let hidiFixtureTraceCount=0;\nfunction hidiFixtureTrace(operation,value){if(hidiFixtureTraceCount++<24)process.stderr.write('HIDI_FIXTURE_ERROR_TRACE '+JSON.stringify({operation,value,stack:new HidiOriginalError().stack.split('\\n').slice(2,9)})+'\\n');}\nglobal.Error=new Proxy(HidiOriginalError,{construct(target,args,newTarget){const error=Reflect.construct(target,args,newTarget);if(args[0]!=='Fixture object already exists.')return error;return new Proxy(error,{get(object,key,receiver){const value=Reflect.get(object,key,receiver);if(key==='statusCode')hidiFixtureTrace('read-statusCode',value);return value;},set(object,key,value,receiver){if(key==='statusCode')hidiFixtureTrace('set-statusCode',value);return Reflect.set(object,key,value,receiver);},defineProperty(object,key,descriptor){if(key==='statusCode')hidiFixtureTrace('define-statusCode',descriptor.value);return Reflect.defineProperty(object,key,descriptor);}});}});\n`;
 const moduleTrace=`\nprocess.on('SIGUSR1',()=>{void(async()=>{const out={helperModuleId:process.env.HIDI_FIXTURE_HELPER_ID};try{const file=process.env.HIDI_FIXTURE_ROUTE_FILE,entry=require.cache[file];out.routeCached=!!entry;out.routeExports=Object.keys(entry?.exports||{});const app=entry?.exports?.__next_app__||entry?.exports?.default?.__next_app__;const req=app?.require||require(require('node:path').join(process.env.HIDI_FIXTURE_RUNTIME_ROOT,'apps/web/.next/server/webpack-runtime.js'));out.webpackRequireSource=app?.require?'route-export':'cached-webpack-runtime';out.webpackRequireAvailable=typeof req==='function';if(typeof req==='function'){const id=Number(process.env.HIDI_FIXTURE_HELPER_ID),fn=req(id).i,body=fn.toString(),factory=req.m?.[id]?.toString();out.loadedHelper={guardInstalled:body.includes('hidiSavedBlob'),sha256:require('node:crypto').createHash('sha256').update(body).digest('hex'),source:body};out.currentFactory={guardInstalled:factory?.includes('hidiSavedBlob'),sha256:factory?require('node:crypto').createHash('sha256').update(factory).digest('hex'):null};out.cachedFactories=Object.entries(require.cache).filter(([name])=>name.startsWith(process.env.HIDI_FIXTURE_RUNTIME_ROOT)).flatMap(([name,module])=>{const value=module.exports?.modules?.[id];return value?[{file:name.slice(process.env.HIDI_FIXTURE_RUNTIME_ROOT.length+1),guardInstalled:value.toString().includes('hidiSavedBlob')}]:[];});const SDK=req(55031),Client=SDK.wS;out.sdkExports=Object.keys(SDK);out.sdkClientType=typeof Client;if(typeof Client==='function'){const blob=new Client(process.env.HIDI_FIXTURE_BLOB_ORIGIN,{allowInsecureConnection:true,retryOptions:{maxTries:1}}).getContainerClient('product-media').getBlockBlobClient(process.env.HIDI_FIXTURE_OBJECT_KEY);try{await blob.uploadData(Buffer.from(${JSON.stringify(PHOTO.toString('base64'))},'base64'),{conditions:{ifNoneMatch:'*'},blobHTTPHeaders:{blobContentType:'image/png'}});out.bundledSdkError={unexpectedSuccess:true};}catch(error){out.bundledSdkError={name:error.name,constructor:error.constructor?.name,code:error.code,statusCode:error.statusCode,responseStatus:error.response?.status||error.response?.statusCode,keys:Object.keys(error),message:error.message,stack:String(error.stack||'').split('\\n').slice(0,8)};}}}}catch(error){out.diagnosticError={name:error.name,message:error.message};}process.stderr.write('HIDI_FIXTURE_MODULE_DIAGNOSTIC '+JSON.stringify(out)+'\\n');})()});\n`;
-await writeFile(preloadPath,(await readFile(path.resolve('tests/fixtures/photo-upload-preload.cjs'),'utf8'))+fixtureTrace+moduleTrace);
+await writeFile(preloadPath,(await readFile(path.resolve('tests/fixtures/photo-upload-preload.cjs'),'utf8'))+moduleTrace);
 const child=spawn(process.execPath,['--require',preloadPath,path.join(runtime,'apps/web/server.js')],{
   cwd:path.join(runtime,'apps/web'),
   env:{...inherited,NODE_ENV:'production',PORT:String(port),HOSTNAME:'127.0.0.1',
@@ -154,6 +153,13 @@ async function post({code=IMAGE_SKU,number=String(NUMBER),type='image/png',bytes
   const body=await response.json().catch(()=>({}));if(fixtureFailure)throw fixtureFailure;return {response,body};
 }
 const pass=name=>results.push({name,status:'PASS'});
+async function readLoadedModuleDiagnostic() {
+  const marker='HIDI_FIXTURE_MODULE_DIAGNOSTIC ',before=(log.match(/HIDI_FIXTURE_MODULE_DIAGNOSTIC /g)||[]).length;
+  child.kill('SIGUSR1');
+  for(let attempt=0;attempt<40&&(log.match(/HIDI_FIXTURE_MODULE_DIAGNOSTIC /g)||[]).length<=before;attempt++)await new Promise(resolve=>setTimeout(resolve,50));
+  const line=log.split('\n').filter(value=>value.startsWith(marker)).at(-1);
+  return line?JSON.parse(line.slice(marker.length)):null;
+}
 try {
   let ready=false;
   for(let attempt=0;attempt<120;attempt++) {
@@ -235,12 +241,18 @@ try {
   const beforeAnonymous=apiCalls.length,beforeAnonymousBlob=blobCalls.length,anonymous=await post({cookie:null});
   assert.equal(anonymous.response.status,401);assert.equal(apiCalls.length,beforeAnonymous);assert.equal(blobCalls.length,beforeAnonymousBlob);pass('Anonymous upload is denied before ticket and Blob access');
   if(fixtureFailure)throw fixtureFailure;
+  const loadedModuleDiagnostic=await readLoadedModuleDiagnostic();
+  assert.equal(loadedModuleDiagnostic?.webpackRequireAvailable,true,'The actual HTTP child must expose its cached webpack runtime.');
+  assert.equal(loadedModuleDiagnostic?.loadedHelper?.guardInstalled,true,'The actual HTTP child must invoke the guarded storage helper.');
+  assert.equal(loadedModuleDiagnostic?.currentFactory?.guardInstalled,true,'The registered storage helper factory must retain the recovery guard.');
+  assert.equal(loadedModuleDiagnostic?.bundledSdkError?.statusCode,409,'The genuine bundled Azure SDK must preserve the fixture conflict status.');
+  if(fixtureFailure)throw fixtureFailure;
+  pass('The live HTTP child and registered factory both retain the content-verified recovery guard; genuine bundled SDK returns numeric 409');
   const report={passed:true,actualNextHttp:true,contentHashVerified:true,mainAltVerified:true,duplicateRetryVerified:true,jsonAltRefreshVerified:true,coverByFirstUploadVerified:true,photoLimitVerified:true,requestBodyLimitVerified:true,photoLimitBytes:LIMIT,requestBodyBytes:14*1024*1024,collisionBytesRejected:true,malformedInputDenied:true,anonymousDenied:true,
-    checks:results,checkCount:results.length,results,fixtureBlobObjects:objects.size,fixtureMetadataAttachments:sizeVariants.reduce((n,v)=>n+v.images.length,0),productionDatabaseWrites:0,productionBlobWrites:0};
+    loadedStorageHelperVerified:true,loadedModuleDiagnostic,checks:results,checkCount:results.length,results,fixtureBlobObjects:objects.size,fixtureMetadataAttachments:sizeVariants.reduce((n,v)=>n+v.images.length,0),productionDatabaseWrites:0,productionBlobWrites:0};
   await mkdir('evidence/product-upload',{recursive:true});await writeFile('evidence/product-upload/next-hash.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
 } catch(error) {
-  const traceBefore=log.indexOf('HIDI_FIXTURE_MODULE_DIAGNOSTIC ');child.kill('SIGUSR1');
-  for(let attempt=0;attempt<40&&!log.includes('HIDI_FIXTURE_MODULE_DIAGNOSTIC ',Math.max(0,traceBefore+1));attempt++)await new Promise(resolve=>setTimeout(resolve,50));
+  const loadedModuleDiagnostic=await readLoadedModuleDiagnostic();
   let nativeSdkError;
   try{
     const requireActual=createRequire(path.join(runtime,'apps/web/server.js')),{BlobServiceClient}=requireActual('@azure/storage-blob');
@@ -248,10 +260,9 @@ try {
     const key=[...objects.keys()][0];if(key)try{await client.getContainerClient('product-media').getBlockBlobClient(key).uploadData(PHOTO,{conditions:{ifNoneMatch:'*'},blobHTTPHeaders:{blobContentType:'image/png'}});}catch(sdkError){nativeSdkError={available:true,name:sdkError.name,code:sdkError.code,statusCode:sdkError.statusCode,keys:Object.keys(sdkError),message:sdkError.message};}
   }catch(sdkError){nativeSdkError={available:false,message:sdkError.code==='MODULE_NOT_FOUND'?'Actual standalone SDK is bundled rather than separately resolvable.':sdkError.message};}
   const sanitizedLog=log.split('\n').filter(line=>!/(?:authorization|bearer|access_token|identity-header|identity_header|secret|password)/i.test(line)).join('\n');
-  const moduleLine=log.split('\n').find(line=>line.startsWith('HIDI_FIXTURE_MODULE_DIAGNOSTIC ')),loadedModuleDiagnostic=moduleLine?JSON.parse(moduleLine.slice('HIDI_FIXTURE_MODULE_DIAGNOSTIC '.length)):null;
   const failure={passed:false,actualNextHttp:true,failure:{name:error.name,message:error.message},storageDiagnostic,loadedModuleDiagnostic,nativeSdkError,blobCalls,apiCalls:apiCalls.map(call=>({path:call.path,method:call.method,bodyKeys:Object.keys(call.body),photoUrl:call.body.url||null})),completedChecks:results,childLog:sanitizedLog,productionDatabaseWrites:0,productionBlobWrites:0};
   await writeFile('evidence/product-upload/next-http-failure.json',JSON.stringify(failure,null,2)+'\n');
-  console.error(JSON.stringify({failure:error.message,actualHelperCases:storageDiagnostic.directCases,loadedModuleDiagnostic,nativeSdkError,blobCalls,apiCalls:failure.apiCalls,fixtureErrorTrace:sanitizedLog.split('\n').filter(line=>line.startsWith('HIDI_FIXTURE_ERROR_TRACE '))}));
+  console.error(JSON.stringify({failure:error.message,actualHelperCases:storageDiagnostic.directCases,loadedModuleDiagnostic,nativeSdkError,blobCalls,apiCalls:failure.apiCalls}));
   throw error;
 } finally {
   if(child.exitCode===null){child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));}
