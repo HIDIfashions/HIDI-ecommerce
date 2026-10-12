@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { orderMessage, recipient, type NotificationChannel, type NotificationOrder } from "./order-message.js";
-export type PreparedNotification = { provider: "RESEND" | "MSG91"; body: Record<string, unknown> };
+export type PreparedNotification = { provider: "RESEND" | "MSG91"; body: Record<string, unknown>; paymentKind?: "PAID" | "COD" };
 export type SendResult = { status: "SENT" | "RETRY" | "FAILED" | "UNKNOWN"; error: string | null; messageId?: string };
 @Injectable()
 export class OrderNotificationSender {
@@ -11,19 +11,20 @@ export class OrderNotificationSender {
   }
   prepare(order: NotificationOrder, channel: NotificationChannel): PreparedNotification | null {
     const to = recipient(order, channel);
-    if (!to) return null;
+    if (!to || !order.paymentKind) return null;
     const message = orderMessage(order);
     if (channel === "EMAIL") {
+      if (order.paymentKind === "COD") return null;
       // Require an explicitly verified transactional sender; no test sender fallback.
       const from = process.env.ORDER_FROM_EMAIL?.trim();
       if (!from || /[\r\n]/.test(from) || !this.configured("RESEND")) return null;
-      return { provider: "RESEND", body: { from, to: [to], subject: message.subject, text: message.text, html: message.html } };
+      return { provider: "RESEND", paymentKind: "PAID", body: { from, to: [to], subject: message.subject, text: message.text, html: message.html } };
     }
     const number = process.env.MSG91_WHATSAPP_INTEGRATED_NUMBER;
-    const template = process.env.MSG91_ORDER_TEMPLATE_NAME;
+    const template = order.paymentKind === "COD" ? process.env.MSG91_COD_ORDER_TEMPLATE_NAME : process.env.MSG91_ORDER_TEMPLATE_NAME;
     const namespace = process.env.MSG91_ORDER_TEMPLATE_NAMESPACE;
     if (!number || !template || !namespace || !this.configured("MSG91")) return null;
-    return { provider: "MSG91", body: {
+    return { provider: "MSG91", paymentKind: order.paymentKind, body: {
       integrated_number: number, content_type: "template",
       payload: { messaging_product: "whatsapp", type: "template", template: {
         name: template, namespace,

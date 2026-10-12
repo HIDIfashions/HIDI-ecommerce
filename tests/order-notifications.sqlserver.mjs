@@ -48,6 +48,10 @@ try {
     ['failed', 'PENDING_PAYMENT', 'FAILED', 'RAZORPAY', '2026-10-10T09:00:03'],
     ['review', 'PAYMENT_REVIEW', 'CAPTURED', 'RAZORPAY', '2026-10-10T09:00:03'],
     ['unpaid', 'CONFIRMED', 'CREATED', 'RAZORPAY', '2026-10-10T09:00:03'],
+    ['cod', 'CONFIRMED', 'CREATED', 'COD', '2026-10-10T09:00:03'],
+    ['cod-failed', 'CONFIRMED', 'FAILED', 'COD', '2026-10-10T09:00:03'],
+    ['cod-cancelled', 'CANCELLED', 'CREATED', 'COD', '2026-10-10T09:00:03'],
+    ['cod-old', 'CONFIRMED', 'CREATED', 'COD', '2026-10-09T09:00:00'],
     ['old', 'CONFIRMED', 'CAPTURED', 'RAZORPAY', '2026-10-09T09:00:00'],
   ];
   for (const [id, status, paymentStatus, provider, createdAt] of fixtures) {
@@ -91,7 +95,7 @@ try {
     INSERT dbo.[User] (id,updatedAt) VALUES ('opted-in-user',SYSUTCDATETIME());
     INSERT dbo.RetentionProfile (id,authSubject,userId,whatsappOptIn,verifiedPhone,phoneVerifiedAt,consentVersion,updatedAt)
       VALUES ('consent','consent-subject','opted-in-user',1,'+919876543210',SYSUTCDATETIME(),'hidi-retention-v1',SYSUTCDATETIME());
-    UPDATE dbo.[Order] SET userId='opted-in-user' WHERE id='paid';`);
+    UPDATE dbo.[Order] SET userId='opted-in-user' WHERE id IN ('paid','cod','cod-failed','cod-cancelled','cod-old','unpaid');`);
   await pool.request().query("UPDATE dbo.RetentionProfile SET consentVersion='old'");
   await store.enqueue('WHATSAPP',start);
   assert.equal((await pool.request().query("SELECT COUNT(*) AS count FROM dbo.OrderNotificationOutbox WHERE channel='WHATSAPP'")).recordset[0].count,0);
@@ -100,6 +104,8 @@ try {
   assert.equal((await pool.request().query("SELECT COUNT(*) AS count FROM dbo.OrderNotificationOutbox WHERE channel='WHATSAPP'")).recordset[0].count,0);
   await pool.request().query("UPDATE dbo.RetentionProfile SET phoneVerifiedAt=SYSUTCDATETIME()");
   await store.enqueue('WHATSAPP',start);
-  assert.deepEqual((await pool.request().query("SELECT orderId FROM dbo.OrderNotificationOutbox WHERE channel='WHATSAPP'")).recordset,[{orderId:'paid'}]);
-  console.log('PASS: WhatsApp queues only existing opted-in customers; email remains independent');
+  assert.deepEqual((await pool.request().query("SELECT orderId FROM dbo.OrderNotificationOutbox WHERE channel='WHATSAPP' ORDER BY orderId")).recordset,[{orderId:'cod'},{orderId:'paid'}]);
+  await store.enqueue('WHATSAPP',start);
+  assert.equal((await pool.request().query("SELECT COUNT(*) AS count FROM dbo.OrderNotificationOutbox WHERE channel='WHATSAPP'")).recordset[0].count,2);
+  console.log('PASS: WhatsApp queues opted-in paid and confirmed COD orders exactly once; failed, cancelled, historical and unpaid gateway orders excluded');
 } finally { await pool.close(); }

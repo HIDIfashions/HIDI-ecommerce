@@ -1,0 +1,36 @@
+name: WhatsApp paid and COD confirmation regression
+on:
+  push:
+    branches: [feat/whatsapp-order-confirmations-20261012]
+  pull_request:
+    branches: [migration/azure-sql-blob]
+    paths:
+      - apps/api/src/order-notifications/**
+      - tests/order-notifications*
+      - .github/workflows/whatsapp-order-confirmations-test.yml
+permissions:
+  contents: read
+jobs:
+  payment-and-queue-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env: {ACCEPT_EULA: Y, MSSQL_SA_PASSWORD: Disposable-CI-Only_2026!}
+        ports: [1433:1433]
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=fixture;password=fixture;encrypt=true
+      NOTIFICATION_TEST_SQL_HOST: 127.0.0.1
+      NOTIFICATION_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - run: pnpm install --frozen-lockfile && pnpm db:generate
+      - run: pnpm --filter @hidi/api test:customer-experience
+      - run: pnpm --filter @hidi/api build
+      - run: python3 tests/order-notifications-release.test.py
+      - run: node tests/order-notifications.sqlserver.mjs
