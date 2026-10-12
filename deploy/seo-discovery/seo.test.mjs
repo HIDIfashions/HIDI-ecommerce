@@ -33,9 +33,11 @@ test('homepage and collection search/social fields change together; creative bod
   assert(changed.includes('<meta name="robots" content="index, follow">'));
   assert.equal(normalizeSeoIdentity(changed,'/'),changed);
   const duplicate=normalizeSeoIdentity(head.replace('</head>','<meta name="description" content="Duplicate"></head>')+body,'/');
-  assert.equal((duplicate.match(/name="description"/g)||[]).length,1,'Duplicate description tags have one owner');
+  assert.equal((duplicate.match(/name="description"/g)||[]).length,2,'Retained head structure is preserved');
+  assert(!duplicate.includes('content="Duplicate"'),'Every retained description uses the same route definition');
   const duplicateTitle=normalizeSeoIdentity(head.replace('</head>','<title>Previous destination</title></head>')+body,'/collections/all');
-  assert.equal((duplicateTitle.match(/<title>/g)||[]).length,1,'Server metadata has one title owner');
+  assert.equal((duplicateTitle.match(/<title>/g)||[]).length,2,'Retained title nodes remain present');
+  assert(!duplicateTitle.includes('Previous destination'),'Every retained title uses the destination definition');
   const collection=normalizeSeoIdentity(head+body,'/collections/all');
   assert(collection.includes('Women’s Kurta Sets &amp; Indian Wear | HIDI India'));
 });

@@ -21,7 +21,10 @@ async function assertSearchMetadata(page,path,rawHtml) {
   if (!expectedTitles[path]) return;
   await page.waitForFunction(title=>document.title===title,expectedTitles[path]);
   try {
-    await page.waitForFunction(()=>document.head.querySelectorAll('title').length===1 && document.head.querySelectorAll('meta[name="description"]').length===1,null,{timeout:5000});
+    await page.waitForFunction(()=>{
+      const titles=[...document.head.querySelectorAll('title')],descriptions=[...document.head.querySelectorAll('meta[name="description"]')];
+      return titles.length>0 && descriptions.length>0 && titles.every(n=>n.textContent===document.title) && descriptions.every(n=>n.content===descriptions[0].content);
+    },null,{timeout:5000});
   } catch(error) {
     console.error('SEO_HEAD_DIAGNOSTIC',JSON.stringify({path,...await page.evaluate(()=>({title:document.title,descriptions:Array.from(document.head.querySelectorAll('meta[name="description"]')).map(n=>n.outerHTML)}))}));
     throw error;
@@ -30,10 +33,10 @@ async function assertSearchMetadata(page,path,rawHtml) {
     descriptions:Array.from(document.head.querySelectorAll('meta[name="description"]')).map(n=>n.content),
     socialTitles:Array.from(document.head.querySelectorAll('meta[property="og:title"],meta[name="twitter:title"]')).map(n=>n.content),
     socialDescriptions:Array.from(document.head.querySelectorAll('meta[property="og:description"],meta[name="twitter:description"]')).map(n=>n.content),
-    titleCount:document.head.querySelectorAll('title').length}));
+    titles:Array.from(document.head.querySelectorAll('title')).map(n=>n.textContent)}));
   assert.equal(fields.title,expectedTitles[path],path+' title survives rendering');
-  assert.equal(fields.titleCount,1,'One title owner');
-  assert.equal(fields.descriptions.length,1,'One description owner');
+  assert(fields.titles.length>0 && fields.titles.every(value=>value===fields.title),'One route definition reconciles all framework-owned titles');
+  assert(fields.descriptions.length>0 && fields.descriptions.every(value=>value===fields.descriptions[0]),'All framework-owned descriptions agree');
   assert(fields.descriptions[0].length>100,'Descriptive existing-page summary');
   assert(fields.socialTitles.length>0 && fields.socialDescriptions.length>0,'Social metadata is present');
   for(const title of fields.socialTitles)assert.equal(title,fields.title,'Search and social titles agree');

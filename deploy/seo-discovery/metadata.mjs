@@ -54,11 +54,7 @@ function escapeMetadata(value) {
 
 function applySearchMetadata(head, metadata) {
   if (!metadata || /<title\b[^>]*>\s*(?:404\b|not found)/i.test(head)) return head;
-  const seen = new Set();
-  let seenTitle = false;
   return head.replace(/(<title\b[^>]*>)[\s\S]*?(<\/title>)/gi, (_, open, close) => {
-    if (seenTitle) return '';
-    seenTitle = true;
     return open + escapeMetadata(metadata.title) + close;
   })
     .replace(/<meta\b[^>]*>/gi, tag => {
@@ -66,8 +62,6 @@ function applySearchMetadata(head, metadata) {
       const value = ['og:title', 'twitter:title'].includes(field) ? metadata.title
         : ['description', 'og:description', 'twitter:description'].includes(field) ? metadata.description : null;
       if (value === null) return tag;
-      if (seen.has(field)) return '';
-      seen.add(field);
       return tag.replace(/\bcontent\s*=\s*(["'])(.*?)\1/i, (_, quote) => 'content=' + quote + escapeMetadata(value).replace(/'/g, '&#39;') + quote);
     });
 }
@@ -110,13 +104,18 @@ function guardMetadata() {
       metadata = productRouteMetadata(values, path);
     }
     if (metadata) {
-      // Preserve the newest framework-owned head node. Earlier duplicate metadata
-      // can be left by the retained Next build during streaming and navigation.
-      for (const selector of ['title','meta[name="description"]','meta[property="og:title"]','meta[name="twitter:title"]','meta[property="og:description"]','meta[name="twitter:description"]']) {
-        const nodes = [...document.head.querySelectorAll(selector)];
-        for (const node of nodes.slice(0, -1)) node.remove();
+      // The retained framework caches references to these nodes. Preserve node
+      // and text-node identities; reconcile every copy instead of removing one.
+      const titles = [...document.head.querySelectorAll('title')];
+      if (!titles.length) document.title = metadata.title;
+      for (const node of titles) {
+        if (node.textContent === metadata.title) continue;
+        const texts = [...node.childNodes].filter(child => child.nodeType === 3);
+        if (texts.length) {
+          texts[0].nodeValue = metadata.title;
+          for (const text of texts.slice(1)) text.nodeValue = '';
+        } else node.appendChild(document.createTextNode(metadata.title));
       }
-      if (document.title !== metadata.title) document.title = metadata.title;
       for (const node of document.head.querySelectorAll('meta[name="description"],meta[property="og:description"],meta[name="twitter:description"]')) {
         if (node.content !== metadata.description) node.content = metadata.description;
       }

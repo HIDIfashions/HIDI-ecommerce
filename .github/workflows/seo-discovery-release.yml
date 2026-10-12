@@ -1,4 +1,4 @@
-name: Release HIDI SEO route metadata and approved public images
+name: Release HIDI SEO metadata with framework-owned head preservation
 on:
   push:
     branches: [migration/azure-sql-blob]
