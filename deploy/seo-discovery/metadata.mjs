@@ -31,7 +31,12 @@ function escapeMetadata(value) {
 function applySearchMetadata(head, metadata) {
   if (!metadata || /<title\b[^>]*>\s*(?:404\b|not found)/i.test(head)) return head;
   const seen = new Set();
-  return head.replace(/(<title\b[^>]*>)[\s\S]*?(<\/title>)/gi, (_, open, close) => open + escapeMetadata(metadata.title) + close)
+  let seenTitle = false;
+  return head.replace(/(<title\b[^>]*>)[\s\S]*?(<\/title>)/gi, (_, open, close) => {
+    if (seenTitle) return '';
+    seenTitle = true;
+    return open + escapeMetadata(metadata.title) + close;
+  })
     .replace(/<meta\b[^>]*>/gi, tag => {
       const field = /\b(?:name|property)\s*=\s*(["'])(.*?)\1/i.exec(tag)?.[2]?.toLowerCase();
       const value = ['og:title', 'twitter:title'].includes(field) ? metadata.title
@@ -74,13 +79,13 @@ function guardMetadata() {
     const failedPage = /^404\b|not found/i.test(document.title);
     const metadata = !privatePage && !failedPage ? routeSearchMetadata[path] : null;
     if (metadata) {
-      if (document.title !== metadata.title) document.title = metadata.title;
       // Preserve the newest framework-owned head node. Earlier duplicate metadata
       // can be left by the retained Next build during streaming and navigation.
-      for (const selector of ['meta[name="description"]','meta[property="og:title"]','meta[name="twitter:title"]','meta[property="og:description"]','meta[name="twitter:description"]']) {
+      for (const selector of ['title','meta[name="description"]','meta[property="og:title"]','meta[name="twitter:title"]','meta[property="og:description"]','meta[name="twitter:description"]']) {
         const nodes = [...document.head.querySelectorAll(selector)];
         for (const node of nodes.slice(0, -1)) node.remove();
       }
+      if (document.title !== metadata.title) document.title = metadata.title;
       for (const node of document.head.querySelectorAll('meta[name="description"],meta[property="og:description"],meta[name="twitter:description"]')) {
         if (node.content !== metadata.description) node.content = metadata.description;
       }

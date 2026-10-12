@@ -16,7 +16,7 @@ async function assertSearchMetadata(page,path,rawHtml) {
   if (!expectedTitles[path]) return;
   await page.waitForFunction(title=>document.title===title,expectedTitles[path]);
   try {
-    await page.waitForFunction(()=>document.head.querySelectorAll('meta[name="description"]').length===1,null,{timeout:5000});
+    await page.waitForFunction(()=>document.head.querySelectorAll('title').length===1 && document.head.querySelectorAll('meta[name="description"]').length===1,null,{timeout:5000});
   } catch(error) {
     console.error('SEO_HEAD_DIAGNOSTIC',JSON.stringify({path,...await page.evaluate(()=>({title:document.title,descriptions:Array.from(document.head.querySelectorAll('meta[name="description"]')).map(n=>n.outerHTML)}))}));
     throw error;

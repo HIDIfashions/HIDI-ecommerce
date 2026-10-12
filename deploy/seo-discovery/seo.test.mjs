@@ -34,6 +34,8 @@ test('homepage and collection search/social fields change together; creative bod
   assert.equal(normalizeSeoIdentity(changed,'/'),changed);
   const duplicate=normalizeSeoIdentity(head.replace('</head>','<meta name="description" content="Duplicate"></head>')+body,'/');
   assert.equal((duplicate.match(/name="description"/g)||[]).length,1,'Duplicate description tags have one owner');
+  const duplicateTitle=normalizeSeoIdentity(head.replace('</head>','<title>Previous destination</title></head>')+body,'/collections/all');
+  assert.equal((duplicateTitle.match(/<title>/g)||[]).length,1,'Server metadata has one title owner');
   const collection=normalizeSeoIdentity(head+body,'/collections/all');
   assert(collection.includes('Women’s Kurta Sets &amp; Indian Wear | HIDI India'));
 });
