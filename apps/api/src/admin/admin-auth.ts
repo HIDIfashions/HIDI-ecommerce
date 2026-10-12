@@ -2,8 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
   Injectable,
   SetMetadata,
+  ServiceUnavailableException,
   UnauthorizedException,
   createParamDecorator,
   type CanActivate,
@@ -98,10 +100,65 @@ export const CurrentAdmin = createParamDecorator((_data: unknown, context: Execu
 
 @Injectable()
 export class AdminAuthService {
+  private readonly emailCodeCooldowns = new Map<string, number>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabaseAuth: SupabaseAuthService,
   ) {}
+
+  async requestEmailCode(value: unknown) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new BadRequestException("Enter a valid admin email address");
+    }
+    const input = value as Record<string, unknown>;
+    if (Object.keys(input).some(key => key !== "email")) {
+      throw new BadRequestException("Unsupported admin sign-in field");
+    }
+    const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException("Enter a valid admin email address");
+    }
+
+    // Azure SQL staff membership is authoritative. This endpoint never creates
+    // a staff member or auth identity, and never exposes the staff directory.
+    const staff = await this.prisma.adminStaff.findFirst({ where: { email } });
+    if (!staff || !staff.active || !isAdminRole(staff.role)) {
+      throw new ForbiddenException("This email is not authorised for HIDI Admin");
+    }
+
+    const now = Date.now();
+    for (const [key, until] of this.emailCodeCooldowns) {
+      if (until <= now) this.emailCodeCooldowns.delete(key);
+    }
+    const until = this.emailCodeCooldowns.get(email) ?? 0;
+    if (until > now) {
+      throw new HttpException({
+        statusCode: 429,
+        message: "Please wait before requesting another admin code",
+        retryAfterSeconds: Math.ceil((until - now) / 1000),
+      }, 429);
+    }
+
+    const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !key) throw new ServiceUnavailableException("Admin code delivery is not configured");
+    // Set the cooldown before awaiting delivery, including uncertain failures.
+    this.emailCodeCooldowns.set(email, now + 60_000);
+    try {
+      const response = await fetch(`${url}/auth/v1/otp`, {
+        method: "POST",
+        redirect: "error",
+        signal: AbortSignal.timeout(10_000),
+        headers: { apikey: key, "content-type": "application/json" },
+        body: JSON.stringify({ email, create_user: false }),
+      });
+      if (!response.ok) throw new Error("Code delivery rejected");
+    } catch {
+      throw new ServiceUnavailableException("Unable to send the admin sign-in code. Please retry later.");
+    }
+    return { email, retryAfterSeconds: 60 };
+  }
 
   async resolveActor(input: { authorization?: string; adminKey?: string }): Promise<AdminActor> {
     if (input.authorization?.startsWith("Bearer ")) {
@@ -111,7 +168,7 @@ export class AdminAuthService {
         throw new UnauthorizedException("Admin access requires a verified email account");
       }
 
-      let staff = await this.prisma.adminStaff.findFirst({
+      const staff = await this.prisma.adminStaff.findFirst({
         where: {
           OR: [
             { authSubject: user.id },
@@ -120,29 +177,7 @@ export class AdminAuthService {
         },
       });
 
-      if (!staff) {
-        const bootstrapEmail = normalize(process.env.ADMIN_BOOTSTRAP_EMAIL).toLowerCase();
-        const staffCount = await this.prisma.adminStaff.count();
-        if (staffCount === 0 && bootstrapEmail && bootstrapEmail === email) {
-          const metadataName = typeof user.metadata?.full_name === "string"
-            ? user.metadata.full_name.trim()
-            : typeof user.metadata?.name === "string"
-              ? user.metadata.name.trim()
-              : "";
-          staff = await this.prisma.adminStaff.create({
-            data: {
-              authSubject: user.id,
-              email,
-              displayName: metadataName || email.split("@")[0] || "HIDI Owner",
-              role: "OWNER",
-              active: true,
-              lastLoginAt: new Date(),
-            },
-          });
-        }
-      }
-
-      if (!staff || !staff.active) {
+      if (!staff || !staff.active || staff.email.trim().toLowerCase() !== email) {
         throw new ForbiddenException("This account is not authorized for HIDI Admin");
       }
       if (!isAdminRole(staff.role)) {

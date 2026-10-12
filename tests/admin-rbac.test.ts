@@ -63,17 +63,13 @@ test("verified staff email claims the Supabase subject once and returns the conf
   assert.ok(f.staff[0].lastLoginAt instanceof Date);
 });
 
-test("the first owner can be bootstrapped only by the explicitly configured verified email", async () => {
+test("sign-in never bootstraps an unlisted owner, even with a matching configured email", async () => {
   const before = process.env.ADMIN_BOOTSTRAP_EMAIL;
   try {
     process.env.ADMIN_BOOTSTRAP_EMAIL = "owner@example.test";
     const f = fixture({ staff: [] });
-    const actor = await f.service.resolveActor({ authorization: "Bearer valid" });
-    assert.equal(actor.role, "OWNER");
-    assert.equal(actor.authMode, "SUPABASE");
-    assert.equal(f.staff.length, 1);
-    assert.equal(f.staff[0].email, "owner@example.test");
-    assert.equal(f.staff[0].authSubject, "auth-admin-1");
+    await assert.rejects(() => f.service.resolveActor({ authorization: "Bearer valid" }), { name: "ForbiddenException" });
+    assert.equal(f.staff.length, 0);
 
     const denied = fixture({
       staff: [],
@@ -120,6 +116,15 @@ test("admin RBAC permissions separate support, operations, catalog and owner dut
   assert.equal(service.hasPermission(catalog, "catalog:write"), true);
   assert.equal(service.hasPermission(catalog, "order:write"), false);
   assert.equal(service.hasPermission(operations, "catalog:write"), false);
+});
+
+test("a linked auth subject does not authorise a different email outside the staff list", async () => {
+  const f = fixture({ staff: [{
+    id: "admin-1", authSubject: "auth-admin-1", email: "old@example.test",
+    displayName: "Owner", role: "OWNER", active: true,
+  }] });
+  await assert.rejects(() => f.service.resolveActor({ authorization: "Bearer valid" }), { name: "ForbiddenException" });
+  assert.equal(f.staff[0].email, "old@example.test");
 });
 
 test("legacy shared key is disabled by default and requires an explicit break-glass flag", async () => {

@@ -19,17 +19,18 @@ export function adminAuthConfigured() {
 
 export function normalizeAdminEmail(value: string) {
   const email = value.trim().toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Enter a valid admin email address");
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid admin email address");
   return email;
 }
 
 export async function sendAdminEmailOtp(emailValue: string) {
   if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error("Admin sign-in is not configured");
   const email = normalizeAdminEmail(emailValue);
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+  const response = await fetch("/api/store/auth/admin/otp/request", {
     method: "POST",
-    headers: headers(),
-    body: JSON.stringify({ email, create_user: true }),
+    headers: { "content-type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ email }),
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
