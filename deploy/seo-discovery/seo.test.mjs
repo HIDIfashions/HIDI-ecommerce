@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript, isPublishedProductImage, shouldIndexPublishedImage } from './metadata.mjs';
+import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript, isPublishedProductImage, shouldIndexPublishedImage, productRouteMetadata } from './metadata.mjs';
 import { Readable } from 'node:stream';
 import { sitemapXml, createSeoSitemap } from './sitemap.mjs';
 
@@ -54,9 +54,18 @@ test('image eligibility is limited to exact published catalogue assets',()=>{
 });
 test('private, error, preview, product and unsupported destination metadata stays unchanged',()=>{
   const page='<head><title>Existing product | HIDI</title><meta name="description" content="Existing facts"></head><body>Exact</body>';
-  for(const path of [undefined,'/cart','/checkout','/account','/products/existing-product','/about','/collections/unknown'])assert.equal(normalizeSeoIdentity(page,path),page);
+  for(const path of [undefined,'/cart','/checkout','/account','/products/existing-product','/lookbook','/collections/unknown'])assert.equal(normalizeSeoIdentity(page,path),page);
   const error=page.replace('Existing product | HIDI','404: Not found');
   assert.equal(normalizeSeoIdentity(error,'/collections/all'),error);
+});
+test('cached product metadata is restored only from the matching published product graph; facts remain exact',()=>{
+  const product={'@type':'Product',url:'https://thidigk.thehidi.com/products/existing-product',name:'Current dress',description:'Existing approved description',offers:{price:'1199.00',availability:'https://schema.org/InStock'}};
+  const source=JSON.stringify(product);
+  assert.deepEqual(productRouteMetadata([[product]],'/products/existing-product'),{title:'Current dress | HIDI',socialTitle:'Current dress',description:'Existing approved description'});
+  assert.equal(JSON.stringify(product),source,'The product record and offers remain unchanged');
+  assert.equal(productRouteMetadata([product],'/products/another-product'),null,'Previous route data cannot become the new metadata');
+  assert.equal(productRouteMetadata([product],'/cart'),null);
+  assert.equal(productRouteMetadata([{'@type':'Product',url:'https://other.example/products/existing-product',name:'Other',description:'Other'}],'/products/existing-product'),null);
 });
 test('streamed body JSON-LD normalizes across UTF-8/tag boundaries while visible markup stays exact',async()=>{
   const visible='<body><p>₹1,490 — 🪷 తెలుగు</p><img src="https://thidigk.thehidi.com/media/real.jpg">';

@@ -11,6 +11,11 @@ const expectedTitles = {
   '/collections/casual-wear':'Casual Wear Kurta Sets for Women | HIDI India',
   '/collections/occasional-wear':'Occasion Wear Kurta Sets for Women | HIDI India',
   '/collections/ananyas-pick':'Ananya’s Pick: Women’s Indian Wear | HIDI India',
+  '/about':'About HIDI | HIDI',
+  '/shipping':'Shipping Policy | HIDI',
+  '/returns':'Returns & Exchanges | HIDI',
+  '/contact':'Contact & Help | HIDI',
+  '/offers':'HIDI Privileges | HIDI',
 };
 async function assertSearchMetadata(page,path,rawHtml) {
   if (!expectedTitles[path]) return;
@@ -160,9 +165,9 @@ export async function probe(base, output) {
             checks.push({page:key,path,passed:true,...measurement});
           }
           if(width===390||width===1440) {
-            for(const path of ['/collections/work-wear','/collections/casual-wear','/collections/occasional-wear','/collections/ananyas-pick']) {
+            for(const path of ['/collections/work-wear','/collections/casual-wear','/collections/occasional-wear','/collections/ananyas-pick','/about','/shipping','/returns','/contact','/offers']) {
               assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
-              await page.locator('main h1').waitFor({state:'attached'});
+              await page.locator('footer').first().waitFor({state:'attached'});
               const raw=await fetch(base+path,{headers:seoHeaders});assert.equal(raw.status,200);
               await assertSearchMetadata(page,path,await raw.text());
               checks.push({page:'collection-search-metadata',path,passed:true});
@@ -181,7 +186,7 @@ export async function probe(base, output) {
                 try {const v=JSON.parse(n.textContent);return Array.isArray(v)?v:(v['@graph']||[v]);}catch{return [];}
               });
               const product=values.find(v=>v['@type']==='Product');
-              return {title:document.title,name:product?.name};
+              return {title:document.title,name:product?.name,description:product?.description};
             });
             assert(productIdentity.name,'Destination product schema remains present');
             assert.equal(productIdentity.title,productIdentity.name+' | HIDI','Product title belongs to the destination, not the prior collection');
@@ -189,7 +194,14 @@ export async function probe(base, output) {
             await page.goBack({waitUntil:'domcontentloaded'});
             await assertSearchMetadata(page,'/collections/all');
             await page.goForward({waitUntil:'domcontentloaded'});
+            if(base.startsWith('http://127.0.0.1')) {
+              // Reproduce the slow live-router case where cached product head
+              // nodes still contain the preceding collection's metadata.
+              await page.evaluate(()=>{document.title='Previous collection';document.head.querySelector('meta[name="description"]').content='Previous collection description';});
+            }
             await page.waitForFunction(name=>document.title===name+' | HIDI',productIdentity.name);
+            const restoredDescription=await page.locator('meta[name="description"]').getAttribute('content');
+            assert.equal(restoredDescription,productIdentity.description,'Product description survives cached forward navigation');
             await page.goto(base+'/',{waitUntil:'domcontentloaded'});
             await page.locator('footer').first().waitFor();
             await assertSearchMetadata(page,'/');

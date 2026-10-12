@@ -22,7 +22,31 @@ export const routeSearchMetadata = {
   '/collections/casual-wear': {title: 'Casual Wear Kurta Sets for Women | HIDI India', description: 'Browse HIDI’s Casual Wear edit of women’s kurta sets and Indian wear. Explore printed and embroidered styles, product details and size information.'},
   '/collections/occasional-wear': {title: 'Occasion Wear Kurta Sets for Women | HIDI India', description: 'Explore HIDI’s Occasional Wear edit of kurta and Anarkali sets. Compare styles, garment details, current prices and size information.'},
   '/collections/ananyas-pick': {title: 'Ananya’s Pick: Women’s Indian Wear | HIDI India', description: 'Discover Ananya’s Pick at HIDI, an edit of women’s Indian wear. Browse selected styles and check garment details, current prices and size information.'},
+  '/about': {title: 'About HIDI | HIDI', description: 'Meet HIDI and explore the brand’s approach to women’s Indian wear for work, everyday dressing and occasions.'},
+  '/shipping': {title: 'Shipping Policy | HIDI', description: 'Read HIDI’s shipping policy, including delivery information and order support. Check the current policy before placing your order.'},
+  '/returns': {title: 'Returns & Exchanges | HIDI', description: 'Read HIDI’s returns and exchanges policy. Review eligibility, the process and support information before placing your order.'},
+  '/contact': {title: 'Contact & Help | HIDI', description: 'Find HIDI’s contact and help information for product questions, orders and support. View the current ways to reach the HIDI team.'},
+  '/offers': {title: 'HIDI Privileges | HIDI', description: 'Explore HIDI’s current offers and privileges. Review the published terms and eligibility information before choosing an offer.'},
 };
+
+// Restore the already-published metadata of the destination product when the
+// framework reuses cached head nodes during back/forward navigation.
+export function productRouteMetadata(values, pathname) {
+  if (!/^\/products\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathname)) return null;
+  function find(value) {
+    if (Array.isArray(value)) {
+      for (const item of value) { const result = find(item); if (result) return result; }
+    } else if (value && typeof value === 'object') {
+      if (value['@type'] === 'Product' && identityUrl(value.url) === canonicalOrigin + pathname
+        && typeof value.name === 'string' && typeof value.description === 'string') {
+        return {title: value.name + ' | HIDI', socialTitle: value.name, description: value.description};
+      }
+      if (value['@graph']) return find(value['@graph']);
+    }
+    return null;
+  }
+  return find(values);
+}
 
 function escapeMetadata(value) {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -76,8 +100,15 @@ function guardMetadata() {
     const path = location.pathname;
     const privatePage = privatePrefixes.some(prefix => path === prefix || path.startsWith(prefix + '/'));
     const publicPage = publicRoutes.has(path) || /^\/products\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(path);
-    const failedPage = /^404\b|not found/i.test(document.title);
-    const metadata = !privatePage && !failedPage ? routeSearchMetadata[path] : null;
+    const failedPage = /^404\b/i.test(document.title) || /\bnot found\b/i.test(document.title);
+    let metadata = !privatePage && !failedPage ? routeSearchMetadata[path] : null;
+    if (!metadata && !privatePage && !failedPage && /^\/products\//.test(path)) {
+      const values = [];
+      for (const node of document.querySelectorAll('script[type="application/ld+json"]')) {
+        try {values.push(JSON.parse(node.textContent));} catch { /* Leave malformed data for the audit. */ }
+      }
+      metadata = productRouteMetadata(values, path);
+    }
     if (metadata) {
       // Preserve the newest framework-owned head node. Earlier duplicate metadata
       // can be left by the retained Next build during streaming and navigation.
@@ -90,7 +121,8 @@ function guardMetadata() {
         if (node.content !== metadata.description) node.content = metadata.description;
       }
       for (const node of document.head.querySelectorAll('meta[property="og:title"],meta[name="twitter:title"]')) {
-        if (node.content !== metadata.title) node.content = metadata.title;
+        const title = metadata.socialTitle || metadata.title;
+        if (node.content !== title) node.content = title;
       }
     }
     for (const node of document.head.querySelectorAll('link[rel="canonical"]')) {
@@ -136,7 +168,7 @@ export const clientMetadataScript = '<script data-hidi-seo-identity="1">' +
   ';const legacyHosts=new Set(' + JSON.stringify([...legacyHosts]) +
   ');const identityKeys=new Set(' + JSON.stringify([...identityKeys]) +
   ');const routeSearchMetadata=' + JSON.stringify(routeSearchMetadata) +
-  ';' + identityUrl.toString() + normalizeGraph.toString() + '(' + guardMetadata.toString() + ')();})();</script>';
+  ';' + identityUrl.toString() + normalizeGraph.toString() + productRouteMetadata.toString() + '(' + guardMetadata.toString() + ')();})();</script>';
 
 function normalizeJsonLd(html) {
   return html.replace(/<script\b([^>]*\btype=["']application\/ld\+json["'][^>]*)>([\s\S]*?)<\/script>/gi, (tag,attrs,json)=>{
