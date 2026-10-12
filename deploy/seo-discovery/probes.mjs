@@ -56,6 +56,11 @@ export async function probe(base, output) {
             assert.equal(seo.canonical,'https://hidiindia.com'+path,'Canonical must match the current route after hydration');
             assert.equal(seo.robots?.includes('noindex'),expectedPrivate,'Public pages index; utility pages retain noindex');
             if(!expectedPrivate) {
+              const rawResponse=await fetch(base+path,{headers:seoHeaders});
+              assert.equal(rawResponse.status,200);
+              assert(!rawResponse.headers.get('x-robots-tag')?.includes('noindex'),'Public HTTP response is indexable');
+              const rawHtml=await rawResponse.text();
+              for(const match of rawHtml.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi))assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(match[1]),'Initial HTML structured-data identities use the production origin');
               const graphs=await page.locator('script[type="application/ld+json"]').allTextContents();
               for(const graph of graphs)assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(graph),'Structured-data identities use the production origin');
             }
