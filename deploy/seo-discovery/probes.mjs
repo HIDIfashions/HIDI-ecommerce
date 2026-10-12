@@ -55,6 +55,10 @@ export async function probe(base, output) {
             const seo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
             assert.equal(seo.canonical,'https://hidiindia.com'+path,'Canonical must match the current route after hydration');
             assert.equal(seo.robots?.includes('noindex'),expectedPrivate,'Public pages index; utility pages retain noindex');
+            if(!expectedPrivate) {
+              const graphs=await page.locator('script[type="application/ld+json"]').allTextContents();
+              for(const graph of graphs)assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(graph),'Structured-data identities use the production origin');
+            }
             await page.evaluate(async()=>{
               await document.fonts.ready;
               document.documentElement.style.scrollBehavior='auto';

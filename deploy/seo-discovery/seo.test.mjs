@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSeoIdentity, identityUrl } from './metadata.mjs';
+import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript } from './metadata.mjs';
+import { Readable } from 'node:stream';
 import { sitemapXml, createSeoSitemap } from './sitemap.mjs';
 
 test('only SEO identity fields change; garment facts, schema vocabulary and visible body stay exact', () => {
@@ -20,6 +21,18 @@ test('only SEO identity fields change; garment facts, schema vocabulary and visi
 });
 test('unrelated and malicious lookalike URLs retain their original meaning',()=>{
   for(const url of ['https://thehidi.com.evil.example/x','https://schema.org/InStock','https://example.com/x','javascript:alert(1)','/media/a.jpg']) assert.equal(identityUrl(url),url);
+});
+test('streamed body JSON-LD normalizes across UTF-8/tag boundaries while visible markup stays exact',async()=>{
+  const visible='<body><p>₹1,490 — 🪷 తెలుగు</p><img src="https://thidigk.thehidi.com/media/real.jpg">';
+  const json='<script type="application/ld+json">'+JSON.stringify({'@type':'Product',url:'https://thidigk.thehidi.com/products/real-style',offers:{price:'1490',url:'https://thehidi.com/products/real-style'}})+'</script>';
+  const input=Buffer.from(visible+json+'<button>Add to cart</button></body>');
+  const chunks=Array.from(input,x=>Buffer.from([x]));const stream=Readable.from(chunks).pipe(seoIdentityTransform());let output='';for await(const chunk of stream)output+=chunk.toString();
+  assert(output.startsWith(visible));assert(output.endsWith('<button>Add to cart</button></body>'));
+  assert(output.includes('https://hidiindia.com/products/real-style'));assert(output.includes('"price":"1490"'));
+});
+test('malformed schema and adjacent Unicode text are preserved; client script is valid JavaScript',async()=>{
+  const input='<script type="application/ld+json">broken</script>'+'🪷'.repeat(1500);let output='';for await(const chunk of Readable.from([input]).pipe(seoIdentityTransform()))output+=chunk.toString();assert.equal(output,input);
+  new Function(clientMetadataScript.replace(/^<script[^>]*>|<\/script>$/g,''));
 });
 test('sitemap covers all public catalogue products and excludes private/draft inventory',()=>{
   const xml=sitemapXml([{slug:'published-style'},{slug:'published-style'},{slug:'draft-style',status:'DRAFT'},{slug:'sold-out-style',inStock:false}]);
