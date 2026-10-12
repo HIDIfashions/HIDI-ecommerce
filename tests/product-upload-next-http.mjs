@@ -4,8 +4,10 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { createRequire } from 'node:module';
 import { photoIdentity } from '../deploy/product-upload/engine.mjs';
 
 const runtime = process.env.HIDI_CANDIDATE_RUNTIME;
@@ -15,6 +17,33 @@ const VARIANT = 'Fixture_Variant', ALT = 'Ivory cotton kurta, fixture front view
 // A genuine, checksum-verified 2 × 2 beige PNG.
 const PHOTO = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4nGP8/e3TfwYGBgYmBigAADxhA+bu5gNMAAAAAElFTkSuQmCC', 'base64');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const routeRelative='apps/web/.next/server/app/api/admin/inventory/[variantId]/images/route.js';
+const actualRouteSource=await readFile(path.join(runtime,routeRelative),'utf8');
+const helperContexts=source=>[...source.matchAll(/(?:getBlockBlobClient|uploadData)\(/g)].slice(0,40).map(match=>({offset:match.index,context:source.slice(Math.max(0,match.index-220),match.index+420)}));
+const storageDiagnostic={moduleRelativePath:routeRelative,moduleSha256:digest(actualRouteSource),helperCount:[...actualRouteSource.matchAll(/getBlockBlobClient\(/g)].length,helperContexts:helperContexts(actualRouteSource),directCases:[],referencedChunks:[]};
+const referencedChunks=[...new Set([...actualRouteSource.matchAll(/\.X\(0,\[([\d,]+)\]/g)].flatMap(match=>match[1].split(',')))];
+for(const id of referencedChunks){
+  const relative='apps/web/.next/server/chunks/'+id+'.js',source=await readFile(path.join(runtime,relative),'utf8').catch(()=>null);
+  if(source&&/(?:getBlockBlobClient|uploadData)\(/.test(source))storageDiagnostic.referencedChunks.push({moduleRelativePath:relative,moduleSha256:digest(source),helperContexts:helperContexts(source)});
+}
+const storageMatch=actualRouteSource.match(/let (?<blob>\w+)=(?<container>\w+)\(\)\.getBlockBlobClient\((?<key>\w+)\);try\{await \k<blob>\.uploadData\((?<bytes>\w+),\{conditions:\{ifNoneMatch:"\*"\},blobHTTPHeaders:\{blobContentType:(?<mime>\w+),/);
+if(storageMatch){
+  const result=actualRouteSource.slice(storageMatch.index).match(/return\{url:`\$\{(?<base>\w+)\}\/\$\{\w+\}`,storagePath:`azure:\/\/product-media\/\$\{\w+\}`\}/);
+  if(result){
+    const block=actualRouteSource.slice(storageMatch.index,storageMatch.index+result.index+result[0].length);
+    storageDiagnostic.helperSha256=digest(block);storageDiagnostic.helperSnippet=block;
+    storageDiagnostic.bindingContext=actualRouteSource.slice(Math.max(0,storageMatch.index-600),storageMatch.index);
+    const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+    const invoke=new AsyncFunction(storageMatch.groups.key,storageMatch.groups.bytes,storageMatch.groups.mime,result.groups.base,storageMatch.groups.container,block);
+    for(const directory of ['v1','fixture_variant','cmfixturevariant01234567890']){
+      const reads={properties:0,bytes:0};const key='products/variants/'+directory+'/batch-'+digest('fixture-diagnostic')+'.png';
+      const blob={uploadData:async()=>{throw Object.assign(new Error('Fixture object already exists.'),{statusCode:409,code:'BlobAlreadyExists'});},getProperties:async()=>{reads.properties++;return {contentLength:PHOTO.length,contentType:'image/png'};},downloadToBuffer:async()=>{reads.bytes++;return Buffer.from(PHOTO);}};
+      try{const saved=await invoke(key,PHOTO,'image/png','https://fixture.invalid/media',()=>({getBlockBlobClient:()=>blob}));storageDiagnostic.directCases.push({directory,recovered:true,propertiesReads:reads.properties,byteReads:reads.bytes,url:saved.url});}
+      catch(error){storageDiagnostic.directCases.push({directory,recovered:false,propertiesReads:reads.properties,byteReads:reads.bytes,error:{name:error.name,code:error.code,statusCode:error.statusCode,message:error.message}});}
+    }
+  }
+}
+await mkdir('evidence/product-upload',{recursive:true});await writeFile('evidence/product-upload/next-storage-diagnostic.json',JSON.stringify(storageDiagnostic,null,2)+'\n');
 const objects = new Map(), blobCalls = [], apiCalls = [], results = [];
 const sizeVariants = ['M','L','XL','XXL'].map((size,index) => ({id:index ? 'fixture-'+size : VARIANT,size,images:[]}));
 let fixtureFailure, fixturePort,expectedUpload;
@@ -100,7 +129,10 @@ const reserve=createServer();await new Promise(resolve=>reserve.listen(0,'127.0.
 // Discard inherited production identity/storage/API settings before launching
 // the actual candidate. All dependency origins below are controlled localhost.
 const inherited=Object.fromEntries(Object.entries(process.env).filter(([key])=>! /^(?:AZURE_|IDENTITY_|MSI_|MEDIA_|API_URL$|INTERNAL_API_URL$|R2_)/.test(key)));
-const child=spawn(process.execPath,['--require',path.resolve('tests/fixtures/photo-upload-preload.cjs'),path.join(runtime,'apps/web/server.js')],{
+const preloadDir=await mkdtemp(path.join(tmpdir(),'hidi-next-fixture-trace-')),preloadPath=path.join(preloadDir,'preload.cjs');
+const fixtureTrace=`\n// Transparent diagnostics for this exact disposable Azure error only.\nconst HidiOriginalError=global.Error;let hidiFixtureTraceCount=0;\nfunction hidiFixtureTrace(operation,value){if(hidiFixtureTraceCount++<24)process.stderr.write('HIDI_FIXTURE_ERROR_TRACE '+JSON.stringify({operation,value,stack:new HidiOriginalError().stack.split('\\n').slice(2,9)})+'\\n');}\nglobal.Error=new Proxy(HidiOriginalError,{construct(target,args,newTarget){const error=Reflect.construct(target,args,newTarget);if(args[0]!=='Fixture object already exists.')return error;return new Proxy(error,{get(object,key,receiver){const value=Reflect.get(object,key,receiver);if(key==='statusCode')hidiFixtureTrace('read-statusCode',value);return value;},set(object,key,value,receiver){if(key==='statusCode')hidiFixtureTrace('set-statusCode',value);return Reflect.set(object,key,value,receiver);},defineProperty(object,key,descriptor){if(key==='statusCode')hidiFixtureTrace('define-statusCode',descriptor.value);return Reflect.defineProperty(object,key,descriptor);}});}});\n`;
+await writeFile(preloadPath,(await readFile(path.resolve('tests/fixtures/photo-upload-preload.cjs'),'utf8'))+fixtureTrace);
+const child=spawn(process.execPath,['--require',preloadPath,path.join(runtime,'apps/web/server.js')],{
   cwd:path.join(runtime,'apps/web'),
   env:{...inherited,NODE_ENV:'production',PORT:String(port),HOSTNAME:'127.0.0.1',
     API_URL:'http://127.0.0.1:'+fixturePort+'/v1',INTERNAL_API_URL:'http://127.0.0.1:'+fixturePort+'/v1',
@@ -202,7 +234,20 @@ try {
   const report={passed:true,actualNextHttp:true,contentHashVerified:true,mainAltVerified:true,duplicateRetryVerified:true,jsonAltRefreshVerified:true,coverByFirstUploadVerified:true,photoLimitVerified:true,requestBodyLimitVerified:true,photoLimitBytes:LIMIT,requestBodyBytes:14*1024*1024,collisionBytesRejected:true,malformedInputDenied:true,anonymousDenied:true,
     checks:results,checkCount:results.length,results,fixtureBlobObjects:objects.size,fixtureMetadataAttachments:sizeVariants.reduce((n,v)=>n+v.images.length,0),productionDatabaseWrites:0,productionBlobWrites:0};
   await mkdir('evidence/product-upload',{recursive:true});await writeFile('evidence/product-upload/next-hash.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
+} catch(error) {
+  let nativeSdkError;
+  try{
+    const requireActual=createRequire(path.join(runtime,'apps/web/server.js')),{BlobServiceClient}=requireActual('@azure/storage-blob');
+    const client=new BlobServiceClient('http://127.0.0.1:'+fixturePort+'/fixture-blob',{allowInsecureConnection:true,retryOptions:{maxTries:1}});
+    const key=[...objects.keys()][0];if(key)try{await client.getContainerClient('product-media').getBlockBlobClient(key).uploadData(PHOTO,{conditions:{ifNoneMatch:'*'},blobHTTPHeaders:{blobContentType:'image/png'}});}catch(sdkError){nativeSdkError={available:true,name:sdkError.name,code:sdkError.code,statusCode:sdkError.statusCode,keys:Object.keys(sdkError),message:sdkError.message};}
+  }catch(sdkError){nativeSdkError={available:false,message:sdkError.code==='MODULE_NOT_FOUND'?'Actual standalone SDK is bundled rather than separately resolvable.':sdkError.message};}
+  const sanitizedLog=log.split('\n').filter(line=>!/(?:authorization|bearer|access_token|identity-header|identity_header|secret|password)/i.test(line)).join('\n');
+  const failure={passed:false,actualNextHttp:true,failure:{name:error.name,message:error.message},storageDiagnostic,nativeSdkError,blobCalls,apiCalls:apiCalls.map(call=>({path:call.path,method:call.method,bodyKeys:Object.keys(call.body),photoUrl:call.body.url||null})),completedChecks:results,childLog:sanitizedLog,productionDatabaseWrites:0,productionBlobWrites:0};
+  await writeFile('evidence/product-upload/next-http-failure.json',JSON.stringify(failure,null,2)+'\n');
+  console.error(JSON.stringify({failure:error.message,actualHelperCases:storageDiagnostic.directCases,nativeSdkError,blobCalls,apiCalls:failure.apiCalls,fixtureErrorTrace:sanitizedLog.split('\n').filter(line=>line.startsWith('HIDI_FIXTURE_ERROR_TRACE '))}));
+  throw error;
 } finally {
   if(child.exitCode===null){child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));}
   fixture.closeAllConnections();await new Promise(resolve=>fixture.close(resolve));
+  await rm(preloadDir,{recursive:true,force:true});
 }

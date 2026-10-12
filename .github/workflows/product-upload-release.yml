@@ -47,10 +47,6 @@ jobs:
           node --test tests/product-upload*.test.mjs
           node --test tests/admin-quick-tools.test.mjs tests/admin-product-delete-handler.test.mjs tests/admin-product-delete-schema.test.mjs tests/bulk-publication.test.mjs tests/product-skn-photos.test.mjs tests/product-skn-taxonomy.test.mjs tests/image-sku.test.mjs tests/button-request-policy.test.mjs
           python3 tests/product-upload-release.test.py
-      - name: Install isolated desktop and mobile browser engines
-        run: |
-          npm install --prefix /tmp/hidi-product-upload-browser --no-save playwright@1.56.1
-          node /tmp/hidi-product-upload-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
@@ -65,17 +61,24 @@ jobs:
           echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-product-upload-private/api/base-app" >> "$GITHUB_ENV"
       - name: Add only the uploader and additive Admin route and navigation entries
         run: python3 deploy/product-upload/release.py compose
-      - name: Test real template, draft saving, images and publication in twelve browser and viewport cases
-        run: |
-          set -euo pipefail
-          node tests/product-upload.browser.mjs
-      - name: Verify retained Next photo limits, Admin deletion, navigation, checkout, SEO and mobile footer
+      - name: Verify actual retained API and Next photo contracts before browser regression
         run: |
           set -euo pipefail
           node tests/product-upload-api-images.mjs
           node tests/product-upload-api-products.mjs
           node --test tests/image-sku-runtime-keys.test.mjs
           node tests/product-upload-next-http.mjs
+      - name: Install isolated desktop and mobile browser engines
+        run: |
+          npm install --prefix /tmp/hidi-product-upload-browser --no-save playwright@1.56.1
+          node /tmp/hidi-product-upload-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Test real template, draft saving, images and publication in twelve browser and viewport cases
+        run: |
+          set -euo pipefail
+          node tests/product-upload.browser.mjs
+      - name: Verify retained Admin deletion, navigation, checkout, SEO and mobile footer
+        run: |
+          set -euo pipefail
           node tests/admin-quick-tools.runtime.mjs > evidence/product-upload/admin-runtime.json
           node tests/admin-product-delete.browser.mjs
           cp test-results/admin-product-delete/results.json evidence/product-upload/admin-deletion.json
