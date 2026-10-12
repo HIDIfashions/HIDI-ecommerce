@@ -1,5 +1,5 @@
 name: Guarded Admin product and image upload release
-# Verify real API cover ordering, canonical catalogue and keyboard focus.
+# Trace the loaded retry helper before guarded browser and storefront checks.
 on:
   push:
     branches: [migration/azure-sql-blob]
