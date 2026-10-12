@@ -1,4 +1,4 @@
-name: Release HIDI SEO metadata with framework-owned head preservation
+name: Release HIDI SEO values with retained framework nodes
 on:
   push:
     branches: [migration/azure-sql-blob]

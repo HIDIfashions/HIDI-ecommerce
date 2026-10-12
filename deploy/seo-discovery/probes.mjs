@@ -203,8 +203,8 @@ export async function probe(base, output) {
               await page.evaluate(()=>{document.title='Previous collection';document.head.querySelector('meta[name="description"]').content='Previous collection description';});
             }
             await page.waitForFunction(name=>document.title===name+' | HIDI',productIdentity.name);
-            const restoredDescription=await page.locator('meta[name="description"]').getAttribute('content');
-            assert.equal(restoredDescription,productIdentity.description,'Product description survives cached forward navigation');
+            const restoredDescriptions=await page.locator('meta[name="description"]').evaluateAll(nodes=>nodes.map(node=>node.content));
+            assert(restoredDescriptions.length>0 && restoredDescriptions.every(value=>value===productIdentity.description),'Every retained product description survives cached forward navigation');
             await page.goto(base+'/',{waitUntil:'domcontentloaded'});
             await page.locator('footer').first().waitFor();
             await assertSearchMetadata(page,'/');
