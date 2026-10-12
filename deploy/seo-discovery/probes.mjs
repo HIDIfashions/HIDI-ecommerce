@@ -95,6 +95,17 @@ export async function probe(base, output) {
             await page.screenshot({path:`${output}/${engine}-${width}-${height}-${key}.png`});
             checks.push({page:key,path,passed:true,...measurement});
           }
+          if(width===390||width===1440) {
+            await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});
+            const nextProduct=page.locator('main article h3 a').first();await nextProduct.waitFor();
+            const nextPath=await nextProduct.getAttribute('href');
+            await nextProduct.click();await page.waitForURL('**'+nextPath);
+            await page.waitForTimeout(500);
+            const navigationSeo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
+            assert.equal(navigationSeo.canonical,'https://hidiindia.com'+nextPath,'Canonical survives client navigation');
+            assert(!navigationSeo.robots?.includes('noindex'),'Public product remains indexable after client navigation');
+            checks.push({page:'client-navigation',path:nextPath,passed:true,...navigationSeo});
+          }
           results.push({engine,width,height,passed:true,checks});
           console.log(`PASS: ${engine} ${width}x${height}: footer links clear the purchase bar; other layouts preserved`);
         } catch(error) {
