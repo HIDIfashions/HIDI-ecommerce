@@ -1,4 +1,5 @@
 name: Guarded Admin product and image upload release
+# Check rendered catalogue counts through semantic labels across browsers.
 on:
   push:
     branches: [migration/azure-sql-blob]
