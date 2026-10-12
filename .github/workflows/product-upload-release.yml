@@ -1,5 +1,5 @@
 name: Guarded Admin product and image upload release
-# Verify the actual retained Admin routes and tabs, plus real keyboard focus.
+# Verify actual retained routes, canonical catalogue and real keyboard focus.
 on:
   push:
     branches: [migration/azure-sql-blob]
