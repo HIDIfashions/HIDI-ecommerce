@@ -5,11 +5,21 @@ import hashlib
 HERE = Path(__file__).resolve().parent
 BASE_SHA = '6292e91f0a84c8d45febc9e0fae418417ad2893c53e01cc2a8569451e0ebe44d'
 PHASE1_SHA = '5bef6e854810aaf5b536c6ef389366d6435857926435ec3acb010426312d6135'
+METADATA_BASE_SHA = '6ed0aa58a93f91651dbaf3035cfc93da3bd1f130c76be32fff3f0fb393bda79b'
+METADATA_HELPER_SHA = '78afd9bd62aedccf395d16edc881951fc45cba5ecdf7f8f588670b2178cf7290'
+SITEMAP_HELPER_SHA = 'c8cb5640b825a9681ef69cf30349bf3c69af8521e96ea0f3565aa949cd94a530'
 HEADER_BEFORE = '    const contentType = String(responseHeaders["content-type"] || "");'
 HEADER_AFTER = HEADER_BEFORE + '\n    if (status === 200 && contentType.includes("text/html")) {\n      if (shouldNoIndex(request, pathname)) responseHeaders["x-robots-tag"] = "noindex, nofollow, noarchive";\n      else delete responseHeaders["x-robots-tag"];\n    }'
 
 def patch_text(source):
     source_sha=hashlib.sha256(source.encode()).hexdigest()
+    if source_sha == METADATA_BASE_SHA:
+        before = '  html = normalizeSeoIdentity(html);'
+        after = '  html = normalizeSeoIdentity(html, isProductionRequest(request) ? pathname : undefined);'
+        assert source.count(before)==1 and after not in source, 'Reviewed metadata injection anchor changed'
+        result=source.replace(before,after,1)
+        assert result.replace(after,before,1)==source, 'Changes outside the metadata injection call'
+        return result
     if source_sha == PHASE1_SHA:
         assert source.count(HEADER_BEFORE)==1 and HEADER_AFTER not in source, 'Reviewed public-header anchor changed'
         result=source.replace(HEADER_BEFORE,HEADER_AFTER,1)
@@ -42,8 +52,14 @@ def patch_text(source):
 
 def patch_runtime(base, overlay):
     base,overlay=Path(base),Path(overlay)
+    metadata_phase=hashlib.sha256((base/'server.mjs').read_bytes()).hexdigest()==METADATA_BASE_SHA
+    assert metadata_phase, 'Phase 3 requires the freshly inspected current live wrapper'
+    if metadata_phase:
+        assert hashlib.sha256((base/'seo-discovery/metadata.mjs').read_bytes()).hexdigest()==METADATA_HELPER_SHA, 'Live SEO helper changed; inspect again'
+        assert hashlib.sha256((base/'seo-discovery/sitemap.mjs').read_bytes()).hexdigest()==SITEMAP_HELPER_SHA, 'Live sitemap helper changed; inspect again'
     updated=patch_text((base/'server.mjs').read_text())
     overlay.mkdir(parents=True,exist_ok=True);(overlay/'server.mjs').write_text(updated)
     (overlay/'seo-discovery').mkdir()
-    for name in ['metadata.mjs','sitemap.mjs']:(overlay/'seo-discovery'/name).write_bytes((HERE/name).read_bytes())
-    return {'passed':True,'allowedFiles':['server.mjs','seo-discovery/metadata.mjs','seo-discovery/sitemap.mjs'],'seoOnly':True,'inverseTransformsVerified':True,'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}
+    helper_names=['metadata.mjs'] if metadata_phase else ['metadata.mjs','sitemap.mjs']
+    for name in helper_names:(overlay/'seo-discovery'/name).write_bytes((HERE/name).read_bytes())
+    return {'passed':True,'allowedFiles':['server.mjs',*['seo-discovery/'+name for name in helper_names]],'seoOnly':True,'inverseTransformsVerified':True,'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

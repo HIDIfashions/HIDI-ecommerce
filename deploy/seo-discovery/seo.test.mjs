@@ -22,6 +22,25 @@ test('only SEO identity fields change; garment facts, schema vocabulary and visi
 test('unrelated and malicious lookalike URLs retain their original meaning',()=>{
   for(const url of ['https://thehidi.com.evil.example/x','https://schema.org/InStock','https://example.com/x','javascript:alert(1)','/media/a.jpg']) assert.equal(identityUrl(url),url);
 });
+test('homepage and collection search/social fields change together; creative body and commerce scripts stay byte-identical',()=>{
+  const body='<body><h1>Wear the feeling.</h1><button>Shop Now</button><script type="application/json">{"price":1199,"available":4}</script></body>';
+  const head='<head><title>HIDI — Wear the feeling.</title><meta name="description" content="Old"><meta property="og:title" content="Old"><meta name="twitter:title" content="Old"><meta property="og:description" content="Old"><meta name="twitter:description" content="Old"><meta name="robots" content="index, follow"></head>';
+  const changed=normalizeSeoIdentity(head+body,'/');
+  assert.equal(changed.slice(changed.indexOf('<body>')),body);
+  assert(changed.includes('<title>HIDI India | Women’s Indian Wear and Kurta Sets</title>'));
+  assert.equal((changed.match(/HIDI India \| Women’s Indian Wear and Kurta Sets/g)||[]).length,3);
+  assert.equal((changed.match(/Browse kurta sets, product details and size information\./g)||[]).length,3);
+  assert(changed.includes('<meta name="robots" content="index, follow">'));
+  assert.equal(normalizeSeoIdentity(changed,'/'),changed);
+  const collection=normalizeSeoIdentity(head+body,'/collections/all');
+  assert(collection.includes('Women’s Kurta Sets &amp; Indian Wear | HIDI India'));
+});
+test('private, error, preview, product and unsupported destination metadata stays unchanged',()=>{
+  const page='<head><title>Existing product | HIDI</title><meta name="description" content="Existing facts"></head><body>Exact</body>';
+  for(const path of [undefined,'/cart','/checkout','/account','/products/existing-product','/about','/collections/unknown'])assert.equal(normalizeSeoIdentity(page,path),page);
+  const error=page.replace('Existing product | HIDI','404: Not found');
+  assert.equal(normalizeSeoIdentity(error,'/collections/all'),error);
+});
 test('streamed body JSON-LD normalizes across UTF-8/tag boundaries while visible markup stays exact',async()=>{
   const visible='<body><p>₹1,490 — 🪷 తెలుగు</p><img src="https://thidigk.thehidi.com/media/real.jpg">';
   const json='<script type="application/ld+json">'+JSON.stringify({'@type':'Product',url:'https://thidigk.thehidi.com/products/real-style',offers:{price:'1490',url:'https://thehidi.com/products/real-style'}})+'</script>';

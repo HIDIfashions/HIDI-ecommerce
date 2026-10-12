@@ -3,6 +3,40 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { isBlockedTelemetry } from '../button-states/request-policy.mjs';
 
+const expectedTitles = {
+  '/':'HIDI India | Women’s Indian Wear and Kurta Sets',
+  '/collections/all':'Women’s Kurta Sets & Indian Wear | HIDI India',
+  '/collections/work-wear':'Work Wear Kurta Sets for Women | HIDI India',
+  '/collections/casual-wear':'Casual Wear Kurta Sets for Women | HIDI India',
+  '/collections/occasional-wear':'Occasion Wear Kurta Sets for Women | HIDI India',
+  '/collections/ananyas-pick':'Ananya’s Pick: Women’s Indian Wear | HIDI India',
+};
+async function assertSearchMetadata(page,path,rawHtml) {
+  if (!expectedTitles[path]) return;
+  await page.waitForFunction(title=>document.title===title,expectedTitles[path]);
+  const fields=await page.evaluate(()=>({title:document.title,
+    descriptions:Array.from(document.head.querySelectorAll('meta[name="description"]')).map(n=>n.content),
+    socialTitles:Array.from(document.head.querySelectorAll('meta[property="og:title"],meta[name="twitter:title"]')).map(n=>n.content),
+    socialDescriptions:Array.from(document.head.querySelectorAll('meta[property="og:description"],meta[name="twitter:description"]')).map(n=>n.content),
+    titleCount:document.head.querySelectorAll('title').length}));
+  assert.equal(fields.title,expectedTitles[path],path+' title survives rendering');
+  assert.equal(fields.titleCount,1,'One title owner');
+  assert.equal(fields.descriptions.length,1,'One description owner');
+  assert(fields.descriptions[0].length>100,'Descriptive existing-page summary');
+  assert(fields.socialTitles.length>0 && fields.socialDescriptions.length>0,'Social metadata is present');
+  for(const title of fields.socialTitles)assert.equal(title,fields.title,'Search and social titles agree');
+  for(const description of fields.socialDescriptions)assert.equal(description,fields.descriptions[0],'Search and social descriptions agree');
+  if(rawHtml) {
+    const raw=await page.evaluate(html=>{
+      const doc=new DOMParser().parseFromString(html,'text/html');
+      return {title:doc.title,description:doc.head.querySelector('meta[name="description"]')?.content};
+    },rawHtml);
+    assert.equal(raw.title,fields.title,'Raw HTML and hydrated title agree');
+    assert.equal(raw.description,fields.descriptions[0],'Raw HTML and hydrated description agree');
+  }
+  return fields;
+}
+
 export async function probe(base, output) {
   const seoHeaders={'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'};
   const robots=await fetch(base+'/robots.txt',{headers:seoHeaders});
@@ -63,6 +97,7 @@ export async function probe(base, output) {
               assert.equal(rawResponse.status,200);
               assert(!rawResponse.headers.get('x-robots-tag')?.includes('noindex'),'Public HTTP response is indexable');
               const rawHtml=await rawResponse.text();
+              await assertSearchMetadata(page,path,rawHtml);
               for(const match of rawHtml.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi))assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(match[1]),'Initial HTML structured-data identities use the production origin');
               const graphs=await page.locator('script[type="application/ld+json"]').allTextContents();
               for(const graph of graphs)assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(graph),'Structured-data identities use the production origin');
@@ -108,7 +143,15 @@ export async function probe(base, output) {
             checks.push({page:key,path,passed:true,...measurement});
           }
           if(width===390||width===1440) {
+            for(const path of ['/collections/work-wear','/collections/casual-wear','/collections/occasional-wear','/collections/ananyas-pick']) {
+              assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
+              await page.locator('main h1').waitFor();
+              const raw=await fetch(base+path,{headers:seoHeaders});assert.equal(raw.status,200);
+              await assertSearchMetadata(page,path,await raw.text());
+              checks.push({page:'collection-search-metadata',path,passed:true});
+            }
             await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});
+            await assertSearchMetadata(page,'/collections/all');
             const nextProduct=page.locator('main article h3 a').first();await nextProduct.waitFor();
             const nextPath=await nextProduct.getAttribute('href');
             await nextProduct.click();await page.waitForURL('**'+nextPath);
@@ -116,7 +159,27 @@ export async function probe(base, output) {
             const navigationSeo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
             assert.equal(navigationSeo.canonical,'https://hidiindia.com'+nextPath,'Canonical survives client navigation');
             assert(!navigationSeo.robots?.includes('noindex'),'Public product remains indexable after client navigation');
+            const productIdentity=await page.evaluate(()=>{
+              const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(n=>{
+                try {const v=JSON.parse(n.textContent);return Array.isArray(v)?v:(v['@graph']||[v]);}catch{return [];}
+              });
+              const product=values.find(v=>v['@type']==='Product');
+              return {title:document.title,name:product?.name};
+            });
+            assert(productIdentity.name,'Destination product schema remains present');
+            assert.equal(productIdentity.title,productIdentity.name+' | HIDI','Product title belongs to the destination, not the prior collection');
             checks.push({page:'client-navigation',path:nextPath,passed:true,...navigationSeo});
+            await page.goBack({waitUntil:'domcontentloaded'});
+            await assertSearchMetadata(page,'/collections/all');
+            await page.goForward({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(name=>document.title===name+' | HIDI',productIdentity.name);
+            await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+            await page.locator('footer').first().waitFor();
+            await assertSearchMetadata(page,'/');
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.locator('footer').first().waitFor();
+            await assertSearchMetadata(page,'/');
+            checks.push({page:'back-forward-reload-metadata',passed:true});
           }
           results.push({engine,width,height,passed:true,checks});
           console.log(`PASS: ${engine} ${width}x${height}: footer links clear the purchase bar; other layouts preserved`);

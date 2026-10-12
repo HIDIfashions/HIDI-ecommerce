@@ -4,6 +4,33 @@ export const canonicalOrigin = 'https://hidiindia.com';
 const legacyHosts = new Set(['thehidi.com', 'www.thehidi.com', 'thidigk.thehidi.com', 'azure-preview.thehidi.com', 'www.hidiindia.com', 'localhost', '127.0.0.1']);
 const identityKeys = new Set(['@id', 'url', 'logo', 'image', 'item', 'contentUrl']);
 
+// These describe existing public destinations only. No stock, price, composition,
+// service promises or unverified brand associations are introduced.
+export const routeSearchMetadata = {
+  '/': {title: 'HIDI India | Women’s Indian Wear and Kurta Sets', description: 'Explore HIDI women’s Indian wear for work, everyday dressing and occasions. Browse kurta sets, product details and size information.'},
+  '/collections/all': {title: 'Women’s Kurta Sets & Indian Wear | HIDI India', description: 'Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.'},
+  '/collections/work-wear': {title: 'Work Wear Kurta Sets for Women | HIDI India', description: 'Explore HIDI’s Work Wear edit of women’s kurta sets. Compare product details, current prices and size information for your working wardrobe.'},
+  '/collections/casual-wear': {title: 'Casual Wear Kurta Sets for Women | HIDI India', description: 'Browse HIDI’s Casual Wear edit of women’s kurta sets and Indian wear. Explore printed and embroidered styles, product details and size information.'},
+  '/collections/occasional-wear': {title: 'Occasion Wear Kurta Sets for Women | HIDI India', description: 'Explore HIDI’s Occasional Wear edit of kurta and Anarkali sets. Compare styles, garment details, current prices and size information.'},
+  '/collections/ananyas-pick': {title: 'Ananya’s Pick: Women’s Indian Wear | HIDI India', description: 'Discover Ananya’s Pick at HIDI, an edit of women’s Indian wear. Browse selected styles and check garment details, current prices and size information.'},
+};
+
+function escapeMetadata(value) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function applySearchMetadata(head, metadata) {
+  if (!metadata || /<title\b[^>]*>\s*(?:404\b|not found)/i.test(head)) return head;
+  return head.replace(/(<title\b[^>]*>)[\s\S]*?(<\/title>)/gi, (_, open, close) => open + escapeMetadata(metadata.title) + close)
+    .replace(/<meta\b[^>]*>/gi, tag => {
+      const field = /\b(?:name|property)\s*=\s*(["'])(.*?)\1/i.exec(tag)?.[2]?.toLowerCase();
+      const value = ['og:title', 'twitter:title'].includes(field) ? metadata.title
+        : ['description', 'og:description', 'twitter:description'].includes(field) ? metadata.description : null;
+      if (value === null) return tag;
+      return tag.replace(/\bcontent\s*=\s*(["'])(.*?)\1/i, (_, quote) => 'content=' + quote + escapeMetadata(value).replace(/'/g, '&#39;') + quote);
+    });
+}
+
 export function identityUrl(value) {
   if (typeof value !== 'string') return value;
   try {
@@ -33,6 +60,16 @@ function guardMetadata() {
     const privatePage = privatePrefixes.some(prefix => path === prefix || path.startsWith(prefix + '/'));
     const publicPage = publicRoutes.has(path) || /^\/products\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(path);
     const failedPage = /^404\b|not found/i.test(document.title);
+    const metadata = !privatePage && !failedPage ? routeSearchMetadata[path] : null;
+    if (metadata) {
+      if (document.title !== metadata.title) document.title = metadata.title;
+      for (const node of document.head.querySelectorAll('meta[name="description"],meta[property="og:description"],meta[name="twitter:description"]')) {
+        if (node.content !== metadata.description) node.content = metadata.description;
+      }
+      for (const node of document.head.querySelectorAll('meta[property="og:title"],meta[name="twitter:title"]')) {
+        if (node.content !== metadata.title) node.content = metadata.title;
+      }
+    }
     for (const node of document.head.querySelectorAll('link[rel="canonical"]')) {
       const url = canonicalOrigin + path;
       if (node.getAttribute('href') !== url) node.setAttribute('href', url);
@@ -58,11 +95,14 @@ function guardMetadata() {
     }
   }
   function schedule() { if (!scheduled) { scheduled = true; queueMicrotask(reconcile); } }
-  const selector='script[type="application/ld+json"],link[rel="canonical"],meta[name="robots"],meta[property="og:url"],meta[property="og:image"],meta[name="twitter:image"]';
-  const relevant=node => node?.nodeType===1 && (node.matches(selector) || node.querySelector(selector));
+  const selector='title,script[type="application/ld+json"],link[rel="canonical"],meta[name="robots"],meta[property="og:url"],meta[property="og:image"],meta[name="twitter:image"],meta[name="description"],meta[property="og:title"],meta[name="twitter:title"],meta[property="og:description"],meta[name="twitter:description"]';
+  const relevant=node => {
+    const element = node?.nodeType===3 ? node.parentElement : node;
+    return element?.nodeType===1 && (element.matches(selector) || element.querySelector(selector));
+  };
   new MutationObserver(changes=>{
     if(changes.some(change=>relevant(change.target) || [...change.addedNodes,...change.removedNodes].some(relevant))) schedule();
-  }).observe(document.documentElement, {subtree:true,childList:true,attributes:true,attributeFilter:['href','content','type']});
+  }).observe(document.documentElement, {subtree:true,childList:true,attributes:true,characterData:true,attributeFilter:['href','content','type','name','property']});
   window.addEventListener('popstate', schedule);
   document.addEventListener('DOMContentLoaded', schedule, {once:true});
   reconcile();
@@ -72,7 +112,8 @@ export const clientMetadataScript = '<script data-hidi-seo-identity="1">' +
   '(()=>{const canonicalOrigin=' + JSON.stringify(canonicalOrigin) +
   ';const legacyHosts=new Set(' + JSON.stringify([...legacyHosts]) +
   ');const identityKeys=new Set(' + JSON.stringify([...identityKeys]) +
-  ');' + identityUrl.toString() + normalizeGraph.toString() + '(' + guardMetadata.toString() + ')();})();</script>';
+  ');const routeSearchMetadata=' + JSON.stringify(routeSearchMetadata) +
+  ';' + identityUrl.toString() + normalizeGraph.toString() + '(' + guardMetadata.toString() + ')();})();</script>';
 
 function normalizeJsonLd(html) {
   return html.replace(/<script\b([^>]*\btype=["']application\/ld\+json["'][^>]*)>([\s\S]*?)<\/script>/gi, (tag,attrs,json)=>{
@@ -113,10 +154,10 @@ export function createSeoIdentityStream(incoming) {
 }
 
 /** Transform machine-readable head fields only; keep body, assets and commerce scripts byte-identical. */
-export function normalizeSeoIdentity(html) {
+export function normalizeSeoIdentity(html, pathname) {
   const boundary = html.search(/<\/head>/i);
   if (boundary < 0) return html;
-  const head = normalizeJsonLd(html.slice(0, boundary))
+  const head = applySearchMetadata(normalizeJsonLd(html.slice(0, boundary)), routeSearchMetadata[pathname])
     .replace(/<meta\b[^>]*(?:property=["']og:image["']|name=["']twitter:image["'])[^>]*>/gi, tag =>
       tag.replace(/\bcontent=(["'])(.*?)\1/i, (match, quote, url) => 'content=' + quote + identityUrl(url) + quote));
   return head + html.slice(boundary);
