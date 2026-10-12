@@ -26,6 +26,6 @@ env={**os.environ,'HIDI_CANDIDATE_RUNTIME':str(candidate)}
 subprocess.run(['node','deploy/seo-discovery/candidate.mjs'],env=env,check=True)
 current=json.loads(subprocess.check_output(['az','containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--only-show-errors','-o','json'],text=True))
 assert current['properties']['template']==data['properties']['template'],'An independent live rollout occurred during validation'
-report={'passed':True,'changedFiles':sorted(changed),'protectedFilesIdentical':len(before)-1,'image':image,'readOnly':True,'deploymentWrites':0,'databaseWrites':0,'blobWrites':0}
+report={'passed':True,'changedFiles':sorted(changed),'protectedFilesIdentical':len(before)-len(changed),'image':image,'readOnly':True,'deploymentWrites':0,'databaseWrites':0,'blobWrites':0}
 output=Path('evidence/seo-discovery');output.mkdir(parents=True,exist_ok=True);(output/'preservation.json').write_text(json.dumps(report,indent=2))
 print('PASS: SEO candidate validated against exact live image; production unchanged')
