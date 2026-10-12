@@ -9,7 +9,7 @@ subprocess.run(['docker','pull',image],check=True)
 root=Path(os.environ['RUNNER_TEMP'])/'hidi-seo-inspection'; images.extract(image,root)
 source=(root/'server.mjs').read_text()
 print('SEO_BASELINE',json.dumps({'image':image,'latest':props.get('latestRevisionName'),'ready':props.get('latestReadyRevisionName'),'serverSha256':hashlib.sha256(source.encode()).hexdigest(),'readOnly':True}))
-names=['isProductionRequest','privateSeoPath','shouldNoIndex','canonicalFor','serveRobots','injectSeo','shouldInjectSeo','proxySitemap']
+names=['isProductionRequest','privateSeoPath','shouldNoIndex','canonicalFor','serveRobots','injectSeo','shouldInjectSeo','proxySitemap','proxy']
 for name in names:
  match=re.search(r'^(?:async )?function '+name+r'\([^\n]*\) \{',source,re.M)
  if not match: print('SEO_MISSING',name);continue
