@@ -8,6 +8,7 @@ export async function run(expectedDatabase) {
     await db.$connect();
     const staffCount = await db.adminStaff.count();
     const activeOwnerCount = await db.adminStaff.count({ where: { active: true, role: 'OWNER' } });
-    console.log('HIDI_ADMIN_OWNER::' + JSON.stringify({ readOnly: true, staffCount, activeOwnerCount, safeToDeploy: activeOwnerCount > 0 }));
+    const emailDeliveryConfigured = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY);
+    console.log('HIDI_ADMIN_OWNER::' + JSON.stringify({ readOnly: true, staffCount, activeOwnerCount, emailDeliveryConfigured, safeToDeploy: activeOwnerCount > 0 && emailDeliveryConfigured }));
   } finally { await db.$disconnect(); }
 }

@@ -62,11 +62,11 @@ def main():
         assert report.get('readOnly') is True and all(type(report.get(k)) is int and report[k] >= 0 for k in ['staffCount', 'activeOwnerCount'])
         for name, old in states.items(): assert cloud.snapshot(cloud.app(name)) == cloud.snapshot(old), 'Live state changed during preflight'
         evidence = Path('evidence/admin-email-auth'); evidence.mkdir(parents=True, exist_ok=True)
-        safe = {k: report[k] for k in ['readOnly', 'staffCount', 'activeOwnerCount', 'safeToDeploy']}
+        safe = {k: report[k] for k in ['readOnly', 'staffCount', 'activeOwnerCount', 'emailDeliveryConfigured', 'safeToDeploy']}
         safe['states'] = {name: cloud.snapshot(value) for name, value in states.items()}
         (evidence / 'owner-preflight.json').write_text(json.dumps(safe, indent=2))
-        print(json.dumps({k: report[k] for k in ['readOnly', 'staffCount', 'activeOwnerCount', 'safeToDeploy']}))
-        assert report['safeToDeploy'] is True and report['activeOwnerCount'] > 0, 'No active Owner exists; staff provisioning is required before this release'
+        print(json.dumps({k: report[k] for k in ['readOnly', 'staffCount', 'activeOwnerCount', 'emailDeliveryConfigured', 'safeToDeploy']}))
+        assert report['safeToDeploy'] is True and report['activeOwnerCount'] > 0, 'An active Owner and retained email delivery configuration are required before this release'
     finally:
         os.close(master)
         if process.poll() is None:
