@@ -1,4 +1,4 @@
-name: Release HIDI SEO public and private header policies
+name: Release HIDI SEO metadata and published-image indexing
 on:
   push:
     branches: [migration/azure-sql-blob]
