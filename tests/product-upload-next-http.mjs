@@ -27,6 +27,8 @@ for(const id of referencedChunks){
   if(source&&/(?:getBlockBlobClient|uploadData)\(/.test(source))storageDiagnostic.referencedChunks.push({moduleRelativePath:relative,moduleSha256:digest(source),helperContexts:helperContexts(source)});
 }
 const storageMatch=actualRouteSource.match(/let (?<blob>\w+)=(?<container>\w+)\(\)\.getBlockBlobClient\((?<key>\w+)\);try\{await \k<blob>\.uploadData\((?<bytes>\w+),\{conditions:\{ifNoneMatch:"\*"\},blobHTTPHeaders:\{blobContentType:(?<mime>\w+),/);
+const moduleHeaders=storageMatch?[...actualRouteSource.slice(0,storageMatch.index).matchAll(/(\d+):\([^)]*\)=>\{/g)]:[];
+storageDiagnostic.helperModuleId=moduleHeaders.at(-1)?.[1]||null;
 if(storageMatch){
   const result=actualRouteSource.slice(storageMatch.index).match(/return\{url:`\$\{(?<base>\w+)\}\/\$\{\w+\}`,storagePath:`azure:\/\/product-media\/\$\{\w+\}`\}/);
   if(result){
@@ -131,13 +133,15 @@ const reserve=createServer();await new Promise(resolve=>reserve.listen(0,'127.0.
 const inherited=Object.fromEntries(Object.entries(process.env).filter(([key])=>! /^(?:AZURE_|IDENTITY_|MSI_|MEDIA_|API_URL$|INTERNAL_API_URL$|R2_)/.test(key)));
 const preloadDir=await mkdtemp(path.join(tmpdir(),'hidi-next-fixture-trace-')),preloadPath=path.join(preloadDir,'preload.cjs');
 const fixtureTrace=`\n// Transparent diagnostics for this exact disposable Azure error only.\nconst HidiOriginalError=global.Error;let hidiFixtureTraceCount=0;\nfunction hidiFixtureTrace(operation,value){if(hidiFixtureTraceCount++<24)process.stderr.write('HIDI_FIXTURE_ERROR_TRACE '+JSON.stringify({operation,value,stack:new HidiOriginalError().stack.split('\\n').slice(2,9)})+'\\n');}\nglobal.Error=new Proxy(HidiOriginalError,{construct(target,args,newTarget){const error=Reflect.construct(target,args,newTarget);if(args[0]!=='Fixture object already exists.')return error;return new Proxy(error,{get(object,key,receiver){const value=Reflect.get(object,key,receiver);if(key==='statusCode')hidiFixtureTrace('read-statusCode',value);return value;},set(object,key,value,receiver){if(key==='statusCode')hidiFixtureTrace('set-statusCode',value);return Reflect.set(object,key,value,receiver);},defineProperty(object,key,descriptor){if(key==='statusCode')hidiFixtureTrace('define-statusCode',descriptor.value);return Reflect.defineProperty(object,key,descriptor);}});}});\n`;
-await writeFile(preloadPath,(await readFile(path.resolve('tests/fixtures/photo-upload-preload.cjs'),'utf8'))+fixtureTrace);
+const moduleTrace=`\nprocess.on('SIGUSR1',()=>{void(async()=>{const out={helperModuleId:process.env.HIDI_FIXTURE_HELPER_ID};try{const file=process.env.HIDI_FIXTURE_ROUTE_FILE,entry=require.cache[file];out.routeCached=!!entry;out.routeExports=Object.keys(entry?.exports||{});const app=entry?.exports?.__next_app__||entry?.exports?.default?.__next_app__;const req=app?.require;out.webpackRequireAvailable=typeof req==='function';if(req){const id=Number(process.env.HIDI_FIXTURE_HELPER_ID),fn=req(id).i,body=fn.toString(),factory=req.m?.[id]?.toString();out.loadedHelper={guardInstalled:body.includes('hidiSavedBlob'),sha256:require('node:crypto').createHash('sha256').update(body).digest('hex'),source:body};out.currentFactory={guardInstalled:factory?.includes('hidiSavedBlob'),sha256:factory?require('node:crypto').createHash('sha256').update(factory).digest('hex'):null};out.cachedFactories=Object.entries(require.cache).filter(([name])=>name.startsWith(process.env.HIDI_FIXTURE_RUNTIME_ROOT)).flatMap(([name,module])=>{const value=module.exports?.modules?.[id];return value?[{file:name.slice(process.env.HIDI_FIXTURE_RUNTIME_ROOT.length+1),guardInstalled:value.toString().includes('hidiSavedBlob')}]:[];});const SDK=req(55031),Client=SDK.wS;out.sdkExports=Object.keys(SDK);out.sdkClientType=typeof Client;if(typeof Client==='function'){const blob=new Client(process.env.HIDI_FIXTURE_BLOB_ORIGIN,{allowInsecureConnection:true,retryOptions:{maxTries:1}}).getContainerClient('product-media').getBlockBlobClient(process.env.HIDI_FIXTURE_OBJECT_KEY);try{await blob.uploadData(Buffer.from(${JSON.stringify(PHOTO.toString('base64'))},'base64'),{conditions:{ifNoneMatch:'*'},blobHTTPHeaders:{blobContentType:'image/png'}});out.bundledSdkError={unexpectedSuccess:true};}catch(error){out.bundledSdkError={name:error.name,constructor:error.constructor?.name,code:error.code,statusCode:error.statusCode,responseStatus:error.response?.status||error.response?.statusCode,keys:Object.keys(error),message:error.message,stack:String(error.stack||'').split('\\n').slice(0,8)};}}}}catch(error){out.diagnosticError={name:error.name,message:error.message};}process.stderr.write('HIDI_FIXTURE_MODULE_DIAGNOSTIC '+JSON.stringify(out)+'\\n');})()});\n`;
+await writeFile(preloadPath,(await readFile(path.resolve('tests/fixtures/photo-upload-preload.cjs'),'utf8'))+fixtureTrace+moduleTrace);
 const child=spawn(process.execPath,['--require',preloadPath,path.join(runtime,'apps/web/server.js')],{
   cwd:path.join(runtime,'apps/web'),
   env:{...inherited,NODE_ENV:'production',PORT:String(port),HOSTNAME:'127.0.0.1',
     API_URL:'http://127.0.0.1:'+fixturePort+'/v1',INTERNAL_API_URL:'http://127.0.0.1:'+fixturePort+'/v1',
     MEDIA_STORAGE_PROVIDER:'azure',AZURE_STORAGE_ACCOUNT:'fixtureaccount',MEDIA_PUBLIC_BASE_URL:'https://fixture.invalid/media',ALLOW_PUBLIC_DOMAIN:'true',
-    IDENTITY_ENDPOINT:'http://127.0.0.1:'+fixturePort+'/fixture-msi/token',IDENTITY_HEADER:'fixture-only-identity-header',HIDI_PHOTO_FIXTURE_PORT:String(fixturePort)},
+    IDENTITY_ENDPOINT:'http://127.0.0.1:'+fixturePort+'/fixture-msi/token',IDENTITY_HEADER:'fixture-only-identity-header',HIDI_PHOTO_FIXTURE_PORT:String(fixturePort),
+    HIDI_FIXTURE_HELPER_ID:storageDiagnostic.helperModuleId||'',HIDI_FIXTURE_ROUTE_FILE:path.join(runtime,routeRelative),HIDI_FIXTURE_RUNTIME_ROOT:runtime,HIDI_FIXTURE_BLOB_ORIGIN:'http://127.0.0.1:'+fixturePort+'/fixture-blob',HIDI_FIXTURE_OBJECT_KEY:'products/variants/fixture_variant/batch-'+digest(Buffer.from([IMAGE_SKU,String(NUMBER),'image/png',digest(PHOTO)].join('\u0000')))+'.png'},
   stdio:['ignore','pipe','pipe'],
 });
 let log='';const append=bytes=>{log=(log+bytes.toString()).slice(-10000);};child.stdout.on('data',append);child.stderr.on('data',append);
@@ -235,6 +239,8 @@ try {
     checks:results,checkCount:results.length,results,fixtureBlobObjects:objects.size,fixtureMetadataAttachments:sizeVariants.reduce((n,v)=>n+v.images.length,0),productionDatabaseWrites:0,productionBlobWrites:0};
   await mkdir('evidence/product-upload',{recursive:true});await writeFile('evidence/product-upload/next-hash.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
 } catch(error) {
+  const traceBefore=log.indexOf('HIDI_FIXTURE_MODULE_DIAGNOSTIC ');child.kill('SIGUSR1');
+  for(let attempt=0;attempt<40&&!log.includes('HIDI_FIXTURE_MODULE_DIAGNOSTIC ',Math.max(0,traceBefore+1));attempt++)await new Promise(resolve=>setTimeout(resolve,50));
   let nativeSdkError;
   try{
     const requireActual=createRequire(path.join(runtime,'apps/web/server.js')),{BlobServiceClient}=requireActual('@azure/storage-blob');
@@ -242,9 +248,10 @@ try {
     const key=[...objects.keys()][0];if(key)try{await client.getContainerClient('product-media').getBlockBlobClient(key).uploadData(PHOTO,{conditions:{ifNoneMatch:'*'},blobHTTPHeaders:{blobContentType:'image/png'}});}catch(sdkError){nativeSdkError={available:true,name:sdkError.name,code:sdkError.code,statusCode:sdkError.statusCode,keys:Object.keys(sdkError),message:sdkError.message};}
   }catch(sdkError){nativeSdkError={available:false,message:sdkError.code==='MODULE_NOT_FOUND'?'Actual standalone SDK is bundled rather than separately resolvable.':sdkError.message};}
   const sanitizedLog=log.split('\n').filter(line=>!/(?:authorization|bearer|access_token|identity-header|identity_header|secret|password)/i.test(line)).join('\n');
-  const failure={passed:false,actualNextHttp:true,failure:{name:error.name,message:error.message},storageDiagnostic,nativeSdkError,blobCalls,apiCalls:apiCalls.map(call=>({path:call.path,method:call.method,bodyKeys:Object.keys(call.body),photoUrl:call.body.url||null})),completedChecks:results,childLog:sanitizedLog,productionDatabaseWrites:0,productionBlobWrites:0};
+  const moduleLine=log.split('\n').find(line=>line.startsWith('HIDI_FIXTURE_MODULE_DIAGNOSTIC ')),loadedModuleDiagnostic=moduleLine?JSON.parse(moduleLine.slice('HIDI_FIXTURE_MODULE_DIAGNOSTIC '.length)):null;
+  const failure={passed:false,actualNextHttp:true,failure:{name:error.name,message:error.message},storageDiagnostic,loadedModuleDiagnostic,nativeSdkError,blobCalls,apiCalls:apiCalls.map(call=>({path:call.path,method:call.method,bodyKeys:Object.keys(call.body),photoUrl:call.body.url||null})),completedChecks:results,childLog:sanitizedLog,productionDatabaseWrites:0,productionBlobWrites:0};
   await writeFile('evidence/product-upload/next-http-failure.json',JSON.stringify(failure,null,2)+'\n');
-  console.error(JSON.stringify({failure:error.message,actualHelperCases:storageDiagnostic.directCases,nativeSdkError,blobCalls,apiCalls:failure.apiCalls,fixtureErrorTrace:sanitizedLog.split('\n').filter(line=>line.startsWith('HIDI_FIXTURE_ERROR_TRACE '))}));
+  console.error(JSON.stringify({failure:error.message,actualHelperCases:storageDiagnostic.directCases,loadedModuleDiagnostic,nativeSdkError,blobCalls,apiCalls:failure.apiCalls,fixtureErrorTrace:sanitizedLog.split('\n').filter(line=>line.startsWith('HIDI_FIXTURE_ERROR_TRACE '))}));
   throw error;
 } finally {
   if(child.exitCode===null){child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));}
