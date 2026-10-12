@@ -1,4 +1,4 @@
-"""Read only the live web SEO source. No application, SQL or Blob mutations."""
+"""Read the current metadata baseline before phase 3. No application, SQL or Blob mutations."""
 import hashlib, importlib.util, json, os, re, subprocess
 from pathlib import Path
 raw=subprocess.check_output(['az','containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--only-show-errors','-o','json'],text=True)
@@ -9,7 +9,7 @@ subprocess.run(['docker','pull',image],check=True)
 root=Path(os.environ['RUNNER_TEMP'])/'hidi-seo-inspection'; images.extract(image,root)
 source=(root/'server.mjs').read_text()
 print('SEO_BASELINE',json.dumps({'image':image,'latest':props.get('latestRevisionName'),'ready':props.get('latestReadyRevisionName'),'serverSha256':hashlib.sha256(source.encode()).hexdigest(),'readOnly':True}))
-names=['isProductionRequest','privateSeoPath','shouldNoIndex','canonicalFor','serveRobots','injectSeo','shouldInjectSeo','proxySitemap','proxy']
+names=['isProductionRequest','privateSeoPath','shouldNoIndex','canonicalFor','serveRobots','injectSeo','streamHtml','shouldInjectSeo','proxySitemap','proxy']
 for name in names:
  match=re.search(r'^(?:async )?function '+name+r'\([^\n]*\) \{',source,re.M)
  if not match: print('SEO_MISSING',name);continue
@@ -20,3 +20,6 @@ for line in source.splitlines():
 for match in re.finditer(r'robots\.txt|sitemap\.xml|shouldNoIndex\(request, pathname\)',source):
  print('SEO_CALLSITE',json.dumps(source[max(0,match.start()-150):match.end()+180]))
 print('PASS: read-only SEO inspection completed')
+for name in ['metadata.mjs','sitemap.mjs']:
+ path=root/'seo-discovery'/name
+ print('SEO_HELPER',json.dumps({'name':name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}))
