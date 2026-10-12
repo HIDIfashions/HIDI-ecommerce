@@ -21,3 +21,14 @@ Missing COD template configuration waits safely; the prepaid payment-received te
 Existing eligibility uses the current verified account-level WhatsApp opt-in matching the order phone. Guest checkout has no such recorded consent and remains excluded. A separate order-update consent flow for guest orders must be specified and implemented; guest consent is not inferred from entering a phone number or placing an order.
 
 Run the read-only readiness workflow to verify the actual live API module, SQL queue table, runtime DML permissions and MSG91 configuration. It outputs only booleans and image/settings hashes, never credentials or customer details. If installation or the additive queue migration is still missing, complete the existing guarded installation and authorized private migration procedure before activation. No customer messages should be submitted until the approved provider mapping and an explicitly selected test recipient are verified.
+
+## Provider activation checkpoint — 2026-10-12
+
+The user confirmed the sender is used in the WhatsApp Business mobile app and that the Meta business is verified with admin access. The matching MSG91 route, Connect WhatsApp Business App, was opened. Meta's official Facebook Login for Business screen rejected this onboarding attempt before business selection or number verification:
+
+> MSG91 cannot onboard customers at this time.
+> Please contact MSG91's support or try again later.
+
+The underlying rejection reason was not shown. MSG91 support must investigate this embedded-signup/business-app connection; this observation does not establish a general MSG91 outage or a particular account eligibility failure. The linked sender remains inactive, and MSG91 Account Settings showed no WABA IDs. No provider access grants or number migration were completed; no customer order confirmations were sent.
+
+The read-only Azure inspection confirmed the notification module is installed but the outbox table is absent. Sending and the activation cutoff are unset/disabled. The existing MSG91 auth is configured, but the business number, approved prepaid/COD templates and namespace still need configuration. The queue migration, guest order-update consent and end-to-end delivery verification remain required before activation.
