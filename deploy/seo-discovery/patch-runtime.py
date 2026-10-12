@@ -14,11 +14,18 @@ HEADER_AFTER = HEADER_BEFORE + '\n    if (status === 200 && contentType.includes
 def patch_text(source):
     source_sha=hashlib.sha256(source.encode()).hexdigest()
     if source_sha == METADATA_BASE_SHA:
-        before = '  html = normalizeSeoIdentity(html);'
-        after = '  html = normalizeSeoIdentity(html, isProductionRequest(request) ? pathname : undefined);'
-        assert source.count(before)==1 and after not in source, 'Reviewed metadata injection anchor changed'
-        result=source.replace(before,after,1)
-        assert result.replace(after,before,1)==source, 'Changes outside the metadata injection call'
+        changes=[
+            ('  html = normalizeSeoIdentity(html);', '  html = normalizeSeoIdentity(html, isProductionRequest(request) ? pathname : undefined);'),
+            ('normalizeSeoIdentity, clientMetadataScript, createSeoIdentityStream }', 'normalizeSeoIdentity, clientMetadataScript, createSeoIdentityStream, shouldIndexPublishedImage }'),
+            (HEADER_AFTER, HEADER_AFTER+'\n    if (shouldIndexPublishedImage(status, contentType, requestHost(request), pathname)) {\n      delete responseHeaders["x-robots-tag"];\n    }'),
+        ]
+        result=source
+        for before,after in changes:
+            assert result.count(before)==1 and after not in result, 'Reviewed SEO metadata/header anchor changed'
+            result=result.replace(before,after,1)
+        restored=result
+        for before,after in reversed(changes):restored=restored.replace(after,before,1)
+        assert restored==source, 'Changes outside reviewed SEO metadata and published-image headers'
         return result
     if source_sha == PHASE1_SHA:
         assert source.count(HEADER_BEFORE)==1 and HEADER_AFTER not in source, 'Reviewed public-header anchor changed'
@@ -60,6 +67,6 @@ def patch_runtime(base, overlay):
     updated=patch_text((base/'server.mjs').read_text())
     overlay.mkdir(parents=True,exist_ok=True);(overlay/'server.mjs').write_text(updated)
     (overlay/'seo-discovery').mkdir()
-    helper_names=['metadata.mjs'] if metadata_phase else ['metadata.mjs','sitemap.mjs']
+    helper_names=['metadata.mjs','published-product-images.json'] if metadata_phase else ['metadata.mjs','sitemap.mjs']
     for name in helper_names:(overlay/'seo-discovery'/name).write_bytes((HERE/name).read_bytes())
     return {'passed':True,'allowedFiles':['server.mjs',*['seo-discovery/'+name for name in helper_names]],'seoOnly':True,'inverseTransformsVerified':True,'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

@@ -1,5 +1,12 @@
 import { Transform } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
+import publishedProductImages from './published-product-images.json' with {type: 'json'};
+const publishedProductImagePaths = new Set(publishedProductImages);
+export function isPublishedProductImage(pathname) { return publishedProductImagePaths.has(pathname); }
+export function shouldIndexPublishedImage(status, contentType, hostname, pathname) {
+  return status === 200 && /^image\/(?:jpeg|png|webp|avif)(?:;|$)/i.test(contentType)
+    && ['hidiindia.com', 'www.hidiindia.com'].includes(hostname) && isPublishedProductImage(pathname);
+}
 export const canonicalOrigin = 'https://hidiindia.com';
 const legacyHosts = new Set(['thehidi.com', 'www.thehidi.com', 'thidigk.thehidi.com', 'azure-preview.thehidi.com', 'www.hidiindia.com', 'localhost', '127.0.0.1']);
 const identityKeys = new Set(['@id', 'url', 'logo', 'image', 'item', 'contentUrl']);
@@ -21,12 +28,15 @@ function escapeMetadata(value) {
 
 function applySearchMetadata(head, metadata) {
   if (!metadata || /<title\b[^>]*>\s*(?:404\b|not found)/i.test(head)) return head;
+  const seen = new Set();
   return head.replace(/(<title\b[^>]*>)[\s\S]*?(<\/title>)/gi, (_, open, close) => open + escapeMetadata(metadata.title) + close)
     .replace(/<meta\b[^>]*>/gi, tag => {
       const field = /\b(?:name|property)\s*=\s*(["'])(.*?)\1/i.exec(tag)?.[2]?.toLowerCase();
       const value = ['og:title', 'twitter:title'].includes(field) ? metadata.title
         : ['description', 'og:description', 'twitter:description'].includes(field) ? metadata.description : null;
       if (value === null) return tag;
+      if (seen.has(field)) return '';
+      seen.add(field);
       return tag.replace(/\bcontent\s*=\s*(["'])(.*?)\1/i, (_, quote) => 'content=' + quote + escapeMetadata(value).replace(/'/g, '&#39;') + quote);
     });
 }
@@ -63,6 +73,12 @@ function guardMetadata() {
     const metadata = !privatePage && !failedPage ? routeSearchMetadata[path] : null;
     if (metadata) {
       if (document.title !== metadata.title) document.title = metadata.title;
+      // Preserve the newest framework-owned head node. Earlier duplicate metadata
+      // can be left by the retained Next build during streaming and navigation.
+      for (const selector of ['meta[name="description"]','meta[property="og:title"]','meta[name="twitter:title"]','meta[property="og:description"]','meta[name="twitter:description"]']) {
+        const nodes = [...document.head.querySelectorAll(selector)];
+        for (const node of nodes.slice(0, -1)) node.remove();
+      }
       for (const node of document.head.querySelectorAll('meta[name="description"],meta[property="og:description"],meta[name="twitter:description"]')) {
         if (node.content !== metadata.description) node.content = metadata.description;
       }

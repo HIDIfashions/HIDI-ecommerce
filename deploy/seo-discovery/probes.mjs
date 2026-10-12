@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { isBlockedTelemetry } from '../button-states/request-policy.mjs';
+import publishedImages from './published-product-images.json' with {type:'json'};
 
 const expectedTitles = {
   '/':'HIDI India | Women’s Indian Wear and Kurta Sets',
@@ -55,6 +56,14 @@ export async function probe(base, output) {
   const xml=await sitemap.text();
   assert(xml.includes('/products/'),'Sitemap includes the read-only public catalogue');
   assert(!xml.includes('thehidi.com')&&!xml.includes('/cart'));
+  if(base.startsWith('https://hidiindia.com')) {
+    for(const path of [publishedImages[0],publishedImages[Math.floor(publishedImages.length/2)],publishedImages.at(-1)]) {
+      const res=await fetch(base+path,{method:'HEAD',headers:seoHeaders});
+      assert.equal(res.status,200,'Published product image remains accessible');
+      assert(res.headers.get('content-type')?.startsWith('image/'),'Existing image MIME type is preserved');
+      assert(!res.headers.get('x-robots-tag')?.includes('noindex'),'Published image is eligible for image search');
+    }
+  }
   const preview=await fetch(base+'/robots.txt',{headers:{'x-forwarded-host':'thidigk.thehidi.com'}});
   assert((await preview.text()).includes('Disallow: /'),'Preview remains restricted');
   const pw = await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);

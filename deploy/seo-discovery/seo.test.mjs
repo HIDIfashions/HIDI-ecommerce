@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript } from './metadata.mjs';
+import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript, isPublishedProductImage, shouldIndexPublishedImage } from './metadata.mjs';
 import { Readable } from 'node:stream';
 import { sitemapXml, createSeoSitemap } from './sitemap.mjs';
 
@@ -32,8 +32,20 @@ test('homepage and collection search/social fields change together; creative bod
   assert.equal((changed.match(/Browse kurta sets, product details and size information\./g)||[]).length,3);
   assert(changed.includes('<meta name="robots" content="index, follow">'));
   assert.equal(normalizeSeoIdentity(changed,'/'),changed);
+  const duplicate=normalizeSeoIdentity(head.replace('</head>','<meta name="description" content="Duplicate"></head>')+body,'/');
+  assert.equal((duplicate.match(/name="description"/g)||[]).length,1,'Duplicate description tags have one owner');
   const collection=normalizeSeoIdentity(head+body,'/collections/all');
   assert(collection.includes('Women’s Kurta Sets &amp; Indian Wear | HIDI India'));
+});
+test('image eligibility is limited to exact published catalogue assets',()=>{
+  const known='/media/products/variants/cmv3e6j3z00hs01z3o94jjvwv/1791697100254-b1588e04-08f2-4a27-b264-39e60840ffe9.webp';
+  assert(isPublishedProductImage(known));
+  assert(shouldIndexPublishedImage(200,'image/webp','hidiindia.com',known));
+  assert(shouldIndexPublishedImage(200,'image/jpeg; charset=binary','www.hidiindia.com',known));
+  for(const input of [[404,'image/webp','hidiindia.com'],[304,'image/webp','hidiindia.com'],[200,'application/json','hidiindia.com'],[200,'image/webp','thidigk.thehidi.com'],[200,'image/webp','thehidi.com']])assert(!shouldIndexPublishedImage(...input,known));
+  for(const path of ['/admin','/api/orders','/media/private/customer.jpg','/media/products/variants/unknown/private.jpg',known+'/other',known+'?private=1']){
+    assert(!isPublishedProductImage(path));assert(!shouldIndexPublishedImage(200,'image/webp','hidiindia.com',path));
+  }
 });
 test('private, error, preview, product and unsupported destination metadata stays unchanged',()=>{
   const page='<head><title>Existing product | HIDI</title><meta name="description" content="Existing facts"></head><body>Exact</body>';
