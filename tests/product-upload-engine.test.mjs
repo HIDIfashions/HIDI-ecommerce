@@ -53,6 +53,21 @@ function fixture(initial = [], hooks = {}) {
       if (!existing) bindings.push({ imageSku: body.imageSku, productId: p.id, productSlug: p.slug, color: body.color });
       result = { saved: true };
     }
+    else if (/^\/api\/admin\/inventory\/[^/]+\/images$/.test(path) && method === 'POST') {
+      const variantId = decodeURIComponent(path.split('/')[4]);
+      const p = [...state.values()].find(product => product.variants.some(v => v.id === variantId));
+      assert.ok(p, 'image metadata request must target an existing variant');
+      const source = p.variants.find(v => v.id === variantId);
+      assert.equal(typeof body.url, 'string');
+      assert.equal(body.isMain, undefined);
+      const targets = body.applyToColor ? p.variants.filter(v => v.color === source.color) : [source];
+      for (const v of targets) {
+        const existing = v.images.find(image => image.url === body.url);
+        if (existing) { existing.alt = body.alt; existing.storagePath = body.storagePath ?? null; }
+        else v.images.push({ id: 'json-photo-' + v.id, url: body.url, alt: body.alt, storagePath: body.storagePath ?? null, position: v.images.length });
+      }
+      result = { id: source.id, sku: source.sku, images: source.images };
+    }
     else if (path === BASE && method === 'POST') {
       const parsed = parseCreate(body);
       const id = 'pm_' + parsed.requestId.replaceAll('-', '');
@@ -104,8 +119,11 @@ function fixture(initial = [], hooks = {}) {
       const p = find(item.productId);
       for (const id of item.targetVariantIds) {
         const v = p.variants.find(v => v.id === id); assert.ok(v);
-        const image = { id: 'upload-' + item.name, url, alt: item.alt };
-        v.images = item.isMain ? [image, ...v.images.filter(i => i.url !== url)] : [...v.images, image];
+        // The deployed API appends new URLs and updates existing URL metadata.
+        // It ignores isMain and never changes gallery order during this request.
+        const existing = v.images.find(image => image.url === url);
+        if (existing) existing.alt = item.alt;
+        else v.images.push({ id: 'upload-' + item.name, url, alt: item.alt, position: v.images.length, storagePath: null });
       }
       // Existing image endpoints update image rows, not Product.updatedAt.
       return { confirmed: true, url };
@@ -223,7 +241,7 @@ test('new products and additional sizes remain zero stock without any inventory 
 
 test('publication waits for details, variants and verified photos on every intended size', async () => {
   const f = fixture();
-  const rows = [newRow({ image_sku: 'KUR_001', photo_names: 'Front.jpg;Side.webp', main_photo: 'Front.jpg', photo_alt: 'New Kurta catalogue' }), newRow({ size: 'L' })];
+  const rows = [newRow({ image_sku: 'KUR_001', photo_names: 'Side.webp;Front.jpg', main_photo: 'Front.jpg', photo_alt: 'New Kurta catalogue' }), newRow({ size: 'L' })];
   const preview = await previewBatch(groups(rows), [photo(), photo('Side.webp', 'image/webp')], f.api);
   assert.equal(preview.passed, true);
   const uploads = [];
@@ -236,11 +254,12 @@ test('publication waits for details, variants and verified photos on every inten
   } });
   assert.equal(report.published, 1);
   assert.equal(uploads.length, 2);
+  assert.equal(uploads[0].name, 'Front.jpg');
   assert.equal(uploads[0].isMain, true);
   assert.equal(uploads[1].isMain, false);
   const saved = [...f.state.values()][0];
   assert.equal(saved.status, 'ACTIVE');
-  assert.ok(saved.variants.every(v => v.images.length === 2 && v.images[0].url.endsWith('Front.jpg')));
+  assert.ok(saved.variants.every(v => v.images.length === 2 && v.images[0].url.endsWith('Front.jpg') && v.images[0].position === 0));
   assert.equal(f.writes().at(-1).body.status, 'ACTIVE');
 });
 
@@ -384,7 +403,7 @@ test('binary uploads send authenticated colour sharing, main-photo and alt field
     assert.equal(init.method, 'POST');
     assert.equal(init.credentials, 'same-origin');
     assert.ok(init.signal instanceof AbortSignal);
-    for (const [key, value] of Object.entries({ imageSku: 'KUR_001', photoNumber: '1', applyToColor: 'true', isMain: 'true', alt: 'Catalogue front' })) assert.equal(init.body.get(key), value);
+    for (const [key, value] of Object.entries({ imageSku: 'KUR_001', photoNumber: '1', applyToColor: 'true', alt: 'Catalogue front' })) assert.equal(init.body.get(key), value);
     assert.equal(init.body.get('file').name, 'Front.jpg');
     f.attach(item, url);
     throw new Error('Connection interrupted after upload');
@@ -406,14 +425,16 @@ test('changed colour size targets fail before a binary upload', async t => {
 
 test('Image SKU filenames can auto-match numbered photos and honour the marked main photo', async () => {
   const f = fixture();
-  const preview = await previewBatch(groups([newRow({ image_sku: 'KUR_001' })]), [photo('KUR_001_007_main.webp', 'image/webp'), photo('KUR_001_001.jpg')], f.api);
+  const preview = await previewBatch(groups([newRow({ image_sku: 'KUR_001' }), newRow({ size: 'L' })]), [photo('KUR_001_007_main.webp', 'image/webp'), photo('KUR_001_001.jpg')], f.api);
   assert.equal(preview.passed, true);
   const plan = preview.groups[0].photoPlans[0];
-  assert.deepEqual(plan.items.map(item => [item.name, item.sequence, item.isMain]), [['KUR_001_001.jpg', 1, false], ['KUR_001_007_main.webp', 7, true]]);
+  assert.deepEqual(plan.items.map(item => [item.name, item.sequence, item.isMain]).sort((a, b) => a[1] - b[1]), [['KUR_001_001.jpg', 1, false], ['KUR_001_007_main.webp', 7, true]]);
   assert.equal(plan.mainPhoto, 'KUR_001_007_main.webp');
-  const report = await runBatch(preview, { intent: 'publish', api: f.api, upload: async item => f.attach(item) });
+  const uploadOrder = [];
+  const report = await runBatch(preview, { intent: 'publish', api: f.api, upload: async item => { uploadOrder.push([item.name, item.sequence]); return f.attach(item); } });
   assert.equal(report.published, 1);
-  assert.equal([...f.state.values()][0].variants[0].images[0].url, 'https://media.invalid/products/upload/KUR_001_007_main.webp');
+  assert.deepEqual(uploadOrder, [['KUR_001_007_main.webp', 7], ['KUR_001_001.jpg', 1]]);
+  assert.ok([...f.state.values()][0].variants.every(v => v.images[0].url === 'https://media.invalid/products/upload/KUR_001_007_main.webp' && v.images[0].position === 0));
 });
 
 test('automatic filenames block duplicate photo numbers, two marked mains and misleading extra files', async () => {
@@ -509,23 +530,16 @@ test('a pending lost response cannot absorb another staff metadata change during
   assert.equal(f.state.get('p1').care, 'Independent edit');
 });
 
-test('content already attached with old alt or main position is refreshed idempotently', async t => {
+test('an explicit main photo already behind another cover is refused before any binary upload', async t => {
   const item = { imageSku: 'KUR_001', sequence: 1, file: photo(), productId: 'p1', variantId: 'variant-1', targetVariantIds: ['variant-1', 'variant-2'], color: 'Sand', isMain: true, alt: 'Correct catalogue front' };
   const identity = await photoIdentity(item), url = 'https://media.invalid/products/p1' + identity.suffix;
   const f = fixture([product('p1', { variants: [variant({ images: [{ url: 'https://media.invalid/old-main.jpg' }, { url, alt: 'Old alt' }] }), variant({ id: 'variant-2', size: 'L', images: [{ url: 'https://media.invalid/old-main.jpg' }, { url, alt: 'Old alt' }] })] })]);
+  const before = copy(f.state.get('p1').variants);
   let uploads = 0;
-  t.mock.method(globalThis, 'fetch', async (path, init) => {
-    uploads++;
-    assert.equal(init.body.get('alt'), item.alt);
-    assert.equal(init.body.get('isMain'), 'true');
-    f.attach(item, url);
-    return { ok: true, json: async () => ({}) };
-  });
-  assert.equal((await uploadPhoto(item, f.api)).confirmed, true);
-  assert.equal(uploads, 1);
-  assert.ok(f.state.get('p1').variants.every(v => v.images[0].url === url && v.images[0].alt === item.alt && v.images.filter(p => p.url === url).length === 1));
-  assert.equal((await uploadPhoto(item, f.api)).skipped, true);
-  assert.equal(uploads, 1);
+  t.mock.method(globalThis, 'fetch', async () => { uploads++; throw new Error('Cover promotion must be blocked before upload'); });
+  await assert.rejects(uploadPhoto(item, f.api), /main|cover/i);
+  assert.equal(uploads, 0);
+  assert.deepEqual(f.state.get('p1').variants, before);
 });
 
 test('photo upload stops on a concurrently published product and never treats it as a successful Draft', async t => {
@@ -680,4 +694,179 @@ test('explicit retry after a corrected permission failure clears the stale authe
   assert.equal(f.state.get('p1').fabric, 'Cotton');
   assert.equal(preview.groups[0].execution.state, 'draft');
   assert.equal(preview.groups[0].execution.status, undefined);
+});
+
+test('UPDATE uploads append photos and preserve the existing cover on every colour size', async () => {
+  const original = product('p1', { variants: [variant(), variant({ id: 'variant-2', sku: 'HIDI-EXISTING-L', size: 'L' })] });
+  const f = fixture([original]);
+  const preview = await previewBatch(groups([updateRow({ color: 'Sand', size: 'M', image_sku: 'KUR_001', photo_names: 'Front.jpg;Side.webp' })]), [photo(), photo('Side.webp', 'image/webp')], f.api);
+  assert.equal(preview.passed, true);
+  const uploads = [];
+  const report = await runBatch(preview, { intent: 'draft', api: f.api, upload: async item => { uploads.push(item); return f.attach(item); } });
+  assert.equal(report.drafted, 1);
+  assert.ok(uploads.every(item => !item.isMain));
+  for (const v of f.state.get('p1').variants) {
+    const old = original.variants.find(previous => previous.id === v.id).images[0];
+    assert.deepEqual(v.images[0], old);
+    assert.deepEqual(v.images.map(image => image.url), [old.url, 'https://media.invalid/products/upload/Front.jpg', 'https://media.invalid/products/upload/Side.webp']);
+  }
+});
+
+test('UPDATE explicit main-photo promotion is rejected at preview before any product or mapping write', async () => {
+  for (const status of ['DRAFT', 'ACTIVE']) {
+    const f = fixture([product('p1', { status })]);
+    const preview = await previewBatch(groups([updateRow({ color: 'Sand', size: 'M', image_sku: 'KUR_001', photo_names: 'Front.jpg', main_photo: 'Front.jpg' })]), [photo()], f.api);
+    assert.equal(preview.passed, false);
+    assert.match(preview.errors.join('\n'), /main|cover/i);
+    assert.deepEqual(f.writes(), []);
+    assert.equal(f.state.get('p1').status, status);
+  }
+});
+
+test('an existing matching cover on all sizes permits JSON alt refresh without binary upload or gallery changes', async t => {
+  const file = photo(), imageSku = 'KUR_001';
+  const identity = await photoIdentity({ imageSku, sequence: 1, file });
+  const cover = { id: 'existing-cover', url: 'https://media.invalid/products/p1' + identity.suffix, alt: 'Old catalogue alt', position: 0, storagePath: 'products/p1/cover.jpg' };
+  const detail = { id: 'existing-detail', url: 'https://media.invalid/products/p1/detail.jpg', alt: 'Detail', position: 1, storagePath: 'products/p1/detail.jpg' };
+  const f = fixture([product('p1', { variants: [variant({ images: [copy(cover), copy(detail)] }), variant({ id: 'variant-2', sku: 'HIDI-EXISTING-L', size: 'L', images: [{ ...cover, id: 'cover-l' }, { ...detail, id: 'detail-l' }] })] })]);
+  const before = copy(f.state.get('p1').variants.map(v => v.images));
+  const preview = await previewBatch(groups([updateRow({ color: 'Sand', size: 'M', image_sku: imageSku, photo_names: 'Front.jpg', main_photo: 'Front.jpg', photo_alt: 'Correct catalogue front' })]), [file], f.api);
+  assert.equal(preview.passed, true);
+  let binaryUploads = 0;
+  t.mock.method(globalThis, 'fetch', async () => { binaryUploads++; throw new Error('Existing cover metadata must not upload another binary'); });
+  const report = await runBatch(preview, { intent: 'draft', api: f.api });
+  assert.equal(report.drafted, 1);
+  assert.equal(binaryUploads, 0);
+  const photoMetadata = f.writes().filter(call => call.path.startsWith('/api/admin/inventory/'));
+  assert.equal(photoMetadata.length, 1);
+  assert.deepEqual(photoMetadata[0].body, { url: cover.url, storagePath: cover.storagePath, alt: 'Correct catalogue front', applyToColor: true });
+  f.state.get('p1').variants.forEach((v, index) => {
+    assert.deepEqual(v.images.map(p => [p.id, p.url, p.position, p.storagePath]), before[index].map(p => [p.id, p.url, p.position, p.storagePath]));
+    assert.equal(v.images[0].alt, 'Correct catalogue front');
+    assert.deepEqual(v.images[1], before[index][1]);
+  });
+  assert.ok(!f.calls.some(call => call.method === 'DELETE'));
+});
+
+test('cover matching on only one size is insufficient for an UPDATE main-photo request', async () => {
+  const file = photo(), identity = await photoIdentity({ imageSku: 'KUR_001', sequence: 1, file });
+  const url = 'https://media.invalid/products/p1' + identity.suffix;
+  const f = fixture([product('p1', { variants: [variant({ images: [{ id: 'cover-m', url, alt: 'Old alt', position: 0 }] }), variant({ id: 'variant-2', size: 'L', images: [{ id: 'old-l', url: 'https://media.invalid/other-cover.jpg', position: 0 }, { id: 'cover-l', url, alt: 'Old alt', position: 1 }] })] })]);
+  const preview = await previewBatch(groups([updateRow({ color: 'Sand', size: 'M', image_sku: 'KUR_001', photo_names: 'Front.jpg', main_photo: 'Front.jpg' })]), [file], f.api);
+  assert.equal(preview.passed, false);
+  assert.match(preview.errors.join('\n'), /main|cover/i);
+  assert.deepEqual(f.writes(), []);
+});
+
+test('a NEW upload can resume its own Draft when the selected main content already covers every size', async t => {
+  const f = fixture();
+  const rows = [newRow({ image_sku: 'KUR_001', photo_names: 'Side.webp;Front.jpg', main_photo: 'Front.jpg' }), newRow({ size: 'L' })];
+  const files = [photo('Side.webp', 'image/webp'), photo()];
+  const firstPreview = await previewBatch(groups(rows), files, f.api);
+  assert.equal(firstPreview.passed, true);
+  const firstReport = await runBatch(firstPreview, { intent: 'draft', api: f.api, upload: async item => {
+    const identity = await photoIdentity(item);
+    return f.attach(item, 'https://media.invalid/products/' + item.productId + identity.suffix);
+  } });
+  assert.equal(firstReport.drafted, 1);
+  const before = copy([...f.state.values()][0]);
+  const secondPreview = await previewBatch(groups(rows), files, f.api);
+  assert.equal(secondPreview.passed, true);
+  let binaryUploads = 0;
+  t.mock.method(globalThis, 'fetch', async () => { binaryUploads++; throw new Error('Matching saved content should not upload twice'); });
+  const resumed = await runBatch(secondPreview, { intent: 'draft', api: f.api });
+  assert.equal(resumed.drafted, 1);
+  assert.equal(resumed.failed, 0);
+  assert.equal(binaryUploads, 0);
+  assert.equal(f.state.size, 1);
+  assert.deepEqual([...f.state.values()][0].variants, before.variants);
+  assert.equal(f.writes().filter(call => call.method === 'POST' && call.path === BASE).length, 1);
+});
+
+test('cover alt refresh after an earlier-sorting size is added retains the original target object URL', async t => {
+  const file = photo(), imageSku = 'KUR_001';
+  const identity = await photoIdentity({ imageSku, sequence: 1, file });
+  const url = 'https://media.invalid/products/p1/z-original' + identity.suffix;
+  const f = fixture([product('p1', { variants: [
+    variant({ id: 'z-original', images: [{ id: 'original-cover-id', url, alt: 'Old alt', position: 0, storagePath: 'products/p1/z-original' + identity.suffix }] }),
+    variant({ id: 'a-added', sku: 'HIDI-NEW-L', size: 'L', images: [{ id: 'inherited-cover-id', url, alt: 'Old alt', position: 0, storagePath: null }] }),
+  ] })]);
+  const before = copy(f.state.get('p1').variants);
+  const item = { imageSku, sequence: 1, file, productId: 'p1', variantId: 'a-added', targetVariantIds: ['a-added', 'z-original'], color: 'Sand', isMain: true, alt: 'Updated catalogue front' };
+  let binaryUploads = 0;
+  t.mock.method(globalThis, 'fetch', async () => { binaryUploads++; throw new Error('A different source variant must not create another object'); });
+  const saved = await uploadPhoto(item, f.api);
+  assert.equal(saved.confirmed, true);
+  assert.equal(saved.url, url);
+  assert.equal(binaryUploads, 0);
+  const photoMetadata = f.writes().filter(call => call.path.startsWith('/api/admin/inventory/'));
+  assert.equal(photoMetadata.length, 1);
+  assert.equal(photoMetadata[0].path, '/api/admin/inventory/a-added/images');
+  assert.equal(photoMetadata[0].body.url, url);
+  assert.equal(photoMetadata[0].body.isMain, undefined);
+  f.state.get('p1').variants.forEach((v, index) => {
+    assert.equal(v.images.length, 1);
+    assert.equal(v.images[0].id, before[index].images[0].id);
+    assert.equal(v.images[0].url, before[index].images[0].url);
+    assert.equal(v.images[0].position, 0);
+    assert.equal(v.images[0].alt, 'Updated catalogue front');
+    assert.deepEqual(v.inventory, before[index].inventory);
+  });
+});
+
+test('a lost successful JSON photo metadata response is confirmed without another binary or metadata write', async t => {
+  const file = photo(), imageSku = 'KUR_001';
+  const identity = await photoIdentity({ imageSku, sequence: 1, file });
+  const url = 'https://media.invalid/products/p1/variant-1' + identity.suffix;
+  let lost = false;
+  const f = fixture([product('p1', { variants: [variant({ images: [{ id: 'cover-m', url, alt: 'Old alt', position: 0 }] }), variant({ id: 'variant-2', size: 'L', images: [{ id: 'cover-l', url, alt: 'Old alt', position: 0 }] })] })], { after(call) {
+    if (call.method === 'POST' && call.path.startsWith('/api/admin/inventory/') && !lost) { lost = true; throw new Error('Photo metadata response interrupted'); }
+  } });
+  const item = { imageSku, sequence: 1, file, productId: 'p1', variantId: 'variant-1', targetVariantIds: ['variant-1', 'variant-2'], color: 'Sand', isMain: true, alt: 'Correct front alt' };
+  let binaryUploads = 0;
+  t.mock.method(globalThis, 'fetch', async () => { binaryUploads++; throw new Error('Saved photo metadata cannot require a binary retry'); });
+  const saved = await uploadPhoto(item, f.api);
+  assert.equal(saved.confirmed, true);
+  assert.equal(saved.url, url);
+  assert.equal(binaryUploads, 0);
+  assert.equal(f.writes().filter(call => call.path.startsWith('/api/admin/inventory/')).length, 1);
+  assert.ok(f.state.get('p1').variants.every(v => v.images.length === 1 && v.images[0].url === url && v.images[0].alt === 'Correct front alt' && v.images[0].position === 0));
+  const retried = await uploadPhoto(item, f.api);
+  assert.equal(retried.skipped, true);
+  assert.equal(binaryUploads, 0);
+  assert.equal(f.writes().filter(call => call.path.startsWith('/api/admin/inventory/')).length, 1);
+});
+
+test('a later cover change without a product revision invalidates the entire batch before any POST or PATCH', async () => {
+  for (const intent of ['draft', 'publish']) {
+    const file = photo(), imageSku = 'KUR_002';
+    const identity = await photoIdentity({ imageSku, sequence: 1, file });
+    const oldCoverUrl = 'https://media.invalid/products/p2/original' + identity.suffix;
+    const f = fixture([
+      product('p1', { status: 'ACTIVE' }),
+      product('p2', { skn: '54321', slug: 'other-kurta', name: 'Other Kurta', variants: [
+        variant({ id: 'p2-m', images: [{ id: 'old-cover-m', url: oldCoverUrl, alt: 'Original cover', position: 0 }] }),
+        variant({ id: 'p2-l', sku: 'HIDI-OTHER-L', size: 'L', images: [{ id: 'old-cover-l', url: oldCoverUrl, alt: 'Original cover', position: 0 }] }),
+      ] }),
+    ]);
+    const preview = await previewBatch(groups([
+      updateRow({ fabric: 'Cotton' }),
+      updateRow({ product_key: 'other', product_id: 'p2', color: 'Sand', size: 'M', image_sku: imageSku, photo_names: 'Front.jpg', main_photo: 'Front.jpg' }),
+    ]), [file], f.api);
+    assert.equal(preview.passed, true);
+    const revision = f.state.get('p2').updatedAt;
+    for (const v of f.state.get('p2').variants) {
+      v.images = [{ id: 'new-cover-' + v.id, url: 'https://media.invalid/products/p2/new-cover.jpg', alt: 'Changed cover', position: 0 }, ...v.images.map(image => ({ ...image, position: 1 }))];
+    }
+    // Photo API updates image rows without changing Product.updatedAt.
+    assert.equal(f.state.get('p2').updatedAt, revision);
+    f.calls.length = 0;
+    await assert.rejects(runBatch(preview, { intent, api: f.api }), /main|cover/i);
+    assert.ok(f.calls.length > 0);
+    assert.ok(f.calls.every(call => call.method === 'GET'), 'the entire fresh cover check must precede mapping preflight and every write');
+    assert.deepEqual(f.writes(), []);
+    assert.equal(f.state.get('p1').status, 'ACTIVE');
+    assert.equal(f.state.get('p1').fabric, 'Silk');
+    assert.ok(f.state.get('p2').variants.every(v => v.images[0].url.endsWith('new-cover.jpg') && v.images[1].url === oldCoverUrl));
+  }
 });

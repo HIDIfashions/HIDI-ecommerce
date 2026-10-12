@@ -38,6 +38,16 @@ def uploader_report():
 
 
 def valid_evidence(folder):
+    api_module = release.PRIVATE / 'api/base-app/apps/api/dist/admin/admin.service.js'
+    api_module.parent.mkdir(parents=True, exist_ok=True)
+    api_module.write_text('module.exports = { fixtureOnly: true };\n')
+    product_modules = []
+    for name in ['product-input.js', 'admin-products.service.js']:
+        relative = 'apps/api/dist/admin/products/' + name
+        module = release.PRIVATE / 'api/base-app' / relative
+        module.parent.mkdir(parents=True, exist_ok=True)
+        module.write_text('module.exports = { fixtureOnly: true };\n')
+        product_modules.append({'moduleRelativePath': relative, 'moduleSha256': release.sha256(module)})
     expected = sorted({patcher.HANDLER, patcher.NAVIGATION} | {'admin-tools/product-upload/' + name for name in patcher.FILES})
     plan = {'passed': True, 'allowedFiles': expected, 'newPage': patcher.PAGE}
     for key in ['inverseTransformsVerified', 'compiledNextUntouched', 'serverUntouched', 'apiUnchanged', 'retainedPagePoliciesPreserved']:
@@ -52,10 +62,20 @@ def valid_evidence(folder):
         'permissions.json': {'passed': True},
         'candidate/report.json': uploader_report(),
         'admin-runtime.json': {'passed': True, 'customerRoutesRetained': True, 'anonymousAdminDataDenied': True},
-        'next-upload.json': {'passed': True, 'checks': 22, 'actualNextHttp': True, 'mainPhoto': True, 'categories': True,
-            'productionDatabaseWrites': 0, 'productionBlobWrites': 0},
+        'api-images.json': {'passed': True, 'actualCompiledApi': True, 'coverByFirstUploadVerified': True,
+            'allSizesVerified': True, 'altUpdateVerified': True, 'duplicateMetadataAvoided': True, 'existingCoverPreserved': True,
+            'inventoryWrites': 0, 'productionDatabaseWrites': 0, 'productionBlobWrites': 0,
+            'moduleRelativePath': 'apps/api/dist/admin/admin.service.js', 'moduleSha256': release.sha256(api_module),
+            'checks': [{'name': 'Actual captured API image append and upsert', 'status': 'PASS'}]},
+        'api-products.json': {'passed': True, 'actualCompiledApi': True, 'coreCreateVerified': True,
+            'metadataVerified': True, 'variantsVerified': True, 'statusVerified': True, 'versionGuardVerified': True,
+            'zeroStockVerified': True, 'completeReturnVerified': True, 'inventoryWrites': 0,
+            'productionDatabaseWrites': 0, 'productionBlobWrites': 0, 'modules': product_modules,
+            'checks': [{'name': 'Actual captured API product contracts', 'status': 'PASS'}]},
         'next-hash.json': {'passed': True, 'actualNextHttp': True, 'contentHashVerified': True, 'mainAltVerified': True,
-            'duplicateRetryVerified': True, 'productionDatabaseWrites': 0, 'productionBlobWrites': 0,
+            'duplicateRetryVerified': True, 'coverByFirstUploadVerified': True, 'photoLimitVerified': True,
+            'requestBodyLimitVerified': True, 'photoLimitBytes': 12 * 1024 * 1024, 'requestBodyBytes': 14 * 1024 * 1024,
+            'productionDatabaseWrites': 0, 'productionBlobWrites': 0,
             'checks': [{'name': 'Actual Next hash and fixture Blob retry', 'status': 'PASS'}]},
         'admin-deletion.json': {'results': [{'engine': engine, 'mode': mode, 'status': 'PASS'}
             for engine in sorted(release.ENGINES) for mode in ['mobile', 'desktop'] for _ in range(5)]},
@@ -80,6 +100,11 @@ class UploaderGuards(unittest.TestCase):
         self.env = patch.dict(os.environ, {'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2', 'GITHUB_SHA': 'b' * 40})
         self.env.start()
         self.addCleanup(self.env.stop)
+        self.private_fixture = tempfile.TemporaryDirectory()
+        self.addCleanup(self.private_fixture.cleanup)
+        self.private_patch = patch.object(release, 'PRIVATE', Path(self.private_fixture.name))
+        self.private_patch.start()
+        self.addCleanup(self.private_patch.stop)
 
     def test_additive_handler_and_navigation_restore_exactly(self):
         handler = (ROOT / 'deploy/admin-tools/handler.mjs').read_text()
@@ -277,7 +302,7 @@ try{
             folder = Path(temp)
             values = valid_evidence(folder)
             release.reports_ready()
-            for name, field, value in [('next-upload.json', 'productionBlobWrites', 1),
+            for name, field, value in [('api-images.json', 'productionBlobWrites', 1),
                 ('admin-runtime.json', 'anonymousAdminDataDenied', False), ('retained-commerce.json', 'liveWrites', 1),
                 ('web-preservation.json', 'permissionsPreserved', False)]:
                 changed = copy.deepcopy(values[name])
@@ -324,7 +349,9 @@ try{
                 release.reports_ready()
             original = reports['next-hash.json']
             invalid = [('passed', False), ('actualNextHttp', False), ('contentHashVerified', False),
-                ('mainAltVerified', False), ('duplicateRetryVerified', False), ('productionDatabaseWrites', 1),
+                ('mainAltVerified', False), ('duplicateRetryVerified', False), ('coverByFirstUploadVerified', False),
+                ('photoLimitVerified', False), ('requestBodyLimitVerified', False), ('photoLimitBytes', 5 * 1024 * 1024),
+                ('requestBodyBytes', 5 * 1024 * 1024), ('productionDatabaseWrites', 1),
                 ('productionBlobWrites', 1), ('checks', []), ('checks', [{'status': 'FAIL'}])]
             for key, value in invalid:
                 changed = copy.deepcopy(original)
@@ -333,6 +360,60 @@ try{
                 with self.assertRaises(AssertionError):
                     release.reports_ready()
             release.save('next-hash.json', original)
+            release.reports_ready()
+
+    def test_missing_failed_unbound_or_writeful_actual_api_images_blocks_release(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(release, 'EVIDENCE', Path(temp)):
+            folder = Path(temp)
+            reports = valid_evidence(folder)
+            release.reports_ready()
+            (folder / 'api-images.json').unlink()
+            with self.assertRaises(FileNotFoundError):
+                release.reports_ready()
+            original = reports['api-images.json']
+            invalid = [('passed', False), ('actualCompiledApi', False), ('coverByFirstUploadVerified', False),
+                ('allSizesVerified', False), ('altUpdateVerified', False), ('duplicateMetadataAvoided', False),
+                ('existingCoverPreserved', False), ('inventoryWrites', 1), ('productionDatabaseWrites', 1),
+                ('productionBlobWrites', 1), ('checks', []), ('checks', [{'status': 'FAIL'}]),
+                ('moduleRelativePath', '../../server.mjs'), ('moduleSha256', '0' * 64)]
+            for key, value in invalid:
+                changed = copy.deepcopy(original)
+                changed[key] = value
+                release.save('api-images.json', changed)
+                with self.assertRaises(AssertionError):
+                    release.reports_ready()
+            release.save('api-images.json', original)
+            module = release.PRIVATE / 'api/base-app' / original['moduleRelativePath']
+            module.write_text('unreviewed changed API service')
+            with self.assertRaisesRegex(AssertionError, 'compiled service'):
+                release.reports_ready()
+
+    def test_actual_api_products_requires_bound_readonly_successful_contracts(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(release, 'EVIDENCE', Path(temp)):
+            reports = valid_evidence(Path(temp))
+            original = reports['api-products.json']
+            release.reports_ready()
+            (Path(temp) / 'api-products.json').unlink()
+            with self.assertRaises(FileNotFoundError):
+                release.reports_ready()
+            invalid = [('passed', False), ('actualCompiledApi', False), ('coreCreateVerified', False),
+                ('metadataVerified', False), ('variantsVerified', False), ('statusVerified', False),
+                ('versionGuardVerified', False), ('zeroStockVerified', False), ('completeReturnVerified', False),
+                ('inventoryWrites', 1), ('productionDatabaseWrites', 1), ('productionBlobWrites', 1),
+                ('checks', []), ('checks', [{'status': 'FAIL'}]), ('modules', [])]
+            for key, value in invalid:
+                changed = copy.deepcopy(original)
+                changed[key] = value
+                release.save('api-products.json', changed)
+                with self.assertRaises(AssertionError):
+                    release.reports_ready()
+            for key, value in [('moduleRelativePath', '../../server.mjs'), ('moduleSha256', '0' * 64)]:
+                changed = copy.deepcopy(original)
+                changed['modules'][0][key] = value
+                release.save('api-products.json', changed)
+                with self.assertRaises(AssertionError):
+                    release.reports_ready()
+            release.save('api-products.json', original)
             release.reports_ready()
 
     def test_retained_suite_baseline_launcher_helper_source_and_report_are_pinned(self):

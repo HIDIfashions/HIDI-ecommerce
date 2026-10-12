@@ -86,7 +86,7 @@ const steps = [
   ['Update safely', 'Use UPDATE with the exact product_id, five-digit SKN or existing product_slug. Blank cells retain saved data. A new colour or size adds a zero-stock variant and requires selling_price and mrp.'],
   ['Photo naming', 'For image_sku KUR_001 use KUR_001_1.jpeg, KUR_001_2.jpeg and so on. One code identifies one product colour. Photo numbers must be unique.'],
   ['Photo list', 'Optional photo_names lists exact filenames, separated by semicolons. Repeat the same list on every size row for that colour. All listed files must be selected.'],
-  ['Main photo', 'main_photo is an optional exact filename included in photo_names. NEW uses the first photo by default. UPDATE retains its existing cover unless you explicitly choose a main_photo.'],
+  ['Main photo', 'For new products and empty colour galleries, main_photo uploads first and becomes the cover. Existing UPDATE covers are retained. Choosing a different existing cover is blocked before saving.'],
   ['Photo limits', 'Use JPEG/JPG, PNG, WebP or AVIF, up to 12 MiB per file. Renaming an extension does not convert an image. Upload no more than 1,000 photos per batch.'],
   ['Collections', 'Enter exact available storefront collection slugs separated by semicolons, for example everyday;ananyas-pick. The tool validates them against current website options.'],
   ["Ananya's Pick", 'Set ananyas_pick TRUE to add the tag or FALSE to remove it. Leave blank on UPDATE to retain the current choice.'],
@@ -112,7 +112,7 @@ const fields = [
  ['action','Required','Required','NEW or UPDATE','NEW'],
  ['product_key','Recommended','Recommended','One stable grouping key for all colour/size rows. Letters, digits, underscores or hyphens, up to 100 characters. Blank uses the product identity.','sample-ivory-kurta'],
  ['product_id','Leave blank','Identity option','Exact existing HIDI product ID. Use product_id, SKN or existing product_slug for UPDATE.','From product export'],
- ['skn','Leave blank','Identity option','Existing five-digit HIDI product number. A new product receives its own SKN after saving. Store as text.','12345'],
+ ['skn','Leave blank','If available','Optional existing five-digit number, only if returned by your current catalogue. Leave blank for NEW. Use product_id or product_slug for reliable UPDATE matching.','12345'],
  ['product_slug','Optional','Identity option','NEW URL: lowercase English letters, numbers and hyphens, up to 100 characters. UPDATE: lookup only; the URL is not changed.','sample-ivory-kurta'],
  ['product_name','Required','Blank retains','Customer-facing product name, up to 160 characters. Repeat the same value for every row of one product.','Sample Ivory Kurta'],
  ['category','Optional','Blank retains','Choose an existing category. Standard choices: Casual Wear, Work Wear, Occasional Wear. Unknown categories are not created automatically.','Casual Wear'],
@@ -141,7 +141,7 @@ const fields = [
  ['garment_length_mm','Optional','Blank retains','Whole millimetres from 100 to 2,500.','1100'],
  ['image_sku','Required with photos','Required with photos','Unique code for one product colour, repeated across all its sizes. Start with a letter; letters, digits, underscores and hyphens; maximum 64 characters.','KUR_001'],
  ['photo_names','Optional','Optional','Exact image filenames separated by semicolons. Blank uses the matching image_sku filename prefix. This is not a URL column.','KUR_001_1.jpeg;KUR_001_2.jpeg'],
- ['main_photo','Optional','Optional','Exact filename included in photo_names. NEW defaults to the first photo; UPDATE preserves its existing cover if blank.','KUR_001_1.jpeg'],
+ ['main_photo','Optional','Optional','Exact selected filename. NEW or empty galleries use it as the first cover. Existing UPDATE covers are retained. If photo_names is filled, include this filename.','KUR_001_1.jpeg'],
  ['photo_alt','Optional','Optional','Description for accessibility, up to 1,000 characters. The tool generates product/colour/photo text when blank.','Ivory cotton kurta, front view'],
 ];
 assert.deepEqual(fields.map(v => v[0]), expectedHeaders);
@@ -169,12 +169,12 @@ const sampleRows = [
  row({...sampleProduct,size:'L',bust_mm:1050,waist_mm:970,hip_mm:1130,shoulder_mm:390}),
  row({...sampleProduct,size:'XL',bust_mm:1100,waist_mm:1020,hip_mm:1180,shoulder_mm:400}),
  row({...sampleProduct,size:'XXL',bust_mm:1150,waist_mm:1070,hip_mm:1230,shoulder_mm:410}),
- row({action:'UPDATE',product_key:'sample-update',skn:'12345',color:'Ivory',size:'M',selling_price:1699,mrp:2199}),
+ row({action:'UPDATE',product_key:'sample-update',product_slug:'existing-product-url-from-export',color:'Ivory',size:'M',selling_price:1699,mrp:2199}),
 ];
 inputSheet(examples, sampleRows);
 examples.getRange('A9').values = [['Examples only. These invented rows are not imported. Copy your own product rows into Products.']];
 examples.getRange('A9').format.font = { name:'Arial', size:10, italic:true, color:muted };
-examples.getRange('A10').values = [['The UPDATE example uses a fictitious SKN. Replace it with an exact identifier exported from your catalogue.']];
+examples.getRange('A10').values = [['The UPDATE example uses a placeholder URL. Replace it with the exact existing product_slug or product_id from your catalogue.']];
 examples.getRange('A10').format.font = { name:'Arial', size:10, italic:true, color:muted };
 
 wb.recalculate();
@@ -184,7 +184,9 @@ await fs.writeFile(path.join(outputDir,'template-inspection.ndjson'),checked.ndj
 const errors = await wb.inspect({kind:'match',searchTerm:'#REF!|#DIV/0!|#VALUE!|#NAME\\?|#N/A|#NUM!|#NULL!|#SPILL!|#CALC!',options:{useRegex:true,maxResults:100},summary:'Final formula error scan',maxChars:3000});
 await fs.writeFile(path.join(outputDir,'formula-error-scan.ndjson'),errors.ndjson);
 const renders = [['Products','A1:F10','products-identity'],['Products','G1:Q10','products-details'],['Products','R1:X10','products-variants'],['Products','Y1:AH10','products-measurements-photos'],['Instructions','A1:B24','instructions'],['Field guide','A1:E22','field-guide-1'],['Field guide','A23:E40','field-guide-2'],['Examples','A1:F10','examples-identity'],['Examples','R1:AH7','examples-variants-photos']];
-for(const [sheetName,range,name] of renders) {
+const renderNames=process.env.HIDI_TEMPLATE_RENDER_SCOPE==='main-photo'?['instructions','field-guide-2']:process.env.HIDI_TEMPLATE_RENDER_SCOPE==='identities'?['field-guide-1','examples-identity']:null;
+const selectedRenders=renders.filter(([, ,name])=>!renderNames||renderNames.includes(name));
+for(const [sheetName,range,name] of selectedRenders) {
   const blob = await wb.render({sheetName,range,scale:1.25,format:'png'});
   await fs.writeFile(path.join(outputDir,`${name}.png`),new Uint8Array(await blob.arrayBuffer()));
 }
@@ -192,4 +194,4 @@ const file = await SpreadsheetFile.exportXlsx(wb);
 const destination = path.join(outputDir,'HIDI_Product_Upload_Template.xlsx');
 await file.save(destination);
 await fs.copyFile(destination,path.join(repoRoot,'deploy/product-upload/HIDI_Product_Upload_Template.xlsx'));
-console.log(JSON.stringify({file:destination,headers:expectedHeaders.length,sheets:['Products','Instructions','Field guide','Examples'],blankProductRows:true,validationRows:5000,renders:renders.length}));
+console.log(JSON.stringify({file:destination,headers:expectedHeaders.length,sheets:['Products','Instructions','Field guide','Examples'],blankProductRows:true,validationRows:5000,renders:selectedRenders.length}));

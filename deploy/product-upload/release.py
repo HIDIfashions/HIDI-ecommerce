@@ -22,7 +22,8 @@ REPORT_PATHS = {
     'preservation': 'web-preservation.json',
     'uploader': 'candidate/report.json',
     'adminRuntime': 'admin-runtime.json',
-    'nextUpload': 'next-upload.json',
+    'apiImages': 'api-images.json',
+    'apiProducts': 'api-products.json',
     'nextHash': 'next-hash.json',
     'adminDeletion': 'admin-deletion.json',
     'retainedCommerce': 'retained-commerce.json',
@@ -238,13 +239,13 @@ def reports_ready():
     assert uploader.get('templateSha256') == sha256(HERE / 'HIDI_Product_Upload_Template.xlsx'), 'Browser workbook must be the reviewed downloadable template'
     admin = read('admin-runtime.json')
     assert admin.get('passed') is True and admin.get('customerRoutesRetained') is True and admin.get('anonymousAdminDataDenied') is True
-    upload = read('next-upload.json')
-    assert upload.get('passed') is True and upload.get('checks') == 22 and upload.get('actualNextHttp') is True
-    assert upload.get('mainPhoto') is True and upload.get('categories') is True
-    assert upload.get('productionDatabaseWrites') == upload.get('productionBlobWrites') == 0
+    verify_api_image_report(read('api-images.json'))
+    verify_api_product_report(read('api-products.json'))
     upload_hash = read('next-hash.json')
     assert all(upload_hash.get(key) is True for key in ['passed', 'actualNextHttp', 'contentHashVerified',
-        'mainAltVerified', 'duplicateRetryVerified']), 'Actual retained Next content-hash/photo retry regression required'
+        'mainAltVerified', 'duplicateRetryVerified', 'coverByFirstUploadVerified', 'photoLimitVerified',
+        'requestBodyLimitVerified']), 'Actual retained Next cover, limits, content-hash and retry regression required'
+    assert upload_hash.get('photoLimitBytes') == 12 * 1024 * 1024 and upload_hash.get('requestBodyBytes') == 14 * 1024 * 1024, 'Retained photo limits differ'
     assert upload_hash.get('productionDatabaseWrites') == upload_hash.get('productionBlobWrites') == 0
     hash_checks = upload_hash.get('checks')
     assert isinstance(hash_checks, list) and hash_checks and all(
@@ -257,6 +258,36 @@ def reports_ready():
     assert set(commerce.get('engines', [])) == ENGINES and len(commerce.get('results', [])) == 12
     assert all(row.get('passed') is True for row in commerce['results']), 'Retained customer or SEO regression incomplete'
     verify_retained_provenance(read('retained-commerce-provenance.json'))
+
+
+def verify_api_image_report(report):
+    assert all(report.get(key) is True for key in ['passed', 'actualCompiledApi', 'coverByFirstUploadVerified',
+        'allSizesVerified', 'altUpdateVerified', 'duplicateMetadataAvoided', 'existingCoverPreserved']), 'Actual captured API image behavior must be verified'
+    assert report.get('inventoryWrites') == report.get('productionDatabaseWrites') == report.get('productionBlobWrites') == 0, 'API regression must use only disposable image fixtures'
+    checks = report.get('checks')
+    assert isinstance(checks, list) and checks and all(row.get('passed') is True or row.get('status') == 'PASS' for row in checks), 'Complete actual API image checks required'
+    verify_captured_api_module(report.get('moduleRelativePath', ''), report.get('moduleSha256'))
+
+
+def verify_captured_api_module(relative_path, digest):
+    relative = Path(relative_path)
+    assert not relative.is_absolute() and '..' not in relative.parts and relative.parts[:3] == ('apps', 'api', 'dist'), 'Captured API module scope differs'
+    module = PRIVATE / 'api/base-app' / relative
+    assert module.is_file() and digest == sha256(module), 'API report must match the actual captured compiled service'
+
+
+def verify_api_product_report(report):
+    assert all(report.get(key) is True for key in ['passed', 'actualCompiledApi', 'coreCreateVerified',
+        'metadataVerified', 'variantsVerified', 'statusVerified', 'versionGuardVerified', 'zeroStockVerified',
+        'completeReturnVerified']), 'Actual captured API product contracts must be verified'
+    assert report.get('inventoryWrites') == report.get('productionDatabaseWrites') == report.get('productionBlobWrites') == 0, 'Product API regression must use only disposable fixtures'
+    checks = report.get('checks')
+    assert isinstance(checks, list) and checks and all(row.get('passed') is True or row.get('status') == 'PASS' for row in checks), 'Complete actual API product checks required'
+    modules = report.get('modules')
+    assert isinstance(modules, list) and len(modules) == 2, 'Both captured product parser and service must be bound'
+    assert {Path(row.get('moduleRelativePath', '')).name for row in modules} == {'product-input.js', 'admin-products.service.js'}, 'Captured product module scope differs'
+    for module in modules:
+        verify_captured_api_module(module.get('moduleRelativePath', ''), module.get('moduleSha256'))
 
 
 def retained_source_hashes():

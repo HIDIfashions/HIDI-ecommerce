@@ -1,0 +1,51 @@
+// Exercise genuine captured compiled catalogue DTOs and service methods.
+// Strict disposable Prisma facades replace every database operation.
+import assert from 'node:assert/strict';
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+import path from 'node:path';
+const root=process.env.HIDI_CANDIDATE_API;assert(root,'Captured immutable API runtime required.');
+const files=['apps/api/dist/admin/products/product-input.js','apps/api/dist/admin/products/admin-products.service.js'];
+const loaded=await Promise.all(files.map(file=>import(pathToFileURL(path.join(root,file)))));
+const dto={...(loaded[0].default||{}),...loaded[0]},Service=loaded[1].AdminProductsService||loaded[1].default?.AdminProductsService;
+assert.equal(typeof Service,'function');for(const name of ['parseCreate','parseEdit','parseAddVariants','parseVariantEdit','parseStatus'])assert.equal(typeof dto[name],'function',name+' exists in captured compiled API');
+const modules=await Promise.all(files.map(async moduleRelativePath=>({moduleRelativePath,moduleSha256:createHash('sha256').update(await readFile(path.join(root,moduleRelativePath))).digest('hex')})));
+const clone=value=>structuredClone(value),records=new Map(),calls=[],results=[];let sequence=0;
+const log=(name,args)=>calls.push({name,args:clone(args||{})}),forbid=name=>()=>{throw new Error('Forbidden real database or inventory operation: '+name);};
+const namespace=(name,allowed)=>new Proxy(allowed,{get(target,key){return key in target?target[key]:forbid(name+'.'+String(key));}});
+function variant(data){const inventory=data.inventory?.create;assert.deepEqual(inventory,{onHand:0,reserved:0,safetyStock:0,reorderLevel:5});return {id:'fixture-variant-'+(++sequence),...Object.fromEntries(Object.entries(data).filter(([key])=>!['inventory','images','productId'].includes(key))),bustMm:null,waistMm:null,hipMm:null,shoulderMm:null,sleeveLengthMm:null,garmentLengthMm:null,inventory:{...inventory},images:clone(data.images?.create||[])};}
+const db={
+  product:namespace('product',{
+    findUnique:async args=>{log('productRead',args);return clone(records.get(args.where.id)||null);},
+    create:async args=>{log('fixtureCreate',args);assert(args.include?.variants?.include?.inventory&&args.include?.variants?.include?.images);const d=args.data;assert(!records.has(d.id));const p={...Object.fromEntries(Object.entries(d).filter(([key])=>!['collections','variants'].includes(key))),updatedAt:new Date('2026-10-12T00:00:00Z'),category:d.categoryId?{id:d.categoryId,name:'Casual Wear',slug:'casual-wear'}:null,collections:d.collections.create.map(c=>({...c,collection:{id:c.collectionId,slug:c.collectionId}})),images:[],variants:d.variants.create.map(variant)};records.set(p.id,p);return clone(p);},
+    update:async args=>{log('fixtureProductUpdate',args);const p=records.get(args.where.id);assert(p);for(const [key,value]of Object.entries(args.data)){if(key==='collections')p.collections=value.create.map(c=>({...c,collection:{id:c.collectionId,slug:c.collectionId}}));else p[key]=clone(value);}return clone(p);},
+  }),
+  productVariant:namespace('productVariant',{
+    create:async args=>{log('fixtureVariantCreate',args);const p=records.get(args.data.productId);assert(p);const v=variant(args.data);p.variants.push(v);return clone(v);},
+    update:async args=>{log('fixtureVariantUpdate',args);const v=[...records.values()].flatMap(p=>p.variants).find(v=>v.id===args.where.id);assert(v);Object.assign(v,clone(args.data));return clone(v);},
+  }),
+  category:namespace('category',{findFirst:async args=>{log('categoryRead',args);assert.equal(args.where.active,true);return args.where.id==='fixture-category'?{id:'fixture-category',active:true}:null;}}),
+  collection:namespace('collection',{count:async args=>{log('collectionRead',args);assert.equal(args.where.active,true);return args.where.id.in.filter(id=>['everyday','ananyas-pick'].includes(id)).length;}}),
+  inventory:namespace('inventory',{}),inventoryMovement:namespace('inventoryMovement',{}),stockReceipt:namespace('stockReceipt',{}),
+  $queryRaw:async(strings,...values)=>{const sql=Array.isArray(strings)?strings.join('?'):String(strings);log('sqlRead',{sql,values});assert(/^\s*SELECT\b/i.test(sql)&&/\bProduct\b/.test(sql),'Only the existing product read/lock query is permitted.');return [{id:values[0]}];},
+  $executeRaw:forbid('$executeRaw'),$executeRawUnsafe:forbid('$executeRawUnsafe'),$queryRawUnsafe:forbid('$queryRawUnsafe'),$connect:forbid('$connect'),
+};
+db.$transaction=async(operation,options)=>{log('transaction',options);assert.equal(typeof operation,'function');assert.equal(options?.isolationLevel,'Serializable');const before=clone([...records]);try{return await operation(db);}catch(error){records.clear();for(const [key,value]of before)records.set(key,value);throw error;}};
+const prisma=new Proxy(db,{get(target,key){return key in target?target[key]:namespace('unrelated.'+String(key),{});}}),service=Object.create(Service.prototype);Object.defineProperty(service,'prisma',{value:prisma});
+const call=(name,...args)=>Service.prototype[name].call(service,...args),pass=name=>results.push({name,status:'PASS'});
+const creation={requestId:'11111111-1111-4111-8111-111111111111',slug:'fixture-new-kurta',name:'Fixture New Kurta',categoryId:'fixture-category',collectionIds:['everyday','ananyas-pick'],shortDescription:'Short summary',description:'Full details\nIncludes: 1 kurta\nFit: Relaxed\nLining: Unlined\nModel: Wears M',fabric:'Cotton',care:'Hand wash',colors:[{name:'Ivory',hex:'#F3EBDD'}],sizes:['M'],pricePaise:179900,mrpPaise:219900,weightGrams:350};
+assert.doesNotThrow(()=>dto.parseCreate(creation));let product=await call('create',creation);assert.equal(product.id,'pm_'+creation.requestId.replaceAll('-',''));assert.equal(product.status,'DRAFT');assert.equal(product.variants.length,1);assert.deepEqual(product.variants[0].inventory,{onHand:0,reserved:0,safetyStock:0,reorderLevel:5});assert(Array.isArray(product.images)&&Array.isArray(product.collections)&&product.updatedAt instanceof Date);assert.equal(product.description,creation.description);assert.equal(product.fabric,'Cotton');
+const createdCount=calls.filter(c=>c.name==='fixtureCreate').length;assert.equal((await call('create',creation)).id,product.id);assert.equal(calls.filter(c=>c.name==='fixtureCreate').length,createdCount);pass('Captured service creates stable pm_UUID Draft with complete details, zero stock and idempotent creation');
+
+const revision=()=>product.updatedAt.toISOString();
+const metadata={name:'Fixture Renamed Kurta',categoryId:product.categoryId,collectionIds:product.collections.map(c=>c.collectionId),shortDescription:product.shortDescription,description:product.description,fabric:'Linen',care:product.care,expectedUpdatedAt:revision()};assert.doesNotThrow(()=>dto.parseEdit(metadata));assert.throws(()=>dto.parseEdit({...metadata,slug:'must-not-change'}));product=await call('edit',product.id,metadata);assert.equal(product.fabric,'Linen');assert.equal(product.care,'Hand wash');assert.equal(product.slug,creation.slug);assert.equal(product.description,creation.description);pass('Captured metadata DTO/service retain blank-merged fields, collections and URL while updating supplied details');
+
+const add={colors:[{name:'Ivory',hex:'#F3EBDD'}],sizes:['L'],pricePaise:189900,mrpPaise:229900,weightGrams:370,expectedUpdatedAt:revision()};assert.doesNotThrow(()=>dto.parseAddVariants(add));product=await call('addVariants',product.id,add);assert.equal(product.variants.length,2);assert(product.variants.every(v=>v.inventory.onHand===0&&v.inventory.reserved===0));const selected=product.variants.find(v=>v.size==='L');
+const edit={pricePaise:199900,mrpPaise:239900,weightGrams:380,active:true,bustMm:1050,waistMm:970,hipMm:1130,shoulderMm:390,sleeveLengthMm:450,garmentLengthMm:1100,expectedUpdatedAt:revision()};assert.doesNotThrow(()=>dto.parseVariantEdit(edit));product=await call('editVariant',product.id,selected.id,edit);const saved=product.variants.find(v=>v.id===selected.id);for(const [key,value]of Object.entries(edit))if(key!=='expectedUpdatedAt')assert.equal(saved[key],value);assert.equal(saved.sku,selected.sku);assert.equal(saved.size,'L');assert.equal(saved.color,'Ivory');pass('Captured variant DTOs/service persist price, MRP, weight, active state and all six millimetre measurements without stock changes');
+
+const staleVersion=creation.expectedUpdatedAt||'2026-10-11T00:00:00.000Z';const beforeStale=clone(records.get(product.id));await assert.rejects(call('edit',product.id,{...metadata,expectedUpdatedAt:staleVersion}),/changed|Reload/i);await assert.rejects(call('editVariant',product.id,saved.id,{...edit,expectedUpdatedAt:staleVersion}),/changed|Reload/i);assert.deepEqual(records.get(product.id),beforeStale);pass('Captured stale product revisions reject metadata and variant edits before fixture writes');
+
+const beforePublish=clone(records.get(product.id));await assert.rejects(call('setStatus',product.id,{status:'ACTIVE',expectedUpdatedAt:revision()}),/photo/i);assert.deepEqual(records.get(product.id),beforePublish);records.get(product.id).variants[0].images=[{id:'fixture-photo',url:'https://fixture.invalid/products/cover.png',alt:'Cover',position:0}];assert.doesNotThrow(()=>dto.parseStatus({status:'ACTIVE',expectedUpdatedAt:revision()}));product=await call('setStatus',product.id,{status:'ACTIVE',expectedUpdatedAt:revision()});assert.equal(product.status,'ACTIVE');assert(product.variants.every(v=>v.inventory.onHand===0));pass('Captured publication stays Draft without photos and becomes ACTIVE only with an active priced photographed size');
+assert(!calls.some(c=>/inventoryWrite|stockWrite|receiptWrite/i.test(c.name)));
+const report={passed:true,actualCompiledApi:true,coreCreateVerified:true,metadataVerified:true,variantsVerified:true,statusVerified:true,versionGuardVerified:true,zeroStockVerified:true,completeReturnVerified:true,inventoryWrites:0,productionDatabaseWrites:0,productionBlobWrites:0,modules,checks:results};await mkdir('evidence/product-upload',{recursive:true});await writeFile('evidence/product-upload/api-products.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));

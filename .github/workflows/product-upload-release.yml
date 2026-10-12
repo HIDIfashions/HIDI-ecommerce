@@ -1,5 +1,5 @@
 name: Guarded Admin product and image upload release
-# Verify actual retained routes, canonical catalogue and real keyboard focus.
+# Verify real API cover ordering, canonical catalogue and keyboard focus.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -41,6 +41,8 @@ jobs:
           node --check tests/product-upload.browser.mjs
           node --check tests/product-upload-navigation.browser.mjs
           node --check tests/product-upload-next-http.mjs
+          node --check tests/product-upload-api-images.mjs
+          node --check tests/product-upload-api-products.mjs
           node --check deploy/product-upload/retained-commerce.mjs
           node --test tests/product-upload*.test.mjs
           node --test tests/admin-quick-tools.test.mjs tests/admin-product-delete-handler.test.mjs tests/admin-product-delete-schema.test.mjs tests/bulk-publication.test.mjs tests/product-skn-photos.test.mjs tests/product-skn-taxonomy.test.mjs tests/image-sku.test.mjs tests/button-request-policy.test.mjs
@@ -70,8 +72,8 @@ jobs:
       - name: Verify retained Next photo limits, Admin deletion, navigation, checkout, SEO and mobile footer
         run: |
           set -euo pipefail
-          node tests/product-skn-candidate.mjs
-          cp evidence/product-skn/candidate-http.json evidence/product-upload/next-upload.json
+          node tests/product-upload-api-images.mjs
+          node tests/product-upload-api-products.mjs
           node --test tests/image-sku-runtime-keys.test.mjs
           node tests/product-upload-next-http.mjs
           node tests/admin-quick-tools.runtime.mjs > evidence/product-upload/admin-runtime.json
@@ -96,7 +98,6 @@ jobs:
           name: product-upload-regression-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             evidence/product-upload
-            evidence/product-skn/candidate-http.json
             evidence/seo-discovery/candidate
             test-results/admin-product-delete
             test-results/admin-navigation

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { photoIdentity } from '../deploy/product-upload/engine.mjs';
 
@@ -17,7 +17,7 @@ const PHOTO = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQ
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const objects = new Map(), blobCalls = [], apiCalls = [], results = [];
 const sizeVariants = ['M','L','XL','XXL'].map((size,index) => ({id:index ? 'fixture-'+size : VARIANT,size,images:[]}));
-let fixtureFailure, fixturePort;
+let fixtureFailure, fixturePort,expectedUpload;
 const fixture = createServer((request,response) => {
   void handle(request,response).catch(error => {
     fixtureFailure = error;
@@ -77,17 +77,20 @@ async function handle(request,response) {
   const body=JSON.parse(raw),call={path:url.pathname,method:request.method,body};apiCalls.push(call);
   if(url.pathname.endsWith('/images/ticket')) {
     assert.deepEqual(Object.keys(body).sort(),['mimeType','sizeBytes']);
-    assert.equal(body.mimeType,'image/png');assert.equal(body.sizeBytes,PHOTO.length);
+    assert.equal(body.mimeType,expectedUpload.type);assert.equal(body.sizeBytes,expectedUpload.bytes.length);
     return sendJson(response,{token:'fixture-only-upload-ticket'});
   }
   assert.equal(url.pathname,'/v1/admin/inventory/'+VARIANT+'/images');
-  assert.deepEqual(Object.keys(body).sort(),['alt','applyToColor','isMain','storagePath','url']);
-  assert.equal(body.alt,ALT);assert.equal(body.applyToColor,true);assert.equal(body.isMain,true);
+  assert.deepEqual(Object.keys(body).filter(key=>key!=='isMain').sort(),['alt','applyToColor','storagePath','url']);
+  assert.equal(body.alt,expectedUpload.alt);assert.equal(body.applyToColor,true);
+  // isMain is intentionally optional on the retained BFF. Cover selection is
+  // established by first-upload order and verified against the captured API.
+  if(body.isMain!==undefined)assert.equal(body.isMain,expectedUpload.isMain);
   for(const variant of sizeVariants) {
     const existing=variant.images.find(image=>image.url===body.url);
     const image=existing||{id:'fixture-photo-'+variant.size,url:body.url};
-    Object.assign(image,{alt:body.alt,storagePath:body.storagePath,position:0});
-    variant.images=[image,...variant.images.filter(other=>other.url!==image.url)];
+    Object.assign(image,{alt:body.alt,storagePath:body.storagePath});
+    if(!existing){image.position=variant.images.length;variant.images.push(image);}
   }
   return sendJson(response,{id:VARIANT,sku:'FIXTURE-SKU-M',images:sizeVariants[0].images});
 }
@@ -107,9 +110,10 @@ const child=spawn(process.execPath,['--require',path.resolve('tests/fixtures/pho
 });
 let log='';const append=bytes=>{log=(log+bytes.toString()).slice(-10000);};child.stdout.on('data',append);child.stderr.on('data',append);
 const base='http://127.0.0.1:'+port;
-async function post({code=IMAGE_SKU,number=String(NUMBER),type='image/png',bytes=PHOTO,cookie='fixture-photo-admin'}={}) {
+async function post({code=IMAGE_SKU,number=String(NUMBER),type='image/png',bytes=PHOTO,alt=ALT,isMain=true,cookie='fixture-photo-admin'}={}) {
+  expectedUpload={type,bytes,alt,isMain};
   const form=new FormData();form.set('file',new File([bytes],'fixture.png',{type}));
-  form.set('imageSku',code);form.set('photoNumber',number);form.set('alt',ALT);form.set('isMain','true');form.set('applyToColor','true');
+  form.set('imageSku',code);form.set('photoNumber',number);form.set('alt',alt);form.set('isMain',String(isMain));form.set('applyToColor','true');
   const response=await fetch(base+'/api/admin/inventory/'+VARIANT+'/images',{method:'POST',headers:cookie?{cookie:'hidi_admin_access='+cookie}:{},body:form,signal:AbortSignal.timeout(30000)});
   const body=await response.json().catch(()=>({}));if(fixtureFailure)throw fixtureFailure;return {response,body};
 }
@@ -132,7 +136,7 @@ try {
   assert.equal(attachment.url,'https://fixture.invalid/media/'+key);assert.equal(attachment.storagePath,'azure://product-media/'+key);
   assert(sizeVariants.every(variant=>variant.images.length===1&&variant.images[0].url===attachment.url&&variant.images[0].alt===ALT&&variant.images[0].position===0));
   pass('Actual Next content-derived Blob key, ticket bytes and metadata URL/storage path');
-  pass('Authenticated applyToColor, main-photo and alt fields reach all four fixture sizes');
+  pass('Authenticated colour sharing and alt text reach all four sizes; the first chosen photo is their cover');
 
   const beforeRetry=blobCalls.length,retry=await post();assert.equal(retry.response.status,200,JSON.stringify(retry.body));
   assert.deepEqual(blobCalls.slice(beforeRetry).map(call=>call.method),['PUT','HEAD','GET']);
@@ -151,6 +155,33 @@ try {
   objects.get(key).bytes=Buffer.from(PHOTO);
   pass('Same-key mismatched saved bytes fail before attachment and cannot overwrite the fixture object');
 
+  const additional=await post({number:'1',alt:'Gallery photo after the chosen cover',isMain:false});
+  assert.equal(additional.response.status,200,JSON.stringify(additional.body));
+  const additionalIdentity=await photoIdentity({imageSku:IMAGE_SKU,sequence:1,file:image});
+  assert.equal(objects.size,2);assert(objects.has('products/variants/fixture_variant'+additionalIdentity.suffix));
+  assert(sizeVariants.every(v=>v.images.length===2&&v.images[0].url===attachment.url&&v.images[0].position===0&&v.images[1].position===1&&v.images[1].alt==='Gallery photo after the chosen cover'));
+  pass('Uploading the chosen numbered cover first preserves it when lower-numbered gallery photos append later');
+
+  const beforeJsonApi=apiCalls.length,beforeJsonBlob=blobCalls.length,coverIds=sizeVariants.map(v=>v.images[0].id);
+  expectedUpload={alt:'Updated alternative text for the retained cover'};
+  const jsonResponse=await fetch(base+'/api/admin/inventory/'+VARIANT+'/images',{method:'POST',headers:{cookie:'hidi_admin_access=fixture-photo-admin','content-type':'application/json'},body:JSON.stringify({url:attachment.url,storagePath:attachment.storagePath,alt:expectedUpload.alt,applyToColor:true}),signal:AbortSignal.timeout(30000)});
+  const jsonBody=await jsonResponse.json();if(fixtureFailure)throw fixtureFailure;assert.equal(jsonResponse.status,200,JSON.stringify(jsonBody));
+  assert.equal(apiCalls.length,beforeJsonApi+1);assert.equal(blobCalls.length,beforeJsonBlob,'Known-cover alt refresh must not upload another Blob or obtain an image ticket.');
+  assert.deepEqual(sizeVariants.map(v=>v.images[0].id),coverIds);
+  assert(sizeVariants.every(v=>v.images.length===2&&v.images[0].url===attachment.url&&v.images[0].position===0&&v.images[0].alt===expectedUpload.alt));
+  pass('Existing JSON image route refreshes known-cover alt on every size without changing row IDs, order or Blob objects');
+
+  for(const [size,type]of [[5*1024*1024+1,'image/jpeg'],[8*1024*1024+1,'image/jpeg'],[10*1024*1024+1,'image/jpeg'],[LIMIT,'image/jpeg'],[LIMIT,'image/png'],[LIMIT,'image/webp'],[LIMIT,'image/avif']]) {
+    const bytes=Buffer.alloc(size);PHOTO.copy(bytes);const code='LIMIT_'+type.split('/')[1].toUpperCase()+'_'+size;
+    const beforeApi=apiCalls.length,beforeBlob=blobCalls.length,accepted=await post({code,number:'1',type,bytes,alt:'Fixture limit image',isMain:false});
+    assert.equal(accepted.response.status,200,JSON.stringify(accepted.body));assert.equal(apiCalls.length,beforeApi+2);assert.equal(blobCalls.length,beforeBlob+1);
+    const upload=blobCalls.at(-1);assert.equal(upload.bytes,size);assert(objects.get(upload.name).bytes.equals(bytes));assert.equal(objects.get(upload.name).type,type);
+    pass('Retained Next accepts '+type+' '+size+' bytes and preserves the entire image in the fixture Blob');
+  }
+  const config=JSON.parse(await readFile(path.join(runtime,'apps/web/.next/required-server-files.json'),'utf8'));
+  assert.equal(config.config.experimental.proxyClientMaxBodySize,14*1024*1024);
+  pass('Retained Next request-body allowance remains 14 MiB for the 12 MiB photo limit');
+
   for(const [name,options]of [
     ['nonletter Image SKU',{code:'123_BAD'}],['lowercase Image SKU',{code:'fixture_kur'}],['path Image SKU',{code:'BAD/CODE'}],
     ['photo number zero',{number:'0'}],['leading-zero photo number',{number:'07'}],['photo number above 9999',{number:'10000'}],
@@ -168,7 +199,7 @@ try {
   const beforeAnonymous=apiCalls.length,beforeAnonymousBlob=blobCalls.length,anonymous=await post({cookie:null});
   assert.equal(anonymous.response.status,401);assert.equal(apiCalls.length,beforeAnonymous);assert.equal(blobCalls.length,beforeAnonymousBlob);pass('Anonymous upload is denied before ticket and Blob access');
   if(fixtureFailure)throw fixtureFailure;
-  const report={passed:true,actualNextHttp:true,contentHashVerified:true,mainAltVerified:true,duplicateRetryVerified:true,collisionBytesRejected:true,malformedInputDenied:true,anonymousDenied:true,
+  const report={passed:true,actualNextHttp:true,contentHashVerified:true,mainAltVerified:true,duplicateRetryVerified:true,jsonAltRefreshVerified:true,coverByFirstUploadVerified:true,photoLimitVerified:true,requestBodyLimitVerified:true,photoLimitBytes:LIMIT,requestBodyBytes:14*1024*1024,collisionBytesRejected:true,malformedInputDenied:true,anonymousDenied:true,
     checks:results,checkCount:results.length,results,fixtureBlobObjects:objects.size,fixtureMetadataAttachments:sizeVariants.reduce((n,v)=>n+v.images.length,0),productionDatabaseWrites:0,productionBlobWrites:0};
   await mkdir('evidence/product-upload',{recursive:true});await writeFile('evidence/product-upload/next-hash.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
 } finally {

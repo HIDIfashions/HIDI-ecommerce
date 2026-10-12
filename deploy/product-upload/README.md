@@ -11,7 +11,7 @@ Drafts remain hidden. Publication follows confirmed product details and image at
 
 `NEW` creates a draft with generated HIDI identities. `UPDATE` requires an exact existing product ID, SKN or product slug. Existing product URLs and SKU identities cannot be renamed by this tool. Blank update fields preserve saved details, garment measurements, collections, stock and galleries. Updating a published product first moves it to draft; the page explains this and asks for confirmation before the user saves.
 
-Each product colour needs its own `image_sku`, such as `KUR_001`. Photos can match automatically as `KUR_001_1.jpeg`, `KUR_001_2.jpeg`, or be listed explicitly in `photo_names` using semicolons. `main_photo` and `photo_alt` control the cover and alternative text. Supported images are JPEG, PNG, WebP and AVIF, at most 12 MB each and 1,000 files per batch.
+Each product colour needs its own `image_sku`, such as `KUR_001`. Photos can match automatically as `KUR_001_1.jpeg`, `KUR_001_2.jpeg`, or be listed explicitly in `photo_names` using semicolons. For a new product or empty colour gallery, the chosen `main_photo` uploads first and becomes its cover; remaining photos retain their order. Existing UPDATE covers are preserved. Choosing a different existing-gallery cover is blocked during review before any product writes. `photo_alt` supplies alternative text. Supported images are JPEG, PNG, WebP and AVIF, at most 12 MB each and 1,000 files per batch.
 
 Stock quantities are preserved. New variants start at zero; use the existing **Receive Stock** page for inventory. The template covers the current catalogue inputs, including price, MRP, weight and six garment measurements. Supplier purchase cost and inventory receipts remain in their existing workflows.
 
