@@ -1,5 +1,5 @@
 name: Guarded Admin product and image upload release
-# Trace the loaded retry helper before guarded browser and storefront checks.
+# Verify the cached webpack upload helper before guarded browser checks.
 on:
   push:
     branches: [migration/azure-sql-blob]
