@@ -1,5 +1,5 @@
 name: Guarded Admin product and image upload release
-# Check rendered catalogue counts through semantic labels across browsers.
+# Check semantic catalogue counts and real keyboard focus across browsers.
 on:
   push:
     branches: [migration/azure-sql-blob]
