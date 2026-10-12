@@ -19,6 +19,11 @@ def load(name, path):
     return module
 cloud = load('owner_cloud', ROOT / 'privacy-policy/rollout.py')
 terminal = load('owner_terminal', ROOT / 'admin-delete/schema-readiness.py')
+# Use the stable ARM read endpoint for state capture; no extension serializer.
+def app_state(name):
+    assert name in {'hidi-api', 'hidi-web'}
+    return cloud.azure('rest', '--method', 'get', '--url', 'https://management.azure.com/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod/providers/Microsoft.App/containerApps/' + name + '?api-version=2025-07-01')
+cloud.app = app_state
 def main():
     private = Path(os.environ['RUNNER_TEMP']) / 'hidi-order-readiness-private'
     private.mkdir(exist_ok=True); private.chmod(0o700)
