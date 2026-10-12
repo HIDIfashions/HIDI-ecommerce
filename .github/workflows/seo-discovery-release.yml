@@ -1,4 +1,4 @@
-name: Release HIDI SEO identity and consistent response headers
+name: Release HIDI SEO public and private header policies
 on:
   push:
     branches: [migration/azure-sql-blob]

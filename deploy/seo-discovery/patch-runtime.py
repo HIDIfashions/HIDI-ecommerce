@@ -6,7 +6,7 @@ HERE = Path(__file__).resolve().parent
 BASE_SHA = '6292e91f0a84c8d45febc9e0fae418417ad2893c53e01cc2a8569451e0ebe44d'
 PHASE1_SHA = '5bef6e854810aaf5b536c6ef389366d6435857926435ec3acb010426312d6135'
 HEADER_BEFORE = '    const contentType = String(responseHeaders["content-type"] || "");'
-HEADER_AFTER = HEADER_BEFORE + '\n    if (status === 200 && contentType.includes("text/html") && !shouldNoIndex(request, pathname)) delete responseHeaders["x-robots-tag"];'
+HEADER_AFTER = HEADER_BEFORE + '\n    if (status === 200 && contentType.includes("text/html")) {\n      if (shouldNoIndex(request, pathname)) responseHeaders["x-robots-tag"] = "noindex, nofollow, noarchive";\n      else delete responseHeaders["x-robots-tag"];\n    }'
 
 def patch_text(source):
     source_sha=hashlib.sha256(source.encode()).hexdigest()
