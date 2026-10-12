@@ -57,7 +57,7 @@ export async function probe(base, output) {
   assert(xml.includes('/products/'),'Sitemap includes the read-only public catalogue');
   assert(!xml.includes('thehidi.com')&&!xml.includes('/cart'));
   if(base.startsWith('https://hidiindia.com')) {
-    for(const path of [publishedImages[0],publishedImages[Math.floor(publishedImages.length/2)],publishedImages.at(-1)]) {
+    for(const path of [publishedImages[0],publishedImages[Math.floor(publishedImages.length/2)],publishedImages.at(-1),'/brand/hidi-logo-header.svg']) {
       const res=await fetch(base+path,{method:'HEAD',headers:seoHeaders});
       assert.equal(res.status,200,'Published product image remains accessible');
       assert(res.headers.get('content-type')?.startsWith('image/'),'Existing image MIME type is preserved');
@@ -88,6 +88,8 @@ export async function probe(base, output) {
           return route.continue();
         });
         const page=await context.newPage();page.setDefaultTimeout(45000);
+        const headErrors=[];
+        page.on('pageerror',error=>{if(/NotFoundError|removeChild|HierarchyRequestError|Rendered fewer hooks/i.test(String(error)))headErrors.push(String(error));});
         const checks=[];
         try {
           const pages=width===390||width===1440?['home','catalogue','product','bag','checkout']:['catalogue','product'];
@@ -160,7 +162,7 @@ export async function probe(base, output) {
           if(width===390||width===1440) {
             for(const path of ['/collections/work-wear','/collections/casual-wear','/collections/occasional-wear','/collections/ananyas-pick']) {
               assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
-              await page.locator('main h1').waitFor();
+              await page.locator('main h1').waitFor({state:'attached'});
               const raw=await fetch(base+path,{headers:seoHeaders});assert.equal(raw.status,200);
               await assertSearchMetadata(page,path,await raw.text());
               checks.push({page:'collection-search-metadata',path,passed:true});
@@ -196,6 +198,7 @@ export async function probe(base, output) {
             await assertSearchMetadata(page,'/');
             checks.push({page:'back-forward-reload-metadata',passed:true});
           }
+          assert.deepEqual(headErrors,[],'Metadata reconciliation must not break framework DOM ownership');
           results.push({engine,width,height,passed:true,checks});
           console.log(`PASS: ${engine} ${width}x${height}: footer links clear the purchase bar; other layouts preserved`);
         } catch(error) {

@@ -42,6 +42,9 @@ test('image eligibility is limited to exact published catalogue assets',()=>{
   assert(isPublishedProductImage(known));
   assert(shouldIndexPublishedImage(200,'image/webp','hidiindia.com',known));
   assert(shouldIndexPublishedImage(200,'image/jpeg; charset=binary','www.hidiindia.com',known));
+  assert(shouldIndexPublishedImage(200,'image/svg+xml','hidiindia.com','/brand/hidi-logo-header.svg'));
+  assert(!shouldIndexPublishedImage(200,'image/svg+xml','hidiindia.com','/brand/unknown.svg'));
+  assert(!shouldIndexPublishedImage(200,'image/svg+xml','thidigk.thehidi.com','/brand/hidi-logo-header.svg'));
   for(const input of [[404,'image/webp','hidiindia.com'],[304,'image/webp','hidiindia.com'],[200,'application/json','hidiindia.com'],[200,'image/webp','thidigk.thehidi.com'],[200,'image/webp','thehidi.com']])assert(!shouldIndexPublishedImage(...input,known));
   for(const path of ['/admin','/api/orders','/media/private/customer.jpg','/media/products/variants/unknown/private.jpg',known+'/other',known+'?private=1']){
     assert(!isPublishedProductImage(path));assert(!shouldIndexPublishedImage(200,'image/webp','hidiindia.com',path));

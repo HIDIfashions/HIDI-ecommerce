@@ -4,8 +4,10 @@ import publishedProductImages from './published-product-images.json' with {type:
 const publishedProductImagePaths = new Set(publishedProductImages);
 export function isPublishedProductImage(pathname) { return publishedProductImagePaths.has(pathname); }
 export function shouldIndexPublishedImage(status, contentType, hostname, pathname) {
-  return status === 200 && /^image\/(?:jpeg|png|webp|avif)(?:;|$)/i.test(contentType)
-    && ['hidiindia.com', 'www.hidiindia.com'].includes(hostname) && isPublishedProductImage(pathname);
+  const productImage = /^image\/(?:jpeg|png|webp|avif)(?:;|$)/i.test(contentType) && isPublishedProductImage(pathname);
+  // The existing Organization graph names this verified, public brand logo.
+  const brandLogo = pathname === '/brand/hidi-logo-header.svg' && /^image\/svg\+xml(?:;|$)/i.test(contentType);
+  return status === 200 && ['hidiindia.com', 'www.hidiindia.com'].includes(hostname) && (productImage || brandLogo);
 }
 export const canonicalOrigin = 'https://hidiindia.com';
 const legacyHosts = new Set(['thehidi.com', 'www.thehidi.com', 'thidigk.thehidi.com', 'azure-preview.thehidi.com', 'www.hidiindia.com', 'localhost', '127.0.0.1']);
