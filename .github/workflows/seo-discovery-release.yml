@@ -1,4 +1,4 @@
-name: Release HIDI SEO identity and crawl eligibility
+name: Release HIDI SEO identity and consistent response headers
 on:
   push:
     branches: [migration/azure-sql-blob]

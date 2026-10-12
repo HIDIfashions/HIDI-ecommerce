@@ -52,6 +52,9 @@ export async function probe(base, output) {
             }
             if(key==='product'&&width<=620)await page.locator('[class*="add-to-cart_mobileBar__"]').waitFor({state:'visible'});
             const expectedPrivate=['bag','checkout'].includes(key);
+            const headerResponse=await fetch(base+path,{method:'HEAD',headers:seoHeaders});
+            assert.equal(headerResponse.status,200);
+            assert.equal(headerResponse.headers.get('x-robots-tag')?.includes('noindex')??false,expectedPrivate,'HEAD and GET indexing policies agree');
             const seo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
             assert.equal(seo.canonical,'https://hidiindia.com'+path,'Canonical must match the current route after hydration');
             assert.equal(seo.robots?.includes('noindex'),expectedPrivate,'Public pages index; utility pages retain noindex');
@@ -126,6 +129,8 @@ export async function probe(base, output) {
     } finally {await browser.close();}
   }
   assert.deepEqual(writes,[],'No commerce writes permitted');
+  const missing=await fetch(base+'/products/hidi-seo-missing-8f29017',{method:'HEAD',headers:seoHeaders});
+  assert.equal(missing.status,404,'Missing product status remains accurate');
   const report={passed:true,engines,results,liveWrites:0,footerLinksAccessible:true};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));
   return report;

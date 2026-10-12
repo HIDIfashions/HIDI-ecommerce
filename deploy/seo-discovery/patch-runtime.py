@@ -4,10 +4,20 @@ import hashlib
 
 HERE = Path(__file__).resolve().parent
 BASE_SHA = '6292e91f0a84c8d45febc9e0fae418417ad2893c53e01cc2a8569451e0ebe44d'
+PHASE1_SHA = '5bef6e854810aaf5b536c6ef389366d6435857926435ec3acb010426312d6135'
+HEADER_BEFORE = '    const contentType = String(responseHeaders["content-type"] || "");'
+HEADER_AFTER = HEADER_BEFORE + '\n    if (status === 200 && contentType.includes("text/html") && !shouldNoIndex(request, pathname)) delete responseHeaders["x-robots-tag"];'
 
 def patch_text(source):
-    assert hashlib.sha256(source.encode()).hexdigest() == BASE_SHA, 'Live wrapper changed; inspect the new baseline first'
+    source_sha=hashlib.sha256(source.encode()).hexdigest()
+    if source_sha == PHASE1_SHA:
+        assert source.count(HEADER_BEFORE)==1 and HEADER_AFTER not in source, 'Reviewed public-header anchor changed'
+        result=source.replace(HEADER_BEFORE,HEADER_AFTER,1)
+        assert result.replace(HEADER_AFTER,HEADER_BEFORE,1)==source, 'Changes outside the SEO response header'
+        return result
+    assert source_sha == BASE_SHA, 'Live wrapper changed; inspect the new baseline first'
     changes = [
+        (HEADER_BEFORE, HEADER_AFTER),
         ('const primarySiteOrigin = "https://thehidi.com";', 'const primarySiteOrigin = "https://hidiindia.com";'),
         ('const productionHosts = new Set(["thehidi.com", "www.thehidi.com"]);', 'const productionHosts = new Set(["thehidi.com", "www.thehidi.com", "hidiindia.com", "www.hidiindia.com"]);'),
         ('"Sitemap: https://thehidi.com/sitemap.xml"', '"Sitemap: https://hidiindia.com/sitemap.xml"'),
