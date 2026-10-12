@@ -15,7 +15,8 @@ import { HEADERS } from '../deploy/product-upload/model.mjs';
 import { parseCreate, parseEdit, parseAddVariants, parseVariantEdit, parseStatus, makeSku } from '../apps/api/src/admin/products/product-input.ts';
 
 const VIEWPORTS = [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }];
-const TOOL_PATHS = ['/admin/product-upload', '/admin/product-photos', '/admin/landing-media', '/admin/packing-scanner', '/admin/product-quick-fill', '/admin/product-bulk'];
+const UPLOAD_PATH = '/admin/product-upload';
+const REQUIRED_RETAINED_TOOLS = ['/admin/landing-media', '/admin/packing-scanner', '/admin/product-quick-fill', '/admin/product-bulk'];
 const OLD_NATIVE_PATHS = ['/admin/products', '/admin/import', '/admin/products/price-tags', '/admin/inventory', '/admin/orders'];
 const RETAINED_HYDRATION_ERROR = 'Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.';
 const PHOTO_BYTES = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64');
@@ -25,6 +26,23 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const sleep = ms => new Promise(done => setTimeout(done, ms));
 const escapeXml = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const column = index => { let value = index + 1, result = ''; while (value) { const remainder = (value - 1) % 26; result = String.fromCharCode(65 + remainder) + result; value = Math.floor((value - 1) / 26); } return result; };
+
+export function parseNavigationTools(source) {
+  const table = source.match(/\bconst tools = \[([\s\S]*?)\n\s*\];/); assert(table, 'Retained navigation has its explicit tool table');
+  const objects = [...table[1].matchAll(/\{\s*key:\s*'([^']+)',\s*label:\s*'([^']+)',\s*href:\s*'([^']+)',\s*icon:\s*'([^']*)',\s*marker:\s*'([^']+)'\s*\}/g)].map(([, key, label, href, icon, marker]) => ({ key, label, href, icon, marker }));
+  assert(objects.length >= 4); assert.equal(new Set(objects.map(tool => tool.key)).size, objects.length, 'Tool keys are unique'); assert.equal(new Set(objects.map(tool => tool.href)).size, objects.length, 'Tool paths are unique');
+  assert.equal((table[1].match(/\bkey:/g) || []).length, objects.length, 'Every retained tool row is parsed');
+  return objects;
+}
+export async function runtimeNavigationContract(runtime = process.env.HIDI_CANDIDATE_RUNTIME) {
+  assert(runtime, 'The freshly captured candidate and base runtimes are required for retained navigation verification'); const candidateRoot = resolve(runtime), baseRoot = join(dirname(candidateRoot), 'base-app');
+  const baselineSource = await readFile(join(baseRoot, 'admin-tools/navigation.js'), 'utf8'), candidateSource = await readFile(join(candidateRoot, 'admin-tools/navigation.js'), 'utf8'), baselineTools = parseNavigationTools(baselineSource), candidateTools = parseNavigationTools(candidateSource);
+  assert(!baselineTools.some(tool => tool.href === UPLOAD_PATH || tool.key === 'product-upload'), 'Fresh baseline cannot already contain the new uploader');
+  for (const path of REQUIRED_RETAINED_TOOLS) assert.equal(baselineTools.filter(tool => tool.href === path).length, 1, 'Required existing Admin tool: ' + path);
+  const additions = candidateTools.filter(tool => tool.key === 'product-upload'); assert.equal(additions.length, 1, 'Exactly one new Product Upload tab'); const addition = additions[0]; assert.equal(addition.label, 'Product Upload'); assert.equal(addition.href, UPLOAD_PATH); assert.equal(addition.marker, 'hidiProductUpload'); assert(addition.icon.length > 0);
+  assert.equal(candidateTools.length, baselineTools.length + 1, 'Only one tool is added'); assert.deepEqual(candidateTools.filter(tool => tool.key !== 'product-upload'), baselineTools, 'Every original tool object and its order are retained exactly');
+  return { baseRoot, candidateRoot, baselineTools, candidateTools, baselineNavigationSha256: hash(Buffer.from(baselineSource)), candidateNavigationSha256: hash(Buffer.from(candidateSource)) };
+}
 
 function zipEntries(bytes) {
   let end = -1;
@@ -134,7 +152,15 @@ async function receivePhoto(state, request, response) {
 
 async function listen(server) { await new Promise(done => server.listen(0, '127.0.0.1', done)); return server.address().port; }
 async function close(server) { server.closeAllConnections(); await new Promise(done => server.close(done)); }
-async function stop(child) { if (!child || child.exitCode !== null) return; child.kill('SIGTERM'); await new Promise(done => { child.once('exit', done); setTimeout(() => { child.kill('SIGKILL'); done(); }, 5000).unref(); }); }
+const ownedProcessGroups = new WeakSet();
+async function stop(child) {
+  if (!child) return;
+  const signal = value => { if (ownedProcessGroups.has(child)) { try { process.kill(-child.pid, value); } catch (error) { if (error.code !== 'ESRCH') throw error; } } else if (child.exitCode === null) child.kill(value); };
+  signal('SIGTERM'); if (child.exitCode === null) await new Promise(done => { child.once('exit', done); setTimeout(() => { signal('SIGKILL'); done(); }, 5000).unref(); });
+  // Both disposable wrappers start their own Next child on the retained default
+  // port. Kill only our own isolated group so no child can survive into the next run.
+  signal('SIGKILL'); ownedProcessGroups.delete(child);
+}
 
 async function waitUntil(test, message, timeout = 20000) { const start = Date.now(); while (!test()) { assert(Date.now() - start < timeout, message); await sleep(50); } }
 async function noOverflow(page) { const bounds = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth })); assert(bounds.scroll <= bounds.width + 1, 'Product Upload fits the viewport: ' + JSON.stringify(bounds)); return Math.max(0, bounds.scroll - bounds.width); }
@@ -147,35 +173,37 @@ async function review(page, template, rows, files = [], folder = null) {
 async function finish(page, button) { await page.locator(button).click(); await page.locator('#report-box').waitFor(); await page.locator('#stop').waitFor({ state: 'hidden' }); await noOverflow(page); }
 async function openTool(page, base) { await page.goto(base + '/admin/product-upload', { waitUntil: 'domcontentloaded' }); await page.locator('#upload-flow').waitFor(); await page.locator('#template').waitFor(); }
 
-async function retainedAdminCheck(page, base, state) {
+async function retainedAdminCheck(page, base, state, contract) {
   // Existing standalone tools retain their actual modules and controls; the
   // existing native importer and Products page are loaded rather than mocked.
   const writeCount = state.writes.length;
   await page.goto(base + '/admin/product-quick-fill', { waitUntil: 'domcontentloaded' }); await page.getByRole('heading', { name: 'Product Quick Fill', exact: true }).waitFor();
   await page.goto(base + '/admin/product-bulk', { waitUntil: 'domcontentloaded' }); await page.getByRole('heading', { name: 'Bulk Product Details', exact: true }).waitFor(); await page.locator('#preview').waitFor();
-  await page.goto(base + '/admin/product-photos', { waitUntil: 'domcontentloaded' }); await page.getByRole('heading', { name: 'Photos by SKN', exact: true }).first().waitFor();
-  await page.goto(base + '/admin/packing-scanner', { waitUntil: 'domcontentloaded' }); await page.getByRole('heading', { name: /Packing/ }).first().waitFor(); await page.locator('#scan').waitFor();
+  if (contract.baselineTools.some(tool => tool.href === '/admin/product-photos')) { await page.goto(base + '/admin/product-photos', { waitUntil: 'domcontentloaded' }); await page.getByRole('heading', { name: /^(?:Photos by SKN|Photos by Image SKU)$/ }).waitFor(); }
+  await page.goto(base + '/admin/packing-scanner', { waitUntil: 'domcontentloaded' }); await page.getByRole('heading', { name: 'Packing Scanner', exact: true }).waitFor(); await page.locator('#scan').waitFor({ state: 'attached' }); assert(await page.locator('#scan').isDisabled(), 'Scanner waits for a selected order'); assert(await page.locator('#workspace').isHidden(), 'Packing workspace remains hidden until an order is selected');
   const first = [...state.records.values()][0];
   await page.goto(base + '/admin/product-delete?product=' + first.id, { waitUntil: 'domcontentloaded' }); await page.getByRole('heading', { name: 'Delete product', exact: true }).waitFor(); await page.locator('#loading').waitFor({ state: 'hidden' }); assert(await page.locator('#deleteButton').isDisabled(), 'Delete retains explicit typed confirmation');
   await page.goto(base + '/admin/products', { waitUntil: 'domcontentloaded' });
-  const navigation = page.locator('nav[aria-label="Admin navigation"]').first(); await navigation.locator('[data-hidi-admin-tool]').nth(5).waitFor({ state: 'attached' });
-  const paths = await navigation.locator('[data-hidi-admin-tool]').evaluateAll(links => links.map(link => new URL(link.href).pathname)); assert.equal(paths.length, 6, 'Exactly six tool tabs'); assert.deepEqual([...paths].sort(), [...TOOL_PATHS].sort(), 'New tab retains all five old tool tabs');
+  const navigation = page.locator('nav[aria-label="Admin navigation"]').first(); await navigation.locator('[data-hidi-admin-tool]').nth(contract.candidateTools.length - 1).waitFor({ state: 'attached' });
+  const actualTools = await navigation.locator('[data-hidi-admin-tool]').evaluateAll((links, expected) => links.map((link, index) => ({ key: link.dataset.hidiAdminTool, label: link.querySelector('span').textContent, href: new URL(link.href).pathname, marker: link.dataset[expected[index]?.marker] })), contract.candidateTools); assert.equal(actualTools.length, contract.candidateTools.length, 'Exactly the original tabs plus one Product Upload tab'); assert.deepEqual(actualTools, contract.candidateTools.map(tool => ({ key: tool.key, label: tool.label, href: tool.href, marker: 'true' })), 'Ordered tool identities, labels, paths and original marker attributes are retained');
   for (const path of OLD_NATIVE_PATHS) assert.equal(await navigation.locator('a[href="' + path + '"]').count(), 1, 'Native link retained: ' + path);
-  await page.locator('[data-hidi-product-delete]').first().waitFor({ state: 'attached' }); assert.equal(await page.locator('[data-hidi-product-delete]').count(), state.records.size, 'Products list retains deletion controls'); if ((await page.viewportSize()).width < 900) { await page.locator('[data-hidi-admin-workspace] header').getByRole('button', { name: 'Open navigation', exact: true }).click(); const drawer = page.getByRole('dialog', { name: 'Admin navigation', exact: true }); await drawer.waitFor(); assert.equal(await drawer.locator('[data-hidi-admin-tool]').count(), 6); for (const link of await drawer.locator('[data-hidi-admin-tool]').all()) { await link.scrollIntoViewIfNeeded(); const bounds = await link.boundingBox(); assert(bounds && bounds.x >= 0 && bounds.x + bounds.width <= (await page.viewportSize()).width + 1, 'All six mobile tabs fit the drawer'); } await drawer.getByRole('button', { name: 'Close navigation', exact: true }).click(); }
+  await page.locator('[data-hidi-product-delete]').first().waitFor({ state: 'attached' }); assert.equal(await page.locator('[data-hidi-product-delete]').count(), state.records.size, 'Products list retains deletion controls'); if ((await page.viewportSize()).width < 900) { await page.locator('[data-hidi-admin-workspace] header').getByRole('button', { name: 'Open navigation', exact: true }).click(); const drawer = page.getByRole('dialog', { name: 'Admin navigation', exact: true }); await drawer.waitFor(); assert.equal(await drawer.locator('[data-hidi-admin-tool]').count(), contract.candidateTools.length); for (const link of await drawer.locator('[data-hidi-admin-tool]').all()) { await link.scrollIntoViewIfNeeded(); const bounds = await link.boundingBox(); assert(bounds && bounds.x >= 0 && bounds.x + bounds.width <= (await page.viewportSize()).width + 1, 'Every retained and new mobile tab fits the drawer'); } await drawer.getByRole('button', { name: 'Close navigation', exact: true }).click(); }
   assert.equal(state.writes.length, writeCount, 'Opening retained Admin tools never performs a fixture write');
   return true;
 }
 
 export async function runCandidateRegression() {
   const runtime = process.env.HIDI_CANDIDATE_RUNTIME; assert(runtime, 'HIDI_CANDIDATE_RUNTIME must point to the extracted candidate application');
-  const root = resolve(runtime), reportPath = resolve(process.env.HIDI_UPLOAD_OUTPUT || 'evidence/product-upload/candidate/report.json'), output = dirname(reportPath);
+  const contract = await runtimeNavigationContract(runtime); const root = resolve(runtime), reportPath = resolve(process.env.HIDI_UPLOAD_OUTPUT || 'evidence/product-upload/candidate/report.json'), output = dirname(reportPath);
   const playwright = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
   const engines = (process.env.HIDI_BROWSER_ENGINES || 'chromium,firefox,webkit').split(','); assert.deepEqual([...engines].sort(), ['chromium', 'firefox', 'webkit']);
-  const escaped = [], results = []; let currentState = null, log = '', child;
+  const escaped = [], results = []; let currentState = null, log = '', child, baselineChild;
   const upstream = createServer((request, response) => { if (!['GET', 'HEAD'].includes(request.method)) escaped.push(request.method + ' ' + request.url); response.writeHead(401, { 'content-type': 'application/json' }); response.end('{"message":"Read-only fixture: no production access."}'); });
   const upstreamPort = await listen(upstream), reserve = createServer(), serverPort = await listen(reserve); await close(reserve);
-  child = spawn(process.execPath, [join(root, 'server.mjs')], { cwd: root, env: { ...process.env, PORT: String(serverPort), API_URL: 'http://127.0.0.1:' + upstreamPort + '/v1', INTERNAL_API_URL: 'http://127.0.0.1:' + upstreamPort + '/v1' }, stdio: ['ignore', 'pipe', 'pipe'] });
-  child.stdout.on('data', data => { log += data; }); child.stderr.on('data', data => { log += data; });
+  const startRuntime = (application, port, prefix = '') => { const processChild = spawn(process.execPath, [join(application, 'server.mjs')], { cwd: application, detached: true, env: { ...process.env, PORT: String(port), API_URL: 'http://127.0.0.1:' + upstreamPort + '/v1', INTERNAL_API_URL: 'http://127.0.0.1:' + upstreamPort + '/v1' }, stdio: ['ignore', 'pipe', 'pipe'] }); ownedProcessGroups.add(processChild); processChild.stdout.on('data', data => { log += prefix + data; }); processChild.stderr.on('data', data => { log += prefix + data; }); return processChild; };
+  const baselineReserve = createServer(), baselinePort = await listen(baselineReserve); await close(baselineReserve);
+  baselineChild = startRuntime(contract.baseRoot, baselinePort, '[baseline] ');
+  const baselineBase = 'http://127.0.0.1:' + baselinePort;
   const proxy = createServer(async (request, response) => {
     const pathname = new URL(request.url, 'http://fixture.invalid').pathname;
     if (request.method === 'POST' && /^\/api\/admin\/inventory\/[^/]+\/images$/.test(pathname) && currentState) {
@@ -187,7 +215,18 @@ export async function runCandidateRegression() {
   });
   const base = 'http://127.0.0.1:' + await listen(proxy); await mkdir(output, { recursive: true }); const photoFolder = await mkdtemp(join(tmpdir(), 'hidi-product-upload-fixture-')); for (const file of photoFiles('fixture-cotton')) await writeFile(join(photoFolder, file.name), file.buffer);
   try {
-    let ready = false; for (let attempt = 0; attempt < 150; attempt++) { try { if ((await fetch(base + '/health', { signal: AbortSignal.timeout(1500) })).ok) { ready = true; break; } } catch {} assert.equal(child.exitCode, null, 'Candidate must start: ' + log.slice(-2000)); await sleep(200); } assert(ready, 'Actual retained candidate readiness');
+    let ready = false; for (let attempt = 0; attempt < 150; attempt++) { try { if ((await fetch(baselineBase + '/health', { signal: AbortSignal.timeout(1500) })).ok) { ready = true; break; } } catch {} assert.equal(baselineChild.exitCode, null, 'Captured baseline must start: ' + log.slice(-2000)); await sleep(200); } assert(ready, 'Captured baseline readiness');
+    const baselineRoutes = [], retainedRoutes = [];
+    for (const path of [...new Set([...contract.baselineTools.map(tool => tool.href), ...OLD_NATIVE_PATHS, '/admin/product-delete', '/admin/product-photos'])]) {
+      const before = await fetch(baselineBase + path, { signal: AbortSignal.timeout(30000) });
+      if (contract.baselineTools.some(tool => tool.href === path) || OLD_NATIVE_PATHS.includes(path) || path === '/admin/product-delete') assert.equal(before.status, 200, 'Existing navigation and supported Admin route remains available: ' + path);
+      baselineRoutes.push({ path, status: before.status, contentType: before.headers.get('content-type') }); await before.arrayBuffer();
+    }
+    assert.equal((await fetch(baselineBase + UPLOAD_PATH)).status, 404, 'Captured baseline has no Product Upload page');
+    await stop(baselineChild); baselineChild = null; child = startRuntime(root, serverPort);
+    ready = false; for (let attempt = 0; attempt < 150; attempt++) { try { if ((await fetch(base + '/health', { signal: AbortSignal.timeout(1500) })).ok) { ready = true; break; } } catch {} assert.equal(child.exitCode, null, 'Candidate must start: ' + log.slice(-2000)); await sleep(200); } assert(ready, 'Actual retained candidate readiness');
+    for (const before of baselineRoutes) { const after = await fetch(base + before.path, { signal: AbortSignal.timeout(30000) }); assert.equal(after.status, before.status, 'Retained route status exactly matches captured baseline: ' + before.path); assert.equal(after.headers.get('content-type'), before.contentType, 'Retained route media type matches: ' + before.path); retainedRoutes.push({ path: before.path, baselineStatus: before.status, candidateStatus: after.status }); await after.arrayBuffer(); }
+    assert.equal((await fetch(base + UPLOAD_PATH)).status, 200, 'Candidate adds the Product Upload page');
     const templateResponse = await fetch(base + '/admin-tools-assets/product-upload/HIDI_Product_Upload_Template.xlsx'); assert.equal(templateResponse.status, 200); assert.match(templateResponse.headers.get('content-type'), /spreadsheetml|octet-stream/); const template = Buffer.from(await templateResponse.arrayBuffer()); assert(template.equals(await readFile('deploy/product-upload/HIDI_Product_Upload_Template.xlsx')), 'Runtime serves the reviewed full template byte for byte');
     const entries = zipEntries(template); assert(entries.get('xl/workbook.xml').toString().includes('name="Products"')); assert(entries.get('xl/workbook.xml').toString().includes('name="Examples"')); assert(entries.get('xl/workbook.xml').toString().includes('name="Field guide"'));
     for (const path of ['/api/admin/products/options', '/api/admin/products', '/api/admin/inventory', '/api/hidi/product-image-skus']) assert.equal((await fetch(base + path)).status, 401, 'Actual route requires staff auth: ' + path);
@@ -233,7 +272,7 @@ export async function runCandidateRegression() {
             // Session expiry stops the batch; rechecking access is read-only and
             // restores the same approved files without automatic publication.
             await openTool(page, base); state.expireOnPhotoNumber = 2; await review(page, template, newRows('fixture-session-retry'), photoFiles('fixture-session-retry')); await page.locator('#publish').click(); await page.locator('#auth').waitFor(); assert(await page.locator('#upload-flow').isHidden()); const sessionDraft = bySlug(state, 'fixture-session-retry'); assert.equal(sessionDraft.status, 'DRAFT'); assert.equal(state.published.includes(sessionDraft.id), false); assert.equal(state.photos.filter(photo => photo.productId === sessionDraft.id).length, 1); state.auth = 200; const recoveryWrites = state.writes.length; await page.locator('#auth-check').click(); await page.locator('#upload-flow').waitFor(); assert.equal(state.writes.length, recoveryWrites, 'Rechecking staff access never resumes writes automatically'); await finish(page, '#publish'); assert.equal(sessionDraft.status, 'ACTIVE'); assert.equal(state.photos.filter(photo => photo.productId === sessionDraft.id).length, 2, 'Recovered session resumes only the missing photo');
-            const retainedAdminVerified = await retainedAdminCheck(page, base, state);
+            const retainedAdminVerified = await retainedAdminCheck(page, base, state, contract);
             assert.deepEqual(state.bad, [], 'All traffic matched isolated API fixtures'); assert.deepEqual(errors, [], 'New uploader and retained controls have no new uncaught page errors'); assert(retainedHydrationErrors.length <= 1, 'Only the exact single proven retained Admin hydration warning is allowed'); if (retainedHydrationErrors.length) assert.equal(await page.locator('script[data-hidi-admin-quick-tools]').count(), 1, 'Known warning is confined to the original retained Admin shell'); assert.equal(state.writes.filter(write => write.path.includes('/inventory/') && !write.path.endsWith('/images')).length, 0, 'No inventory quantity or receipt writes'); assert.deepEqual(escaped, [], 'No write escaped localhost fixtures');
             results.push({ engine, ...viewport, passed: true, fixtureDraftSaved: true, fixtureImagesUploaded: true, fixturePublished: true, retainedAdminVerified, reviewReadOnly: true, photoOrderAndMainVerified: true, updateBlanksPreserved: true, photoFailureStayedDraft: true, variantFailureStayedDraft: true, retriesAvoidDuplicates: true, lostResponseReconciled: true, authExpiryStopsAndResumesSafely: true, folderPreviewVerified: true, multiColourMappingVerified: true, savedDraftPublicationAvoidsDuplicates: true, inventoryWrites: 0, fixtureWrites: state.writes.length, fixturePhotoWrites: state.photos.length, retainedBaselineHydrationWarnings: retainedHydrationErrors.length, liveWrites: 0 }); console.log('PASS Product Upload: ' + engine + ' ' + viewport.width + '×' + viewport.height);
           } catch (error) { await page.screenshot({ path: join(output, engine + '-' + viewport.width + '-failure.png'), fullPage: true }).catch(() => {}); await writeFile(join(output, engine + '-' + viewport.width + '-failure.json'), JSON.stringify({ error: error.stack, body: await page.locator('body').innerText().catch(() => ''), fixture: { calls: state.calls, writes: state.writes, photos: state.photos, bad: state.bad, records: [...state.records.values()] }, errors, escaped }, null, 2)); throw error; }
@@ -241,9 +280,9 @@ export async function runCandidateRegression() {
         }
       } finally { await browser.close(); }
     }
-    assert.equal(results.length, 12); assert.deepEqual(escaped, []); const report = { passed: true, liveWrites: 0, actualRetainedRuntime: true, templateRoundTrip: true, authVerified: true, sourceThemeInjected: false, results, templateSha256: hash(template), fixtureOnlyWrites: true, productionDatabaseWrites: 0, productionBlobWrites: 0 }; await writeFile(reportPath, JSON.stringify(report, null, 2)); console.log(JSON.stringify({ passed: true, matrixCases: results.length, report: reportPath })); return report;
+    assert.equal(results.length, 12); assert.deepEqual(escaped, []); const report = { passed: true, liveWrites: 0, actualRetainedRuntime: true, templateRoundTrip: true, authVerified: true, sourceThemeInjected: false, results, templateSha256: hash(template), fixtureOnlyWrites: true, productionDatabaseWrites: 0, productionBlobWrites: 0, baselineTools: contract.baselineTools, candidateTools: contract.candidateTools, baselineNavigationSha256: contract.baselineNavigationSha256, candidateNavigationSha256: contract.candidateNavigationSha256, retainedRoutes }; await writeFile(reportPath, JSON.stringify(report, null, 2)); console.log(JSON.stringify({ passed: true, matrixCases: results.length, report: reportPath })); return report;
   } catch (error) { await writeFile(join(output, 'server.log'), log); throw error; }
-  finally { currentState = null; await close(proxy); await stop(child); await close(upstream); await rm(photoFolder, { recursive: true, force: true }); }
+  finally { currentState = null; await close(proxy); await stop(child); await stop(baselineChild); await close(upstream); await rm(photoFolder, { recursive: true, force: true }); }
 }
 
 /** Read-only production verification. This routine never opens a signed-in
@@ -251,6 +290,8 @@ export async function runCandidateRegression() {
  */
 export async function runReadOnlyLiveProbe(origin, output = 'evidence/product-upload/live') {
   const base = new URL(origin).origin; assert(base.startsWith('https://'), 'Live verification requires the explicit HTTPS storefront origin');
+  const contract = await runtimeNavigationContract(), candidateReport = JSON.parse(await readFile('evidence/product-upload/candidate/report.json', 'utf8'));
+  assert.equal(candidateReport.passed, true, 'Complete tested candidate report required before live verification'); assert.deepEqual(candidateReport.baselineTools, contract.baselineTools); assert.deepEqual(candidateReport.candidateTools, contract.candidateTools); assert.equal(candidateReport.baselineNavigationSha256, contract.baselineNavigationSha256); assert.equal(candidateReport.candidateNavigationSha256, contract.candidateNavigationSha256); assert(Array.isArray(candidateReport.retainedRoutes) && candidateReport.retainedRoutes.length > 0, 'Captured baseline route status evidence required');
   const folder = resolve(output.endsWith('.json') ? dirname(output) : output), reportPath = resolve(output.endsWith('.json') ? output : join(output, 'report.json')); await mkdir(folder, { recursive: true });
   const requests = [], get = async path => { requests.push({ method: 'GET', path }); return fetch(base + path, { headers: { 'cache-control': 'no-cache' }, signal: AbortSignal.timeout(30000) }); };
   const page = await get('/admin/product-upload'); assert.equal(page.status, 200); const pageBytes = Buffer.from(await page.arrayBuffer()); assert(pageBytes.equals(await readFile('deploy/product-upload/page.html')), 'Live uploader page equals the reviewed candidate asset');
@@ -262,12 +303,12 @@ export async function runReadOnlyLiveProbe(origin, output = 'evidence/product-up
     assets.push({ path, sha256: hash(bytes), bytes: bytes.length });
   }
   const retained = [];
-  for (const path of [...TOOL_PATHS.filter(path => path !== '/admin/product-upload'), '/admin/product-delete', ...OLD_NATIVE_PATHS]) { const response = await get(path); assert.equal(response.status, 200, 'Retained Admin route ' + path); const html = await response.text(); assert(!html.includes('/admin-tools-assets/product-upload/styles.css'), 'Uploader styles remain scoped: ' + path); if (path !== '/admin/landing-media' && TOOL_PATHS.includes(path) || path === '/admin/product-delete') assert(!/img-src[^;]*blob:/.test(response.headers.get('content-security-policy') || ''), 'Retained tool image policy unchanged: ' + path); retained.push({ path, status: response.status }); }
-  const navigation = await get('/admin-tools-assets/navigation.js'); assert.equal(navigation.status, 200); const navigationText = await navigation.text(); for (const path of TOOL_PATHS) assert(navigationText.includes(path), 'Retained navigation includes ' + path);
+  for (const expected of candidateReport.retainedRoutes) { const path = expected.path; assert.equal(expected.baselineStatus, expected.candidateStatus, 'Tested route matched the captured baseline'); const response = await get(path); assert.equal(response.status, expected.candidateStatus, 'Live route preserves its captured and tested status: ' + path); const html = await response.text(); assert(!html.includes('/admin-tools-assets/product-upload/styles.css'), 'Uploader styles remain scoped: ' + path); if (path !== '/admin/landing-media' && contract.baselineTools.some(tool => tool.href === path) || path === '/admin/product-delete') assert(!/img-src[^;]*blob:/.test(response.headers.get('content-security-policy') || ''), 'Retained tool image policy unchanged: ' + path); retained.push({ path, baselineStatus: expected.baselineStatus, candidateStatus: expected.candidateStatus, liveStatus: response.status }); }
+  const navigation = await get('/admin-tools-assets/navigation.js'); assert.equal(navigation.status, 200); const navigationText = await navigation.text(); assert.equal(hash(Buffer.from(navigationText)), contract.candidateNavigationSha256, 'Live navigation is the exact tested candidate asset'); assert.deepEqual(parseNavigationTools(navigationText), contract.candidateTools, 'Live navigation adds only Product Upload to the original ordered tools');
   for (const path of ['/api/admin/products/options', '/api/admin/products', '/api/admin/inventory', '/api/hidi/product-image-skus', '/api/hidi/product-deletion/fixture-no-action']) { const response = await get(path); assert.equal(response.status, 401, 'Anonymous staff route denied: ' + path); }
   const customerRoutes = [];
   for (const path of ['/', '/products', '/cart', '/checkout']) { const response = await get(path); assert.equal(response.status, 200, 'Customer route retained: ' + path); const html = await response.text(); assert(!html.includes('/admin-tools-assets/product-upload/'), 'Uploader cannot load on customer pages'); customerRoutes.push({ path, status: response.status }); }
-  const report = { passed: true, liveWrites: 0, productionDatabaseWrites: 0, productionBlobWrites: 0, authVerified: true, bytesVerified: true, customerRoutesRetained: true, retainedAdminVerified: true, assets, retained, customerRoutes, requests }; await writeFile(reportPath, JSON.stringify(report, null, 2)); return report;
+  const report = { passed: true, liveWrites: 0, productionDatabaseWrites: 0, productionBlobWrites: 0, authVerified: true, bytesVerified: true, customerRoutesRetained: true, retainedAdminVerified: true, assets, retained, customerRoutes, requests, baselineTools: contract.baselineTools, candidateTools: contract.candidateTools, baselineNavigationSha256: contract.baselineNavigationSha256, candidateNavigationSha256: contract.candidateNavigationSha256 }; await writeFile(reportPath, JSON.stringify(report, null, 2)); return report;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

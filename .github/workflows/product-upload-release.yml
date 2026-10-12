@@ -1,5 +1,5 @@
 name: Guarded Admin product and image upload release
-# Check semantic catalogue counts and real keyboard focus across browsers.
+# Verify the actual retained Admin routes and tabs, plus real keyboard focus.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -39,6 +39,7 @@ jobs:
           node --check deploy/product-upload/model.mjs
           node --check deploy/product-upload/engine.mjs
           node --check tests/product-upload.browser.mjs
+          node --check tests/product-upload-navigation.browser.mjs
           node --check tests/product-upload-next-http.mjs
           node --check deploy/product-upload/retained-commerce.mjs
           node --test tests/product-upload*.test.mjs
@@ -76,7 +77,7 @@ jobs:
           node tests/admin-quick-tools.runtime.mjs > evidence/product-upload/admin-runtime.json
           node tests/admin-product-delete.browser.mjs
           cp test-results/admin-product-delete/results.json evidence/product-upload/admin-deletion.json
-          HIDI_CANDIDATE_RUNTIME="$RUNNER_TEMP/hidi-product-upload-private/web/base-app" node tests/admin-navigation.browser.mjs
+          node tests/product-upload-navigation.browser.mjs
           node deploy/product-upload/retained-commerce.mjs
           python3 deploy/product-upload/release.py seal
       - name: Publish the exact tested immutable Web image
