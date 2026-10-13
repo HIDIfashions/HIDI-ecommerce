@@ -1,4 +1,4 @@
-name: Release HIDI SEO values with retained framework nodes
+name: Release HIDI SEO image sitemap with storefront preserved
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -41,6 +41,7 @@ jobs:
       - name: Capture live image and verify exact rollback backup
         run: |
           az acr login --name acrhidiprod0927 --only-show-errors
+          node deploy/seo-discovery/image-discovery-check.mjs
           python3 deploy/seo-discovery/release.py capture
           echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-seo-discovery-private/web/candidate-app" >> "$GITHUB_ENV"
       - name: Add only the reviewed SEO layer
@@ -51,10 +52,26 @@ jobs:
           python3 deploy/seo-discovery/release.py seal
       - name: Publish the exact tested web image
         run: python3 deploy/seo-discovery/release.py publish
+      - name: Refresh Azure authentication after candidate verification
+        uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Release SEO layer and verify live metadata, sitemap and retained shopping routes
         id: apply
         timeout-minutes: 20
-        run: timeout --signal=TERM --kill-after=10m 15m python3 deploy/seo-discovery/release.py apply --image "$WEB_IMAGE"
+        run: |
+          node deploy/seo-discovery/image-discovery-check.mjs
+          timeout --signal=TERM --kill-after=10m 15m python3 deploy/seo-discovery/release.py apply --image "$WEB_IMAGE"
+          node deploy/seo-discovery/image-discovery-check.mjs --released
+      - name: Refresh Azure authentication for guarded recovery
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Recover an interrupted owned rollout
         if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
         timeout-minutes: 15

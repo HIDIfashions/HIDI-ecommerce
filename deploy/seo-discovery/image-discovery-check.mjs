@@ -5,7 +5,15 @@ import { identityUrl } from './metadata.mjs';
 import { productImageUrls } from './sitemap.mjs';
 
 const base='https://hidiindia.com';
-const response=await fetch(base+'/api/store/products',{signal:AbortSignal.timeout(30000)});
+async function read(url,options={}) {
+  let error;
+  for(let attempt=0;attempt<2;attempt++) {
+    try {return await fetch(url,{...options,signal:AbortSignal.timeout(30000)});}
+    catch(failure) {error=failure;}
+  }
+  throw error;
+}
+const response=await read(base+'/api/store/products');
 assert.equal(response.status,200);
 const products=await response.json();
 const current=new Set();
@@ -21,20 +29,23 @@ for(const product of products) {
 }
 assert.deepEqual([...current].sort(),[...publishedImages].sort(),'Published image associations changed; refresh before release');
 const requireIndex=process.argv.includes('--released');
-let cursor=0;const results=[];
+let cursor=0;const results=[],failures=[];
 await Promise.all(Array.from({length:4},async()=>{
   while(cursor<publishedImages.length) {
     const path=publishedImages[cursor++];
-    const res=await fetch(base+path,{method:'HEAD',redirect:'manual',signal:AbortSignal.timeout(30000)});
-    assert.equal(res.status,200,path+' is reachable');
-    assert(res.headers.get('content-type')?.startsWith('image/'),path+' retains image MIME');
-    if(requireIndex)assert(!res.headers.get('x-robots-tag')?.includes('noindex'),path+' is eligible for image indexing');
-    results.push({path,status:res.status,robots:res.headers.get('x-robots-tag')});
+    try {
+      const res=await read(base+path,{method:'HEAD',redirect:'manual'});
+      assert.equal(res.status,200,path+' is reachable');
+      assert(res.headers.get('content-type')?.startsWith('image/'),path+' retains image MIME');
+      if(requireIndex)assert(!res.headers.get('x-robots-tag')?.includes('noindex'),path+' is eligible for image indexing');
+      results.push({path,status:res.status,robots:res.headers.get('x-robots-tag')});
+    } catch(error) { failures.push({path,error:String(error)}); }
   }
 }));
-const report={passed:true,productCount:products.length,imageCount:results.length,
+const report={passed:failures.length===0,productCount:products.length,imageCount:results.length,failures,
   productImageAssociations:products.reduce((n,p)=>n+productImageUrls(p).length,0),
   requireIndex,readOnly:true,databaseWrites:0,blobWrites:0,checkedAt:new Date().toISOString(),results};
 await mkdir('evidence/seo-discovery',{recursive:true});
 await writeFile('evidence/seo-discovery/image-discovery-'+(requireIndex?'released':'preflight')+'.json',JSON.stringify(report,null,2));
 console.log(JSON.stringify({...report,results:undefined}));
+assert.equal(failures.length,0,'Every approved image must pass; review the recorded failed paths');
