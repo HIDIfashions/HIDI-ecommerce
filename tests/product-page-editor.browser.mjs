@@ -8,6 +8,7 @@ import { parseEdit, parseVariantEdit, parseStatus } from '../apps/api/src/admin/
 const clone = value => structuredClone(value);
 const original = { id: 'aashi', skn: '12345', name: 'Aashi Sky Blue Floral Kurta Set', slug: 'aashi-sky-blue-floral-kurta-set', status: 'ACTIVE', updatedAt: '2026-10-13T00:00:00.000Z', categoryId: 'cotton', category: { id: 'cotton', name: 'Casual Wear', slug: 'casual-wear' }, collections: [{ collectionId: 'old-inactive', collection: { id: 'old-inactive', name: 'Retained collection', slug: 'retained' } }], shortDescription: 'Three piece cotton set.\nIncludes: old fallback', description: 'Supplier code: AA_123\nFit: Straight', fabric: 'Cotton', care: 'Gentle Hand Wash / Dry Clean', images: [], variants: ['M', 'L', 'XL', 'XXL'].map((size, index) => ({ id: 'variant-' + size, sku: 'HIDI-KEEP-' + size, size, color: 'Sky Blue with White Floral Print', pricePaise: 199900, mrpPaise: 249900, active: true, weightGrams: 350, bustMm: 1016 + index * 50, waistMm: 965, hipMm: 1067, shoulderMm: 381, sleeveLengthMm: 559, garmentLengthMm: 1143, inventory: { onHand: 8, reserved: 2 }, images: [] })) };
 const options = { categories: [original.category], collections: [{ id: 'new', name: 'Work Wear', slug: 'work-wear' }] };
+const photoBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64');
 const state = { record: clone(original), writes: [], auth: true, stale: false, loseResponse: false, sequence: 0, uploads: 0 };
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://fixture');
@@ -21,9 +22,19 @@ const server = createServer(async (req, res) => {
         return json(state.record);
       }
       let raw = ''; for await (const data of req) raw += data;
-      if (req.method === 'POST' && url.pathname.endsWith('/images')) { state.uploads++; return json({ saved: true }); }
+      if (req.method === 'POST' && url.pathname.endsWith('/images')) {
+        state.uploads++;
+        state.record.variants.forEach(v => v.images.push({ id: 'photo-' + state.uploads + '-' + v.id, url: '/fixture.png?photo=' + state.uploads, position: v.images.length, alt: 'Fixture product photo' }));
+        return json({ saved: true });
+      }
+      if (req.method === 'DELETE' && url.pathname.endsWith('/images')) {
+        const image = state.record.variants.flatMap(v => v.images).find(photo => photo.id === url.searchParams.get('imageId'));
+        assert(image); state.record.variants.forEach(v => { v.images = v.images.filter(photo => photo.url !== image.url); });
+        return json({ removed: true });
+      }
       const body = JSON.parse(raw), payload = url.pathname.includes('/variants/') ? parseVariantEdit(body) : url.pathname.endsWith('/status') ? parseStatus(body) : parseEdit(body);
       if (state.stale || payload.expectedUpdatedAt.toISOString() !== state.record.updatedAt) return json({ message: 'Product changed. Reload before saving.' }, 409);
+      if (url.pathname.endsWith('/status') && payload.status === 'ACTIVE' && !state.record.images.length && !state.record.variants.some(v => v.active && v.images.length)) return json({ message: 'Upload at least one product/SKU photo before publishing.' }, 400);
       state.writes.push(clone(body));
       if (url.pathname.includes('/variants/')) {
         const v = state.record.variants.find(v => url.pathname.endsWith('/' + v.id)); const { expectedUpdatedAt, ...changes } = payload; Object.assign(v, changes);
@@ -38,6 +49,7 @@ const server = createServer(async (req, res) => {
       return json(state.record);
     }
     if (await handleQuickTools(req, res, url.pathname)) return;
+    if (url.pathname === '/fixture.png') { res.writeHead(200, { 'Content-Type': 'image/png' }); res.end(photoBytes); return; }
     res.writeHead(404); res.end('Not found');
   } catch (error) { json({ message: error.message }, 400); }
 });
@@ -86,11 +98,16 @@ try {
       await page.screenshot({ path: 'evidence/product-page/' + engine + '-mobile-edit.png', fullPage: true });
       page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Move to draft', exact: true }).click();
       await page.waitForFunction(() => document.getElementById('status').textContent === 'Publication status saved: DRAFT.'); assert.equal(state.record.status, 'DRAFT');
-      page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Publish storefront', exact: true }).click();
-      await page.waitForFunction(() => document.getElementById('status').textContent === 'Publication status saved: ACTIVE.'); assert.equal(state.record.status, 'ACTIVE');
       const beforeUploads = state.uploads;
       await page.locator('#photos').setInputFiles([{ name: 'not-a-photo.txt', mimeType: 'text/plain', buffer: Buffer.from('invalid') }]);
       await page.waitForFunction(() => document.getElementById('status').textContent.includes('Nothing was uploaded')); assert.equal(state.uploads, beforeUploads);
+      await page.locator('#photos').setInputFiles([{ name: 'fixture.png', mimeType: 'image/png', buffer: photoBytes }]);
+      await page.waitForFunction(() => document.getElementById('status').textContent.startsWith('1 photos saved'));
+      assert.equal(await page.locator('#gallery img').count(), 1); assert(state.record.variants.every(v => v.images.length === 1));
+      page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Publish storefront', exact: true }).click();
+      await page.waitForFunction(() => document.getElementById('status').textContent === 'Publication status saved: ACTIVE.'); assert.equal(state.record.status, 'ACTIVE');
+      page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Remove from this colour', exact: true }).click();
+      await page.waitForFunction(() => document.getElementById('status').textContent === 'Photo removed from this colour.'); assert(state.record.variants.every(v => v.images.length === 0));
       state.auth = false; await page.reload(); await page.waitForFunction(() => !document.getElementById('auth').hidden); assert(await page.getByRole('button', { name: 'Find product' }).isDisabled()); assert(await page.locator('#workspace').isHidden());
       assert.deepEqual(errors, []); console.log(engine + ': persistence, facts clearing, SKU preservation, stale save, lost response, mobile layout, photo preflight and auth passed');
     } finally { await browser.close(); }
