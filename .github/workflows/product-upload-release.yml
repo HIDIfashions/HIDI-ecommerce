@@ -1,5 +1,5 @@
 name: Guarded Admin single-package product upload release
-# Add a single ZIP package input; preserve retained API, storefront and navigation.
+# Verify the primary ZIP control and optional separate selections; preserve API, storefront and navigation.
 on:
   push:
     branches: [migration/azure-sql-blob]
