@@ -49,11 +49,15 @@ export async function snapshotServer({directory,css,candidate=false,upstream='ht
       const response=await pull(req.url,req.headers);
       let body=response.body;
       if(candidate&&response.contentType.includes('text/html')&&req.method==='GET'){
-        const original=body.toString('utf8'),addition='<style data-hidi-catalogue-polish-preview="true">'+css+'</style>';
-        if(!/<\/head>/i.test(original))throw Error('Snapshot HTML has no head');
-        const updated=original.replace(/<\/head>/i,addition+'</head>');
-        if(updated.replace(addition,'')!==original)throw Error('HTML differs beyond the reviewed CSS');
-        body=Buffer.from(updated);
+        const original=body.toString('utf8'),addition='\n/* hidi-catalogue-polish-20261013 */\n'+css+'\n';
+        const matches=[...original.matchAll(/<style data-hidi-storefront-layer-fix="true">[\s\S]*?<\/style>/g)];
+        if(matches.length){
+          if(matches.length!==1)throw Error('One owned storefront style block required');
+          const offset=matches[0].index+matches[0][0].length-'</style>'.length;
+          const updated=original.slice(0,offset)+addition+original.slice(offset);
+          if(updated.replace(addition,'')!==original)throw Error('HTML differs beyond the reviewed CSS');
+          body=Buffer.from(updated);
+        }else if(original.includes('class="container collection-page"'))throw Error('Catalogue is missing the retained storefront style block');
       }
       res.writeHead(response.status,{'Content-Type':response.contentType,'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'});
       res.end(req.method==='HEAD'?undefined:body);

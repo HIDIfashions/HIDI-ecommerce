@@ -51,8 +51,31 @@ async function ready(page){
   await page.waitForFunction(()=>document.querySelector('[class*="product-card_mobileQuickAdd__"]')?.disabled===false);
   await page.evaluate(()=>document.fonts.ready);
 }
+async function applyCss(page){
+  await page.evaluate(css=>{
+    const style=document.querySelector('style[data-hidi-storefront-layer-fix="true"]');
+    if(!style)throw Error('Retained style block missing');
+    style.textContent+='\n/* hidi-catalogue-polish-20261013 */\n'+css+'\n';
+  },css);
+}
 async function navigationStyles(page){
-  return page.evaluate(()=>[...document.querySelectorAll('body,.site-header,.site-header *,.site-footer,.site-footer *,.footer,.footer *,.product-page,.product-page *,.cart-page,.cart-page *,.checkout-page,.checkout-page *')].filter(e=>getComputedStyle(e).display!=='none').map(e=>{const c=getComputedStyle(e);return{tag:e.tagName,className:e.className,color:c.color,bg:c.backgroundColor,font:c.font,weight:c.fontWeight,padding:c.padding,margin:c.margin,width:c.width,height:c.height,border:c.border,display:c.display};}));
+  return page.evaluate(()=>[...document.querySelectorAll('body,.site-header,.site-header *,.site-footer,.site-footer *,.footer,.footer *,.product-page,.product-page *,.cart-page,.cart-page *,.checkout-page,.checkout-page *')].map(e=>{const c=getComputedStyle(e);let concealed=c.display==='none';for(let p=e.parentElement;p;p=p.parentElement){if(getComputedStyle(p).display==='none')concealed=true;if(p.matches('details:not([open])')&&!p.querySelector(':scope > summary')?.contains(e))concealed=true;}return{tag:e.tagName,className:e.className,concealed,color:c.color,bg:c.backgroundColor,font:c.font,weight:c.fontWeight,padding:c.padding,margin:c.margin,...(!concealed?{width:c.width,height:c.height}:{}),border:c.border,display:c.display};}));
+}
+async function settledStyles(page){
+  // Wait for actual scripts and hydration, then require a stable layout before
+  // comparing. Closed details retain their non-geometric styles in the check.
+  await page.waitForFunction(()=>Array.from(document.querySelectorAll('script[src]:not([nomodule])')).filter(s=>new URL(s.src).origin===location.origin).every(s=>performance.getEntriesByName(s.src).length>0));
+  if(await page.locator('[data-hidi-react-pdp]').count())await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor({state:'attached'});
+  await page.evaluate(()=>document.fonts.ready);
+  let last='',stable=0;
+  const start=Date.now();
+  while(Date.now()-start<15000){
+    const styles=await navigationStyles(page),current=JSON.stringify(styles);
+    stable=current===last?stable+1:0;last=current;
+    if(stable>=5)return styles;
+    await page.waitForTimeout(100);
+  }
+  throw Error('Non-catalogue layout did not settle');
 }
 try{
   for(const engine of engines){
@@ -65,7 +88,9 @@ try{
         try{
           snapshot.setCandidate(false);await page.goto(snapshot.base+'/collections/all',{waitUntil:'domcontentloaded'});await ready(page);const before=await measure(page);
           if(engine==='chromium'&&[390,1440].includes(viewport.width))await page.screenshot({path:join(root,'before-'+viewport.width+'.jpg'),type:'jpeg',quality:80});
-          await page.addStyleTag({content:css});const after=await measure(page);
+          await applyCss(page);
+          await page.waitForFunction(expected=>parseFloat(getComputedStyle(document.querySelector('.collection-page')).paddingTop)===expected,viewport.width<=720?12:20,{timeout:5000});
+          const after=await measure(page);
           assert.equal(after.padding,viewport.width<=720?12:20,'Requested catalogue top padding');
           assert(after.padding<before.padding,'Top gap must shrink');assert(after.rowGap<before.rowGap,'Rows must tighten');assert.equal(after.title.fontWeight,'400');
           for(const key of ['columns','columnGap','cardNames','prices','photos','header','footer'])assert.deepEqual(after[key],before[key],key+' remains unchanged');
@@ -79,18 +104,32 @@ try{
           // Native lightbox semantics differ by retained gallery version; Escape
           // always closes the opened full-photo dialog without altering selection.
           await page.getByRole('dialog').last().waitFor();await page.keyboard.press('Escape');await page.getByRole('dialog').last().waitFor({state:'hidden'});
-          if(engine==='chromium'&&[390,1440].includes(viewport.width)){await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:join(root,'after-'+viewport.width+'.jpg'),type:'jpeg',quality:80});}
           measurements.push({engine,...viewport,before,after,passed:true});console.log('PASS styling '+engine+' '+viewport.width);
           // Same-page scoped CSS must leave every existing non-catalogue surface
           // unchanged, including typography, control colours and layout metrics.
           if([390,1440].includes(viewport.width)){
             const slug=(await page.locator('article h3 a').first().getAttribute('href'));
             for(const path of ['/',slug,'/cart','/checkout','/account','/admin/sign-in']){
-              snapshot.setCandidate(false);await page.goto(snapshot.base+path,{waitUntil:'domcontentloaded'});await page.locator('body').waitFor();await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(300);const old=await navigationStyles(page);
-              await page.addStyleTag({content:css});const next=await navigationStyles(page);assert.deepEqual(next,old,'Styles are unchanged outside catalogue: '+path);
+              snapshot.setCandidate(false);await page.goto(snapshot.base+path,{waitUntil:'domcontentloaded'});await page.locator('body').waitFor();const old=await settledStyles(page);
+              if(await page.locator('style[data-hidi-storefront-layer-fix="true"]').count())await applyCss(page);
+              const next=await settledStyles(page);
+              if(JSON.stringify(next)!==JSON.stringify(old))console.error('ROUTE_STYLE_DIFF',path,JSON.stringify(next.map((value,index)=>JSON.stringify(value)!==JSON.stringify(old[index])?{index,before:old[index],after:value}:null).filter(Boolean)));
+              assert.deepEqual(next,old,'Styles are unchanged outside catalogue: '+path);
             }
           }
-        }catch(error){await writeFile(join(root,engine+'-'+viewport.width+'-failure.txt'),error.stack+'\n'+await page.locator('body').innerText());throw error;}
+          // Verify the deployable HTML addition itself, rather than relying on
+          // the same-document comparison used to isolate style differences.
+          snapshot.setCandidate(true);
+          await page.goto(snapshot.base+'/collections/all',{waitUntil:'domcontentloaded'});await ready(page);
+          await page.waitForFunction(expected=>parseFloat(getComputedStyle(document.querySelector('.collection-page')).paddingTop)===expected,viewport.width<=720?12:20,{timeout:5000});
+          const served=await measure(page);
+          for(const key of ['padding','rowGap','columns','columnGap','title','cardNames','prices','photos','header','footer','overflow'])assert.deepEqual(served[key],after[key],'Candidate HTML preserves verified '+key);
+          assert.equal(await page.locator('style[data-hidi-storefront-layer-fix="true"]').evaluate(e=>(e.textContent.match(/hidi-catalogue-polish-20261013/g)||[]).length),1,'Exactly one stylesheet addition');
+          if(engine==='chromium'&&[390,1440].includes(viewport.width))await page.screenshot({path:join(root,'after-'+viewport.width+'.jpg'),type:'jpeg',quality:80});
+        }catch(error){
+          const diagnostic=await page.evaluate(()=>{const e=document.querySelector('.collection-page'),s=document.querySelector('style[data-hidi-storefront-layer-fix="true"]');return{padding:e?getComputedStyle(e).paddingTop:null,transition:e?getComputedStyle(e).transition:null,animation:e?getComputedStyle(e).animation:null,styleTail:s?.textContent.slice(-2400),rules:s?.sheet?.cssRules.length};});
+          console.error('STYLE_DIAGNOSTIC',JSON.stringify(diagnostic));
+          await writeFile(join(root,engine+'-'+viewport.width+'-failure.txt'),error.stack+'\n'+JSON.stringify(diagnostic)+'\n'+await page.locator('body').innerText());throw error;}
         finally{await context.close();}
       }
     }finally{await browser.close();}

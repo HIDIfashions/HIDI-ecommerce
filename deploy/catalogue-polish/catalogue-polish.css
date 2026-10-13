@@ -1,13 +1,13 @@
 /* Catalogue presentation only. Preserve grid columns, media, prices and actions. */
-.container.collection-page {
+main .container.collection-page {
   padding-top: 20px !important;
 }
 
-.collection-page [class*="collection-browser_productGrid__"] {
+.container.collection-page [class*="collection-browser_productGrid__"] {
   row-gap: clamp(32px, 3vw, 44px);
 }
 
-.collection-page [class*="product-card_name__"] {
+.collection-page [class*="product-card_card__"] [class*="product-card_name__"] {
   font-weight: 400;
 }
 
@@ -51,15 +51,15 @@
 }
 
 @media (max-width: 720px) {
-  .container.collection-page {
+  main .container.collection-page {
     padding-top: 12px !important;
   }
 
-  .collection-page [class*="collection-browser_productGrid__"] {
+  .container.collection-page [class*="collection-browser_productGrid__"] {
     row-gap: 24px;
   }
 
-  .collection-page [class*="collection-browser_productGrid__"][class*="collection-browser_gridOne__"] {
+  .container.collection-page [class*="collection-browser_productGrid__"][class*="collection-browser_gridOne__"] {
     row-gap: 32px;
   }
 }
