@@ -1,0 +1,77 @@
+name: Release approved catalogue CSS only
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/catalogue-polish-release.yml, deploy/catalogue-polish/**]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/migration/azure-sql-blob'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-catalogue-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-catalogue-browsers
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+      HIDI_MEDIA_SOURCE_SHA: ${{ github.sha }}
+      HIDI_BUTTON_OUTPUT: evidence/catalogue-polish/retained-commerce
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Check the reversible CSS-only patch and guarded release
+        run: |
+          python3 tests/catalogue-polish.test.py
+          python3 deploy/catalogue-polish/release.py self-test
+          node --check deploy/catalogue-polish/live.mjs
+          node --check deploy/catalogue-polish/candidate.mjs
+          node --check deploy/catalogue-polish/guard-browser.mjs
+      - name: Install browser engines and exact OCI backup tooling
+        run: |
+          npm install --prefix /tmp/hidi-catalogue-browser --no-package-lock playwright@1.56.1
+          node /tmp/hidi-catalogue-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+          sudo apt-get update -qq
+          sudo apt-get install -y skopeo
+      - name: Complete all responsive and baseline/candidate shopping regressions
+        run: node deploy/catalogue-polish/verify.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh live state and verify exact rollback images
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/catalogue-polish/release.py capture
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-catalogue-polish-private/web/candidate-app" >> "$GITHUB_ENV"
+      - name: Compose the single-file CSS overlay over the fresh live web image
+        run: |
+          tag="acrhidiprod0927.azurecr.io/hidi-web:catalogue-polish-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          python3 deploy/catalogue-polish/release.py compose --tag "$tag"
+          echo "CANDIDATE_WEB=$tag" >> "$GITHUB_ENV"
+      - name: Exercise the exact candidate image against disposable commerce fixtures
+        run: |
+          node deploy/catalogue-polish/candidate.mjs
+          python3 deploy/catalogue-polish/release.py mark-tested --tag "$CANDIDATE_WEB"
+      - name: Publish the exact tested immutable image
+        run: python3 deploy/catalogue-polish/release.py publish --tag "$CANDIDATE_WEB"
+      - name: Release web only with live checks and ownership-checked rollback
+        id: apply
+        timeout-minutes: 125
+        run: timeout --signal=TERM --kill-after=65m 50m python3 deploy/catalogue-polish/release.py apply --image "$WEB_IMAGE"
+      - name: Recover any interrupted release
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        timeout-minutes: 65
+        run: python3 deploy/catalogue-polish/release.py recover --image "$WEB_IMAGE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hidi-catalogue-release-evidence
+          path: evidence/catalogue-polish
+          retention-days: 30
