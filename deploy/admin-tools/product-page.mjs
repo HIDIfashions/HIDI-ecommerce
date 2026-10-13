@@ -45,7 +45,7 @@ async function request(path, init = {}) {
 const api = (path, method = 'GET', body) => request('/api/admin/products' + path, { method, ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) });
 async function run(work) {
   if (busy) return;
-  busy = true; synchronize();
+  busy = true; say('Working…'); synchronize();
   try { await work(); } catch (error) { say(error.message, 'error'); }
   finally { busy = false; synchronize(); }
 }

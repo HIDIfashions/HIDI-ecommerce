@@ -32,7 +32,9 @@ const server = createServer(async (req, res) => {
         const { expectedUpdatedAt, collectionIds, ...changes } = payload; Object.assign(state.record, changes); assert.deepEqual(collectionIds, ['old-inactive']);
       }
       state.record.updatedAt = new Date(Date.UTC(2026, 9, 13, 0, 0, ++state.sequence)).toISOString();
-      if (state.loseResponse) { state.loseResponse = false; req.socket.destroy(); return; }
+      // A truncated success body models a completed write without confirmation;
+      // sending headers avoids the browser's transport-level request retry.
+      if (state.loseResponse) { state.loseResponse = false; res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"id":'); return; }
       return json(state.record);
     }
     if (await handleQuickTools(req, res, url.pathname)) return;
