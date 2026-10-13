@@ -1,4 +1,4 @@
-name: Inspect live SEO image-discovery baseline without changes
+name: Inspect current SEO and policy metadata baseline without changes
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -19,3 +19,14 @@ jobs:
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - run: az acr login --name acrhidiprod0927 --only-show-errors
       - run: python3 deploy/seo-discovery/cloud_inspect.py
+      - name: Record exact policy and current SEO helper fingerprints
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])/'hidi-seo-inspection'
+          files=['server.mjs','privacy-policy/handler.mjs','seo-discovery/metadata.mjs','seo-discovery/sitemap.mjs','seo-discovery/published-product-images.json','dist/hidi-analytics.js']
+          for name in files:
+              path=root/name
+              print('SEO_CURRENT_FILE',json.dumps({'path':name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}))
+          PY
