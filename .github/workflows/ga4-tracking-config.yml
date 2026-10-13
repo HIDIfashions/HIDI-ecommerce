@@ -1,0 +1,50 @@
+name: Configure HIDI GA4 tracking
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/ga4-tracking-config.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Inspect GA4 environment and runtime without changes
+        shell: bash
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 - <<'PY'
+          import json, subprocess, pathlib, re, urllib.request
+          data=json.loads(subprocess.check_output(['az','containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--only-show-errors','-o','json'],text=True))
+          p=data['properties']; container=p['template']['containers'][0]
+          safe={'NEXT_PUBLIC_GA_MEASUREMENT_ID','NEXT_PUBLIC_GA4_MEASUREMENT_ID','GA_MEASUREMENT_ID','GA4_MEASUREMENT_ID','DEPLOYMENT_STAGE','SITE_URL'}
+          print('GA4_BASELINE',json.dumps({'image':container['image'],'latest':p.get('latestRevisionName'),'ready':p.get('latestReadyRevisionName'),'revisionMode':p['configuration'].get('activeRevisionsMode'),'traffic':p['configuration']['ingress'].get('traffic'),'env':[e for e in container.get('env',[]) if e['name'] in safe]}))
+          subprocess.run(['docker','pull',container['image']],check=True)
+          cid=subprocess.check_output(['docker','create',container['image']],text=True).strip()
+          root=pathlib.Path('/tmp/hidi-ga4-inspect');root.mkdir(exist_ok=True)
+          try: subprocess.run(['docker','cp',cid+':/app/server.mjs',str(root/'server.mjs')],check=True)
+          finally: subprocess.run(['docker','rm',cid],check=True)
+          source=(root/'server.mjs').read_text()
+          lines=source.splitlines()
+          indices=set()
+          for i,line in enumerate(lines):
+              if re.search(r'GA_MEASUREMENT|GA4_MEASUREMENT|gtag|analytics-config|function .*nalytics|const analytics',line):
+                  indices.update(range(max(0,i-2),min(len(lines),i+7)))
+          for i in sorted(indices): print('GA4_RUNTIME',i+1,lines[i])
+          for path in ['/','/collections/all','/api/hidi/analytics-config']:
+              try:
+                  response=urllib.request.urlopen('https://hidiindia.com'+path,timeout=45);body=response.read().decode()
+                  ids=sorted(set(re.findall(r'G-[A-Z0-9]{5,}',body)))
+                  print('GA4_PUBLIC',json.dumps({'path':path,'status':response.status,'ids':ids,'config':json.loads(body) if path.endswith('analytics-config') else None}))
+              except Exception as error: print('GA4_PUBLIC_ERROR',path,type(error).__name__)
+          PY
