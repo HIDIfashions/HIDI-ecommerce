@@ -69,3 +69,5 @@ jobs:
           retention-days: 30
 
 # Verify hydrated product controls before synthetic cart additions.
+
+# Use current in-stock catalogue and locator-based readiness checks.

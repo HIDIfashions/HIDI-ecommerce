@@ -6,7 +6,9 @@ const {chromium}=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).
 const source=await readFile(new URL('./hidi-analytics.js',import.meta.url),'utf8');
 const live=process.argv.includes('--live');
 const base='https://hidiindia.com';
-const productPath='/products/olive-green-swan-floral-printed-shirt-style-kurta-set';
+const catalogueResponse=await fetch(base+'/api/store/products');assert(catalogueResponse.ok);
+const products=await catalogueResponse.json();const product=products.find(p=>p.inStock&&p.variants?.some(v=>v.available>0));
+assert(product?.slug,'An in-stock product is required');const productPath='/products/'+product.slug;
 const reports=[];
 const browser=await chromium.launch();
 try{
@@ -42,11 +44,13 @@ try{
     if(await page.locator('[data-hidi-react-pdp]').count())await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor({state:'attached'});
     let size;
     for(const name of ['M','L','XL','XXL']){const options=page.locator('.sizes').getByRole('button',{name,exact:true});for(let i=0;i<await options.count();i++){const candidate=options.nth(i);if(await candidate.isVisible()&&await candidate.isEnabled()){size=candidate;break;}}if(size)break;}
-    assert(size,'A live product must have an available size');await size.click();
-    await page.waitForFunction(element=>element.getAttribute('aria-pressed')==='true',await size.elementHandle());
+    assert(size,'A live product must have an available size');
     const buttons=page.getByRole('button',{name:/add to cart|add to bag/i});let add;
     for(let i=0;i<await buttons.count();i++){const button=buttons.nth(i);if(await button.isVisible()){add=button;break;}}
     assert(add,'Visible add-to-cart button required');
+    for(let attempt=0;attempt<12&&!await add.isEnabled();attempt++){await size.click();await page.waitForTimeout(500);}
+    if(!await add.isEnabled())console.log('GA4_CART_CONTROL_DIAGNOSTICS',JSON.stringify(await page.locator('.sizes button,button[class*="addButton"]').evaluateAll(nodes=>nodes.map(n=>({text:n.textContent,pressed:n.getAttribute('aria-pressed'),disabled:n.disabled,className:n.className})))));
+    assert(await add.isEnabled(),'Product size selection must enable original Add to Cart');
     const additions=()=>page.evaluate(()=>window.__ga4CartEvents.filter(e=>e.name==='add_to_cart'));
     await add.click();await page.waitForFunction(()=>window.__ga4CartEvents.filter(e=>e.name==='add_to_cart').length===1);
     await page.waitForTimeout(300);await add.click();await page.waitForFunction(()=>window.__ga4CartEvents.filter(e=>e.name==='add_to_cart').length===2);
