@@ -10,41 +10,113 @@ concurrency:
   group: hidi-hero-guarded-release
   cancel-in-progress: false
 jobs:
-  inspect:
+  configure:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Inspect GA4 environment and runtime without changes
+      - name: Configure only the live GA4 environment variable and verify retained storefront
         shell: bash
         run: |
-          az acr login --name acrhidiprod0927 --only-show-errors
-          python3 - <<'PY'
-          import json, subprocess, pathlib, re, urllib.request
-          data=json.loads(subprocess.check_output(['az','containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--only-show-errors','-o','json'],text=True))
-          p=data['properties']; container=p['template']['containers'][0]
-          safe={'NEXT_PUBLIC_GA_MEASUREMENT_ID','NEXT_PUBLIC_GA4_MEASUREMENT_ID','GA_MEASUREMENT_ID','GA4_MEASUREMENT_ID','DEPLOYMENT_STAGE','SITE_URL'}
-          print('GA4_BASELINE',json.dumps({'image':container['image'],'latest':p.get('latestRevisionName'),'ready':p.get('latestReadyRevisionName'),'revisionMode':p['configuration'].get('activeRevisionsMode'),'traffic':p['configuration']['ingress'].get('traffic'),'env':[e for e in container.get('env',[]) if e['name'] in safe]}))
-          subprocess.run(['docker','pull',container['image']],check=True)
-          cid=subprocess.check_output(['docker','create',container['image']],text=True).strip()
-          root=pathlib.Path('/tmp/hidi-ga4-inspect');root.mkdir(exist_ok=True)
-          try: subprocess.run(['docker','cp',cid+':/app/server.mjs',str(root/'server.mjs')],check=True)
-          finally: subprocess.run(['docker','rm',cid],check=True)
-          source=(root/'server.mjs').read_text()
-          lines=source.splitlines()
-          indices=set()
-          for i,line in enumerate(lines):
-              if re.search(r'GA_MEASUREMENT|GA4_MEASUREMENT|gtag|analytics-config|function .*nalytics|const analytics',line):
-                  indices.update(range(max(0,i-2),min(len(lines),i+7)))
-          for i in sorted(indices): print('GA4_RUNTIME',i+1,lines[i])
-          for path in ['/','/collections/all','/api/hidi/analytics-config']:
-              try:
-                  response=urllib.request.urlopen('https://hidiindia.com'+path,timeout=45);body=response.read().decode()
-                  ids=sorted(set(re.findall(r'G-[A-Z0-9]{5,}',body)))
-                  print('GA4_PUBLIC',json.dumps({'path':path,'status':response.status,'ids':ids,'config':json.loads(body) if path.endswith('analytics-config') else None}))
-              except Exception as error: print('GA4_PUBLIC_ERROR',path,type(error).__name__)
+          python3 -u - <<'PY'
+          import json, subprocess, os, time, urllib.request, hashlib, copy
+          from pathlib import Path
+          MID='G-Z45WSHLDHG'
+          EXPECTED_IMAGE='acrhidiprod0927.azurecr.io/hidi-web@sha256:d6151fab96cc88896773e1c8f77cc3e904a35300819221b2728ddc1b265ecea3'
+          RG='rg-hidi-prod'; KEY='GA4_MEASUREMENT_ID'
+          suffix='ga4'+os.environ['GITHUB_RUN_ID']
+          def az(*args):
+              return subprocess.check_output(['az',*args,'--only-show-errors','-o','json'],text=True)
+          def app(name):return json.loads(az('containerapp','show','-g',RG,'-n',name))
+          def get(path,base='https://hidiindia.com'):
+              with urllib.request.urlopen(base+path,timeout=40) as r:return r.status,r.read()
+          def envmap(template):return {x['name']:x for x in template['containers'][0].get('env',[])}
+          def stable(template):
+              t=copy.deepcopy(template);t.pop('revisionSuffix',None)
+              t['containers'][0]['env']=sorted(t['containers'][0].get('env',[]),key=lambda e:e['name'])
+              return t
+          before=app('hidi-web');bp=before['properties'];bt=bp['template'];api=app('hidi-api')['properties']['template']
+          assert len(bt['containers'])==1
+          assert bt['containers'][0]['image']==EXPECTED_IMAGE,'Live image changed: inspect before configuring'
+          assert bp['latestRevisionName']==bp['latestReadyRevisionName'],'Existing rollout not settled'
+          assert bp['configuration']['activeRevisionsMode']=='Single'
+          old=envmap(bt).get(KEY)
+          assert old is None or old.get('value')==MID,'A different GA4 property is configured'
+          private=Path(os.environ['RUNNER_TEMP'])/'hidi-ga4-private';private.mkdir(mode=0o700,exist_ok=True)
+          (private/'before.json').write_text(json.dumps(before));os.chmod(private/'before.json',0o600)
+          pages={}
+          for path in ['/','/collections/all','/cart','/account/login','/hidi-analytics.js']:
+              status,body=get(path);assert status==200,(path,status);pages[path]=hashlib.sha256(body).hexdigest()
+          config=json.loads(get('/api/hidi/analytics-config')[1]);assert config['ga4MeasurementId'] in [None,MID]
+          print('GA4_PREFLIGHT',json.dumps({'image':EXPECTED_IMAGE,'previousRevision':bp['latestReadyRevisionName'],'routes':list(pages),'previousId':config['ga4MeasurementId']}))
+          expected=copy.deepcopy(bt);expected['containers'][0]['env']=list(envmap(bt).values())
+          expected['containers'][0]['env']=[e for e in expected['containers'][0]['env'] if e['name']!=KEY]+[{'name':KEY,'value':MID}]
+          current=app('hidi-web');assert current['properties']['template']==bt,'Live configuration changed during preflight'
+          applied=False
+          try:
+              subprocess.run(['az','containerapp','update','-g',RG,'-n','hidi-web','--set-env-vars',KEY+'='+MID,'--revision-suffix',suffix,'--only-show-errors','-o','none'],check=True,timeout=500);applied=True
+              target='hidi-web--'+suffix
+              for attempt in range(45):
+                  live=app('hidi-web');lp=live['properties']
+                  assert lp['template']['containers'][0]['image']==EXPECTED_IMAGE,'Concurrent image change'
+                  if lp.get('latestReadyRevisionName')==target:break
+                  time.sleep(8)
+              else:raise AssertionError('GA4 revision did not become ready')
+              assert stable(lp['template'])==stable(expected),'Unexpected template change'
+              assert lp['configuration']==bp['configuration'],'Ingress, identity or secrets configuration changed'
+              assert app('hidi-api')['properties']['template']==api,'API changed concurrently'
+              for attempt in range(12):
+                  config=json.loads(get('/api/hidi/analytics-config')[1])
+                  if config.get('enabled') and config.get('ga4MeasurementId')==MID:break
+                  time.sleep(5)
+              else:raise AssertionError('Public GA4 configuration is not enabled')
+              for path,digest in pages.items():
+                  status,body=get(path);assert status==200
+                  assert hashlib.sha256(body).hexdigest()==digest,'Route body changed: '+path
+              testconfig=json.loads(get('/api/hidi/analytics-config','https://thidigk.thehidi.com')[1])
+              assert testconfig['enabled'] is False,'Tracking must stay disabled on test host'
+              assert config.get('metaPixelId') is None,'Unexpected Meta change'
+              print('GA4_CONFIGURED',json.dumps({'measurementId':MID,'revision':target,'imageUnchanged':True,'apiUnchanged':True,'pageBodiesUnchanged':True,'testHostTracking':False,'config':config}))
+          except Exception:
+              current=app('hidi-web');cp=current['properties']
+              if cp.get('latestRevisionName')=='hidi-web--'+suffix and stable(cp['template'])==stable(expected):
+                  args=['az','containerapp','update','-g',RG,'-n','hidi-web','--revision-suffix',suffix+'rollback','--only-show-errors','-o','none']
+                  args+=['--remove-env-vars',KEY] if old is None else ['--set-env-vars',KEY+'='+old['value']]
+                  subprocess.run(args,check=True,timeout=500)
+                  print('GA4_ROLLBACK: restored previous analytics environment')
+              raise
           PY
+      - name: Install browser verification tooling
+        run: |
+          npm install --prefix /tmp/hidi-ga4-browser --no-save playwright@1.56.1
+          node /tmp/hidi-ga4-browser/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Verify desktop and mobile Google tag execution
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { chromium } from '/tmp/hidi-ga4-browser/node_modules/playwright/index.mjs';
+          const browser=await chromium.launch({headless:true});
+          try {
+            for(const mobile of [false,true]) {
+              const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},isMobile:mobile,hasTouch:mobile});
+              const page=await context.newPage();
+              const requests=[];const accepted=[];
+              page.on('request',r=>{if(/google-analytics\.com/.test(r.url())&&r.url().includes('G-Z45WSHLDHG'))requests.push(r.url());});
+              page.on('response',r=>{if(/google-analytics\.com/.test(r.url())&&r.url().includes('G-Z45WSHLDHG'))accepted.push(r.status());});
+              await page.goto('https://hidiindia.com',{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>typeof window.gtag==='function'&&document.querySelector('script[src*="googletagmanager.com/gtag/js?id=G-Z45WSHLDHG"]'),{timeout:30000});
+              await page.waitForTimeout(6000);
+              const scripts=await page.locator('script[src*="googletagmanager.com/gtag/js"]').count();
+              assert.equal(scripts,1,'Duplicate Google tags');
+              assert(requests.length>0,'No collection request for configured measurement ID');
+              assert(accepted.some(status=>status>=200&&status<300),'Google did not accept a collection request');
+              console.log('GA4_BROWSER_PASS',JSON.stringify({device:mobile?'mobile':'desktop',googleTagCount:scripts,collectionRequests:requests.length,acceptedStatuses:accepted}));
+              await context.close();
+            }
+          } finally {await browser.close();}
+          JS
