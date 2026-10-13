@@ -1,0 +1,42 @@
+name: Validate storefront-style admin product editor
+on:
+  pull_request:
+    paths:
+      - 'deploy/admin-tools/product-page*'
+      - 'deploy/admin-tools/handler.mjs'
+      - 'deploy/admin-tools/navigation.js'
+      - 'deploy/product-page/**'
+      - 'tests/product-page-*'
+      - '.github/workflows/product-page-editor-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify product storage and overlay preservation
+        run: |
+          node --test tests/product-page-editor.test.mjs
+          python3 tests/product-page-overlay.test.py
+          node --check deploy/admin-tools/product-page.mjs
+          node --check deploy/admin-tools/navigation.js
+      - name: Install isolated browser test dependency
+        run: |
+          npm install --prefix "$RUNNER_TEMP/hidi-editor-browser" --no-package-lock playwright@1.62.1
+          node "$RUNNER_TEMP/hidi-editor-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Verify actual editor in desktop and mobile browsers
+        env:
+          NODE_PATH: '${{ runner.temp }}/hidi-editor-browser/node_modules'
+          HIDI_EDITOR_ENGINES: chromium,firefox,webkit
+        run: node tests/product-page-editor.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: product-page-editor-screenshots
+          path: evidence/product-page/
