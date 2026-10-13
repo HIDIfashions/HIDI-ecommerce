@@ -13,7 +13,11 @@ function load(file, mocks={}) {
   return exports;
 }
 const batch=load("sku-photo-batch.ts");
-const bulk=load("hidi-bulk-photos.ts",{"@/lib/hidi-bulk-import":{skuKey:load("hidi-bulk-import.ts").skuKey}});
+// Isolate the legacy SKU/size boundary from the separately tested registry lookup.
+const bulk=load("hidi-bulk-photos.ts",{
+  "./hidi-bulk-import":{skuKey:load("hidi-bulk-import.ts").skuKey},
+  "../../../deploy/admin-tools/image-sku-client.mjs":{prepareMappedPhotos:async candidates=>candidates},
+});
 const max=12*1024*1024;
 test("single-SKU photo selection accepts exactly 12 MB and still rejects a larger member before the batch starts",()=>{
   assert.equal(batch.MAX_PHOTO_BYTES,max);
