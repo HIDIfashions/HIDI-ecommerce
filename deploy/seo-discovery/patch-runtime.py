@@ -74,7 +74,7 @@ def patch_runtime(base, overlay):
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
     metadata=(HERE/'metadata.mjs').read_bytes()
-    assert hashlib.sha256(metadata).hexdigest()=='2af1ee994e5876ebb28cce01197efc9cd23e656567655b9a5a47e974c8095c82', 'Reviewed Google directive helper changed'
+    assert hashlib.sha256(metadata).hexdigest()=='87f65b52a4a7a26a77a659a6f43d85b6b58468d9b335a165c052c9f877d7dd80', 'Reviewed Google directive helper changed'
     (overlay/'seo-discovery/metadata.mjs').write_bytes(metadata)
     return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs'],
             'seoOnly':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,

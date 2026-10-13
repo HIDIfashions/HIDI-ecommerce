@@ -1,4 +1,4 @@
-name: Correct Google-specific indexing metadata only
+name: Correct Google indexing metadata and cached navigation
 on:
   push:
     branches: [migration/azure-sql-blob]

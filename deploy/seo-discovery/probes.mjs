@@ -19,6 +19,11 @@ const expectedTitles = {
   '/offers':'HIDI Privileges | HIDI',
 };
 async function assertCrawlerDirectives(page, privatePage = false, rawHtml) {
+  await page.waitForFunction(expected=>{
+    const nodes=[...document.querySelectorAll('meta[name="robots"],meta[name="googlebot"]')];
+    return nodes.some(node=>node.name==='robots') && nodes.every(node=>
+      /\bnoindex\b/i.test(node.content)===expected && (expected || !/\bnofollow\b/i.test(node.content)));
+  },privatePage,{timeout:5000});
   const rendered = await page.evaluate(() => [...document.querySelectorAll('meta[name="robots"],meta[name="googlebot"]')]
     .map(node => ({name:node.name,content:node.content})));
   assert(rendered.some(node=>node.name==='robots'),'General indexing directive remains present');

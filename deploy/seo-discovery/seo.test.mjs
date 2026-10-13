@@ -9,7 +9,7 @@ import {runInNewContext} from 'node:vm';
 test('Lookbook directive survives client rendering and navigation without changing private/error directives',()=>{
   const robots={content:'index, follow'},events={};
   const document={title:'Lookbook | HIDI',documentElement:{},
-    head:{querySelectorAll:selector=>selector==='meta[name="robots"],meta[name="googlebot"]'?[robots]:[]},
+    head:{querySelectorAll:selector=>['meta[name="robots"]','meta[name="robots"],meta[name="googlebot"]'].includes(selector)?[robots]:[]},
     querySelectorAll:()=>[],addEventListener:()=>{}};
   const location={pathname:'/lookbook'};
   const window={addEventListener:(event,fn)=>events[event]=fn};
@@ -54,6 +54,22 @@ test('Google-specific directives follow public, private and deferred client navi
   location.pathname='/cart';events.popstate();assert.equal(googlebot.content,'noindex, nofollow, noarchive');
   location.pathname='/lookbook';events.popstate();assert.equal(googlebot.content,'noindex, follow');
   document.title='404: Not found';events.popstate();assert.equal(googlebot.content,'noindex, nofollow, noarchive');
+});
+
+test('cached navigation restores a missing general directive without removing framework nodes or altering unknown routes',()=>{
+  const nodes=[],events={};
+  const document={title:'Product | HIDI',documentElement:{},head:{
+    querySelectorAll:selector=>selector==='meta[name="robots"]'?nodes.filter(n=>n.name==='robots'):
+      selector==='meta[name="robots"],meta[name="googlebot"]'?nodes:[],
+    appendChild:node=>nodes.push(node)},
+    createElement:tag=>{assert.equal(tag,'meta');return {name:'',content:''};},
+    querySelectorAll:()=>[],addEventListener:()=>{}};
+  const location={pathname:'/products/published-style'},window={addEventListener:(event,fn)=>events[event]=fn};
+  runInNewContext(clientMetadataScript.replace(/^<script[^>]*>|<\/script>$/g,''),{document,window,location,queueMicrotask:fn=>fn(),MutationObserver:class{observe(){}}});
+  assert.equal(nodes.length,1);assert.equal(nodes[0].name,'robots');assert(nodes[0].content.startsWith('index, follow'));
+  const retained=nodes[0];location.pathname='/cart';events.popstate();assert.equal(nodes[0],retained);assert.equal(retained.content,'noindex, nofollow, noarchive');
+  nodes.length=0;location.pathname='/lookbook';events.popstate();assert.equal(nodes[0].content,'noindex, follow');
+  nodes.length=0;location.pathname='/unknown-route';events.popstate();assert.equal(nodes.length,0);
 });
 
 test('only SEO identity fields change; garment facts, schema vocabulary and visible body stay exact', () => {

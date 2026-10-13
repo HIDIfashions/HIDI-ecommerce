@@ -149,10 +149,17 @@ function guardMetadata() {
       const url = canonicalOrigin + path;
       if (node.content !== url) node.content = url;
     }
+    const directive = privatePage || failedPage ? 'noindex, nofollow, noarchive' : deferredPage ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+    // Cached framework navigation can remove the wrapper's general directive.
+    // Restore only a missing SEO node; never remove or replace framework nodes.
+    if ((privatePage || publicPage || deferredPage) && !document.head.querySelectorAll('meta[name="robots"]').length) {
+      const node = document.createElement('meta');
+      node.name = 'robots'; node.content = directive;
+      document.head.appendChild(node);
+    }
     for (const node of document.head.querySelectorAll('meta[name="robots"],meta[name="googlebot"]')) {
       if (!privatePage && !publicPage && !deferredPage) continue;
-      const value = privatePage || failedPage ? 'noindex, nofollow, noarchive' : deferredPage ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
-      if (node.content !== value) node.content = value;
+      if (node.content !== directive) node.content = directive;
     }
     for (const node of document.head.querySelectorAll('meta[property="og:image"],meta[name="twitter:image"]')) {
       const value = identityUrl(node.content);
