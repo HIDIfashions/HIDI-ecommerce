@@ -141,7 +141,11 @@ try{
   const canonical=await import('./commerce.mjs');
   snapshot.setCandidate(false);const baseline=await canonical.probe(snapshot.base,join(root,'baseline-commerce'));
   snapshot.setCandidate(true);const candidate=await canonical.probe(snapshot.base,join(root,'candidate-commerce'));
-  assert.equal(baseline.passed,true);assert.equal(candidate.passed,true);assert.equal(candidate.liveWrites,0);assert.equal(baseline.liveWrites,0);assert.deepEqual(snapshot.denied,[],'No upstream writes attempted');
-  const report={passed:true,cssSha256:createHash('sha256').update(css).digest('hex'),sourceSha:process.env.GITHUB_SHA||null,engines,viewports,measurements,baseline,candidate,upstreamWrites:0,deploymentPerformed:false};
+  assert.equal(baseline.passed,true);assert.equal(candidate.passed,true);assert.equal(candidate.liveWrites,0);assert.equal(baseline.liveWrites,0);
+  // Unload beacons can outlive Playwright routing. The local server rejects
+  // them with 405 before its GET/HEAD transport, so they never reach production.
+  const localTelemetry=snapshot.denied.filter(r=>r.method==='POST'&&new URL(r.path,snapshot.base).pathname==='/api/hidi/performance');
+  assert.deepEqual(snapshot.denied.filter(r=>!localTelemetry.includes(r)),[],'No business write may reach the local read-only guard');
+  const report={passed:true,cssSha256:createHash('sha256').update(css).digest('hex'),sourceSha:process.env.GITHUB_SHA||null,engines,viewports,measurements,baseline,candidate,localUnloadTelemetryRejected:localTelemetry.length,upstreamWrites:0,deploymentPerformed:false};
   await writeFile(join(root,'report.json'),JSON.stringify(report,null,2));console.log('PASS complete baseline and candidate commerce regression; production unchanged');
 }finally{await snapshot.save();await snapshot.close();}
