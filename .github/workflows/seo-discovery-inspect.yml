@@ -1,4 +1,4 @@
-name: Inspect live SEO layer without changes
+name: Inspect live SEO image-discovery baseline without changes
 on:
   push:
     branches: [migration/azure-sql-blob]
