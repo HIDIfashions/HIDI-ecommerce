@@ -13,6 +13,12 @@ test('clearing a fact removes its description and short-description fallbacks', 
   assert(!/includes\s*:/i.test(body.description)); assert(!/includes\s*:/i.test(body.shortDescription)); assert.equal(readFields({ ...p, ...body }).includes, '');
   assert(body.description.includes('Supplier code: AA_123')); assert.equal(readFields({ ...p, ...body }).fit, 'Straight'); parseEdit(body);
 });
+test('editing subtitle prose retains specifications that existed only in the subtitle', () => {
+  const p = record(); p.description = 'Supplier code: AA_123';
+  const f = readFields(p); f.shortDescription = 'Updated three piece cotton set'; const body = detailsPayload(p, f);
+  assert.equal(readFields({ ...p, ...body }).includes, 'old fallback'); assert.equal(body.shortDescription, f.shortDescription);
+  assert(body.description.includes('Supplier code: AA_123')); parseEdit(body);
+});
 test('all four specification fields round-trip through the actual backend contract', () => {
   const p = record(), f = readFields(p); Object.assign(f, { includes: 'Kurta + pants + dupatta', fit: 'Relaxed', lining: 'Unlined', model: '168 cm; wears M' });
   const body = detailsPayload(p, f); parseEdit(body); const result = readFields({ ...p, ...body });

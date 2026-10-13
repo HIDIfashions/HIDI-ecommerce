@@ -34,15 +34,16 @@ export function detailsPayload(product, fields) {
     payload[key] = fields[key] === before[key] ? product[key] ?? null : validate(fields[key], label, limit, required);
   }
   const factsChanged = FACTS.some(fact => fields[fact.key] !== before[fact.key]);
+  const narrativeChanged = fields.description !== before.description || fields.shortDescription !== before.shortDescription;
   for (const fact of FACTS) validate(fields[fact.key], fact.label, 1000, false, true);
+  if (String(fields.description).split(/\r?\n/).some(line => labelled.test(line)) || String(fields.shortDescription).split(/\r?\n/).some(line => labelled.test(line))) throw new Error('Use the separate Included pieces, Fit, Lining and Model fields for labelled facts.');
   // Unrelated changes preserve original bytes, duplicate legacy facts and nulls.
   // A fact edit removes its old copies from BOTH fallback sources, so clearing
   // Includes cannot unexpectedly reveal an old value from shortDescription.
   payload.shortDescription = !factsChanged && fields.shortDescription === before.shortDescription
     ? product.shortDescription ?? null : validate(fields.shortDescription, 'Short description', 400);
-  if (!factsChanged && fields.description === before.description) payload.description = product.description ?? null;
+  if (!factsChanged && !narrativeChanged) payload.description = product.description ?? null;
   else {
-    if (String(fields.description).split(/\r?\n/).some(line => labelled.test(line)) || String(fields.shortDescription).split(/\r?\n/).some(line => labelled.test(line))) throw new Error('Use the separate Included pieces, Fit, Lining and Model fields for labelled facts.');
     const lines = [validate(fields.description, 'Full description', 10000), ...FACTS.filter(fact => fields[fact.key].trim()).map(fact => fact.stored + ': ' + fields[fact.key].trim())].filter(Boolean);
     payload.description = validate(lines.join('\n'), 'Full description including specifications', 10000);
   }
