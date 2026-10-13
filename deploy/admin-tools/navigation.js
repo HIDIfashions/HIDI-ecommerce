@@ -1,6 +1,7 @@
 (() => {
   const tools = [
     { key: 'product-preview', label: 'Product Preview & Edit', href: '/admin/product-preview', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/>', marker: 'hidiProductPreview' },
+    { key: 'product-page', label: 'Product Page Editor', href: '/admin/product-page', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18M15 8h3m-3 4h3m-3 4h3"/>', marker: 'hidiProductPage' },
     { key: 'skn-photos', label: 'SKN Photo Upload', href: '/admin/product-photos', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>', marker: 'hidiSknPhotos' },
     { key: 'media', label: 'Media Upload', href: '/admin/landing-media', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>', marker: 'hidiMediaLink' },
     { key: 'packing', label: 'Packing Scanner', href: '/admin/packing-scanner', icon: '<path d="M4 7V4h3m10 0h3v3M4 17v3h3m10 0h3v-3M7 8v8m3-8v8m4-8v8m3-8v8"/>', marker: 'hidiPackingLink' },
@@ -61,6 +62,13 @@
   },true);
   function addTools(){
     const path=location.pathname;if(!path.startsWith('/admin'))return;
+    for(const a of document.querySelectorAll('a[href^="/admin/products/"]')){
+      const product=a.getAttribute('href').match(/^\/admin\/products\/([a-zA-Z0-9_-]{1,64})$/),row=a.closest('tr');
+      if(!product||['new','price-tags','bulk-import'].includes(product[1])||!row||row.querySelector('[data-hidi-product-page]'))continue;
+      const link=document.createElement('a');link.href='/admin/product-page?product='+encodeURIComponent(product[1]);link.textContent='Edit product page';link.dataset.hidiProductPage='true';link.style.cssText='display:inline-block;margin:5px;color:#591d20;font:13px Arial';row.lastElementChild?.append(link);
+    }
+    const currentProduct=path.match(/^\/admin\/products\/([a-zA-Z0-9_-]{1,64})\/?$/),productHeading=document.querySelector('main h1');
+    if(currentProduct&&!['new','price-tags','bulk-import'].includes(currentProduct[1])&&productHeading&&!document.getElementById('hidi-product-page-editor-link')){const link=document.createElement('a');link.id='hidi-product-page-editor-link';link.href='/admin/product-page?product='+encodeURIComponent(currentProduct[1]);link.textContent='Edit like the storefront →';link.style.cssText='display:inline-block;margin:8px 16px;color:#591d20;font:14px Arial';productHeading.after(link);}
     if(['/admin/import','/admin/product-bulk'].includes(path.replace(/\/$/,''))&&!document.getElementById('hidi-bulk-publish-loader')){const script=document.createElement('script');script.id='hidi-bulk-publish-loader';script.type='module';script.src='/admin-tools-assets/product-publication-panel.mjs';document.head.append(script);}
     toolNavigation();
     const match=path.match(/^\/admin\/products(?:\/([^/]+))?\/?$/),heading=document.querySelector('main h1');
