@@ -17,6 +17,7 @@ try{
     await page.route('**/*',async route=>{
       const request=route.request(),url=new URL(request.url());
       if(/googletagmanager|google-analytics|facebook\.net/.test(url.hostname))return route.fulfill({status:200,contentType:'application/javascript',body:''});
+      if(url.pathname==='/api/hidi/performance')return route.abort();
       if(url.pathname==='/hidi-analytics.js'&&!live)return route.fulfill({status:200,contentType:'application/javascript',body:source});
       if(url.pathname==='/api/hidi/analytics-config')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({enabled:true,ga4MeasurementId:'G-Z45WSHLDHG'})});
       if(/^\/api\/store\/carts\//.test(url.pathname)){
@@ -37,9 +38,12 @@ try{
     }
     await page.goto(base+productPath,{waitUntil:'domcontentloaded',timeout:60000});
     await page.waitForFunction(()=>window.__ga4CartEvents.some(e=>e.name==='view_item'),{timeout:30000});
+    await page.locator('.product-page').waitFor();
+    if(await page.locator('[data-hidi-react-pdp]').count())await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor({state:'attached'});
     let size;
-    for(const name of ['M','L','XL','XXL']){const options=page.getByRole('button',{name,exact:true});for(let i=0;i<await options.count();i++){const candidate=options.nth(i);if(await candidate.isVisible()&&await candidate.isEnabled()){size=candidate;break;}}if(size)break;}
+    for(const name of ['M','L','XL','XXL']){const options=page.locator('.sizes').getByRole('button',{name,exact:true});for(let i=0;i<await options.count();i++){const candidate=options.nth(i);if(await candidate.isVisible()&&await candidate.isEnabled()){size=candidate;break;}}if(size)break;}
     assert(size,'A live product must have an available size');await size.click();
+    await page.waitForFunction(element=>element.getAttribute('aria-pressed')==='true',await size.elementHandle());
     const buttons=page.getByRole('button',{name:/add to cart|add to bag/i});let add;
     for(let i=0;i<await buttons.count();i++){const button=buttons.nth(i);if(await button.isVisible()){add=button;break;}}
     assert(add,'Visible add-to-cart button required');

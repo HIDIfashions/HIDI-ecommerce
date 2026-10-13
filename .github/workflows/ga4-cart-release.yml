@@ -67,3 +67,5 @@ jobs:
           name: ga4-cart-verification-${{ github.run_id }}-${{ github.run_attempt }}
           path: evidence/ga4-cart
           retention-days: 30
+
+# Verify hydrated product controls before synthetic cart additions.
