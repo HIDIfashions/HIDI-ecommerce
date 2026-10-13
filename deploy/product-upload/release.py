@@ -124,7 +124,7 @@ def capture():
     source_guard()
     photo.capture()
     before = photo.states()
-    assert not re.fullmatch(r'hidi-web--productupload\d+a\d+', before['hidi-web']['latest']), 'Refusing to recapture an owned pending uploader as a new baseline'
+    assert before['hidi-web']['latest'] != 'hidi-web--' + suffix(), 'Refusing to recapture this run-owned pending uploader as a new baseline'
     for name, state in before.items():
         guard.immutable(state['image'], name.removeprefix('hidi-'))
     backup(before)
@@ -260,7 +260,7 @@ def verify_uploader_report(report, live=False):
     assert {(row.get('engine'), row.get('width'), row.get('height')) for row in rows} == expected, 'Browser viewport matrix differs'
     for row in rows:
         assert all(row.get(key) is True for key in ['passed', 'fixtureDraftSaved', 'fixtureImagesUploaded',
-            'fixturePublished', 'retainedAdminVerified']), 'A draft, image, publication or retained Admin check is incomplete'
+            'fixturePublished', 'retainedAdminVerified', 'packageUploadVerified']), 'A draft, image, publication or retained Admin check is incomplete'
         assert row.get('inventoryWrites') == row.get('liveWrites') == 0, 'Stock and production writes must remain absent'
         assert isinstance(row.get('fixtureWrites'), int) and row['fixtureWrites'] > 0, 'Fixture product/status writes must be exercised'
         assert isinstance(row.get('fixturePhotoWrites'), int) and row['fixturePhotoWrites'] > 0, 'Fixture binary photo uploads must be exercised'
@@ -270,7 +270,7 @@ def reports_ready():
     plan = read('patch.json')
     preserved = read('web-preservation.json')
     retry_files = verify_upload_retry_report(plan)
-    expected = {patcher.HANDLER, patcher.NAVIGATION} | {'admin-tools/product-upload/' + name for name in patcher.FILES} | retry_files
+    expected = ({patcher.HANDLER} | {'admin-tools/product-upload/' + name for name in ['page.html', 'client.mjs', 'package.mjs', 'HIDI_Product_Upload_Package.zip']} if plan.get('updatingExistingUploader') else {patcher.HANDLER, patcher.NAVIGATION} | {'admin-tools/product-upload/' + name for name in patcher.FILES}) | retry_files
     assert plan.get('passed') is True and set(plan.get('allowedFiles', [])) == expected, 'Exact additive uploader file scope required'
     assert plan.get('newPage') == patcher.PAGE and all(plan.get(key) is True for key in [
         'inverseTransformsVerified', 'compiledNextPreservedExceptUploadRetry', 'serverUntouched', 'apiUnchanged', 'retainedPagePoliciesPreserved'])

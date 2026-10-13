@@ -7,13 +7,14 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 SOURCE = HERE
-ASSETS = {'client.mjs', 'model.mjs', 'engine.mjs', 'styles.css', 'HIDI_Product_Upload_Template.xlsx'}
+ASSETS = {'client.mjs', 'model.mjs', 'engine.mjs', 'styles.css', 'HIDI_Product_Upload_Template.xlsx', 'package.mjs', 'HIDI_Product_Upload_Package.zip'}
 FILES = ASSETS | {'page.html'}
 HANDLER = 'admin-tools/handler.mjs'
 NAVIGATION = 'admin-tools/navigation.js'
 PAGE = '/admin/product-upload'
 ASSET_PREFIX = '/admin-tools-assets/product-upload/'
 XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+PRIOR_ASSET_HASHES = {'page.html': '07f49c1516c7ace5c047d78ff18fd0870b567536605d5f7b365986f889ddb6a6', 'client.mjs': '434dfec4bf52cb7d3a7cd29dc1d0f1e73fb084b26ce3c66bc0c97869940c89ed', 'model.mjs': 'ea74ed62421452faba8420a4252f6183c3182f8e48522eaf35911f03b5c4a3cf', 'engine.mjs': '05002d2dc22e62cefa1f445275a582d346f65a46931fab5fda5699524f7e7022', 'styles.css': 'd5a0764e416345198e21714f3b0fb6ff0b46ac45612b4193a1550f67ee8b9514', 'HIDI_Product_Upload_Template.xlsx': 'caa2ac549a2bdf5a73c616801f0281df63b215c6f9a05969ce6fc0d3883082ec'}
 TOOL = "    { key: 'product-upload', label: 'Product Upload', href: '/admin/product-upload', icon: '<path d=\"M12 16V4m-4 4 4-4 4 4M4 15v5h16v-5\"/>', marker: 'hidiProductUpload' },\n"
 
 # The actual retained Next HTTP probe bound module 80441 and its cached export
@@ -133,7 +134,7 @@ def insert_handler(value):
     value, edit = once(value, 'const pages=new Map([', "const pages=new Map([['/admin/product-upload','product-upload/page.html'],")
     changes.append(edit)
     old = "page?'text/html; charset=utf-8':file.endsWith('.css')?"
-    new = "page?'text/html; charset=utf-8':file==='product-upload/HIDI_Product_Upload_Template.xlsx'?'" + XLSX_TYPE + "':file.endsWith('.css')?"
+    new = "page?'text/html; charset=utf-8':file==='product-upload/HIDI_Product_Upload_Template.xlsx'?'" + XLSX_TYPE + "':file==='product-upload/HIDI_Product_Upload_Package.zip'?'application/zip':file.endsWith('.css')?"
     value, edit = once(value, old, new)
     changes.append(edit)
     match = re.search(r"'Content-Security-Policy':(?P<policy>\"[^\n\"]+\")", value)
@@ -144,7 +145,7 @@ def insert_handler(value):
     value, edit = once(value, match[0], "'Content-Security-Policy':pathname==='/admin/product-upload'?" + scoped + ':' + policy)
     changes.append(edit)
     old = "'Content-Length':body.length"
-    new = "...(file==='product-upload/HIDI_Product_Upload_Template.xlsx'?{'Content-Disposition':'attachment; filename=\"HIDI_Product_Upload_Template.xlsx\"'}:{}),'Content-Length':body.length"
+    new = "...(file==='product-upload/HIDI_Product_Upload_Template.xlsx'?{'Content-Disposition':'attachment; filename=\"HIDI_Product_Upload_Template.xlsx\"'}:file==='product-upload/HIDI_Product_Upload_Package.zip'?{'Content-Disposition':'attachment; filename=\"HIDI_Product_Upload_Package.zip\"'}:{}),'Content-Length':body.length"
     value, edit = once(value, old, new)
     changes.append(edit)
     return value, changes
@@ -173,27 +174,59 @@ def patch_runtime(base, overlay):
     with zipfile.ZipFile(SOURCE / 'HIDI_Product_Upload_Template.xlsx') as book:
         assert {'[Content_Types].xml', 'xl/workbook.xml'} <= set(book.namelist()), 'Real XLSX workbook required'
     originals = {name: (base / name).read_text() for name in (HANDLER, NAVIGATION)}
-    handler, handler_edits = insert_handler(originals[HANDLER])
-    navigation, nav_edit = insert_navigation(originals[NAVIGATION])
-    assert inverse(handler, handler_edits) == originals[HANDLER], 'Admin handler changed beyond the uploader entries'
-    assert inverse(navigation, [nav_edit]) == originals[NAVIGATION], 'Admin navigation changed beyond one uploader row'
+    updating = PAGE in originals[HANDLER]
+    if updating:
+        assert originals[HANDLER].count("['/admin/product-upload','product-upload/page.html']") == 1, 'Exactly one retained uploader route required'
+        assert originals[NAVIGATION].count(TOOL) == 1, 'Exactly one unchanged Product Upload navigation row required'
+        handler, handler_edits = originals[HANDLER], []
+        old = 'const assets=new Map(['
+        additions = ','.join(repr('product-upload/' + name) for name in sorted(ASSETS - set(PRIOR_ASSET_HASHES))) + ','
+        assert all('product-upload/' + name not in handler for name in ASSETS - set(PRIOR_ASSET_HASHES)), 'Package assets already present; fresh prior-version runtime required'
+        handler, edit = once(handler, old, old + additions)
+        handler_edits.append(edit)
+        old = "'" + XLSX_TYPE + "':file.endsWith('.css')?"
+        handler, edit = once(handler, old, "'" + XLSX_TYPE + "':file==='product-upload/HIDI_Product_Upload_Package.zip'?'application/zip':file.endsWith('.css')?")
+        handler_edits.append(edit)
+        old = 'attachment; filename="HIDI_Product_Upload_Template.xlsx"\'}:{}),\'Content-Length\':body.length'
+        new = 'attachment; filename="HIDI_Product_Upload_Template.xlsx"\'}:file===\'product-upload/HIDI_Product_Upload_Package.zip\'?{\'Content-Disposition\':\'attachment; filename="HIDI_Product_Upload_Package.zip"\'}:{}),\'Content-Length\':body.length'
+        handler, edit = once(handler, old, new)
+        handler_edits.append(edit)
+        navigation = originals[NAVIGATION]
+        for name, expected_hash in PRIOR_ASSET_HASHES.items():
+            retained = base / 'admin-tools/product-upload' / name
+            assert retained.is_file() and not retained.is_symlink() and digest(retained.read_bytes()) == expected_hash, 'Retained uploader asset differs from verified prior release: ' + name
+    else:
+        handler, handler_edits = insert_handler(originals[HANDLER])
+        navigation, nav_edit = insert_navigation(originals[NAVIGATION])
+        assert inverse(navigation, [nav_edit]) == originals[NAVIGATION], 'Admin navigation changed beyond one uploader row'
+    assert inverse(handler, handler_edits) == originals[HANDLER], 'Admin handler changed beyond uploader asset entries'
     retry_repair = patch_upload_retry(base, overlay)
+    allowed = set(retry_repair['changedFiles'])
     for name, value in ((HANDLER, handler), (NAVIGATION, navigation)):
+        if value == originals[name]:
+            continue
+        allowed.add(name)
         destination = overlay / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(value)
         destination.chmod((base / name).stat().st_mode & 0o777)
     for name in sorted(FILES):
         relative = 'admin-tools/product-upload/' + name
-        assert not (base / relative).exists(), 'New uploader asset would replace a retained file'
+        retained = base / relative
+        if retained.exists():
+            assert updating and name in PRIOR_ASSET_HASHES, 'Unreviewed retained uploader asset replacement'
+            if retained.read_bytes() == (SOURCE / name).read_bytes():
+                continue
+        allowed.add(relative)
         destination = overlay / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(SOURCE / name, destination)
         destination.chmod(0o644)
     return {
         'passed': True,
-        'allowedFiles': sorted({HANDLER, NAVIGATION} | {'admin-tools/product-upload/' + name for name in FILES} | set(retry_repair['changedFiles'])),
-        'changedExistingFiles': [HANDLER, NAVIGATION] + retry_repair['changedFiles'],
+        'allowedFiles': sorted(allowed),
+        'updatingExistingUploader': updating,
+        'changedExistingFiles': sorted(name for name in allowed if (base / name).exists()),
         'newPage': PAGE,
         'newAssets': sorted(ASSET_PREFIX + name for name in ASSETS),
         'inverseTransformsVerified': True,

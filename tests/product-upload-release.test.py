@@ -32,7 +32,7 @@ def uploader_report():
         'productionDatabaseWrites': 0, 'productionBlobWrites': 0,
         'templateSha256': release.sha256(ROOT / 'deploy/product-upload/HIDI_Product_Upload_Template.xlsx'),
         'results': [{'engine': engine, 'width': width, 'height': height, 'passed': True, 'fixtureDraftSaved': True,
-            'fixtureImagesUploaded': True, 'fixturePublished': True, 'retainedAdminVerified': True,
+            'fixtureImagesUploaded': True, 'fixturePublished': True, 'retainedAdminVerified': True, 'packageUploadVerified': True,
             'inventoryWrites': 0, 'liveWrites': 0, 'fixtureWrites': 5, 'fixturePhotoWrites': 2}
             for engine in sorted(release.ENGINES) for width, height in sorted(release.VIEWPORTS)]}
 
@@ -151,6 +151,39 @@ class UploaderGuards(unittest.TestCase):
             file.write_text(new_handler)
             subprocess.run(['node', '--check', str(file)], check=True, capture_output=True)
 
+    def test_package_update_preserves_existing_navigation_api_and_unrelated_assets(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            base, prior_source, prior_overlay = root / 'base', root / 'prior-source', root / 'prior-overlay'
+            shutil.copytree(ROOT / 'deploy/admin-tools', base / 'admin-tools')
+            (base / 'apps/web').mkdir(parents=True)
+            (base / 'apps/web/server.js').write_text('retained Next')
+            seed_retry_module(base)
+            (base / 'server.mjs').write_text("import {handleQuickTools} from './admin-tools/handler.mjs';\nif (await handleQuickTools(request, response, pathname)) return;\n")
+            prior_source.mkdir()
+            for name in [*patcher.PRIOR_ASSET_HASHES, 'patch-runtime.py']:
+                (prior_source / name).write_bytes(subprocess.check_output(['git', 'show', '47e97ebb:deploy/product-upload/' + name], cwd=ROOT))
+            prior = release.load('prior_package_fixture_patcher', prior_source / 'patch-runtime.py')
+            prior.patch_runtime(base, prior_overlay)
+            shutil.copytree(prior_overlay, base, dirs_exist_ok=True)
+            original_navigation = (base / patcher.NAVIGATION).read_bytes()
+            original_handler = (base / patcher.HANDLER).read_text()
+            overlay = root / 'package-overlay'
+            report = patcher.patch_runtime(base, overlay)
+            self.assertTrue(report['updatingExistingUploader'])
+            self.assertEqual(report['allowedFiles'], sorted([patcher.HANDLER, *['admin-tools/product-upload/' + name for name in ['page.html', 'client.mjs', 'package.mjs', 'HIDI_Product_Upload_Package.zip']]]))
+            self.assertEqual(report['uploadRetryRepair']['copiesPatched'], 0)
+            self.assertFalse((overlay / patcher.NAVIGATION).exists())
+            self.assertEqual((base / patcher.NAVIGATION).read_bytes(), original_navigation)
+            subprocess.run(['node', '--check', str(overlay / patcher.HANDLER)], check=True, capture_output=True)
+            self.assertIn('application/zip', (overlay / patcher.HANDLER).read_text())
+            self.assertIn('HIDI_Product_Upload_Package.zip', (overlay / patcher.HANDLER).read_text())
+            self.assertEqual(original_handler.count("['/admin/product-upload','product-upload/page.html']"), 1)
+            self.assertTrue(report['compiledNextUntouched'])
+            (base / 'admin-tools/product-upload/client.mjs').write_text('unexpected prior uploader change')
+            with self.assertRaisesRegex(AssertionError, 'verified prior release'):
+                patcher.patch_runtime(base, root / 'bad-update')
+
     def test_missing_ambiguous_or_already_patched_anchors_are_rejected(self):
         handler = (ROOT / 'deploy/admin-tools/handler.mjs').read_text()
         altered, _ = patcher.insert_handler(handler)
@@ -214,7 +247,7 @@ try{
                     book.writestr('[Content_Types].xml', 'fixture content types')
                     book.writestr('xl/workbook.xml', 'fixture workbook')
                 result = patcher.patch_runtime(base, overlay)
-                self.assertEqual(len(result['allowedFiles']), 9)
+                self.assertEqual(len(result['allowedFiles']), len(patcher.FILES) + 3)
                 self.assertFalse((overlay / 'server.mjs').exists())
                 self.assertFalse(result['compiledNextUntouched'])
                 self.assertEqual(result['uploadRetryRepair']['copiesPatched'], 1)
@@ -285,7 +318,7 @@ try{
             report[key] = value
             with self.assertRaises(AssertionError):
                 release.verify_uploader_report(report)
-        for field in ['passed', 'fixtureDraftSaved', 'fixtureImagesUploaded', 'fixturePublished', 'retainedAdminVerified']:
+        for field in ['passed', 'fixtureDraftSaved', 'fixtureImagesUploaded', 'fixturePublished', 'retainedAdminVerified', 'packageUploadVerified']:
             report = uploader_report()
             report['results'][0][field] = False
             with self.assertRaises(AssertionError):

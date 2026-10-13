@@ -1,5 +1,5 @@
-name: Guarded Admin product and image upload release
-# Repair verified cached upload helpers and require actual HTTP/browser gates.
+name: Guarded Admin single-package product upload release
+# Add a single ZIP package input; preserve retained API, storefront and navigation.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -36,6 +36,7 @@ jobs:
           pnpm db:generate
           pnpm --filter @hidi/api test:customer-experience
           node --check deploy/product-upload/client.mjs
+          node --check deploy/product-upload/package.mjs
           node --check deploy/product-upload/model.mjs
           node --check deploy/product-upload/engine.mjs
           node --check tests/product-upload.browser.mjs
@@ -73,7 +74,7 @@ jobs:
         run: |
           npm install --prefix /tmp/hidi-product-upload-browser --no-save playwright@1.56.1
           node /tmp/hidi-product-upload-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
-      - name: Test real template, draft saving, images and publication in twelve browser and viewport cases
+      - name: Test one ZIP package, real template, drafts, photos and publication in twelve browser and viewport cases
         run: |
           set -euo pipefail
           node tests/product-upload.browser.mjs
