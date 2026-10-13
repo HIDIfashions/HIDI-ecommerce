@@ -18,6 +18,24 @@ const expectedTitles = {
   '/contact':'Contact & Help | HIDI',
   '/offers':'HIDI Privileges | HIDI',
 };
+async function assertCrawlerDirectives(page, privatePage = false, rawHtml) {
+  const rendered = await page.evaluate(() => [...document.querySelectorAll('meta[name="robots"],meta[name="googlebot"]')]
+    .map(node => ({name:node.name,content:node.content})));
+  assert(rendered.some(node=>node.name==='robots'),'General indexing directive remains present');
+  for(const node of rendered) {
+    assert.equal(/\bnoindex\b/i.test(node.content),privatePage,node.name+' rendered directive matches page eligibility');
+    if(!privatePage)assert(!/\bnofollow\b/i.test(node.content),node.name+' public links are crawlable');
+  }
+  if(rawHtml) {
+    const raw=await page.evaluate(html=>[...new DOMParser().parseFromString(html,'text/html').querySelectorAll('meta[name="robots"],meta[name="googlebot"]')]
+      .map(node=>({name:node.name,content:node.content})),rawHtml);
+    assert(raw.some(node=>node.name==='robots'),'Raw general indexing directive remains present');
+    for(const node of raw) {
+      assert.equal(/\bnoindex\b/i.test(node.content),privatePage,node.name+' initial HTML directive matches page eligibility');
+      if(!privatePage)assert(!/\bnofollow\b/i.test(node.content),node.name+' raw public links are crawlable');
+    }
+  }
+}
 async function assertSearchMetadata(page,path,rawHtml) {
   if (!expectedTitles[path]) return;
   await page.waitForFunction(title=>document.title===title,expectedTitles[path]);
@@ -42,6 +60,7 @@ async function assertSearchMetadata(page,path,rawHtml) {
   assert(fields.socialTitles.length>0 && fields.socialDescriptions.length>0,'Social metadata is present');
   for(const title of fields.socialTitles)assert.equal(title,fields.title,'Search and social titles agree');
   for(const description of fields.socialDescriptions)assert.equal(description,fields.descriptions[0],'Search and social descriptions agree');
+  await assertCrawlerDirectives(page,false,rawHtml);
   if(rawHtml) {
     const raw=await page.evaluate(html=>{
       const doc=new DOMParser().parseFromString(html,'text/html');
@@ -134,6 +153,7 @@ export async function probe(base, output) {
             const seo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
             assert.equal(seo.canonical,'https://hidiindia.com'+path,'Canonical must match the current route after hydration');
             assert.equal(seo.robots?.includes('noindex'),expectedPrivate,'Public pages index; utility pages retain noindex');
+            await assertCrawlerDirectives(page,expectedPrivate);
             if(!expectedPrivate) {
               const rawResponse=await fetch(base+path,{headers:seoHeaders});
               assert.equal(rawResponse.status,200);
@@ -188,6 +208,8 @@ export async function probe(base, output) {
             await page.goto(base+'/lookbook',{waitUntil:'domcontentloaded'});
             await page.locator('footer').first().waitFor({state:'attached'});
             await page.waitForFunction(()=>document.head.querySelector('meta[name="robots"]')?.content==='noindex, follow');
+            const deferredDirectives=await page.locator('meta[name="robots"],meta[name="googlebot"]').evaluateAll(nodes=>nodes.map(node=>node.content));
+            assert(deferredDirectives.every(value=>value==='noindex, follow'),'Both deferred-page directives preserve follow');
             const lookbookTitle=await page.title();assert(!/^404/i.test(lookbookTitle),'Existing editorial page still serves normally');
             for(const method of ['GET','HEAD']){
               const res=await fetch(base+'/lookbook',{method,headers:seoHeaders});
@@ -222,6 +244,7 @@ export async function probe(base, output) {
             const navigationSeo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
             assert.equal(navigationSeo.canonical,'https://hidiindia.com'+nextPath,'Canonical survives client navigation');
             assert(!navigationSeo.robots?.includes('noindex'),'Public product remains indexable after client navigation');
+            await assertCrawlerDirectives(page,false);
             const productIdentity=await page.evaluate(()=>{
               const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(n=>{
                 try {const v=JSON.parse(n.textContent);return Array.isArray(v)?v:(v['@graph']||[v]);}catch{return [];}
@@ -243,6 +266,7 @@ export async function probe(base, output) {
             await page.waitForFunction(name=>document.title===name+' | HIDI',productIdentity.name);
             const restoredDescriptions=await page.locator('meta[name="description"]').evaluateAll(nodes=>nodes.map(node=>node.content));
             assert(restoredDescriptions.length>0 && restoredDescriptions.every(value=>value===productIdentity.description),'Every retained product description survives cached forward navigation');
+            await assertCrawlerDirectives(page,false);
             await page.goto(base+'/',{waitUntil:'domcontentloaded'});
             await page.locator('footer').first().waitFor();
             await assertSearchMetadata(page,'/');

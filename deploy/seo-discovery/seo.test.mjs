@@ -9,7 +9,7 @@ import {runInNewContext} from 'node:vm';
 test('Lookbook directive survives client rendering and navigation without changing private/error directives',()=>{
   const robots={content:'index, follow'},events={};
   const document={title:'Lookbook | HIDI',documentElement:{},
-    head:{querySelectorAll:selector=>selector==='meta[name="robots"]'?[robots]:[]},
+    head:{querySelectorAll:selector=>selector==='meta[name="robots"],meta[name="googlebot"]'?[robots]:[]},
     querySelectorAll:()=>[],addEventListener:()=>{}};
   const location={pathname:'/lookbook'};
   const window={addEventListener:(event,fn)=>events[event]=fn};
@@ -21,6 +21,39 @@ test('Lookbook directive survives client rendering and navigation without changi
   location.pathname='/cart';events.popstate();assert.equal(robots.content,'noindex, nofollow, noarchive');
   location.pathname='/lookbook';document.title='404: Not found';events.popstate();
   assert.equal(robots.content,'noindex, nofollow, noarchive');
+});
+
+test('Google-specific noindex cannot veto approved public pages; previews, unknown pages and errors retain restrictions',()=>{
+  const head='<head><title>Collection | HIDI</title><meta name="robots" content="index, follow"><meta name="googlebot" content="noindex, nofollow, max-image-preview:large"></head>';
+  const body='<body><h1>All Products</h1><button>Add to Bag</button><script>window.commerceUnchanged=true</script></body>';
+  for(const path of ['/','/collections/all','/collections/work-wear','/products/published-style']) {
+    const result=normalizeSeoIdentity(head+body,path);
+    assert.match(result,/<meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">/);
+    assert.equal(result.slice(result.indexOf('<body>')),body);
+    assert.equal(normalizeSeoIdentity(result,path),result);
+  }
+  for(const path of [undefined,'/cart','/checkout','/account','/collections/unknown']) {
+    assert.equal(normalizeSeoIdentity(head+body,path),head+body);
+  }
+  const missing=(head+body).replace('Collection | HIDI','404: Not found');
+  assert.equal(normalizeSeoIdentity(missing,'/collections/all'),missing);
+  const deferred=normalizeSeoIdentity(head+body,'/lookbook');
+  assert.match(deferred,/<meta name="googlebot" content="noindex, follow">/);
+});
+
+test('Google-specific directives follow public, private and deferred client navigation without replacing framework nodes',()=>{
+  const robots={content:'index, follow'},googlebot={content:'noindex, nofollow'},events={};
+  const document={title:'Collection | HIDI',documentElement:{},head:{querySelectorAll:selector=>{
+    if(selector==='meta[name="robots"]')return [robots];
+    if(selector==='meta[name="robots"],meta[name="googlebot"]')return [robots,googlebot];
+    return [];
+  }},querySelectorAll:()=>[],addEventListener:()=>{}};
+  const location={pathname:'/products/published-style'},window={addEventListener:(event,fn)=>events[event]=fn};
+  runInNewContext(clientMetadataScript.replace(/^<script[^>]*>|<\/script>$/g,''),{document,window,location,queueMicrotask:fn=>fn(),MutationObserver:class{observe(){}}});
+  assert.equal(googlebot.content,robots.content);assert(googlebot.content.startsWith('index, follow'));
+  location.pathname='/cart';events.popstate();assert.equal(googlebot.content,'noindex, nofollow, noarchive');
+  location.pathname='/lookbook';events.popstate();assert.equal(googlebot.content,'noindex, follow');
+  document.title='404: Not found';events.popstate();assert.equal(googlebot.content,'noindex, nofollow, noarchive');
 });
 
 test('only SEO identity fields change; garment facts, schema vocabulary and visible body stay exact', () => {

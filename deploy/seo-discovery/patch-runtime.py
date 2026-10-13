@@ -62,10 +62,10 @@ def patch_text(source):
 def patch_runtime(base, overlay):
     base,overlay=Path(base),Path(overlay)
     expected={
-        'server.mjs':IMAGE_DISCOVERY_SERVER_SHA,
-        'privacy-policy/handler.mjs':'e743d56744be1629d33d2bb9522861bbc612b7b6550949b8a0d5dc5794591b38',
-        'seo-discovery/metadata.mjs':IMAGE_DISCOVERY_METADATA_SHA,
-        'seo-discovery/sitemap.mjs':'28382834439c6a85f7417cf99a7562f2df8a15f4e2aca807ed8f08b61932662e',
+        'server.mjs':'870fac80dd38422fff7965693a853f3ba0501e5d4fb94414e310cebee19350c2',
+        'privacy-policy/handler.mjs':'47bc7f3fd140786d6c25c41e9c44f770b3dfff8fa2a16f016b9589aa7505c328',
+        'seo-discovery/metadata.mjs':'ca2982428864e7f8cb3daa2394fc3a2f5ebcd794d105ed5ea470b55bcb85d260',
+        'seo-discovery/sitemap.mjs':'3a06940f2e8069df26064611536c8479b5f3a2b188c077714b9c765bfa321bd3',
         'seo-discovery/published-product-images.json':'da8de244a5c8d894fd3add64e6c7e17ba11b632eac8eca6eebf5805a74e95347',
         'dist/hidi-analytics.js':'49e768f8ad246d00def4e5e514809424bfdd63c229f100e9298cb2801bac5283',
     }
@@ -73,29 +73,9 @@ def patch_runtime(base, overlay):
         assert hashlib.sha256((base/name).read_bytes()).hexdigest()==digest, 'Inspected baseline changed: '+name
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
-    source=(base/'server.mjs').read_text()
-    changes=[
-        ('    : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";',
-         '    : pathname === "/lookbook" ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";'),
-        ('      else delete responseHeaders["x-robots-tag"];',
-         '      else if (pathname === "/lookbook") responseHeaders["x-robots-tag"] = "noindex, follow";\n      else delete responseHeaders["x-robots-tag"];'),
-        ('    else if (status === 200 && contentType.includes("text/html")) delete responseHeaders["x-robots-tag"];',
-         '    else if (status === 200 && contentType.includes("text/html") && pathname === "/lookbook") responseHeaders["x-robots-tag"] = "noindex, follow";\n    else if (status === 200 && contentType.includes("text/html")) delete responseHeaders["x-robots-tag"];'),
-    ]
-    result=source
-    for before,after in changes:
-        assert result.count(before)==1 and after not in result, 'Unique reviewed indexing anchor missing'
-        result=result.replace(before,after,1)
-    restored=result
-    for before,after in reversed(changes):restored=restored.replace(after,before,1)
-    assert restored==source, 'Unrelated wrapper changes'
-    (overlay/'server.mjs').write_text(result)
-    for name in ['sitemap.mjs','metadata.mjs']:(overlay/'seo-discovery'/name).write_bytes((HERE/name).read_bytes())
-    (overlay/'privacy-policy').mkdir()
-    policy=(HERE.parent/'privacy-policy/handler.mjs').read_bytes()
-    canonical=b'${preview ? "" : \'<link rel="canonical" href="https://hidiindia.com/privacy">\'}'
-    assert policy.count(canonical)==1 and policy.replace(canonical,b'',1)==(base/'privacy-policy/handler.mjs').read_bytes(), 'Policy changes outside one published canonical tag'
-    (overlay/'privacy-policy/handler.mjs').write_bytes(policy)
-    return {'passed':True,'allowedFiles':['server.mjs','seo-discovery/sitemap.mjs','seo-discovery/metadata.mjs','privacy-policy/handler.mjs'],
+    metadata=(HERE/'metadata.mjs').read_bytes()
+    assert hashlib.sha256(metadata).hexdigest()=='2af1ee994e5876ebb28cce01197efc9cd23e656567655b9a5a47e974c8095c82', 'Reviewed Google directive helper changed'
+    (overlay/'seo-discovery/metadata.mjs').write_bytes(metadata)
+    return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs'],
             'seoOnly':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,
             'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

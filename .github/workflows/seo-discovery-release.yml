@@ -1,4 +1,4 @@
-name: Release HIDI policy canonical and deferred editorial indexing
+name: Correct Google-specific indexing metadata only
 on:
   push:
     branches: [migration/azure-sql-blob]

@@ -66,6 +66,22 @@ function applySearchMetadata(head, metadata) {
     });
 }
 
+// A crawler-specific restriction overrides the general robots allowance.
+// Correct the retained build's Google tag before Google decides whether to render.
+function normalizeGoogleDirective(head, pathname) {
+  if (!pathname || /<title\b[^>]*>\s*(?:404\b|not found)/i.test(head)) return head;
+  const publicPage = Object.hasOwn(routeSearchMetadata, pathname) || /^\/products\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathname);
+  if (!publicPage && pathname !== '/lookbook') return head;
+  const value = pathname === '/lookbook' ? 'noindex, follow'
+    : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+  return head.replace(/<meta\b[^>]*>/gi, tag => {
+    if (/\bname\s*=\s*(["'])googlebot\1/i.test(tag)) {
+      return tag.replace(/\bcontent\s*=\s*(["'])(.*?)\1/i, (_, quote) => 'content=' + quote + value + quote);
+    }
+    return tag;
+  });
+}
+
 export function identityUrl(value) {
   if (typeof value !== 'string') return value;
   try {
@@ -133,7 +149,7 @@ function guardMetadata() {
       const url = canonicalOrigin + path;
       if (node.content !== url) node.content = url;
     }
-    for (const node of document.head.querySelectorAll('meta[name="robots"]')) {
+    for (const node of document.head.querySelectorAll('meta[name="robots"],meta[name="googlebot"]')) {
       if (!privatePage && !publicPage && !deferredPage) continue;
       const value = privatePage || failedPage ? 'noindex, nofollow, noarchive' : deferredPage ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
       if (node.content !== value) node.content = value;
@@ -150,7 +166,7 @@ function guardMetadata() {
     }
   }
   function schedule() { if (!scheduled) { scheduled = true; queueMicrotask(reconcile); } }
-  const selector='title,script[type="application/ld+json"],link[rel="canonical"],meta[name="robots"],meta[property="og:url"],meta[property="og:image"],meta[name="twitter:image"],meta[name="description"],meta[property="og:title"],meta[name="twitter:title"],meta[property="og:description"],meta[name="twitter:description"]';
+  const selector='title,script[type="application/ld+json"],link[rel="canonical"],meta[name="robots"],meta[name="googlebot"],meta[property="og:url"],meta[property="og:image"],meta[name="twitter:image"],meta[name="description"],meta[property="og:title"],meta[name="twitter:title"],meta[property="og:description"],meta[name="twitter:description"]';
   const relevant=node => {
     const element = node?.nodeType===3 ? node.parentElement : node;
     return element?.nodeType===1 && (element.matches(selector) || element.querySelector(selector));
@@ -212,7 +228,7 @@ export function createSeoIdentityStream(incoming) {
 export function normalizeSeoIdentity(html, pathname) {
   const boundary = html.search(/<\/head>/i);
   if (boundary < 0) return html;
-  const head = applySearchMetadata(normalizeJsonLd(html.slice(0, boundary)), routeSearchMetadata[pathname])
+  const head = normalizeGoogleDirective(applySearchMetadata(normalizeJsonLd(html.slice(0, boundary)), routeSearchMetadata[pathname]), pathname)
     .replace(/<meta\b[^>]*(?:property=["']og:image["']|name=["']twitter:image["'])[^>]*>/gi, tag =>
       tag.replace(/\bcontent=(["'])(.*?)\1/i, (match, quote, url) => 'content=' + quote + identityUrl(url) + quote));
   return head + html.slice(boundary);
