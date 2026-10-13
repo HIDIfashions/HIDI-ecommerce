@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { isBlockedTelemetry } from '../button-states/request-policy.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
+import { productImageUrls } from './sitemap.mjs';
 
 const expectedTitles = {
   '/':'HIDI India | Women’s Indian Wear and Kurta Sets',
@@ -64,6 +65,20 @@ export async function probe(base, output) {
   const xml=await sitemap.text();
   assert(xml.includes('/products/'),'Sitemap includes the read-only public catalogue');
   assert(!xml.includes('thehidi.com')&&!xml.includes('/cart'));
+  assert(xml.includes('xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"'),'Google image sitemap namespace is present');
+  const catalogueResponse=await fetch(base+'/api/store/products',{headers:seoHeaders});
+  assert.equal(catalogueResponse.status,200);
+  const catalogue=await catalogueResponse.json();
+  const entries=[...xml.matchAll(/<url><loc>(.*?)<\/loc>(.*?)<\/url>/gs)];
+  const actual=new Map(entries.map(([,url,body])=>[url,[...body.matchAll(/<image:loc>(.*?)<\/image:loc>/g)].map(m=>m[1])]));
+  let imageAssociations=0;
+  for(const product of catalogue) {
+    if(product.status&&product.status!=='ACTIVE')continue;
+    const expected=productImageUrls(product),url='https://hidiindia.com/products/'+product.slug;
+    assert.deepEqual(actual.get(url),expected,'Sitemap photos match the current published product: '+product.slug);
+    imageAssociations+=expected.length;
+  }
+  assert(imageAssociations>0,'Published photos are discoverable without customer interaction');
   if(base.startsWith('https://hidiindia.com')) {
     for(const path of [publishedImages[0],publishedImages[Math.floor(publishedImages.length/2)],publishedImages.at(-1),'/brand/hidi-logo-header.svg']) {
       const res=await fetch(base+path,{method:'HEAD',headers:seoHeaders});

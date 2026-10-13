@@ -3,6 +3,8 @@ from pathlib import Path
 import hashlib
 
 HERE = Path(__file__).resolve().parent
+IMAGE_DISCOVERY_SERVER_SHA = '80ca9c482c3c574a1122603ee077ed5b5d740d528a842a3d8cea6e63a36d7365'
+IMAGE_DISCOVERY_METADATA_SHA = '7e82f861f237eb33a2962f40c6afa6263314e53e336464b55c424dd5c9532060'
 BASE_SHA = '6292e91f0a84c8d45febc9e0fae418417ad2893c53e01cc2a8569451e0ebe44d'
 PHASE1_SHA = '5bef6e854810aaf5b536c6ef389366d6435857926435ec3acb010426312d6135'
 METADATA_BASE_SHA = '6ed0aa58a93f91651dbaf3035cfc93da3bd1f130c76be32fff3f0fb393bda79b'
@@ -59,14 +61,13 @@ def patch_text(source):
 
 def patch_runtime(base, overlay):
     base,overlay=Path(base),Path(overlay)
-    metadata_phase=hashlib.sha256((base/'server.mjs').read_bytes()).hexdigest()==METADATA_BASE_SHA
-    assert metadata_phase, 'Phase 3 requires the freshly inspected current live wrapper'
-    if metadata_phase:
-        assert hashlib.sha256((base/'seo-discovery/metadata.mjs').read_bytes()).hexdigest()==METADATA_HELPER_SHA, 'Live SEO helper changed; inspect again'
-        assert hashlib.sha256((base/'seo-discovery/sitemap.mjs').read_bytes()).hexdigest()==SITEMAP_HELPER_SHA, 'Live sitemap helper changed; inspect again'
-    updated=patch_text((base/'server.mjs').read_text())
-    overlay.mkdir(parents=True,exist_ok=True);(overlay/'server.mjs').write_text(updated)
+    assert hashlib.sha256((base/'server.mjs').read_bytes()).hexdigest() == IMAGE_DISCOVERY_SERVER_SHA, 'Live wrapper changed; inspect the new baseline first'
+    assert hashlib.sha256((base/'seo-discovery/metadata.mjs').read_bytes()).hexdigest() == IMAGE_DISCOVERY_METADATA_SHA, 'Live metadata helper changed; inspect again'
+    assert hashlib.sha256((base/'seo-discovery/sitemap.mjs').read_bytes()).hexdigest() == SITEMAP_HELPER_SHA, 'Live sitemap helper changed; inspect again'
+    overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
-    helper_names=['metadata.mjs','published-product-images.json'] if metadata_phase else ['metadata.mjs','sitemap.mjs']
-    for name in helper_names:(overlay/'seo-discovery'/name).write_bytes((HERE/name).read_bytes())
-    return {'passed':True,'allowedFiles':['server.mjs',*['seo-discovery/'+name for name in helper_names]],'seoOnly':True,'inverseTransformsVerified':True,'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}
+    names=['sitemap.mjs','published-product-images.json']
+    for name in names:(overlay/'seo-discovery'/name).write_bytes((HERE/name).read_bytes())
+    return {'passed':True,'allowedFiles':['seo-discovery/'+name for name in names],
+            'seoOnly':True,'serverUnchanged':True,'metadataUnchanged':True,
+            'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

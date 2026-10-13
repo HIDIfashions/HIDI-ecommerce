@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript, isPublishedProductImage, shouldIndexPublishedImage, productRouteMetadata } from './metadata.mjs';
 import { Readable } from 'node:stream';
-import { sitemapXml, createSeoSitemap } from './sitemap.mjs';
+import { sitemapXml, createSeoSitemap, productImageUrls } from './sitemap.mjs';
+import publishedImages from './published-product-images.json' with {type:'json'};
 
 test('only SEO identity fields change; garment facts, schema vocabulary and visible body stay exact', () => {
   const graph = {'@context':'https://schema.org','@type':'Product',url:'https://thidigk.thehidi.com/products/test',name:'Actual dress',description:'thehidi.com',offers:{url:'https://thehidi.com/products/test',price:'1490',availability:'https://schema.org/InStock'},image:['https://thidigk.thehidi.com/media/a.jpg','https://images.example/a.jpg']};
@@ -42,7 +43,7 @@ test('homepage and collection search/social fields change together; creative bod
   assert(collection.includes('Women’s Kurta Sets &amp; Indian Wear | HIDI India'));
 });
 test('image eligibility is limited to exact published catalogue assets',()=>{
-  const known='/media/products/variants/cmv3e6j3z00hs01z3o94jjvwv/1791697100254-b1588e04-08f2-4a27-b264-39e60840ffe9.webp';
+  const known=publishedImages[0];
   assert(isPublishedProductImage(known));
   assert(shouldIndexPublishedImage(200,'image/webp','hidiindia.com',known));
   assert(shouldIndexPublishedImage(200,'image/jpeg; charset=binary','www.hidiindia.com',known));
@@ -89,6 +90,26 @@ test('sitemap covers all public catalogue products and excludes private/draft in
   assert(!xml.includes('/checkout')&&!xml.includes('/admin'));
   assert.throws(()=>sitemapXml([{slug:'../admin'}]));
 });
+test('image sitemap keeps product associations and excludes draft, private, signed and foreign images',()=>{
+  const [first, second] = publishedImages;
+  const item = {slug:'published-style', images:[{url:'https://thidigk.thehidi.com'+first}],
+    variants:[{images:[{url:canonicalOriginForTest+first},{url:second},
+      {url:'https://foreign.example'+first},{url:'https://hidiindia.com.evil.example'+first},
+      {url:'https://user:pass@hidiindia.com'+first},{url:first+'?sig=private'},
+      {url:'/media/private/customer.jpg'},{url:'javascript:alert(1)'},{url:'https://hidiindia.com'+first+'#private'}]}]};
+  assert.deepEqual(productImageUrls(item),[canonicalOriginForTest+first,canonicalOriginForTest+second]);
+  const before=JSON.stringify(item);
+  const xml=sitemapXml([item,{...item,status:'DRAFT',slug:'draft-style'},{slug:'no-photos',images:[]}]);
+  assert(xml.includes('xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"'));
+  assert.equal((xml.match(/<image:image>/g)||[]).length,2);
+  assert(xml.includes('<loc>https://hidiindia.com/products/no-photos</loc></url>'));
+  assert(!xml.includes('draft-style')&&!xml.includes('sig=')&&!xml.includes('foreign.example'));
+  assert(!xml.includes('image:caption')&&!xml.includes('image:title')&&!xml.includes('image:license'));
+  assert.equal(JSON.stringify(item),before,'Published catalogue records remain untouched');
+  const removed=sitemapXml([{slug:'published-style',images:[]}]);
+  assert(!removed.includes('<image:image>'),'Removed image association does not remain cached in generated XML');
+});
+const canonicalOriginForTest='https://hidiindia.com';
 function response(){return {status:null,headers:null,body:null,writeHead(status,headers){this.status=status;this.headers=headers;},end(body){this.body=body;}};}
 test('preview gets no sitemap and performs no backend request',async()=>{
   let reads=0;const handler=createSeoSitemap({catalogueUrl:'https://api.example/v1/products',isProductionRequest:()=>false,fetcher:()=>{reads++;throw new Error('must not read');}});

@@ -1,17 +1,40 @@
-import { canonicalOrigin } from './metadata.mjs';
+import { canonicalOrigin, identityUrl, isPublishedProductImage } from './metadata.mjs';
 
 const routes = ['/', '/collections/all', '/collections/work-wear', '/collections/casual-wear', '/collections/occasional-wear', '/collections/ananyas-pick', '/about', '/shipping', '/returns', '/contact', '/offers'];
 const xmlEscape = text => String(text).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]));
+// Only existing, reviewed public product assets are eligible. Do not fetch or
+// invent an image, expose a signed URL, or use a photo from another product.
+export function productImageUrls(product) {
+  const records = [...(Array.isArray(product.images) ? product.images : []),
+    ...(Array.isArray(product.variants) ? product.variants.flatMap(variant => Array.isArray(variant.images) ? variant.images : []) : [])];
+  const urls = new Set();
+  for (const image of records) {
+    if (typeof image?.url !== 'string') continue;
+    try {
+      const original = new URL(image.url, canonicalOrigin);
+      if (!['http:', 'https:'].includes(original.protocol) || original.username || original.password || original.search || original.hash) continue;
+      const url = new URL(identityUrl(original.href));
+      if (url.origin !== canonicalOrigin || !isPublishedProductImage(url.pathname)) continue;
+      urls.add(url.href);
+    } catch { /* Malformed/unapproved image references stay out of discovery. */ }
+  }
+  if (urls.size > 1000) throw new Error('Image sitemap entry exceeds 1000 images');
+  return [...urls];
+}
 export function sitemapXml(products) {
   if (!Array.isArray(products)) throw new Error('Expected the public catalogue array');
-  const paths = new Set(routes);
+  const paths = new Map(routes.map(path => [path, new Set()]));
   for (const product of products) {
     if (product.status && product.status !== 'ACTIVE') continue;
     if (typeof product.slug !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(product.slug)) throw new Error('Invalid published slug');
-    paths.add('/products/' + product.slug);
+    const path = '/products/' + product.slug;
+    if (!paths.has(path)) paths.set(path, new Set());
+    for (const image of productImageUrls(product)) paths.get(path).add(image);
+    if (paths.get(path).size > 1000) throw new Error('Image sitemap entry exceeds 1000 images');
   }
-  return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
-    [...paths].map(path => '<url><loc>' + xmlEscape(canonicalOrigin + path) + '</loc></url>').join('\n') + '\n</urlset>\n';
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' +
+    [...paths].map(([path, images]) => '<url><loc>' + xmlEscape(canonicalOrigin + path) + '</loc>' +
+      [...images].map(image => '<image:image><image:loc>' + xmlEscape(image) + '</image:loc></image:image>').join('') + '</url>').join('\n') + '\n</urlset>\n';
 }
 
 export function createSeoSitemap({ catalogueUrl, isProductionRequest, fetcher = fetch }) {
