@@ -50,6 +50,7 @@ async function ready(page){
   await page.locator('[class*="collection-browser_productGrid__"] article').first().waitFor();
   await page.waitForFunction(()=>document.querySelector('[class*="product-card_mobileQuickAdd__"]')?.disabled===false);
   await page.evaluate(()=>document.fonts.ready);
+  await settledStyles(page);
 }
 async function applyCss(page){
   await page.evaluate(css=>{
@@ -136,7 +137,7 @@ try{
   }
   // Keep every canonical commerce assertion intact; only browser launch options
   // are adapted for the local network. Candidate HTML receives the exact CSS.
-  const canonical=await import('../care-break/retained-commerce.mjs');
+  const canonical=await import('./commerce.mjs');
   snapshot.setCandidate(false);const baseline=await canonical.probe(snapshot.base,join(root,'baseline-commerce'));
   snapshot.setCandidate(true);const candidate=await canonical.probe(snapshot.base,join(root,'candidate-commerce'));
   assert.equal(baseline.passed,true);assert.equal(candidate.passed,true);assert.equal(candidate.liveWrites,0);assert.equal(baseline.liveWrites,0);assert.deepEqual(snapshot.denied,[],'No upstream writes attempted');
