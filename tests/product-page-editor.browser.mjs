@@ -81,6 +81,8 @@ try {
       page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Reload saved values' }).click();
       await page.waitForFunction(() => document.getElementById('status').textContent === 'Latest saved values loaded.'); assert.equal(await page.getByLabel('Fabric / composition').inputValue(), 'Verified cotton blend');
       for (const width of [320, 390, 844]) { await page.setViewportSize({ width, height: 844 }); assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No horizontal overflow at ' + width); }
+      await page.screenshot({ path: 'evidence/product-page/' + engine + '-tablet-edit.png', fullPage: true });
+      await page.setViewportSize({ width: 390, height: 844 });
       await page.screenshot({ path: 'evidence/product-page/' + engine + '-mobile-edit.png', fullPage: true });
       page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Move to draft', exact: true }).click();
       await page.waitForFunction(() => document.getElementById('status').textContent === 'Publication status saved: DRAFT.'); assert.equal(state.record.status, 'DRAFT');
