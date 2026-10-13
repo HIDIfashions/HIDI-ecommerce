@@ -1,0 +1,71 @@
+name: Release HIDI receipt-based purchase analytics
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/ga4-purchase-release.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-ga4-purchase-browser/node_modules/playwright/index.mjs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Verify receipt validation, deduplication and cart regression cases
+        run: |
+          node --check deploy/ga4-purchase/hidi-analytics.js
+          node --check deploy/ga4-purchase/browser.mjs
+          node --test deploy/ga4-purchase/analytics.test.mjs
+          python3 -m py_compile deploy/ga4-purchase/release.py
+      - name: Install browser verification tooling
+        run: |
+          npm install --prefix /tmp/hidi-ga4-purchase-browser --no-save playwright@1.56.1
+          node /tmp/hidi-ga4-purchase-browser/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Verify desktop/mobile cart and isolated purchase receipts
+        run: node deploy/ga4-purchase/browser.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Back up current image and create analytics-only candidate
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 -u deploy/ga4-purchase/release.py capture
+          python3 -u deploy/ga4-purchase/release.py compose
+      - name: Publish only the tested analytics asset overlay
+        run: python3 -u deploy/ga4-purchase/release.py publish
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Release and verify unchanged pages and deployed purchase tracking
+        id: apply
+        timeout-minutes: 15
+        run: python3 -u deploy/ga4-purchase/release.py apply --image "$WEB_IMAGE"
+      - uses: azure/login@v2
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Recover only an interrupted owned rollout
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        run: python3 -u deploy/ga4-purchase/release.py recover --image "$WEB_IMAGE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga4-purchase-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/ga4-purchase
+          retention-days: 30
+
+# Verify confirmed purchases, reload duplicates, review and failed payments.
