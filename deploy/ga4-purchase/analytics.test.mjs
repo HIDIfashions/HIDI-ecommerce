@@ -17,6 +17,7 @@ async function harness(enabled=true, settings={}){
   const native=function(...args){calls.push({self:this,args});if(String(args[0]).endsWith('/api/hidi/analytics-config'))return Promise.resolve(response({enabled,ga4MeasurementId:'G-Z45WSHLDHG'}));return next(...args);};
   const sandbox={URL,URLSearchParams,Request,Response,Promise,setTimeout,clearTimeout,queueMicrotask,console,
     location:{href:origin+(settings.path||'/')+(settings.search||''),origin,pathname:settings.path||'/',search:settings.search||''},history:{pushState(){},replaceState(){}},
+    setTimeout(fn,delay){if(delay===5000){settings.pendingTimers?.push(fn);return 0;}return setTimeout(fn,delay);},
     sessionStorage:settings.sessionStorage||storage(),localStorage:settings.localStorage||storage([['hidi_cart_session','private-cart-session']]),addEventListener(){},dispatchEvent(){},
     CustomEvent:class{constructor(name,props){this.type=name;this.detail=props?.detail;}},
     document:{readyState:'complete',title:'Fixture',querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){},createElement(){return {};},head:{appendChild(script){queueMicrotask(()=>script.onload());}}},
@@ -151,4 +152,20 @@ test('other pages and disabled analytics never fetch receipts',async()=>{
   const h=await harness(false,{path:'/order-confirmed',search:'?order='+order});assert.equal(h.calls.length,1);assert.equal(purchases(h).length,0);
   const noOrder=await harness(true,{path:'/order-confirmed'});assert.equal(noOrder.calls.length,1);
   const cartPage=await harness(true,{path:'/cart',search:'?order='+order});assert.equal(cartPage.calls.length,1);
+});
+
+test('authorized payment emits only after a later receipt confirms capture',async()=>{
+  const timers=[],data=receipt();data.status='PENDING_PAYMENT';data.payment.status='AUTHORIZED';
+  const h=await purchaseHarness(data,{pendingTimers:timers});assert.equal(purchases(h).length,0);assert.equal(timers.length,1);
+  replay(h);await flush();assert.equal(timers.length,1);
+  h.setNext(()=>Promise.resolve(response(receipt())));timers.shift()();await flush();assert.equal(purchases(h).length,1);assert.equal(timers.length,0);
+});
+test('pending capture retries are bounded and stop when leaving confirmation',async()=>{
+  const timers=[],data=receipt();data.status='PENDING_PAYMENT';data.payment.status='AUTHORIZED';
+  const h=await purchaseHarness(data,{pendingTimers:timers});
+  for(let i=0;i<6;i++){assert.equal(timers.length,1);timers.shift()();await flush();}
+  assert.equal(timers.length,0);assert.equal(purchases(h).length,0);
+  assert.equal(h.calls.filter(c=>String(c.args[0]).includes('/checkout/confirmation/')).length,7);
+  const leavingTimers=[];const leaving=await purchaseHarness(data,{pendingTimers:leavingTimers});
+  leaving.sandbox.location.pathname='/cart';leavingTimers.shift()();await flush();assert.equal(leaving.calls.length,2);
 });

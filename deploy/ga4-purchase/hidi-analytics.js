@@ -225,6 +225,8 @@
 
   const purchasesSent = new Set();
   const purchasesPending = new Set();
+  const purchaseTimers = new Set();
+  const purchaseRetries = new Map();
 
   function purchaseParams(receipt, order) {
     if (!receipt || receipt.orderNumber !== order || receipt.currency !== "INR"
@@ -288,7 +290,7 @@
     const ctx = routeContext();
     if (ctx.path !== "/order-confirmed") return;
     const order = ctx.query.get("order");
-    if (!order || purchaseWasSent(order) || purchasesPending.has(order)) return;
+    if (!order || purchaseWasSent(order) || purchasesPending.has(order) || purchaseTimers.has(order)) return;
     let session;
     try { session = window.localStorage.getItem("hidi_cart_session"); } catch { return; }
     if (typeof session !== "string" || session.length < 8) return;
@@ -305,7 +307,23 @@
       const current = routeContext();
       if (current.path !== "/order-confirmed" || current.query.get("order") !== order || purchaseWasSent(order)) return;
       const params = purchaseParams(receipt, order);
-      if (!params) return;
+      if (!params) {
+        // Razorpay authorization can precede the capture webhook. Recheck only
+        // that pending state, at most six times, while this receipt stays open.
+        const attempts = purchaseRetries.get(order) || 0;
+        if (receipt?.orderNumber === order && receipt.currency === "INR"
+            && receipt.status === "PENDING_PAYMENT" && receipt.payment?.provider === "RAZORPAY"
+            && ["AUTHORIZED", "CREATED"].includes(receipt.payment.status) && attempts < 6) {
+          purchaseRetries.set(order, attempts + 1);
+          purchaseTimers.add(order);
+          window.setTimeout(function () {
+            purchaseTimers.delete(order);
+            const route = routeContext();
+            if (route.path === "/order-confirmed" && route.query.get("order") === order) trackPurchaseWhenReady();
+          }, 5000);
+        }
+        return;
+      }
       emit("purchase", params);
       purchasesSent.add(order);
       for (const name of ["localStorage", "sessionStorage"]) {

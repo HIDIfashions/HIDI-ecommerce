@@ -10,19 +10,19 @@ const catalogueResponse=await fetch(base+'/api/store/products');assert(catalogue
 const products=await catalogueResponse.json();const product=products.find(p=>p.inStock&&p.variants?.some(v=>v.available>0));
 assert(product?.slug,'An in-stock product is required');const productPath='/products/'+product.slug;
 const reports=[];
-function isolatedReceipt(order){
+function isolatedReceipt(order,pending=false){
   const review=order.endsWith('REVIEW'),failed=order.endsWith('FAILED');
-  return {orderNumber:order,status:review?'PAYMENT_REVIEW':failed?'PENDING_PAYMENT':'CONFIRMED',currency:'INR',createdAt:'2026-10-13T10:00:00.000Z',
+  return {orderNumber:order,status:review?'PAYMENT_REVIEW':(failed||pending)?'PENDING_PAYMENT':'CONFIRMED',currency:'INR',createdAt:'2026-10-13T10:00:00.000Z',
     subtotalPaise:339800,discountPaise:0,shippingPaise:9900,taxPaise:0,totalPaise:349700,walletAppliedPaise:100000,
     customerEmail:'isolated@example.test',customerPhone:'0000000000',shippingAddress:{line1:'Isolated browser fixture',city:'Test',state:'Test',postalCode:'000000'},
-    payment:{provider:'RAZORPAY',status:review?'AUTHORIZED':failed?'FAILED':'CAPTURED',method:'upi',amountPaise:249700},
+    payment:{provider:'RAZORPAY',status:review?'AUTHORIZED':failed?'FAILED':pending?'AUTHORIZED':'CAPTURED',method:'upi',amountPaise:249700},
     items:[{id:'isolated-item',slug:'isolated-kurta',productName:'Isolated Kurta',size:'M',color:'Blue',quantity:2,unitPricePaise:169900,totalPaise:339800}]};
 }
 const browser=await chromium.launch();
 try{
   for(const mobile of [false,true]){
     const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},isMobile:mobile,hasTouch:mobile});
-    const page=await context.newPage();let simulatedWrites=0,failed=false,receiptReads=0;const blocked=[];
+    const page=await context.newPage();let simulatedWrites=0,failed=false,receiptReads=0;const blocked=[];const receiptFirstSeen=new Map();
     await page.addInitScript(()=>{localStorage.setItem('hidi_cart_session','isolated-purchase-session');window.__ga4CartEvents=[];window.gtag=(...args)=>{if(args[0]==='event')window.__ga4CartEvents.push({name:args[1],params:args[2]});};});
     await page.route('**/*',async route=>{
       const request=route.request(),url=new URL(request.url());
@@ -33,7 +33,9 @@ try{
       if(/^\/(?:api\/store|v1)\/checkout\/confirmation\//.test(url.pathname)){
         assert.equal(request.method(),'GET');receiptReads++;
         const order=decodeURIComponent(url.pathname.split('/').at(-1));assert(order.startsWith('GA4-ISOLATED-'));
-        return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(isolatedReceipt(order))});
+        if(!receiptFirstSeen.has(order))receiptFirstSeen.set(order,Date.now());
+        const pending=order.endsWith('PENDING')&&Date.now()-receiptFirstSeen.get(order)<3000;
+        return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(isolatedReceipt(order,pending))});
       }
       if(/^\/api\/store\/carts\//.test(url.pathname)){
         if(request.method()==='POST'&&/\/items\/?$/.test(url.pathname)){
@@ -87,8 +89,12 @@ try{
       await page.waitForTimeout(500);assert(receiptReads>beforeReads,'Receipt endpoint must be intercepted');
       assert.equal(await page.evaluate(()=>window.__ga4CartEvents.filter(e=>e.name==='purchase').length),0,status+' must not count as purchase');
     }
+    await page.goto(base+'/order-confirmed?order=GA4-ISOLATED-PENDING',{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>window.__ga4CartEvents.some(e=>e.name==='page_view'));
+    await page.waitForTimeout(300);assert.equal(await page.evaluate(()=>window.__ga4CartEvents.filter(e=>e.name==='purchase').length),0,'Authorized payment must wait for capture');
+    await page.waitForFunction(()=>window.__ga4CartEvents.filter(e=>e.name==='purchase').length===1,null,{timeout:15000});
     assert.deepEqual(blocked,[],'No unexpected live writes during purchase checks');
-    reports.push({device:mobile?'mobile':'desktop',successfulEvents:2,rejectedEvents:0,purchaseEvents:1,duplicatePurchases:0,reviewPurchases:0,failedPurchases:0,isolatedReceiptReads:receiptReads,liveCartWrites:0,liveOrderWrites:0,originalButtonFlowRetained:true});
+    reports.push({device:mobile?'mobile':'desktop',successfulEvents:2,rejectedEvents:0,purchaseEvents:1,delayedPurchaseEvents:1,duplicatePurchases:0,reviewPurchases:0,failedPurchases:0,isolatedReceiptReads:receiptReads,liveCartWrites:0,liveOrderWrites:0,originalButtonFlowRetained:true});
     console.log('GA4_PURCHASE_BROWSER_PASS',JSON.stringify(reports.at(-1)));
     await context.close();
   }

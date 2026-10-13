@@ -16,7 +16,10 @@ def capture():
     photo.capture();before=photo.states();guard.write_private('public-before.json',guard.public_snapshot())
     image=before['hidi-web']['image'];guard.immutable(image,'web')
     backup=images.REGISTRY+'/hidi-web:backup-ga4-purchase-'+guard.run_key()
-    for args in [('pull',image),('tag',image,backup),('push',backup)]:subprocess.run(['docker',*args],check=True)
+    # Registry-side copying preserves OCI indexes and manifests byte-for-byte;
+    # Docker pull/tag/push can normalize them into a different manifest digest.
+    registry=subprocess.check_output(['az','acr','show','--name','acrhidiprod0927','--query','id','-o','tsv','--only-show-errors'],text=True).strip()
+    subprocess.run(['az','acr','import','--name','acrhidiprod0927','--registry',registry,'--source',image.split('/',1)[1],'--image',backup.split('/',1)[1],'--only-show-errors','-o','none'],check=True)
     digest=subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image',backup.split('/',1)[1],'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
     assert digest==image.split('@',1)[1],'Exact backup digest required'
     guard.save('backup.json',{'verified':True,'originalImage':image,'backup':backup,'digest':digest})
@@ -42,7 +45,7 @@ def compose():
 def publish():
     photo.unchanged(photo.states());report=guard.read('candidate.json');preserved=guard.read('preservation.json')
     assert report['passed'] and report['liveWrites']==0 and len(report['results'])==2
-    assert all(r['purchaseEvents']==1 and r['duplicatePurchases']==0 and r['reviewPurchases']==0 and r['failedPurchases']==0 and r['liveOrderWrites']==0 for r in report['results'])
+    assert all(r['purchaseEvents']==1 and r['delayedPurchaseEvents']==1 and r['duplicatePurchases']==0 and r['reviewPurchases']==0 and r['failedPurchases']==0 and r['liveOrderWrites']==0 for r in report['results'])
     assert preserved['passed'] and report['sourceSha256']==preserved['analyticsSha256']
     subprocess.run(['docker','push',tag()],check=True)
     digest=subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image',tag().split('/',1)[1],'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
