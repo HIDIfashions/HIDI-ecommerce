@@ -18,8 +18,8 @@ def capture():
     backup=images.REGISTRY+'/hidi-web:backup-ga4-purchase-'+guard.run_key()
     # Registry-side copying preserves OCI indexes and manifests byte-for-byte;
     # Docker pull/tag/push can normalize them into a different manifest digest.
-    registry=subprocess.check_output(['az','acr','show','--name','acrhidiprod0927','--query','id','-o','tsv','--only-show-errors'],text=True).strip()
-    subprocess.run(['az','acr','import','--name','acrhidiprod0927','--registry',registry,'--source',image.split('/',1)[1],'--image',backup.split('/',1)[1],'--only-show-errors','-o','none'],check=True)
+    authfile=Path(os.environ.get('DOCKER_CONFIG',str(Path.home()/'.docker')))/'config.json'
+    subprocess.run(['skopeo','copy','--all','--preserve-digests','--authfile',str(authfile),'docker://'+image,'docker://'+backup],check=True)
     digest=subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image',backup.split('/',1)[1],'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
     assert digest==image.split('@',1)[1],'Exact backup digest required'
     guard.save('backup.json',{'verified':True,'originalImage':image,'backup':backup,'digest':digest})

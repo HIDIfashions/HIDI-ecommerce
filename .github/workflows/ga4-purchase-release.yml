@@ -25,6 +25,8 @@ jobs:
           node --check deploy/ga4-purchase/browser.mjs
           node --test deploy/ga4-purchase/analytics.test.mjs
           python3 -m py_compile deploy/ga4-purchase/release.py
+      - name: Install exact-manifest registry copy tooling
+        run: sudo apt-get update && sudo apt-get install -y skopeo
       - name: Install browser verification tooling
         run: |
           npm install --prefix /tmp/hidi-ga4-purchase-browser --no-save playwright@1.56.1
@@ -70,4 +72,4 @@ jobs:
 
 # Verify confirmed purchases, reload duplicates, review and failed payments.
 
-# Preserve the exact registry backup and verify delayed Razorpay capture.
+# Preserve OCI manifests using existing registry data-plane authentication.
