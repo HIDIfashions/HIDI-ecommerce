@@ -25,7 +25,8 @@ for(const engine of engines){
         const page=await newPage();
         await page.route('**/*',async route=>{
           const req=route.request(),url=new URL(req.url());
-          if(url.origin===snapshot.base||url.pathname.startsWith('/api/')||!['GET','HEAD'].includes(req.method())||req.resourceType()==='media'||/googletagmanager|google-analytics|facebook\.net/.test(url.hostname))return route.fallback();
+          if(/googletagmanager|google-analytics|facebook\.net/.test(url.hostname))return route.abort();
+          if(url.origin===snapshot.base||url.pathname.startsWith('/api/')||!['GET','HEAD'].includes(req.method())||req.resourceType()==='media')return route.fallback();
           const response=await snapshot.pull(req.url());
           return route.fulfill({status:response.status,contentType:response.contentType,body:response.body});
         });
