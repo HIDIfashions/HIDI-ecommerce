@@ -73,3 +73,5 @@ jobs:
 # Verify confirmed purchases, reload duplicates, review and failed payments.
 
 # Preserve OCI manifests using existing registry data-plane authentication.
+
+# Wait for original product selection readiness without toggling repeatedly.

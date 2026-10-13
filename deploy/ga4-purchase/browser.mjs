@@ -53,19 +53,35 @@ try{
       const deployed=await page.request.get(base+'/hidi-analytics.js');assert(deployed.ok());
       assert.equal(createHash('sha256').update(await deployed.body()).digest('hex'),createHash('sha256').update(source).digest('hex'),'Live analytics source differs');
     }
-    await page.goto(base+productPath,{waitUntil:'domcontentloaded',timeout:60000});
-    await page.waitForFunction(()=>window.__ga4CartEvents.some(e=>e.name==='view_item'),{timeout:30000});
-    await page.locator('.product-page').waitFor();
-    if(await page.locator('[data-hidi-react-pdp]').count())await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor({state:'attached'});
-    let size;
-    for(const name of ['M','L','XL','XXL']){const options=page.locator('.sizes').getByRole('button',{name,exact:true});for(let i=0;i<await options.count();i++){const candidate=options.nth(i);if(await candidate.isVisible()&&await candidate.isEnabled()){size=candidate;break;}}if(size)break;}
-    assert(size,'A live product must have an available size');
-    const buttons=page.getByRole('button',{name:/add to cart|add to bag/i});let add;
-    for(let i=0;i<await buttons.count();i++){const button=buttons.nth(i);if(await button.isVisible()){add=button;break;}}
-    assert(add,'Visible add-to-cart button required');
-    for(let attempt=0;attempt<12&&!await add.isEnabled();attempt++){await size.click();await page.waitForTimeout(500);}
-    if(!await add.isEnabled())console.log('GA4_CART_CONTROL_DIAGNOSTICS',JSON.stringify(await page.locator('.sizes button,button[class*="addButton"]').evaluateAll(nodes=>nodes.map(n=>({text:n.textContent,pressed:n.getAttribute('aria-pressed'),disabled:n.disabled,className:n.className})))));
-    assert(await add.isEnabled(),'Product size selection must enable original Add to Cart');
+    let add;
+    const browserErrors=[];
+    page.on('pageerror',error=>browserErrors.push(error.message));
+    // Some retained product releases predate the explicit hydration marker.
+    // Wait for loaded scripts and observable selection, without rapid toggles.
+    for(let attempt=0;attempt<3;attempt++){
+      await page.goto(base+productPath,{waitUntil:'load',timeout:60000});
+      await page.waitForFunction(()=>window.__ga4CartEvents.some(e=>e.name==='view_item'),null,{timeout:30000});
+      await page.locator('.product-page').waitFor();
+      if(await page.locator('[data-hidi-react-pdp]').count())await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor({state:'attached'});
+      const sizes=page.locator('.product-page .sizes button[aria-pressed]:enabled');
+      let size;
+      for(let i=0;i<await sizes.count();i++){if(await sizes.nth(i).isVisible()){size=sizes.nth(i);break;}}
+      assert(size,'A live product must have a visible available size');
+      const buttons=page.locator('.product-page').getByRole('button',{name:/^add to cart$/i});
+      add=undefined;
+      for(let i=0;i<await buttons.count();i++){if(await buttons.nth(i).isVisible()){add=buttons.nth(i);break;}}
+      assert(add,'Visible original Add to Cart required');
+      if(await size.getAttribute('aria-pressed')!=='true')await size.click();
+      try{
+        await page.waitForFunction(()=>Array.from(document.querySelectorAll('.product-page .sizes button')).some(button=>button.getAttribute('aria-pressed')==='true')
+          && Array.from(document.querySelectorAll('.product-page button')).some(button=>/^add to cart$/i.test(button.textContent.trim())&&!button.disabled),null,{timeout:15000});
+        assert(await add.isEnabled(),'Selected size must enable the original Add to Cart');
+        break;
+      }catch(error){
+        console.log('GA4_CART_READINESS',JSON.stringify({attempt,productPath,browserErrors,controls:await page.locator('.product-page .sizes button').evaluateAll(nodes=>nodes.map(n=>({text:n.textContent,pressed:n.getAttribute('aria-pressed'),disabled:n.disabled})))}));
+        if(attempt===2)throw error;
+      }
+    }
     const additions=()=>page.evaluate(()=>window.__ga4CartEvents.filter(e=>e.name==='add_to_cart'));
     await add.click();await page.waitForFunction(()=>window.__ga4CartEvents.filter(e=>e.name==='add_to_cart').length===1);
     await page.waitForTimeout(300);await add.click();await page.waitForFunction(()=>window.__ga4CartEvents.filter(e=>e.name==='add_to_cart').length===2);
