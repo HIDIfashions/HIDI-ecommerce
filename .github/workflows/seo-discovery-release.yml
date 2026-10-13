@@ -1,4 +1,4 @@
-name: Release HIDI SEO image sitemap with storefront preserved
+name: Release HIDI policy canonical and deferred editorial indexing
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -27,8 +27,11 @@ jobs:
         run: |
           node --check deploy/seo-discovery/probes.mjs
           node --check deploy/seo-discovery/candidate.mjs
-          node --test deploy/seo-discovery/seo.test.mjs
+          node --test deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs
+          python3 tests/photo-upload-release.test.py
           python3 -m py_compile deploy/seo-discovery/patch-runtime.py deploy/seo-discovery/release.py
+      - name: Install exact OCI backup tooling
+        run: sudo apt-get update -qq && sudo apt-get install -y skopeo
       - name: Install desktop and mobile browser test engines
         run: |
           npm install --prefix /tmp/hidi-seo-discovery-browser --no-save playwright@1.56.1
