@@ -22,6 +22,8 @@ export async function snapshotServer({directory,css,candidate=false,upstream='ht
     }
   }catch(error){if(error.code!=='ENOENT')throw error;}
   const pull=async (pathname,requestHeaders={})=>{
+    const destination=new URL(pathname,upstream);
+    if(destination.hostname==='razorpay.com'||destination.hostname.endsWith('.razorpay.com'))throw Error('Payment-provider network access is forbidden in this preview');
     const allowed=['rsc','next-router-state-tree','next-router-prefetch','next-url','accept'];
     const headers=Object.fromEntries(allowed.filter(k=>typeof requestHeaders[k]==='string').map(k=>[k,requestHeaders[k]]));
     const key=pathname+'\n'+JSON.stringify(headers), id=hash(key);

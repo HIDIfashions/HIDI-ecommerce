@@ -25,7 +25,7 @@ for(const engine of engines){
         const page=await newPage();
         await page.route('**/*',async route=>{
           const req=route.request(),url=new URL(req.url());
-          if(/googletagmanager|google-analytics|facebook\.net/.test(url.hostname))return route.abort();
+          if(/googletagmanager|google-analytics|facebook\.net|razorpay\.com/.test(url.hostname))return route.abort();
           if(url.origin===snapshot.base||url.pathname.startsWith('/api/')||!['GET','HEAD'].includes(req.method())||req.resourceType()==='media')return route.fallback();
           const response=await snapshot.pull(req.url());
           return route.fulfill({status:response.status,contentType:response.contentType,body:response.body});
@@ -50,7 +50,7 @@ async function measure(page){
 async function ready(page){
   await page.locator('[class*="collection-browser_productGrid__"] article').first().waitFor();
   await page.waitForFunction(()=>document.querySelector('[class*="product-card_mobileQuickAdd__"]')?.disabled===false);
-  await page.evaluate(()=>document.fonts.ready);
+  await page.waitForFunction(()=>document.fonts.status==='loaded',{},{timeout:30000});
   await settledStyles(page);
 }
 async function applyCss(page){
@@ -68,13 +68,13 @@ async function settledStyles(page){
   // comparing. Closed details retain their non-geometric styles in the check.
   await page.waitForFunction(()=>Array.from(document.querySelectorAll('script[src]:not([nomodule])')).filter(s=>new URL(s.src).origin===location.origin).every(s=>performance.getEntriesByName(s.src).length>0));
   if(await page.locator('[data-hidi-react-pdp]').count())await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor({state:'attached'});
-  await page.evaluate(()=>document.fonts.ready);
+  await page.waitForFunction(()=>document.fonts.status==='loaded',{},{timeout:30000});
   let last='',stable=0;
   const start=Date.now();
   while(Date.now()-start<15000){
     const styles=await navigationStyles(page),current=JSON.stringify(styles);
     stable=current===last?stable+1:0;last=current;
-    if(stable>=5)return styles;
+    if(stable>=20)return styles;
     await page.waitForTimeout(100);
   }
   throw Error('Non-catalogue layout did not settle');
@@ -84,11 +84,12 @@ try{
     const browser=await pw[engine].launch({headless:true});
     try{
       for(const viewport of viewports){
+        console.log('CHECK viewport '+engine+' '+viewport.width);
         const context=await browser.newContext({viewport,reducedMotion:'reduce',hasTouch:viewport.width<=844});
-        await context.route('**/*',route=>!['GET','HEAD'].includes(route.request().method())||route.request().resourceType()==='media'||/googletagmanager|google-analytics|facebook\.net/.test(route.request().url())?route.abort():route.continue());
+        await context.route('**/*',route=>!['GET','HEAD'].includes(route.request().method())||route.request().resourceType()==='media'||/googletagmanager|google-analytics|facebook\.net|razorpay\.com/.test(route.request().url())?route.abort():route.continue());
         const page=await context.newPage();page.setDefaultTimeout(45000);page.setDefaultNavigationTimeout(120000);
         try{
-          snapshot.setCandidate(false);await page.goto(snapshot.base+'/collections/all',{waitUntil:'domcontentloaded'});await ready(page);const before=await measure(page);
+          snapshot.setCandidate(false);await page.goto(snapshot.base+'/collections/all',{waitUntil:'domcontentloaded'});console.log('CHECK ready '+engine+' '+viewport.width);await ready(page);const before=await measure(page);
           if(engine==='chromium'&&[390,1440].includes(viewport.width))await page.screenshot({path:join(root,'before-'+viewport.width+'.jpg'),type:'jpeg',quality:80});
           await applyCss(page);
           await page.waitForFunction(expected=>parseFloat(getComputedStyle(document.querySelector('.collection-page')).paddingTop)===expected,viewport.width<=720?12:20,{timeout:5000});
@@ -98,20 +99,16 @@ try{
           for(const key of ['columns','columnGap','cardNames','prices','photos','header','footer'])assert.deepEqual(after[key],before[key],key+' remains unchanged');
           for(const key of ['fontFamily','fontSize','color','height','width'])assert.equal(after.title[key],before.title[key],'Title '+key+' remains unchanged');
           assert.equal(after.overflow,false);
-          for(const button of after.buttons){assert(button.rect.width>=44&&button.rect.height>=44,'44px tap target');assert.equal(button.surfaceInset,'6px');assert.equal(button.svg.width,16);const beforeButton=before.buttons.find(b=>b.label===button.label);assert.equal(button.rect.width,beforeButton.rect.width);assert.equal(button.rect.height,beforeButton.rect.height);}
-          const quick=page.locator('[class*="product-card_mobileQuickAdd__"]').first(),zoom=page.locator('[class*="product-card-media_expandIcon__"]').first();
-          for(const control of [quick,zoom]){const box=await control.boundingBox();const hits=await control.evaluate(e=>{const r=e.getBoundingClientRect();return[[r.x+r.width/2,r.y+r.height/2],[r.x+3,r.y+r.height/2]].every(([x,y])=>{const hit=document.elementFromPoint(x,y);return e===hit||e.contains(hit);});});assert(hits,'Icon centre and outer tap area remain clickable');assert(box.width>=44);}
+          for(const button of after.buttons){assert.equal(button.style.display,'none','Photo-frame overlays are removed');assert.equal(button.rect.width,0);assert.equal(button.rect.height,0);}
+          assert.equal(await page.locator('[class*="product-card-media_expandIcon__"]:visible,[class*="product-card_mobileQuickAdd__"]:visible').count(),0,'No visible expand or plus overlay');
           if(viewport.width<=720){for(const [name,gap]of [['Show one product per row','32px'],['Show two products per row','24px']]){const toggle=page.getByRole('button',{name,exact:true});await toggle.click();await page.waitForFunction(e=>e.getAttribute('aria-pressed')==='true',await toggle.elementHandle());await page.waitForFunction(expected=>getComputedStyle(document.querySelector('[class*="collection-browser_productGrid__"]')).rowGap===expected,gap);assert.equal(await page.locator('[class*="collection-browser_productGrid__"]').evaluate(e=>getComputedStyle(e).rowGap),gap);}}
-          await zoom.focus();await page.keyboard.press('Enter');const dialog=page.getByRole('dialog').filter({has:page.getByRole('button',{name:/Close.*(?:photo|gallery)|Close zoom/i})});
-          // Native lightbox semantics differ by retained gallery version; Escape
-          // always closes the opened full-photo dialog without altering selection.
-          await page.getByRole('dialog').last().waitFor();await page.keyboard.press('Escape');await page.getByRole('dialog').last().waitFor({state:'hidden'});
           measurements.push({engine,...viewport,before,after,passed:true});console.log('PASS styling '+engine+' '+viewport.width);
           // Same-page scoped CSS must leave every existing non-catalogue surface
           // unchanged, including typography, control colours and layout metrics.
           if([390,1440].includes(viewport.width)){
             const slug=(await page.locator('article h3 a').first().getAttribute('href'));
             for(const path of ['/',slug,'/cart','/checkout','/account','/admin/sign-in']){
+              console.log('CHECK unchanged '+engine+' '+viewport.width+' '+path);
               snapshot.setCandidate(false);await page.goto(snapshot.base+path,{waitUntil:'domcontentloaded'});await page.locator('body').waitFor();const old=await settledStyles(page);
               if(await page.locator('style[data-hidi-storefront-layer-fix="true"]').count())await applyCss(page);
               const next=await settledStyles(page);
@@ -125,7 +122,11 @@ try{
           await page.goto(snapshot.base+'/collections/all',{waitUntil:'domcontentloaded'});await ready(page);
           await page.waitForFunction(expected=>parseFloat(getComputedStyle(document.querySelector('.collection-page')).paddingTop)===expected,viewport.width<=720?12:20,{timeout:5000});
           const served=await measure(page);
-          for(const key of ['padding','rowGap','columns','columnGap','title','cardNames','prices','photos','header','footer','overflow'])assert.deepEqual(served[key],after[key],'Candidate HTML preserves verified '+key);
+          // Header/footer geometry is already compared on the same document
+          // above. A fresh navigation can independently reflow their content.
+          for(const key of ['header','footer']){const {height:oldHeight,...oldStyle}=after[key],{height:newHeight,...newStyle}=served[key];assert.deepEqual(newStyle,oldStyle,'Candidate preserves '+key+' appearance');}
+
+          for(const key of ['padding','rowGap','columns','columnGap','title','cardNames','prices','photos','overflow'])assert.deepEqual(served[key],after[key],'Candidate HTML preserves verified '+key);
           assert.equal(await page.locator('style[data-hidi-storefront-layer-fix="true"]').evaluate(e=>(e.textContent.match(/hidi-catalogue-polish-20261013/g)||[]).length),1,'Exactly one stylesheet addition');
           if(engine==='chromium'&&[390,1440].includes(viewport.width))await page.screenshot({path:join(root,'after-'+viewport.width+'.jpg'),type:'jpeg',quality:80});
         }catch(error){

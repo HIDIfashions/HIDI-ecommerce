@@ -18,7 +18,7 @@ class CataloguePolish(unittest.TestCase):
         self.assertEqual(changed[:start] + changed[end:], original)
         self.assertEqual(changed.count('.site-header { color: red; }'), 1)
         self.assertIn('padding-top: 12px !important', changed)
-        self.assertIn('pointer-events: none', changed)
+        self.assertIn('display: none !important', changed)
 
     def test_unknown_or_already_patched_wrapper_is_rejected(self):
         with self.assertRaises(AssertionError): patch.patch_text('const nothing = true;')

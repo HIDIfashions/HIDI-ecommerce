@@ -11,43 +11,12 @@ main .container.collection-page {
   font-weight: 400;
 }
 
-/* A 32px visible surface inside the existing 44px interaction target. */
+/* Remove only the photo-frame expand and quick-add overlays. */
 .collection-page [class*="product-card_card__"] :is(
   [class*="product-card-media_expandIcon__"],
   [class*="product-card_mobileQuickAdd__"]
 ) {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  isolation: isolate;
-}
-
-.collection-page [class*="product-card_card__"] :is(
-  [class*="product-card-media_expandIcon__"],
-  [class*="product-card_mobileQuickAdd__"]
-)::before {
-  content: "";
-  position: absolute;
-  inset: 6px;
-  z-index: -1;
-  border: 1px solid rgba(89, 29, 32, .12);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--hidi-page-bg, #fbf6f2) 90%, transparent);
-  pointer-events: none;
-}
-
-.collection-page [class*="product-card_card__"] :is(
-  [class*="product-card-media_expandIcon__"],
-  [class*="product-card_mobileQuickAdd__"]
-) svg {
-  width: 16px;
-  height: 16px;
+  display: none !important;
 }
 
 @media (max-width: 720px) {
