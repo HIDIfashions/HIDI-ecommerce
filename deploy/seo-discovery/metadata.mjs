@@ -93,6 +93,7 @@ function guardMetadata() {
     scheduled = false;
     const path = location.pathname;
     const privatePage = privatePrefixes.some(prefix => path === prefix || path.startsWith(prefix + '/'));
+    const deferredPage = path === '/lookbook';
     const publicPage = publicRoutes.has(path) || /^\/products\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(path);
     const failedPage = /^404\b/i.test(document.title) || /\bnot found\b/i.test(document.title);
     let metadata = !privatePage && !failedPage ? routeSearchMetadata[path] : null;
@@ -133,8 +134,8 @@ function guardMetadata() {
       if (node.content !== url) node.content = url;
     }
     for (const node of document.head.querySelectorAll('meta[name="robots"]')) {
-      if (!privatePage && !publicPage) continue;
-      const value = privatePage || failedPage ? 'noindex, nofollow, noarchive' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+      if (!privatePage && !publicPage && !deferredPage) continue;
+      const value = privatePage || failedPage ? 'noindex, nofollow, noarchive' : deferredPage ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
       if (node.content !== value) node.content = value;
     }
     for (const node of document.head.querySelectorAll('meta[property="og:image"],meta[name="twitter:image"]')) {

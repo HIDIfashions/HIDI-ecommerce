@@ -28,10 +28,14 @@ def capture():
     photo.capture();before=photo.states();public=guard.public_snapshot();guard.write_private('public-before.json',public)
     image=before['hidi-web']['image'];guard.immutable(image,'web')
     tag=images.REGISTRY+'/hidi-web:backup-seo-discovery-'+guard.run_key()
-    for args in [('pull',image),('tag',image,tag),('push',tag)]:subprocess.run(['docker',*args],check=True)
+    # Preserve the exact live OCI manifest/index, including the later analytics release.
+    authfile=Path(os.environ.get('DOCKER_CONFIG',str(Path.home()/'.docker')))/'config.json'
+    subprocess.run(['skopeo','copy','--all','--preserve-digests','--authfile',str(authfile),'docker://'+image,'docker://'+tag],check=True)
     value=subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image','hidi-web:backup-seo-discovery-'+guard.run_key(),'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
     assert value==image.split('@',1)[1],'Backup digest mismatch'
     save('web-backup.json',{'verified':True,'originalImage':image,'backupTag':tag,'digest':value,'settingsHash':before['hidi-web']['settingsHash']})
+    guard.write_private('retained-public-bodies.json',{p:hashlib.sha256(cloud.get(p).split(b'</head>',1)[1]).hexdigest() for p in ['/','/privacy','/lookbook']})
+    guard.write_private('retained-analytics.json',{'sha256':hashlib.sha256(cloud.get('/hidi-analytics.js')).hexdigest()})
     photo.unchanged(before);assert guard.public_snapshot()==public
     print('PASS: fresh ready baseline captured and exact web backup verified')
 def backups():
@@ -78,9 +82,12 @@ def apply(image):
         state=cloud.snapshot(guard.wait_ready(image,suffix,before));assert state['settingsHash']==before['hidi-web']['settingsHash']
         guard.routes()
         subprocess.run(['node',str(HERE/'probes.mjs'),cloud.BASE,'evidence/seo-discovery/live'],check=True,timeout=1000)
+        for path,expected in guard.private_json('retained-public-bodies.json').items():
+            assert hashlib.sha256(cloud.get(path).split(b'</head>',1)[1]).hexdigest()==expected, 'Retained public body changed: '+path
+        assert hashlib.sha256(cloud.get('/hidi-analytics.js')).hexdigest()==guard.private_json('retained-analytics.json')['sha256'], 'Newer analytics asset changed'
         assert guard.public_snapshot()==captured,'Published media, privacy or public config changed'
         photo.unchanged({'hidi-api':before['hidi-api'],'hidi-web':state})
-        save('after.json',{'passed':True,'states':{'hidi-api':before['hidi-api'],'hidi-web':state},'apiUnchanged':True,'publishedContentPreserved':True,'webSettingsPreserved':True,'sourceSha':os.environ['GITHUB_SHA'],'databaseWrites':False,'blobWrites':False})
+        save('after.json',{'passed':True,'states':{'hidi-api':before['hidi-api'],'hidi-web':state},'apiUnchanged':True,'publishedContentPreserved':True,'publicBodiesPreserved':True,'analyticsPreserved':True,'webSettingsPreserved':True,'sourceSha':os.environ['GITHUB_SHA'],'databaseWrites':False,'blobWrites':False})
         print('PASS: SEO identity, crawling and sitemap released; live desktop/mobile checks passed')
     except Exception:
         marker=guard.private_json('forward-write.json');result=guard.reconcile_failure(image,before,captured,captured,suffix,bool(marker.get('mayComplete')));save('rollback.json',result);raise

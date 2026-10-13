@@ -4,6 +4,24 @@ import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadata
 import { Readable } from 'node:stream';
 import { sitemapXml, createSeoSitemap, productImageUrls } from './sitemap.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
+import {runInNewContext} from 'node:vm';
+
+test('Lookbook directive survives client rendering and navigation without changing private/error directives',()=>{
+  const robots={content:'index, follow'},events={};
+  const document={title:'Lookbook | HIDI',documentElement:{},
+    head:{querySelectorAll:selector=>selector==='meta[name="robots"]'?[robots]:[]},
+    querySelectorAll:()=>[],addEventListener:()=>{}};
+  const location={pathname:'/lookbook'};
+  const window={addEventListener:(event,fn)=>events[event]=fn};
+  const sandbox={document,window,location,queueMicrotask:fn=>fn(),MutationObserver:class{observe(){}}};
+  runInNewContext(clientMetadataScript.replace(/^<script[^>]*>|<\/script>$/g,''),sandbox);
+  assert.equal(robots.content,'noindex, follow');
+  location.pathname='/collections/all';events.popstate();
+  assert(robots.content.startsWith('index, follow'));
+  location.pathname='/cart';events.popstate();assert.equal(robots.content,'noindex, nofollow, noarchive');
+  location.pathname='/lookbook';document.title='404: Not found';events.popstate();
+  assert.equal(robots.content,'noindex, nofollow, noarchive');
+});
 
 test('only SEO identity fields change; garment facts, schema vocabulary and visible body stay exact', () => {
   const graph = {'@context':'https://schema.org','@type':'Product',url:'https://thidigk.thehidi.com/products/test',name:'Actual dress',description:'thehidi.com',offers:{url:'https://thehidi.com/products/test',price:'1490',availability:'https://schema.org/InStock'},image:['https://thidigk.thehidi.com/media/a.jpg','https://images.example/a.jpg']};
@@ -88,6 +106,8 @@ test('sitemap covers all public catalogue products and excludes private/draft in
   assert(xml.includes('/products/sold-out-style'));
   assert(!xml.includes('draft-style'));
   assert(!xml.includes('/checkout')&&!xml.includes('/admin'));
+  assert.equal((xml.match(/https:\/\/hidiindia\.com\/privacy<\/loc>/g)||[]).length,1,'Existing published privacy policy has one sitemap entry');
+  assert(!xml.includes('/lookbook'),'Unready editorial page remains out of public discovery');
   assert.throws(()=>sitemapXml([{slug:'../admin'}]));
 });
 test('image sitemap keeps product associations and excludes draft, private, signed and foreign images',()=>{

@@ -66,6 +66,8 @@ export async function probe(base, output) {
   assert(xml.includes('/products/'),'Sitemap includes the read-only public catalogue');
   assert(!xml.includes('thehidi.com')&&!xml.includes('/cart'));
   assert(xml.includes('xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"'),'Google image sitemap namespace is present');
+  assert.equal((xml.match(/https:\/\/hidiindia\.com\/privacy<\/loc>/g)||[]).length,1,'Published privacy policy appears exactly once');
+  assert(!xml.includes('/lookbook'),'Unready Lookbook is not in the sitemap');
   const catalogueResponse=await fetch(base+'/api/store/products',{headers:seoHeaders});
   assert.equal(catalogueResponse.status,200);
   const catalogue=await catalogueResponse.json();
@@ -183,6 +185,27 @@ export async function probe(base, output) {
             checks.push({page:key,path,passed:true,...measurement});
           }
           if(width===390||width===1440) {
+            await page.goto(base+'/lookbook',{waitUntil:'domcontentloaded'});
+            await page.locator('footer').first().waitFor({state:'attached'});
+            await page.waitForFunction(()=>document.head.querySelector('meta[name="robots"]')?.content==='noindex, follow');
+            const lookbookTitle=await page.title();assert(!/^404/i.test(lookbookTitle),'Existing editorial page still serves normally');
+            for(const method of ['GET','HEAD']){
+              const res=await fetch(base+'/lookbook',{method,headers:seoHeaders});
+              assert.equal(res.status,200,'Lookbook remains publicly usable');
+              assert.equal(res.headers.get('x-robots-tag'),'noindex, follow','GET and HEAD retain consistent deferred indexing');
+            }
+            checks.push({page:'lookbook-indexing',passed:true,status:200,robots:'noindex, follow'});
+            if(base.startsWith('https://hidiindia.com')) {
+              for(const method of ['GET','HEAD']){
+                const res=await fetch(base+'/privacy',{method,headers:seoHeaders});assert.equal(res.status,200);
+                assert(!res.headers.get('x-robots-tag')?.includes('noindex'),'Published policy remains indexable');
+                if(method==='GET'){
+                  const html=await res.text();
+                  assert.equal((html.match(/rel="canonical" href="https:\/\/hidiindia\.com\/privacy"/g)||[]).length,1);
+                }
+              }
+              checks.push({page:'published-privacy-canonical',passed:true});
+            }
             for(const path of ['/collections/work-wear','/collections/casual-wear','/collections/occasional-wear','/collections/ananyas-pick','/about','/shipping','/returns','/contact','/offers']) {
               assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
               await page.locator('footer').first().waitFor({state:'attached'});

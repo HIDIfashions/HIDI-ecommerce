@@ -1,6 +1,6 @@
 import { canonicalOrigin, identityUrl, isPublishedProductImage } from './metadata.mjs';
 
-const routes = ['/', '/collections/all', '/collections/work-wear', '/collections/casual-wear', '/collections/occasional-wear', '/collections/ananyas-pick', '/about', '/shipping', '/returns', '/contact', '/offers'];
+const routes = ['/', '/collections/all', '/collections/work-wear', '/collections/casual-wear', '/collections/occasional-wear', '/collections/ananyas-pick', '/about', '/shipping', '/returns', '/contact', '/offers', '/privacy'];
 const xmlEscape = text => String(text).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]));
 // Only existing, reviewed public product assets are eligible. Do not fetch or
 // invent an image, expose a signed URL, or use a photo from another product.

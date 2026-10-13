@@ -1,0 +1,18 @@
+{
+  "draft": {
+    "businessName": "HIDI fixture & Co",
+    "address": "Fixture address",
+    "officerName": "Fixture owner",
+    "officerEmail": "fixture@example.invalid",
+    "officerPhone": "0000000000",
+    "effectiveDate": "2026-10-01",
+    "sections": [
+      {
+        "title": "Existing policy <content>",
+        "text": "Published paragraph & details.\n\nSecond unchanged paragraph."
+      }
+    ]
+  },
+  "public": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"robots\" content=\"index,follow\"><title>Privacy policy | HIDI</title><link rel=\"stylesheet\" href=\"/privacy-policy-assets/policy.css\"></head><body><main class=\"policy\"><a href=\"/\">HIDI · Wear the feeling</a><h1>Privacy policy</h1><p class=\"meta\">Version 3 · Effective 2026-10-01</p><section><h2>Existing policy &lt;content&gt;</h2><p>Published paragraph &amp; details.</p><p>Second unchanged paragraph.</p></section><p class=\"meta\">Operated by HIDI fixture &amp; Co · Fixture address</p></main></body></html>",
+  "preview": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>Privacy policy | HIDI</title><link rel=\"stylesheet\" href=\"/privacy-policy-assets/policy.css\"></head><body><main class=\"policy\"><a href=\"/\">HIDI · Wear the feeling</a><p class=\"notice\">ADMIN PREVIEW · Unpublished draft</p><h1>Privacy policy</h1><p class=\"meta\">Draft · Effective 2026-10-01</p><section><h2>Existing policy &lt;content&gt;</h2><p>Published paragraph &amp; details.</p><p>Second unchanged paragraph.</p></section><p class=\"meta\">Operated by HIDI fixture &amp; Co · Fixture address</p></main></body></html>"
+}

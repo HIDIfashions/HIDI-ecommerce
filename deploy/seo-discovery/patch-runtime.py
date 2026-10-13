@@ -61,13 +61,41 @@ def patch_text(source):
 
 def patch_runtime(base, overlay):
     base,overlay=Path(base),Path(overlay)
-    assert hashlib.sha256((base/'server.mjs').read_bytes()).hexdigest() == IMAGE_DISCOVERY_SERVER_SHA, 'Live wrapper changed; inspect the new baseline first'
-    assert hashlib.sha256((base/'seo-discovery/metadata.mjs').read_bytes()).hexdigest() == IMAGE_DISCOVERY_METADATA_SHA, 'Live metadata helper changed; inspect again'
-    assert hashlib.sha256((base/'seo-discovery/sitemap.mjs').read_bytes()).hexdigest() == SITEMAP_HELPER_SHA, 'Live sitemap helper changed; inspect again'
+    expected={
+        'server.mjs':IMAGE_DISCOVERY_SERVER_SHA,
+        'privacy-policy/handler.mjs':'e743d56744be1629d33d2bb9522861bbc612b7b6550949b8a0d5dc5794591b38',
+        'seo-discovery/metadata.mjs':IMAGE_DISCOVERY_METADATA_SHA,
+        'seo-discovery/sitemap.mjs':'28382834439c6a85f7417cf99a7562f2df8a15f4e2aca807ed8f08b61932662e',
+        'seo-discovery/published-product-images.json':'da8de244a5c8d894fd3add64e6c7e17ba11b632eac8eca6eebf5805a74e95347',
+        'dist/hidi-analytics.js':'49e768f8ad246d00def4e5e514809424bfdd63c229f100e9298cb2801bac5283',
+    }
+    for name,digest in expected.items():
+        assert hashlib.sha256((base/name).read_bytes()).hexdigest()==digest, 'Inspected baseline changed: '+name
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
-    names=['sitemap.mjs','published-product-images.json']
-    for name in names:(overlay/'seo-discovery'/name).write_bytes((HERE/name).read_bytes())
-    return {'passed':True,'allowedFiles':['seo-discovery/'+name for name in names],
-            'seoOnly':True,'serverUnchanged':True,'metadataUnchanged':True,
+    source=(base/'server.mjs').read_text()
+    changes=[
+        ('    : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";',
+         '    : pathname === "/lookbook" ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";'),
+        ('      else delete responseHeaders["x-robots-tag"];',
+         '      else if (pathname === "/lookbook") responseHeaders["x-robots-tag"] = "noindex, follow";\n      else delete responseHeaders["x-robots-tag"];'),
+        ('    else if (status === 200 && contentType.includes("text/html")) delete responseHeaders["x-robots-tag"];',
+         '    else if (status === 200 && contentType.includes("text/html") && pathname === "/lookbook") responseHeaders["x-robots-tag"] = "noindex, follow";\n    else if (status === 200 && contentType.includes("text/html")) delete responseHeaders["x-robots-tag"];'),
+    ]
+    result=source
+    for before,after in changes:
+        assert result.count(before)==1 and after not in result, 'Unique reviewed indexing anchor missing'
+        result=result.replace(before,after,1)
+    restored=result
+    for before,after in reversed(changes):restored=restored.replace(after,before,1)
+    assert restored==source, 'Unrelated wrapper changes'
+    (overlay/'server.mjs').write_text(result)
+    for name in ['sitemap.mjs','metadata.mjs']:(overlay/'seo-discovery'/name).write_bytes((HERE/name).read_bytes())
+    (overlay/'privacy-policy').mkdir()
+    policy=(HERE.parent/'privacy-policy/handler.mjs').read_bytes()
+    canonical=b'${preview ? "" : \'<link rel="canonical" href="https://hidiindia.com/privacy">\'}'
+    assert policy.count(canonical)==1 and policy.replace(canonical,b'',1)==(base/'privacy-policy/handler.mjs').read_bytes(), 'Policy changes outside one published canonical tag'
+    (overlay/'privacy-policy/handler.mjs').write_bytes(policy)
+    return {'passed':True,'allowedFiles':['server.mjs','seo-discovery/sitemap.mjs','seo-discovery/metadata.mjs','privacy-policy/handler.mjs'],
+            'seoOnly':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,
             'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}
