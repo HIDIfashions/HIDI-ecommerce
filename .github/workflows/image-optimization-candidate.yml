@@ -1,0 +1,70 @@
+name: Validate isolated image optimization candidate
+on:
+  push:
+    branches: [work/image-optimization-20261015]
+    paths:
+      - 'deploy/image-optimization/**'
+      - 'deploy/collection-speed/images.mjs'
+      - 'apps/web/lib/product-photo-upload*'
+      - '.github/workflows/image-optimization-candidate.yml'
+permissions:
+  contents: write
+concurrency:
+  group: hidi-image-optimization-candidate
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/work/image-optimization-20261015'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Install isolated test dependencies (no Azure credentials)
+        run: |
+          npm install --prefix "$RUNNER_TEMP/image-test" --no-audit --no-fund sharp@0.34.1 typescript@5.9.3
+          echo "HIDI_TEST_SHARP=$RUNNER_TEMP/image-test/node_modules/sharp" >> "$GITHUB_ENV"
+          echo "HIDI_SHARP_MODULE=$RUNNER_TEMP/image-test/node_modules/sharp" >> "$GITHUB_ENV"
+          echo "HIDI_TEST_TYPESCRIPT=$RUNNER_TEMP/image-test/node_modules/typescript" >> "$GITHUB_ENV"
+      - name: Prepare guarded source changes
+        run: python deploy/image-optimization/prepare-source.py --apply
+      - name: Image tests and existing JPEG recovery regressions
+        run: |
+          set -o pipefail
+          mkdir -p evidence/image-optimization
+          node --test deploy/image-optimization/image-optimization.test.mjs deploy/launch-image-repair/recovery.test.mjs | tee evidence/image-optimization/tests.tap
+          node deploy/image-optimization/check-source.mjs
+          node deploy/image-optimization/large-photo-check.mjs evidence/image-optimization/large-photo.json
+      - name: Record source changes only on the isolated branch
+        env:
+          EXPECTED_REF: refs/heads/work/image-optimization-20261015
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "$EXPECTED_REF"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python - <<'PY'
+          import json, subprocess
+          report=json.load(open('image-source-report.json'))
+          paths=list(report['files'])
+          actual=subprocess.check_output(['git','diff','--name-only','-z']).decode().split('\0')
+          assert set(filter(None,actual))==set(paths), 'Unexpected source changes'
+          if paths: subprocess.run(['git','add','--',*paths],check=True)
+          PY
+          if ! git diff --cached --quiet; then
+            git -c user.name='HIDI image optimization' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Wire tested photo limits and bounded multipart handling'
+            git push origin "HEAD:$EXPECTED_REF"
+          fi
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-optimization-candidate-evidence
+          path: |
+            evidence/image-optimization/
+            image-source-report.json
+          retention-days: 14
