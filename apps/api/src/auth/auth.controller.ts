@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post } from "@nestjs/common";
+import { Body, Controller, Get, Header, Headers, HttpCode, Post } from "@nestjs/common";
 import { SupabaseAuthService } from "./supabase-auth.service.js";
 
 @Controller("auth")
@@ -8,6 +8,16 @@ export class AuthController {
   @Get("config")
   config() {
     return this.auth.authConfig();
+  }
+
+  @Get("offers-identity")
+  @Header("Cache-Control", "private, no-store")
+  async offersIdentity(@Headers("authorization") authorization?: string) {
+    const user = await this.auth.requireUser(authorization);
+    return {
+      phoneVerified: user.phoneVerified === true,
+      phone: user.phoneVerified === true ? user.phone : null,
+    };
   }
 
   @Post("otp/request")

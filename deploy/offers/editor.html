@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Offers | HIDI Admin</title><link rel="stylesheet" href="/offers-assets/offers.css"><script defer src="/offers-assets/editor.js"></script></head><body class="offers-admin"><main>
+<a href="/admin">← HIDI Admin</a><h1>Offers</h1><p>Manage the compact offer strip below the landing-page hero.</p>
+<p class="small">These controls manage display only. They do not apply discounts, add gifts or change checkout totals.</p>
+<p id="status" role="status" aria-live="polite">Checking owner access…</p><p id="publication"></p>
+<form id="offers-form"><fieldset id="controls" disabled><legend>Offer text and visibility</legend>
+<label>Main offer<input name="primary" maxlength="100" required placeholder="15% off your order"></label>
+<label>Alternative offer<input name="secondary" maxlength="150" required placeholder="or a free dress on ₹3,999+"></label>
+<label>Terms<textarea name="terms" maxlength="2000" rows="4" required placeholder="Choose one offer per order. Offers cannot be combined."></textarea></label>
+<label>Who should see this?<select name="audience"><option value="HIDDEN">Hidden — nobody</option><option value="SELECTED">Selected mobile numbers — private test</option><option value="EVERYONE">Everyone — public</option></select></label>
+<label id="numbers-label">Selected customer login numbers<textarea name="allowedPhones" rows="3" placeholder="Enter one Indian mobile number per line"></textarea></label>
+<p class="small">Selected numbers must sign in as customers using their verified mobile number. Guests and other accounts will not see the offer. Up to 50 numbers.</p>
+<div class="dates"><label>Start (optional)<input name="startsAt" type="datetime-local"></label><label>End (optional)<input name="endsAt" type="datetime-local"></label></div><p id="timezone" class="small"></p>
+<h2>Unsaved text preview</h2><div class="preview" aria-label="Offer text preview"><strong id="preview-primary"></strong><span id="preview-secondary"></span><span class="small">One offer per order · View details</span></div>
+<button type="submit">Save draft</button><button type="button" id="reload">Reload saved settings</button>
+<label><input type="checkbox" id="confirmed">I have checked the saved text and the selected audience.</label>
+<button type="button" id="publish" class="primary" disabled>Publish saved draft</button><button type="button" id="pause">Hide published offer now</button>
+</fieldset></form><h2>Published versions</h2><div id="history"></div></main></body></html>
