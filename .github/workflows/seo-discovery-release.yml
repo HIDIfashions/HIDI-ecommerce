@@ -1,4 +1,4 @@
-name: Release HIDI brand SEO and preserve current contact details
+name: Release HIDI brand SEO with retained button alignment
 on:
   push:
     branches: [migration/azure-sql-blob]

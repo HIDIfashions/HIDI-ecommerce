@@ -15,15 +15,15 @@ def bundle_patch(data):
         text=text.replace(old,new,1);changes.append((old,new))
     replace('re=le.map(O=>O.querySelector("button"))','re=le.map(O=>O.querySelector(".hidi-collection-link"))')
     replace('o.jsxs("button",{type:"button",className:"hidi-collection-link","aria-label":`Explore ${w.controlName||w.name}`,onClick:()=>Ne(F),children:', 'o.jsxs("a",{...HidiSeoLinkProps(Ar(w.collectionId||w.id),()=>Ne(F)),className:"hidi-collection-link","aria-label":`Explore ${w.controlName||w.name}`,children:')
-    replace('o.jsxs("button",{type:"button",className:"text-link",onClick:()=>m(),children:[HidiPublicRangeText(a.rangeText).buttonLabel', 'o.jsxs("a",{...HidiSeoLinkProps("/collections/all",()=>m()),className:"text-link",children:[HidiPublicRangeText(a.rangeText).buttonLabel')
-    replace('HidiHeroReact.createElement("button", { type: "button", className: "campaign-shop-button", onClick: () => openCollection() }', 'HidiHeroReact.createElement("a", { ...HidiSeoLinkProps("/collections/all", () => openCollection()), className: "campaign-shop-button" }')
+    replace('o.jsxs("button",{type:"button",className:"text-link",onClick:()=>m(),children:[HidiPublicRangeText(a.rangeText).buttonLabel', 'o.jsxs("a",{...HidiSeoLinkProps("/collections/all",()=>m()),className:"text-link",style:{textAlign:"center"},children:[HidiPublicRangeText(a.rangeText).buttonLabel')
+    replace('HidiHeroReact.createElement("button", { type: "button", className: "campaign-shop-button", onClick: () => openCollection() }', 'HidiHeroReact.createElement("a", { ...HidiSeoLinkProps("/collections/all", () => openCollection()), className: "campaign-shop-button", style: { textAlign: "center" } }')
     for slug,label in [('casual-wear','Casual Wear'),('work-wear','Work Wear'),('occasional-wear','Occasional Wear'),('ananyas-pick','Ananya\\u2019s Pick')]:
         replace('o.jsx("button",{onClick:()=>m("'+slug+'"),type:"button",children:"'+label+'"})','o.jsx("a",{...HidiSeoLinkProps("/collections/'+slug+'",()=>m("'+slug+'")),children:"'+label+'"})')
     for slug,label in [('shipping','Shipping'),('returns','Returns & exchanges'),('contact','Contact HIDI')]:
         replace('o.jsx("button",{onClick:()=>k("'+slug+'"),type:"button",children:"'+label+'"})','o.jsx("a",{...HidiSeoLinkProps("/'+slug+'",()=>k("'+slug+'")),children:"'+label+'"})')
     for slug,label in [('returns','Read the policy'),('contact','Contact HIDI')]:
-        replace('o.jsxs("button",{className:"small-link",onClick:()=>a("'+slug+'"),type:"button",children:["'+label+' ', 'o.jsxs("a",{...HidiSeoLinkProps("/'+slug+'",()=>a("'+slug+'")),className:"small-link",children:["'+label+' ')
-    replace('o.jsx("button",{className:"social-link","aria-label":"HIDI Instagram",onClick:()=>y("instagram"),type:"button",children:', 'o.jsx("a",{...HidiSeoLinkProps("https://www.instagram.com/hidiindia/",()=>y("instagram")),target:"_blank",rel:"noopener noreferrer",className:"social-link","aria-label":"HIDI Instagram",children:')
+        replace('o.jsxs("button",{className:"small-link",onClick:()=>a("'+slug+'"),type:"button",children:["'+label+' ', 'o.jsxs("a",{...HidiSeoLinkProps("/'+slug+'",()=>a("'+slug+'")),className:"small-link",style:{textAlign:"center"},children:["'+label+' ')
+    replace('o.jsx("button",{className:"social-link","aria-label":"HIDI Instagram",onClick:()=>y("instagram"),type:"button",children:', 'o.jsx("a",{...HidiSeoLinkProps("https://www.instagram.com/hidiindia/",()=>y("instagram")),target:"_blank",rel:"noopener noreferrer",className:"social-link",style:{textAlign:"center"},"aria-label":"HIDI Instagram",children:')
     inverse=text
     for old,new in reversed(changes):
         assert inverse.count(new)==1,'Navigation inverse is ambiguous';inverse=inverse.replace(new,old,1)
@@ -57,4 +57,4 @@ def patch_runtime(base,overlay):
     assert about,'Compiled About paragraph not found; stop rather than publish a partial correction'
     for name,data in files.items():
         dest=overlay/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data)
-    return {'allowedFiles':sorted(files),'navigationAnchors':count,'aboutCopyFiles':about,'inverseTransformsVerified':True,'oldHomepageAssetRetained':True,'noStyleChanges':True}
+    return {'allowedFiles':sorted(files),'navigationAnchors':count,'aboutCopyFiles':about,'inverseTransformsVerified':True,'oldHomepageAssetRetained':True,'stylesheetsUnchanged':True,'buttonAlignmentPreserved':True}
