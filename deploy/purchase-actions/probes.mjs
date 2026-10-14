@@ -70,7 +70,7 @@ export async function probe(base, output) {
           await choice.click();
           assert.equal(await choice.getAttribute('aria-pressed'),'true');
           assert.equal(await card.locator('[role="alert"]:visible').count(),0,'Choosing a size clears the error');
-          await add.dispatchEvent('click');await add.dispatchEvent('click');
+          await add.evaluate(button=>{button.dispatchEvent(new MouseEvent('click',{bubbles:true}));button.dispatchEvent(new MouseEvent('click',{bubbles:true}));});
           await page.waitForFunction(()=>Array.from(document.querySelectorAll('main article button')).some(b=>b.textContent.trim()==='Added'));
           assert.equal(posts,1,'Repeated clicks produce one isolated addition');
           await add.waitFor({state:'visible'});
@@ -78,7 +78,7 @@ export async function probe(base, output) {
           await choice.click();
           await buy.click();await error.waitFor();assert.equal((await error.innerText()).trim(),'Select a size to continue.');assert.equal(posts,1);
           await choice.click();
-          await buy.dispatchEvent('click');await buy.dispatchEvent('click');
+          await buy.evaluate(button=>{button.dispatchEvent(new MouseEvent('click',{bubbles:true}));button.dispatchEvent(new MouseEvent('click',{bubbles:true}));});
           await page.waitForURL('**/checkout');assert.equal(posts,2,'Buy Now adds once before checkout');
           assert(quantities.every(v=>v.quantity===1));
           await catalogueView();
