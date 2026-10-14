@@ -84,7 +84,7 @@ async function assertBrandIdentity(page,rawHtml) {
     });
     const brand=values.filter(value=>value.name==='HIDI' && value.url==='https://hidiindia.com/');
     return brand.some(value=>value['@type']==='Organization') && brand.some(value=>value['@type']==='WebSite') &&
-      brand.filter(value=>value['@type']==='Organization').every(value=>value.logo==='https://hidiindia.com/brand/hidi-logo-header.svg') &&
+      brand.filter(value=>value['@type']==='Organization').every(value=>value.logo==='https://hidiindia.com/brand/hidi-logo-header.svg' && [value.sameAs].flat().includes('https://www.instagram.com/hidiindia/')) &&
       brand.filter(value=>value['@type']==='WebSite').every(value=>[value.alternateName].flat().includes('HIDI India'));
   },null,{timeout:5000});
   if (rawHtml) {
@@ -94,7 +94,10 @@ async function assertBrandIdentity(page,rawHtml) {
     assert(values.some(value=>value['@type']==='Organization'),'Raw HIDI organization remains present');
     assert(values.some(value=>value['@type']==='WebSite'),'Raw HIDI website remains present');
     for(const value of values) {
-      if(value['@type']==='Organization')assert.equal(value.logo,'https://hidiindia.com/brand/hidi-logo-header.svg','Raw brand logo is consistent');
+      if(value['@type']==='Organization') {
+        assert.equal(value.logo,'https://hidiindia.com/brand/hidi-logo-header.svg','Raw brand logo is consistent');
+        assert([value.sameAs].flat().includes('https://www.instagram.com/hidiindia/'),'Raw verified official brand profile remains associated');
+      }
       if(value['@type']==='WebSite')assert([value.alternateName].flat().includes('HIDI India'),'Raw alternate brand name remains present');
     }
   }

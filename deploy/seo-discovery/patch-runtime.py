@@ -67,14 +67,14 @@ def patch_runtime(base, overlay):
         'seo-discovery/metadata.mjs':'87f65b52a4a7a26a77a659a6f43d85b6b58468d9b335a165c052c9f877d7dd80',
         'seo-discovery/sitemap.mjs':'3a06940f2e8069df26064611536c8479b5f3a2b188c077714b9c765bfa321bd3',
         'seo-discovery/published-product-images.json':'da8de244a5c8d894fd3add64e6c7e17ba11b632eac8eca6eebf5805a74e95347',
-        'dist/hidi-analytics.js':'49e768f8ad246d00def4e5e514809424bfdd63c229f100e9298cb2801bac5283',
+        'dist/hidi-analytics.js':'d626a5bcc6fe7313e55ea85fe66347f4c41e3abf1fb02697e2ef45033f9085ea',
     }
     for name,digest in expected.items():
         assert hashlib.sha256((base/name).read_bytes()).hexdigest()==digest, 'Inspected baseline changed: '+name
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
     metadata=(HERE/'metadata.mjs').read_bytes()
-    assert hashlib.sha256(metadata).hexdigest()=='967d8fb08d96640d6972f98d6fa42d9494979d3f169b31aaefac7b74d4f4c973', 'Reviewed brand identity helper changed'
+    assert hashlib.sha256(metadata).hexdigest()=='b116e5a30303f7bdb8dec14d314f8e0941801d3a7706c2b9b1274141ab1f30ce', 'Reviewed brand identity helper changed'
     (overlay/'seo-discovery/metadata.mjs').write_bytes(metadata)
     return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs'],
             'seoOnly':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,

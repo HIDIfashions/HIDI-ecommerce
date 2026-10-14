@@ -1,4 +1,4 @@
-name: Align HIDI brand identity with retained storefront
+name: Align verified HIDI brand identity in head metadata only
 on:
   push:
     branches: [migration/azure-sql-blob]

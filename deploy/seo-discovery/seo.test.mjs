@@ -6,7 +6,7 @@ import { sitemapXml, createSeoSitemap, productImageUrls } from './sitemap.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
 import {runInNewContext} from 'node:vm';
 
-test('verified HIDI brand identity is consistent across retained graph shapes without changing product facts or visible markup',()=>{
+test('verified HIDI brand identity is consistent across retained head graphs without changing product facts or visible markup',()=>{
   const org={'@type':'Organization','@id':'https://thehidi.com/#organization',name:'HIDI',url:'https://thehidi.com/',logo:'https://thehidi.com/assets/images/hidi-logo.png'};
   const site={'@type':'WebSite',name:'HIDI',url:'https://thidigk.thehidi.com/'};
   const product={'@type':'Product',name:'Actual garment',description:'Approved garment facts',image:'https://images.example/garment.jpg',offers:{price:'1490',priceCurrency:'INR'}};
@@ -18,6 +18,7 @@ test('verified HIDI brand identity is consistent across retained graph shapes wi
     const result=JSON.parse(output.match(/application\/ld\+json">(.*?)<\/script>/)[1]);
     const values=Array.isArray(result)?result:result['@graph'];
     assert.equal(values[0].logo,'https://hidiindia.com/brand/hidi-logo-header.svg');
+    assert.deepEqual(values[0].sameAs,['https://www.instagram.com/hidiindia/']);
     assert.equal(values[1].alternateName,'HIDI India');
     assert.deepEqual(values[2],product);assert.deepEqual(values[3],unrelated);
     assert.equal(output.slice(output.indexOf('<body>')),body);
@@ -29,15 +30,24 @@ test('verified HIDI brand identity is consistent across retained graph shapes wi
   assert.deepEqual(result.alternateName,['HiDi','HIDI India']);
 });
 
-test('brand graph correction survives client hydration while retaining framework nodes',()=>{
+test('brand graph correction survives client hydration while retaining framework nodes and body graph bytes',()=>{
   const node={textContent:JSON.stringify({'@graph':[{'@type':'Organization',name:'HIDI',url:'https://hidiindia.com/',logo:'https://hidiindia.com/assets/images/hidi-logo.png'},{'@type':'WebSite',name:'HIDI',url:'https://hidiindia.com/'}]})};
+  const body={textContent:node.textContent},bodyBefore=body.textContent;
   const robots={name:'robots',content:'index, follow'},events={};
-  const document={title:'About HIDI | HIDI',documentElement:{},head:{querySelectorAll:selector=>selector.includes('robots')?[robots]:[]},querySelectorAll:()=>[node],addEventListener:()=>{}};
+  const document={title:'About HIDI | HIDI',documentElement:{},head:{contains:n=>n===node,querySelectorAll:selector=>selector.includes('robots')?[robots]:[]},querySelectorAll:()=>[node,body],addEventListener:()=>{}};
   const location={pathname:'/about'},window={addEventListener:(event,fn)=>events[event]=fn};
   runInNewContext(clientMetadataScript.replace(/^<script[^>]*>|<\/script>$/g,''),{document,window,location,queueMicrotask:fn=>fn(),MutationObserver:class{observe(){}}});
   const check=()=>{const graph=JSON.parse(node.textContent)['@graph'];assert.equal(graph[0].logo,'https://hidiindia.com/brand/hidi-logo-header.svg');assert.equal(graph[1].alternateName,'HIDI India');};
-  check();node.textContent=JSON.stringify({'@type':'WebSite',name:'HIDI',url:'https://hidiindia.com/'});events.popstate();
+  check();assert.equal(body.textContent,bodyBefore);node.textContent=JSON.stringify({'@type':'WebSite',name:'HIDI',url:'https://hidiindia.com/'});events.popstate();
   assert.equal(JSON.parse(node.textContent).alternateName,'HIDI India');
+});
+
+test('streamed Lookbook body keeps its existing brand graph exact while new head signals are reconciled',async()=>{
+  const graph={'@graph':[{'@type':'Organization',name:'HIDI',url:'https://hidiindia.com/',logo:'https://hidiindia.com/assets/images/hidi-logo.png'},{'@type':'WebSite',name:'HIDI',url:'https://hidiindia.com/'}]};
+  const body='<body><h1>Lookbook</h1><script type="application/ld+json">'+JSON.stringify(graph)+'</script><p>Retained editorial body</p></body>';
+  const stream=Readable.from([body.slice(0,45),body.slice(45,150),body.slice(150)]).pipe(seoIdentityTransform());
+  let result='';for await(const chunk of stream)result+=chunk.toString();
+  assert.equal(result,body);
 });
 
 test('Lookbook directive survives client rendering and navigation without changing private/error directives',()=>{

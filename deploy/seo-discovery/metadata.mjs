@@ -91,15 +91,21 @@ export function identityUrl(value) {
   } catch { return value; }
 }
 
-function normalizeGraph(value, key = '') {
-  if (Array.isArray(value)) return value.map(item => normalizeGraph(item, key));
+function normalizeGraph(value, key = '', brandHead = false) {
+  if (Array.isArray(value)) return value.map(item => normalizeGraph(item, key, brandHead));
   if (value && typeof value === 'object') {
-    const graph = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalizeGraph(v, k)]));
+    const graph = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalizeGraph(v, k, brandHead)]));
     // Align the existing public HIDI identity, without introducing another graph,
     // a founder assertion, unverified profiles or changes to garment records.
-    if (graph.name === 'HIDI' && [canonicalOrigin, canonicalOrigin + '/'].includes(graph.url)) {
-      if (graph['@type'] === 'Organization' && [canonicalOrigin + '/assets/images/hidi-logo.png', canonicalOrigin + '/brand/hidi-logo-header.svg'].includes(graph.logo)) {
-        graph.logo = canonicalOrigin + '/brand/hidi-logo-header.svg';
+    if (brandHead && graph.name === 'HIDI' && [canonicalOrigin, canonicalOrigin + '/'].includes(graph.url)) {
+      if (graph['@type'] === 'Organization') {
+        if ([canonicalOrigin + '/assets/images/hidi-logo.png', canonicalOrigin + '/brand/hidi-logo-header.svg'].includes(graph.logo)) {
+          graph.logo = canonicalOrigin + '/brand/hidi-logo-header.svg';
+        }
+        // Verified through the storefront's outbound link and the public profile's
+        // reciprocal website link. Ananya's personal account is a separate entity.
+        const profiles = graph.sameAs === undefined ? [] : Array.isArray(graph.sameAs) ? graph.sameAs : [graph.sameAs];
+        graph.sameAs = [...new Set([...profiles, 'https://www.instagram.com/hidiindia/'])];
       }
       if (graph['@type'] === 'WebSite') {
         if (graph.alternateName === undefined) graph.alternateName = 'HIDI India';
@@ -185,7 +191,8 @@ function guardMetadata() {
     }
     for (const node of document.querySelectorAll('script[type="application/ld+json"]')) {
       try {
-        const value = JSON.stringify(normalizeGraph(JSON.parse(node.textContent))).replace(/</g, '\\u003c');
+        const inHead = typeof document.head.contains === 'function' && document.head.contains(node);
+        const value = JSON.stringify(normalizeGraph(JSON.parse(node.textContent), '', inHead)).replace(/</g, '\\u003c');
         if (value !== node.textContent) node.textContent = value;
       } catch { /* Existing malformed markup is left untouched for the audit. */ }
     }
@@ -211,9 +218,9 @@ export const clientMetadataScript = '<script data-hidi-seo-identity="1">' +
   ');const routeSearchMetadata=' + JSON.stringify(routeSearchMetadata) +
   ';' + identityUrl.toString() + normalizeGraph.toString() + productRouteMetadata.toString() + '(' + guardMetadata.toString() + ')();})();</script>';
 
-function normalizeJsonLd(html) {
+function normalizeJsonLd(html, brandHead = false) {
   return html.replace(/<script\b([^>]*\btype=["']application\/ld\+json["'][^>]*)>([\s\S]*?)<\/script>/gi, (tag,attrs,json)=>{
-    try { return '<script'+attrs+'>'+JSON.stringify(normalizeGraph(JSON.parse(json))).replace(/</g,'\\u003c')+'</script>'; }
+    try { return '<script'+attrs+'>'+JSON.stringify(normalizeGraph(JSON.parse(json), '', brandHead)).replace(/</g,'\\u003c')+'</script>'; }
     catch { return tag; }
   });
 }
@@ -253,7 +260,7 @@ export function createSeoIdentityStream(incoming) {
 export function normalizeSeoIdentity(html, pathname) {
   const boundary = html.search(/<\/head>/i);
   if (boundary < 0) return html;
-  const head = normalizeGoogleDirective(applySearchMetadata(normalizeJsonLd(html.slice(0, boundary)), routeSearchMetadata[pathname]), pathname)
+  const head = normalizeGoogleDirective(applySearchMetadata(normalizeJsonLd(html.slice(0, boundary), true), routeSearchMetadata[pathname]), pathname)
     .replace(/<meta\b[^>]*(?:property=["']og:image["']|name=["']twitter:image["'])[^>]*>/gi, tag =>
       tag.replace(/\bcontent=(["'])(.*?)\1/i, (match, quote, url) => 'content=' + quote + identityUrl(url) + quote));
   return head + html.slice(boundary);
