@@ -1,0 +1,15 @@
+(node:10807) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+chromium: starting product and packing flows
+chromium: browser launched
+chromium: existing product ready
+chromium: passed
+firefox: starting product and packing flows
+firefox: browser launched
+firefox: existing product ready
+firefox: passed
+webkit: starting product and packing flows
+webkit: browser launched
+webkit: existing product ready
+webkit: passed
+{"passed":true,"checks":399,"results":[{"engine":"chromium","passed":true},{"engine":"firefox","passed":true},{"engine":"webkit","passed":true}]}

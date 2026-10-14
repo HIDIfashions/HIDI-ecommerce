@@ -1,0 +1,4 @@
+PASS chromium: four themed tabs, existing tabs retained, both menus, active routes, legacy normalization, hydration and mobile bounds
+PASS firefox: four themed tabs, existing tabs retained, both menus, active routes, legacy normalization, hydration and mobile bounds
+PASS webkit: four themed tabs, existing tabs retained, both menus, active routes, legacy normalization, hydration and mobile bounds
+{"passed":true,"checks":630,"results":[{"engine":"chromium","passed":true},{"engine":"firefox","passed":true},{"engine":"webkit","passed":true}]}

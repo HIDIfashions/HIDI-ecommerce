@@ -1,0 +1,10 @@
+test_concurrent_change_before_apply_prevents_all_writes (__main__.RolloutGuards.test_concurrent_change_before_apply_prevents_all_writes) ... ok
+test_failed_live_check_restores_both_owned_images (__main__.RolloutGuards.test_failed_live_check_restores_both_owned_images) ... ok
+test_independent_api_change_is_not_overwritten_during_recovery (__main__.RolloutGuards.test_independent_api_change_is_not_overwritten_during_recovery) ... ok
+test_success_changes_only_images (__main__.RolloutGuards.test_success_changes_only_images) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.009s
+
+OK
+PASS: 12 MB photo upload deployed; settings, retained storefront and published content preserved

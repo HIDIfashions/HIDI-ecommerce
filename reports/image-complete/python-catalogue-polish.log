@@ -1,0 +1,8 @@
+test_only_wrapper_is_prepared_and_no_other_runtime_file_changes (__main__.CataloguePolish.test_only_wrapper_is_prepared_and_no_other_runtime_file_changes) ... ok
+test_unknown_or_already_patched_wrapper_is_rejected (__main__.CataloguePolish.test_unknown_or_already_patched_wrapper_is_rejected) ... ok
+test_wrapper_change_is_reversible_and_css_only (__main__.CataloguePolish.test_wrapper_change_is_reversible_and_css_only) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+OK

@@ -1,0 +1,52 @@
+{
+  "passed": true,
+  "synthetic": true,
+  "padded": false,
+  "input": {
+    "bytes": 108179321,
+    "width": 6000,
+    "height": 6000,
+    "format": "png"
+  },
+  "multipartParserPassed": true,
+  "sha256Before": "9fd956c8c3f0f88f9882a53f900ed6edfbc6cb09bb5a0cb972d531010dfe16c4",
+  "originalUnchanged": true,
+  "outputs": [
+    {
+      "requestedWidth": 384,
+      "width": 384,
+      "height": 384,
+      "bytes": 1580,
+      "format": "webp"
+    },
+    {
+      "requestedWidth": 640,
+      "width": 640,
+      "height": 640,
+      "bytes": 22598,
+      "format": "webp"
+    },
+    {
+      "requestedWidth": 1080,
+      "width": 1080,
+      "height": 1080,
+      "bytes": 192646,
+      "format": "webp"
+    },
+    {
+      "requestedWidth": 1920,
+      "width": 1920,
+      "height": 1920,
+      "bytes": 1117142,
+      "format": "webp"
+    },
+    {
+      "requestedWidth": 3840,
+      "width": 3840,
+      "height": 3840,
+      "bytes": 6901668,
+      "format": "webp"
+    }
+  ],
+  "scope": "Real 36 MP encoded random PNG; streamed ingestion and decode, not real garment photography or live Azure delivery"
+}

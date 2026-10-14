@@ -1,0 +1,17 @@
+test_actual_report_requires_all_engines_widths_and_no_injection_or_writes (__main__.RevertGuards.test_actual_report_requires_all_engines_widths_and_no_injection_or_writes) ... ok
+test_api_change_before_apply_blocks_every_write (__main__.RevertGuards.test_api_change_before_apply_blocks_every_write) ... ok
+test_api_drift_restores_owned_web_without_api_write (__main__.RevertGuards.test_api_drift_restores_owned_web_without_api_write) ... ok
+test_backup_requires_both_exact_fresh_images_and_settings (__main__.RevertGuards.test_backup_requires_both_exact_fresh_images_and_settings) ... ok
+test_exact_inverse_preserves_all_compiled_and_admin_files (__main__.RevertGuards.test_exact_inverse_preserves_all_compiled_and_admin_files) ... ok
+test_independent_settings_are_not_overwritten_on_failure (__main__.RevertGuards.test_independent_settings_are_not_overwritten_on_failure) ... ok
+test_live_failure_restores_only_owned_web_image (__main__.RevertGuards.test_live_failure_restores_only_owned_web_image) ... ok
+test_public_content_change_before_apply_blocks_every_write (__main__.RevertGuards.test_public_content_change_before_apply_blocks_every_write) ... ok
+test_same_image_independent_revision_is_not_overwritten_on_failure (__main__.RevertGuards.test_same_image_independent_revision_is_not_overwritten_on_failure) ... ok
+test_same_image_new_revision_before_apply_blocks_every_write (__main__.RevertGuards.test_same_image_new_revision_before_apply_blocks_every_write) ... ok
+test_success_only_changes_web_image_and_revision (__main__.RevertGuards.test_success_only_changes_web_image_and_revision) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.057s
+
+OK
+PASS: only button theme reverted; API, functionality, compiled storefront and Admin retained

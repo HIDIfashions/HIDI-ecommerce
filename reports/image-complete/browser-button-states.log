@@ -1,0 +1,13 @@
+PASS chromium 320: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS chromium 390: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS chromium 844: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS chromium 1440: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS firefox 320: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS firefox 390: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS firefox 844: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS firefox 1440: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS webkit 320: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS webkit 390: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS webkit 844: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+PASS webkit 1440: default, selected, disabled, pointer, keyboard, payment, WhatsApp and hydration states
+216 button-state scenarios and 4812 assertions passed.

@@ -1,0 +1,16 @@
+test_application_dependency_and_fixture_changes_force_fresh_browser_tests (__main__.BrowserEvidence.test_application_dependency_and_fixture_changes_force_fresh_browser_tests) ... ok
+test_auth_build_commands_and_public_build_settings_reject_reuse (__main__.BrowserEvidence.test_auth_build_commands_and_public_build_settings_reject_reuse) ... ok
+test_authorized_browser_condition_and_packaging_files_are_reusable (__main__.BrowserEvidence.test_authorized_browser_condition_and_packaging_files_are_reusable) ... ok
+test_browser_engines_fixture_commands_and_other_conditions_reject_reuse (__main__.BrowserEvidence.test_browser_engines_fixture_commands_and_other_conditions_reject_reuse) ... ok
+test_browser_step_must_be_exact_unique_completed_and_successful (__main__.BrowserEvidence.test_browser_step_must_be_exact_unique_completed_and_successful) ... ok
+test_completed_successful_browser_step_survives_later_packaging_failure (__main__.BrowserEvidence.test_completed_successful_browser_step_survives_later_packaging_failure) ... ok
+test_job_environment_changes_force_fresh_browser_tests (__main__.BrowserEvidence.test_job_environment_changes_force_fresh_browser_tests) ... ok
+test_missing_run_and_job_metadata_rejects_reuse (__main__.BrowserEvidence.test_missing_run_and_job_metadata_rejects_reuse) ... ok
+test_package_manager_node_install_and_generation_changes_reject_reuse (__main__.BrowserEvidence.test_package_manager_node_install_and_generation_changes_reject_reuse) ... ok
+test_release_job_must_be_unique_completed_and_from_the_verified_run (__main__.BrowserEvidence.test_release_job_must_be_unique_completed_and_from_the_verified_run) ... ok
+test_wrong_run_source_branch_event_or_state_rejects_reuse (__main__.BrowserEvidence.test_wrong_run_source_branch_event_or_state_rejects_reuse) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.011s
+
+OK

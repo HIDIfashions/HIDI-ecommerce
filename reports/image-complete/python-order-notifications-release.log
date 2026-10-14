@@ -1,0 +1,12 @@
+test_active_worker_blocks_disabled_installation (__main__.Release.test_active_worker_blocks_disabled_installation) ... ok
+test_existing_payment_auth_and_dependency_files_are_protected (__main__.Release.test_existing_payment_auth_and_dependency_files_are_protected) ... ok
+test_failed_probe_rolls_back_owned_candidate_and_preserves_independent_release (__main__.Release.test_failed_probe_rolls_back_owned_candidate_and_preserves_independent_release) ... Candidate verification failed; owned API image rolled back
+Original or independently changed API preserved; no unsafe rollback
+ok
+test_image_patch_keeps_secrets_probes_resources_and_other_containers (__main__.Release.test_image_patch_keeps_secrets_probes_resources_and_other_containers) ... ok
+test_module_patch_preserves_every_original_byte (__main__.Release.test_module_patch_preserves_every_original_byte) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.014s
+
+OK

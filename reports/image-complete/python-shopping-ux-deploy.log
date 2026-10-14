@@ -1,0 +1,9 @@
+test_concurrent_web_changes_are_preserved_and_our_api_is_rolled_back (__main__.ShoppingRelease.test_concurrent_web_changes_are_preserved_and_our_api_is_rolled_back) ... ok
+test_partial_update_smoke_and_auth_failure_restore_both_images (__main__.ShoppingRelease.test_partial_update_smoke_and_auth_failure_restore_both_images) ... ok
+test_preflight_rejects_unreviewed_source_newer_api_and_unready_apps (__main__.ShoppingRelease.test_preflight_rejects_unreviewed_source_newer_api_and_unready_apps) ... ok
+test_success_updates_api_before_web_and_preserves_settings (__main__.ShoppingRelease.test_success_updates_api_before_web_and_preserves_settings) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 8.853s
+
+OK

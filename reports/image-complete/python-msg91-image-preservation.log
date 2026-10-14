@@ -1,0 +1,11 @@
+test_next_changes_preserve_hero_scanner_and_runtime (__main__.Preservation.test_next_changes_preserve_hero_scanner_and_runtime) ... ok
+test_only_compiled_auth_can_change_in_api (__main__.Preservation.test_only_compiled_auth_can_change_in_api) ... ok
+test_runtime_configuration_and_ancestor_layers_cannot_change (__main__.Preservation.test_runtime_configuration_and_ancestor_layers_cannot_change) ... ok
+test_missing_next_build_or_server_fails_before_copying (__main__.WebOverlay.test_missing_next_build_or_server_fails_before_copying) ... ok
+test_standalone_dependencies_and_public_files_never_enter_overlay (__main__.WebOverlay.test_standalone_dependencies_and_public_files_never_enter_overlay)
+Standalone tracing includes dependencies that the existing image must retain. ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.058s
+
+OK

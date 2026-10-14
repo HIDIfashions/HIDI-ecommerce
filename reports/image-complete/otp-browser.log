@@ -1,0 +1,12 @@
+PASS chromium: single request, elapsed-time cooldown and successful replacement
+PASS chromium: failed resend retains input and previous verification path
+PASS chromium: server cooldown extends the timer without a fallback send
+PASS chromium: different-number transition clears OTP and unmount clears timer
+PASS firefox: single request, elapsed-time cooldown and successful replacement
+PASS firefox: failed resend retains input and previous verification path
+PASS firefox: server cooldown extends the timer without a fallback send
+PASS firefox: different-number transition clears OTP and unmount clears timer
+PASS webkit: single request, elapsed-time cooldown and successful replacement
+PASS webkit: failed resend retains input and previous verification path
+PASS webkit: server cooldown extends the timer without a fallback send
+PASS webkit: different-number transition clears OTP and unmount clears timer

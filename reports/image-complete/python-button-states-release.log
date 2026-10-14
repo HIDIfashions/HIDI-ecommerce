@@ -1,0 +1,17 @@
+test_api_drift_before_rollout_prevents_all_writes (__main__.ReleaseGuards.test_api_drift_before_rollout_prevents_all_writes) ... ok
+test_api_drift_does_not_prevent_restoration_or_cause_api_write (__main__.ReleaseGuards.test_api_drift_does_not_prevent_restoration_or_cause_api_write) ... ok
+test_both_verified_backups_are_required_and_tied_to_exact_images_and_settings (__main__.ReleaseGuards.test_both_verified_backups_are_required_and_tied_to_exact_images_and_settings) ... ok
+test_exact_four_file_overlay_preserves_compiled_and_admin_features (__main__.ReleaseGuards.test_exact_four_file_overlay_preserves_compiled_and_admin_features) ... ok
+test_independent_web_image_change_is_not_overwritten_by_rollback (__main__.ReleaseGuards.test_independent_web_image_change_is_not_overwritten_by_rollback) ... ok
+test_independent_web_settings_change_is_not_overwritten_by_rollback (__main__.ReleaseGuards.test_independent_web_settings_change_is_not_overwritten_by_rollback) ... ok
+test_only_exact_repository_digests_and_owned_candidate_tags_are_accepted (__main__.ReleaseGuards.test_only_exact_repository_digests_and_owned_candidate_tags_are_accepted) ... ok
+test_reversible_runtime_hook_rejects_missing_duplicate_and_repeated_anchors (__main__.ReleaseGuards.test_reversible_runtime_hook_rejects_missing_duplicate_and_repeated_anchors) ... ok
+test_route_failure_restores_only_owned_web_image (__main__.ReleaseGuards.test_route_failure_restores_only_owned_web_image) ... ok
+test_success_writes_only_web_and_keeps_api_snapshot_exact (__main__.ReleaseGuards.test_success_writes_only_web_and_keeps_api_snapshot_exact) ... ok
+test_tested_image_requires_all_three_engines_and_four_viewports (__main__.ReleaseGuards.test_tested_image_requires_all_three_engines_and_four_viewports) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.041s
+
+OK
+PASS: button states deployed to ready web only; API and prior features preserved

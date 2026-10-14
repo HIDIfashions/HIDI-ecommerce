@@ -1,0 +1,15 @@
+test_actual_composition_copies_only_links_into_one_additive_layer (__main__.Composition.test_actual_composition_copies_only_links_into_one_additive_layer) ... ok
+test_historical_bytes_are_read_from_only_the_fixed_reviewed_commit (__main__.Composition.test_historical_bytes_are_read_from_only_the_fixed_reviewed_commit) ... ok
+test_unreviewed_live_original_stops_before_any_docker_build (__main__.Composition.test_unreviewed_live_original_stops_before_any_docker_build) ... ok
+test_unscoped_mutable_base_tags_and_stale_workspaces_fail_closed (__main__.Composition.test_unscoped_mutable_base_tags_and_stale_workspaces_fail_closed) ... ok
+test_any_docker_config_or_original_layer_change_is_rejected (__main__.Preservation.test_any_docker_config_or_original_layer_change_is_rejected) ... ok
+test_changed_added_deleted_protected_runtime_next_editor_or_symlink_is_rejected (__main__.Preservation.test_changed_added_deleted_protected_runtime_next_editor_or_symlink_is_rejected) ... ok
+test_empty_unchanged_nonreviewed_missing_or_symlinked_candidate_payload_is_rejected (__main__.Preservation.test_empty_unchanged_nonreviewed_missing_or_symlinked_candidate_payload_is_rejected) ... ok
+test_missing_combined_or_standalone_runtime_markers_are_rejected (__main__.Preservation.test_missing_combined_or_standalone_runtime_markers_are_rejected) ... ok
+test_only_reviewed_links_change_and_every_other_file_and_symlink_is_retained (__main__.Preservation.test_only_reviewed_links_change_and_every_other_file_and_symlink_is_retained) ... ok
+test_original_missing_unreviewed_or_symlinked_links_are_rejected (__main__.Preservation.test_original_missing_unreviewed_or_symlinked_links_are_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.251s
+
+OK
