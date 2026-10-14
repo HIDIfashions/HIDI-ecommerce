@@ -17,8 +17,11 @@ P,E=guard.PRIVATE,guard.EVIDENCE
 save,read=guard.save,guard.read
 def tag(app,backup=False):return images.REGISTRY+'/hidi-'+app+(':backup-checkout-offers-' if backup else ':checkout-offers-')+guard.run_key()
 def registry_digest(app,backup=False):return subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image',tag(app,backup).split('/',1)[1],'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
+def fresh_source():
+ head=subprocess.check_output(['git','ls-remote','origin','refs/heads/migration/azure-sql-blob'],text=True).split()[0]
+ assert head==os.environ['GITHUB_SHA'],'A newer reviewed commit exists; this stale candidate must not deploy'
 def capture():
- photo.capture();before=photo.states();guard.write_private('public-before.json',guard.public_snapshot())
+ fresh_source();photo.capture();before=photo.states();guard.write_private('public-before.json',guard.public_snapshot())
  for app in ['api','web']:
   original=before['hidi-'+app]['image'];guard.immutable(original,app)
   authfile=Path(os.environ.get('DOCKER_CONFIG',str(Path.home()/'.docker')))/'config.json'
@@ -30,7 +33,7 @@ def backups():
  for app in ['api','web']:
   report=read(app+'-backup.json');assert report['verified'] and report['image']==photo.states()['hidi-'+app]['image'];assert registry_digest(app,True)==report['digest']
 def compose():
- backups();before=photo.states();photo.unchanged(before)
+ fresh_source();backups();before=photo.states();photo.unchanged(before)
  for app in ['api','web']:
   folder=P/app;folder.mkdir();base,overlay,candidate=(folder/n for n in ['base-app','overlay','candidate-app']);original=before['hidi-'+app]['image']
   images.extract(original,base);plan=patch.patch_runtime(base,overlay,app);save(app+'-patch.json',plan)
@@ -52,7 +55,7 @@ def seal():
  report=read('candidate/report.json');assert report['engines']==['chromium','firefox','webkit'] and len(report['results'])==6 and report['productionWrites']==0
  save('sealed.json',{'passed':True,'manifest':manifest,'images':{app:guard.image_id(tag(app)) for app in ['api','web']},'sourceSha':os.environ['GITHUB_SHA']})
 def publish():
- seal();sealed=read('sealed.json');result={}
+ fresh_source();seal();sealed=read('sealed.json');result={}
  for app in ['api','web']:
   subprocess.run(['docker','push',tag(app)],check=True);assert guard.image_id(tag(app))==sealed['images'][app];result[app]=images.REGISTRY+'/hidi-'+app+'@'+registry_digest(app)
  save('published.json',{'passed':True,'images':result})
@@ -73,7 +76,7 @@ def recover():
   assert results[app]['passed'], 'Owned recovery failed'
  save('recovery.json',{'passed':True,'results':results})
 def apply():
- before=photo.states();backups();published=verify();photo.unchanged(before);captured=guard.private_json('public-before.json');assert guard.public_snapshot()==captured;guard.install_interrupt_handler();deployed=dict(before)
+ fresh_source();before=photo.states();backups();published=verify();photo.unchanged(before);captured=guard.private_json('public-before.json');assert guard.public_snapshot()==captured;guard.install_interrupt_handler();deployed=dict(before)
  try:
   for app,g in [('api',api_guard),('web',guard)]:
    if published[app]==before['hidi-'+app]['image']:continue
