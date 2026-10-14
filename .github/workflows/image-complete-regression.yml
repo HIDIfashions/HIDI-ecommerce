@@ -4,7 +4,7 @@ on:
     branches: [work/image-optimization-20261015]
     paths:
       - '.github/workflows/image-complete-regression.yml'
-      - 'deploy/image-optimization/apply-streaming.py'
+      - 'deploy/image-optimization/streaming-candidate.py'
 permissions:
   contents: write
 concurrency:
@@ -33,6 +33,29 @@ jobs:
           cache: pnpm
       - name: Install pinned application dependencies
         run: pnpm install --frozen-lockfile
+      - name: Integrate streamed photo source on isolated branch
+        run: |
+          set -euo pipefail
+          if ! grep -q 'readStreamedPhotoForm' 'apps/web/app/api/admin/inventory/[variantId]/images/route.ts'; then
+            python deploy/image-optimization/streaming-candidate.py
+          fi
+          pnpm --filter @hidi/web add --save-exact busboy@1.6.0 sharp@0.34.1 @noble/hashes@1.8.0
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('tests/photo-upload-client.test.cjs')
+          s=p.read_text().replace('const variants=[{sku:"HIDI-CREAM-M",variantId:"fixture_variant"}];','const variants=[]; // Exercise Image-SKU lookup, independently of stock SKU matching.')
+          p.write_text(s)
+          p=Path('deploy/image-optimization/streaming-photo.test.mjs')
+          p.write_text(p.read_text().replace("()=>readStreamedPhotoForm(request(await fixture('png')", "async()=>readStreamedPhotoForm(request(await fixture('png')"))
+          PY
+          git add -u
+          git add apps/web/lib/photo-upload-stream.d.mts apps/web/lib/photo-azure-stream.d.mts apps/web/lib/photo-digest.d.mts apps/api/prisma/migrations/20261015020000_photo_ticket_bigint/migration.sql
+          if ! git diff --cached --quiet; then
+            test "$GITHUB_REF" = refs/heads/work/image-optimization-20261015
+            test "$(git ls-remote origin "$GITHUB_REF" | cut -f1)" = "$GITHUB_SHA"
+            git -c user.name='HIDI image validation' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Wire streamed uploads without fixed photo byte caps'
+            git push origin HEAD:refs/heads/work/image-optimization-20261015
+          fi
       - name: Install isolated image and browser test tools
         run: |
           npm install --prefix "$RUNNER_TEMP/image-tools" --no-audit --no-fund sharp@0.34.1 playwright@1.56.1
@@ -50,6 +73,7 @@ jobs:
           path: |
             reports/image-complete/
             test-results/
+            streaming-source-report.json
           retention-days: 14
       - name: Save read-only evidence branch, never production
         if: always()
