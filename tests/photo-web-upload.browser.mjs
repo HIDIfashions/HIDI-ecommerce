@@ -21,7 +21,7 @@ const port=3219,nextPort=3220,apiPort=4219,base='http://localhost:'+port;
 const directory=await mkdtemp(join(tmpdir(),'hidi-web-upload-')),output=resolve('test-results/photo-web-upload');
 await mkdir(output,{recursive:true});process.env.MEDIA_STORAGE_PROVIDER='azure';
 const h=await createPhotoRouteFixture(directory,{apiBase:'http://127.0.0.1:'+apiPort+'/v1'});
-const results=[],snapshots=[],contexts=[];let browser,child,log='';
+const results=[],snapshots=[],contexts=[],uploadResponses=[];let browser,child,latestPage,log='';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const stock={onHand:8,reserved:1,safetyStock:0,reorderLevel:1};
 function product(){const images=h.state.metadata.map((item,i)=>({id:'photo-'+i,url:item.url,alt:'Upload fixture photograph',position:i,isMain:i===0}));return {
@@ -39,6 +39,8 @@ const upstream=createServer(async(req,res)=>{
  if(path==='/products/photo-fixture/related')return send([]);
  if(path==='/reviews/products/photo-fixture')return send({averageRating:0,reviewCount:0,verifiedReviewCount:0,ratingDistribution:{1:0,2:0,3:0,4:0,5:0},reviews:[]});
  if(path==='/products/photo-fixture/related')return send([]);
+ if(path==='/reviews/products/photo-fixture')return send({averageRating:0,reviewCount:0,verifiedReviewCount:0,ratingDistribution:{1:0,2:0,3:0,4:0,5:0},reviews:[]});
+ if(path==='/products/photo-fixture/related')return send([]);
  if(path==='/products')return send([product()]);
  if(path.startsWith('/products/'))return send(product());
  if(path==='/health')return send({status:'ok'});
@@ -47,14 +49,22 @@ const upstream=createServer(async(req,res)=>{
 const optimizer=createProductImageHandler({origin:base,sharp,cacheDir:join(directory,'image-cache'),seedDir:join(directory,'none'),fetchSource:async source=>{
  const file=h.state.files.get(source.replace(/^\/media\//,''));if(!file)throw new Error('Fixture source missing');return {path:file.path};
 }});
+function fixtureRequestBody(req){
+ // Cancelling Readable.toWeb(IncomingMessage) destroys its response socket.
+ // Keep the request alive long enough to return the parser's actual 4xx JSON.
+ const input=Readable.from(req.iterator({destroyOnReturn:false}));
+ input.on('close',()=>{if(!req.complete&&!req.destroyed)req.resume();});
+ return Readable.toWeb(input);
+}
 const front=createServer(async(req,res)=>{
  const url=new URL(req.url,base),path=url.pathname;
  try{
   if(path==='/api/admin/inventory/v1/images'&&req.method==='POST'){
    const headers=new Headers();for(const [key,value]of Object.entries(req.headers))if(value!==undefined)headers.set(key,Array.isArray(value)?value.join(','):value);
-   const request=new NextRequest(base+req.url,{method:'POST',headers,body:Readable.toWeb(req),duplex:'half'});
+   const request=new NextRequest(base+req.url,{method:'POST',headers,body:fixtureRequestBody(req),duplex:'half'});
    const result=await h.route.POST(request,{params:Promise.resolve({variantId:'v1'})});
-   res.writeHead(result.status,Object.fromEntries(result.headers));return res.end(Buffer.from(await result.arrayBuffer()));
+   const responseBytes=Buffer.from(await result.arrayBuffer());uploadResponses.push({status:result.status,body:responseBytes.toString().slice(0,1600)});
+   res.writeHead(result.status,Object.fromEntries(result.headers));return res.end(responseBytes);
   }
   if(await optimizer.handle(req,res,path))return;
   if(path.startsWith('/media/products/')){
@@ -68,7 +78,7 @@ const front=createServer(async(req,res)=>{
 const listen=(server,p)=>new Promise((done,reject)=>{server.once('error',reject);server.listen(p,'127.0.0.1',done);});
 const delay=ms=>new Promise(done=>setTimeout(done,ms));
 async function until(check,label,timeout=30000){const start=Date.now();while(!await check()){assert(Date.now()-start<timeout,'Timed out: '+label);await delay(50);}}
-async function record(engine,name,work){try{await work();results.push({engine,case:name,status:'PASS'});}catch(error){results.push({engine,case:name,status:'FAIL',error:String(error.stack||error)});throw error;}finally{await writeFile(join(output,'results.json'),JSON.stringify({results,snapshots,storage:'isolated filesystem fixture',productionChanged:false},null,2));}}
+async function record(engine,name,work){try{await work();results.push({engine,case:name,status:'PASS'});}catch(error){results.push({engine,case:name,status:'FAIL',error:String(error.stack||error),alerts:latestPage?await latestPage.locator('[role=alert]').allTextContents().catch(()=>[]):[],responses:uploadResponses.slice(-3)});throw error;}finally{await writeFile(join(output,'results.json'),JSON.stringify({results,snapshots,uploadResponses,storage:'isolated filesystem fixture',productionChanged:false},null,2));}}
 const jpeg=await sharp({create:{width:900,height:1350,channels:3,background:'#e7d7c7'}}).jpeg({quality:90}).toBuffer();
 const padded=Buffer.alloc(45*1024*1024);jpeg.copy(padded);
 const largePath=join(directory,'large-45-MiB.jpg'),smallPath=join(directory,'small.png'),badPath=join(directory,'corrupt.jpg');
@@ -84,19 +94,21 @@ try{
   browser=await pw[engine].launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});contexts.push(context);
   await context.addCookies([{name:'hidi_admin_access',value:'fixture-owner',url:base,httpOnly:true,sameSite:'Lax'}]);
   await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
-  const page=await context.newPage(),errors=[],served=[];page.setDefaultTimeout(30000);page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.url().includes('/_next/image?'))served.push(response);});
+  const page=await context.newPage(),errors=[],served=[];latestPage=page;page.setDefaultTimeout(30000);page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.url().includes('/_next/image?'))served.push(response);});
+  try {
   await record(engine,'Real product-editor screen loads with isolated stock and prices',async()=>{await page.goto(base+'/admin/products/photo-fixture',{waitUntil:'networkidle'});await page.getByRole('heading',{name:'Upload fixture kurta',exact:true}).waitFor();assert.equal(await page.locator('input[type="file"]').count(),2);});
   await record(engine,'45 MiB JPEG plus PNG upload through the real sequential web client',async()=>{await page.locator('input[type="file"]').first().setInputFiles([largePath,smallPath]);await page.getByRole('status').filter({hasText:'2 photos attached to all existing Cream sizes.'}).waitFor({timeout:90000});assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);assert.equal(await page.locator('tbody img').count(),4);await h.assertClean();assert.deepEqual(product().variants[0].inventory,stock);assert.equal(product().variants[0].pricePaise,199900);await page.screenshot({path:join(output,engine+'-uploaded.png'),fullPage:true});});
   await record(engine,'The original large upload is byte-for-byte unchanged',async()=>{const file=[...h.state.files.values()].find(file=>file.size===45*1024*1024);assert(file);assert.equal(hash(await readFile(file.path)),largeHash);});
-  await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{await page.locator('input[type="file"]').first().setInputFiles(badPath);await page.getByRole('alert').filter({hasText:/cannot be decoded|malformed/i}).waitFor();assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);await h.assertClean();});
   await record(engine,'Uploaded photos render in the production-built product page as optimized images',async()=>{served.length=0;await page.goto(base+'/products/photo-fixture',{waitUntil:'networkidle'});await page.locator('.pdp-gallery img').first().waitFor();await page.locator('.pdp-gallery img').first().evaluate(img=>img.decode());await until(()=>served.length>0,'optimized image requests');const rows=[];for(const response of served){const headers=await response.allHeaders();if(headers['x-hidi-image-version']==='3'){assert.equal(response.status(),200);const size=Number(headers['content-length']);assert(size>0&&size<45*1024*1024);rows.push({url:response.url(),bytes:size,format:headers['content-type']});}}assert(rows.length>0,'Custom image optimizer served product images');snapshots.push({engine,images:rows});});
   await record(engine,'Desktop and mobile product rendering has no horizontal page overflow',async()=>{for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Overflow '+width);}await page.screenshot({path:join(output,engine+'-product-mobile.png'),fullPage:true});});
   await record(engine,'Uploaded photo opens in zoom and Escape returns to the product page',async()=>{await page.locator('.pdp-gallery button').first().click();const dialog=page.getByRole('dialog',{name:/detailed image viewer/});await dialog.waitFor();await dialog.locator('img').first().evaluate(img=>img.decode());await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});assert.deepEqual(errors,[]);});
   await record(engine,'Missing and expired admin sessions cannot read or store photo uploads',async()=>{const before=h.state.reads;const make=()=>{const form=new FormData();form.set('file',new File([jpeg],'a.jpg',{type:'image/jpeg'}));return form;};assert.equal((await fetch(base+'/api/admin/inventory/v1/images',{method:'POST',body:make()})).status,401);h.state.authStatus=401;assert.equal((await fetch(base+'/api/admin/inventory/v1/images',{method:'POST',headers:{cookie:'hidi_admin_access=fixture-expired',origin:base},body:make()})).status,401);h.state.authStatus=200;assert.equal(h.state.reads,before);await h.assertClean();});
-  await context.close();await browser.close();browser=undefined;
+  await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{await page.goto(base+'/admin/products/photo-fixture',{waitUntil:'networkidle'});await page.getByRole('heading',{name:'Upload fixture kurta',exact:true}).waitFor();await page.locator('input[type="file"]').first().setInputFiles(badPath);await page.getByRole('alert').filter({hasText:/cannot be decoded|malformed/i}).waitFor();assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);await h.assertClean();});
+  } catch { /* Continue other engines; record() retained the failure. */ }
+  finally { await context.close();await browser.close();browser=undefined; }
  }
 }finally{
- await writeFile(join(output,'server.log'),log);await writeFile(join(output,'results.json'),JSON.stringify({results,snapshots,storage:'isolated filesystem fixture; not Azure',largeFile:'Valid JPEG padded to 45 MiB for transport-boundary testing',productionChanged:false},null,2));
+ await writeFile(join(output,'server.log'),log);await writeFile(join(output,'results.json'),JSON.stringify({results,snapshots,uploadResponses,storage:'isolated filesystem fixture; not Azure',largeFile:'Valid JPEG padded to 45 MiB for transport-boundary testing',productionChanged:false},null,2));
  for(const context of contexts)await context.close().catch(()=>{});await browser?.close().catch(()=>{});child?.kill('SIGTERM');for(const server of [front,upstream]){server.closeAllConnections();server.close();}await rm(directory,{recursive:true,force:true});
 }
 console.log(JSON.stringify({results,snapshots}));assert.equal(results.filter(item=>item.status==='FAIL').length,0);
