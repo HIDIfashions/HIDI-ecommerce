@@ -8,7 +8,7 @@ export function phone(value) {
   return '+91'+local;
 }
 export function initialState() {
-  return {schema:1,draft:{primary:'15% off your order',secondary:'or a free dress on ₹3,999+',terms:'Choose one offer per order. Offers cannot be combined.',audience:'SELECTED',allowedPhones:[],startsAt:null,endsAt:null},published:null,history:[]};
+  return {schema:1,draft:{primary:'15% off your order',secondary:'or a ₹1 dress when you spend over ₹3,999',terms:'Choose one offer per order. Offers cannot be combined.',audience:'SELECTED',allowedPhones:[],startsAt:null,endsAt:null},published:null,history:[]};
 }
 export function validate(value, {publishing=false}={}) {
   if (!value||typeof value!=='object'||Array.isArray(value)) throw fail(400,'Invalid offer settings');
@@ -19,6 +19,9 @@ export function validate(value, {publishing=false}={}) {
   }
   if(!audiences.has(value.audience))throw fail(400,'Choose a valid audience');
   result.audience=value.audience;
+  result.checkoutEnabled=value.checkoutEnabled===true;
+  if(value.eligibleProductIds!==undefined&&(!Array.isArray(value.eligibleProductIds)||value.eligibleProductIds.length>200||value.eligibleProductIds.some(id=>typeof id!=='string'||!/^[-a-zA-Z0-9_]{1,64}$/.test(id))))throw fail(400,'Choose at most 200 valid offer products');
+  result.eligibleProductIds=[...new Set(value.eligibleProductIds||[])];
   if(!Array.isArray(value.allowedPhones)||value.allowedPhones.length>50)throw fail(400,'Use at most 50 selected numbers');
   result.allowedPhones=[...new Set(value.allowedPhones.map(phone))];
   if(publishing&&result.audience==='SELECTED'&&!result.allowedPhones.length)throw fail(400,'Add your verified login number before publishing a selected-number test');

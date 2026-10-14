@@ -3,7 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {createAzureOfferStore} from './storage.mjs';
 import {initialState,validate,publicOffer,fail} from './model.mjs';
 const API='/api/hidi/offers/admin';
-const assets=new Map([['editor.html','text/html'],['editor.js','text/javascript'],['storefront.js','text/javascript'],['admin-link.js','text/javascript'],['offers.css','text/css']]);
+const assets=new Map([['editor.html','text/html'],['editor.js','text/javascript'],['storefront.js','text/javascript'],['admin-link.js','text/javascript'],['offers.css','text/css'],['checkout.js','text/javascript']]);
 function sameOrigin(req) {
   if(req.headers['sec-fetch-site']==='cross-site')return false;
   try{const o=new URL(req.headers.origin||'');return o.host===req.headers.host&&(o.protocol==='https:'||o.protocol==='http:'&&/^localhost(?::\d+)?$|^127\.0\.0\.1(?::\d+)?$/.test(o.host));}catch{return false;}

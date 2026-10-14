@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';import {mkdir,writeFile} from 'node:fs/promises';import {pathToFileURL} from 'node:url';
+export async function probe(base,output,{setSubtotal,offerWrites}){
+ const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),results=[];await mkdir(output,{recursive:true});
+ async function action(body){const headers={Cookie:'hidi_admin_access=owner',Origin:base,'Content-Type':'application/json'},state=await(await fetch(base+'/api/hidi/offers/admin',{headers})).json();const r=await fetch(base+'/api/hidi/offers/admin',{method:'POST',headers,body:JSON.stringify({...body,etag:state.etag})});assert(r.ok,await r.clone().text());return r.json();}
+ const state=await(await fetch(base+'/api/hidi/offers/admin',{headers:{Cookie:'hidi_admin_access=owner'}})).json();await action({action:'save',draft:{...state.draft,audience:'SELECTED',allowedPhones:['9000000001'],checkoutEnabled:true,eligibleProductIds:['offer-fixture-2']}});await action({action:'publish',confirm:true});
+ for(const engine of ['chromium','firefox','webkit']){
+  const browser=await pw[engine].launch({headless:true,...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
+  try{for(const width of [390,1440]){
+   let submissions=[];const context=await browser.newContext({viewport:{width,height:1000},reducedMotion:'reduce'});
+   await context.addInitScript(()=>{localStorage.setItem('hidi_cart_session','promo-fixture-session');localStorage.setItem('hidi_supabase_session',JSON.stringify({access_token:'selected',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'fixture-user',phone:'+919000000001'}}));window.Razorpay=class{constructor(options){window.__fixtureRazorpay=options;}on(){}open(){window.__fixtureOpened=true;}};});
+   await context.route('**/*',async route=>{const request=route.request(),url=new URL(request.url());if(url.origin!==base||request.resourceType()==='media')return route.abort();if(url.pathname==='/api/store/checkout/prepare'){const body=request.postDataJSON();submissions.push(body);assert.equal(body.offer.kind,'PERCENT15');assert.equal(body.expectedTotalPaise,200000);assert.equal(body.expectedPayableTotalPaise,170000);return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({hidiOrderId:'fixture',orderNumber:'HIDI-FIXTURE',amountPaise:170000,subtotalPaise:200000,discountPaise:30000,shippingPaise:0,totalPaise:170000,walletAppliedPaise:0,status:'PENDING_PAYMENT',captured:false,currency:'INR',provider:'RAZORPAY',providerOrderId:'fixture-provider',razorpayKeyId:'rzp_test_fixture'})});}if(!['GET','HEAD'].includes(request.method())&&url.pathname!=='/api/store/checkout/offers/quote')return route.abort();return route.continue();});
+   const page=await context.newPage();page.setDefaultTimeout(30000);setSubtotal(200000);await page.goto(base+'/checkout');await page.getByRole('button',{name:'15% off',exact:true}).waitFor();await page.getByRole('button',{name:'15% off',exact:true}).click();await page.getByText('15% off applied · You save ₹300',{exact:true}).waitFor();assert(await page.locator('main').innerText().then(x=>x.includes('₹1,700')));
+   assert.equal(await page.getByRole('button',{name:'Choose a dress for ₹1',exact:true}).isEnabled(),false);
+   await page.getByLabel('First name',{exact:true}).fill('Fixture');await page.getByLabel('House, building and street address').fill('Fixture street');
+   const pin=page.getByLabel(/PIN code/i).first();await pin.fill('500001');await pin.press('Tab');
+   const phone=page.locator('input[aria-label="Mobile number"]:visible');if(await phone.count())await phone.fill('9000000001');
+   await page.getByLabel('City',{exact:true}).fill('Hyderabad');await page.getByLabel('State',{exact:true}).fill('Telangana');
+   // Confirm provider presentation uses the already validated ₹1,700 amount.
+   const pay=page.getByRole('button',{name:/Pay|Continue to|Secure payment/i}).filter({visible:true}).last();await pay.waitFor();await pay.click();
+   await page.waitForFunction(()=>window.__fixtureOpened===true);assert.equal(await page.evaluate(()=>window.__fixtureRazorpay.amount),170000);assert.equal(submissions.length,1);
+   await page.screenshot({path:output+'/'+engine+'-'+width+'-discount.png'});
+   setSubtotal(400000);await page.reload();await page.getByRole('dialog',{name:'Choose your ₹1 dress'}).waitFor();await page.getByRole('button',{name:'Choose size M for ₹1',exact:true}).click();await page.getByText(/Congratulations! You have availed the ₹1 dress offer/).waitFor();assert(await page.locator('main').innerText().then(x=>x.includes('₹4,001')));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:output+'/'+engine+'-'+width+'-dress.png'});
+   await page.evaluate(()=>{localStorage.removeItem('hidi_supabase_session');dispatchEvent(new Event('hidi-auth-updated'));});await page.locator('[data-hidi-checkout-offers]').waitFor({state:'detached'});
+   await context.close();results.push({engine,width,percent2000to1700:true,providerAmount170000:true,celebrationAndDress4001:true,logoutClears:true});console.log('PASS checkout offers '+engine+' '+width);
+  }}finally{await browser.close();}
+ }
+ await writeFile(output+'/report.json',JSON.stringify({passed:true,engines:['chromium','firefox','webkit'],results,productionWrites:0,disposableOfferWrites:offerWrites()},null,2));
+}
