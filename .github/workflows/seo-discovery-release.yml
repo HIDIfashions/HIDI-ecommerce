@@ -1,4 +1,4 @@
-name: Release HIDI brand SEO after scoped read-only regressions
+name: Release HIDI brand SEO with both test origins protected
 on:
   push:
     branches: [migration/azure-sql-blob]

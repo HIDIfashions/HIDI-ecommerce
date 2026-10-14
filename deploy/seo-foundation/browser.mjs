@@ -17,7 +17,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
         await context.route('**/*',async route=>{
           const request=route.request(),url=new URL(request.url());
           if(!['GET','HEAD'].includes(request.method())) {
-            if(!isBlockedTelemetry(request.method(),request.url(),base))writes.push({method:request.method(),path:url.pathname});
+            if(!isBlockedTelemetry(request.method(),request.url(),base)&&!(baseline&&isBlockedTelemetry(request.method(),request.url(),baseline)))writes.push({method:request.method(),path:url.pathname});
             return route.abort();
           }
           if(request.resourceType()==='media'||/google-analytics|googletagmanager|facebook\.net|cloudflareinsights/.test(url.hostname))return route.abort();
