@@ -33,6 +33,8 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await p.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');
           const pause=p.getByRole('button',{name:'Pause automatic collection rotation',exact:true});
           if(await pause.count())await pause.click();
+          await p.locator('#range-carousel').press('Home');
+          await p.waitForFunction(()=>document.querySelector('#range-carousel')?.dataset.activeIndex==='0');
           await p.evaluate(async()=>{await document.fonts.ready;});
         };
         try {
@@ -85,7 +87,9 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await introduction.waitFor();assert((await introduction.textContent()).includes('Introduced by actress Ananya Nagalla'),'Visible About association is factual and present');
           assert.equal(await page.getByRole('heading',{level:1}).textContent(),'For every role you carry.','About heading/layout retained');
           for(const path of ['/collections/work-wear','/collections/casual-wear'])assert(await page.locator(`a[href="${path}"]`).count()>0,'About collection links retained');
+          await page.waitForLoadState('networkidle');
           await page.reload({waitUntil:'domcontentloaded'});await introduction.waitFor();
+          await page.waitForLoadState('networkidle');
           assert((await introduction.textContent()).includes('Introduced by actress Ananya Nagalla'),'About copy survives rendering and reload');
           await page.screenshot({path:`${output}/${engine}-${width}-about.png`});
           const blocking=errors.filter(e=>!e.includes('Minified React error #418;'));
