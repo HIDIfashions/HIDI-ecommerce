@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {createAzureOfferStore} from './storage.mjs';
 import {initialState,validate,publicOffer,fail} from './model.mjs';
 const API='/api/hidi/offers/admin';
+const POLICY='/api/hidi/offers/checkout-policy';
 const assets=new Map([['editor.html','text/html'],['editor.js','text/javascript'],['storefront.js','text/javascript'],['admin-link.js','text/javascript'],['offers.css','text/css'],['checkout.js','text/javascript']]);
 function sameOrigin(req) {
   if(req.headers['sec-fetch-site']==='cross-site')return false;
@@ -39,7 +40,7 @@ export function createOffersHandler({origin,store=createAzureOfferStore(),reques
     }catch{return null;}
   }
   return async(req,res,path)=>{
-    if(![API,'/api/hidi/offers','/admin/offers'].includes(path)&&!path.startsWith('/offers-assets/'))return false;
+    if(![API,POLICY,'/api/hidi/offers','/admin/offers'].includes(path)&&!path.startsWith('/offers-assets/'))return false;
     try {
       if(path.startsWith('/offers-assets/')||path==='/admin/offers'){
         if(!['GET','HEAD'].includes(req.method))throw fail(405,'Method not allowed');
@@ -48,7 +49,7 @@ export function createOffersHandler({origin,store=createAzureOfferStore(),reques
         if(!assets.has(name)||name==='editor.html'&&path!=='/admin/offers')throw fail(404,'Not found');
         send(req,res,200,readFileSync(new URL(name,import.meta.url),'utf8'),assets.get(name));return true;
       }
-      if(path==='/api/hidi/offers'){
+      if(path==='/api/hidi/offers'||path===POLICY){
         if(!['GET','HEAD'].includes(req.method))throw fail(405,'Method not allowed');
         const loaded=await store.load();
         const published=loaded.value?.published;
@@ -56,7 +57,8 @@ export function createOffersHandler({origin,store=createAzureOfferStore(),reques
         // No campaign, or HIDDEN, requires no customer or business-data lookup.
         let result=publicOffer(published,null,now());
         if(!result.visible&&published?.config?.audience==='SELECTED')result=publicOffer(published,await customer(req),now());
-        send(req,res,200,result);return true;
+        if(path===POLICY){const config=published?.config;send(req,res,200,result.visible&&config?.checkoutEnabled===true?{available:true,version:published.version,eligibleProductIds:validate(config,{publishing:true}).eligibleProductIds}:{available:false});}
+        else send(req,res,200,result);return true;
       }
       if(!['GET','HEAD','POST'].includes(req.method))throw fail(405,'Method not allowed');
       if(req.method==='POST'&&!sameOrigin(req))throw fail(403,'Use the HIDI admin page to save changes');

@@ -1,7 +1,4 @@
 import {BadRequestException,ConflictException,UnauthorizedException} from '@nestjs/common';
-import {createAzureOfferStore} from './offers-storage.mjs';
-import {eligible} from './offers-model.mjs';
-const store=createAzureOfferStore();
 export const normalizedChoice=input=>{
  const value=input??{kind:'NONE'};
  if(!value||typeof value!=='object'||Array.isArray(value)||!['NONE','PERCENT15','DRESS1'].includes(value.kind))throw new BadRequestException('Choose one supported HIDI offer');
@@ -16,10 +13,15 @@ export function assertRetry(existing,input){
  if(input.expectedPayableTotalPaise!==undefined&&input.expectedPayableTotalPaise!==existing.totalPaise)throw new ConflictException('Checkout amount changed. Start a new checkout attempt.');
 }
 export async function campaign(auth){
- let state;try{state=(await store.load()).value;}catch{throw new ConflictException('Offers could not be confirmed. Retry or continue without an offer.');}
- const published=state?.published;
- if(!eligible(published?.config,auth?.phoneVerified===true?auth.phone:null,Date.now()))return null;
- return published;
+ try{
+  const authorization=auth?.offerAuthorization;
+  const response=await fetch('https://hidiindia.com/api/hidi/offers/checkout-policy',{headers:typeof authorization==='string'?{Authorization:authorization}:{},cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(8000)});
+  if(!response.ok)throw Error('Policy unavailable');
+  const policy=await response.json();
+  if(policy?.available===false)return null;
+  if(policy?.available!==true||!Number.isSafeInteger(policy.version)||policy.version<1||!Array.isArray(policy.eligibleProductIds)||policy.eligibleProductIds.length>200||policy.eligibleProductIds.some(id=>typeof id!=='string'||id.length>64))throw Error('Invalid policy');
+  return {version:policy.version,config:{checkoutEnabled:true,eligibleProductIds:policy.eligibleProductIds}};
+ }catch{throw new ConflictException('Offers could not be confirmed. Retry or continue without an offer.');}
 }
 export async function loadChoice(input,auth){
  const choice=normalizedChoice(input);

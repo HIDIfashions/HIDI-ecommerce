@@ -69,14 +69,14 @@ export class CheckoutController {
   @Header("Cache-Control", "private, no-store")
   async offerQuote(@Body() body: any, @Headers("authorization") authorization?: string) {
     const customer = authorization === undefined ? null : await this.auth.requireUser(authorization);
-    return this.checkout.quoteOffers(body, customer);
+    return this.checkout.quoteOffers(body, customer ? {...customer, offerAuthorization:authorization} as any : null);
   }
 
   @Post("prepare")
   async prepare(@Body() body: any, @Headers("authorization") authorization?: string) {
     // An invalid supplied token is never downgraded to anonymous checkout.
     const customer = authorization === undefined ? null : await this.auth.requireUser(authorization);
-    return this.checkout.prepare(body, customer);
+    return this.checkout.prepare(body, customer ? {...customer, offerAuthorization:authorization} as any : null);
   }
 
   @Get("orders")

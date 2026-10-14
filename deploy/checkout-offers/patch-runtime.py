@@ -35,6 +35,7 @@ def patch_runtime(base,overlay,app='web'):
   folder='apps/api/dist/checkout/'
   put(folder+'checkout.service.js',service((base/folder/'checkout.service.js').read_text()))
   controller=(base/folder/'checkout.controller.js').read_text()
+  if 'offerAuthorization' not in controller:controller=once(controller,'this.checkout.prepare(body, customer)','this.checkout.prepare(body, customer ? {...customer, offerAuthorization:authorization} : null)')
   if 'attachCheckoutOffers' not in controller:controller="import { attachCheckoutOffers } from './checkout-offers-controller.mjs';\n"+controller+'\nattachCheckoutOffers(CheckoutController);\n'
   else:assert 'attachCheckoutOffers(CheckoutController);' in controller
   put(folder+'checkout.controller.js',controller)
