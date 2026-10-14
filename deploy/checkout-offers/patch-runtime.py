@@ -8,7 +8,9 @@ def once(source,old,new):
  matches=list(re.finditer(pattern,source));assert len(matches)==1,'One exact checkout hook required: '+old[:100]
  m=matches[0];return source[:m.start()]+new+source[m.end():]
 def service(source):
- assert 'hidiPromotion' not in source,'Already installed'
+ if 'hidiPromotion' in source:
+  assert "from './offers-engine.mjs'" in source and 'applyChoice(tx, cart, subtotalPaise, hidiPromotion)' in source,'Unrecognized existing offer installation'
+  return source
  source="import { loadChoice, normalizedChoice, assertRetry, applyChoice, reservationItems } from './offers-engine.mjs';\n"+source
  source=once(source,'this.validate(input);','this.validate(input);\n        normalizedChoice(input.offer);')
  source=once(source,'if (existing) {','if (existing) {\n            assertRetry(existing, input);')
@@ -32,13 +34,17 @@ def patch_runtime(base,overlay,app='web'):
  if app=='api':
   folder='apps/api/dist/checkout/'
   put(folder+'checkout.service.js',service((base/folder/'checkout.service.js').read_text()))
-  controller=(base/folder/'checkout.controller.js').read_text();assert 'attachCheckoutOffers' not in controller
-  put(folder+'checkout.controller.js',"import { attachCheckoutOffers } from './checkout-offers-controller.mjs';\n"+controller+'\nattachCheckoutOffers(CheckoutController);\n')
+  controller=(base/folder/'checkout.controller.js').read_text()
+  if 'attachCheckoutOffers' not in controller:controller="import { attachCheckoutOffers } from './checkout-offers-controller.mjs';\n"+controller+'\nattachCheckoutOffers(CheckoutController);\n'
+  else:assert 'attachCheckoutOffers(CheckoutController);' in controller
+  put(folder+'checkout.controller.js',controller)
   for src,dst in [('engine.mjs','offers-engine.mjs'),('controller.mjs','checkout-offers-controller.mjs'),('offers-storage.mjs','offers-storage.mjs'),('offers-model.mjs','offers-model.mjs')]:put(folder+dst,(HERE/src).read_text())
  else:
   source=(base/'server.mjs').read_text()
-  put('server.mjs',once(source,'function injectStorefrontLayerFix(html) {','''function injectStorefrontLayerFix(html) {
+  if 'data-hidi-checkout-offers' not in source:
+   put('server.mjs',once(source,'function injectStorefrontLayerFix(html) {','''function injectStorefrontLayerFix(html) {
   if (!html.includes('data-hidi-checkout-offers')) html = html.replace(/<\\/head>/i, '<link rel="stylesheet" href="/offers-assets/offers.css"><script data-hidi-checkout-offers src="/offers-assets/checkout.js"></script></head>');'''))
+  else:put('server.mjs',source)
   for name in ['model.mjs','handler.mjs','editor.html','editor.js','offers.css']:put('offers/'+name,(HERE.parent/'offers'/name).read_text())
   put('offers/checkout.js',(HERE/'checkout.js').read_text())
  return {'passed':True,'allowedFiles':sorted(allowed),'databaseMigration':False,'paymentVerificationUnchanged':True}

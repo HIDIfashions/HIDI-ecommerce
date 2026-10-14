@@ -36,8 +36,14 @@ def compose():
   images.extract(original,base);plan=patch.patch_runtime(base,overlay,app);save(app+'-patch.json',plan)
   for name in plan['allowedFiles']:
    if name.endswith(('.js','.mjs')):subprocess.run(['node','--check',str(overlay/name)],check=True)
-  (folder/'Dockerfile').write_text('FROM '+original+'\nCOPY --chown=node:node overlay/ /app/\n');subprocess.run(['docker','build','--pull=false','-t',tag(app),str(folder)],check=True);images.extract(tag(app),candidate)
-  configs=json.loads(images.docker('image','inspect',original,tag(app)));report=guard.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),configs);report.update({'baseImage':original,'candidateImageId':configs[1]['Id']});save(app+'-preservation.json',report)
+  (folder/'Dockerfile').write_text('FROM '+original+'\nCOPY --chown=node:node overlay/ /app/\n')
+  unchanged=all((base/name).is_file() and (base/name).read_bytes()==(overlay/name).read_bytes() for name in plan['allowedFiles'])
+  subprocess.run(['docker','tag',original,tag(app)] if unchanged else ['docker','build','--pull=false','-t',tag(app),str(folder)],check=True);images.extract(tag(app),candidate)
+  configs=json.loads(images.docker('image','inspect',original,tag(app)))
+  if unchanged:
+   assert images.fingerprints(base)==images.fingerprints(candidate) and configs[0]['Id']==configs[1]['Id'];report={'passed':True,'unchanged':True,'changedFiles':[],'baseLayersPreserved':True}
+  else:report=guard.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),configs)
+  report.update({'baseImage':original,'candidateImageId':configs[1]['Id']});save(app+'-preservation.json',report)
  photo.unchanged(before)
 def seal():
  photo.unchanged(photo.states());manifest={}
@@ -70,6 +76,7 @@ def apply():
  before=photo.states();backups();published=verify();photo.unchanged(before);captured=guard.private_json('public-before.json');assert guard.public_snapshot()==captured;guard.install_interrupt_handler();deployed=dict(before)
  try:
   for app,g in [('api',api_guard),('web',guard)]:
+   if published[app]==before['hidi-'+app]['image']:continue
    marker=app+'-forward.json';g.write_private(marker,{'attempted':False,'mayComplete':False});g.conditional_write_image(photo.originals()['hidi-'+app],published[app],'checkoutoffers'+app+guard.run_key('a'),marker)
    deployed['hidi-'+app]=cloud.snapshot(g.wait_ready(published[app],'checkoutoffers'+app+guard.run_key('a'),deployed));photo.unchanged(deployed)
   guard.routes();assert json.loads(cloud.get('/api/hidi/offers')).get('visible') is False;cloud.get('/api/hidi/offers/admin',401);cloud.get('/admin/offers',401);cloud.get('/api/store/auth/offers-identity',401);cloud.get('/api/store/checkout/payment-options')

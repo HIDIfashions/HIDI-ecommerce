@@ -3,7 +3,7 @@
  const original=window.fetch.bind(window),KEY='hidi_supabase_session';let choice={kind:'NONE'},quote=null,busy=false,revision=0,panel=null,lastCelebration=null,locked=false,lastPath=location.pathname;
  const money=p=>'₹'+(p/100).toLocaleString('en-IN',{minimumFractionDigits:p%100?2:0,maximumFractionDigits:2});
  const token=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');return s?.expires_at>Date.now()/1000?s.access_token:null;}catch{return null;}};
- function clear(){choice={kind:'NONE'};quote=null;revision++;panel?.remove();panel=null;lastCelebration=null;locked=false;}
+ function clear(){document.querySelectorAll('.hidi-offer-dialog').forEach(d=>{d.close();d.remove();});busy=false;choice={kind:'NONE'};quote=null;revision++;panel?.remove();panel=null;lastCelebration=null;locked=false;}
  async function getQuote(sessionId,selection,signal){const bearer=token();const response=await original('/api/store/checkout/offers/quote',{method:'POST',cache:'no-store',credentials:'same-origin',signal,headers:{'Content-Type':'application/json',...(bearer?{Authorization:'Bearer '+bearer}:{})},body:JSON.stringify({sessionId,offer:selection})});const data=await response.json();if(!response.ok)throw Error(data.message||'Offer could not be confirmed');return data;}
  const element=(tag,text,className)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(className)e.className=className;return e;};
  const button=(text,action)=>{const b=element('button',text);b.type='button';b.disabled=busy||locked;b.addEventListener('click',action);return b;};
