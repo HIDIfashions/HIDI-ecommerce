@@ -1,0 +1,12 @@
+test_context_and_unique_anchors_are_required (__main__.LandingPatchTests.test_context_and_unique_anchors_are_required) ... ok
+test_inactive_verified_asset_cannot_replace_a_different_active_bundle (__main__.LandingPatchTests.test_inactive_verified_asset_cannot_replace_a_different_active_bundle) ... ok
+test_independently_changed_bundle_fails_before_any_overlay_write (__main__.LandingPatchTests.test_independently_changed_bundle_fails_before_any_overlay_write) ... ok
+test_invalid_reference_fails_without_a_partial_overlay (__main__.LandingPatchTests.test_invalid_reference_fails_without_a_partial_overlay) ... ok
+test_multiple_module_scripts_fail_before_any_overlay_write (__main__.LandingPatchTests.test_multiple_module_scripts_fail_before_any_overlay_write) ... ok
+test_only_two_links_change_and_old_asset_is_retained (__main__.LandingPatchTests.test_only_two_links_change_and_old_asset_is_retained) ... ok
+test_root_relative_active_bundle_preserves_its_reference_prefix (__main__.LandingPatchTests.test_root_relative_active_bundle_preserves_its_reference_prefix) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.008s
+
+OK

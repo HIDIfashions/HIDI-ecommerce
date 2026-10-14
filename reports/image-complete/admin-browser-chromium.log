@@ -1,0 +1,11 @@
+PASS 1: real Next.js BFF denies missing and forged sessions; forwards only allowed filters
+PASS 2: signed-out workspace does not render operational data
+PASS 3: overview figures, date presets, accessible chart table and daily CSV download
+PASS 4: global search keyboard navigation opens customer order results
+PASS 5: delivery queue pagination and carrier fallback
+PASS 6: item-level return queue renders reason, quantity and order link
+PASS 7: empty reporting state shows zeroes, never sample data
+PASS 8: outage is visibly distinct from zero sales
+PASS 9: catalogue role has no order dashboard or team controls
+PASS 10: 390px mobile layout, navigation dialog and contained table overflow
+10 browser checks passed. Isolated UI fixtures only; not a live order lifecycle certification.

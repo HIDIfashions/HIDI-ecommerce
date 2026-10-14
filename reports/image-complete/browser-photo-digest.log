@@ -1,0 +1,18 @@
+[{"engine":"chromium","case":"Standalone admin SHA-256 without whole-file arrayBuffer","status":"PASS"},{"engine":"firefox","case":"Standalone admin SHA-256 without whole-file arrayBuffer","status":"PASS"},{"engine":"webkit","case":"Standalone admin SHA-256 without whole-file arrayBuffer","status":"FAIL","error":"page.evaluate: TypeError: chunk of file.stream is not a function. (In 'chunk of file.stream()', 'chunk of file.stream' is undefined)\n    at /home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/photo-digest.browser.mjs:15:26"}]
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/photo-digest.browser.mjs:19:45 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual'
+}
+
+Node.js v22.16.0

@@ -1,0 +1,10 @@
+test_arm_patch_includes_required_retained_location_and_only_image_revision_changes (__main__.PrivacyReleaseTest.test_arm_patch_includes_required_retained_location_and_only_image_revision_changes) ... ok
+test_image_guard_protects_shopping_media_api_dependencies_and_config (__main__.PrivacyReleaseTest.test_image_guard_protects_shopping_media_api_dependencies_and_config) ... ok
+test_null_azure_secrets_allow_image_write_without_configuration_changes (__main__.PrivacyReleaseTest.test_null_azure_secrets_allow_image_write_without_configuration_changes) ... ok
+test_runtime_patch_is_additive_and_refuses_drift_or_double_apply (__main__.PrivacyReleaseTest.test_runtime_patch_is_additive_and_refuses_drift_or_double_apply) ... ok
+test_settings_guard_rejects_real_settings_and_secret_changes (__main__.PrivacyReleaseTest.test_settings_guard_rejects_real_settings_and_secret_changes) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.017s
+
+OK

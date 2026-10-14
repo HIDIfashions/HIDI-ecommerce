@@ -1,0 +1,2836 @@
+TAP version 13
+# (node:5821) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:5821) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/lib/product-sharing.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/package.json.
+# Subtest: WhatsApp requires a valid international number, never a generic share URL
+ok 1 - WhatsApp requires a valid international number, never a generic share URL
+  ---
+  duration_ms: 1.491517
+  type: 'test'
+  ...
+# Subtest: quantity remains within whole-unit stock, including empty or invalid inventory
+ok 2 - quantity remains within whole-unit stock, including empty or invalid inventory
+  ---
+  duration_ms: 0.267929
+  type: 'test'
+  ...
+# Subtest: WhatsApp message carries the exact selected SKU, size, colour and quantity
+ok 3 - WhatsApp message carries the exact selected SKU, size, colour and quantity
+  ---
+  duration_ms: 0.704101
+  type: 'test'
+  ...
+# Subtest: product URLs escape slugs
+ok 4 - product URLs escape slugs
+  ---
+  duration_ms: 0.247571
+  type: 'test'
+  ...
+# Subtest: share cancellation is quiet, while unavailable native share falls back to clipboard
+ok 5 - share cancellation is quiet, while unavailable native share falls back to clipboard
+  ---
+  duration_ms: 0.688862
+  type: 'test'
+  ...
+# Subtest: IST midnight boundaries and exclusive end are correct
+ok 6 - IST midnight boundaries and exclusive end are correct
+  ---
+  duration_ms: 2.085433
+  type: 'test'
+  ...
+# Subtest: report defaults, leap days and 90-day limit
+ok 7 - report defaults, leap days and 90-day limit
+  ---
+  duration_ms: 0.655801
+  type: 'test'
+  ...
+# Subtest: search and pagination reject abusive input without building SQL
+ok 8 - search and pagination reject abusive input without building SQL
+  ---
+  duration_ms: 0.649369
+  type: 'test'
+  ...
+# Subtest: daily series fills gaps, aligns prior period and serializes bigint money
+ok 9 - daily series fills gaps, aligns prior period and serializes bigint money
+  ---
+  duration_ms: 1.603566
+  type: 'test'
+  ...
+# Subtest: overview uses database totals, not its recent eight-row preview
+ok 10 - overview uses database totals, not its recent eight-row preview
+  ---
+  duration_ms: 3.926601
+  type: 'test'
+  ...
+# Subtest: queue pagination is database-backed, stable and delivery workload ignores report dates
+ok 11 - queue pagination is database-backed, stable and delivery workload ignores report dates
+  ---
+  duration_ms: 0.621467
+  type: 'test'
+  ...
+# Subtest: returns are item-level requests and include in-progress states
+ok 12 - returns are item-level requests and include in-progress states
+  ---
+  duration_ms: 0.335245
+  type: 'test'
+  ...
+# Subtest: invalid queue filters fail before accessing records
+ok 13 - invalid queue filters fail before accessing records
+  ---
+  duration_ms: 0.530588
+  type: 'test'
+  ...
+# Subtest: catalogue role never queries customers or orders in global search
+ok 14 - catalogue role never queries customers or orders in global search
+  ---
+  duration_ms: 0.688282
+  type: 'test'
+  ...
+# Subtest: owner global search resolves products, orders and customer-order navigation
+ok 15 - owner global search resolves products, orders and customer-order navigation
+  ---
+  duration_ms: 0.705032
+  type: 'test'
+  ...
+# Subtest: guarded endpoints retain required existing permissions
+ok 16 - guarded endpoints retain required existing permissions
+  ---
+  duration_ms: 0.358027
+  type: 'test'
+  ...
+# Subtest: CSV neutralizes spreadsheet formulas and escapes quotes
+ok 17 - CSV neutralizes spreadsheet formulas and escapes quotes
+  ---
+  duration_ms: 23.713542
+  type: 'test'
+  ...
+# Subtest: BFF has an explicit resource allowlist and no public cache or browser secret
+ok 18 - BFF has an explicit resource allowlist and no public cache or browser secret
+  ---
+  duration_ms: 0.39205
+  type: 'test'
+  ...
+# Subtest: admin workspace exposes product operations, including price-tag printing
+ok 19 - admin workspace exposes product operations, including price-tag printing
+  ---
+  duration_ms: 0.259713
+  type: 'test'
+  ...
+# Subtest: admin code requests use the HIDI staff gate, with no direct provider signup request
+ok 20 - admin code requests use the HIDI staff gate, with no direct provider signup request
+  ---
+  duration_ms: 94.871863
+  type: 'test'
+  ...
+# Subtest: an unlisted email denial is displayed and never falls back to direct OTP delivery
+ok 21 - an unlisted email denial is displayed and never falls back to direct OTP delivery
+  ---
+  duration_ms: 22.575832
+  type: 'test'
+  ...
+# Subtest: malformed emails are rejected before the network request
+ok 22 - malformed emails are rejected before the network request
+  ---
+  duration_ms: 23.359333
+  type: 'test'
+  ...
+# Subtest: retained runtime patch rejects unlisted staff without provider fallback
+ok 23 - retained runtime patch rejects unlisted staff without provider fallback
+  ---
+  duration_ms: 11.023345
+  type: 'test'
+  ...
+# Subtest: runtime patch fails closed on changed or already patched provider code
+ok 24 - runtime patch fails closed on changed or already patched provider code
+  ---
+  duration_ms: 14.664845
+  type: 'test'
+  ...
+# (node:5859) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: production template is header-only and cannot become a sample product
+ok 25 - production template is header-only and cannot become a sample product
+  ---
+  duration_ms: 3.903898
+  type: 'test'
+  ...
+# Subtest: quoted multiline CSV, escaped quotes, BOM and empty rows are preserved
+ok 26 - quoted multiline CSV, escaped quotes, BOM and empty rows are preserved
+  ---
+  duration_ms: 1.075713
+  type: 'test'
+  ...
+# Subtest: many labelled sheets and repeated product blocks are supported
+ok 27 - many labelled sheets and repeated product blocks are supported
+  ---
+  duration_ms: 2.637581
+  type: 'test'
+  ...
+# Subtest: matching is exact, ambiguous names and supplier style codes do not auto-match
+ok 28 - matching is exact, ambiguous names and supplier style codes do not auto-match
+  ---
+  duration_ms: 0.618261
+  type: 'test'
+  ...
+# Subtest: conflicting explicit IDs, URLs or HIDI SKUs require a manual decision
+ok 29 - conflicting explicit IDs, URLs or HIDI SKUs require a manual decision
+  ---
+  duration_ms: 0.253653
+  type: 'test'
+  ...
+# Subtest: missing details keep values and batch edits satisfy actual API contract
+ok 30 - missing details keep values and batch edits satisfy actual API contract
+  ---
+  duration_ms: 1.087244
+  type: 'test'
+  ...
+# Subtest: new products require approved values and explicit mode, with API-compatible payloads
+ok 31 - new products require approved values and explicit mode, with API-compatible payloads
+  ---
+  duration_ms: 15.136183
+  type: 'test'
+  ...
+# Subtest: common values fill missing new-draft prices and sizes only
+ok 32 - common values fill missing new-draft prices and sizes only
+  ---
+  duration_ms: 0.484782
+  type: 'test'
+  ...
+# Subtest: duplicate targets, invalid modes and oversized fields fail before batch writes
+ok 33 - duplicate targets, invalid modes and oversized fields fail before batch writes
+  ---
+  duration_ms: 0.869249
+  type: 'test'
+  ...
+# Subtest: creation retry IDs are stable UUIDv4 and differ if approved content changes
+ok 34 - creation retry IDs are stable UUIDv4 and differ if approved content changes
+  ---
+  duration_ms: 2.668659
+  type: 'test'
+  ...
+# Subtest: uncertain update retries recognise an already-saved response without extra writes
+ok 35 - uncertain update retries recognise an already-saved response without extra writes
+  ---
+  duration_ms: 0.495733
+  type: 'test'
+  ...
+# Subtest: batch product limit prevents an oversized import
+ok 36 - batch product limit prevents an oversized import
+  ---
+  duration_ms: 7.03043
+  type: 'test'
+  ...
+# Subtest: supplier sheet reads paired sizes and colour, formatted rupees and explicit Ananya choice
+ok 37 - supplier sheet reads paired sizes and colour, formatted rupees and explicit Ananya choice
+  ---
+  duration_ms: 1.86308
+  type: 'test'
+  ...
+# Subtest: rupee decoration accepts validated western and Indian grouping without guessing malformed values
+ok 38 - rupee decoration accepts validated western and Indian grouping without guessing malformed values
+  ---
+  duration_ms: 0.520258
+  type: 'test'
+  ...
+# Subtest: Ananya import is optional, explicit and accepts both row and labelled input
+ok 39 - Ananya import is optional, explicit and accepts both row and labelled input
+  ---
+  duration_ms: 0.614224
+  type: 'test'
+  ...
+# Subtest: explicit Ananya subcategory tags labelled and row sheets while other subcategories remain descriptive
+ok 40 - explicit Ananya subcategory tags labelled and row sheets while other subcategories remain descriptive
+  ---
+  duration_ms: 0.826508
+  type: 'test'
+  ...
+# Subtest: blank tag retains every collection, true adds only Ananya, false removes only Ananya
+ok 41 - blank tag retains every collection, true adds only Ananya, false removes only Ananya
+  ---
+  duration_ms: 0.54764
+  type: 'test'
+  ...
+# Subtest: category aliases keep legacy URL slugs and additions preserve unrelated collections
+ok 42 - category aliases keep legacy URL slugs and additions preserve unrelated collections
+  ---
+  duration_ms: 0.421424
+  type: 'test'
+  ...
+# Subtest: existing products match SKN exactly and conflicting identities remain blocked
+ok 43 - existing products match SKN exactly and conflicting identities remain blocked
+  ---
+  duration_ms: 0.72535
+  type: 'test'
+  ...
+# Subtest: one four-size design exports one confirmed SKN and one photo filename example
+ok 44 - one four-size design exports one confirmed SKN and one photo filename example
+  ---
+  duration_ms: 9.977458
+  type: 'test'
+  ...
+# Subtest: CSV exports quote delimiters and guard leading whitespace formula injection
+ok 45 - CSV exports quote delimiters and guard leading whitespace formula injection
+  ---
+  duration_ms: 0.283908
+  type: 'test'
+  ...
+# Subtest: owned photo keys require this account/container and reject traversal or conflicting metadata
+ok 46 - owned photo keys require this account/container and reject traversal or conflicting metadata
+  ---
+  duration_ms: 1.600189
+  type: 'test'
+  ...
+# Subtest: storage only deletes owned product keys, accepts absent blobs and never forwards identity to a redirect
+ok 47 - storage only deletes owned product keys, accepts absent blobs and never forwards identity to a redirect
+  ---
+  duration_ms: 2.268043
+  type: 'test'
+  ...
+# Subtest: homepage configuration preserves reused product photos while safely ignoring its dedicated brand assets
+ok 48 - homepage configuration preserves reused product photos while safely ignoring its dedicated brand assets
+  ---
+  duration_ms: 2.89485
+  type: 'test'
+  ...
+# Subtest: anonymous, forged legacy sessions and cross-origin writes fail before any backend or blob action
+ok 49 - anonymous, forged legacy sessions and cross-origin writes fail before any backend or blob action
+  ---
+  duration_ms: 43.987691
+  type: 'test'
+  ...
+# Subtest: delete deduplicates all size/colour photo references and acknowledges metadata only after removal
+ok 50 - delete deduplicates all size/colour photo references and acknowledges metadata only after removal
+  ---
+  duration_ms: 7.591334
+  type: 'test'
+  ...
+# Subtest: shared catalogue and homepage photos are preserved while product metadata is detached
+ok 51 - shared catalogue and homepage photos are preserved while product metadata is detached
+  ---
+  duration_ms: 10.888744
+  type: 'test'
+  ...
+# Subtest: foreign storage metadata does not prevent owned photo cleanup or send credentials to that account
+ok 52 - foreign storage metadata does not prevent owned photo cleanup or send credentials to that account
+  ---
+  duration_ms: 3.796268
+  type: 'test'
+  ...
+# Subtest: invalid owned metadata is rejected before the product is marked deleted so it can be corrected
+ok 53 - invalid owned metadata is rejected before the product is marked deleted so it can be corrected
+  ---
+  duration_ms: 4.310655
+  type: 'test'
+  ...
+# Subtest: storage failure leaves pending metadata and reports that cleanup is incomplete
+ok 54 - storage failure leaves pending metadata and reports that cleanup is incomplete
+  ---
+  duration_ms: 6.130607
+  type: 'test'
+  ...
+# Subtest: a draft with no photos deletes successfully without an invalid empty cleanup acknowledgement
+ok 55 - a draft with no photos deletes successfully without an invalid empty cleanup acknowledgement
+  ---
+  duration_ms: 6.45564
+  type: 'test'
+  ...
+# Subtest: stale version and unknown request fields never delete storage or claim success
+ok 56 - stale version and unknown request fields never delete storage or claim success
+  ---
+  duration_ms: 6.555266
+  type: 'test'
+  ...
+# Subtest: cleanup is bounded to eight owned objects per request and can safely continue
+ok 57 - cleanup is bounded to eight owned objects per request and can safely continue
+  ---
+  duration_ms: 5.536869
+  type: 'test'
+  ...
+# Subtest: more than 200 size references to one photo make durable cleanup progress on every retry
+ok 58 - more than 200 size references to one photo make durable cleanup progress on every retry
+  ---
+  duration_ms: 17.887575
+  type: 'test'
+  ...
+# Subtest: the unchanged ARCHIVED/slug schema and existing DML grants are verified with metadata SELECTs only
+ok 59 - the unchanged ARCHIVED/slug schema and existing DML grants are verified with metadata SELECTs only
+  ---
+  duration_ms: 2.066337
+  type: 'test'
+  ...
+# Subtest: a CHECK definition hidden by existing DML-only permissions does not require privilege expansion
+ok 60 - a CHECK definition hidden by existing DML-only permissions does not require privilege expansion
+  ---
+  duration_ms: 0.704031
+  type: 'test'
+  ...
+# Subtest: missing disabled untrusted CHECK or a visible expression that excludes ARCHIVED fails safely
+ok 61 - missing disabled untrusted CHECK or a visible expression that excludes ARCHIVED fails safely
+  ---
+  duration_ms: 1.162174
+  type: 'test'
+  ...
+# Subtest: both durable tombstone columns must match the retained required types sizes and nullability
+ok 62 - both durable tombstone columns must match the retained required types sizes and nullability
+  ---
+  duration_ms: 1.997429
+  type: 'test'
+  ...
+# Subtest: each required read/update/delete capability is checked without touching an application row
+ok 63 - each required read/update/delete capability is checked without touching an application row
+  ---
+  duration_ms: 1.178284
+  type: 'test'
+  ...
+# Subtest: read-only diagnosis reports schema differences and hidden definitions without asserting them
+ok 64 - read-only diagnosis reports schema differences and hidden definitions without asserting them
+  ---
+  duration_ms: 0.35451
+  type: 'test'
+  ...
+# Subtest: diagnostic metadata excludes full SQL and redacts unexpected literal contents
+ok 65 - diagnostic metadata excludes full SQL and redacts unexpected literal contents
+  ---
+  duration_ms: 0.346094
+  type: 'test'
+  ...
+# (node:5892) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: labelled Excel columns map summary and preserve every garment component
+ok 66 - labelled Excel columns map summary and preserve every garment component
+  ---
+  duration_ms: 3.277041
+  type: 'test'
+  ...
+# Subtest: size colon, screenshot hyphen and comma preserve distinct sizes without inventing stock
+ok 67 - size colon, screenshot hyphen and comma preserve distinct sizes without inventing stock
+  ---
+  duration_ms: 2.289363
+  type: 'test'
+  ...
+# Subtest: mixed component fabrics retain the correct section
+ok 68 - mixed component fabrics retain the correct section
+  ---
+  duration_ms: 0.258681
+  type: 'test'
+  ...
+# Subtest: included pieces and fit use existing PDP labels without losing component fits
+ok 69 - included pieces and fit use existing PDP labels without losing component fits
+  ---
+  duration_ms: 0.47289
+  type: 'test'
+  ...
+# Subtest: bottom colours and sizes do not overwrite overall summary
+ok 70 - bottom colours and sizes do not overwrite overall summary
+  ---
+  duration_ms: 0.290471
+  type: 'test'
+  ...
+# Subtest: unrecognised rows remain in the description and absent name is flagged
+ok 71 - unrecognised rows remain in the description and absent name is flagged
+  ---
+  duration_ms: 0.30096
+  type: 'test'
+  ...
+# Subtest: missing fields are not implicitly cleared in updates
+ok 72 - missing fields are not implicitly cleared in updates
+  ---
+  duration_ms: 0.387972
+  type: 'test'
+  ...
+# Subtest: clearing a field requires explicit selection
+ok 73 - clearing a field requires explicit selection
+  ---
+  duration_ms: 0.176098
+  type: 'test'
+  ...
+# Subtest: bounded input and duplicate name warn without guessing
+ok 74 - bounded input and duplicate name warn without guessing
+  ---
+  duration_ms: 0.674746
+  type: 'test'
+  ...
+# Subtest: rupee conversion is exact and rejects unsafe/malformed prices
+ok 75 - rupee conversion is exact and rejects unsafe/malformed prices
+  ---
+  duration_ms: 0.887863
+  type: 'test'
+  ...
+# Subtest: quick fill payloads satisfy the existing backend create/edit contracts
+ok 76 - quick fill payloads satisfy the existing backend create/edit contracts
+  ---
+  duration_ms: 1.963055
+  type: 'test'
+  ...
+# Subtest: store proxy calls remain on the current browser origin
+ok 77 - store proxy calls remain on the current browser origin
+  ---
+  duration_ms: 102.868563
+  type: 'test'
+  ...
+# Subtest: explicit direct API endpoints remain supported
+ok 78 - explicit direct API endpoints remain supported
+  ---
+  duration_ms: 49.082437
+  type: 'test'
+  ...
+# Subtest: server-side rendering retains its internal API configuration
+ok 79 - server-side rendering retains its internal API configuration
+  ---
+  duration_ms: 33.04161
+  type: 'test'
+  ...
+# Subtest: development defaults and production fail-closed behavior are preserved
+ok 80 - development defaults and production fail-closed behavior are preserved
+  ---
+  duration_ms: 81.159665
+  type: 'test'
+  ...
+# Subtest: MSG91 failure switches to Firebase and verifies the Firebase proof through HIDI
+ok 81 - MSG91 failure switches to Firebase and verifies the Firebase proof through HIDI
+  ---
+  duration_ms: 176.925385
+  type: 'test'
+  ...
+# Subtest: Firebase fallback rejects rate limits and invalid directives: {"ok":false,"body":{"message":"Please wait before requesting another OTP"}}
+ok 82 - Firebase fallback rejects rate limits and invalid directives: {"ok":false,"body":{"message":"Please wait before requesting another OTP"}}
+  ---
+  duration_ms: 60.658101
+  type: 'test'
+  ...
+# Subtest: Firebase fallback rejects rate limits and invalid directives: {"body":{"phone":"+918888888888","channel":"FIREBASE","provider":"firebase","clientHandled":true,"fallback":true}}
+ok 83 - Firebase fallback rejects rate limits and invalid directives: {"body":{"phone":"+918888888888","channel":"FIREBASE","provider":"firebase","clientHandled":true,"fallback":true}}
+  ---
+  duration_ms: 47.846857
+  type: 'test'
+  ...
+# Subtest: Firebase fallback rejects rate limits and invalid directives: {"body":{"phone":"+919999999999","channel":"FIREBASE","provider":"firebase","clientHandled":true,"fallback":false}}
+ok 84 - Firebase fallback rejects rate limits and invalid directives: {"body":{"phone":"+919999999999","channel":"FIREBASE","provider":"firebase","clientHandled":true,"fallback":false}}
+  ---
+  duration_ms: 36.801611
+  type: 'test'
+  ...
+# Subtest: Firebase fallback errors cannot be reported as a sent SMS
+ok 85 - Firebase fallback errors cannot be reported as a sent SMS
+  ---
+  duration_ms: 38.170189
+  type: 'test'
+  ...
+# Subtest: runtime MSG91 SMS replaces a baked Firebase provider and verifies through HIDI
+ok 86 - runtime MSG91 SMS replaces a baked Firebase provider and verifies through HIDI
+  ---
+  duration_ms: 31.889265
+  type: 'test'
+  ...
+# Subtest: runtime WhatsApp replaces a baked Firebase provider and SMS label
+ok 87 - runtime WhatsApp replaces a baked Firebase provider and SMS label
+  ---
+  duration_ms: 29.703355
+  type: 'test'
+  ...
+# Subtest: unconfigured runtime refuses to send rather than using a baked provider
+ok 88 - unconfigured runtime refuses to send rather than using a baked provider
+  ---
+  duration_ms: 22.430053
+  type: 'test'
+  ...
+# Subtest: invalid runtime configuration fails closed: {"ok":false,"body":{}}
+ok 89 - invalid runtime configuration fails closed: {"ok":false,"body":{}}
+  ---
+  duration_ms: 25.99463
+  type: 'test'
+  ...
+# Subtest: invalid runtime configuration fails closed: {"body":{"phoneOtp":true,"channel":"SMS","provider":"whatsapp"}}
+ok 90 - invalid runtime configuration fails closed: {"body":{"phoneOtp":true,"channel":"SMS","provider":"whatsapp"}}
+  ---
+  duration_ms: 22.307805
+  type: 'test'
+  ...
+# Subtest: invalid runtime configuration fails closed: {"body":{"phoneOtp":true,"channel":"WHATSAPP","provider":"unknown"}}
+ok 91 - invalid runtime configuration fails closed: {"body":{"phoneOtp":true,"channel":"WHATSAPP","provider":"unknown"}}
+  ---
+  duration_ms: 23.20198
+  type: 'test'
+  ...
+# Subtest: a failed configuration request can be retried
+ok 92 - a failed configuration request can be retried
+  ---
+  duration_ms: 21.846827
+  type: 'test'
+  ...
+# Subtest: the delivered channel overrides a configuration that changed during the request
+ok 93 - the delivered channel overrides a configuration that changed during the request
+  ---
+  duration_ms: 43.721
+  type: 'test'
+  ...
+# Subtest: a switch to client-handled Firebase cannot be reported as a sent WhatsApp code
+ok 94 - a switch to client-handled Firebase cannot be reported as a sent WhatsApp code
+  ---
+  duration_ms: 41.556397
+  type: 'test'
+  ...
+# Subtest: verification keeps the provider that issued the pending OTP across a runtime switch
+ok 95 - verification keeps the provider that issued the pending OTP across a runtime switch
+  ---
+  duration_ms: 30.174803
+  type: 'test'
+  ...
+# Subtest: primary Firebase requires server send authorization before using the SDK
+ok 96 - primary Firebase requires server send authorization before using the SDK
+  ---
+  duration_ms: 21.578267
+  type: 'test'
+  ...
+# Subtest: server throttle applies to primary Firebase and exposes its retry deadline
+ok 97 - server throttle applies to primary Firebase and exposes its retry deadline
+  ---
+  duration_ms: 35.161526
+  type: 'test'
+  ...
+# Subtest: primary Firebase rejects mismatched send directives: {"phone":"+918888888888","channel":"FIREBASE","provider":"firebase","clientHandled":true,"retryAfterSeconds":60}
+ok 98 - primary Firebase rejects mismatched send directives: {"phone":"+918888888888","channel":"FIREBASE","provider":"firebase","clientHandled":true,"retryAfterSeconds":60}
+  ---
+  duration_ms: 24.165865
+  type: 'test'
+  ...
+# Subtest: primary Firebase rejects mismatched send directives: {"phone":"+919999999999","channel":"FIREBASE","provider":"firebase","clientHandled":true,"retryAfterSeconds":60,"fallback":true}
+ok 99 - primary Firebase rejects mismatched send directives: {"phone":"+919999999999","channel":"FIREBASE","provider":"firebase","clientHandled":true,"retryAfterSeconds":60,"fallback":true}
+  ---
+  duration_ms: 28.265778
+  type: 'test'
+  ...
+# Subtest: primary Firebase rejects mismatched send directives: {"phone":"+919999999999","channel":"FIREBASE","provider":"firebase","clientHandled":false,"retryAfterSeconds":60}
+ok 100 - primary Firebase rejects mismatched send directives: {"phone":"+919999999999","channel":"FIREBASE","provider":"firebase","clientHandled":false,"retryAfterSeconds":60}
+  ---
+  duration_ms: 27.679126
+  type: 'test'
+  ...
+# Subtest: a failed resend retains the issuer proof and can verify the previous code
+ok 101 - a failed resend retains the issuer proof and can verify the previous code
+  ---
+  duration_ms: 35.687517
+  type: 'test'
+  ...
+# Subtest: a successful resend refreshes runtime settings and replaces the issuing provider
+ok 102 - a successful resend refreshes runtime settings and replaces the issuing provider
+  ---
+  duration_ms: 26.911417
+  type: 'test'
+  ...
+# Subtest: Firebase SDK resend failure preserves the prior confirmation
+ok 103 - Firebase SDK resend failure preserves the prior confirmation
+  ---
+  duration_ms: 28.474417
+  type: 'test'
+  ...
+# Subtest: invalid retry metadata and non-throttle responses do not set a retry deadline
+ok 104 - invalid retry metadata and non-throttle responses do not set a retry deadline
+  ---
+  duration_ms: 80.185751
+  type: 'test'
+  ...
+# Subtest: browser refresh uses its own store proxy rather than a baked-in production host
+ok 105 - browser refresh uses its own store proxy rather than a baked-in production host
+  ---
+  duration_ms: 175.5801
+  type: 'test'
+  ...
+# Subtest: a matching refresh rotates the active session
+ok 106 - a matching refresh rotates the active session
+  ---
+  duration_ms: 105.115443
+  type: 'test'
+  ...
+# Subtest: a late successful refresh cannot undo logout
+ok 107 - a late successful refresh cannot undo logout
+  ---
+  duration_ms: 49.20754
+  type: 'test'
+  ...
+# Subtest: a late successful refresh cannot replace another customer's session
+ok 108 - a late successful refresh cannot replace another customer's session
+  ---
+  duration_ms: 43.861276
+  type: 'test'
+  ...
+# Subtest: a late failed refresh cannot clear another customer's session
+ok 109 - a late failed refresh cannot clear another customer's session
+  ---
+  duration_ms: 68.775113
+  type: 'test'
+  ...
+# Subtest: a late failed refresh after logout does not mutate storage again
+ok 110 - a late failed refresh after logout does not mutate storage again
+  ---
+  duration_ms: 33.971241
+  type: 'test'
+  ...
+# Subtest: a failed refresh of the still-active original session clears it
+ok 111 - a failed refresh of the still-active original session clears it
+  ---
+  duration_ms: 35.14138
+  type: 'test'
+  ...
+# Subtest: a response for an unrelated user cannot be saved
+ok 112 - a response for an unrelated user cannot be saved
+  ---
+  duration_ms: 23.272672
+  type: 'test'
+  ...
+# Subtest: a session switch during JSON parsing also prevents a stale save
+ok 113 - a session switch during JSON parsing also prevents a stale save
+  ---
+  duration_ms: 39.611353
+  type: 'test'
+  ...
+# Subtest: concurrent account, wallet and navigation callers share one successful refresh
+ok 114 - concurrent account, wallet and navigation callers share one successful refresh
+  ---
+  duration_ms: 24.815194
+  type: 'test'
+  ...
+# Subtest: concurrent failed refresh clears the expired session once for all callers
+ok 115 - concurrent failed refresh clears the expired session once for all callers
+  ---
+  duration_ms: 22.012245
+  type: 'test'
+  ...
+# Subtest: a different customer never joins another customer's in-flight refresh
+ok 116 - a different customer never joins another customer's in-flight refresh
+  ---
+  duration_ms: 24.473368
+  type: 'test'
+  ...
+# Subtest: a later expiry starts a new refresh after the shared request completes
+ok 117 - a later expiry starts a new refresh after the shared request completes
+  ---
+  duration_ms: 32.084699
+  type: 'test'
+  ...
+# Subtest: Azure Firebase setup preserve
+ok 118 - Azure Firebase setup preserve
+  ---
+  duration_ms: 464.826921
+  type: 'test'
+  ...
+# Subtest: Azure Firebase setup new-secret
+ok 119 - Azure Firebase setup new-secret
+  ---
+  duration_ms: 450.559491
+  type: 'test'
+  ...
+# Subtest: Azure Firebase setup production
+ok 120 - Azure Firebase setup production
+  ---
+  duration_ms: 67.739025
+  type: 'test'
+  ...
+# Subtest: Azure Firebase setup migration-failed
+ok 121 - Azure Firebase setup migration-failed
+  ---
+  duration_ms: 333.019707
+  type: 'test'
+  ...
+# Subtest: Azure Firebase setup env-only
+ok 122 - Azure Firebase setup env-only
+  ---
+  duration_ms: 212.115889
+  type: 'test'
+  ...
+# Subtest: Azure Firebase setup missing-admin
+ok 123 - Azure Firebase setup missing-admin
+  ---
+  duration_ms: 187.564982
+  type: 'test'
+  ...
+# Subtest: Azure Firebase setup ambiguous-admin
+ok 124 - Azure Firebase setup ambiguous-admin
+  ---
+  duration_ms: 188.543632
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: sms
+ok 125 - Azure MSG91 SMS setup: sms
+  ---
+  duration_ms: 246.483955
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: check
+ok 126 - Azure MSG91 SMS setup: check
+  ---
+  duration_ms: 94.676256
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: existing-key
+ok 127 - Azure MSG91 SMS setup: existing-key
+  ---
+  duration_ms: 205.638261
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: missing-key
+ok 128 - Azure MSG91 SMS setup: missing-key
+  ---
+  duration_ms: 96.094971
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: missing-template
+ok 129 - Azure MSG91 SMS setup: missing-template
+  ---
+  duration_ms: 93.367833
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: invalid-signing
+ok 130 - Azure MSG91 SMS setup: invalid-signing
+  ---
+  duration_ms: 92.983695
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: missing-signing-ref
+ok 131 - Azure MSG91 SMS setup: missing-signing-ref
+  ---
+  duration_ms: 94.202221
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: missing-key-ref
+ok 132 - Azure MSG91 SMS setup: missing-key-ref
+  ---
+  duration_ms: 92.60466
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: multiple
+ok 133 - Azure MSG91 SMS setup: multiple
+  ---
+  duration_ms: 95.026601
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: disabled
+ok 134 - Azure MSG91 SMS setup: disabled
+  ---
+  duration_ms: 95.927021
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: production
+ok 135 - Azure MSG91 SMS setup: production
+  ---
+  duration_ms: 99.621186
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: unguarded
+ok 136 - Azure MSG91 SMS setup: unguarded
+  ---
+  duration_ms: 95.809439
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: web-unready
+ok 137 - Azure MSG91 SMS setup: web-unready
+  ---
+  duration_ms: 93.862011
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: unsafe-endpoint
+ok 138 - Azure MSG91 SMS setup: unsafe-endpoint
+  ---
+  duration_ms: 98.543359
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: missing-firebase
+ok 139 - Azure MSG91 SMS setup: missing-firebase
+  ---
+  duration_ms: 91.719634
+  type: 'test'
+  ...
+# Subtest: Azure MSG91 SMS setup: mismatched-firebase
+ok 140 - Azure MSG91 SMS setup: mismatched-firebase
+  ---
+  duration_ms: 93.459404
+  type: 'test'
+  ...
+# Subtest: readiness matches existing backend guards, including SKU-only photos and zero stock
+ok 141 - readiness matches existing backend guards, including SKU-only photos and zero stock
+  ---
+  duration_ms: 0.9831
+  type: 'test'
+  ...
+# Subtest: only selected unique ready drafts are published with fresh optimistic versions
+ok 142 - only selected unique ready drafts are published with fresh optimistic versions
+  ---
+  duration_ms: 1.850345
+  type: 'test'
+  ...
+# Subtest: already published and archived/deleted products are never rewritten
+ok 143 - already published and archived/deleted products are never rewritten
+  ---
+  duration_ms: 0.25228
+  type: 'test'
+  ...
+# Subtest: partial validation/version failures remain visible while other selected products finish
+ok 144 - partial validation/version failures remain visible while other selected products finish
+  ---
+  duration_ms: 0.458845
+  type: 'test'
+  ...
+# Subtest: sign-in or permission failure pauses before any later product is touched
+ok 145 - sign-in or permission failure pauses before any later product is touched
+  ---
+  duration_ms: 0.3066
+  type: 'test'
+  ...
+# Subtest: retry after a lost successful publish response confirms ACTIVE without another status write
+ok 146 - retry after a lost successful publish response confirms ACTIVE without another status write
+  ---
+  duration_ms: 0.278789
+  type: 'test'
+  ...
+# Subtest: spreadsheet details preserve blank fields and collections, use current version, and omit status/stock/prices
+ok 147 - spreadsheet details preserve blank fields and collections, use current version, and omit status/stock/prices
+  ---
+  duration_ms: 0.34363
+  type: 'test'
+  ...
+# Subtest: only exact telemetry origins and paths classify as already-blocked telemetry
+ok 148 - only exact telemetry origins and paths classify as already-blocked telemetry
+  ---
+  duration_ms: 1.66494
+  type: 'test'
+  ...
+# Subtest: other HTTP methods never classify as telemetry
+ok 149 - other HTTP methods never classify as telemetry
+  ---
+  duration_ms: 1.465038
+  type: 'test'
+  ...
+# Subtest: lookalike hosts, nondefault external ports and credential URLs remain unexpected
+ok 150 - lookalike hosts, nondefault external ports and credential URLs remain unexpected
+  ---
+  duration_ms: 0.52632
+  type: 'test'
+  ...
+# Subtest: external logging requires HTTPS and local performance requires the same origin
+ok 151 - external logging requires HTTPS and local performance requires the same origin
+  ---
+  duration_ms: 0.309296
+  type: 'test'
+  ...
+# Subtest: telemetry path variants remain unexpected
+ok 152 - telemetry path variants remain unexpected
+  ---
+  duration_ms: 0.315017
+  type: 'test'
+  ...
+# Subtest: order, payment, COD, auth and product deletion writes remain unexpected
+ok 153 - order, payment, COD, auth and product deletion writes remain unexpected
+  ---
+  duration_ms: 0.33339
+  type: 'test'
+  ...
+# Subtest: malformed URLs and unsupported base origins fail closed without throwing
+ok 154 - malformed URLs and unsupported base origins fail closed without throwing
+  ---
+  duration_ms: 0.400556
+  type: 'test'
+  ...
+# Subtest: complete HTML gains one document marker and content-versioned CSS and deferred JS
+ok 155 - complete HTML gains one document marker and content-versioned CSS and deferred JS
+  ---
+  duration_ms: 1.49869
+  type: 'test'
+  ...
+# Subtest: HTML injection preserves fragments, plain text and missing heads
+ok 156 - HTML injection preserves fragments, plain text and missing heads
+  ---
+  duration_ms: 0.24139
+  type: 'test'
+  ...
+# Subtest: an existing injected theme receives a missing root marker without duplicating assets
+ok 157 - an existing injected theme receives a missing root marker without duplicating assets
+  ---
+  duration_ms: 0.181628
+  type: 'test'
+  ...
+# Subtest: CSS and JS GET and HEAD serve exact bytes with versioned caching
+ok 158 - CSS and JS GET and HEAD serve exact bytes with versioned caching
+  ---
+  duration_ms: 38.983912
+  type: 'test'
+  ...
+# Subtest: theme assets accept only GET or HEAD and never capture neighboring paths
+ok 159 - theme assets accept only GET or HEAD and never capture neighboring paths
+  ---
+  duration_ms: 10.50488
+  type: 'test'
+  ...
+# Subtest: Admin and privacy complete HTML update byte length and remove stale validators
+ok 160 - Admin and privacy complete HTML update byte length and remove stale validators
+  ---
+  duration_ms: 6.538814
+  type: 'test'
+  ...
+# Subtest: implicit Node HTML headers remain valid and are injected
+ok 161 - implicit Node HTML headers remain valid and are injected
+  ---
+  duration_ms: 2.184998
+  type: 'test'
+  ...
+# Subtest: raw header arrays preserve repeated cookies during HTML injection
+ok 162 - raw header arrays preserve repeated cookies during HTML injection
+  ---
+  duration_ms: 3.102266
+  type: 'test'
+  ...
+# Subtest: explicit chunked complete HTML never gains conflicting Content-Length
+ok 163 - explicit chunked complete HTML never gains conflicting Content-Length
+  ---
+  duration_ms: 2.168728
+  type: 'test'
+  ...
+# Subtest: Buffer and Uint8Array bodies support valid end callbacks
+ok 164 - Buffer and Uint8Array bodies support valid end callbacks
+  ---
+  duration_ms: 4.39832
+  type: 'test'
+  ...
+# Subtest: streamed HTML is byte-preserved with valid original headers and callbacks
+ok 165 - streamed HTML is byte-preserved with valid original headers and callbacks
+  ---
+  duration_ms: 2.616492
+  type: 'test'
+  ...
+# Subtest: explicit header flushing leaves streaming HTML valid and unchanged
+ok 166 - explicit header flushing leaves streaming HTML valid and unchanged
+  ---
+  duration_ms: 2.466162
+  type: 'test'
+  ...
+# Subtest: implicit headers on write and flushHeaders preserve streamed HTML
+ok 167 - implicit headers on write and flushHeaders preserve streamed HTML
+  ---
+  duration_ms: 2.859505
+  type: 'test'
+  ...
+# Subtest: JSON, RSC, prefetch, compressed HTML and non-2xx responses retain original bytes
+ok 168 - JSON, RSC, prefetch, compressed HTML and non-2xx responses retain original bytes
+  ---
+  duration_ms: 8.193727
+  type: 'test'
+  ...
+# Subtest: storefront, unrelated Admin-looking paths and POST HTML are not response-wrapped
+ok 169 - storefront, unrelated Admin-looking paths and POST HTML are not response-wrapped
+  ---
+  duration_ms: 7.425325
+  type: 'test'
+  ...
+# Subtest: empty HTML HEAD and end-callback-only responses preserve Node conventions
+ok 170 - empty HTML HEAD and end-callback-only responses preserve Node conventions
+  ---
+  duration_ms: 3.112956
+  type: 'test'
+  ...
+# Subtest: PIN observer sanitizes restored input and debounces one valid six-digit check
+ok 171 - PIN observer sanitizes restored input and debounces one valid six-digit check
+  ---
+  duration_ms: 74.913512
+  type: 'test'
+  ...
+# Subtest: PIN observer cancels stale values and never checks incomplete, hidden or detached fields
+ok 172 - PIN observer cancels stale values and never checks incomplete, hidden or detached fields
+  ---
+  duration_ms: 10.545716
+  type: 'test'
+  ...
+# Subtest: PIN observer cleanup removes timers and listeners and prevents later requests
+ok 173 - PIN observer cleanup removes timers and listeners and prevents later requests
+  ---
+  duration_ms: 12.374961
+  type: 'test'
+  ...
+# (node:7283) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:7283) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/lib/product-image.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/package.json.
+# Subtest: versioned display sources pass the retained Next Image local-path rules
+ok 174 - versioned display sources pass the retained Next Image local-path rules
+  ---
+  duration_ms: 2.715827
+  type: 'test'
+  ...
+# Subtest: only owned product photo paths and bounded sizes are accepted
+ok 175 - only owned product photo paths and bounded sizes are accepted
+  ---
+  duration_ms: 1.146605
+  type: 'test'
+  ...
+# Subtest: concurrent requests decode the master once and produce actual resized bytes
+ok 176 - concurrent requests decode the master once and produce actual resized bytes
+  ---
+  duration_ms: 2068.560195
+  type: 'test'
+  ...
+# Subtest: real image HTTP supports HEAD, ETags and JPEG fallback; failures never send originals
+ok 177 - real image HTTP supports HEAD, ETags and JPEG fallback; failures never send originals
+  ---
+  duration_ms: 443.856628
+  type: 'test'
+  ...
+# Subtest: modified and non-primary logo clicks preserve native link navigation
+ok 178 - modified and non-primary logo clicks preserve native link navigation
+  ---
+  duration_ms: 5.32775
+  type: 'test'
+  ...
+# Subtest: logo scroll follows reduced-motion preference
+ok 179 - logo scroll follows reduced-motion preference
+  ---
+  duration_ms: 1.402442
+  type: 'test'
+  ...
+# Subtest: decorative detail media mounts on intent and not during initial render
+ok 180 - decorative detail media mounts on intent and not during initial render
+  ---
+  duration_ms: 0.279099
+  type: 'test'
+  ...
+# Subtest: detail intent listeners are removed on unmount
+ok 181 - detail intent listeners are removed on unmount
+  ---
+  duration_ms: 0.254694
+  type: 'test'
+  ...
+# Subtest: quick-add bodies are deferred without changing the shared cart write
+ok 182 - quick-add bodies are deferred without changing the shared cart write
+  ---
+  duration_ms: 0.293637
+  type: 'test'
+  ...
+# Subtest: responsive media sizes distinguish spotlight, smaller edits and product cards
+ok 183 - responsive media sizes distinguish spotlight, smaller edits and product cards
+  ---
+  duration_ms: 0.256057
+  type: 'test'
+  ...
+# Subtest: mobile hero is bounded and craft imagery is not artificially enlarged
+ok 184 - mobile hero is bounded and craft imagery is not artificially enlarged
+  ---
+  duration_ms: 0.258101
+  type: 'test'
+  ...
+# Subtest: search spacing and newsletter wording avoid crowding and unverified incentives
+ok 185 - search spacing and newsletter wording avoid crowding and unverified incentives
+  ---
+  duration_ms: 0.275803
+  type: 'test'
+  ...
+# Subtest: missing taxonomy creates exactly three categories and four collections and returns only bounded evidence
+ok 186 - missing taxonomy creates exactly three categories and four collections and returns only bounded evidence
+  ---
+  duration_ms: 3.441999
+  type: 'test'
+  ...
+# Subtest: repeated ensure is idempotent and existing names, timestamps and identities remain unchanged
+ok 187 - repeated ensure is idempotent and existing names, timestamps and identities remain unchanged
+  ---
+  duration_ms: 2.521565
+  type: 'test'
+  ...
+# Subtest: partial taxonomy creates only missing references and retains unrelated rows
+ok 188 - partial taxonomy creates only missing references and retains unrelated rows
+  ---
+  duration_ms: 0.563429
+  type: 'test'
+  ...
+# Subtest: inactive existing launch reference fails without reactivation, rename or partial creates
+ok 189 - inactive existing launch reference fails without reactivation, rename or partial creates
+  ---
+  duration_ms: 0.986597
+  type: 'test'
+  ...
+# Subtest: write failure rolls all newly created references back and preserves product assignments
+ok 190 - write failure rolls all newly created references back and preserves product assignments
+  ---
+  duration_ms: 0.46716
+  type: 'test'
+  ...
+# Subtest: different database fails before any taxonomy transaction or write
+ok 191 - different database fails before any taxonomy transaction or write
+  ---
+  duration_ms: 0.273178
+  type: 'test'
+  ...
+# Subtest: homepage neutral tokens resolve to the same shared ivory
+ok 192 - homepage neutral tokens resolve to the same shared ivory
+  ---
+  duration_ms: 1.041048
+  type: 'test'
+  ...
+# Subtest: Privileges has a flat shared background, not a separate beige or gold gradient
+ok 193 - Privileges has a flat shared background, not a separate beige or gold gradient
+  ---
+  duration_ms: 0.307793
+  type: 'test'
+  ...
+# Subtest: shopping services use the same flat ivory as the craft story
+ok 194 - shopping services use the same flat ivory as the craft story
+  ---
+  duration_ms: 0.280652
+  type: 'test'
+  ...
+# Subtest: responsive rules cannot reintroduce a gradient on neutral homepage sections
+ok 195 - responsive rules cannot reintroduce a gradient on neutral homepage sections
+  ---
+  duration_ms: 0.537531
+  type: 'test'
+  ...
+# Subtest: photography vignettes are confined to image overlays, while privileges use native disclosure
+ok 196 - photography vignettes are confined to image overlays, while privileges use native disclosure
+  ---
+  duration_ms: 0.275833
+  type: 'test'
+  ...
+# node:fs:442
+#     return binding.readFileUtf8(path, stringToFlags(options.flag));
+#                    ^
+# Error: ENOENT: no such file or directory, open 'evidence/image-sku/local-overlay/apps/web/.next/server/app/api/admin/inventory/[variantId]/images/route.js'
+#     at readFileSync (node:fs:442:20)
+#     at file:///home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/image-sku-runtime-keys.test.mjs:7:14
+#     at ModuleJob.run (node:internal/modules/esm/module_job:274:25)
+#     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)
+#     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+#   errno: -2,
+#   code: 'ENOENT',
+#   syscall: 'open',
+#   path: 'evidence/image-sku/local-overlay/apps/web/.next/server/app/api/admin/inventory/[variantId]/images/route.js'
+# }
+# Node.js v22.16.0
+# Subtest: tests/image-sku-runtime-keys.test.mjs
+not ok 22 - tests/image-sku-runtime-keys.test.mjs
+  ---
+  duration_ms: 34.758978
+  type: 'test'
+  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/image-sku-runtime-keys.test.mjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: filename parsing keeps underscores in Image SKU and handles uppercase extensions
+ok 198 - filename parsing keeps underscores in Image SKU and handles uppercase extensions
+  ---
+  duration_ms: 1.945191
+  type: 'test'
+  ...
+# Subtest: shared codes are valid across sizes; missing code in another size inherits the same colour code
+ok 199 - shared codes are valid across sizes; missing code in another size inherits the same colour code
+  ---
+  duration_ms: 0.458824
+  type: 'test'
+  ...
+# Subtest: codes cannot cross products or colours, or disagree across one colour size matrix
+ok 200 - codes cannot cross products or colours, or disagree across one colour size matrix
+  ---
+  duration_ms: 1.236723
+  type: 'test'
+  ...
+# Subtest: photos sort numerically, target every size, and reject duplicate JPEG/WebP photo numbers
+ok 201 - photos sort numerically, target every size, and reject duplicate JPEG/WebP photo numbers
+  ---
+  duration_ms: 8.516256
+  type: 'test'
+  ...
+# Subtest: unknown codes, zero photo numbers, incorrect types, invalid image sizes and archived products stay blocked
+ok 202 - unknown codes, zero photo numbers, incorrect types, invalid image sizes and archived products stay blocked
+  ---
+  duration_ms: 1.013407
+  type: 'test'
+  ...
+# Subtest: existing HIDI SKU photos keep their original matching path
+ok 203 - existing HIDI SKU photos keep their original matching path
+  ---
+  duration_ms: 0.175206
+  type: 'test'
+  ...
+# Subtest: lost successful uploads are confirmed across sizes and are not sent twice
+ok 204 - lost successful uploads are confirmed across sizes and are not sent twice
+  ---
+  duration_ms: 28.464649
+  type: 'test'
+  ...
+# Subtest: photos saved by the first Image SKU release remain idempotent after an upgrade
+ok 205 - photos saved by the first Image SKU release remain idempotent after an upgrade
+  ---
+  duration_ms: 1.538855
+  type: 'test'
+  ...
+# Subtest: an unconfirmed upload is not blindly retried
+ok 206 - an unconfirmed upload is not blindly retried
+  ---
+  duration_ms: 4.476727
+  type: 'test'
+  ...
+# Subtest: mapping persists, repeated size registrations are idempotent, and existing mappings cannot be reassigned
+ok 207 - mapping persists, repeated size registrations are idempotent, and existing mappings cannot be reassigned
+  ---
+  duration_ms: 5.441701
+  type: 'test'
+  ...
+# Subtest: preflight rejects collisions without saving mappings or products
+ok 208 - preflight rejects collisions without saving mappings or products
+  ---
+  duration_ms: 1.194434
+  type: 'test'
+  ...
+# Subtest: read-only staff, cross-origin writes, missing staff cookies, changed product versions and arbitrary fields are rejected
+ok 209 - read-only staff, cross-origin writes, missing staff cookies, changed product versions and arbitrary fields are rejected
+  ---
+  duration_ms: 2.559305
+  type: 'test'
+  ...
+# Subtest: concurrent registry writes retry with a fresh ETag and preserve the other mapping
+ok 210 - concurrent registry writes retry with a fresh ETag and preserve the other mapping
+  ---
+  duration_ms: 1.560025
+  type: 'test'
+  ...
+# Subtest: Azure store uses the fixed product container, conditional writes, and bounded validated reads
+ok 211 - Azure store uses the fixed product container, conditional writes, and bounded validated reads
+  ---
+  duration_ms: 2.016955
+  type: 'test'
+  ...
+# Subtest: owned upload verifies exact public bytes and removes only its own ETag
+ok 212 - owned upload verifies exact public bytes and removes only its own ETag
+  ---
+  duration_ms: 22.685478
+  type: 'test'
+  ...
+# Subtest: public read failure still cleans the owned upload
+ok 213 - public read failure still cleans the owned upload
+  ---
+  duration_ms: 1.0743
+  type: 'test'
+  ...
+# Subtest: lost PUT response uses matching ownership metadata for cleanup
+ok 214 - lost PUT response uses matching ownership metadata for cleanup
+  ---
+  duration_ms: 0.702258
+  type: 'test'
+  ...
+# Subtest: a collision never overwrites or removes an unrelated object
+ok 215 - a collision never overwrites or removes an unrelated object
+  ---
+  duration_ms: 0.474313
+  type: 'test'
+  ...
+# Subtest: HTTP and arbitrary destinations are refused before any write
+ok 216 - HTTP and arbitrary destinations are refused before any write
+  ---
+  duration_ms: 0.342017
+  type: 'test'
+  ...
+# Subtest: drawer tracks actual header bottom at phone and tablet widths
+ok 217 - drawer tracks actual header bottom at phone and tablet widths
+  ---
+  duration_ms: 5.597572
+  type: 'test'
+  ...
+# Subtest: header resize and viewport/scroll changes recompute the anchor
+ok 218 - header resize and viewport/scroll changes recompute the anchor
+  ---
+  duration_ms: 0.751469
+  type: 'test'
+  ...
+# Subtest: desktop transition closes the mobile drawer
+ok 219 - desktop transition closes the mobile drawer
+  ---
+  duration_ms: 1.17073
+  type: 'test'
+  ...
+# Subtest: closing removes observers, listeners and measured state
+ok 220 - closing removes observers, listeners and measured state
+  ---
+  duration_ms: 0.772759
+  type: 'test'
+  ...
+# Subtest: closed menu does not measure or attach observers
+ok 221 - closed menu does not measure or attach observers
+  ---
+  duration_ms: 0.765415
+  type: 'test'
+  ...
+# Subtest: CSS protects viewport positioning and scrollable content from regression
+ok 222 - CSS protects viewport positioning and scrollable content from regression
+  ---
+  duration_ms: 0.421205
+  type: 'test'
+  ...
+# Subtest: negotiation respects q=0 and keeps gzip-only/identity clients usable
+ok 223 - negotiation respects q=0 and keeps gzip-only/identity clients usable
+  ---
+  duration_ms: 1.294891
+  type: 'test'
+  ...
+# Subtest: real HTTP gzip/Brotli preserve bytes, Vary, HEAD and media ranges
+ok 224 - real HTTP gzip/Brotli preserve bytes, Vary, HEAD and media ranges
+  ---
+  duration_ms: 49.806816
+  type: 'test'
+  ...
+# Subtest: HTML arrives before upstream completion, with split Unicode and head/body hooks preserved
+ok 225 - HTML arrives before upstream completion, with split Unicode and head/body hooks preserved
+  ---
+  duration_ms: 158.370564
+  type: 'test'
+  ...
+# Subtest: overlarge/missing head streams without losing bytes or retaining an unbounded cache
+ok 226 - overlarge/missing head streams without losing bytes or retaining an unbounded cache
+  ---
+  duration_ms: 2.471782
+  type: 'test'
+  ...
+# Subtest: first-party metrics reject PII/unknown fields, cross-origin and oversized bodies; expose no readings publicly
+ok 227 - first-party metrics reject PII/unknown fields, cross-origin and oversized bodies; expose no readings publicly
+  ---
+  duration_ms: 22.178685
+  type: 'test'
+  ...
+# Subtest: single-SKU selection accepts large photos and rejects invalid sizes before uploading
+ok 228 - single-SKU selection accepts large photos and rejects invalid sizes before uploading
+  ---
+  duration_ms: 1.395118
+  type: 'test'
+  ...
+# Subtest: bulk photos accept files above the former 40 MiB cap with correct SKU mapping
+ok 229 - bulk photos accept files above the former 40 MiB cap with correct SKU mapping
+  ---
+  duration_ms: 181.843059
+  type: 'test'
+  ...
+# Subtest: storage identity creates a private container and preserves conditional writes
+ok 230 - storage identity creates a private container and preserves conditional writes
+  ---
+  duration_ms: 24.211139
+  type: 'test'
+  ...
+# Subtest: an existing public container or denied container creation fails closed
+ok 231 - an existing public container or denied container creation fails closed
+  ---
+  duration_ms: 1.106681
+  type: 'test'
+  ...
+# Subtest: draft defaults carry the approved business name and require completion
+ok 232 - draft defaults carry the approved business name and require completion
+  ---
+  duration_ms: 2.081906
+  type: 'test'
+  ...
+# Subtest: stored policy text and substitutions are escaped, with no active markup
+ok 233 - stored policy text and substitutions are escaped, with no active markup
+  ---
+  duration_ms: 0.376451
+  type: 'test'
+  ...
+# Subtest: owner-only durable draft, CSRF, version history and publication boundaries
+ok 234 - owner-only durable draft, CSRF, version history and publication boundaries
+  ---
+  duration_ms: 137.440046
+  type: 'test'
+  ...
+# Subtest: five-digit SKN names accept large photos and reject unrepresentable byte counts
+ok 235 - five-digit SKN names accept large photos and reject unrepresentable byte counts
+  ---
+  duration_ms: 2.513299
+  type: 'test'
+  ...
+# Subtest: the entire preview blocks duplicates, multiple mains and excessive file counts
+ok 236 - the entire preview blocks duplicates, multiple mains and excessive file counts
+  ---
+  duration_ms: 21.416435
+  type: 'test'
+  ...
+# Subtest: matching uses the exact SKN and rejects unknown, ambiguous or conflicting details
+ok 237 - matching uses the exact SKN and rejects unknown, ambiguous or conflicting details
+  ---
+  duration_ms: 1.013137
+  type: 'test'
+  ...
+# Subtest: one-colour products match every size; several colours require an explicit choice
+ok 238 - one-colour products match every size; several colours require an explicit choice
+  ---
+  duration_ms: 1.54776
+  type: 'test'
+  ...
+# Subtest: uploads put main first, then numeric gallery order and exclude completed photos
+ok 239 - uploads put main first, then numeric gallery order and exclude completed photos
+  ---
+  duration_ms: 0.614574
+  type: 'test'
+  ...
+# Subtest: interrupted upload is confirmed only when every target size has the same new image URL and alt
+ok 240 - interrupted upload is confirmed only when every target size has the same new image URL and alt
+  ---
+  duration_ms: 0.561285
+  type: 'test'
+  ...
+# Subtest: CSV mapping reports safely quote user text and neutralize spreadsheet formulas
+ok 241 - CSV mapping reports safely quote user text and neutralize spreadsheet formulas
+  ---
+  duration_ms: 1.00442
+  type: 'test'
+  ...
+# Subtest: missing taxonomy creates exactly three categories and four collections and returns only bounded evidence
+ok 242 - missing taxonomy creates exactly three categories and four collections and returns only bounded evidence
+  ---
+  duration_ms: 4.229805
+  type: 'test'
+  ...
+# Subtest: repeated ensure is idempotent and existing names, timestamps and identities remain unchanged
+ok 243 - repeated ensure is idempotent and existing names, timestamps and identities remain unchanged
+  ---
+  duration_ms: 2.025661
+  type: 'test'
+  ...
+# Subtest: partial taxonomy creates only missing references and retains unrelated rows
+ok 244 - partial taxonomy creates only missing references and retains unrelated rows
+  ---
+  duration_ms: 0.782937
+  type: 'test'
+  ...
+# Subtest: inactive existing launch reference fails without reactivation, rename or partial creates
+ok 245 - inactive existing launch reference fails without reactivation, rename or partial creates
+  ---
+  duration_ms: 1.182812
+  type: 'test'
+  ...
+# Subtest: write failure rolls all newly created references back and preserves product assignments
+ok 246 - write failure rolls all newly created references back and preserves product assignments
+  ---
+  duration_ms: 0.57458
+  type: 'test'
+  ...
+# Subtest: different database fails before any taxonomy transaction or write
+ok 247 - different database fails before any taxonomy transaction or write
+  ---
+  duration_ms: 0.276836
+  type: 'test'
+  ...
+# (node:7430) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: preview reads catalogue/options and never creates products, stock or image mappings
+ok 248 - preview reads catalogue/options and never creates products, stock or image mappings
+  ---
+  duration_ms: 7.075173
+  type: 'test'
+  ...
+# Subtest: failed preview cannot make any API request during save or publication
+ok 249 - failed preview cannot make any API request during save or publication
+  ---
+  duration_ms: 1.586694
+  type: 'test'
+  ...
+# Subtest: UPDATE identity conflicts and archived products block preview without writes
+ok 250 - UPDATE identity conflicts and archived products block preview without writes
+  ---
+  duration_ms: 3.064276
+  type: 'test'
+  ...
+# Subtest: catalogue pagination inconsistency fails rather than risking an incomplete identity lookup
+ok 251 - catalogue pagination inconsistency fails rather than risking an incomplete identity lookup
+  ---
+  duration_ms: 0.899034
+  type: 'test'
+  ...
+# Subtest: selected files require exact names, allowed types, valid size and one unambiguous association
+ok 252 - selected files require exact names, allowed types, valid size and one unambiguous association
+  ---
+  duration_ms: 20.744164
+  type: 'test'
+  ...
+# Subtest: existing image mappings cannot be reassigned to another product or colour
+ok 253 - existing image mappings cannot be reassigned to another product or colour
+  ---
+  duration_ms: 1.365542
+  type: 'test'
+  ...
+# Subtest: saving ACTIVE metadata as Draft hides it first and retains URLs, SKU IDs, images and quantities
+ok 254 - saving ACTIVE metadata as Draft hides it first and retains URLs, SKU IDs, images and quantities
+  ---
+  duration_ms: 2.898867
+  type: 'test'
+  ...
+# Subtest: variant updates send complete API-safe fields and retain omitted measurements, weight and active state
+ok 255 - variant updates send complete API-safe fields and retain omitted measurements, weight and active state
+  ---
+  duration_ms: 2.030691
+  type: 'test'
+  ...
+# Subtest: new products and additional sizes remain zero stock without any inventory increment request
+ok 256 - new products and additional sizes remain zero stock without any inventory increment request
+  ---
+  duration_ms: 12.539447
+  type: 'test'
+  ...
+# Subtest: publication waits for details, variants and verified photos on every intended size
+ok 257 - publication waits for details, variants and verified photos on every intended size
+  ---
+  duration_ms: 4.603211
+  type: 'test'
+  ...
+# Subtest: a failed photo upload leaves Draft and cannot send ACTIVE even after earlier steps succeed
+ok 258 - a failed photo upload leaves Draft and cannot send ACTIVE even after earlier steps succeed
+  ---
+  duration_ms: 2.036702
+  type: 'test'
+  ...
+# Subtest: an uploader success claim without attachments to every intended size never publishes
+ok 259 - an uploader success claim without attachments to every intended size never publishes
+  ---
+  duration_ms: 3.35668
+  type: 'test'
+  ...
+# Subtest: Drafts without active sizes or usable photos remain Draft when publish is requested
+ok 260 - Drafts without active sizes or usable photos remain Draft when publish is requested
+  ---
+  duration_ms: 1.459668
+  type: 'test'
+  ...
+# Subtest: an entire stale batch is checked freshly before any product or mapping write
+ok 261 - an entire stale batch is checked freshly before any product or mapping write
+  ---
+  duration_ms: 0.805229
+  type: 'test'
+  ...
+# Subtest: a stale single product version is blocked without overwriting another staff change
+ok 262 - a stale single product version is blocked without overwriting another staff change
+  ---
+  duration_ms: 0.594607
+  type: 'test'
+  ...
+# Subtest: permission failure stops the batch before any later product is touched
+ok 263 - permission failure stops the batch before any later product is touched
+  ---
+  duration_ms: 0.998088
+  type: 'test'
+  ...
+# Subtest: a lost successful create response is reconciled without another create or duplicate stock
+ok 264 - a lost successful create response is reconciled without another create or duplicate stock
+  ---
+  duration_ms: 5.692365
+  type: 'test'
+  ...
+# Subtest: a lost successful ACTIVE response is reconciled and a repeated publish does not rewrite status
+ok 265 - a lost successful ACTIVE response is reconciled and a repeated publish does not rewrite status
+  ---
+  duration_ms: 1.011724
+  type: 'test'
+  ...
+# Subtest: retry creation IDs and photo identities are stable and distinguish changed approved content
+ok 266 - retry creation IDs and photo identities are stable and distinguish changed approved content
+  ---
+  duration_ms: 10.325024
+  type: 'test'
+  ...
+# Subtest: previously attached content on all colour sizes avoids another binary upload
+ok 267 - previously attached content on all colour sizes avoids another binary upload
+  ---
+  duration_ms: 4.201723
+  type: 'test'
+  ...
+# Subtest: binary uploads send authenticated colour sharing, main-photo and alt fields and reconcile a lost response
+ok 268 - binary uploads send authenticated colour sharing, main-photo and alt fields and reconcile a lost response
+  ---
+  duration_ms: 18.693343
+  type: 'test'
+  ...
+# Subtest: changed colour size targets fail before a binary upload
+ok 269 - changed colour size targets fail before a binary upload
+  ---
+  duration_ms: 3.025042
+  type: 'test'
+  ...
+# Subtest: Image SKU filenames can auto-match numbered photos and honour the marked main photo
+ok 270 - Image SKU filenames can auto-match numbered photos and honour the marked main photo
+  ---
+  duration_ms: 3.317887
+  type: 'test'
+  ...
+# Subtest: automatic filenames block duplicate photo numbers, two marked mains and misleading extra files
+ok 271 - automatic filenames block duplicate photo numbers, two marked mains and misleading extra files
+  ---
+  duration_ms: 3.404879
+  type: 'test'
+  ...
+# Subtest: new variant labels cannot collide with existing colour or size SKU tokens
+ok 272 - new variant labels cannot collide with existing colour or size SKU tokens
+  ---
+  duration_ms: 1.20327
+  type: 'test'
+  ...
+# Subtest: partial UPDATE prices are checked against retained counterpart prices before any write
+ok 273 - partial UPDATE prices are checked against retained counterpart prices before any write
+  ---
+  duration_ms: 0.55341
+  type: 'test'
+  ...
+# Subtest: a new-upload retry can resume its own Draft but cannot silently unpublish its ACTIVE product
+ok 274 - a new-upload retry can resume its own Draft but cannot silently unpublish its ACTIVE product
+  ---
+  duration_ms: 5.589126
+  type: 'test'
+  ...
+# Subtest: a lost metadata response followed by a failed read reconciles exactly on retry without duplicate PATCH
+ok 275 - a lost metadata response followed by a failed read reconciles exactly on retry without duplicate PATCH
+  ---
+  duration_ms: 1.417089
+  type: 'test'
+  ...
+# Subtest: a pending lost response cannot absorb another staff metadata change during retry
+ok 276 - a pending lost response cannot absorb another staff metadata change during retry
+  ---
+  duration_ms: 1.118633
+  type: 'test'
+  ...
+# Subtest: an explicit main photo already behind another cover is refused before any binary upload
+ok 277 - an explicit main photo already behind another cover is refused before any binary upload
+  ---
+  duration_ms: 4.439817
+  type: 'test'
+  ...
+# Subtest: photo upload stops on a concurrently published product and never treats it as a successful Draft
+ok 278 - photo upload stops on a concurrently published product and never treats it as a successful Draft
+  ---
+  duration_ms: 1.296744
+  type: 'test'
+  ...
+# Subtest: a disappearing existing photo blocks publication after upload instead of replacing the gallery
+ok 279 - a disappearing existing photo blocks publication after upload instead of replacing the gallery
+  ---
+  duration_ms: 1.161372
+  type: 'test'
+  ...
+# Subtest: cancellation after a completed product preserves it and does not start the next product
+ok 280 - cancellation after a completed product preserves it and does not start the next product
+  ---
+  duration_ms: 1.103304
+  type: 'test'
+  ...
+# Subtest: lost Draft-status recovery cannot absorb and overwrite an independent blank-care edit
+ok 281 - lost Draft-status recovery cannot absorb and overwrite an independent blank-care edit
+  ---
+  duration_ms: 0.604436
+  type: 'test'
+  ...
+# Subtest: lost variant-write recovery cannot overwrite a concurrent blank measurement on another size
+ok 282 - lost variant-write recovery cannot overwrite a concurrent blank measurement on another size
+  ---
+  duration_ms: 0.91296
+  type: 'test'
+  ...
+# Subtest: a normal successful variant response with unrelated mutation also stops before a follow-on overwrite
+ok 283 - a normal successful variant response with unrelated mutation also stops before a follow-on overwrite
+  ---
+  duration_ms: 0.899505
+  type: 'test'
+  ...
+# Subtest: a lost Draft-status response with protected details unchanged can safely finish the approved metadata save
+ok 284 - a lost Draft-status response with protected details unchanged can safely finish the approved metadata save
+  ---
+  duration_ms: 0.675919
+  type: 'test'
+  ...
+# Subtest: a lost added-size response reconciles its zero stock and inherited colour gallery without another add
+ok 285 - a lost added-size response reconciles its zero stock and inherited colour gallery without another add
+  ---
+  duration_ms: 0.915314
+  type: 'test'
+  ...
+# Subtest: explicit retry after a corrected permission failure clears the stale authentication status
+ok 286 - explicit retry after a corrected permission failure clears the stale authentication status
+  ---
+  duration_ms: 0.694473
+  type: 'test'
+  ...
+# Subtest: UPDATE uploads append photos and preserve the existing cover on every colour size
+ok 287 - UPDATE uploads append photos and preserve the existing cover on every colour size
+  ---
+  duration_ms: 0.876402
+  type: 'test'
+  ...
+# Subtest: UPDATE explicit main-photo promotion is rejected at preview before any product or mapping write
+ok 288 - UPDATE explicit main-photo promotion is rejected at preview before any product or mapping write
+  ---
+  duration_ms: 3.467326
+  type: 'test'
+  ...
+# Subtest: an existing matching cover on all sizes permits JSON alt refresh without binary upload or gallery changes
+ok 289 - an existing matching cover on all sizes permits JSON alt refresh without binary upload or gallery changes
+  ---
+  duration_ms: 2.521735
+  type: 'test'
+  ...
+# Subtest: cover matching on only one size is insufficient for an UPDATE main-photo request
+ok 290 - cover matching on only one size is insufficient for an UPDATE main-photo request
+  ---
+  duration_ms: 2.059424
+  type: 'test'
+  ...
+# Subtest: a NEW upload can resume its own Draft when the selected main content already covers every size
+ok 291 - a NEW upload can resume its own Draft when the selected main content already covers every size
+  ---
+  duration_ms: 5.632629
+  type: 'test'
+  ...
+# Subtest: cover alt refresh after an earlier-sorting size is added retains the original target object URL
+ok 292 - cover alt refresh after an earlier-sorting size is added retains the original target object URL
+  ---
+  duration_ms: 1.797277
+  type: 'test'
+  ...
+# Subtest: a lost successful JSON photo metadata response is confirmed without another binary or metadata write
+ok 293 - a lost successful JSON photo metadata response is confirmed without another binary or metadata write
+  ---
+  duration_ms: 2.318678
+  type: 'test'
+  ...
+# Subtest: a later cover change without a product revision invalidates the entire batch before any POST or PATCH
+ok 294 - a later cover change without a product revision invalidates the entire batch before any POST or PATCH
+  ---
+  duration_ms: 3.522839
+  type: 'test'
+  ...
+# Subtest: the production template exposes every supported catalogue field and no stock or status fields
+ok 295 - the production template exposes every supported catalogue field and no stock or status fields
+  ---
+  duration_ms: 2.308298
+  type: 'test'
+  ...
+# Subtest: a Products sheet is preferred and template examples cannot become uploaded products
+ok 296 - a Products sheet is preferred and template examples cannot become uploaded products
+  ---
+  duration_ms: 2.2232
+  type: 'test'
+  ...
+# Subtest: a single supplier sheet is accepted but ambiguous or duplicate Products worksheets are blocked
+ok 297 - a single supplier sheet is accepted but ambiguous or duplicate Products worksheets are blocked
+  ---
+  duration_ms: 1.438408
+  type: 'test'
+  ...
+# Subtest: empty worksheets and header-only templates never create sample or blank products
+ok 298 - empty worksheets and header-only templates never create sample or blank products
+  ---
+  duration_ms: 0.546457
+  type: 'test'
+  ...
+# Subtest: unsupported headings and populated cells without headings are never silently dropped
+ok 299 - unsupported headings and populated cells without headings are never silently dropped
+  ---
+  duration_ms: 1.951443
+  type: 'test'
+  ...
+# Subtest: headings tolerate casing and spaces while action remains explicit NEW or UPDATE
+ok 300 - headings tolerate casing and spaces while action remains explicit NEW or UPDATE
+  ---
+  duration_ms: 1.379118
+  type: 'test'
+  ...
+# Subtest: blank rows are skipped and row locations identify invalid input
+ok 301 - blank rows are skipped and row locations identify invalid input
+  ---
+  duration_ms: 0.661782
+  type: 'test'
+  ...
+# Subtest: rows group exact product details with one typed variant for each colour and size
+ok 302 - rows group exact product details with one typed variant for each colour and size
+  ---
+  duration_ms: 0.855242
+  type: 'test'
+  ...
+# Subtest: blank product keys derive from an explicit slug or a normalised new-product name
+ok 303 - blank product keys derive from an explicit slug or a normalised new-product name
+  ---
+  duration_ms: 1.570544
+  type: 'test'
+  ...
+# Subtest: new identities cannot impersonate existing SKNs or IDs and updates require an exact lookup identity
+ok 304 - new identities cannot impersonate existing SKNs or IDs and updates require an exact lookup identity
+  ---
+  duration_ms: 2.890241
+  type: 'test'
+  ...
+# Subtest: separate product groups cannot claim the same existing product ID, SKN or slug
+ok 305 - separate product groups cannot claim the same existing product ID, SKN or slug
+  ---
+  duration_ms: 0.787667
+  type: 'test'
+  ...
+# Subtest: conflicting actions, identity or repeated product details are blocked before write planning
+ok 306 - conflicting actions, identity or repeated product details are blocked before write planning
+  ---
+  duration_ms: 3.417744
+  type: 'test'
+  ...
+# Subtest: an UPDATE with blank details preserves omission rather than inventing clears or defaults
+ok 307 - an UPDATE with blank details preserves omission rather than inventing clears or defaults
+  ---
+  duration_ms: 0.452643
+  type: 'test'
+  ...
+# Subtest: variant and photo details cannot disappear from metadata-only UPDATE rows
+ok 308 - variant and photo details cannot disappear from metadata-only UPDATE rows
+  ---
+  duration_ms: 2.222618
+  type: 'test'
+  ...
+# Subtest: canonical duplicate variants and readable-token collisions are blocked
+ok 309 - canonical duplicate variants and readable-token collisions are blocked
+  ---
+  duration_ms: 1.24059
+  type: 'test'
+  ...
+# Subtest: new rows require name, colour, size and explicit prices without a required category
+ok 310 - new rows require name, colour, size and explicit prices without a required category
+  ---
+  duration_ms: 1.632619
+  type: 'test'
+  ...
+# Subtest: prices accept only exact rupee decimals within supported paise bounds
+ok 311 - prices accept only exact rupee decimals within supported paise bounds
+  ---
+  duration_ms: 2.43279
+  type: 'test'
+  ...
+# Subtest: TRUE, FALSE, 1 and 0 are explicit while ambiguous boolean values fail
+ok 312 - TRUE, FALSE, 1 and 0 are explicit while ambiguous boolean values fail
+  ---
+  duration_ms: 2.216587
+  type: 'test'
+  ...
+# Subtest: weight and garment measurements use whole millimetres and actual API ranges
+ok 313 - weight and garment measurements use whole millimetres and actual API ranges
+  ---
+  duration_ms: 9.778958
+  type: 'test'
+  ...
+# Subtest: description limits and control characters are rejected instead of truncated
+ok 314 - description limits and control characters are rejected instead of truncated
+  ---
+  duration_ms: 1.844534
+  type: 'test'
+  ...
+# Subtest: collection lists preserve exact slugs, compare order independently and reject duplicates
+ok 315 - collection lists preserve exact slugs, compare order independently and reject duplicates
+  ---
+  duration_ms: 1.678495
+  type: 'test'
+  ...
+# Subtest: photo lists use exact safe filenames and a main photo must belong to the colour upload
+ok 316 - photo lists use exact safe filenames and a main photo must belong to the colour upload
+  ---
+  duration_ms: 2.196299
+  type: 'test'
+  ...
+# Subtest: image codes cannot attach different products or colours to the same mapping
+ok 317 - image codes cannot attach different products or colours to the same mapping
+  ---
+  duration_ms: 2.308989
+  type: 'test'
+  ...
+# Subtest: all nonblank per-colour photo and colour choices must agree even after an initially blank row
+ok 318 - all nonblank per-colour photo and colour choices must agree even after an initially blank row
+  ---
+  duration_ms: 1.65392
+  type: 'test'
+  ...
+# Subtest: batch bounds stop oversized imports before execution
+ok 319 - batch bounds stop oversized imports before execution
+  ---
+  duration_ms: 236.76551
+  type: 'test'
+  ...
+# Subtest: labelled product facts replace their own old lines while retaining unrelated prose and facts
+ok 320 - labelled product facts replace their own old lines while retaining unrelated prose and facts
+  ---
+  duration_ms: 0.71399
+  type: 'test'
+  ...
+# Subtest: CSV exports quote cells and prevent spreadsheet formula execution
+ok 321 - CSV exports quote cells and prevent spreadsheet formula execution
+  ---
+  duration_ms: 0.390768
+  type: 'test'
+  ...
+# Subtest: stored and deflated ZIP packages retain spreadsheet and image bytes
+ok 322 - stored and deflated ZIP packages retain spreadsheet and image bytes
+  ---
+  duration_ms: 20.242129
+  type: 'test'
+  ...
+# Subtest: camera filenames in different colour folders match separately across all sizes
+ok 323 - camera filenames in different colour folders match separately across all sizes
+  ---
+  duration_ms: 24.45179
+  type: 'test'
+  ...
+# Subtest: explicit original camera photo order and main cover are preserved
+ok 324 - explicit original camera photo order and main cover are preserved
+  ---
+  duration_ms: 8.843967
+  type: 'test'
+  ...
+# Subtest: flat numbered files remain compatible and ambiguous folders fail
+ok 325 - flat numbered files remain compatible and ambiguous folders fail
+  ---
+  duration_ms: 7.451445
+  type: 'test'
+  ...
+# Subtest: damaged, traversal, encrypted, unsupported and duplicate package entries fail before review
+ok 326 - damaged, traversal, encrypted, unsupported and duplicate package entries fail before review
+  ---
+  duration_ms: 4.002682
+  type: 'test'
+  ...
+# Subtest: forged expanded sizes and overlapping local data are rejected
+ok 327 - forged expanded sizes and overlapping local data are rejected
+  ---
+  duration_ms: 10.626326
+  type: 'test'
+  ...
+# Subtest: size and colour intersect on one purchasable SKU, not separate variants
+ok 328 - size and colour intersect on one purchasable SKU, not separate variants
+  ---
+  duration_ms: 2.029128
+  type: 'test'
+  ...
+# Subtest: unavailable sizes never satisfy filters
+ok 329 - unavailable sizes never satisfy filters
+  ---
+  duration_ms: 0.300981
+  type: 'test'
+  ...
+# Subtest: multiple choices OR within a group and AND across groups
+ok 330 - multiple choices OR within a group and AND across groups
+  ---
+  duration_ms: 0.228586
+  type: 'test'
+  ...
+# Subtest: price boundaries are exact paise, without gaps or overlap
+ok 331 - price boundaries are exact paise, without gaps or overlap
+  ---
+  duration_ms: 0.292865
+  type: 'test'
+  ...
+# Subtest: invalid money fails closed
+ok 332 - invalid money fails closed
+  ---
+  duration_ms: 0.357576
+  type: 'test'
+  ...
+# Subtest: price filters cannot use a cheaper different colour
+ok 333 - price filters cannot use a cheaper different colour
+  ---
+  duration_ms: 0.213538
+  type: 'test'
+  ...
+# Subtest: sort by qualifying variant price is stable and leaves source inventory intact
+ok 334 - sort by qualifying variant price is stable and leaves source inventory intact
+  ---
+  duration_ms: 0.473662
+  type: 'test'
+  ...
+# Subtest: clearing filters restores the complete original catalogue including sold-out cards
+ok 335 - clearing filters restores the complete original catalogue including sold-out cards
+  ---
+  duration_ms: 0.20408
+  type: 'test'
+  ...
+# Subtest: missing fabric does not falsely satisfy a fabric filter
+ok 336 - missing fabric does not falsely satisfy a fabric filter
+  ---
+  duration_ms: 0.561916
+  type: 'test'
+  ...
+# Subtest: product-level sold-out flag cannot be bypassed by stale variant counts
+ok 337 - product-level sold-out flag cannot be bypassed by stale variant counts
+  ---
+  duration_ms: 0.582956
+  type: 'test'
+  ...
+# Subtest: matchingVariants retains exact SKU identifiers and does not select a size
+ok 338 - matchingVariants retains exact SKU identifiers and does not select a size
+  ---
+  duration_ms: 0.288838
+  type: 'test'
+  ...
+# Subtest: overlay and full search accept reversed multiword queries
+ok 339 - overlay and full search accept reversed multiword queries
+  ---
+  duration_ms: 2.583179
+  type: 'test'
+  ...
+# Subtest: search handles case, punctuation, repeated spaces and accent folding
+ok 340 - search handles case, punctuation, repeated spaces and accent folding
+  ---
+  duration_ms: 3.452962
+  type: 'test'
+  ...
+# Subtest: Workwear Edit search retains the original Work Edit catalogue name and route
+ok 341 - Workwear Edit search retains the original Work Edit catalogue name and route
+  ---
+  duration_ms: 0.503267
+  type: 'test'
+  ...
+# Subtest: empty and punctuation-only search never matches the entire store
+ok 342 - empty and punctuation-only search never matches the entire store
+  ---
+  duration_ms: 0.179073
+  type: 'test'
+  ...
+# Subtest: SKU search works without a product name
+ok 343 - SKU search works without a product name
+  ---
+  duration_ms: 0.180716
+  type: 'test'
+  ...
+# Subtest: unknown price/sort controls do not mutate or discard catalogue
+ok 344 - unknown price/sort controls do not mutate or discard catalogue
+  ---
+  duration_ms: 0.170137
+  type: 'test'
+  ...
+# Subtest: explicit labelled catalogue facts are used without inferring from the name
+ok 345 - explicit labelled catalogue facts are used without inferring from the name
+  ---
+  duration_ms: 0.636545
+  type: 'test'
+  ...
+# Subtest: photography and the word set never invent included pieces or fabric
+ok 346 - photography and the word set never invent included pieces or fabric
+  ---
+  duration_ms: 0.450048
+  type: 'test'
+  ...
+# Subtest: labels are case-insensitive and tolerate CRLF and spaces
+ok 347 - labels are case-insensitive and tolerate CRLF and spaces
+  ---
+  duration_ms: 0.191526
+  type: 'test'
+  ...
+# Subtest: empty or misleading in-sentence labels do not become garment facts
+ok 348 - empty or misleading in-sentence labels do not become garment facts
+  ---
+  duration_ms: 0.176349
+  type: 'test'
+  ...
+# Subtest: complete catalogue evidence clears all readiness gaps
+ok 349 - complete catalogue evidence clears all readiness gaps
+  ---
+  duration_ms: 0.271365
+  type: 'test'
+  ...
+# Subtest: each available variant needs usable measurements, not only the first size
+ok 350 - each available variant needs usable measurements, not only the first size
+  ---
+  duration_ms: 0.185355
+  type: 'test'
+  ...
+# Subtest: invalid and zero garment measurements remain a content gap
+ok 351 - invalid and zero garment measurements remain a content gap
+  ---
+  duration_ms: 0.32751
+  type: 'test'
+  ...
+# Subtest: unavailable variant missing measurements does not prevent complete available stock
+ok 352 - unavailable variant missing measurements does not prevent complete available stock
+  ---
+  duration_ms: 0.172691
+  type: 'test'
+  ...
+# Subtest: published shipping threshold is inclusive and seven-day eligibility is consistent
+ok 353 - published shipping threshold is inclusive and seven-day eligibility is consistent
+  ---
+  duration_ms: 0.215461
+  type: 'test'
+  ...
+# Subtest: unapproved exchange, dispatch and refund timelines remain explicit gaps
+ok 354 - unapproved exchange, dispatch and refund timelines remain explicit gaps
+  ---
+  duration_ms: 0.134531
+  type: 'test'
+  ...
+# Subtest: public support never falls back to private SMTP or owner email
+ok 355 - public support never falls back to private SMTP or owner email
+  ---
+  duration_ms: 0.340413
+  type: 'test'
+  ...
+# Subtest: an approved email is encoded as a mailto link, not active markup
+ok 356 - an approved email is encoded as a mailto link, not active markup
+  ---
+  duration_ms: 0.231401
+  type: 'test'
+  ...
+# Subtest: header injection, markup and malformed support contacts are rejected
+ok 357 - header injection, markup and malformed support contacts are rejected
+  ---
+  duration_ms: 0.270013
+  type: 'test'
+  ...
+# Subtest: valid international support phone is normalized, missing phone is not fabricated
+ok 358 - valid international support phone is normalized, missing phone is not fabricated
+  ---
+  duration_ms: 0.253352
+  type: 'test'
+  ...
+# Subtest: PDP narrative omits labelled facts without losing ordinary descriptive text
+ok 359 - PDP narrative omits labelled facts without losing ordinary descriptive text
+  ---
+  duration_ms: 0.328651
+  type: 'test'
+  ...
+# Subtest: feature off and anonymous sessions make no API requests
+ok 360 - feature off and anonymous sessions make no API requests
+  ---
+  duration_ms: 91.203333
+  type: 'test'
+  ...
+# Subtest: independent choices and consent version are sent, without storing browsing history
+ok 361 - independent choices and consent version are sent, without storing browsing history
+  ---
+  duration_ms: 22.501977
+  type: 'test'
+  ...
+# Subtest: a paused server still permits a preference withdrawal request
+ok 362 - a paused server still permits a preference withdrawal request
+  ---
+  duration_ms: 23.923604
+  type: 'test'
+  ...
+# Subtest: switching identity while token resolves prevents the old customer's request
+ok 363 - switching identity while token resolves prevents the old customer's request
+  ---
+  duration_ms: 27.261168
+  type: 'test'
+  ...
+# Subtest: switching identity while response resolves rejects stale preferences
+ok 364 - switching identity while response resolves rejects stale preferences
+  ---
+  duration_ms: 18.575324
+  type: 'test'
+  ...
+# Subtest: invalid preference response fails closed
+ok 365 - invalid preference response fails closed
+  ---
+  duration_ms: 13.125087
+  type: 'test'
+  ...
+# Subtest: tracker stays silent when disabled, anonymous, or personalization not opted in
+ok 366 - tracker stays silent when disabled, anonymous, or personalization not opted in
+  ---
+  duration_ms: 96.361258
+  type: 'test'
+  ...
+# Subtest: only 30 visible seconds qualify, and each product detail is recorded once
+ok 367 - only 30 visible seconds qualify, and each product detail is recorded once
+  ---
+  duration_ms: 26.223916
+  type: 'test'
+  ...
+# Subtest: size events require consent and matching product; repeated size event is deduplicated
+ok 368 - size events require consent and matching product; repeated size event is deduplicated
+  ---
+  duration_ms: 20.529614
+  type: 'test'
+  ...
+# Subtest: logout cancels the clock and suppresses further size events
+ok 369 - logout cancels the clock and suppresses further size events
+  ---
+  duration_ms: 37.676201
+  type: 'test'
+  ...
+# Subtest: old customer's late consent cannot enable tracking for a new customer
+ok 370 - old customer's late consent cannot enable tracking for a new customer
+  ---
+  duration_ms: 12.757464
+  type: 'test'
+  ...
+# Subtest: withdrawing consent immediately resets tracking pending server confirmation
+ok 371 - withdrawing consent immediately resets tracking pending server confirmation
+  ---
+  duration_ms: 11.001475
+  type: 'test'
+  ...
+# (node:7481) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: indexing requires an explicitly opened production domain
+ok 372 - indexing requires an explicitly opened production domain
+  ---
+  duration_ms: 74.62263
+  type: 'test'
+  ...
+# Subtest: primary HIDI domain can force canonical URLs for SEO consolidation
+ok 373 - primary HIDI domain can force canonical URLs for SEO consolidation
+  ---
+  duration_ms: 4.137053
+  type: 'test'
+  ...
+# Subtest: product offers retain each variant's real price, currency, SKU and stock
+ok 374 - product offers retain each variant's real price, currency, SKU and stock
+  ---
+  duration_ms: 2.1323
+  type: 'test'
+  ...
+# Subtest: only known migrated media is normalized to the versioned local display proxy
+ok 375 - only known migrated media is normalized to the versioned local display proxy
+  ---
+  duration_ms: 5.828782
+  type: 'test'
+  ...
+# Subtest: HIDI India domain is covered by launch gates and image optimizer allowlists
+ok 376 - HIDI India domain is covered by launch gates and image optimizer allowlists
+  ---
+  duration_ms: 0.489982
+  type: 'test'
+  ...
+# Received `false` for a non-boolean attribute `unoptimized`.
+# If you want to write it to the DOM, pass a string instead: unoptimized="false" or unoptimized={value.toString()}.
+# If you used to conditionally omit it with unoptimized={condition && value}, pass unoptimized={condition ? value : undefined} instead.
+# Subtest: social proof uses only real published review evidence
+ok 377 - social proof uses only real published review evidence
+  ---
+  duration_ms: 1.569783
+  type: 'test'
+  ...
+# Subtest: WCAG foundation keeps keyboard focus visible and modal overlays contained
+ok 378 - WCAG foundation keeps keyboard focus visible and modal overlays contained
+  ---
+  duration_ms: 0.805711
+  type: 'test'
+  ...
+# Subtest: forms and utility controls expose assistive status and labels
+ok 379 - forms and utility controls expose assistive status and labels
+  ---
+  duration_ms: 0.269762
+  type: 'test'
+  ...
+# Subtest: SEO foundation exposes canonical metadata, sitemap and crawl controls
+ok 380 - SEO foundation exposes canonical metadata, sitemap and crawl controls
+  ---
+  duration_ms: 0.35398
+  type: 'test'
+  ...
+# Subtest: analytics and browser security hardening stay environment gated
+ok 381 - analytics and browser security hardening stay environment gated
+  ---
+  duration_ms: 0.310458
+  type: 'test'
+  ...
+# Subtest: product and collection pages publish search metadata and structured data
+ok 382 - product and collection pages publish search metadata and structured data
+  ---
+  duration_ms: 0.241329
+  type: 'test'
+  ...
+# Subtest: private and transactional storefront routes are noindex
+ok 383 - private and transactional storefront routes are noindex
+  ---
+  duration_ms: 0.24162
+  type: 'test'
+  ...
+# Subtest: catalogue cards share media observers instead of creating one per card
+ok 384 - catalogue cards share media observers instead of creating one per card
+  ---
+  duration_ms: 0.245296
+  type: 'test'
+  ...
+# Subtest: collection LCP prioritizes only the leading product media
+ok 385 - collection LCP prioritizes only the leading product media
+  ---
+  duration_ms: 0.482839
+  type: 'test'
+  ...
+# Subtest: homepage requests only a bounded featured catalogue payload
+ok 386 - homepage requests only a bounded featured catalogue payload
+  ---
+  duration_ms: 0.537891
+  type: 'test'
+  ...
+# Subtest: homepage launch fallback is bounded, premium and navigable
+ok 387 - homepage launch fallback is bounded, premium and navigable
+  ---
+  duration_ms: 380.960054
+  type: 'test'
+  ...
+# Subtest: homepage premium edit keeps real best sellers first when sales data exists
+ok 388 - homepage premium edit keeps real best sellers first when sales data exists
+  ---
+  duration_ms: 196.977668
+  type: 'test'
+  ...
+# Subtest: Shop by Edit stays concise and shows the four approved categories
+ok 389 - Shop by Edit stays concise and shows the four approved categories
+  ---
+  duration_ms: 156.719434
+  type: 'test'
+  ...
+# Subtest: homepage exposes the four core collection destinations without a marketplace strip
+ok 390 - homepage exposes the four core collection destinations without a marketplace strip
+  ---
+  duration_ms: 115.425338
+  type: 'test'
+  ...
+# Subtest: homepage showcases HIDI Privileges without turning into a discount banner
+ok 391 - homepage showcases HIDI Privileges without turning into a discount banner
+  ---
+  duration_ms: 145.668299
+  type: 'test'
+  ...
+# Subtest: homepage follows the new editorial shopping flow without repeating promotional sections
+ok 392 - homepage follows the new editorial shopping flow without repeating promotional sections
+  ---
+  duration_ms: 0.382642
+  type: 'test'
+  ...
+# Subtest: HIDI Privileges remains closed by default with keyboard-operable terms and responsive columns
+ok 393 - HIDI Privileges remains closed by default with keyboard-operable terms and responsive columns
+  ---
+  duration_ms: 129.924344
+  type: 'test'
+  ...
+# Subtest: homepage service strip communicates four practical shopping promises
+ok 394 - homepage service strip communicates four practical shopping promises
+  ---
+  duration_ms: 106.049501
+  type: 'test'
+  ...
+# Subtest: homepage WhatsApp service falls back safely when no business number is configured
+ok 395 - homepage WhatsApp service falls back safely when no business number is configured
+  ---
+  duration_ms: 83.187812
+  type: 'test'
+  ...
+# Subtest: homepage WhatsApp service creates a clean external handoff when configured
+ok 396 - homepage WhatsApp service creates a clean external handoff when configured
+  ---
+  duration_ms: 91.697538
+  type: 'test'
+  ...
+# Subtest: empty reviews remain calm without star or zero-count summaries
+ok 397 - empty reviews remain calm without star or zero-count summaries
+  ---
+  duration_ms: 12.68536
+  type: 'test'
+  ...
+# Subtest: review CTA is a native disclosure with truthful private-invitation guidance
+ok 398 - review CTA is a native disclosure with truthful private-invitation guidance
+  ---
+  duration_ms: 12.276568
+  type: 'test'
+  ...
+# Subtest: populated reviews expose accessible ratings and retain the review disclosure
+ok 399 - populated reviews expose accessible ratings and retain the review disclosure
+  ---
+  duration_ms: 54.655526
+  type: 'test'
+  ...
+# Subtest: unverified reviews never acquire a verified-purchase badge
+ok 400 - unverified reviews never acquire a verified-purchase badge
+  ---
+  duration_ms: 18.135219
+  type: 'test'
+  ...
+# Subtest: review copy renders as text, not customer-provided markup
+ok 401 - review copy renders as text, not customer-provided markup
+  ---
+  duration_ms: 11.02725
+  type: 'test'
+  ...
+# Subtest: WhatsApp control is disabled and explained when no business number is configured
+ok 402 - WhatsApp control is disabled and explained when no business number is configured
+  ---
+  duration_ms: 59.65182
+  type: 'test'
+  ...
+# Subtest: configured WhatsApp dialog has labelled controls, icon and a truthful handoff note
+ok 403 - configured WhatsApp dialog has labelled controls, icon and a truthful handoff note
+  ---
+  duration_ms: 61.593325
+  type: 'test'
+  ...
+# Subtest: initial WhatsApp selection never silently chooses size or bypasses stock verification
+ok 404 - initial WhatsApp selection never silently chooses size or bypasses stock verification
+  ---
+  duration_ms: 66.272926
+  type: 'test'
+  ...
+# Subtest: invalid configured WhatsApp numbers fail closed
+ok 405 - invalid configured WhatsApp numbers fail closed
+  ---
+  duration_ms: 137.505991
+  type: 'test'
+  ...
+# Subtest: review CTA and review submission have at least 48px minimum height
+ok 406 - review CTA and review submission have at least 48px minimum height
+  ---
+  duration_ms: 1.721636
+  type: 'test'
+  ...
+# Subtest: homepage hero preserves the full-body garden composition on desktop
+ok 407 - homepage hero preserves the full-body garden composition on desktop
+  ---
+  duration_ms: 2.144153
+  type: 'test'
+  ...
+# Subtest: homepage section transitions stay compact without oversized blank gaps
+ok 408 - homepage section transitions stay compact without oversized blank gaps
+  ---
+  duration_ms: 3.529512
+  type: 'test'
+  ...
+# Subtest: homepage premium interactions preserve desktop rhythm, mobile stacking and reduced motion
+ok 409 - homepage premium interactions preserve desktop rhythm, mobile stacking and reduced motion
+  ---
+  duration_ms: 10.318823
+  type: 'test'
+  ...
+# Subtest: craft and lookbook retain honest editorial attribution without unverified fabric or customer claims
+ok 410 - craft and lookbook retain honest editorial attribution without unverified fabric or customer claims
+  ---
+  duration_ms: 57.296344
+  type: 'test'
+  ...
+# Subtest: storefront typography is build-safe and does not depend on Google font fetching
+ok 411 - storefront typography is build-safe and does not depend on Google font fetching
+  ---
+  duration_ms: 0.681108
+  type: 'test'
+  ...
+# Subtest: HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and warm ivory
+ok 412 - HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and warm ivory
+  ---
+  duration_ms: 9.28096
+  type: 'test'
+  ...
+# Subtest: Option 1 footer keeps the HIDI ending dusty clay, gold and responsive
+ok 413 - Option 1 footer keeps the HIDI ending dusty clay, gold and responsive
+  ---
+  duration_ms: 72.81517
+  type: 'test'
+  ...
+# Subtest: HIDI Privileges disclosure has usable interaction targets without loud hover panels
+ok 414 - HIDI Privileges disclosure has usable interaction targets without loud hover panels
+  ---
+  duration_ms: 2.703855
+  type: 'test'
+  ...
+# Subtest: bag groups the same product and colour while preserving size controls
+ok 415 - bag groups the same product and colour while preserving size controls
+  ---
+  duration_ms: 0.306561
+  type: 'test'
+  ...
+# Subtest: checkout PIN helper is advisory, sanitized and preserves editable delivery fields
+ok 416 - checkout PIN helper is advisory, sanitized and preserves editable delivery fields
+  ---
+  duration_ms: 0.270023
+  type: 'test'
+  ...
+# Subtest: bag and checkout include the advertised complimentary-shipping threshold
+ok 417 - bag and checkout include the advertised complimentary-shipping threshold
+  ---
+  duration_ms: 0.30578
+  type: 'test'
+  ...
+# Subtest: checkout keeps guest purchase prominent and minimizes typing friction
+ok 418 - checkout keeps guest purchase prominent and minimizes typing friction
+  ---
+  duration_ms: 14.551826
+  type: 'test'
+  ...
+# Subtest: checkout keeps shipping promise, delivery assistance and recovery aligned
+ok 419 - checkout keeps shipping promise, delivery assistance and recovery aligned
+  ---
+  duration_ms: 10.21492
+  type: 'test'
+  ...
+# Subtest: HIDI Fit only presents verified garment measurements
+ok 420 - HIDI Fit only presents verified garment measurements
+  ---
+  duration_ms: 1.920126
+  type: 'test'
+  ...
+# Subtest: WhatsApp ordering uses the recognisable WhatsApp mark
+ok 421 - WhatsApp ordering uses the recognisable WhatsApp mark
+  ---
+  duration_ms: 3.505467
+  type: 'test'
+  ...
+# Subtest: HIDI Fit selected size toggles off when the same size is clicked again
+ok 422 - HIDI Fit selected size toggles off when the same size is clicked again
+  ---
+  duration_ms: 0.2525
+  type: 'test'
+  ...
+# Subtest: modal CSS bounds desktop size and allows content scrolling
+ok 423 - modal CSS bounds desktop size and allows content scrolling
+  ---
+  duration_ms: 2.084922
+  type: 'test'
+  ...
+# Subtest: mobile modal CSS is a bounded bottom sheet with safe-area space and readable selects
+ok 424 - mobile modal CSS is a bounded bottom sheet with safe-area space and readable selects
+  ---
+  duration_ms: 4.573325
+  type: 'test'
+  ...
+# Subtest: modal actions retain usable target sizes, focus outlines and reduced-motion styles
+ok 425 - modal actions retain usable target sizes, focus outlines and reduced-motion styles
+  ---
+  duration_ms: 11.379108
+  type: 'test'
+  ...
+# Subtest: dialog source retains native-modal, cancellation and focus-return hooks
+ok 426 - dialog source retains native-modal, cancellation and focus-return hooks
+  ---
+  duration_ms: 0.206755
+  type: 'test'
+  ...
+# Subtest: quality layer loads last without overriding admin or approved theme tokens
+ok 427 - quality layer loads last without overriding admin or approved theme tokens
+  ---
+  duration_ms: 1.178173
+  type: 'test'
+  ...
+# Subtest: phone and tablet navigation no longer overlaps the campaign
+ok 428 - phone and tablet navigation no longer overlaps the campaign
+  ---
+  duration_ms: 0.195865
+  type: 'test'
+  ...
+# Subtest: mobile garment area is separate from campaign copy and motion button
+ok 429 - mobile garment area is separate from campaign copy and motion button
+  ---
+  duration_ms: 0.348239
+  type: 'test'
+  ...
+# Subtest: PDP touch controls have 48px targets and keyboard focus clears sticky chrome
+ok 430 - PDP touch controls have 48px targets and keyboard focus clears sticky chrome
+  ---
+  duration_ms: 0.202538
+  type: 'test'
+  ...
+# Subtest: entry fields keep a readable minimum without changing colour swatches
+ok 431 - entry fields keep a readable minimum without changing colour swatches
+  ---
+  duration_ms: 0.368577
+  type: 'test'
+  ...
+# Subtest: catalogue filter drawer clears the sticky header and uses reachable controls
+ok 432 - catalogue filter drawer clears the sticky header and uses reachable controls
+  ---
+  duration_ms: 1.10111
+  type: 'test'
+  ...
+# Subtest: ivory size and colour fills exclude selected and disabled states
+ok 433 - ivory size and colour fills exclude selected and disabled states
+  ---
+  duration_ms: 0.794759
+  type: 'test'
+  ...
+# Subtest: surface overrides load after typography and compatibility styles
+ok 434 - surface overrides load after typography and compatibility styles
+  ---
+  duration_ms: 1.031611
+  type: 'test'
+  ...
+# Subtest: one shared ivory token drives public surfaces
+ok 435 - one shared ivory token drives public surfaces
+  ---
+  duration_ms: 0.303625
+  type: 'test'
+  ...
+# Subtest: inner header is transparent, and desktop grid fits the approved logo
+ok 436 - inner header is transparent, and desktop grid fits the approved logo
+  ---
+  duration_ms: 0.243223
+  type: 'test'
+  ...
+# Subtest: collection title is 24px desktop and 22px mobile, using shared font
+ok 437 - collection title is 24px desktop and 22px mobile, using shared font
+  ---
+  duration_ms: 0.282866
+  type: 'test'
+  ...
+# Subtest: collection headings do not reintroduce HIDI EDIT or descriptive subtitle
+ok 438 - collection headings do not reintroduce HIDI EDIT or descriptive subtitle
+  ---
+  duration_ms: 1.127489
+  type: 'test'
+  ...
+# Subtest: home logo scrolls to top and closes the menu without stealing focus
+ok 439 - home logo scrolls to top and closes the menu without stealing focus
+  ---
+  duration_ms: 1.56315
+  type: 'test'
+  ...
+# Subtest: logo on another page retains normal Next Link navigation to home
+ok 440 - logo on another page retains normal Next Link navigation to home
+  ---
+  duration_ms: 0.770975
+  type: 'test'
+  ...
+# Subtest: public CSS modules contain no hard-coded white surface fills
+ok 441 - public CSS modules contain no hard-coded white surface fills
+  ---
+  duration_ms: 7.623675
+  type: 'test'
+  ...
+# Subtest: inline product and cart fills use the shared token without altering imagery
+ok 442 - inline product and cart fills use the shared token without altering imagery
+  ---
+  duration_ms: 0.620054
+  type: 'test'
+  ...
+# Subtest: native input rule excludes color swatches and validation feedback
+ok 443 - native input rule excludes color swatches and validation feedback
+  ---
+  duration_ms: 0.407579
+  type: 'test'
+  ...
+# Subtest: wallet feature off or anonymous session never fetches balances
+ok 444 - wallet feature off or anonymous session never fetches balances
+  ---
+  duration_ms: 199.622616
+  type: 'test'
+  ...
+# Subtest: wallet request is authenticated/no-store and 404 is unavailable, not a zero balance
+ok 445 - wallet request is authenticated/no-store and 404 is unavailable, not a zero balance
+  ---
+  duration_ms: 47.835063
+  type: 'test'
+  ...
+# Subtest: stale wallet response cannot publish another customer's balance
+ok 446 - stale wallet response cannot publish another customer's balance
+  ---
+  duration_ms: 26.87473
+  type: 'test'
+  ...
+# Subtest: account switch during token refresh makes no wallet request
+ok 447 - account switch during token refresh makes no wallet request
+  ---
+  duration_ms: 44.681566
+  type: 'test'
+  ...
+# Subtest: wallet amounts are exact paise and allow full order coverage without percentage cap
+ok 448 - wallet amounts are exact paise and allow full order coverage without percentage cap
+  ---
+  duration_ms: 28.459441
+  type: 'test'
+  ...
+# Subtest: malformed wallet balances fail closed; disabled real ledger is retained
+ok 449 - malformed wallet balances fail closed; disabled real ledger is retained
+  ---
+  duration_ms: 30.14555
+  type: 'test'
+  ...
+# Subtest: payment response enforces cash + rewards = gross, including full-wallet capture
+ok 450 - payment response enforces cash + rewards = gross, including full-wallet capture
+  ---
+  duration_ms: 24.046073
+  type: 'test'
+  ...
+# Subtest: retry fingerprint changes with account, cart, wallet or delivery but not object key order
+ok 451 - retry fingerprint changes with account, cart, wallet or delivery but not object key order
+  ---
+  duration_ms: 35.991454
+  type: 'test'
+  ...
+# Subtest: wallet checkbox starts unchecked; full-wallet checkout works without Razorpay SDK
+ok 452 - wallet checkbox starts unchecked; full-wallet checkout works without Razorpay SDK
+  ---
+  duration_ms: 239.715232
+  type: 'test'
+  ...
+# Subtest: cash checkout does not create an order before SDK is available
+ok 453 - cash checkout does not create an order before SDK is available
+  ---
+  duration_ms: 190.500262
+  type: 'test'
+  ...
+# Subtest: partial redemption sends only the server-authoritative cash amount to Razorpay
+ok 454 - partial redemption sends only the server-authoritative cash amount to Razorpay
+  ---
+  duration_ms: 100.949584
+  type: 'test'
+  ...
+# Subtest: double submit creates only one prepare request
+ok 455 - double submit creates only one prepare request
+  ---
+  duration_ms: 94.952939
+  type: 'test'
+  ...
+# Subtest: a lower freshly loaded wallet balance blocks new checkout instead of silently increasing cash
+ok 456 - a lower freshly loaded wallet balance blocks new checkout instead of silently increasing cash
+  ---
+  duration_ms: 96.327116
+  type: 'test'
+  ...
+# Subtest: identical retry reuses checkout token even when its wallet funds are reserved
+ok 457 - identical retry reuses checkout token even when its wallet funds are reserved
+  ---
+  duration_ms: 73.348492
+  type: 'test'
+  ...
+# Subtest: changed wallet choice creates a new idempotency key
+ok 458 - changed wallet choice creates a new idempotency key
+  ---
+  duration_ms: 76.102941
+  type: 'test'
+  ...
+# Subtest: captured cash retry redirects without opening a second Razorpay payment
+ok 459 - captured cash retry redirects without opening a second Razorpay payment
+  ---
+  duration_ms: 70.141952
+  type: 'test'
+  ...
+# Subtest: account switch cancels a late full-wallet response and resets checkbox
+ok 460 - account switch cancels a late full-wallet response and resets checkbox
+  ---
+  duration_ms: 62.307414
+  type: 'test'
+  ...
+# Subtest: guest cash checkout has no Authorization and wallet flag off renders no rewards controls
+ok 461 - guest cash checkout has no Authorization and wallet flag off renders no rewards controls
+  ---
+  duration_ms: 67.514891
+  type: 'test'
+  ...
+# Subtest: bag ownership conflict offers explicit new-bag action without automatic replacement
+ok 462 - bag ownership conflict offers explicit new-bag action without automatic replacement
+  ---
+  duration_ms: 79.029142
+  type: 'test'
+  ...
+# Subtest: COD response is confirmed but unpaid and requires no gateway fields
+ok 463 - COD response is confirmed but unpaid and requires no gateway fields
+  ---
+  duration_ms: 6.915286
+  type: 'test'
+  ...
+# Subtest: guest COD checkout bypasses missing Razorpay SDK and redirects once
+ok 464 - guest COD checkout bypasses missing Razorpay SDK and redirects once
+  ---
+  duration_ms: 57.014823
+  type: 'test'
+  ...
+1..464
+# tests 464
+# suites 0
+# pass 463
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 10748.173709

@@ -1,0 +1,1078 @@
+TAP version 13
+# Subtest: legacy catalogue navigation redirects safely, preserving filters and RSC queries
+ok 1 - legacy catalogue navigation redirects safely, preserving filters and RSC queries
+  ---
+  duration_ms: 53.017895
+  type: 'test'
+  ...
+# Subtest: loads the supplied property once and excludes preview and admin pages
+ok 2 - loads the supplied property once and excludes preview and admin pages
+  ---
+  duration_ms: 5.030115
+  type: 'test'
+  ...
+# Subtest: a blocked optional tracker does not throw into commerce code
+ok 3 - a blocked optional tracker does not throw into commerce code
+  ---
+  duration_ms: 0.785081
+  type: 'test'
+  ...
+# Subtest: patch both readable and minified actual checkout, preserving every other byte
+ok 4 - patch both readable and minified actual checkout, preserving every other byte
+  ---
+  duration_ms: 382.949084
+  type: 'test'
+  ...
+# Subtest: restored PINs and silent changes trigger one lookup per value, and cleanup stops observation
+ok 5 - restored PINs and silent changes trigger one lookup per value, and cleanup stops observation
+  ---
+  duration_ms: 1778.946509
+  type: 'test'
+  ...
+# Subtest: confirmed addition emits added quantity and INR price, not cumulative cart quantity
+ok 6 - confirmed addition emits added quantity and INR price, not cumulative cart quantity
+  ---
+  duration_ms: 105.656291
+  type: 'test'
+  ...
+# Subtest: response, promise, options and caller binding are preserved
+ok 7 - response, promise, options and caller binding are preserved
+  ---
+  duration_ms: 85.482217
+  type: 'test'
+  ...
+# Subtest: two successful additions each emit once even when the same variant is already in cart
+ok 8 - two successful additions each emit once even when the same variant is already in cart
+  ---
+  duration_ms: 87.426615
+  type: 'test'
+  ...
+# Subtest: rejections, malformed JSON and invalid cart responses do not emit additions
+ok 9 - rejections, malformed JSON and invalid cart responses do not emit additions
+  ---
+  duration_ms: 436.352737
+  type: 'test'
+  ...
+# Subtest: reads, removals, quantity edits, unrelated writes and foreign origins are untouched
+ok 10 - reads, removals, quantity edits, unrelated writes and foreign origins are untouched
+  ---
+  duration_ms: 83.111621
+  type: 'test'
+  ...
+# Subtest: Request bodies are cloned before native fetch consumes them
+ok 11 - Request bodies are cloned before native fetch consumes them
+  ---
+  duration_ms: 84.747026
+  type: 'test'
+  ...
+# Subtest: disabled analytics never wraps fetch or emits commerce events
+ok 12 - disabled analytics never wraps fetch or emits commerce events
+  ---
+  duration_ms: 82.846737
+  type: 'test'
+  ...
+# Subtest: invalid request metadata cannot block a successful shopping response
+ok 13 - invalid request metadata cannot block a successful shopping response
+  ---
+  duration_ms: 85.277143
+  type: 'test'
+  ...
+# Subtest: native synchronous failures are propagated exactly once without a retry
+ok 14 - native synchronous failures are propagated exactly once without a retry
+  ---
+  duration_ms: 42.704083
+  type: 'test'
+  ...
+# Subtest: confirmed addition emits added quantity and INR price, not cumulative cart quantity
+ok 15 - confirmed addition emits added quantity and INR price, not cumulative cart quantity
+  ---
+  duration_ms: 105.819647
+  type: 'test'
+  ...
+# Subtest: response, promise, options and caller binding are preserved
+ok 16 - response, promise, options and caller binding are preserved
+  ---
+  duration_ms: 86.051614
+  type: 'test'
+  ...
+# Subtest: two successful additions each emit once even when the same variant is already in cart
+ok 17 - two successful additions each emit once even when the same variant is already in cart
+  ---
+  duration_ms: 84.082098
+  type: 'test'
+  ...
+# Subtest: rejections, malformed JSON and invalid cart responses do not emit additions
+ok 18 - rejections, malformed JSON and invalid cart responses do not emit additions
+  ---
+  duration_ms: 420.991561
+  type: 'test'
+  ...
+# Subtest: reads, removals, quantity edits, unrelated writes and foreign origins are untouched
+ok 19 - reads, removals, quantity edits, unrelated writes and foreign origins are untouched
+  ---
+  duration_ms: 83.51356
+  type: 'test'
+  ...
+# Subtest: Request bodies are cloned before native fetch consumes them
+ok 20 - Request bodies are cloned before native fetch consumes them
+  ---
+  duration_ms: 86.559961
+  type: 'test'
+  ...
+# Subtest: disabled analytics never wraps fetch or emits commerce events
+ok 21 - disabled analytics never wraps fetch or emits commerce events
+  ---
+  duration_ms: 83.123303
+  type: 'test'
+  ...
+# Subtest: invalid request metadata cannot block a successful shopping response
+ok 22 - invalid request metadata cannot block a successful shopping response
+  ---
+  duration_ms: 83.07885
+  type: 'test'
+  ...
+# Subtest: native synchronous failures are propagated exactly once without a retry
+ok 23 - native synchronous failures are propagated exactly once without a retry
+  ---
+  duration_ms: 43.125348
+  type: 'test'
+  ...
+# Subtest: purchase uses receipt, excludes shipping/tax, preserves rewards value and omits customer data
+ok 24 - purchase uses receipt, excludes shipping/tax, preserves rewards value and omits customer data
+  ---
+  duration_ms: 42.245339
+  type: 'test'
+  ...
+# Subtest: pending, review, failed, cancelled and refunded receipts emit no purchase
+ok 25 - pending, review, failed, cancelled and refunded receipts emit no purchase
+  ---
+  duration_ms: 253.646109
+  type: 'test'
+  ...
+# Subtest: confirmed COD and fully reward-paid orders emit purchase
+ok 26 - confirmed COD and fully reward-paid orders emit purchase
+  ---
+  duration_ms: 82.721965
+  type: 'test'
+  ...
+# Subtest: identity and totals must match a complete validated INR receipt
+ok 27 - identity and totals must match a complete validated INR receipt
+  ---
+  duration_ms: 548.760129
+  type: 'test'
+  ...
+# Subtest: discounts allocated across quantities match exact event value
+ok 28 - discounts allocated across quantities match exact event value
+  ---
+  duration_ms: 41.655581
+  type: 'test'
+  ...
+# Subtest: reloads, SPA callbacks and legacy markers prevent duplicates
+ok 29 - reloads, SPA callbacks and legacy markers prevent duplicates
+  ---
+  duration_ms: 167.188233
+  type: 'test'
+  ...
+# Subtest: simultaneous route callbacks perform one read and emit once
+ok 30 - simultaneous route callbacks perform one read and emit once
+  ---
+  duration_ms: 123.190872
+  type: 'test'
+  ...
+# Subtest: receipt arriving after leaving confirmation is ignored
+ok 31 - receipt arriving after leaving confirmation is ignored
+  ---
+  duration_ms: 81.684389
+  type: 'test'
+  ...
+# Subtest: failed reads never mark purchase; route revisit can retry
+ok 32 - failed reads never mark purchase; route revisit can retry
+  ---
+  duration_ms: 248.861228
+  type: 'test'
+  ...
+# Subtest: missing, blocked or short cart session prevents receipt reads
+ok 33 - missing, blocked or short cart session prevents receipt reads
+  ---
+  duration_ms: 124.183508
+  type: 'test'
+  ...
+# Subtest: storage failure still preserves one emission within page
+ok 34 - storage failure still preserves one emission within page
+  ---
+  duration_ms: 82.336966
+  type: 'test'
+  ...
+# Subtest: other pages and disabled analytics never fetch receipts
+ok 35 - other pages and disabled analytics never fetch receipts
+  ---
+  duration_ms: 124.542244
+  type: 'test'
+  ...
+# Subtest: authorized payment emits only after a later receipt confirms capture
+ok 36 - authorized payment emits only after a later receipt confirms capture
+  ---
+  duration_ms: 123.895452
+  type: 'test'
+  ...
+# Subtest: pending capture retries are bounded and stop when leaving confirmation
+ok 37 - pending capture retries are bounded and stop when leaving confirmation
+  ---
+  duration_ms: 375.029201
+  type: 'test'
+  ...
+# Subtest: removes just SAMPLE with conditional metadata writes and an exact backup
+ok 38 - removes just SAMPLE with conditional metadata writes and an exact backup
+  ---
+  duration_ms: 23.687219
+  type: 'test'
+  ...
+# Subtest: already removed selection is idempotent and does not write
+ok 39 - already removed selection is idempotent and does not write
+  ---
+  duration_ms: 1.435212
+  type: 'test'
+  ...
+# Subtest: missing retained video and mismatched target stop before writing
+ok 40 - missing retained video and mismatched target stop before writing
+  ---
+  duration_ms: 10.237179
+  type: 'test'
+  ...
+# Subtest: a concurrent selection rejects the write and restores only the owned previous value
+ok 41 - a concurrent selection rejects the write and restores only the owned previous value
+  ---
+  duration_ms: 2.017587
+  type: 'test'
+  ...
+# Subtest: normalizes approved photo /media/products/variants/sku-one/photo.jpg
+ok 42 - normalizes approved photo /media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 1.40704
+  type: 'test'
+  ...
+# Subtest: normalizes approved photo https://hidiindia.com/media/products/variants/sku-one/photo.jpg
+ok 43 - normalizes approved photo https://hidiindia.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.255235
+  type: 'test'
+  ...
+# Subtest: normalizes approved photo https://thehidi.com/media/products/variants/sku-one/photo.jpg
+ok 44 - normalizes approved photo https://thehidi.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.132577
+  type: 'test'
+  ...
+# Subtest: normalizes approved photo /media/products/_display_v2/variants/sku-one/photo.jpg
+ok 45 - normalizes approved photo /media/products/_display_v2/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.148296
+  type: 'test'
+  ...
+# Subtest: normalizes approved photo /media/products/_display_v3/variants/sku-one/photo.jpg
+ok 46 - normalizes approved photo /media/products/_display_v3/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.190595
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source //evil.com/media/products/a.jpg
+ok 47 - rejects unapproved source //evil.com/media/products/a.jpg
+  ---
+  duration_ms: 0.126445
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source https://evil.com/media/products/variants/sku-one/photo.jpg
+ok 48 - rejects unapproved source https://evil.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.104194
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source http://hidiindia.com/media/products/variants/sku-one/photo.jpg
+ok 49 - rejects unapproved source http://hidiindia.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.095878
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source https://u:p@hidiindia.com/media/products/variants/sku-one/photo.jpg
+ok 50 - rejects unapproved source https://u:p@hidiindia.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.325416
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/../private/a.jpg
+ok 51 - rejects unapproved source /media/products/../private/a.jpg
+  ---
+  duration_ms: 0.345904
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/a.svg
+ok 52 - rejects unapproved source /media/products/a.svg
+  ---
+  duration_ms: 0.16687
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/variants/sku-one/photo.jpg?token=secret
+ok 53 - rejects unapproved source /media/products/variants/sku-one/photo.jpg?token=secret
+  ---
+  duration_ms: 0.224358
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/variants/sku-one/photo.jpg?hidi_image=1&hidi_image=2
+ok 54 - rejects unapproved source /media/products/variants/sku-one/photo.jpg?hidi_image=1&hidi_image=2
+  ---
+  duration_ms: 0.133799
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/%2e%2e/a.jpg
+ok 55 - rejects unapproved source /media/products/%2e%2e/a.jpg
+  ---
+  duration_ms: 0.094927
+  type: 'test'
+  ...
+# Subtest: keeps approved legacy cache hint
+ok 56 - keeps approved legacy cache hint
+  ---
+  duration_ms: 0.130222
+  type: 'test'
+  ...
+# Subtest: negotiates WebP and honours q=0
+ok 57 - negotiates WebP and honours q=0
+  ---
+  duration_ms: 0.308815
+  type: 'test'
+  ...
+# Subtest: parses a valid optimizer request
+ok 58 - parses a valid optimizer request
+  ---
+  duration_ms: 0.912158
+  type: 'test'
+  ...
+# Subtest: rejects duplicate/extra parameters &w=750
+ok 59 - rejects duplicate/extra parameters &w=750
+  ---
+  duration_ms: 0.150701
+  type: 'test'
+  ...
+# Subtest: rejects duplicate/extra parameters &q=90
+ok 60 - rejects duplicate/extra parameters &q=90
+  ---
+  duration_ms: 0.141964
+  type: 'test'
+  ...
+# Subtest: rejects duplicate/extra parameters &url=%2Fmedia%2Fproducts%2Fvariants%2Fsku-one%2Fphoto.jpg
+ok 61 - rejects duplicate/extra parameters &url=%2Fmedia%2Fproducts%2Fvariants%2Fsku-one%2Fphoto.jpg
+  ---
+  duration_ms: 0.116376
+  type: 'test'
+  ...
+# Subtest: rejects duplicate/extra parameters &surprise=1
+ok 62 - rejects duplicate/extra parameters &surprise=1
+  ---
+  duration_ms: 0.127999
+  type: 'test'
+  ...
+# Subtest: cache keys isolate widths, formats, and display/zoom masters
+ok 63 - cache keys isolate widths, formats, and display/zoom masters
+  ---
+  duration_ms: 0.563549
+  type: 'test'
+  ...
+# Subtest: bounds an upstream response with no Content-Length
+ok 64 - bounds an upstream response with no Content-Length
+  ---
+  duration_ms: 17.1509
+  type: 'test'
+  ...
+# Subtest: rejects oversized declared response and cancels body
+ok 65 - rejects oversized declared response and cancels body
+  ---
+  duration_ms: 1.015079
+  type: 'test'
+  ...
+# Subtest: rejects an oversized chunked response
+ok 66 - rejects an oversized chunked response
+  ---
+  duration_ms: 3.939925
+  type: 'test'
+  ...
+# Subtest: rejects HTML upstream, missing source, and empty bytes
+ok 67 - rejects HTML upstream, missing source, and empty bytes
+  ---
+  duration_ms: 1.049213
+  type: 'test'
+  ...
+# Subtest: returns correctly sized WebP with original pixels untouched
+ok 68 - returns correctly sized WebP with original pixels untouched
+  ---
+  duration_ms: 61.394452
+  type: 'test'
+  ...
+# Subtest: does not upscale a small photo
+ok 69 - does not upscale a small photo
+  ---
+  duration_ms: 8.684348
+  type: 'test'
+  ...
+# Subtest: normalizes EXIF orientation without retaining EXIF metadata
+ok 70 - normalizes EXIF orientation without retaining EXIF metadata
+  ---
+  duration_ms: 49.450512
+  type: 'test'
+  ...
+# Subtest: preserves alpha in WebP output
+ok 71 - preserves alpha in WebP output
+  ---
+  duration_ms: 7.990727
+  type: 'test'
+  ...
+# Subtest: bounds very tall photo output without cropping
+ok 72 - bounds very tall photo output without cropping
+  ---
+  duration_ms: 15.765601
+  type: 'test'
+  ...
+# Subtest: rejects corrupt images rather than serving the original
+ok 73 - rejects corrupt images rather than serving the original
+  ---
+  duration_ms: 1.005732
+  type: 'test'
+  ...
+# Subtest: rejects oversized bytes before decoding
+ok 74 - rejects oversized bytes before decoding
+  ---
+  duration_ms: 0.377062
+  type: 'test'
+  ...
+# Subtest: caches derivatives, deduplicates visitors, and shares the display master
+ok 75 - caches derivatives, deduplicates visitors, and shares the display master
+  ---
+  duration_ms: 176.400555
+  type: 'test'
+  ...
+# Subtest: fetches zoom only on demand and caches its master
+ok 76 - fetches zoom only on demand and caches its master
+  ---
+  duration_ms: 287.466303
+  type: 'test'
+  ...
+# Subtest: serializes source fetching even for simultaneous zoom requests
+ok 77 - serializes source fetching even for simultaneous zoom requests
+  ---
+  duration_ms: 381.914926
+  type: 'test'
+  ...
+# Subtest: HTTP GET, HEAD, ETag, and unsupported method retain correct semantics
+ok 78 - HTTP GET, HEAD, ETag, and unsupported method retain correct semantics
+  ---
+  duration_ms: 110.839548
+  type: 'test'
+  ...
+# Subtest: processing failure never returns multi-megabyte originals
+ok 79 - processing failure never returns multi-megabyte originals
+  ---
+  duration_ms: 1.806193
+  type: 'test'
+  ...
+# Subtest: reads exactly one multipart photo
+ok 80 - reads exactly one multipart photo
+  ---
+  duration_ms: 8.49764
+  type: 'test'
+  ...
+# Subtest: rejects multiple file fields
+ok 81 - rejects multiple file fields
+  ---
+  duration_ms: 2.136768
+  type: 'test'
+  ...
+# Subtest: enforces multipart request cap before parsing
+ok 82 - enforces multipart request cap before parsing
+  ---
+  duration_ms: 0.432545
+  type: 'test'
+  ...
+# Subtest: upload slot cannot be prematurely reopened by double release
+ok 83 - upload slot cannot be prematurely reopened by double release
+  ---
+  duration_ms: 0.226101
+  type: 'test'
+  ...
+# Subtest: retains recovery for the existing browser-readable truncated JPEG case
+ok 84 - retains recovery for the existing browser-readable truncated JPEG case
+  ---
+  duration_ms: 310.752527
+  type: 'test'
+  ...
+# Subtest: retains the 100 MP input limit and does not retry pixel-limit errors
+ok 85 - retains the 100 MP input limit and does not retry pixel-limit errors
+  ---
+  duration_ms: 0.326808
+  type: 'test'
+  ...
+# Subtest: streamed valid jpeg preserves original bytes and removes temporary files
+ok 86 - streamed valid jpeg preserves original bytes and removes temporary files
+  ---
+  duration_ms: 53.72424
+  type: 'test'
+  ...
+# Subtest: streamed valid png preserves original bytes and removes temporary files
+ok 87 - streamed valid png preserves original bytes and removes temporary files
+  ---
+  duration_ms: 13.373828
+  type: 'test'
+  ...
+# Subtest: streamed valid webp preserves original bytes and removes temporary files
+ok 88 - streamed valid webp preserves original bytes and removes temporary files
+  ---
+  duration_ms: 15.009043
+  type: 'test'
+  ...
+# Subtest: streamed valid avif preserves original bytes and removes temporary files
+ok 89 - streamed valid avif preserves original bytes and removes temporary files
+  ---
+  duration_ms: 25.797067
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 12582912 bytes without the former fixed cap
+ok 90 - streamed multipart accepts 12582912 bytes without the former fixed cap
+  ---
+  duration_ms: 103.14661
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 41943040 bytes without the former fixed cap
+ok 91 - streamed multipart accepts 41943040 bytes without the former fixed cap
+  ---
+  duration_ms: 168.893283
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 41943041 bytes without the former fixed cap
+ok 92 - streamed multipart accepts 41943041 bytes without the former fixed cap
+  ---
+  duration_ms: 226.791391
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 62914560 bytes without the former fixed cap
+ok 93 - streamed multipart accepts 62914560 bytes without the former fixed cap
+  ---
+  duration_ms: 250.514781
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 104857600 bytes without the former fixed cap
+ok 94 - streamed multipart accepts 104857600 bytes without the former fixed cap
+  ---
+  duration_ms: 424.456739
+  type: 'test'
+  ...
+# Subtest: chunked source download also permits a photo above 40 MiB and bounds display output
+ok 95 - chunked source download also permits a photo above 40 MiB and bounds display output
+  ---
+  duration_ms: 147.123162
+  type: 'test'
+  ...
+# Subtest: cold derivative creation always cleans a disk-backed original
+ok 96 - cold derivative creation always cleans a disk-backed original
+  ---
+  duration_ms: 23.972962
+  type: 'test'
+  ...
+# Subtest: invalid source decoding also cleans the disk original
+ok 97 - invalid source decoding also cleans the disk original
+  ---
+  duration_ms: 3.258176
+  type: 'test'
+  ...
+# Subtest: rejects empty and cleans temporary data
+ok 98 - rejects empty and cleans temporary data
+  ---
+  duration_ms: 3.608789
+  type: 'test'
+  ...
+# Subtest: rejects corrupt and cleans temporary data
+ok 99 - rejects corrupt and cleans temporary data
+  ---
+  duration_ms: 3.476613
+  type: 'test'
+  ...
+# Subtest: rejects SVG masquerading as JPEG and cleans temporary data
+ok 100 - rejects SVG masquerading as JPEG and cleans temporary data
+  ---
+  duration_ms: 4.820194
+  type: 'test'
+  ...
+# Subtest: rejects unsupported PDF and cleans temporary data
+ok 101 - rejects unsupported PDF and cleans temporary data
+  ---
+  duration_ms: 2.767683
+  type: 'test'
+  ...
+# Subtest: rejects a MIME mismatch without changing original bytes
+ok 102 - rejects a MIME mismatch without changing original bytes
+  ---
+  duration_ms: 12.30908
+  type: 'test'
+  ...
+# Subtest: rejects duplicate file fields
+ok 103 - rejects duplicate file fields
+  ---
+  duration_ms: 15.975312
+  type: 'test'
+  ...
+# Subtest: rejects duplicate and oversized metadata
+ok 104 - rejects duplicate and oversized metadata
+  ---
+  duration_ms: 25.076384
+  type: 'test'
+  ...
+# Subtest: rejects missing multipart boundary
+ok 105 - rejects missing multipart boundary
+  ---
+  duration_ms: 0.4083
+  type: 'test'
+  ...
+# Subtest: rejects truncated multipart and deletes partial files
+ok 106 - rejects truncated multipart and deletes partial files
+  ---
+  duration_ms: 3.012018
+  type: 'test'
+  ...
+# Subtest: disk-reserve exhaustion fails with 507 and removes partial files
+ok 107 - disk-reserve exhaustion fails with 507 and removes partial files
+  ---
+  duration_ms: 2.130985
+  type: 'test'
+  ...
+# Subtest: abort interrupts ingestion and deletes temporary files
+ok 108 - abort interrupts ingestion and deletes temporary files
+  ---
+  duration_ms: 2.277591
+  type: 'test'
+  ...
+# Subtest: declared length mismatch fails instead of saving a truncated source
+ok 109 - declared length mismatch fails instead of saving a truncated source
+  ---
+  duration_ms: 3.053645
+  type: 'test'
+  ...
+# Subtest: incremental browser digest matches the existing SHA-256 naming contract
+ok 110 - incremental browser digest matches the existing SHA-256 naming contract
+  ---
+  duration_ms: 19.882118
+  type: 'test'
+  ...
+# Subtest: upload concurrency guard releases safely after failure
+ok 111 - upload concurrency guard releases safely after failure
+  ---
+  duration_ms: 0.184724
+  type: 'test'
+  ...
+# Subtest: Azure SDK write uses staged blocks and bounded concurrency
+ok 112 - Azure SDK write uses staged blocks and bounded concurrency
+  ---
+  duration_ms: 20.111622
+  type: 'test'
+  ...
+# Subtest: identical Azure replay is verified from downloaded bytes without overwrite
+ok 113 - identical Azure replay is verified from downloaded bytes without overwrite
+  ---
+  duration_ms: 3.551121
+  type: 'test'
+  ...
+# Subtest: same-sized different Azure replay bytes are rejected
+ok 114 - same-sized different Azure replay bytes are rejected
+  ---
+  duration_ms: 8.128996
+  type: 'test'
+  ...
+# Subtest: Azure size mismatch and arbitrary-key conflicts are not accepted as successful retries
+ok 115 - Azure size mismatch and arbitrary-key conflicts are not accepted as successful retries
+  ---
+  duration_ms: 3.17957
+  type: 'test'
+  ...
+# Subtest: OWNER staff verified by backend before reading the body
+ok 116 - OWNER staff verified by backend before reading the body
+  ---
+  duration_ms: 25.545438
+  type: 'test'
+  ...
+# Subtest: CATALOG staff verified by backend before reading the body
+ok 117 - CATALOG staff verified by backend before reading the body
+  ---
+  duration_ms: 0.596661
+  type: 'test'
+  ...
+# Subtest: reject unauthorized role OPERATIONS
+ok 118 - reject unauthorized role OPERATIONS
+  ---
+  duration_ms: 1.221093
+  type: 'test'
+  ...
+# Subtest: reject unauthorized role SUPPORT
+ok 119 - reject unauthorized role SUPPORT
+  ---
+  duration_ms: 0.568568
+  type: 'test'
+  ...
+# Subtest: reject unauthorized role CUSTOMER
+ok 120 - reject unauthorized role CUSTOMER
+  ---
+  duration_ms: 0.779611
+  type: 'test'
+  ...
+# Subtest: reject unauthorized role 
+ok 121 - reject unauthorized role 
+  ---
+  duration_ms: 0.540005
+  type: 'test'
+  ...
+# Subtest: reject unauthorized role null
+ok 122 - reject unauthorized role null
+  ---
+  duration_ms: 0.622559
+  type: 'test'
+  ...
+# Subtest: backend status 401 cannot accept an upload body
+ok 123 - backend status 401 cannot accept an upload body
+  ---
+  duration_ms: 0.510852
+  type: 'test'
+  ...
+# Subtest: backend status 403 cannot accept an upload body
+ok 124 - backend status 403 cannot accept an upload body
+  ---
+  duration_ms: 1.022284
+  type: 'test'
+  ...
+# Subtest: backend status 500 cannot accept an upload body
+ok 125 - backend status 500 cannot accept an upload body
+  ---
+  duration_ms: 0.851736
+  type: 'test'
+  ...
+# Subtest: backend status 503 cannot accept an upload body
+ok 126 - backend status 503 cannot accept an upload body
+  ---
+  duration_ms: 0.472379
+  type: 'test'
+  ...
+# Subtest: incomplete admin response fails closed {}
+ok 127 - incomplete admin response fails closed {}
+  ---
+  duration_ms: 0.627739
+  type: 'test'
+  ...
+# Subtest: incomplete admin response fails closed {"admin":{"role":"OWNER"}}
+ok 128 - incomplete admin response fails closed {"admin":{"role":"OWNER"}}
+  ---
+  duration_ms: 0.825087
+  type: 'test'
+  ...
+# Subtest: incomplete admin response fails closed {"admin":{"id":"","role":"OWNER"}}
+ok 129 - incomplete admin response fails closed {"admin":{"id":"","role":"OWNER"}}
+  ---
+  duration_ms: 0.486886
+  type: 'test'
+  ...
+# Subtest: network failure fails closed before body consumption
+ok 130 - network failure fails closed before body consumption
+  ---
+  duration_ms: 0.411446
+  type: 'test'
+  ...
+# Subtest: reject cross-site upload {"origin":"https://outside.example"}
+ok 131 - reject cross-site upload {"origin":"https://outside.example"}
+  ---
+  duration_ms: 0.393543
+  type: 'test'
+  ...
+# Subtest: reject cross-site upload {"sec-fetch-site":"cross-site"}
+ok 132 - reject cross-site upload {"sec-fetch-site":"cross-site"}
+  ---
+  duration_ms: 0.251268
+  type: 'test'
+  ...
+# Subtest: route verifies staff and domain before any body read and retains ticket authorization
+ok 133 - route verifies staff and domain before any body read and retains ticket authorization
+  ---
+  duration_ms: 19.30604
+  type: 'test'
+  ...
+# Subtest: browser-readable progressive JPEG without ending data recovers to bounded WebP
+ok 134 - browser-readable progressive JPEG without ending data recovers to bounded WebP
+  ---
+  duration_ms: 1143.830906
+  type: 'test'
+  ...
+# Subtest: valid JPEG retains strict decoder and normal output bytes
+ok 135 - valid JPEG retains strict decoder and normal output bytes
+  ---
+  duration_ms: 139.660958
+  type: 'test'
+  ...
+# Subtest: unrelated corruption and pixel-limit errors are rejected
+ok 136 - unrelated corruption and pixel-limit errors are rejected
+  ---
+  duration_ms: 1.347819
+  type: 'test'
+  ...
+# Subtest: Only the exact retired page redirects; commerce URLs are untouched
+ok 137 - Only the exact retired page redirects; commerce URLs are untouched
+  ---
+  duration_ms: 1.149029
+  type: 'test'
+  ...
+# Subtest: Anonymous and non-owner cannot read or write private offer settings
+ok 138 - Anonymous and non-owner cannot read or write private offer settings
+  ---
+  duration_ms: 48.949029
+  type: 'test'
+  ...
+# Subtest: Public default is hidden and read requests never seed a draft
+ok 139 - Public default is hidden and read requests never seed a draft
+  ---
+  duration_ms: 9.642873
+  type: 'test'
+  ...
+# Subtest: Save, private publish, selected identity, spoofing, stale edits, pause and restore
+ok 140 - Save, private publish, selected identity, spoofing, stale edits, pause and restore
+  ---
+  duration_ms: 45.444882
+  type: 'test'
+  ...
+# Subtest: Cross-site writes, unknown actions and unconfirmed publication are rejected
+ok 141 - Cross-site writes, unknown actions and unconfirmed publication are rejected
+  ---
+  duration_ms: 9.250012
+  type: 'test'
+  ...
+# Subtest: Everyone is explicit; expired campaigns and scheduled future campaigns are hidden
+ok 142 - Everyone is explicit; expired campaigns and scheduled future campaigns are hidden
+  ---
+  duration_ms: 31.254341
+  type: 'test'
+  ...
+# Subtest: Storage failures fail closed, with no sensitive error detail
+ok 143 - Storage failures fail closed, with no sensitive error detail
+  ---
+  duration_ms: 0.594287
+  type: 'test'
+  ...
+# Subtest: Checkout policy exposes published product eligibility only to its authorized audience
+ok 144 - Checkout policy exposes published product eligibility only to its authorized audience
+  ---
+  duration_ms: 17.050987
+  type: 'test'
+  ...
+# Subtest: Indian phone variants normalize and duplicate numbers collapse
+ok 145 - Indian phone variants normalize and duplicate numbers collapse
+  ---
+  duration_ms: 2.447487
+  type: 'test'
+  ...
+# Subtest: Malformed phones, foreign numbers and excessive recipients are rejected
+ok 146 - Malformed phones, foreign numbers and excessive recipients are rejected
+  ---
+  duration_ms: 0.337949
+  type: 'test'
+  ...
+# Subtest: Default state is unpublished, with no initial personal number disclosure
+ok 147 - Default state is unpublished, with no initial personal number disclosure
+  ---
+  duration_ms: 0.246869
+  type: 'test'
+  ...
+# Subtest: Selected audience requires verified identity and a nonempty published allowlist
+ok 148 - Selected audience requires verified identity and a nonempty published allowlist
+  ---
+  duration_ms: 0.259733
+  type: 'test'
+  ...
+# Subtest: Hidden wins; everyone deliberately includes guests
+ok 149 - Hidden wins; everyone deliberately includes guests
+  ---
+  duration_ms: 0.142796
+  type: 'test'
+  ...
+# Subtest: Schedule uses inclusive start, exclusive end and cannot accept invalid dates
+ok 150 - Schedule uses inclusive start, exclusive end and cannot accept invalid dates
+  ---
+  duration_ms: 0.688282
+  type: 'test'
+  ...
+# Subtest: Public projection contains display text only, never audience or private numbers
+ok 151 - Public projection contains display text only, never audience or private numbers
+  ---
+  duration_ms: 0.217916
+  type: 'test'
+  ...
+# Subtest: Offer text remains plain text; fields and body sizes are bounded
+ok 152 - Offer text remains plain text; fields and body sizes are bounded
+  ---
+  duration_ms: 0.219328
+  type: 'test'
+  ...
+# Subtest: published policy receives one canonical; every other HTML byte remains unchanged
+ok 153 - published policy receives one canonical; every other HTML byte remains unchanged
+  ---
+  duration_ms: 1.271737
+  type: 'test'
+  ...
+# Subtest: draft and archived preview render byte-identically without a public canonical
+ok 154 - draft and archived preview render byte-identically without a public canonical
+  ---
+  duration_ms: 0.218507
+  type: 'test'
+  ...
+# Subtest: public GET and HEAD preserve storage reads, status, cache and policy body behavior
+ok 155 - public GET and HEAD preserve storage reads, status, cache and policy body behavior
+  ---
+  duration_ms: 1.222837
+  type: 'test'
+  ...
+# Subtest: unpublished and failed policies keep existing error statuses without a canonical
+ok 156 - unpublished and failed policies keep existing error statuses without a canonical
+  ---
+  duration_ms: 0.402469
+  type: 'test'
+  ...
+# Subtest: verified HIDI brand identity is consistent across retained head graphs without changing product facts or visible markup
+ok 157 - verified HIDI brand identity is consistent across retained head graphs without changing product facts or visible markup
+  ---
+  duration_ms: 3.715127
+  type: 'test'
+  ...
+# Subtest: brand graph correction survives client hydration while retaining framework nodes and body graph bytes
+ok 158 - brand graph correction survives client hydration while retaining framework nodes and body graph bytes
+  ---
+  duration_ms: 3.001699
+  type: 'test'
+  ...
+# Subtest: streamed Lookbook body keeps its existing brand graph exact while new head signals are reconciled
+ok 159 - streamed Lookbook body keeps its existing brand graph exact while new head signals are reconciled
+  ---
+  duration_ms: 8.186542
+  type: 'test'
+  ...
+# Subtest: Lookbook directive survives client rendering and navigation without changing private/error directives
+ok 160 - Lookbook directive survives client rendering and navigation without changing private/error directives
+  ---
+  duration_ms: 0.974655
+  type: 'test'
+  ...
+# Subtest: Google-specific noindex cannot veto approved public pages; previews, unknown pages and errors retain restrictions
+ok 161 - Google-specific noindex cannot veto approved public pages; previews, unknown pages and errors retain restrictions
+  ---
+  duration_ms: 1.340365
+  type: 'test'
+  ...
+# Subtest: Google-specific directives follow public, private and deferred client navigation without replacing framework nodes
+ok 162 - Google-specific directives follow public, private and deferred client navigation without replacing framework nodes
+  ---
+  duration_ms: 0.955268
+  type: 'test'
+  ...
+# Subtest: cached navigation restores a missing general directive without removing framework nodes or altering unknown routes
+ok 163 - cached navigation restores a missing general directive without removing framework nodes or altering unknown routes
+  ---
+  duration_ms: 0.933237
+  type: 'test'
+  ...
+# Subtest: only SEO identity fields change; garment facts, schema vocabulary and visible body stay exact
+ok 164 - only SEO identity fields change; garment facts, schema vocabulary and visible body stay exact
+  ---
+  duration_ms: 1.123441
+  type: 'test'
+  ...
+# Subtest: unrelated and malicious lookalike URLs retain their original meaning
+ok 165 - unrelated and malicious lookalike URLs retain their original meaning
+  ---
+  duration_ms: 0.432055
+  type: 'test'
+  ...
+# Subtest: homepage and collection search/social fields change together; creative body and commerce scripts stay byte-identical
+ok 166 - homepage and collection search/social fields change together; creative body and commerce scripts stay byte-identical
+  ---
+  duration_ms: 0.739347
+  type: 'test'
+  ...
+# Subtest: image eligibility is limited to exact published catalogue assets
+ok 167 - image eligibility is limited to exact published catalogue assets
+  ---
+  duration_ms: 0.4138
+  type: 'test'
+  ...
+# Subtest: private, error, preview, product and unsupported destination metadata stays unchanged
+ok 168 - private, error, preview, product and unsupported destination metadata stays unchanged
+  ---
+  duration_ms: 0.16103
+  type: 'test'
+  ...
+# Subtest: cached product metadata is restored only from the matching published product graph; facts remain exact
+ok 169 - cached product metadata is restored only from the matching published product graph; facts remain exact
+  ---
+  duration_ms: 0.258942
+  type: 'test'
+  ...
+# Subtest: streamed body JSON-LD normalizes across UTF-8/tag boundaries while visible markup stays exact
+ok 170 - streamed body JSON-LD normalizes across UTF-8/tag boundaries while visible markup stays exact
+  ---
+  duration_ms: 2.601284
+  type: 'test'
+  ...
+# Subtest: malformed schema and adjacent Unicode text are preserved; client script is valid JavaScript
+ok 171 - malformed schema and adjacent Unicode text are preserved; client script is valid JavaScript
+  ---
+  duration_ms: 2.12171
+  type: 'test'
+  ...
+# Subtest: sitemap covers all public catalogue products and excludes private/draft inventory
+ok 172 - sitemap covers all public catalogue products and excludes private/draft inventory
+  ---
+  duration_ms: 0.725711
+  type: 'test'
+  ...
+# Subtest: image sitemap keeps product associations and excludes draft, private, signed and foreign images
+ok 173 - image sitemap keeps product associations and excludes draft, private, signed and foreign images
+  ---
+  duration_ms: 0.673774
+  type: 'test'
+  ...
+# Subtest: preview gets no sitemap and performs no backend request
+ok 174 - preview gets no sitemap and performs no backend request
+  ---
+  duration_ms: 0.318794
+  type: 'test'
+  ...
+# Subtest: sitemap reads are GET-only, omit customer credentials and are cached; HEAD returns no body
+ok 175 - sitemap reads are GET-only, omit customer credentials and are cached; HEAD returns no body
+  ---
+  duration_ms: 0.459215
+  type: 'test'
+  ...
+# Subtest: catalogue failure returns an uncached 503 rather than a misleading partial sitemap
+ok 176 - catalogue failure returns an uncached 503 rather than a misleading partial sitemap
+  ---
+  duration_ms: 0.249595
+  type: 'test'
+  ...
+# Subtest: ordinary activation retains the existing action; modified clicks use native link behavior
+ok 177 - ordinary activation retains the existing action; modified clicks use native link behavior
+  ---
+  duration_ms: 0.887613
+  type: 'test'
+  ...
+# Subtest: Space retains button activation on release and prevents page scrolling; Enter remains native
+ok 178 - Space retains button activation on release and prevents page scrolling; Enter remains native
+  ---
+  duration_ms: 0.226281
+  type: 'test'
+  ...
+1..178
+# tests 178
+# suites 0
+# pass 178
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6516.594963

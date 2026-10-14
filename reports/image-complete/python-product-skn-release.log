@@ -1,0 +1,31 @@
+test_additive_overlay_preserves_unrelated_assets_layers_and_config (__main__.ImageGuards.test_additive_overlay_preserves_unrelated_assets_layers_and_config) ... ok
+test_changed_backup_digest_blocks_before_any_rollout (__main__.RolloutGuards.test_changed_backup_digest_blocks_before_any_rollout) ... ok
+test_concurrent_setting_change_blocks_before_any_rollout (__main__.RolloutGuards.test_concurrent_setting_change_blocks_before_any_rollout) ... ok
+test_existing_automatic_owner_evidence_is_reused_with_its_richer_proof (__main__.RolloutGuards.test_existing_automatic_owner_evidence_is_reused_with_its_richer_proof) ... ok
+test_failed_api_rollback_does_not_prevent_web_recovery (__main__.RolloutGuards.test_failed_api_rollback_does_not_prevent_web_recovery) ... ok
+test_failed_live_check_restores_owned_images_and_keeps_sql (__main__.RolloutGuards.test_failed_live_check_restores_owned_images_and_keeps_sql) ... ok
+test_hidden_definition_requires_owner_evidence (__main__.RolloutGuards.test_hidden_definition_requires_owner_evidence) ... ok
+test_independent_api_change_is_not_overwritten_during_recovery (__main__.RolloutGuards.test_independent_api_change_is_not_overwritten_during_recovery) ... ok
+test_missing_hidden_definition_report_has_concrete_retry_instruction (__main__.RolloutGuards.test_missing_hidden_definition_report_has_concrete_retry_instruction) ... ok
+test_missing_schema_blocks_before_any_rollout (__main__.RolloutGuards.test_missing_schema_blocks_before_any_rollout) ... ok
+test_missing_taxonomy_blocks_before_any_rollout (__main__.RolloutGuards.test_missing_taxonomy_blocks_before_any_rollout) ... ok
+test_owner_evidence_rejects_extra_fields_and_duplicate_json_keys (__main__.RolloutGuards.test_owner_evidence_rejects_extra_fields_and_duplicate_json_keys) ... ok
+test_owner_evidence_rejects_old_future_and_non_utc_timestamps (__main__.RolloutGuards.test_owner_evidence_rejects_old_future_and_non_utc_timestamps) ... ok
+test_owner_evidence_rejects_wrong_database_schema_migration_and_capture (__main__.RolloutGuards.test_owner_evidence_rejects_wrong_database_schema_migration_and_capture) ... ok
+test_owner_evidence_size_is_bounded_before_json_parsing (__main__.RolloutGuards.test_owner_evidence_size_is_bounded_before_json_parsing) ... ok
+test_same_image_new_revision_is_not_owned_for_rollback (__main__.RolloutGuards.test_same_image_new_revision_is_not_owned_for_rollback) ... ok
+test_stale_schema_binding_blocks_before_any_rollout (__main__.RolloutGuards.test_stale_schema_binding_blocks_before_any_rollout) ... ok
+test_success_rolls_api_then_web_with_retained_settings (__main__.RolloutGuards.test_success_rolls_api_then_web_with_retained_settings) ... ok
+test_unverified_published_digest_blocks_before_any_rollout (__main__.RolloutGuards.test_unverified_published_digest_blocks_before_any_rollout) ... ok
+test_valid_manual_owner_evidence_is_saved_without_cloud_or_sql_writes (__main__.RolloutGuards.test_valid_manual_owner_evidence_is_saved_without_cloud_or_sql_writes) ... ok
+test_visible_definitions_do_not_require_an_imported_owner_report (__main__.RolloutGuards.test_visible_definitions_do_not_require_an_imported_owner_report) ... ok
+
+----------------------------------------------------------------------
+Ran 21 tests in 0.072s
+
+OK
+PASS: existing guarded SQL owner definition verification matches the fresh API capture
+PASS: permanent five-digit SKNs, matched bulk photos and Ananya collection deployed; retained content and settings preserved
+PASS: permanent five-digit SKNs, matched bulk photos and Ananya collection deployed; retained content and settings preserved
+PASS: bounded SQL owner verification report accepted; no DDL, grants or SQL rows changed
+PASS: mapping definitions are visible in the read-only schema check; no owner report needed

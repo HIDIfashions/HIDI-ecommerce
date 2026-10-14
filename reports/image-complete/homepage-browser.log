@@ -1,0 +1,11 @@
+PASS 320px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+PASS 360px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+PASS 390px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+PASS 412px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+PASS 768px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+PASS 1000px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+PASS 1001px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+PASS 1024px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+PASS 1440px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+PASS 1846px: all six neutral sections and both sides of the reported seam render #FBF6F2 without gradients
+10 production-build homepage viewport checks passed. Catalogue data is isolated; this is not live checkout certification.

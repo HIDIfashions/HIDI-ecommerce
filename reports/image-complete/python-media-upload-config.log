@@ -1,0 +1,14 @@
+test_concurrent_app_change_is_not_overwritten (__main__.MediaConfigGuards.test_concurrent_app_change_is_not_overwritten) ... ok
+test_http_site_is_rejected (__main__.MediaConfigGuards.test_http_site_is_rejected) ... ok
+test_only_media_setting_changes_and_input_is_preserved (__main__.MediaConfigGuards.test_only_media_setting_changes_and_input_is_preserved) ... ok
+test_owned_failed_setting_is_restored_with_all_old_settings (__main__.MediaConfigGuards.test_owned_failed_setting_is_restored_with_all_old_settings) ... ok
+test_runtime_capture_mismatch_and_duplicate_env_are_refused (__main__.MediaConfigGuards.test_runtime_capture_mismatch_and_duplicate_env_are_refused) ... ok
+test_same_settings_in_an_independent_revision_are_not_rolled_back (__main__.MediaConfigGuards.test_same_settings_in_an_independent_revision_are_not_rolled_back) ... ok
+test_unbound_site_cannot_redirect_new_product_images (__main__.MediaConfigGuards.test_unbound_site_cannot_redirect_new_product_images) ... ok
+test_valid_different_media_origin_is_not_overridden (__main__.MediaConfigGuards.test_valid_different_media_origin_is_not_overridden) ... ok
+test_wrong_account_or_unavailable_storage_cannot_write_configuration (__main__.MediaConfigGuards.test_wrong_account_or_unavailable_storage_cannot_write_configuration) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.004s
+
+OK

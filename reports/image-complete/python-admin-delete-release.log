@@ -1,0 +1,16 @@
+test_api_protects_unreviewed_files_baseline_and_runtime_configuration (__main__.ReleaseGuards.test_api_protects_unreviewed_files_baseline_and_runtime_configuration) ... ok
+test_failure_reports_preserve_static_ids_and_only_allowlisted_schema_metadata (__main__.ReleaseGuards.test_failure_reports_preserve_static_ids_and_only_allowlisted_schema_metadata) ... ok
+test_mutable_images_and_cross_repository_images_are_rejected (__main__.ReleaseGuards.test_mutable_images_and_cross_repository_images_are_rejected) ... ok
+test_private_console_code_is_chunked_below_terminal_limits (__main__.ReleaseGuards.test_private_console_code_is_chunked_below_terminal_limits) ... ok
+test_private_console_heredoc_preserves_literals_and_passes_the_database_argument (__main__.ReleaseGuards.test_private_console_heredoc_preserves_literals_and_passes_the_database_argument) ... ok
+test_read_only_console_selects_diagnose_and_does_not_call_apply (__main__.ReleaseGuards.test_read_only_console_selects_diagnose_and_does_not_call_apply) ... ok
+test_read_only_schema_readiness_is_required_and_tied_to_the_exact_captured_api (__main__.ReleaseGuards.test_read_only_schema_readiness_is_required_and_tied_to_the_exact_captured_api) ... ok
+test_rollback_continues_restoring_api_if_web_restore_fails (__main__.ReleaseGuards.test_rollback_continues_restoring_api_if_web_restore_fails) ... ok
+test_runtime_changes_only_the_retained_handler_call_and_is_idempotent (__main__.ReleaseGuards.test_runtime_changes_only_the_retained_handler_call_and_is_idempotent) ... ok
+test_terminal_marker_requires_a_complete_valid_nested_json_line (__main__.ReleaseGuards.test_terminal_marker_requires_a_complete_valid_nested_json_line) ... ok
+test_web_preserves_storefront_and_private_runtime_files (__main__.ReleaseGuards.test_web_preserves_storefront_and_private_runtime_files) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.090s
+
+OK

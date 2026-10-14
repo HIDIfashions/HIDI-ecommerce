@@ -1,0 +1,644 @@
+
+> @hidi/web@0.1.0 lint /home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web
+> eslint .
+
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/customers/admin-customers-client.tsx
+  182:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/customers/admin-customers-client.tsx:182:5
+  180 |
+  181 |   useEffect(() => {
+> 182 |     setFollowUps(loadFollowUps());
+      |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  183 |     void load();
+  184 |   }, [load]);
+  185 |  react-hooks/set-state-in-effect
+  259:44  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/customers/admin-customers-client.tsx:259:44
+  257 |     if (followUps[customer.key]) return "CONTACTED" as const;
+  258 |     if (customer.lastOrderStatus !== "DELIVERED") return "WAITING" as const;
+> 259 |     if (reviewDueAt(customer).getTime() <= Date.now()) return "READY" as const;
+      |                                            ^^^^^^^^^^ Cannot call impure function
+  260 |     return "WAITING" as const;
+  261 |   }
+  262 |                                                                                                                                                                                               react-hooks/purity
+  280:90  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/customers/admin-customers-client.tsx:280:90
+  278 |       const state = server?.status === "SENT" || followUps[customer.key]
+  279 |         ? "CONTACTED"
+> 280 |         : customer.lastOrderStatus === "DELIVERED" && reviewDueAt(customer).getTime() <= Date.now()
+      |                                                                                          ^^^^^^^^^^ Cannot call impure function
+  281 |           ? "READY"
+  282 |           : "WAITING";
+  283 |       if (reviewFilter !== "ALL" && state !== reviewFilter) return false;                                                                                       react-hooks/purity
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/inventory/admin-inventory-client.tsx
+  111:10  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/inventory/admin-inventory-client.tsx:111:10
+  109 |
+  110 |   useEffect(() => {
+> 111 |     void loadInventory();
+      |          ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  112 |   }, [loadInventory]);
+  113 |
+  114 |   async function unlock(event: FormEvent) {  react-hooks/set-state-in-effect
+  230:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/inventory/receive/stock-receipt-client.tsx
+   98:26  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/inventory/receive/stock-receipt-client.tsx:98:26
+   96 |   }, []);
+   97 |
+>  98 |   useEffect(() => { void load(); }, [load]);
+      |                          ^^^^ Avoid calling setState() directly within an effect
+   99 |
+  100 |   useEffect(() => {
+  101 |     if (!photoBusy) return;  react-hooks/set-state-in-effect
+  338:59  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/orders/[orderNumber]/admin-order-detail-client.tsx
+  197:10  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/orders/[orderNumber]/admin-order-detail-client.tsx:197:10
+  195 |
+  196 |   useEffect(() => {
+> 197 |     void load();
+      |          ^^^^ Avoid calling setState() directly within an effect
+  198 |   }, [load]);
+  199 |
+  200 |   const shipmentReady = useMemo(  react-hooks/set-state-in-effect
+  354:31  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/orders/admin-orders-client.tsx
+  96:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/orders/admin-orders-client.tsx:96:10
+  94 |
+  95 |   useEffect(() => {
+> 96 |     void loadOrders();
+     |          ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  97 |   }, [status, loadOrders]);
+  98 |
+  99 |   const stats = useMemo(() => {  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/staff/admin-staff-client.tsx
+  64:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/admin/staff/admin-staff-client.tsx:64:10
+  62 |
+  63 |   useEffect(() => {
+> 64 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  65 |   }, [load]);
+  66 |
+  67 |   async function createStaff(event: FormEvent) {  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/api/admin/inventory/receipts/[receiptId]/post/route.ts
+  2:10  warning  'API_URL' is defined but never used          @typescript-eslint/no-unused-vars
+  3:10  warning  'adminApiHeaders' is defined but never used  @typescript-eslint/no-unused-vars
+  7:3   warning  'context' is defined but never used          @typescript-eslint/no-unused-vars
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/contact/page.tsx
+  14:41  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/offers/page.tsx
+  7:39  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/products/[slug]/page.tsx
+  155:34  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/returns/page.tsx
+  16:39  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/review/[token]/review-invitation-client.tsx
+   68:10  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/review/[token]/review-invitation-client.tsx:68:10
+  66 |
+  67 |   useEffect(() => {
+> 68 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  69 |   }, [load]);
+  70 |
+  71 |   function updateDraft(id: string, patch: Partial<Draft>) {  react-hooks/set-state-in-effect
+  137:34  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/app/shipping/page.tsx
+  15:39  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/account-orders-client.tsx
+  121:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/account-orders-client.tsx:121:5
+  119 |   useEffect(() => {
+  120 |     if (!retryAt) return;
+> 121 |     setNow(Date.now());
+      |     ^^^^^^ Avoid calling setState() directly within an effect
+  122 |     if (Date.now() >= retryAt) return;
+  123 |     const timer = window.setInterval(() => {
+  124 |       const current = Date.now();                                            react-hooks/set-state-in-effect
+  160:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  170:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/account-orders-client.tsx:170:5
+  168 |     mounted.current = true;
+  169 |     const stored = getStoredSession();
+> 170 |     setPhone(String(stored?.user?.phone ?? "").replace(/^\+91/, ""));
+      |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  171 |     loadAccount();
+  172 |     refreshAuthConfig();
+  173 |     return () => { mounted.current = false; };  react-hooks/set-state-in-effect
+  197:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  220:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/account/account-order-detail-client.tsx
+  56:26  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/account/account-order-detail-client.tsx:56:26
+  54 |   }, [orderNumber]);
+  55 |
+> 56 |   useEffect(() => { void load(); }, [load]);
+     |                          ^^^^ Avoid calling setState() directly within an effect
+  57 |
+  58 |   const steps = useMemo(() => {
+  59 |     const current = orderStage(order?.status ?? "");  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/account/account-shell.tsx
+  54:5  warning  Do not use `window.location.assign()` to navigate to internal Next.js pages. Use `redirect()` in the render phase, or `useRouter().push()` in Client Components' event handlers instead. See: https://nextjs.org/docs/messages/no-location-assign-relative-destination  @next/next/no-location-assign-relative-destination
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin-import/bulk-import-client.tsx
+    7:32   warning  'comboKey' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+   50:26   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin-import/bulk-import-client.tsx:50:26
+  48 |     const body = await adminJson<InventoryResponse>("/api/admin/inventory?status=ALL"); setVariants(body.rows ?? []);
+  49 |   }
+> 50 |   useEffect(() => { void refreshVariants().catch(e => setError(e instanceof Error ? e.message : "Unable to load inventory SKUs.")); }, []);
+     |                          ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  51 |
+  52 |   async function chooseProducts(file?: File) {
+  53 |     if (!file || importing) return;  react-hooks/set-state-in-effect
+  109:100  error    'inventoryBySku' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               prefer-const
+  201:234  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react/no-unescaped-entities
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin-products/price-tag-printer.tsx
+  234:5   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @next/next/no-img-element
+  283:19  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin-products/price-tag-printer.tsx:283:19
+  281 |     try {
+  282 |       const stored = window.localStorage.getItem(DETAILS_STORAGE_KEY);
+> 283 |       if (stored) setDetails({ ...DEFAULT_DETAILS, ...JSON.parse(stored) as Partial<BusinessDetails> });
+      |                   ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  284 |       const savedPreset = window.localStorage.getItem(PRESET_STORAGE_KEY);
+  285 |       if (savedPreset && savedPreset in PRESETS) setPreset(savedPreset as PresetKey);
+  286 |     } catch {  react-hooks/set-state-in-effect
+  305:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin-products/price-tag-printer.tsx:305:5
+  303 |   useEffect(() => {
+  304 |     let active = true;
+> 305 |     setLoading(true);
+      |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  306 |     setError(null);
+  307 |     setSuccess(null);
+  308 |     const params = new URLSearchParams({ q: query, status, stock });                                                                                                                                                                                                          react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin-products/product-editor.tsx
+   95:5    error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin-products/product-editor.tsx:95:5
+  93 |   useEffect(() => {
+  94 |     let active = true;
+> 95 |     setLoading(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  96 |     setError(null);
+  97 |     setMessage(null);
+  98 |  react-hooks/set-state-in-effect
+  313:669  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin-products/product-list.tsx
+  15:24   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin-products/product-list.tsx:15:24
+  13 |   const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  14 |   useEffect(() => {
+> 15 |     let active = true; setLoading(true); setError(null);
+     |                        ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  16 |     const params = new URLSearchParams({ q: query, status, page: String(page) });
+  17 |     void productApi<ProductList>(`?${params}`).then(data => { if (active) setResult(data); })
+  18 |       .catch(e => { if (active) setError(e instanceof Error ? e.message : "Unable to load products."); })  react-hooks/set-state-in-effect
+  28:449  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin/admin-client.ts
+  35:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin/admin-client.ts:35:5
+  33 |   useEffect(() => {
+  34 |     const controller = new AbortController(); let active = true;
+> 35 |     setLoading(true); setError(null); setData(null);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  36 |     void adminFetch<T>(path, controller.signal).then(body => { if (active) setData(body); }).catch(err => { if (active && !controller.signal.aborted) setError(err instanceof Error ? err.message : 'Unable to load data'); }).finally(() => { if (active) setLoading(false); });
+  37 |     return () => { active = false; controller.abort(); };
+  38 |   }, [path, revision]);  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin/admin-queue.tsx
+  18:19  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin/admin-queue.tsx:18:19
+  16 |   const status = params.get('status') || 'ALL', q = params.get('q') || '', page = params.get('page') || '1';
+  17 |   const [draft, setDraft] = useState(q);
+> 18 |   useEffect(() => setDraft(q), [q]);
+     |                   ^^^^^^^^ Avoid calling setState() directly within an effect
+  19 |   const { data, error, loading, reload } = useAdminData<Queue>(`/api/admin/dashboard/queue?${new URLSearchParams({ kind, status, q, page })}`);
+  20 |   function navigate(values: Record<string, string>) { const next = new URLSearchParams({ status, q, page: '1', ...values }); router.replace(`/admin/${kind}?${next}`, { scroll: false }); }
+  21 |   const title = kind === 'returns' ? 'Returns & exchanges' : kind === 'deliveries' ? 'Deliveries' : 'Orders';  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin/admin-search.tsx
+  13:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin/admin-search.tsx:13:5
+  11 |   useEffect(() => { if (open) { dialog.current?.showModal(); input.current?.focus(); } else dialog.current?.close(); }, [open]);
+  12 |   useEffect(() => {
+> 13 |     setResults([]); setError(''); setSelected(0);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  14 |     if (!open || query.trim().length < 2) { setLoading(false); return; }
+  15 |     const controller = new AbortController(); let active = true; setLoading(true);
+  16 |     const timer = window.setTimeout(() => { void adminFetch<{ results: Result[] }>(`/api/admin/dashboard/search?q=${encodeURIComponent(query.trim())}`, controller.signal).then(body => { if (active) setResults(body.results); }).catch(err => { if (active && !controller.signal.aborted) setError(err instanceof Error ? err.message : 'Search unavailable.'); }).finally(() => { if (active) setLoading(false); }); }, 250);  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin/admin-workspace.tsx
+  46:66   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/admin/admin-workspace.tsx:46:66
+  44 |   const searchButton = useRef<HTMLButtonElement>(null);
+  45 |   useEffect(() => {
+> 46 |     let active = true; const controller = new AbortController(); setChecking(true);
+     |                                                                  ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  47 |     void adminFetch<{ admin?: Staff }>('/api/admin/session', controller.signal).then(body => {
+  48 |       if (!body.admin || !['OWNER', 'OPERATIONS', 'SUPPORT', 'CATALOG'].includes(body.admin.role)) throw new Error('This account does not have an active HIDI admin role.');
+  49 |       if (active) { setAdmin(body.admin); setError(''); }  react-hooks/set-state-in-effect
+  70:138  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @next/next/no-img-element
+  77:133  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @next/next/no-img-element
+  79:530  error    Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @next/next/no-html-link-for-pages
+  83:252  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/analytics-tags.tsx
+  73:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/cart-client.tsx
+  104:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  106:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/cart-client.tsx:106:21
+  104 |     } catch (e: any) { setError(e.message); }
+  105 |   }
+> 106 |   useEffect(() => { load(); }, []);
+      |                     ^^^^ Avoid calling setState() directly within an effect
+  107 |
+  108 |   async function mutate(itemId: string, method: "PATCH" | "DELETE", quantity?: number, variantId?: string): Promise<boolean> {
+  109 |     if (mutating.current) return false;  react-hooks/set-state-in-effect
+  126:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  139:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/cart-size-editor.tsx
+  23:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/cart-size-editor.tsx:23:5
+  21 |   useEffect(() => {
+  22 |     const controller = new AbortController();
+> 23 |     setLoading(true); setError("");
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  24 |     fetch(`${BROWSER_API_URL}/products/${encodeURIComponent(slug)}`, { signal: controller.signal, cache: "no-store" })
+  25 |       .then(async response => {
+  26 |         const data: ApiProduct = await response.json();  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/checkout-client.tsx
+   20:47   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+   20:129  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+   86:40   error    Error: Cannot access variable before it is declared
+
+`checkDeliveryPin` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/checkout-client.tsx:86:40
+  84 |
+  85 |   useEffect(() => {
+> 86 |     const stopPin = observeCheckoutPin(checkDeliveryPin, () => {
+     |                                        ^^^^^^^^^^^^^^^^ `checkDeliveryPin` accessed before it is declared
+  87 |       deliveryController.current?.abort();
+  88 |       setPaymentMethod("RAZORPAY");
+  89 |       setDeliveryCheck({ status: "idle" });
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/checkout-client.tsx:167:3
+  165 |   }, [reloadCart]);
+  166 |
+> 167 |   async function checkDeliveryPin(pinValue: string, form: HTMLFormElement | null) {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 168 |     const pin = pinValue.replace(/\D/g, "").slice(0, 6);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 169 |     deliveryController.current?.abort();
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 221 |     }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 222 |   }
+      | ^^^^ `checkDeliveryPin` is declared here
+  223 |
+  224 |   function focusCheckoutProblem(message: string) {
+  225 |     const form = document.querySelector<HTMLFormElement>(".checkout-form");                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/immutability
+  129:17   warning  The ref value 'lifecycle.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'lifecycle.current' to a variable inside the effect, and use that variable in the cleanup function                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/exhaustive-deps
+  144:7    error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/checkout-client.tsx:144:7
+  142 |     if (!whatsappCart) return;
+  143 |     if (!adoptCartSession(whatsappCart)) {
+> 144 |       setError("This WhatsApp checkout link is invalid or has expired.");
+      |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  145 |       return;
+  146 |     }
+  147 |     window.history.replaceState({}, "", window.location.pathname);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/set-state-in-effect
+  319:40   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+  336:42   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+  587:195  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/checkout-client.tsx:587:195
+  585 |                   <label className={walletStyles.toggle}><input type="checkbox" checked={useWallet} disabled={busy || wallet.loading || (maxWallet <= 0 && !useWallet)} onChange={(event) => { setUseWallet(event.target.checked); setWalletInput(event.target.checked ? (maxWallet / 100).toFixed(2) : ""); }} />Use HIDI rewards</label>
+  586 |                   <p className={walletStyles.note}>{formatWalletPaise(wallet.summary.availablePaise)} available · {formatWalletPaise(wallet.summary.pendingPaise)} pending</p>
+> 587 |                   {useWallet && <label className={walletStyles.amount}>Rewards to use (₹)<input type="number" inputMode="decimal" min="0.01" step="0.01" max={Math.min(gross, Math.max(maxWallet, attempt.current?.walletPaise ?? 0)) / 100} value={walletInput} required aria-describedby="wallet-checkout-note" onChange={(event) => setWalletInput(event.target.value)} /><span id="wallet-checkout-note" className={walletStyles.note}>Use any amount up to your available rewards and order total. Your balance is checked again before payment.</span></label>}
+      |                                                                                                                                                                                                   ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  588 |                 </> : null}
+  589 |               {useWallet && (wallet.error || wallet.unavailable) && <button className={walletStyles.textButton} type="button" onClick={() => { invalidate(false); setUseWallet(false); setWalletInput(""); setError(""); }}>Continue without rewards</button>}
+  590 |             </div>}                                           react-hooks/refs
+  587:195  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/checkout-client.tsx:587:195
+  585 |                   <label className={walletStyles.toggle}><input type="checkbox" checked={useWallet} disabled={busy || wallet.loading || (maxWallet <= 0 && !useWallet)} onChange={(event) => { setUseWallet(event.target.checked); setWalletInput(event.target.checked ? (maxWallet / 100).toFixed(2) : ""); }} />Use HIDI rewards</label>
+  586 |                   <p className={walletStyles.note}>{formatWalletPaise(wallet.summary.availablePaise)} available · {formatWalletPaise(wallet.summary.pendingPaise)} pending</p>
+> 587 |                   {useWallet && <label className={walletStyles.amount}>Rewards to use (₹)<input type="number" inputMode="decimal" min="0.01" step="0.01" max={Math.min(gross, Math.max(maxWallet, attempt.current?.walletPaise ?? 0)) / 100} value={walletInput} required aria-describedby="wallet-checkout-note" onChange={(event) => setWalletInput(event.target.value)} /><span id="wallet-checkout-note" className={walletStyles.note}>Use any amount up to your available rewards and order total. Your balance is checked again before payment.</span></label>}
+      |                                                                                                                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  588 |                 </> : null}
+  589 |               {useWallet && (wallet.error || wallet.unavailable) && <button className={walletStyles.textButton} type="button" onClick={() => { invalidate(false); setUseWallet(false); setWalletInput(""); setError(""); }}>Continue without rewards</button>}
+  590 |             </div>}                              react-hooks/refs
+  587:195  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/checkout-client.tsx:587:195
+  585 |                   <label className={walletStyles.toggle}><input type="checkbox" checked={useWallet} disabled={busy || wallet.loading || (maxWallet <= 0 && !useWallet)} onChange={(event) => { setUseWallet(event.target.checked); setWalletInput(event.target.checked ? (maxWallet / 100).toFixed(2) : ""); }} />Use HIDI rewards</label>
+  586 |                   <p className={walletStyles.note}>{formatWalletPaise(wallet.summary.availablePaise)} available · {formatWalletPaise(wallet.summary.pendingPaise)} pending</p>
+> 587 |                   {useWallet && <label className={walletStyles.amount}>Rewards to use (₹)<input type="number" inputMode="decimal" min="0.01" step="0.01" max={Math.min(gross, Math.max(maxWallet, attempt.current?.walletPaise ?? 0)) / 100} value={walletInput} required aria-describedby="wallet-checkout-note" onChange={(event) => setWalletInput(event.target.value)} /><span id="wallet-checkout-note" className={walletStyles.note}>Use any amount up to your available rewards and order total. Your balance is checked again before payment.</span></label>}
+      |                                                                                                                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  588 |                 </> : null}
+  589 |               {useWallet && (wallet.error || wallet.unavailable) && <button className={walletStyles.textButton} type="button" onClick={() => { invalidate(false); setUseWallet(false); setWalletInput(""); setError(""); }}>Continue without rewards</button>}
+  590 |             </div>}  react-hooks/refs
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/editorial-product-card.tsx
+  41:79   warning  The ref value 'dialog.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'dialog.current' to a variable inside the effect, and use that variable in the cleanup function    react-hooks/exhaustive-deps
+  41:146  warning  The ref value 'trigger.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'trigger.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/header-search.tsx
+  24:24  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/header-search.tsx:24:24
+  22 |     if (!open) return;
+  23 |     const controller = new AbortController();
+> 24 |     let active = true; setLoading(true); setFailed(false); setProducts([]);
+     |                        ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  25 |     const timeout = window.setTimeout(() => controller.abort(), 10000);
+  26 |     fetch(`${API}/products`, { cache: "no-store", signal: controller.signal })
+  27 |       .then(response => response.ok ? response.json() : Promise.reject(new Error("Unable to load products")))  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/header.tsx
+  118:9    error    Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages                                                                                                                                    @next/next/no-html-link-for-pages
+  118:109  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/order-confirmation-client.tsx
+  178:7  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/product-card-media.tsx
+  399:9  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/product-card-media.tsx:399:9
+  397 |     if (!rotating || transitioning) {
+  398 |       if (!hover) {
+> 399 |         setPreloadIndex(null);
+      |         ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  400 |         setPreloadReady(false);
+  401 |         setTransitioning(false);
+  402 |       }  react-hooks/set-state-in-effect
+  479:6  warning  React Hook useEffect has missing dependencies: 'stepExpanded', 'zoomIn', and 'zoomOut'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-hooks/exhaustive-deps
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/product-contact-actions.tsx
+  109:15  warning  The ref value 'trigger.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'trigger.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/product-gallery.tsx
+  97:6  warning  React Hook useEffect has missing dependencies: 'close', 'next', 'previous', 'zoomIn', and 'zoomOut'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/recently-viewed-products.tsx
+  67:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/recently-viewed-products.tsx:67:7
+  65 |
+  66 |     if (!previous.length) {
+> 67 |       setProducts([]);
+     |       ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  68 |       return () => {
+  69 |         active = false;
+  70 |         controller.abort();  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/retention-preferences.tsx
+  62:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/retention-preferences.tsx:62:5
+  60 |     request.current = controller;
+  61 |     const currentRevision = ++revision.current;
+> 62 |     setLoading(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  63 |     setError("");
+  64 |     const current = () => !controller.signal.aborted && revision.current === currentRevision && retentionAccountId() === userId;
+  65 |     getRetentionPreferences(userId, controller.signal).then((data) => {  react-hooks/set-state-in-effect
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/site-footer.tsx
+  11:35   error    Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages                                                                                                                                    @next/next/no-html-link-for-pages
+  11:108  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/components/wallet-balance.tsx
+  68:15  warning  The ref value 'context.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'context.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/lib/supabase-auth.ts
+  163:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 79 problems (54 errors, 25 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @hidi/web@0.1.0 lint: `eslint .`
+Exit status 1

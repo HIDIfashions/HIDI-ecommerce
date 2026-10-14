@@ -1,0 +1,4 @@
+PASS chromium: SKN catalogue, complete read-only preview, exact matching, colour choice, sequential original-byte upload, duplicate and unknown blocks, interrupted-response confirmation, explicit retry, authentication, mobile bounds
+PASS firefox: SKN catalogue, complete read-only preview, exact matching, colour choice, sequential original-byte upload, duplicate and unknown blocks, interrupted-response confirmation, explicit retry, authentication, mobile bounds
+PASS webkit: SKN catalogue, complete read-only preview, exact matching, colour choice, sequential original-byte upload, duplicate and unknown blocks, interrupted-response confirmation, explicit retry, authentication, mobile bounds
+{"passed":true,"checks":117,"results":[{"engine":"chromium","passed":true},{"engine":"firefox","passed":true},{"engine":"webkit","passed":true}],"liveWrites":false}

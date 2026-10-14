@@ -1,0 +1,63 @@
+{
+  "synthetic": true,
+  "description": "Deterministic 24-megapixel noise image; bytes and safety test, not fabric/colour approval.",
+  "sharp": "0.34.1",
+  "input": {
+    "bytes": 31798076,
+    "width": 6000,
+    "height": 4000,
+    "sha256": "f14aaeaec3b93d0a09a1b6eda569cf48bd6f082db2d7db8fdec8c32e28b049b6"
+  },
+  "outputs": [
+    {
+      "requestedWidth": 384,
+      "width": 384,
+      "height": 256,
+      "bytes": 1924,
+      "format": "webp",
+      "milliseconds": 697
+    },
+    {
+      "requestedWidth": 640,
+      "width": 640,
+      "height": 427,
+      "bytes": 17384,
+      "format": "webp",
+      "milliseconds": 147
+    },
+    {
+      "requestedWidth": 1080,
+      "width": 1080,
+      "height": 720,
+      "bytes": 109270,
+      "format": "webp",
+      "milliseconds": 196
+    },
+    {
+      "requestedWidth": 1920,
+      "width": 1920,
+      "height": 1280,
+      "bytes": 685038,
+      "format": "webp",
+      "milliseconds": 375
+    },
+    {
+      "requestedWidth": 2048,
+      "width": 2048,
+      "height": 1365,
+      "bytes": 785728,
+      "format": "webp",
+      "milliseconds": 2589
+    }
+  ],
+  "sourceReads": 2,
+  "passed": true,
+  "exact40MiBBoundary": {
+    "bytes": 41943040,
+    "method": "Valid JPEG with trailing padding to test the exact byte boundary",
+    "processingPassed": true,
+    "multipartPassed": true,
+    "overLimitRejected": true
+  },
+  "originalUnchanged": true
+}

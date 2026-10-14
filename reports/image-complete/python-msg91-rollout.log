@@ -1,0 +1,9 @@
+test_failed_live_probe_restores_both_owned_images (__main__.Rollout.test_failed_live_probe_restores_both_owned_images) ... ok
+test_independent_web_release_is_preserved_and_our_api_rolls_back (__main__.Rollout.test_independent_web_release_is_preserved_and_our_api_rolls_back) ... ok
+test_success_updates_api_then_web_and_preserves_provider_secret_reference (__main__.Rollout.test_success_updates_api_then_web_and_preserves_provider_secret_reference) ... ok
+test_unexpected_live_image_prevents_all_updates (__main__.Rollout.test_unexpected_live_image_prevents_all_updates) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 3.271s
+
+OK

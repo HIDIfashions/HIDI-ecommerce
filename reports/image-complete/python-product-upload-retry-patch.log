@@ -1,0 +1,18 @@
+test_all_registered_cache_copies_are_repaired_with_inverse_byte_proof (__main__.ExactRuntimeRepair.test_all_registered_cache_copies_are_repaired_with_inverse_byte_proof) ... ok
+test_already_guarded_runtime_is_reported_without_overlay_changes (__main__.ExactRuntimeRepair.test_already_guarded_runtime_is_reported_without_overlay_changes) ... ok
+test_base_root_symlink_is_not_accepted_as_a_proven_runtime_tree (__main__.ExactRuntimeRepair.test_base_root_symlink_is_not_accepted_as_a_proven_runtime_tree) ... ok
+test_changed_file_after_scan_is_rejected_without_partial_overlay (__main__.ExactRuntimeRepair.test_changed_file_after_scan_is_rejected_without_partial_overlay) ... ok
+test_existing_overlay_path_is_rejected_before_any_new_file_is_written (__main__.ExactRuntimeRepair.test_existing_overlay_path_is_rejected_before_any_new_file_is_written) ... ok
+test_non_utf8_server_module_is_rejected_without_writes (__main__.ExactRuntimeRepair.test_non_utf8_server_module_is_rejected_without_writes) ... ok
+test_overlay_parent_symlink_cannot_redirect_the_repair_outside_overlay (__main__.ExactRuntimeRepair.test_overlay_parent_symlink_cannot_redirect_the_repair_outside_overlay) ... ok
+test_proven_helper_and_export_factory_hashes_are_fixed (__main__.ExactRuntimeRepair.test_proven_helper_and_export_factory_hashes_are_fixed) ... ok
+test_server_directory_symlink_is_rejected_without_writes (__main__.ExactRuntimeRepair.test_server_directory_symlink_is_rejected_without_writes) ... ok
+test_server_source_symlink_is_rejected_without_writes (__main__.ExactRuntimeRepair.test_server_source_symlink_is_rejected_without_writes) ... ok
+test_unknown_helper_or_factory_shape_is_rejected_before_valid_copies_are_written (__main__.ExactRuntimeRepair.test_unknown_helper_or_factory_shape_is_rejected_before_valid_copies_are_written) ... ok
+test_unregistered_identical_helper_and_missing_registered_copies_are_rejected (__main__.ExactRuntimeRepair.test_unregistered_identical_helper_and_missing_registered_copies_are_rejected) ... ok
+test_registered_export_runs_actual_helper_against_a_mock_azure_sdk (__main__.GuardedBlobBehavior.test_registered_export_runs_actual_helper_against_a_mock_azure_sdk) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.189s
+
+OK
