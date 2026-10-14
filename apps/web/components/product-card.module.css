@@ -913,8 +913,9 @@
 .error, .mobileSheetError { color: #b42318 !important; font-size: 12px !important; line-height: 1.45 !important; }
 .card [role="alert"] { color: #b42318 !important; font-size: 12px !important; line-height: 1.45 !important; }
 @media (max-width: 620px) {
-  :global([class*="collection-browser_gridOne__"]) .mobileInlineShop { display: block !important; }
-  :global([class*="collection-browser_gridOne__"]) .mobilePurchaseActions { display: grid; grid-template-columns: 1.65fr 1fr; gap: 8px; margin-top: 15px; }
-  :global([class*="collection-browser_gridOne__"]) :is(.mobileAddButton, .mobileBuyButton) { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 48px; padding: 10px 8px; font: inherit; font-size: 13px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; border-width: 1px; border-style: solid; }
-  :global([class*="collection-browser_gridOne__"]) .mobileInlineFeedback { display: block; min-height: 18px; margin: 7px 0 0; font-size: 12px; line-height: 1.45; }
+  :global([class*="collection-browser_gridOne__"]) .mobileInlineShop { display: none !important; }
+  :global([class*="collection-browser_gridOne__"]) .desktopQuickShop { display: block !important; max-height: none !important; opacity: 1 !important; overflow: visible !important; transform: none !important; }
+  :global([class*="collection-browser_gridOne__"]) .actions { display: grid; grid-template-columns: 1.65fr 1fr; gap: 8px; margin-top: 15px; }
+  :global([class*="collection-browser_gridOne__"]) :is(.addButton, .buyButton) { min-width: 0; min-height: 48px; padding: 10px 8px; font-size: 13px; }
+  :global([class*="collection-browser_gridOne__"]) .wishButton { display: none !important; }
 }
