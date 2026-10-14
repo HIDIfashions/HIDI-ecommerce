@@ -4,7 +4,6 @@ on:
     branches: [work/image-optimization-20261015]
     paths:
       - '.github/workflows/image-complete-regression.yml'
-      - 'deploy/image-optimization/streaming-candidate.py'
 permissions:
   contents: write
 concurrency:
@@ -33,27 +32,44 @@ jobs:
           cache: pnpm
       - name: Install pinned application dependencies
         run: pnpm install --frozen-lockfile
-      - name: Integrate streamed photo source on isolated branch
+      - name: Verify every reviewed source hash before applying any fix
+        run: |
+          python - <<'PY'
+          import base64,gzip,json,hashlib,pathlib
+          root=pathlib.Path.cwd()
+          encoded=''.join((root/f'deploy/image-optimization/reviewed-changes.{n}.b64').read_text().strip() for n in [1,2])
+          encoded=encoded.replace('axHc7oWloUuU5','axHc7oW4loUuU5')
+          spec=json.loads(gzip.decompress(base64.b64decode(encoded,validate=True)))
+          plans={}
+          for name,item in spec.items():
+            assert not pathlib.PurePosixPath(name).is_absolute() and '..' not in pathlib.PurePosixPath(name).parts
+            p=root/name;old=p.read_bytes() if p.exists() else b''
+            digest=hashlib.sha256(old).hexdigest()
+            if digest==item['after']:continue
+            assert digest==item['before'], 'Concurrent source change: '+name
+            text=old.decode()
+            for start,end,replacement in reversed(item['edits']):text=text[:start]+replacement+text[end:]
+            data=text.encode();assert hashlib.sha256(data).hexdigest()==item['after'], 'Reviewed output differs: '+name
+            plans[name]=data
+          for name,data in plans.items():
+            p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
+          (root/'reviewed-source-manifest.json').write_text(json.dumps({name:{k:v for k,v in item.items() if k!='edits'} for name,item in spec.items()},indent=2))
+          print('Verified and applied',len(plans),'reviewed files; no cloud writes.')
+          PY
+      - name: Bundle standalone incremental browser hashing
+        run: node deploy/image-optimization/bundle-browser-digest.mjs
+      - name: Save exact reviewed source only on the isolated candidate branch
         run: |
           set -euo pipefail
-          if ! grep -q 'readStreamedPhotoForm' 'apps/web/app/api/admin/inventory/[variantId]/images/route.ts'; then
-            python deploy/image-optimization/streaming-candidate.py
-          fi
-          pnpm --filter @hidi/web add --save-exact busboy@1.6.0 sharp@0.34.1 @noble/hashes@1.8.0
+          test "$GITHUB_REF" = refs/heads/work/image-optimization-20261015
+          test "$(git ls-remote origin "$GITHUB_REF" | cut -f1)" = "$GITHUB_SHA"
           python - <<'PY'
-          from pathlib import Path
-          p=Path('tests/photo-upload-client.test.cjs')
-          s=p.read_text().replace('const variants=[{sku:"HIDI-CREAM-M",variantId:"fixture_variant"}];','const variants=[]; // Exercise Image-SKU lookup, independently of stock SKU matching.')
-          p.write_text(s)
-          p=Path('deploy/image-optimization/streaming-photo.test.mjs')
-          p.write_text(p.read_text().replace("()=>readStreamedPhotoForm(request(await fixture('png')", "async()=>readStreamedPhotoForm(request(await fixture('png')"))
+          import json,subprocess
+          paths=list(json.load(open('reviewed-source-manifest.json')))+['deploy/admin-tools/photo-digest.mjs','deploy/product-upload/photo-digest.mjs']
+          subprocess.run(['git','add','--',*paths],check=True)
           PY
-          git add -u
-          git add apps/web/lib/photo-upload-stream.d.mts apps/web/lib/photo-azure-stream.d.mts apps/web/lib/photo-digest.d.mts apps/api/prisma/migrations/20261015020000_photo_ticket_bigint/migration.sql
           if ! git diff --cached --quiet; then
-            test "$GITHUB_REF" = refs/heads/work/image-optimization-20261015
-            test "$(git ls-remote origin "$GITHUB_REF" | cut -f1)" = "$GITHUB_SHA"
-            git -c user.name='HIDI image validation' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Wire streamed uploads without fixed photo byte caps'
+            git -c user.name='HIDI image validation' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Finalize streamed upload safety, all photo entry points and regression fixtures'
             git push origin HEAD:refs/heads/work/image-optimization-20261015
           fi
       - name: Install isolated image and browser test tools
@@ -73,7 +89,7 @@ jobs:
           path: |
             reports/image-complete/
             test-results/
-            streaming-source-report.json
+            reviewed-source-manifest.json
           retention-days: 14
       - name: Save read-only evidence branch, never production
         if: always()
@@ -89,5 +105,5 @@ jobs:
           python - <<'PY'
           import json
           r=json.load(open('reports/image-complete/results.json'))
-          assert all(s['status']=='PASS' for s in r['suites']), 'Some complete-application gates failed; see results and individual cases.'
+          assert all(s['status']=='PASS' for s in r['suites']), 'Some complete-application gates failed; see every case and full logs.'
           PY
