@@ -183,7 +183,7 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false, 
     if (adding.current || !canBuy || phase === "added") return;
     setError(""); setMessage(""); setBagLink(false);
     if (!selected) {
-      setChooseSize(true); setError("Choose your size above to continue.");
+      setChooseSize(true); setError("Select a size to continue.");
       const mobileVisible = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
       const sizeHost = mobileQuickOpen
         ? sizesRef.current
@@ -313,19 +313,19 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false, 
           <button
             type="button"
             className={`${styles.mobileAddButton} ${phase === "added" ? styles.added : ""}`}
-            disabled={busy || !canBuy || !selected || phase === "added"}
+            disabled={busy || !canBuy || phase === "added"}
             aria-busy={phase === "adding"}
             onClick={() => void add("bag")}
           >
             {phase === "adding" ? <LoaderCircle className={styles.spinner} size={16} aria-hidden="true" />
               : phase === "added" ? <Check size={16} aria-hidden="true" />
               : <ShoppingBag size={16} aria-hidden="true" />}
-            <span>{phase === "adding" ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to cart"}</span>
+            <span>{phase === "adding" ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to Cart"}</span>
           </button>
           <button
             type="button"
             className={styles.mobileBuyButton}
-            disabled={busy || !canBuy || !selected || phase === "added"}
+            disabled={busy || !canBuy || phase === "added"}
             aria-busy={buying}
             onClick={() => void add("checkout")}
           >
@@ -334,8 +334,8 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false, 
           </button>
         </div>
 
-        <p className={styles.mobileInlineFeedback} role={error ? "alert" : "status"}>
-          {error || message || (!selected ? "Choose a size to add this piece." : "")}
+        <p className={`${styles.mobileInlineFeedback} ${error ? styles.error : ""}`} role={error ? "alert" : "status"}>
+          {error || message}
         </p>
       </div>
 
@@ -371,16 +371,16 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false, 
         </div>
         <div className={styles.actions}>
           <button type="button" className={`${styles.addButton} ${phase === "added" ? styles.added : ""}`}
-            disabled={busy || !canBuy || !selected || phase === "added"} aria-busy={phase === "adding"}
-            onClick={() => void add("bag")} aria-label={`${!canBuy ? "Sold out" : "Add to Bag"} — ${product.name}`}>
+            disabled={busy || !canBuy || phase === "added"} aria-busy={phase === "adding"}
+            onClick={() => void add("bag")} aria-label={`${!canBuy ? "Sold out" : "Add to Cart"} — ${product.name}`}>
             {phase === "adding" ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" />
               : phase === "added" ? <Check size={17} aria-hidden="true" /> : <ShoppingBag size={17} aria-hidden="true" />}
-            <span>{phase === "adding" ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to Bag"}</span>
+            <span>{phase === "adding" ? "Adding…" : phase === "added" ? "Added" : !canBuy ? "Sold out" : "Add to Cart"}</span>
           </button>
           <button
             type="button"
             className={styles.buyButton}
-            disabled={busy || !canBuy || !selected || phase === "added"}
+            disabled={busy || !canBuy || phase === "added"}
             aria-busy={buying}
             onClick={() => void add("checkout")}
             aria-label={`Buy now — ${product.name}`}
@@ -500,13 +500,13 @@ export function ProductCard({ product, initialVariantId, priorityMedia = false, 
             {busy ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" />
               : phase === "added" ? <Check size={17} aria-hidden="true" />
               : <ShoppingBag size={17} aria-hidden="true" />}
-            {busy ? "Adding…" : phase === "added" ? "Added to bag" : "Add to bag"}
+            {busy ? "Adding…" : phase === "added" ? "Added to bag" : "Add to Cart"}
           </button>
 
           <button
             type="button"
             className={styles.mobileSheetBuy}
-            disabled={busy || !canBuy || !selected || phase === "added"}
+            disabled={busy || !canBuy || phase === "added"}
             aria-busy={buying}
             onClick={() => void add("checkout")}
           >
