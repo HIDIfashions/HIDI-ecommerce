@@ -1,0 +1,74 @@
+name: Publish HIDI business contact details
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [deploy/contact-details/**, .github/workflows/contact-details-release.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/migration/azure-sql-blob'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-contact-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-contact-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Check contact details and release syntax
+        run: |
+          python3 deploy/contact-details/patch.test.py
+          node --check deploy/contact-details/probes.mjs
+          node --check deploy/contact-details/candidate.mjs
+          python3 -m py_compile deploy/contact-details/patch-runtime.py deploy/contact-details/release.py
+      - name: Install exact-manifest backup tooling
+        run: sudo apt-get update -qq && sudo apt-get install -y skopeo
+      - name: Install desktop and mobile browser test engines
+        run: |
+          npm install --prefix /tmp/hidi-contact-browser --no-save playwright@1.56.1
+          node /tmp/hidi-contact-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture live image and verify exact rollback backup
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/contact-details/release.py capture
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-contact-details-private/web/candidate-app" >> "$GITHUB_ENV"
+      - name: Update only the Talk to HIDI contact section
+        run: python3 deploy/contact-details/release.py compose
+      - name: Verify contact links, address and retained shopping routes in six browser and viewport combinations
+        run: |
+          node deploy/contact-details/candidate.mjs
+          python3 deploy/contact-details/release.py seal
+      - name: Publish the exact tested web image
+        run: python3 deploy/contact-details/release.py publish
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Release web and verify business contact details
+        id: apply
+        timeout-minutes: 20
+        run: timeout --signal=TERM --kill-after=10m 15m python3 deploy/contact-details/release.py apply --image "$WEB_IMAGE"
+      - name: Recover an interrupted owned rollout
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        timeout-minutes: 15
+        run: python3 deploy/contact-details/release.py recover --image "$WEB_IMAGE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contact-details-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/contact-details
+          retention-days: 30
