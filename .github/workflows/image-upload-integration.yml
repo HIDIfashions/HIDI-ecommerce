@@ -28,13 +28,14 @@ jobs:
           node-version: '22.16.0'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Complete isolated API fixtures and preserve exact tested source
+      - name: Complete isolated API and normalized origin fixtures
         run: |
           python deploy/image-optimization/complete-upload-fixture.py
+          python deploy/image-optimization/align-upload-fixture-origin.py
           test "$(git ls-remote origin refs/heads/work/image-optimization-20261015 | cut -f1)" = "$GITHUB_SHA"
-          git add tests/photo-web-upload.browser.mjs
+          git add tests/photo-web-upload.browser.mjs tests/photo-route-current.cases.mjs
           if ! git diff --cached --quiet; then
-            git -c user.name='HIDI upload test' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Complete review and product contracts for web upload integration'
+            git -c user.name='HIDI upload test' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Align loopback upload fixture origins and preserve authorization'
             git push origin HEAD:refs/heads/work/image-optimization-20261015
           fi
       - name: Prepare isolated browser tooling
