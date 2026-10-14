@@ -45,7 +45,7 @@ const base = 'http://127.0.0.1:' + port;
 const priorReserve=createServer();await new Promise(done=>priorReserve.listen(0,'127.0.0.1',done));
 const priorPort=priorReserve.address().port;await new Promise(done=>priorReserve.close(done));
 const priorRoot=resolve(root,'../base-app');
-const priorRuntime=spawn(process.execPath,[join(priorRoot,'server.mjs')],{cwd:priorRoot,env:{...process.env,PORT:String(priorPort),STOREFRONT_ORIGIN:api,API_URL:api,INTERNAL_API_URL:api},stdio:['ignore','pipe','pipe']});
+const priorRuntime=spawn(process.execPath,[join(priorRoot,'server.mjs')],{cwd:priorRoot,env:{...process.env,PORT:String(priorPort),STOREFRONT_ORIGIN:new URL(api).origin,API_URL:api,INTERNAL_API_URL:api},stdio:['ignore','pipe','pipe']});
 priorRuntime.stdout.on('data',c=>logs+=c);priorRuntime.stderr.on('data',c=>logs+=c);
 const priorBase='http://127.0.0.1:'+priorPort;
 try {
