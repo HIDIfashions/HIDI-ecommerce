@@ -15,7 +15,7 @@ export default function ContactPage() {
     <section className={styles.notice} aria-label="Contact HIDI"><h2>Talk to HIDI</h2>
       <p><strong>WhatsApp:</strong> <a href="https://wa.me/917093709353" target="_blank" rel="noopener noreferrer">+91 70937 09353</a></p>
       <p><strong>Mobile:</strong> <a href="tel:+917093709353">+91 70937 09353</a></p>
-      <p><strong>Email:</strong> <a href="mailto:contact@hidiindia.com">contact@hidiindia.com</a></p>
+      <p><strong>Email:</strong> <a href="mailto:Contact@hidiindia.com">Contact@hidiindia.com</a></p>
       <address style={{ fontStyle: "normal", lineHeight: 1.6 }}><strong>Contact Address:</strong><br />
         Flat No. 704, Hyma Arcade<br />
         Khanamet, Ayyappa Society, Madhapur<br />

@@ -8,5 +8,5 @@ source='UNRELATED_BEFORE,'+section+',UNRELATED_AFTER'
 updated=patch.patch_text(source)
 assert updated.startswith('UNRELATED_BEFORE,') and updated.endswith(',UNRELATED_AFTER')
 assert patch.INTRO not in updated
-for value in ['https://wa.me/917093709353','tel:+917093709353','mailto:contact@hidiindia.com','Hyma Arcade','500081','Talk to HIDI',patch.GUIDANCE]: assert value in updated
+for value in ['https://wa.me/917093709353','tel:+917093709353','mailto:Contact@hidiindia.com','Hyma Arcade','500081','Talk to HIDI',patch.GUIDANCE]: assert value in updated
 print('PASS: contact card replaced; surrounding page and customer guidance preserved')

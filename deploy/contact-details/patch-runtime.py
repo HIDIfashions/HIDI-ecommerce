@@ -6,7 +6,7 @@ import re
 PAGE = 'apps/web/.next/server/app/contact/page.js'
 INTRO = 'Direct support is not open in this preview.'
 GUIDANCE = 'For an order enquiry, keep your order number and the affected item or size ready. Do not share card details, passwords or payment OTPs.'
-DETAILS = '<p><strong>WhatsApp:</strong> <a href="https://wa.me/917093709353" target="_blank" rel="noopener noreferrer">+91 70937 09353</a></p><p><strong>Mobile:</strong> <a href="tel:+917093709353">+91 70937 09353</a></p><p><strong>Email:</strong> <a href="mailto:contact@hidiindia.com">contact@hidiindia.com</a></p><address style="font-style:normal;line-height:1.6"><strong>Contact Address:</strong><br>Flat No. 704, Hyma Arcade<br>Khanamet, Ayyappa Society, Madhapur<br>Hyderabad, Telangana – 500081<br>India</address>'
+DETAILS = '<p><strong>WhatsApp:</strong> <a href="https://wa.me/917093709353" target="_blank" rel="noopener noreferrer">+91 70937 09353</a></p><p><strong>Mobile:</strong> <a href="tel:+917093709353">+91 70937 09353</a></p><p><strong>Email:</strong> <a href="mailto:Contact@hidiindia.com">Contact@hidiindia.com</a></p><address style="font-style:normal;line-height:1.6"><strong>Contact Address:</strong><br>Flat No. 704, Hyma Arcade<br>Khanamet, Ayyappa Society, Madhapur<br>Hyderabad, Telangana – 500081<br>India</address>'
 SECTION = re.compile(r'\(0,([\w$]+)\.jsxs\)\("section",\{className:([^,]+),"aria-label":"Contact HIDI",children:\[')
 
 def call_end(source, start):
@@ -52,6 +52,6 @@ def patch_runtime(base, overlay):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(patch_text(original))
     return {'passed':True,'allowedFiles':[PAGE],'contactSectionOnly':True,
-            'phone':'+917093709353','email':'contact@hidiindia.com',
+            'phone':'+917093709353','email':'Contact@hidiindia.com',
             'address':'Flat No. 704, Hyma Arcade, Khanamet, Ayyappa Society, Madhapur, Hyderabad, Telangana – 500081, India',
             'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

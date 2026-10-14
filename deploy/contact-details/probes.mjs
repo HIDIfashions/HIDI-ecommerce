@@ -43,8 +43,8 @@ export async function probe(base, output) {
             await card.getByRole('heading',{name:'Talk to HIDI',exact:true}).waitFor();
             assert.equal(await card.locator('a[href="https://wa.me/917093709353"]').count(),1);
             assert.equal(await card.locator('a[href="tel:+917093709353"]').count(),1);
-            assert.equal(await card.locator('a[href="mailto:contact@hidiindia.com"]').count(),1);
-            for(const text of ['+91 70937 09353','contact@hidiindia.com','Flat No. 704, Hyma Arcade','Khanamet, Ayyappa Society, Madhapur','Hyderabad, Telangana – 500081','India']) assert((await card.innerText()).includes(text),text);
+            assert.equal(await card.locator('a[href="mailto:Contact@hidiindia.com"]').count(),1);
+            for(const text of ['+91 70937 09353','Contact@hidiindia.com','Flat No. 704, Hyma Arcade','Khanamet, Ayyappa Society, Madhapur','Hyderabad, Telangana – 500081','India']) assert((await card.innerText()).includes(text),text);
             assert(!(await card.innerText()).includes('Direct support is not open'));
             assert((await card.innerText()).includes('For an order enquiry'));
             assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Contact address fits mobile viewport');
@@ -53,7 +53,7 @@ export async function probe(base, output) {
           const contactResponse=await page.goto(base+'/contact',{waitUntil:'domcontentloaded'});
           assert(contactResponse.ok());
           const raw=await contactResponse.text();
-          assert(raw.includes('tel:+917093709353') && raw.includes('mailto:contact@hidiindia.com'),'Contact details appear in initial server HTML');
+          assert(raw.includes('tel:+917093709353') && raw.includes('mailto:Contact@hidiindia.com'),'Contact details appear in initial server HTML');
           await verifyContact();
           await page.screenshot({path:`${output}/${engine}-${width}-contact.png`});
           assert((await page.goto(base+'/',{waitUntil:'domcontentloaded'})).ok());
