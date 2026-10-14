@@ -1,0 +1,700 @@
+suite,case,status
+frontend-regression,apps/web/lib/product-sharing.test.mjs,FAIL
+frontend-regression,IST midnight boundaries and exclusive end are correct,PASS
+frontend-regression,"report defaults, leap days and 90-day limit",PASS
+frontend-regression,search and pagination reject abusive input without building SQL,PASS
+frontend-regression,"daily series fills gaps, aligns prior period and serializes bigint money",PASS
+frontend-regression,"overview uses database totals, not its recent eight-row preview",PASS
+frontend-regression,"queue pagination is database-backed, stable and delivery workload ignores report dates",PASS
+frontend-regression,returns are item-level requests and include in-progress states,PASS
+frontend-regression,invalid queue filters fail before accessing records,PASS
+frontend-regression,catalogue role never queries customers or orders in global search,PASS
+frontend-regression,"owner global search resolves products, orders and customer-order navigation",PASS
+frontend-regression,guarded endpoints retain required existing permissions,PASS
+frontend-regression,CSV neutralizes spreadsheet formulas and escapes quotes,PASS
+frontend-regression,BFF has an explicit resource allowlist and no public cache or browser secret,PASS
+frontend-regression,"admin workspace exposes product operations, including price-tag printing",PASS
+frontend-regression,"admin code requests use the HIDI staff gate, with no direct provider signup request",PASS
+frontend-regression,an unlisted email denial is displayed and never falls back to direct OTP delivery,PASS
+frontend-regression,malformed emails are rejected before the network request,PASS
+frontend-regression,store proxy calls remain on the current browser origin,PASS
+frontend-regression,explicit direct API endpoints remain supported,PASS
+frontend-regression,server-side rendering retains its internal API configuration,PASS
+frontend-regression,development defaults and production fail-closed behavior are preserved,PASS
+frontend-regression,MSG91 failure switches to Firebase and verifies the Firebase proof through HIDI,PASS
+frontend-regression,"Firebase fallback rejects rate limits and invalid directives: {""ok"":false,""body"":{""message"":""Please wait before requesting another OTP""}}",PASS
+frontend-regression,"Firebase fallback rejects rate limits and invalid directives: {""body"":{""phone"":""+918888888888"",""channel"":""FIREBASE"",""provider"":""firebase"",""clientHandled"":true,""fallback"":true}}",PASS
+frontend-regression,"Firebase fallback rejects rate limits and invalid directives: {""body"":{""phone"":""+919999999999"",""channel"":""FIREBASE"",""provider"":""firebase"",""clientHandled"":true,""fallback"":false}}",PASS
+frontend-regression,Firebase fallback errors cannot be reported as a sent SMS,PASS
+frontend-regression,runtime MSG91 SMS replaces a baked Firebase provider and verifies through HIDI,PASS
+frontend-regression,runtime WhatsApp replaces a baked Firebase provider and SMS label,PASS
+frontend-regression,unconfigured runtime refuses to send rather than using a baked provider,PASS
+frontend-regression,"invalid runtime configuration fails closed: {""ok"":false,""body"":{}}",PASS
+frontend-regression,"invalid runtime configuration fails closed: {""body"":{""phoneOtp"":true,""channel"":""SMS"",""provider"":""whatsapp""}}",PASS
+frontend-regression,"invalid runtime configuration fails closed: {""body"":{""phoneOtp"":true,""channel"":""WHATSAPP"",""provider"":""unknown""}}",PASS
+frontend-regression,a failed configuration request can be retried,PASS
+frontend-regression,the delivered channel overrides a configuration that changed during the request,PASS
+frontend-regression,a switch to client-handled Firebase cannot be reported as a sent WhatsApp code,PASS
+frontend-regression,verification keeps the provider that issued the pending OTP across a runtime switch,PASS
+frontend-regression,primary Firebase requires server send authorization before using the SDK,PASS
+frontend-regression,server throttle applies to primary Firebase and exposes its retry deadline,PASS
+frontend-regression,"primary Firebase rejects mismatched send directives: {""phone"":""+918888888888"",""channel"":""FIREBASE"",""provider"":""firebase"",""clientHandled"":true,""retryAfterSeconds"":60}",PASS
+frontend-regression,"primary Firebase rejects mismatched send directives: {""phone"":""+919999999999"",""channel"":""FIREBASE"",""provider"":""firebase"",""clientHandled"":true,""retryAfterSeconds"":60,""fallback"":true}",PASS
+frontend-regression,"primary Firebase rejects mismatched send directives: {""phone"":""+919999999999"",""channel"":""FIREBASE"",""provider"":""firebase"",""clientHandled"":false,""retryAfterSeconds"":60}",PASS
+frontend-regression,a failed resend retains the issuer proof and can verify the previous code,PASS
+frontend-regression,a successful resend refreshes runtime settings and replaces the issuing provider,PASS
+frontend-regression,Firebase SDK resend failure preserves the prior confirmation,PASS
+frontend-regression,invalid retry metadata and non-throttle responses do not set a retry deadline,PASS
+frontend-regression,browser refresh uses its own store proxy rather than a baked-in production host,PASS
+frontend-regression,a matching refresh rotates the active session,PASS
+frontend-regression,a late successful refresh cannot undo logout,PASS
+frontend-regression,a late successful refresh cannot replace another customer's session,PASS
+frontend-regression,a late failed refresh cannot clear another customer's session,PASS
+frontend-regression,a late failed refresh after logout does not mutate storage again,PASS
+frontend-regression,a failed refresh of the still-active original session clears it,PASS
+frontend-regression,a response for an unrelated user cannot be saved,PASS
+frontend-regression,a session switch during JSON parsing also prevents a stale save,PASS
+frontend-regression,"concurrent account, wallet and navigation callers share one successful refresh",PASS
+frontend-regression,concurrent failed refresh clears the expired session once for all callers,PASS
+frontend-regression,a different customer never joins another customer's in-flight refresh,PASS
+frontend-regression,a later expiry starts a new refresh after the shared request completes,PASS
+frontend-regression,Azure Firebase setup preserve,PASS
+frontend-regression,Azure Firebase setup new-secret,PASS
+frontend-regression,Azure Firebase setup production,PASS
+frontend-regression,Azure Firebase setup migration-failed,PASS
+frontend-regression,Azure Firebase setup env-only,PASS
+frontend-regression,Azure Firebase setup missing-admin,PASS
+frontend-regression,Azure Firebase setup ambiguous-admin,PASS
+frontend-regression,Azure MSG91 SMS setup: sms,PASS
+frontend-regression,Azure MSG91 SMS setup: check,PASS
+frontend-regression,Azure MSG91 SMS setup: existing-key,PASS
+frontend-regression,Azure MSG91 SMS setup: missing-key,PASS
+frontend-regression,Azure MSG91 SMS setup: missing-template,PASS
+frontend-regression,Azure MSG91 SMS setup: invalid-signing,PASS
+frontend-regression,Azure MSG91 SMS setup: missing-signing-ref,PASS
+frontend-regression,Azure MSG91 SMS setup: missing-key-ref,PASS
+frontend-regression,Azure MSG91 SMS setup: multiple,PASS
+frontend-regression,Azure MSG91 SMS setup: disabled,PASS
+frontend-regression,Azure MSG91 SMS setup: production,PASS
+frontend-regression,Azure MSG91 SMS setup: unguarded,PASS
+frontend-regression,Azure MSG91 SMS setup: web-unready,PASS
+frontend-regression,Azure MSG91 SMS setup: unsafe-endpoint,PASS
+frontend-regression,Azure MSG91 SMS setup: missing-firebase,PASS
+frontend-regression,Azure MSG91 SMS setup: mismatched-firebase,PASS
+frontend-regression,modified and non-primary logo clicks preserve native link navigation,PASS
+frontend-regression,logo scroll follows reduced-motion preference,PASS
+frontend-regression,decorative detail media mounts on intent and not during initial render,PASS
+frontend-regression,detail intent listeners are removed on unmount,PASS
+frontend-regression,quick-add bodies are deferred without changing the shared cart write,PASS
+frontend-regression,"responsive media sizes distinguish spotlight, smaller edits and product cards",PASS
+frontend-regression,mobile hero is bounded and craft imagery is not artificially enlarged,PASS
+frontend-regression,search spacing and newsletter wording avoid crowding and unverified incentives,PASS
+frontend-regression,homepage neutral tokens resolve to the same shared ivory,PASS
+frontend-regression,"Privileges has a flat shared background, not a separate beige or gold gradient",PASS
+frontend-regression,shopping services use the same flat ivory as the craft story,PASS
+frontend-regression,responsive rules cannot reintroduce a gradient on neutral homepage sections,PASS
+frontend-regression,"photography vignettes are confined to image overlays, while privileges use native disclosure",PASS
+frontend-regression,drawer tracks actual header bottom at phone and tablet widths,PASS
+frontend-regression,header resize and viewport/scroll changes recompute the anchor,PASS
+frontend-regression,desktop transition closes the mobile drawer,PASS
+frontend-regression,"closing removes observers, listeners and measured state",PASS
+frontend-regression,closed menu does not measure or attach observers,PASS
+frontend-regression,CSS protects viewport positioning and scrollable content from regression,PASS
+frontend-regression,single-SKU selection accepts large photos and rejects invalid sizes before uploading,PASS
+frontend-regression,bulk photos accept files above the former 40 MiB cap with correct SKU mapping,PASS
+frontend-regression,"size and colour intersect on one purchasable SKU, not separate variants",PASS
+frontend-regression,unavailable sizes never satisfy filters,PASS
+frontend-regression,multiple choices OR within a group and AND across groups,PASS
+frontend-regression,"price boundaries are exact paise, without gaps or overlap",PASS
+frontend-regression,invalid money fails closed,PASS
+frontend-regression,price filters cannot use a cheaper different colour,PASS
+frontend-regression,sort by qualifying variant price is stable and leaves source inventory intact,PASS
+frontend-regression,clearing filters restores the complete original catalogue including sold-out cards,PASS
+frontend-regression,missing fabric does not falsely satisfy a fabric filter,PASS
+frontend-regression,product-level sold-out flag cannot be bypassed by stale variant counts,PASS
+frontend-regression,matchingVariants retains exact SKU identifiers and does not select a size,PASS
+frontend-regression,overlay and full search accept reversed multiword queries,PASS
+frontend-regression,"search handles case, punctuation, repeated spaces and accent folding",PASS
+frontend-regression,Workwear Edit search retains the original Work Edit catalogue name and route,PASS
+frontend-regression,empty and punctuation-only search never matches the entire store,PASS
+frontend-regression,SKU search works without a product name,PASS
+frontend-regression,unknown price/sort controls do not mutate or discard catalogue,PASS
+frontend-regression,explicit labelled catalogue facts are used without inferring from the name,PASS
+frontend-regression,photography and the word set never invent included pieces or fabric,PASS
+frontend-regression,labels are case-insensitive and tolerate CRLF and spaces,PASS
+frontend-regression,empty or misleading in-sentence labels do not become garment facts,PASS
+frontend-regression,complete catalogue evidence clears all readiness gaps,PASS
+frontend-regression,"each available variant needs usable measurements, not only the first size",PASS
+frontend-regression,invalid and zero garment measurements remain a content gap,PASS
+frontend-regression,unavailable variant missing measurements does not prevent complete available stock,PASS
+frontend-regression,published shipping threshold is inclusive and seven-day eligibility is consistent,PASS
+frontend-regression,"unapproved exchange, dispatch and refund timelines remain explicit gaps",PASS
+frontend-regression,public support never falls back to private SMTP or owner email,PASS
+frontend-regression,"an approved email is encoded as a mailto link, not active markup",PASS
+frontend-regression,"header injection, markup and malformed support contacts are rejected",PASS
+frontend-regression,"valid international support phone is normalized, missing phone is not fabricated",PASS
+frontend-regression,PDP narrative omits labelled facts without losing ordinary descriptive text,PASS
+frontend-regression,feature off and anonymous sessions make no API requests,PASS
+frontend-regression,"independent choices and consent version are sent, without storing browsing history",PASS
+frontend-regression,a paused server still permits a preference withdrawal request,PASS
+frontend-regression,switching identity while token resolves prevents the old customer's request,PASS
+frontend-regression,switching identity while response resolves rejects stale preferences,PASS
+frontend-regression,invalid preference response fails closed,PASS
+frontend-regression,"tracker stays silent when disabled, anonymous, or personalization not opted in",PASS
+frontend-regression,"only 30 visible seconds qualify, and each product detail is recorded once",PASS
+frontend-regression,size events require consent and matching product; repeated size event is deduplicated,PASS
+frontend-regression,logout cancels the clock and suppresses further size events,PASS
+frontend-regression,old customer's late consent cannot enable tracking for a new customer,PASS
+frontend-regression,withdrawing consent immediately resets tracking pending server confirmation,PASS
+frontend-regression,indexing requires an explicitly opened production domain,PASS
+frontend-regression,primary HIDI domain can force canonical URLs for SEO consolidation,PASS
+frontend-regression,"product offers retain each variant's real price, currency, SKU and stock",PASS
+frontend-regression,only known migrated media is normalized to the versioned local display proxy,PASS
+frontend-regression,HIDI India domain is covered by launch gates and image optimizer allowlists,PASS
+frontend-regression,social proof uses only real published review evidence,PASS
+frontend-regression,WCAG foundation keeps keyboard focus visible and modal overlays contained,PASS
+frontend-regression,forms and utility controls expose assistive status and labels,PASS
+frontend-regression,"SEO foundation exposes canonical metadata, sitemap and crawl controls",PASS
+frontend-regression,analytics and browser security hardening stay environment gated,PASS
+frontend-regression,product and collection pages publish search metadata and structured data,PASS
+frontend-regression,private and transactional storefront routes are noindex,PASS
+frontend-regression,catalogue cards share media observers instead of creating one per card,PASS
+frontend-regression,collection LCP prioritizes only the leading product media,PASS
+frontend-regression,homepage requests only a bounded featured catalogue payload,PASS
+frontend-regression,"homepage launch fallback is bounded, premium and navigable",PASS
+frontend-regression,homepage premium edit keeps real best sellers first when sales data exists,PASS
+frontend-regression,Shop by Edit stays concise and shows the four approved categories,PASS
+frontend-regression,homepage exposes the four core collection destinations without a marketplace strip,PASS
+frontend-regression,homepage showcases HIDI Privileges without turning into a discount banner,PASS
+frontend-regression,homepage follows the new editorial shopping flow without repeating promotional sections,PASS
+frontend-regression,HIDI Privileges remains closed by default with keyboard-operable terms and responsive columns,PASS
+frontend-regression,homepage service strip communicates four practical shopping promises,PASS
+frontend-regression,homepage WhatsApp service falls back safely when no business number is configured,PASS
+frontend-regression,homepage WhatsApp service creates a clean external handoff when configured,PASS
+frontend-regression,empty reviews remain calm without star or zero-count summaries,PASS
+frontend-regression,review CTA is a native disclosure with truthful private-invitation guidance,PASS
+frontend-regression,populated reviews expose accessible ratings and retain the review disclosure,PASS
+frontend-regression,unverified reviews never acquire a verified-purchase badge,PASS
+frontend-regression,"review copy renders as text, not customer-provided markup",PASS
+frontend-regression,WhatsApp control is disabled and explained when no business number is configured,PASS
+frontend-regression,"configured WhatsApp dialog has labelled controls, icon and a truthful handoff note",PASS
+frontend-regression,initial WhatsApp selection never silently chooses size or bypasses stock verification,PASS
+frontend-regression,invalid configured WhatsApp numbers fail closed,PASS
+frontend-regression,review CTA and review submission have at least 48px minimum height,PASS
+frontend-regression,homepage hero preserves the full-body garden composition on desktop,PASS
+frontend-regression,homepage section transitions stay compact without oversized blank gaps,PASS
+frontend-regression,"homepage premium interactions preserve desktop rhythm, mobile stacking and reduced motion",PASS
+frontend-regression,craft and lookbook retain honest editorial attribution without unverified fabric or customer claims,PASS
+frontend-regression,storefront typography is build-safe and does not depend on Google font fetching,PASS
+frontend-regression,"HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and warm ivory",FAIL
+frontend-regression,"Option 1 footer keeps the HIDI ending dusty clay, gold and responsive",PASS
+frontend-regression,HIDI Privileges disclosure has usable interaction targets without loud hover panels,PASS
+frontend-regression,bag groups the same product and colour while preserving size controls,PASS
+frontend-regression,"checkout PIN helper is advisory, sanitized and preserves editable delivery fields",PASS
+frontend-regression,bag and checkout include the advertised complimentary-shipping threshold,PASS
+frontend-regression,checkout keeps guest purchase prominent and minimizes typing friction,PASS
+frontend-regression,"checkout keeps shipping promise, delivery assistance and recovery aligned",PASS
+frontend-regression,HIDI Fit only presents verified garment measurements,PASS
+frontend-regression,WhatsApp ordering uses the recognisable WhatsApp mark,PASS
+frontend-regression,HIDI Fit selected size toggles off when the same size is clicked again,PASS
+frontend-regression,modal CSS bounds desktop size and allows content scrolling,PASS
+frontend-regression,mobile modal CSS is a bounded bottom sheet with safe-area space and readable selects,PASS
+frontend-regression,"modal actions retain usable target sizes, focus outlines and reduced-motion styles",PASS
+frontend-regression,"dialog source retains native-modal, cancellation and focus-return hooks",PASS
+frontend-regression,quality layer loads last without overriding admin or approved theme tokens,PASS
+frontend-regression,phone and tablet navigation no longer overlaps the campaign,PASS
+frontend-regression,mobile garment area is separate from campaign copy and motion button,PASS
+frontend-regression,PDP touch controls have 48px targets and keyboard focus clears sticky chrome,PASS
+frontend-regression,entry fields keep a readable minimum without changing colour swatches,PASS
+frontend-regression,catalogue filter drawer clears the sticky header and uses reachable controls,PASS
+frontend-regression,ivory size and colour fills exclude selected and disabled states,PASS
+frontend-regression,surface overrides load after typography and compatibility styles,PASS
+frontend-regression,one shared ivory token drives public surfaces,PASS
+frontend-regression,"inner header is transparent, and desktop grid fits the approved logo",PASS
+frontend-regression,"collection title is 24px desktop and 22px mobile, using shared font",PASS
+frontend-regression,collection headings do not reintroduce HIDI EDIT or descriptive subtitle,PASS
+frontend-regression,home logo scrolls to top and closes the menu without stealing focus,PASS
+frontend-regression,logo on another page retains normal Next Link navigation to home,PASS
+frontend-regression,public CSS modules contain no hard-coded white surface fills,PASS
+frontend-regression,inline product and cart fills use the shared token without altering imagery,PASS
+frontend-regression,native input rule excludes color swatches and validation feedback,PASS
+frontend-regression,wallet feature off or anonymous session never fetches balances,PASS
+frontend-regression,"wallet request is authenticated/no-store and 404 is unavailable, not a zero balance",PASS
+frontend-regression,stale wallet response cannot publish another customer's balance,PASS
+frontend-regression,account switch during token refresh makes no wallet request,PASS
+frontend-regression,wallet amounts are exact paise and allow full order coverage without percentage cap,PASS
+frontend-regression,malformed wallet balances fail closed; disabled real ledger is retained,PASS
+frontend-regression,"payment response enforces cash + rewards = gross, including full-wallet capture",PASS
+frontend-regression,"retry fingerprint changes with account, cart, wallet or delivery but not object key order",PASS
+frontend-regression,wallet checkbox starts unchecked; full-wallet checkout works without Razorpay SDK,FAIL
+frontend-regression,cash checkout does not create an order before SDK is available,FAIL
+frontend-regression,partial redemption sends only the server-authoritative cash amount to Razorpay,FAIL
+frontend-regression,double submit creates only one prepare request,FAIL
+frontend-regression,a lower freshly loaded wallet balance blocks new checkout instead of silently increasing cash,FAIL
+frontend-regression,identical retry reuses checkout token even when its wallet funds are reserved,FAIL
+frontend-regression,changed wallet choice creates a new idempotency key,FAIL
+frontend-regression,captured cash retry redirects without opening a second Razorpay payment,FAIL
+frontend-regression,account switch cancels a late full-wallet response and resets checkbox,FAIL
+frontend-regression,guest cash checkout has no Authorization and wallet flag off renders no rewards controls,FAIL
+frontend-regression,bag ownership conflict offers explicit new-bag action without automatic replacement,FAIL
+frontend-regression,COD response is confirmed but unpaid and requires no gateway fields,PASS
+frontend-regression,guest COD checkout bypasses missing Razorpay SDK and redirects once,FAIL
+api-regression,signed-in account review is ownership-scoped and published as a verified purchase,PASS
+api-regression,account review rejects pieces before delivery,PASS
+api-regression,account review prevents a second review for the same order item,PASS
+api-regression,public product reviews return verified count and full rating distribution,PASS
+api-regression,existing wallet authSubject binding remains authoritative when verified email changes,PASS
+api-regression,matching an email must not inherit a wallet bound to a different authenticated subject,PASS
+api-regression,guest claim writes repeat both unclaimed ownership and current verified email guards,PASS
+api-regression,ownsOrder uses wallet-bound local identity and cannot authorize another email-matched owner's order,PASS
+api-regression,global admin search excludes deleted products before the six-result limit while retaining ordinary archived products and order history,PASS
+api-regression,catalogue search preserves SKU matching and cannot disclose orders or customers,PASS
+api-regression,a one-letter search performs no database lookup,PASS
+api-regression,an unlisted unlisted@example.test is denied without requesting a code or creating a user,PASS
+api-regression,an unlisted unlisted243@example.test is denied without requesting a code or creating a user,PASS
+api-regression,"disabled or invalid-role staff are rejected: {""email"":""staff@example.test"",""role"":""OWNER"",""active"":false}",PASS
+api-regression,"disabled or invalid-role staff are rejected: {""email"":""staff@example.test"",""role"":""CUSTOMER"",""active"":true}",PASS
+api-regression,invalid or privileged request fields are rejected: null,PASS
+api-regression,invalid or privileged request fields are rejected: [],PASS
+api-regression,"invalid or privileged request fields are rejected: ""staff@example.test""",PASS
+api-regression,invalid or privileged request fields are rejected: {},PASS
+api-regression,"invalid or privileged request fields are rejected: {""email"":1}",PASS
+api-regression,"invalid or privileged request fields are rejected: {""email"":""a@@b.test""}",PASS
+api-regression,"invalid or privileged request fields are rejected: {""email"":""staff@example.test"",""create_user"":true}",PASS
+api-regression,"invalid or privileged request fields are rejected: {""email"":""staff@example.test"",""role"":""OWNER""}",PASS
+api-regression,active staff are checked first; email is normalised and provider signup is disabled,PASS
+api-regression,repeated code requests are throttled before provider delivery,PASS
+api-regression,staff disabled after code delivery cannot establish an admin session,PASS
+api-regression,provider and database failures fail closed without exposing provider details,PASS
+api-regression,deletion validates an explicit name and version and cleanup rejects unbounded or unknown input,PASS
+api-regression,delete removes a catalogue product and its bag items while preserving all stock and order history,PASS
+api-regression,"wrong name, stale version, missing product, reserved inventory and active checkout all leave state unchanged",PASS
+api-regression,storage failure leaves a durable queue and same deletion retries safely with the original version,PASS
+api-regression,"recent upload authorization prevents deletion between blob upload and metadata attach, then expiry allows deletion",PASS
+api-regression,shared product-level URLs and variant-level storage paths are preserved across products,PASS
+api-regression,"shared media aliases protect the same object across /media, public HTTPS and both Azure storage-path forms",PASS
+api-regression,another deleted product's queued photos do not orphan blobs by being treated as protected shared media,PASS
+api-regression,"normal photo upload, attachment and removal cannot bypass a product tombstone",PASS
+api-regression,"a fresh product cannot attach a photo still queued by a deleted product, including public URL aliases",PASS
+api-regression,normal draft product photo attachments still work and recheck deletion inside the write transaction,PASS
+api-regression,"cleanup confirms only completed rows, survives partial cleanup and missing-ID replays, and keeps history",PASS
+api-regression,cleanup denies another product's images and nondeleted products without changing metadata,PASS
+api-regression,commit failure rolls deletion back and deleted catalogue entries cannot be republished,PASS
+api-regression,"delete, retry read and cleanup are guarded catalogue-write endpoints",PASS
+api-regression,replaying the original create request cannot report a tombstone as a newly created draft,PASS
+api-regression,"reserved tombstone URLs cannot be manufactured and ordinary archived products remain readable, listed and editable",PASS
+api-regression,verified staff email claims the Supabase subject once and returns the configured role,PASS
+api-regression,"sign-in never bootstraps an unlisted owner, even with a matching configured email",PASS
+api-regression,"disabled, unknown and subject-conflicting staff cannot enter admin",PASS
+api-regression,"admin RBAC permissions separate support, operations, catalog and owner duties",PASS
+api-regression,a linked auth subject does not authorise a different email outside the staff list,PASS
+api-regression,legacy shared key is disabled by default and requires an explicit break-glass flag,PASS
+api-regression,requireUser rejects missing or non-Bearer credentials without contacting Auth,PASS
+api-regression,requireUser rejects missing configuration without contacting Auth,PASS
+api-regression,requireUser rejects a failed Auth response even if it contains a user ID,PASS
+api-regression,requireUser accepts a verified mobile number with missing email,PASS
+api-regression,requireUser accepts a verified mobile number with null email,PASS
+api-regression,requireUser accepts a verified mobile number with empty email,PASS
+api-regression,requireUser accepts a verified mobile number with whitespace email,PASS
+api-regression,requireUser accepts a verified mobile number with missing email confirmation,PASS
+api-regression,requireUser accepts a verified mobile number with null email confirmation,PASS
+api-regression,requireUser accepts a verified mobile number with empty email confirmation,PASS
+api-regression,requireUser rejects an account with neither a verified mobile number nor verified email,PASS
+api-regression,requireUser returns normalized verified email and forwards the bearer only to Auth,PASS
+api-regression,"requireUser returns only the confirmed top-level phone, not a different profile phone",PASS
+api-regression,requireUser does not verify a top-level phone with undefined confirmation,PASS
+api-regression,requireUser does not verify a top-level phone with null confirmation,PASS
+api-regression,requireUser does not verify a top-level phone with  confirmation,PASS
+api-regression,requireUser never promotes metadata.phone when top-level phone is absent (no confirmation),PASS
+api-regression,requireUser never promotes metadata.phone when top-level phone is absent (confirmation present),PASS
+api-regression,"requireUser does not log credentials, user data, or failure details",PASS
+api-regression,SMS OTP verification creates and rotates HIDI customer sessions,PASS
+api-regression,MSG91 SMS OTP uses the configured OTP template,PASS
+api-regression,MSG91 SMS OTP invalidates the challenge after http,PASS
+api-regression,MSG91 SMS OTP invalidates the challenge after rejected,PASS
+api-regression,MSG91 SMS OTP invalidates the challenge after empty,PASS
+api-regression,MSG91 SMS OTP invalidates the challenge after html,PASS
+api-regression,MSG91 SMS OTP invalidates the challenge after unknown,PASS
+api-regression,MSG91 SMS OTP invalidates the challenge after network,PASS
+api-regression,MSG91 SMS OTP invalidates the challenge after timeout,PASS
+api-regression,MSG91 SMS OTP rejects unsafe endpoint http://control.msg91.com/api/v5/otp,PASS
+api-regression,MSG91 SMS OTP rejects unsafe endpoint https://example.test/api/v5/otp,PASS
+api-regression,MSG91 SMS OTP rejects unsafe endpoint https://control.msg91.com@other.test/api/v5/otp,PASS
+api-regression,MSG91 SMS OTP rejects unsafe endpoint https://control.msg91.com/api/v5/otp?authkey=unsafe,PASS
+api-regression,MSG91 SMS accepts the legacy success acknowledgement and preserves pending proof during rollback,PASS
+api-regression,MSG91 stays primary when its send succeeds with Firebase fallback enabled,PASS
+api-regression,failed MSG91 send invalidates its code before authorising Firebase fallback,PASS
+api-regression,missing MSG91 credentials use only an explicitly configured Firebase fallback,PASS
+api-regression,Firebase fallback never bypasses rate limits or failed challenge invalidation,PASS
+api-regression,SMS OTP rejects wrong codes and reuse while creating a verified customer session,PASS
+api-regression,SMS OTP locks after five incorrect verification attempts,PASS
+api-regression,SMS OTP cannot be verified after its five-minute expiry,PASS
+api-regression,MSG91 SMS authorizations enforce the server cooldown at the exact 60-second boundary,PASS
+api-regression,primary Firebase authorizations enforce the server cooldown at the exact 60-second boundary,PASS
+api-regression,unconfigured MSG91 fallback authorizations enforce the server cooldown at the exact 60-second boundary,PASS
+api-regression,msg91 preserves the five-request sliding 15-minute limit after old codes are consumed,PASS
+api-regression,firebase preserves the five-request sliding 15-minute limit after old codes are consumed,PASS
+api-regression,concurrent requests reserve only one send and expose retry metadata to the other caller,PASS
+api-regression,successful resend supersedes older codes and consumed latest codes cannot resurrect legacy challenges,PASS
+api-regression,an expired latest challenge cannot revive an older unconsumed legacy code,PASS
+api-regression,concurrent verification consumes a delivered challenge only once,PASS
+api-regression,a failed resend counts toward cooldown but preserves the previously delivered code,PASS
+api-regression,SQL publication failure rolls back supersession without triggering a Firebase send,PASS
+api-regression,a late provider acknowledgement cannot replace a newer successfully delivered code,PASS
+api-regression,Firebase phone verification creates a HIDI customer session,PASS
+api-regression,"Razorpay proxy preserves signed bytes and signature, and disables caching",PASS
+api-regression,conflicting full descriptions across size rows are rejected before importing,PASS
+api-regression,one design with consistent descriptions accepts a size matrix,PASS
+api-regression,image_sku column maps across sizes and is separate from generated stock SKUs,PASS
+api-regression,"source metadata helper retains blank data, collections and optimistic version",PASS
+api-regression,cart size edit preserves quantity and uses the target server price,PASS
+api-regression,existing target size merges once without losing items,PASS
+api-regression,same-size edit does not double the current quantity,PASS
+api-regression,size editing cannot access another cart session,PASS
+api-regression,"invalid, inactive, wrong-product and wrong-colour targets do not change the old size",PASS
+api-regression,merged quantity must fit both available inventory and the per-size limit,PASS
+api-regression,invalid quantities and malformed variant IDs fail before writes,PASS
+api-regression,failed merge rolls back and preserves the original bag,PASS
+api-regression,a deleted target variant cannot remove the original size,PASS
+api-regression,reserved and safety stock are excluded even when on-hand stock looks sufficient,PASS
+api-regression,invalid sessions and non-string variant IDs cannot write,PASS
+api-regression,editing size recomputes shipping when the merchandise subtotal falls below the threshold,PASS
+api-regression,HIDI Fit accepts verified variant measurements in millimetres,PASS
+api-regression,HIDI Fit keeps measurements optional for existing products,PASS
+api-regression,HIDI Fit rejects implausible garment measurements,PASS
+api-regression,two fingers smoothly enlarge and reduce the image,PASS
+api-regression,pinch follows an off-centre detail instead of jumping to the middle,PASS
+api-regression,pinch and pan stay bounded and reset at 100 percent,PASS
+api-regression,coincident touches never produce an infinite scale,PASS
+api-regression,customer testing fails closed outside the isolated guarded database,PASS
+api-regression,catalogue preview still rejects account reads and all cart writes by default,PASS
+api-regression,customer preview permits account reads and session-scoped cart lifecycle,PASS
+api-regression,customer preview permits only the explicit customer sign-in routes,PASS
+api-regression,customer preview permits only explicit staff reads behind the existing AdminGuard,PASS
+api-regression,"customer preview blocks financial, notification, admin writes and route-confusion requests",PASS
+api-regression,normal production behavior is unchanged when migration restrictions are disabled,PASS
+api-regression,feature stays disabled without an explicit UTC activation cutoff,PASS
+api-regression,"confirmation includes products, variants, totals, wallet split and shipping address",PASS
+api-regression,message HTML escapes customer and product input and subject strips newlines,PASS
+api-regression,invalid recipients are rejected and Indian mobile numbers are normalized,PASS
+api-regression,provider accepts one confirmation; rerunning the worker cannot reclaim it,PASS
+api-regression,"pending, review, cancelled, refunded and missing orders send no confirmation",PASS
+api-regression,missing email and provider configuration are handled without provider submissions,PASS
+api-regression,a lost claim lease prevents submission,PASS
+api-regression,email timeout retries the same saved payload and idempotency key after customer data changes,PASS
+api-regression,idempotency expiry and exhausted retries do not resubmit,PASS
+api-regression,rate limits retry; invalid credentials fail without retaining provider text,PASS
+api-regression,"WhatsApp uses a separate approved order utility template, never the SMS OTP template",PASS
+api-regression,overlapping worker ticks are serialized within a process,PASS
+api-regression,queue discovers only committed confirmation audit events with captured payment after cutoff,PASS
+api-regression,WhatsApp remains separate from email and requires recorded opt-in,PASS
+api-regression,"WhatsApp consent must be verified, current and match the order recipient",PASS
+api-regression,admin readiness reports an absent additive table without querying it,PASS
+api-regression,a queued WhatsApp retry cannot send to a previous phone number,PASS
+api-regression,packing plan emits stable HIDI barcodes and physical piece count,PASS
+api-regression,exact physical scans move CONFIRMED to PACKED and audit scanner source,PASS
+api-regression,wrong item cannot pack an order,PASS
+api-regression,missing or excess quantities cannot pack an order,PASS
+api-regression,already packed request is idempotent and performs no write,PASS
+api-regression,photo tickets accept 5 through 100 MiB and 3 GiB declarations for retained formats,PASS
+api-regression,"empty, unrepresentable and malformed sizes are denied before any upload ticket write",PASS
+api-regression,larger uploads keep the existing format restriction,PASS
+api-regression,Code 128B emits the expected symbols and width for AB,PASS
+api-regression,Code 128B rejects non-ASCII data,PASS
+api-regression,casual-wear and everyday show primary-category products and retained legacy collection members,PASS
+api-regression,work-wear and work-edit show primary-category products and retained legacy collection members,PASS
+api-regression,occasional-wear and occasion show primary-category products and retained legacy collection members,PASS
+api-regression,"Ananya's Pick includes selected Casual, Work and Occasional products irrespective of main category",PASS
+api-regression,legacy and primary-slug collection records retain their products without duplicated cards,PASS
+api-regression,unfiltered and unknown collection views retain publication gates and never fall back to all products,PASS
+api-regression,collection changes preserve bounded featured ordering and only request reviews for returned products,PASS
+api-regression,new main photo becomes first and compacts the existing gallery while retaining other sizes/colours,PASS
+api-regression,main replay retains one attachment and stable gallery without redundant position writes,PASS
+api-regression,all-size main photo shares one uploaded URL and promotes it separately in each matched colour gallery,PASS
+api-regression,promoting an existing photo preserves all remaining photos in their prior order,PASS
+api-regression,ordinary attachment retains the existing append/replay behaviour without reordering,PASS
+api-regression,malformed main flags fail before database operations,PASS
+api-regression,"pending deletion, concurrent tombstone and failed position update leave all galleries unchanged",PASS
+api-regression,a failure on the second size rolls back already promoted photos from the first size,PASS
+api-regression,"existing SKN map reads are parameterized, deduplicated, chunked and do not consume more numbers",PASS
+api-regression,duplicate or malformed identities and missing schema fail instead of producing a nullable SKN,PASS
+api-regression,five-digit lookup uses an exact identity and rejects invalid ranges without SQL,PASS
+api-regression,new product and all four sizes share one SKN and identical creation retries keep it,PASS
+api-regression,a duplicate create committed by another request replays the same SKN,PASS
+api-regression,"metadata, additional sizes, variant prices and publishing status keep the existing SKN",PASS
+api-regression,catalogue results include SKN and exact five-digit search retains status/deletion restrictions,PASS
+api-regression,mapping schema failure rolls back the product and cannot report a successful import,PASS
+api-regression,sequence exhaustion fails clearly and rolls back the product without reserving a malformed number,PASS
+api-regression,"legacy product reads reserve a missing SKN atomically without changing product, variants or stock",PASS
+api-regression,allocation validates a real Product before writing and reuses a provided transaction,PASS
+api-regression,SQL sequence exhaustion remains clear when Prisma wraps the database code,PASS
+api-regression,qualified repeat interest previews current in-stock price without sending,PASS
+api-regression,feature is fail-closed and independent marketing/personalization consents are required,PASS
+api-regression,one ordinary detail view and rapid refreshes are not meaningful interest,PASS
+api-regression,selected size qualifies alone but only its own current stock is accepted,PASS
+api-regression,latest interaction restarts the 24-hour inactivity delay,PASS
+api-regression,any completed purchase after activity suppresses queued recovery,PASS
+api-regression,"removed, inactive and sold-out products cannot be promoted",PASS
+api-regression,"same abandonment is not contacted twice, including pending deliveries",PASS
+api-regression,two marketing sends across campaigns block a third in rolling seven days,PASS
+api-regression,owned cart takes priority over browsing even if cart is not yet due,PASS
+api-regression,cart quantity stock and expiration are checked live,PASS
+api-regression,courtesy hours use India time with exact boundary handling,PASS
+api-regression,holdout is stable and cannot accidentally send,PASS
+api-regression,interest older than seven days is not recovered,PASS
+api-regression,events from separate abandonment episodes are not combined,PASS
+api-regression,preferences only look up server-verified subject and return a masked phone,PASS
+api-regression,browser-supplied identity and phone fields are rejected,PASS
+api-regression,user-editable metadata phone is never accepted as verified,PASS
+api-regression,explicit opt-in writes an audit and does not update legacy broad marketing consent,PASS
+api-regression,"withdrawal accepts an old version, deletes browsing events and cancels queued sends",PASS
+api-regression,enabling consent with an old version is rejected,PASS
+api-regression,stale wording permits partial withdrawal without upgrading remaining consent,PASS
+api-regression,a different current verified phone does not inherit an older number's opt-in,PASS
+api-regression,tracking and preview are disabled by default and do not touch the database,PASS
+api-regression,tracking requires explicit personalization consent and ignores broad marketingOptIn,PASS
+api-regression,"tracking creates a server episode, deduplicates refreshes and reuses the episode",PASS
+api-regression,a concurrent consent withdrawal blocks tracking after the initial read,PASS
+api-regression,size events require a real active variant belonging to the selected product,PASS
+api-regression,preview purchase lookup handles unclaimed checkout with the verified account email,PASS
+api-regression,preview purchase lookup handles account-linked checkout with a different email,PASS
+api-regression,preview purchase lookup handles another account's order even with a matching email,PASS
+api-regression,preview purchase lookup handles unclaimed checkout using a different email,PASS
+api-regression,cash-only return goes entirely back to cash,PASS
+api-regression,wallet-only return goes entirely back to wallet,PASS
+api-regression,split tender preserves the original ratio for a partial item return,PASS
+api-regression,later returns consume remaining tender and absorb rounding without over-refunding,PASS
+api-regression,refund allocation rejects inconsistent or exhausted tender balances,PASS
+api-regression,"₹2,000 earns an illustrative ₹40; only complete ₹100 blocks count",PASS
+api-regression,return-window config has no permissive or invented default,PASS
+api-regression,"exact return-window boundary matures estimates, never a wallet balance",PASS
+api-regression,illustrative basis subtracts discounts and excludes shipping and separate tax,PASS
+api-regression,"refunds, partial refunds and return states hold all rewards",PASS
+api-regression,only exact fully captured payments can produce estimates,PASS
+api-regression,"missing, invalid and future delivery dates cannot mature rewards",PASS
+api-regression,all split shipments and order must be delivered; latest delivery controls date,PASS
+api-regression,"unsafe amounts, non-INR, future order dates and bounded relation reads fail closed",PASS
+api-regression,"summary segregates held, pending and eligible estimates",PASS
+api-regression,disabled preview never queries customer data,PASS
+api-regression,read-only own-account query is bounded and reports truncated estimates,PASS
+api-regression,unmapped verified customer only matches unclaimed guest orders,PASS
+api-regression,relation overflow and missing return configuration never become eligible estimates,PASS
+api-regression,empty cart has no shipping charge,PASS
+api-regression,reject invalid shipping subtotal -1,PASS
+api-regression,reject invalid shipping subtotal 0.5,PASS
+api-regression,reject invalid shipping subtotal NaN,PASS
+api-regression,reject invalid shipping subtotal Infinity,PASS
+api-regression,reject invalid shipping subtotal 2147483648,PASS
+api-regression,"phone sanitation covers typing, paste, duplicate plus, punctuation and length",PASS
+api-regression,"all wallet admin actions reject missing, wrong and non-exact keys before any service call",PASS
+api-regression,an unset or empty configured admin key fails closed even for a supplied key,PASS
+api-regression,exact admin key delegates only intended arguments and is never returned or logged,PASS
+api-regression,wallet support actions require valid reason/reference and reject extra fields before any transaction,PASS
+api-regression,wallet support actions reject unknown orders without writing,PASS
+api-regression,wallet-only refund rejects cash-only without any staged writes,PASS
+api-regression,wallet-only refund rejects split payment without any staged writes,PASS
+api-regression,wallet-only refund rejects non-wallet provider without any staged writes,PASS
+api-regression,wallet-only refund rejects nonzero cash amount without any staged writes,PASS
+api-regression,wallet-only refund rejects multiple payments without any staged writes,PASS
+api-regression,wallet-only refund rejects no payment without any staged writes,PASS
+api-regression,wallet-only refund rejects zero order total without any staged writes,PASS
+api-regression,wallet-only refund rejects missing wallet hold without any staged writes,PASS
+api-regression,wallet-only refund rejects mismatched wallet hold without any staged writes,PASS
+api-regression,wallet-only refund rejects uncaptured payment without any staged writes,PASS
+api-regression,wallet-only refund rejects unconsumed wallet hold without any staged writes,PASS
+api-regression,wallet-only refund rejects pending order without any staged writes,PASS
+api-regression,wallet-only refund rejects cancelled order without any staged writes,PASS
+api-regression,full wallet refund stages refund evidence then restores tender once; repeated requests are idempotent,PASS
+api-regression,a pre-existing refund with inconsistent order/payment/hold status needs reconciliation and never credits,PASS
+api-regression,full wallet refund rolls back all staged state if refund.create fails,PASS
+api-regression,full wallet refund rolls back all staged state if payment.update fails,PASS
+api-regression,full wallet refund rolls back all staged state if order.update fails,PASS
+api-regression,full wallet refund rolls back all staged state if wallet.reverseEarned fails,PASS
+api-regression,full wallet refund rolls back all staged state if wallet.restoreRedeemed fails,PASS
+api-regression,failed tender restoration is not treated as success and rolls back refund evidence,PASS
+api-regression,"return hold reverses earned reward, preserves redeemed tender and cash payment, and issues no refund",PASS
+api-regression,return hold rejects terminal or unpaid order states without any writes,PASS
+api-regression,return hold rollback also reverses its staged earning reversal when order update fails,PASS
+api-regression,full-wallet checkout is confirmed atomically without gateway creation or public-key lookup,PASS
+api-regression,"full-wallet retry returns the original order without double debit, payment, or stock consumption",PASS
+api-regression,mixed checkout reserves wallet funds and charges only the exact cash remainder,PASS
+api-regression,"anonymous wallet use is rejected before any database, wallet or gateway action",PASS
+api-regression,disabled wallet rejects redemption but still permits normal cash checkout,PASS
+api-regression,disabled wallet still uses the stable verified subject binding when account email changes,PASS
+api-regression,disabled wallet cannot attach a verified subject to another subject's email-linked account,PASS
+api-regression,body-supplied account and wallet identity cannot replace verified auth identity,PASS
+api-regression,guest checkout ignores forged body identity and does not attach an account,PASS
+api-regression,checkout rejects malformed contact and address data before order creation,PASS
+api-regression,checkout trims customer and delivery text before saving the order,PASS
+api-regression,checkout delivery serviceability returns only sanitized carrier fields and caches PIN results,PASS
+api-regression,checkout delivery serviceability rejects invalid PIN before calling the carrier,PASS
+api-regression,checkout controller rejects an invalid supplied bearer token instead of falling back to guest,PASS
+api-regression,checkout-token retry rejects a different cart session without returning the provider order,PASS
+api-regression,checkout-token retry rejects a different wallet amount without returning the provider order,PASS
+api-regression,checkout-token retry rejects a different account without returning the provider order,PASS
+api-regression,gateway failure releases wallet and inventory holds and cancels the order idempotently,PASS
+api-regression,insufficient wallet or stock rolls back both order creation and wallet reservation,PASS
+api-regression,wallet amount and expected-total validation reject invalid money before gateway creation,PASS
+api-regression,provider order amount or currency mismatch cancels and releases both reservations,PASS
+api-regression,checkout cancelled while awaiting the provider cannot publish a usable payment order,PASS
+api-regression,a verified customer can adopt the same browser-session cart at purchase,PASS
+api-regression,shipping boundary 1 paise persists shipping and charges Razorpay once,PASS
+api-regression,shipping boundary 99900 paise persists shipping and charges Razorpay once,PASS
+api-regression,shipping boundary 149899 paise persists shipping and charges Razorpay once,PASS
+api-regression,shipping boundary 149900 paise persists shipping and charges Razorpay once,PASS
+api-regression,shipping boundary 149901 paise persists shipping and charges Razorpay once,PASS
+api-regression,shipping boundary 200000 paise persists shipping and charges Razorpay once,PASS
+api-regression,quantity crosses the free shipping boundary using the whole merchandise subtotal,PASS
+api-regression,rewards do not change free shipping eligibility,PASS
+api-regression,rewards can cover both merchandise and charged shipping atomically,PASS
+api-regression,omitted or manipulated client shipping never controls the server charge,PASS
+api-regression,stale payable quote is rejected before stock or payment writes,PASS
+api-regression,invalid phone abc9876543210 is rejected without order writes,PASS
+api-regression,invalid phone 98+76543210 is rejected without order writes,PASS
+api-regression,invalid phone ++919876543210 is rejected without order writes,PASS
+api-regression,invalid phone 987 6543210 is rejected without order writes,PASS
+api-regression,invalid phone (987)6543210 is rejected without order writes,PASS
+api-regression,invalid phone 1234567 is rejected without order writes,PASS
+api-regression,invalid phone 1234567890123456 is rejected without order writes,PASS
+api-regression,invalid phone + is rejected without order writes,PASS
+api-regression,COD confirms unpaid order with shipping and consumes inventory once without gateway,PASS
+api-regression,COD fails before order or stock mutation for unserviceable or unavailable carrier,PASS
+api-regression,COD cannot redeem rewards or reuse an online payment token,PASS
+api-regression,COD switch off and unsupported payment method are rejected,PASS
+api-regression,"capture updates the exact matching payment record, consumes wallet and inventory once, and clears the correct cart",PASS
+api-regression,duplicate capture webhook and signed checkout verification do not double-consume wallet or stock,PASS
+api-regression,capture before local payment registration returns non-2xx and succeeds safely on retry,PASS
+api-regression,a different payment id cannot replace a recorded captured payment,PASS
+api-regression,late capture with expired inventory reservation records cash for review without consuming stock or wallet,PASS
+api-regression,late capture with released inventory reservation records cash for review without consuming stock or wallet,PASS
+api-regression,late capture with expired wallet hold records cash for review without consuming stock or wallet,PASS
+api-regression,late capture with released wallet hold records cash for review without consuming stock or wallet,PASS
+api-regression,late capture with missing inventory reservations records cash for review without consuming stock or wallet,PASS
+api-regression,captured cash cannot resurrect a CANCELLED order or spend its wallet,PASS
+api-regression,captured cash cannot resurrect a RETURN_REQUESTED order or spend its wallet,PASS
+api-regression,captured cash cannot resurrect a RETURNED order or spend its wallet,PASS
+api-regression,captured cash cannot resurrect a REFUNDED order or spend its wallet,PASS
+api-regression,invalid webhook and checkout signatures cannot update a payment or reach provider lookup,PASS
+api-regression,"provider identity, amount and currency mismatches are rejected before capture",PASS
+api-regression,payment/wallet cash breakdown mismatch aborts the capture transaction,PASS
+api-regression,failed or authorized messages after capture cannot downgrade paid state,PASS
+api-regression,failed payment webhook records one immutable audit event and is retry-safe,PASS
+api-regression,capture does not clear a cart subsequently owned by a different account,PASS
+api-regression,"signed partial refund is provider-verified and deduplicated, reverses earning but not redeemed tender",PASS
+api-regression,item-level return refund closes ReturnRequest without overwriting delivered fulfilment,PASS
+api-regression,all cash refunded across multiple events restores original wallet tender once,PASS
+api-regression,failed wallet restoration rolls back the full-refund accounting transaction for safe retry,PASS
+api-regression,capture replay after a fully refunded order does not resurrect it or debit restored wallet funds,PASS
+api-regression,refunds require a valid signature and cannot invent provider-confirmed refunded cash,PASS
+api-regression,refund event identity cannot be reused with another amount,PASS
+api-regression,"refund currency, malformed money and overflow are rejected without ledger changes",PASS
+api-regression,cumulative refunds cannot exceed cash captured even if a new event id is supplied,PASS
+api-regression,refund arriving before capture is reconciled cannot create money or mark the order refunded,PASS
+api-regression,a wallet-consumption error rolls capture back with inventory and payment still untouched,PASS
+api-regression,"exact earning rule uses complete ₹100 after discounts and wallet, no shipping reward",PASS
+api-regression,all available rewards can pay the full order; reserved balance and debt are not spendable,PASS
+api-regression,"rewards mature exactly seven elapsed days after actual delivery, never before",PASS
+api-regression,"split, missing, future and premature delivery timestamps cannot mature",PASS
+api-regression,cash capture must equal external payable and wallet tender must be consumed,PASS
+api-regression,"any recorded refund, return or payment review reverses rewards; refund-in-progress holds",PASS
+api-regression,"wallet ownership follows verified Auth subject, never email or body identity",PASS
+api-regression,"GET summary is read-only, shows exact ledger not estimates and bounded history",PASS
+api-regression,wallet summary excludes stale active-return accruals from pending and exposes them as held,PASS
+api-regression,reservation then consumption debit once and lock order before wallet,PASS
+api-regression,no cap supports full-wallet order and creates no earning on wallet-funded spend,PASS
+api-regression,"insufficient, released and expired holds cannot spend or silently reacquire",PASS
+api-regression,late debt invalidating held funds cannot be spent by another capture,PASS
+api-regression,mature reward posts once; any refund reverses once even after rewards spent,PASS
+api-regression,return before maturity permanently suppresses accrual without inventing a debit,PASS
+api-regression,active item return holds reward maturity and release lets normal reconciliation resume,PASS
+api-regression,return refund wallet credit is idempotent and uses an immutable request key,PASS
+api-regression,"redeemed wallet funds restore only once after a full cash refund, never a partial",PASS
+api-regression,explicit wallet-only full refund restores its original tender without gateway money,PASS
+api-regression,"kill switch blocks new spend/earning but preserves liabilities, release and reversals",PASS
+api-regression,"batch is bounded, resumable and rejects malformed cursors",PASS
+api-regression,serializable helper retries only known conflicts and keeps external work out,PASS
+api-regression,wallet worker is disabled by default and non-exact opt-in values create no timer or batch,PASS
+api-regression,enabled worker still refuses to run when wallet spending/earning is disabled,PASS
+api-regression,"enabled worker schedules a bounded minute poll, unrefs its timer, and clears it on destroy",PASS
+api-regression,overlapping ticks never run simultaneous maturation batches,PASS
+api-regression,"cursor advances on successful pages, preserves position on a thrown failure, and restarts after exhaustion",PASS
+api-regression,failed rows on a completed page are revisited on the next cursor cycle without logging their identities,PASS
+api-regression,a rejected batch releases the busy guard so the next scheduled attempt can retry,PASS
+api-regression,turning worker flag off between ticks pauses processing without discarding its cursor,PASS
+image-regression,normalizes approved photo /media/products/variants/sku-one/photo.jpg,PASS
+image-regression,normalizes approved photo https://hidiindia.com/media/products/variants/sku-one/photo.jpg,PASS
+image-regression,normalizes approved photo https://thehidi.com/media/products/variants/sku-one/photo.jpg,PASS
+image-regression,normalizes approved photo /media/products/_display_v2/variants/sku-one/photo.jpg,PASS
+image-regression,normalizes approved photo /media/products/_display_v3/variants/sku-one/photo.jpg,PASS
+image-regression,rejects unapproved source //evil.com/media/products/a.jpg,PASS
+image-regression,rejects unapproved source https://evil.com/media/products/variants/sku-one/photo.jpg,PASS
+image-regression,rejects unapproved source http://hidiindia.com/media/products/variants/sku-one/photo.jpg,PASS
+image-regression,rejects unapproved source https://u:p@hidiindia.com/media/products/variants/sku-one/photo.jpg,PASS
+image-regression,rejects unapproved source /media/products/../private/a.jpg,PASS
+image-regression,rejects unapproved source /media/products/a.svg,PASS
+image-regression,rejects unapproved source /media/products/variants/sku-one/photo.jpg?token=secret,PASS
+image-regression,rejects unapproved source /media/products/variants/sku-one/photo.jpg?hidi_image=1&hidi_image=2,PASS
+image-regression,rejects unapproved source /media/products/%2e%2e/a.jpg,PASS
+image-regression,keeps approved legacy cache hint,PASS
+image-regression,negotiates WebP and honours q=0,PASS
+image-regression,parses a valid optimizer request,PASS
+image-regression,rejects duplicate/extra parameters &w=750,PASS
+image-regression,rejects duplicate/extra parameters &q=90,PASS
+image-regression,rejects duplicate/extra parameters &url=%2Fmedia%2Fproducts%2Fvariants%2Fsku-one%2Fphoto.jpg,PASS
+image-regression,rejects duplicate/extra parameters &surprise=1,PASS
+image-regression,"cache keys isolate widths, formats, and display/zoom masters",PASS
+image-regression,bounds an upstream response with no Content-Length,PASS
+image-regression,rejects oversized declared response and cancels body,PASS
+image-regression,rejects an oversized chunked response,PASS
+image-regression,"rejects HTML upstream, missing source, and empty bytes",PASS
+image-regression,returns correctly sized WebP with original pixels untouched,PASS
+image-regression,does not upscale a small photo,PASS
+image-regression,normalizes EXIF orientation without retaining EXIF metadata,PASS
+image-regression,preserves alpha in WebP output,PASS
+image-regression,bounds very tall photo output without cropping,PASS
+image-regression,rejects corrupt images rather than serving the original,PASS
+image-regression,rejects oversized bytes before decoding,PASS
+image-regression,"caches derivatives, deduplicates visitors, and shares the display master",PASS
+image-regression,fetches zoom only on demand and caches its master,PASS
+image-regression,serializes source fetching even for simultaneous zoom requests,PASS
+image-regression,"HTTP GET, HEAD, ETag, and unsupported method retain correct semantics",PASS
+image-regression,processing failure never returns multi-megabyte originals,PASS
+image-regression,reads exactly one multipart photo,PASS
+image-regression,rejects multiple file fields,PASS
+image-regression,enforces multipart request cap before parsing,PASS
+image-regression,upload slot cannot be prematurely reopened by double release,PASS
+image-regression,retains recovery for the existing browser-readable truncated JPEG case,PASS
+image-regression,retains the 100 MP input limit and does not retry pixel-limit errors,PASS
+image-regression,streamed valid jpeg preserves original bytes and removes temporary files,PASS
+image-regression,streamed valid png preserves original bytes and removes temporary files,PASS
+image-regression,streamed valid webp preserves original bytes and removes temporary files,PASS
+image-regression,streamed valid avif preserves original bytes and removes temporary files,PASS
+image-regression,streamed multipart accepts 12582912 bytes without the former fixed cap,PASS
+image-regression,streamed multipart accepts 41943040 bytes without the former fixed cap,PASS
+image-regression,streamed multipart accepts 41943041 bytes without the former fixed cap,PASS
+image-regression,streamed multipart accepts 62914560 bytes without the former fixed cap,PASS
+image-regression,streamed multipart accepts 104857600 bytes without the former fixed cap,PASS
+image-regression,chunked source download also permits a photo above 40 MiB and bounds display output,PASS
+image-regression,cold derivative creation always cleans a disk-backed original,PASS
+image-regression,invalid source decoding also cleans the disk original,PASS
+image-regression,rejects empty and cleans temporary data,PASS
+image-regression,rejects corrupt and cleans temporary data,PASS
+image-regression,rejects SVG masquerading as JPEG and cleans temporary data,PASS
+image-regression,rejects unsupported PDF and cleans temporary data,FAIL
+image-regression,rejects a MIME mismatch without changing original bytes,PASS
+image-regression,rejects duplicate file fields,PASS
+image-regression,rejects duplicate and oversized metadata,PASS
+image-regression,rejects missing multipart boundary,PASS
+image-regression,rejects truncated multipart and deletes partial files,FAIL
+image-regression,disk-reserve exhaustion fails with 507 and removes partial files,PASS
+image-regression,abort interrupts ingestion and deletes temporary files,PASS
+image-regression,declared length mismatch fails instead of saving a truncated source,PASS
+image-regression,incremental browser digest matches the existing SHA-256 naming contract,PASS
+image-regression,upload concurrency guard releases safely after failure,PASS
+image-regression,Azure SDK write uses staged blocks and bounded concurrency,PASS
+image-regression,identical Azure replay is verified from downloaded bytes without overwrite,PASS
+image-regression,same-sized different Azure replay bytes are rejected,PASS
+image-regression,Azure size mismatch and arbitrary-key conflicts are not accepted as successful retries,PASS
+image-regression,browser-readable progressive JPEG without ending data recovers to bounded WebP,PASS
+image-regression,valid JPEG retains strict decoder and normal output bytes,PASS
+image-regression,unrelated corruption and pixel-limit errors are rejected,PASS

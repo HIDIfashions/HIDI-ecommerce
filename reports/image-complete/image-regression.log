@@ -1,0 +1,504 @@
+TAP version 13
+# Subtest: normalizes approved photo /media/products/variants/sku-one/photo.jpg
+ok 1 - normalizes approved photo /media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 2.187911
+  type: 'test'
+  ...
+# Subtest: normalizes approved photo https://hidiindia.com/media/products/variants/sku-one/photo.jpg
+ok 2 - normalizes approved photo https://hidiindia.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.374119
+  type: 'test'
+  ...
+# Subtest: normalizes approved photo https://thehidi.com/media/products/variants/sku-one/photo.jpg
+ok 3 - normalizes approved photo https://thehidi.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.253454
+  type: 'test'
+  ...
+# Subtest: normalizes approved photo /media/products/_display_v2/variants/sku-one/photo.jpg
+ok 4 - normalizes approved photo /media/products/_display_v2/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.208911
+  type: 'test'
+  ...
+# Subtest: normalizes approved photo /media/products/_display_v3/variants/sku-one/photo.jpg
+ok 5 - normalizes approved photo /media/products/_display_v3/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.311051
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source //evil.com/media/products/a.jpg
+ok 6 - rejects unapproved source //evil.com/media/products/a.jpg
+  ---
+  duration_ms: 0.215182
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source https://evil.com/media/products/variants/sku-one/photo.jpg
+ok 7 - rejects unapproved source https://evil.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.18156
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source http://hidiindia.com/media/products/variants/sku-one/photo.jpg
+ok 8 - rejects unapproved source http://hidiindia.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.167043
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source https://u:p@hidiindia.com/media/products/variants/sku-one/photo.jpg
+ok 9 - rejects unapproved source https://u:p@hidiindia.com/media/products/variants/sku-one/photo.jpg
+  ---
+  duration_ms: 0.531524
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/../private/a.jpg
+ok 10 - rejects unapproved source /media/products/../private/a.jpg
+  ---
+  duration_ms: 0.558084
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/a.svg
+ok 11 - rejects unapproved source /media/products/a.svg
+  ---
+  duration_ms: 0.270696
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/variants/sku-one/photo.jpg?token=secret
+ok 12 - rejects unapproved source /media/products/variants/sku-one/photo.jpg?token=secret
+  ---
+  duration_ms: 0.300853
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/variants/sku-one/photo.jpg?hidi_image=1&hidi_image=2
+ok 13 - rejects unapproved source /media/products/variants/sku-one/photo.jpg?hidi_image=1&hidi_image=2
+  ---
+  duration_ms: 0.209762
+  type: 'test'
+  ...
+# Subtest: rejects unapproved source /media/products/%2e%2e/a.jpg
+ok 14 - rejects unapproved source /media/products/%2e%2e/a.jpg
+  ---
+  duration_ms: 0.175688
+  type: 'test'
+  ...
+# Subtest: keeps approved legacy cache hint
+ok 15 - keeps approved legacy cache hint
+  ---
+  duration_ms: 0.173635
+  type: 'test'
+  ...
+# Subtest: negotiates WebP and honours q=0
+ok 16 - negotiates WebP and honours q=0
+  ---
+  duration_ms: 0.366937
+  type: 'test'
+  ...
+# Subtest: parses a valid optimizer request
+ok 17 - parses a valid optimizer request
+  ---
+  duration_ms: 1.246009
+  type: 'test'
+  ...
+# Subtest: rejects duplicate/extra parameters &w=750
+ok 18 - rejects duplicate/extra parameters &w=750
+  ---
+  duration_ms: 0.19235
+  type: 'test'
+  ...
+# Subtest: rejects duplicate/extra parameters &q=90
+ok 19 - rejects duplicate/extra parameters &q=90
+  ---
+  duration_ms: 0.162614
+  type: 'test'
+  ...
+# Subtest: rejects duplicate/extra parameters &url=%2Fmedia%2Fproducts%2Fvariants%2Fsku-one%2Fphoto.jpg
+ok 20 - rejects duplicate/extra parameters &url=%2Fmedia%2Fproducts%2Fvariants%2Fsku-one%2Fphoto.jpg
+  ---
+  duration_ms: 0.156373
+  type: 'test'
+  ...
+# Subtest: rejects duplicate/extra parameters &surprise=1
+ok 21 - rejects duplicate/extra parameters &surprise=1
+  ---
+  duration_ms: 0.151123
+  type: 'test'
+  ...
+# Subtest: cache keys isolate widths, formats, and display/zoom masters
+ok 22 - cache keys isolate widths, formats, and display/zoom masters
+  ---
+  duration_ms: 0.814553
+  type: 'test'
+  ...
+# Subtest: bounds an upstream response with no Content-Length
+ok 23 - bounds an upstream response with no Content-Length
+  ---
+  duration_ms: 28.776225
+  type: 'test'
+  ...
+# Subtest: rejects oversized declared response and cancels body
+ok 24 - rejects oversized declared response and cancels body
+  ---
+  duration_ms: 1.962459
+  type: 'test'
+  ...
+# Subtest: rejects an oversized chunked response
+ok 25 - rejects an oversized chunked response
+  ---
+  duration_ms: 7.629256
+  type: 'test'
+  ...
+# Subtest: rejects HTML upstream, missing source, and empty bytes
+ok 26 - rejects HTML upstream, missing source, and empty bytes
+  ---
+  duration_ms: 1.093365
+  type: 'test'
+  ...
+# Subtest: returns correctly sized WebP with original pixels untouched
+ok 27 - returns correctly sized WebP with original pixels untouched
+  ---
+  duration_ms: 103.907731
+  type: 'test'
+  ...
+# Subtest: does not upscale a small photo
+ok 28 - does not upscale a small photo
+  ---
+  duration_ms: 14.461822
+  type: 'test'
+  ...
+# Subtest: normalizes EXIF orientation without retaining EXIF metadata
+ok 29 - normalizes EXIF orientation without retaining EXIF metadata
+  ---
+  duration_ms: 83.301505
+  type: 'test'
+  ...
+# Subtest: preserves alpha in WebP output
+ok 30 - preserves alpha in WebP output
+  ---
+  duration_ms: 11.052086
+  type: 'test'
+  ...
+# Subtest: bounds very tall photo output without cropping
+ok 31 - bounds very tall photo output without cropping
+  ---
+  duration_ms: 29.36205
+  type: 'test'
+  ...
+# Subtest: rejects corrupt images rather than serving the original
+ok 32 - rejects corrupt images rather than serving the original
+  ---
+  duration_ms: 1.378017
+  type: 'test'
+  ...
+# Subtest: rejects oversized bytes before decoding
+ok 33 - rejects oversized bytes before decoding
+  ---
+  duration_ms: 0.527857
+  type: 'test'
+  ...
+# Subtest: caches derivatives, deduplicates visitors, and shares the display master
+ok 34 - caches derivatives, deduplicates visitors, and shares the display master
+  ---
+  duration_ms: 262.303224
+  type: 'test'
+  ...
+# Subtest: fetches zoom only on demand and caches its master
+ok 35 - fetches zoom only on demand and caches its master
+  ---
+  duration_ms: 421.324805
+  type: 'test'
+  ...
+# Subtest: serializes source fetching even for simultaneous zoom requests
+ok 36 - serializes source fetching even for simultaneous zoom requests
+  ---
+  duration_ms: 552.685182
+  type: 'test'
+  ...
+# Subtest: HTTP GET, HEAD, ETag, and unsupported method retain correct semantics
+ok 37 - HTTP GET, HEAD, ETag, and unsupported method retain correct semantics
+  ---
+  duration_ms: 136.778084
+  type: 'test'
+  ...
+# Subtest: processing failure never returns multi-megabyte originals
+ok 38 - processing failure never returns multi-megabyte originals
+  ---
+  duration_ms: 2.152886
+  type: 'test'
+  ...
+# Subtest: reads exactly one multipart photo
+ok 39 - reads exactly one multipart photo
+  ---
+  duration_ms: 7.958041
+  type: 'test'
+  ...
+# Subtest: rejects multiple file fields
+ok 40 - rejects multiple file fields
+  ---
+  duration_ms: 2.236011
+  type: 'test'
+  ...
+# Subtest: enforces multipart request cap before parsing
+ok 41 - enforces multipart request cap before parsing
+  ---
+  duration_ms: 0.477443
+  type: 'test'
+  ...
+# Subtest: upload slot cannot be prematurely reopened by double release
+ok 42 - upload slot cannot be prematurely reopened by double release
+  ---
+  duration_ms: 0.202989
+  type: 'test'
+  ...
+# Subtest: retains recovery for the existing browser-readable truncated JPEG case
+ok 43 - retains recovery for the existing browser-readable truncated JPEG case
+  ---
+  duration_ms: 353.386504
+  type: 'test'
+  ...
+# Subtest: retains the 100 MP input limit and does not retry pixel-limit errors
+ok 44 - retains the 100 MP input limit and does not retry pixel-limit errors
+  ---
+  duration_ms: 0.338994
+  type: 'test'
+  ...
+# Subtest: streamed valid jpeg preserves original bytes and removes temporary files
+ok 45 - streamed valid jpeg preserves original bytes and removes temporary files
+  ---
+  duration_ms: 86.903167
+  type: 'test'
+  ...
+# Subtest: streamed valid png preserves original bytes and removes temporary files
+ok 46 - streamed valid png preserves original bytes and removes temporary files
+  ---
+  duration_ms: 16.415495
+  type: 'test'
+  ...
+# Subtest: streamed valid webp preserves original bytes and removes temporary files
+ok 47 - streamed valid webp preserves original bytes and removes temporary files
+  ---
+  duration_ms: 19.302053
+  type: 'test'
+  ...
+# Subtest: streamed valid avif preserves original bytes and removes temporary files
+ok 48 - streamed valid avif preserves original bytes and removes temporary files
+  ---
+  duration_ms: 42.280701
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 12582912 bytes without the former fixed cap
+ok 49 - streamed multipart accepts 12582912 bytes without the former fixed cap
+  ---
+  duration_ms: 140.80779
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 41943040 bytes without the former fixed cap
+ok 50 - streamed multipart accepts 41943040 bytes without the former fixed cap
+  ---
+  duration_ms: 279.893139
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 41943041 bytes without the former fixed cap
+ok 51 - streamed multipart accepts 41943041 bytes without the former fixed cap
+  ---
+  duration_ms: 223.397832
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 62914560 bytes without the former fixed cap
+ok 52 - streamed multipart accepts 62914560 bytes without the former fixed cap
+  ---
+  duration_ms: 292.509056
+  type: 'test'
+  ...
+# Subtest: streamed multipart accepts 104857600 bytes without the former fixed cap
+ok 53 - streamed multipart accepts 104857600 bytes without the former fixed cap
+  ---
+  duration_ms: 495.178861
+  type: 'test'
+  ...
+# Subtest: chunked source download also permits a photo above 40 MiB and bounds display output
+ok 54 - chunked source download also permits a photo above 40 MiB and bounds display output
+  ---
+  duration_ms: 151.456981
+  type: 'test'
+  ...
+# Subtest: cold derivative creation always cleans a disk-backed original
+ok 55 - cold derivative creation always cleans a disk-backed original
+  ---
+  duration_ms: 23.794411
+  type: 'test'
+  ...
+# Subtest: invalid source decoding also cleans the disk original
+ok 56 - invalid source decoding also cleans the disk original
+  ---
+  duration_ms: 3.258062
+  type: 'test'
+  ...
+# Subtest: rejects empty and cleans temporary data
+ok 57 - rejects empty and cleans temporary data
+  ---
+  duration_ms: 3.025588
+  type: 'test'
+  ...
+# Subtest: rejects corrupt and cleans temporary data
+ok 58 - rejects corrupt and cleans temporary data
+  ---
+  duration_ms: 2.488062
+  type: 'test'
+  ...
+# Subtest: rejects SVG masquerading as JPEG and cleans temporary data
+ok 59 - rejects SVG masquerading as JPEG and cleans temporary data
+  ---
+  duration_ms: 4.795498
+  type: 'test'
+  ...
+# Subtest: rejects unsupported PDF and cleans temporary data
+not ok 60 - rejects unsupported PDF and cleans temporary data
+  ---
+  duration_ms: 2.577159
+  type: 'test'
+  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/deploy/image-optimization/streaming-photo.test.mjs:43:247'
+  failureType: 'uncaughtException'
+  error: 'Upload one JPEG, PNG, WebP or AVIF image.'
+  code: 'ERR_TEST_FAILURE'
+  name: 'PhotoUploadError'
+  stack: |-
+    Multipart.<anonymous> (file:///home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/lib/photo-upload-stream.mjs:30:82)
+    Multipart.emit (node:events:518:28)
+    HeaderParser.cb (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:358:14)
+    HeaderParser.push (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:162:20)
+    SBMH.ssCb [as _cb] (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:394:37)
+    feed (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/streamsearch@1.1.0/node_modules/streamsearch/lib/sbmh.js:200:10)
+    SBMH.push (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/streamsearch@1.1.0/node_modules/streamsearch/lib/sbmh.js:104:16)
+    Multipart._write (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:567:19)
+    writeOrBuffer (node:internal/streams/writable:572:12)
+    _write (node:internal/streams/writable:501:10)
+  ...
+# Subtest: rejects a MIME mismatch without changing original bytes
+ok 61 - rejects a MIME mismatch without changing original bytes
+  ---
+  duration_ms: 11.611575
+  type: 'test'
+  ...
+# Subtest: rejects duplicate file fields
+ok 62 - rejects duplicate file fields
+  ---
+  duration_ms: 17.972324
+  type: 'test'
+  ...
+# Subtest: rejects duplicate and oversized metadata
+ok 63 - rejects duplicate and oversized metadata
+  ---
+  duration_ms: 29.524207
+  type: 'test'
+  ...
+# Subtest: rejects missing multipart boundary
+ok 64 - rejects missing multipart boundary
+  ---
+  duration_ms: 0.483194
+  type: 'test'
+  ...
+# Subtest: rejects truncated multipart and deletes partial files
+not ok 65 - rejects truncated multipart and deletes partial files
+  ---
+  duration_ms: 2.833942
+  type: 'test'
+  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/deploy/image-optimization/streaming-photo.test.mjs:50:1'
+  failureType: 'uncaughtException'
+  error: 'Unexpected end of form'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    Multipart._final (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:588:17)
+    prefinish (node:internal/streams/writable:916:14)
+    finishMaybe (node:internal/streams/writable:930:5)
+    Writable.end (node:internal/streams/writable:845:5)
+    Readable.endFn (node:internal/streams/pipeline:428:11)
+    Object.onceWrapper (node:events:632:28)
+    Readable.emit (node:events:530:35)
+    endReadableNT (node:internal/streams/readable:1698:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+  ...
+# Subtest: disk-reserve exhaustion fails with 507 and removes partial files
+ok 66 - disk-reserve exhaustion fails with 507 and removes partial files
+  ---
+  duration_ms: 2.189263
+  type: 'test'
+  ...
+# Subtest: abort interrupts ingestion and deletes temporary files
+ok 67 - abort interrupts ingestion and deletes temporary files
+  ---
+  duration_ms: 2.13909
+  type: 'test'
+  ...
+# Subtest: declared length mismatch fails instead of saving a truncated source
+ok 68 - declared length mismatch fails instead of saving a truncated source
+  ---
+  duration_ms: 1.622304
+  type: 'test'
+  ...
+# Subtest: incremental browser digest matches the existing SHA-256 naming contract
+ok 69 - incremental browser digest matches the existing SHA-256 naming contract
+  ---
+  duration_ms: 16.026969
+  type: 'test'
+  ...
+# Subtest: upload concurrency guard releases safely after failure
+ok 70 - upload concurrency guard releases safely after failure
+  ---
+  duration_ms: 0.191318
+  type: 'test'
+  ...
+# Subtest: Azure SDK write uses staged blocks and bounded concurrency
+ok 71 - Azure SDK write uses staged blocks and bounded concurrency
+  ---
+  duration_ms: 17.965584
+  type: 'test'
+  ...
+# Subtest: identical Azure replay is verified from downloaded bytes without overwrite
+ok 72 - identical Azure replay is verified from downloaded bytes without overwrite
+  ---
+  duration_ms: 3.54576
+  type: 'test'
+  ...
+# Subtest: same-sized different Azure replay bytes are rejected
+ok 73 - same-sized different Azure replay bytes are rejected
+  ---
+  duration_ms: 7.553143
+  type: 'test'
+  ...
+# Subtest: Azure size mismatch and arbitrary-key conflicts are not accepted as successful retries
+ok 74 - Azure size mismatch and arbitrary-key conflicts are not accepted as successful retries
+  ---
+  duration_ms: 3.335898
+  type: 'test'
+  ...
+# Error: A resource generated asynchronous activity after the test ended. This activity created the error "TypeError [ERR_INVALID_STATE]: Invalid state: ReadableStream is already closed" which triggered an uncaughtException event, caught by the test runner.
+# Error: A resource generated asynchronous activity after the test ended. This activity created the error "TypeError [ERR_INVALID_STATE]: Invalid state: ReadableStream is already closed" which triggered an uncaughtException event, caught by the test runner.
+# Subtest: browser-readable progressive JPEG without ending data recovers to bounded WebP
+ok 75 - browser-readable progressive JPEG without ending data recovers to bounded WebP
+  ---
+  duration_ms: 1377.875962
+  type: 'test'
+  ...
+# Subtest: valid JPEG retains strict decoder and normal output bytes
+ok 76 - valid JPEG retains strict decoder and normal output bytes
+  ---
+  duration_ms: 95.305592
+  type: 'test'
+  ...
+# Subtest: unrelated corruption and pixel-limit errors are rejected
+ok 77 - unrelated corruption and pixel-limit errors are rejected
+  ---
+  duration_ms: 1.643833
+  type: 'test'
+  ...
+1..77
+# tests 77
+# suites 0
+# pass 75
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2164.99425

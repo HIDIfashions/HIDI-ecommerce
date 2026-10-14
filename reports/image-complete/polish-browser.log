@@ -1,0 +1,10 @@
+PASS editorial polish chromium phone
+PASS editorial polish chromium desktop
+PASS editorial polish chromium save-data
+PASS editorial polish firefox phone
+PASS editorial polish firefox desktop
+PASS editorial polish firefox save-data
+PASS editorial polish webkit phone
+PASS editorial polish webkit desktop
+PASS editorial polish webkit save-data
+9/9 editorial-polish browser checks passed.

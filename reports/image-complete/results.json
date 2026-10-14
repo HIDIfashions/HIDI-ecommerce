@@ -1,0 +1,3640 @@
+{
+  "testedCommit": "3e2b9d41f0fc8036a642299cb88814608a658d48",
+  "runId": "38636628924",
+  "productionChanged": false,
+  "suites": [
+    {
+      "name": "prisma-generate",
+      "command": "pnpm db:generate",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 2.41,
+      "passed": 0,
+      "failed": 0
+    },
+    {
+      "name": "frontend-regression",
+      "command": "node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs",
+      "status": "FAIL",
+      "exitCode": 1,
+      "seconds": 6.56,
+      "passed": 226,
+      "failed": 14,
+      "failureTail": "on_ms: 60.985009\n  type: 'test'\n  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:228:1'\n  failureType: 'testCodeFailure'\n  error: 'Unexpected dependency: @/lib/checkout-pin'\n  code: 'ERR_TEST_FAILURE'\n  stack: |-\n    require (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:88)\n    evalmachine.<anonymous>:20:24\n    Script.runInContext (node:vm:149:12)\n    Script.runInNewContext (node:vm:154:17)\n    Object.runInNewContext (node:vm:310:38)\n    loadModule (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:6)\n    checkoutHarness (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:125:20)\n    TestContext.<anonymous> (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:229:13)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n  ...\n# Subtest: captured cash retry redirects without opening a second Razorpay payment\nnot ok 235 - captured cash retry redirects without opening a second Razorpay payment\n  ---\n  duration_ms: 70.204659\n  type: 'test'\n  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:236:1'\n  failureType: 'testCodeFailure'\n  error: 'Unexpected dependency: @/lib/checkout-pin'\n  code: 'ERR_TEST_FAILURE'\n  stack: |-\n    require (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:88)\n    evalmachine.<anonymous>:20:24\n    Script.runInContext (node:vm:149:12)\n    Script.runInNewContext (node:vm:154:17)\n    Object.runInNewContext (node:vm:310:38)\n    loadModule (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:6)\n    checkoutHarness (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:125:20)\n    TestContext.<anonymous> (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:237:13)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n  ...\n# Subtest: account switch cancels a late full-wallet response and resets checkbox\nnot ok 236 - account switch cancels a late full-wallet response and resets checkbox\n  ---\n  duration_ms: 68.942147\n  type: 'test'\n  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:244:1'\n  failureType: 'testCodeFailure'\n  error: 'Unexpected dependency: @/lib/checkout-pin'\n  code: 'ERR_TEST_FAILURE'\n  stack: |-\n    require (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:88)\n    evalmachine.<anonymous>:20:24\n    Script.runInContext (node:vm:149:12)\n    Script.runInNewContext (node:vm:154:17)\n    Object.runInNewContext (node:vm:310:38)\n    loadModule (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:6)\n    checkoutHarness (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:125:20)\n    TestContext.<anonymous> (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:245:13)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n  ...\n# Subtest: guest cash checkout has no Authorization and wallet flag off renders no rewards controls\nnot ok 237 - guest cash checkout has no Authorization and wallet flag off renders no rewards controls\n  ---\n  duration_ms: 69.782961\n  type: 'test'\n  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:256:1'\n  failureType: 'testCodeFailure'\n  error: 'Unexpected dependency: @/lib/checkout-pin'\n  code: 'ERR_TEST_FAILURE'\n  stack: |-\n    require (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:88)\n    evalmachine.<anonymous>:20:24\n    Script.runInContext (node:vm:149:12)\n    Script.runInNewContext (node:vm:154:17)\n    Object.runInNewContext (node:vm:310:38)\n    loadModule (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:6)\n    checkoutHarness (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:125:20)\n    TestContext.<anonymous> (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:257:13)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n  ...\n# Subtest: bag ownership conflict offers explicit new-bag action without automatic replacement\nnot ok 238 - bag ownership conflict offers explicit new-bag action without automatic replacement\n  ---\n  duration_ms: 72.088021\n  type: 'test'\n  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:264:1'\n  failureType: 'testCodeFailure'\n  error: 'Unexpected dependency: @/lib/checkout-pin'\n  code: 'ERR_TEST_FAILURE'\n  stack: |-\n    require (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:88)\n    evalmachine.<anonymous>:20:24\n    Script.runInContext (node:vm:149:12)\n    Script.runInNewContext (node:vm:154:17)\n    Object.runInNewContext (node:vm:310:38)\n    loadModule (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:6)\n    checkoutHarness (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:125:20)\n    TestContext.<anonymous> (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:265:13)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n  ...\n# Subtest: COD response is confirmed but unpaid and requires no gateway fields\nok 239 - COD response is confirmed but unpaid and requires no gateway fields\n  ---\n  duration_ms: 9.658761\n  type: 'test'\n  ...\n# Subtest: guest COD checkout bypasses missing Razorpay SDK and redirects once\nnot ok 240 - guest COD checkout bypasses missing Razorpay SDK and redirects once\n  ---\n  duration_ms: 65.905626\n  type: 'test'\n  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:279:1'\n  failureType: 'testCodeFailure'\n  error: 'Unexpected dependency: @/lib/checkout-pin'\n  code: 'ERR_TEST_FAILURE'\n  stack: |-\n    require (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:88)\n    evalmachine.<anonymous>:20:24\n    Script.runInContext (node:vm:149:12)\n    Script.runInNewContext (node:vm:154:17)\n    Object.runInNewContext (node:vm:310:38)\n    loadModule (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:14:6)\n    checkoutHarness (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:125:20)\n    TestContext.<anonymous> (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/tests/wallet-frontend.test.cjs:280:10)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n  ...\n1..240\n# tests 240\n# suites 0\n# pass 226\n# fail 14\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 6520.13057\n"
+    },
+    {
+      "name": "api-regression",
+      "command": "pnpm --filter @hidi/api test:customer-experience",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 8.17,
+      "passed": 382,
+      "failed": 0
+    },
+    {
+      "name": "image-regression",
+      "command": "node --test deploy/image-optimization/*.test.mjs deploy/launch-image-repair/recovery.test.mjs",
+      "status": "FAIL",
+      "exitCode": 1,
+      "seconds": 2.2,
+      "passed": 75,
+      "failed": 2,
+      "failureTail": "inal\n  ---\n  duration_ms: 23.794411\n  type: 'test'\n  ...\n# Subtest: invalid source decoding also cleans the disk original\nok 56 - invalid source decoding also cleans the disk original\n  ---\n  duration_ms: 3.258062\n  type: 'test'\n  ...\n# Subtest: rejects empty and cleans temporary data\nok 57 - rejects empty and cleans temporary data\n  ---\n  duration_ms: 3.025588\n  type: 'test'\n  ...\n# Subtest: rejects corrupt and cleans temporary data\nok 58 - rejects corrupt and cleans temporary data\n  ---\n  duration_ms: 2.488062\n  type: 'test'\n  ...\n# Subtest: rejects SVG masquerading as JPEG and cleans temporary data\nok 59 - rejects SVG masquerading as JPEG and cleans temporary data\n  ---\n  duration_ms: 4.795498\n  type: 'test'\n  ...\n# Subtest: rejects unsupported PDF and cleans temporary data\nnot ok 60 - rejects unsupported PDF and cleans temporary data\n  ---\n  duration_ms: 2.577159\n  type: 'test'\n  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/deploy/image-optimization/streaming-photo.test.mjs:43:247'\n  failureType: 'uncaughtException'\n  error: 'Upload one JPEG, PNG, WebP or AVIF image.'\n  code: 'ERR_TEST_FAILURE'\n  name: 'PhotoUploadError'\n  stack: |-\n    Multipart.<anonymous> (file:///home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web/lib/photo-upload-stream.mjs:30:82)\n    Multipart.emit (node:events:518:28)\n    HeaderParser.cb (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:358:14)\n    HeaderParser.push (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:162:20)\n    SBMH.ssCb [as _cb] (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:394:37)\n    feed (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/streamsearch@1.1.0/node_modules/streamsearch/lib/sbmh.js:200:10)\n    SBMH.push (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/streamsearch@1.1.0/node_modules/streamsearch/lib/sbmh.js:104:16)\n    Multipart._write (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:567:19)\n    writeOrBuffer (node:internal/streams/writable:572:12)\n    _write (node:internal/streams/writable:501:10)\n  ...\n# Subtest: rejects a MIME mismatch without changing original bytes\nok 61 - rejects a MIME mismatch without changing original bytes\n  ---\n  duration_ms: 11.611575\n  type: 'test'\n  ...\n# Subtest: rejects duplicate file fields\nok 62 - rejects duplicate file fields\n  ---\n  duration_ms: 17.972324\n  type: 'test'\n  ...\n# Subtest: rejects duplicate and oversized metadata\nok 63 - rejects duplicate and oversized metadata\n  ---\n  duration_ms: 29.524207\n  type: 'test'\n  ...\n# Subtest: rejects missing multipart boundary\nok 64 - rejects missing multipart boundary\n  ---\n  duration_ms: 0.483194\n  type: 'test'\n  ...\n# Subtest: rejects truncated multipart and deletes partial files\nnot ok 65 - rejects truncated multipart and deletes partial files\n  ---\n  duration_ms: 2.833942\n  type: 'test'\n  location: '/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/deploy/image-optimization/streaming-photo.test.mjs:50:1'\n  failureType: 'uncaughtException'\n  error: 'Unexpected end of form'\n  code: 'ERR_TEST_FAILURE'\n  stack: |-\n    Multipart._final (/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:588:17)\n    prefinish (node:internal/streams/writable:916:14)\n    finishMaybe (node:internal/streams/writable:930:5)\n    Writable.end (node:internal/streams/writable:845:5)\n    Readable.endFn (node:internal/streams/pipeline:428:11)\n    Object.onceWrapper (node:events:632:28)\n    Readable.emit (node:events:530:35)\n    endReadableNT (node:internal/streams/readable:1698:12)\n    process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n  ...\n# Subtest: disk-reserve exhaustion fails with 507 and removes partial files\nok 66 - disk-reserve exhaustion fails with 507 and removes partial files\n  ---\n  duration_ms: 2.189263\n  type: 'test'\n  ...\n# Subtest: abort interrupts ingestion and deletes temporary files\nok 67 - abort interrupts ingestion and deletes temporary files\n  ---\n  duration_ms: 2.13909\n  type: 'test'\n  ...\n# Subtest: declared length mismatch fails instead of saving a truncated source\nok 68 - declared length mismatch fails instead of saving a truncated source\n  ---\n  duration_ms: 1.622304\n  type: 'test'\n  ...\n# Subtest: incremental browser digest matches the existing SHA-256 naming contract\nok 69 - incremental browser digest matches the existing SHA-256 naming contract\n  ---\n  duration_ms: 16.026969\n  type: 'test'\n  ...\n# Subtest: upload concurrency guard releases safely after failure\nok 70 - upload concurrency guard releases safely after failure\n  ---\n  duration_ms: 0.191318\n  type: 'test'\n  ...\n# Subtest: Azure SDK write uses staged blocks and bounded concurrency\nok 71 - Azure SDK write uses staged blocks and bounded concurrency\n  ---\n  duration_ms: 17.965584\n  type: 'test'\n  ...\n# Subtest: identical Azure replay is verified from downloaded bytes without overwrite\nok 72 - identical Azure replay is verified from downloaded bytes without overwrite\n  ---\n  duration_ms: 3.54576\n  type: 'test'\n  ...\n# Subtest: same-sized different Azure replay bytes are rejected\nok 73 - same-sized different Azure replay bytes are rejected\n  ---\n  duration_ms: 7.553143\n  type: 'test'\n  ...\n# Subtest: Azure size mismatch and arbitrary-key conflicts are not accepted as successful retries\nok 74 - Azure size mismatch and arbitrary-key conflicts are not accepted as successful retries\n  ---\n  duration_ms: 3.335898\n  type: 'test'\n  ...\n# Error: A resource generated asynchronous activity after the test ended. This activity created the error \"TypeError [ERR_INVALID_STATE]: Invalid state: ReadableStream is already closed\" which triggered an uncaughtException event, caught by the test runner.\n# Error: A resource generated asynchronous activity after the test ended. This activity created the error \"TypeError [ERR_INVALID_STATE]: Invalid state: ReadableStream is already closed\" which triggered an uncaughtException event, caught by the test runner.\n# Subtest: browser-readable progressive JPEG without ending data recovers to bounded WebP\nok 75 - browser-readable progressive JPEG without ending data recovers to bounded WebP\n  ---\n  duration_ms: 1377.875962\n  type: 'test'\n  ...\n# Subtest: valid JPEG retains strict decoder and normal output bytes\nok 76 - valid JPEG retains strict decoder and normal output bytes\n  ---\n  duration_ms: 95.305592\n  type: 'test'\n  ...\n# Subtest: unrelated corruption and pixel-limit errors are rejected\nok 77 - unrelated corruption and pixel-limit errors are rejected\n  ---\n  duration_ms: 1.643833\n  type: 'test'\n  ...\n1..77\n# tests 77\n# suites 0\n# pass 75\n# fail 2\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2164.99425\n"
+    },
+    {
+      "name": "large-photo-stress",
+      "command": "node deploy/image-optimization/large-photo-check.mjs reports/image-complete/large-photo.json",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 5.22,
+      "passed": 0,
+      "failed": 0
+    },
+    {
+      "name": "deployment-guards",
+      "command": "python3 tests/shopping-ux-deploy.test.py",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 9.13,
+      "passed": 0,
+      "failed": 0
+    },
+    {
+      "name": "api-build",
+      "command": "pnpm --filter @hidi/api build",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 9.47,
+      "passed": 0,
+      "failed": 0
+    },
+    {
+      "name": "web-build",
+      "command": "pnpm --filter @hidi/web build",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 63.46,
+      "passed": 0,
+      "failed": 0
+    },
+    {
+      "name": "web-lint",
+      "command": "pnpm --filter @hidi/web lint",
+      "status": "FAIL",
+      "exitCode": 2,
+      "seconds": 0.55,
+      "passed": 0,
+      "failed": 0,
+      "failureTail": "\n> @hidi/web@0.1.0 lint /home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web\n> eslint .\n\n\nOops! Something went wrong! :(\n\nESLint: 9.39.5\n\nESLint couldn't find an eslint.config.(js|mjs|cjs) file.\n\nFrom ESLint v9.0.0, the default configuration file is now eslint.config.js.\nIf you are using a .eslintrc.* file, please follow the migration guide\nto update your configuration file to the new format:\n\nhttps://eslint.org/docs/latest/use/configure/migration-guide\n\nIf you still have problems after following the migration guide, please stop by\nhttps://eslint.org/chat/help to chat with the team.\n\n/home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 @hidi/web@0.1.0 lint: `eslint .`\nExit status 2\n"
+    },
+    {
+      "name": "admin-browser",
+      "command": "node tests/admin-workspace.browser.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 15.37,
+      "passed": 0,
+      "failed": 0
+    },
+    {
+      "name": "homepage-browser",
+      "command": "node tests/homepage-background.browser.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 3.8,
+      "passed": 0,
+      "failed": 0
+    },
+    {
+      "name": "editorial-browser",
+      "command": "node tests/editorial-storefront.browser.mjs",
+      "status": "FAIL",
+      "exitCode": 124,
+      "seconds": 300.01,
+      "passed": 0,
+      "failed": 0,
+      "failureTail": "Catalogue header clears measured announcements while scrolling and plus remains accessible\nPASS firefox EDIT-ok Cart size edit updates price, preserves failed edits and merges an existing size\nPASS firefox EDIT-conflict Cart size edit updates price, preserves failed edits and merges an existing size\nPASS firefox EDIT-merge Cart size edit updates price, preserves failed edits and merges an existing size\nPASS firefox EDIT-unavailable Unavailable cart sizes stay disabled and Cancel makes no write\nPASS firefox EDIT-server Failed size update preserves the last confirmed bag and never retries a write\nPASS firefox EDIT-rate Failed size update preserves the last confirmed bag and never retries a write\nPASS firefox EDIT-malformed Failed size update preserves the last confirmed bag and never retries a write\nPASS firefox EDIT-network Failed size update preserves the last confirmed bag and never retries a write\nPASS firefox EDIT-load-retry Size lookup failure can be retried or cancelled without changing the bag\nPASS firefox WISH-01 Wishlist toggles and survives a settled full reload without changing cart\nPASS firefox PRIV-01 Compact privileges preserve offer destinations and terms\nFAIL firefox LOOK-01: TimeoutError: locator.click: Timeout 8000ms exceeded.\nCall log:\n  - waiting for locator('[data-section=\"lookbook\"]').getByRole('link', { name: 'Explore the lookbook' })\n\nFAIL firefox FOOT-01: AssertionError [ERR_ASSERTION]: false == true\nPASS firefox EMPTY-01 Empty catalogue retains hero, discovery and calm recovery\nPASS firefox QUAL-01 Mobile hero separates header, garment and copy at 320, 390 and 768px\nPASS firefox QUAL-02 PDP price, MRP, selected size and deselection follow the exact variant\nPASS firefox QUAL-03 Colour changes reset size and update price, specifications and colour-specific photography\nPASS firefox QUAL-04 Size guide units, missing measurements, related-product navigation and sold-out controls\nPASS firefox QUAL-05 PDP duplicate-click guard posts one exact SKU and quantity, no client price\nPASS firefox QUAL-06-conflict PDP conflict response never fabricates success or automatically retries\nPASS firefox QUAL-06-server PDP server response never fabricates success or automatically retries\nPASS firefox QUAL-06-rate PDP rate response never fabricates success or automatically retries\nPASS firefox QUAL-06-malformed PDP malformed response never fabricates success or automatically retries\nPASS firefox QUAL-07 Image inspection supports zoom bounds, arrows, Escape and focus restoration\nPASS firefox QUAL-08 Mobile filters correlate size and colour, expose removable selections, clear and restore focus\nPASS firefox QUAL-09 Every price option, fabric selection, sort radio and desktop sort dropdown works\nPASS firefox QUAL-10 Reversed-word overlay search and full search preserve the current document\nPASS firefox QUAL-11 Malformed search responses show a recoverable error, never an empty catalogue\nPASS firefox QUAL-12 Delivery PIN sanitizes input, rejects invalid PIN locally and distinguishes service states\nFAIL firefox QUAL-13: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 0\n\nFAIL firefox QUAL-14: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n0 !== 6\n\nPASS firefox QUAL-15 Buy Now retains the bag and guest checkout field constraints without submitting payment\nPASS firefox QUAL-16 Repeated search parameters, resubmission and browser Back preserve query and document\nPASS firefox QUAL-17 Direct-entry About page retains campaign image without a heavy autoplay film\nPASS firefox FIX-01 Guest sign-in card matches hierarchy and all responsive totals include shipping\nPASS firefox FIX-02 Phone typing and pasted content allow digits with one leading plus only\nPASS firefox FIX-03 Filter footer stays visible and never overlaps options on small phones and landscape\nPASS firefox FIX-04 Every product has the screenshot Shipping & Returns rows and a working policy link\nFAIL firefox FIX-07: TimeoutError: locator.evaluate: Timeout 8000ms exceeded.\nCall log:\n  - waiting for getByRole('dialog').filter({ has: getByRole('heading', { name: 'Ira everyday kurta', exact: true }) }).getByRole('button', { name: 'Add to bag', exact: true })\n\nFAIL firefox FIX-05: AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Shipping\\s*\u20b999/. Input:\n\n'Total to pay\\n\u20b91,597.99\\nPay securely'\n\nPASS firefox FIX-06 Gateway receives the shipping-inclusive server amount and HIDI button theme\nPASS webkit VIS-01 Responsive surfaces, type roles, image rendering and horizontal overflow\nPASS webkit HDR-01 Transparent header, scroll blur and home-logo return to top\nPASS webkit NAV-01 Mobile drawer anchor, single close action, Escape and focus return\nPASS webkit MOT-01 Reduced motion avoids playback and keeps campaign poster visible\nPASS webkit MOT-02 Ambient pause/resume, announcements pause, broken-video poster fallback\nFAIL webkit SRCH-01: TimeoutError: locator.getAttribute: Timeout 8000ms exceeded.\nCall log:\n  - waiting for getByRole('dialog', { name: 'Search HIDI', exact: true }).getByRole('link', { name: 'Workwear Edit', exact: true })\n\nPASS webkit SRCH-02 Search network failure is explicit and retry recovers\nPASS webkit CARD-01 Minimal home cards, same-variant MRP and sold-out safeguards\nPASS webkit CART-01 Quick add requires size, handles colour changes and cycles keyboard focus\nPASS webkit CART-02 Confirmed cart write occurs once; bag and checkout retain the same session\nPASS webkit CART-03 Quick-add conflict response never fabricates success or automatically retries\nPASS webkit CART-04 Quick-add server response never fabricates success or automatically retries\nPASS webkit CART-05 Quick-add rate response never fabricates success or automatically retries\nPASS webkit CART-06 Quick-add malformed response never fabricates success or automatically retries\nPASS webkit CART-07 Touch quick add and mobile bag quantity increase, decrease and removal\nPASS webkit RESP-01 Catalogue header clears measured announcements while scrolling and plus remains accessible\nPASS webkit EDIT-ok Cart size edit updates price, preserves failed edits and merges an existing size\nPASS webkit EDIT-conflict Cart size edit updates price, preserves failed edits and merges an existing size\nPASS webkit EDIT-merge Cart size edit updates price, preserves failed edits and merges an existing size\nPASS webkit EDIT-unavailable Unavailable cart sizes stay disabled and Cancel makes no write\nPASS webkit EDIT-server Failed size update preserves the last confirmed bag and never retries a write\nPASS webkit EDIT-rate Failed size update preserves the last confirmed bag and never retries a write\nPASS webkit EDIT-malformed Failed size update preserves the last confirmed bag and never retries a write\nPASS webkit EDIT-network Failed size update preserves the last confirmed bag and never retries a write\nPASS webkit EDIT-load-retry Size lookup failure can be retried or cancelled without changing the bag\n"
+    },
+    {
+      "name": "polish-browser",
+      "command": "node tests/editorial-polish.browser.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 16.97,
+      "passed": 0,
+      "failed": 0
+    }
+  ],
+  "cases": [
+    {
+      "suite": "frontend-regression",
+      "case": "apps/web/lib/product-sharing.test.mjs",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "IST midnight boundaries and exclusive end are correct",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "report defaults, leap days and 90-day limit",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "search and pagination reject abusive input without building SQL",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "daily series fills gaps, aligns prior period and serializes bigint money",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "overview uses database totals, not its recent eight-row preview",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "queue pagination is database-backed, stable and delivery workload ignores report dates",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "returns are item-level requests and include in-progress states",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "invalid queue filters fail before accessing records",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "catalogue role never queries customers or orders in global search",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "owner global search resolves products, orders and customer-order navigation",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "guarded endpoints retain required existing permissions",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "CSV neutralizes spreadsheet formulas and escapes quotes",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "BFF has an explicit resource allowlist and no public cache or browser secret",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "admin workspace exposes product operations, including price-tag printing",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "admin code requests use the HIDI staff gate, with no direct provider signup request",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "an unlisted email denial is displayed and never falls back to direct OTP delivery",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "malformed emails are rejected before the network request",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "store proxy calls remain on the current browser origin",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "explicit direct API endpoints remain supported",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "server-side rendering retains its internal API configuration",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "development defaults and production fail-closed behavior are preserved",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "MSG91 failure switches to Firebase and verifies the Firebase proof through HIDI",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Firebase fallback rejects rate limits and invalid directives: {\"ok\":false,\"body\":{\"message\":\"Please wait before requesting another OTP\"}}",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Firebase fallback rejects rate limits and invalid directives: {\"body\":{\"phone\":\"+918888888888\",\"channel\":\"FIREBASE\",\"provider\":\"firebase\",\"clientHandled\":true,\"fallback\":true}}",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Firebase fallback rejects rate limits and invalid directives: {\"body\":{\"phone\":\"+919999999999\",\"channel\":\"FIREBASE\",\"provider\":\"firebase\",\"clientHandled\":true,\"fallback\":false}}",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Firebase fallback errors cannot be reported as a sent SMS",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "runtime MSG91 SMS replaces a baked Firebase provider and verifies through HIDI",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "runtime WhatsApp replaces a baked Firebase provider and SMS label",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "unconfigured runtime refuses to send rather than using a baked provider",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "invalid runtime configuration fails closed: {\"ok\":false,\"body\":{}}",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "invalid runtime configuration fails closed: {\"body\":{\"phoneOtp\":true,\"channel\":\"SMS\",\"provider\":\"whatsapp\"}}",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "invalid runtime configuration fails closed: {\"body\":{\"phoneOtp\":true,\"channel\":\"WHATSAPP\",\"provider\":\"unknown\"}}",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a failed configuration request can be retried",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "the delivered channel overrides a configuration that changed during the request",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a switch to client-handled Firebase cannot be reported as a sent WhatsApp code",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "verification keeps the provider that issued the pending OTP across a runtime switch",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "primary Firebase requires server send authorization before using the SDK",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "server throttle applies to primary Firebase and exposes its retry deadline",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "primary Firebase rejects mismatched send directives: {\"phone\":\"+918888888888\",\"channel\":\"FIREBASE\",\"provider\":\"firebase\",\"clientHandled\":true,\"retryAfterSeconds\":60}",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "primary Firebase rejects mismatched send directives: {\"phone\":\"+919999999999\",\"channel\":\"FIREBASE\",\"provider\":\"firebase\",\"clientHandled\":true,\"retryAfterSeconds\":60,\"fallback\":true}",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "primary Firebase rejects mismatched send directives: {\"phone\":\"+919999999999\",\"channel\":\"FIREBASE\",\"provider\":\"firebase\",\"clientHandled\":false,\"retryAfterSeconds\":60}",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a failed resend retains the issuer proof and can verify the previous code",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a successful resend refreshes runtime settings and replaces the issuing provider",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Firebase SDK resend failure preserves the prior confirmation",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "invalid retry metadata and non-throttle responses do not set a retry deadline",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "browser refresh uses its own store proxy rather than a baked-in production host",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a matching refresh rotates the active session",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a late successful refresh cannot undo logout",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a late successful refresh cannot replace another customer's session",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a late failed refresh cannot clear another customer's session",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a late failed refresh after logout does not mutate storage again",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a failed refresh of the still-active original session clears it",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a response for an unrelated user cannot be saved",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a session switch during JSON parsing also prevents a stale save",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "concurrent account, wallet and navigation callers share one successful refresh",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "concurrent failed refresh clears the expired session once for all callers",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a different customer never joins another customer's in-flight refresh",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a later expiry starts a new refresh after the shared request completes",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure Firebase setup preserve",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure Firebase setup new-secret",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure Firebase setup production",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure Firebase setup migration-failed",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure Firebase setup env-only",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure Firebase setup missing-admin",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure Firebase setup ambiguous-admin",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: sms",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: check",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: existing-key",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: missing-key",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: missing-template",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: invalid-signing",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: missing-signing-ref",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: missing-key-ref",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: multiple",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: disabled",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: production",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: unguarded",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: web-unready",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: unsafe-endpoint",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: missing-firebase",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Azure MSG91 SMS setup: mismatched-firebase",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "modified and non-primary logo clicks preserve native link navigation",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "logo scroll follows reduced-motion preference",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "decorative detail media mounts on intent and not during initial render",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "detail intent listeners are removed on unmount",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "quick-add bodies are deferred without changing the shared cart write",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "responsive media sizes distinguish spotlight, smaller edits and product cards",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "mobile hero is bounded and craft imagery is not artificially enlarged",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "search spacing and newsletter wording avoid crowding and unverified incentives",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage neutral tokens resolve to the same shared ivory",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Privileges has a flat shared background, not a separate beige or gold gradient",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "shopping services use the same flat ivory as the craft story",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "responsive rules cannot reintroduce a gradient on neutral homepage sections",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "photography vignettes are confined to image overlays, while privileges use native disclosure",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "drawer tracks actual header bottom at phone and tablet widths",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "header resize and viewport/scroll changes recompute the anchor",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "desktop transition closes the mobile drawer",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "closing removes observers, listeners and measured state",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "closed menu does not measure or attach observers",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "CSS protects viewport positioning and scrollable content from regression",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "single-SKU selection accepts large photos and rejects invalid sizes before uploading",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "bulk photos accept files above the former 40 MiB cap with correct SKU mapping",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "size and colour intersect on one purchasable SKU, not separate variants",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "unavailable sizes never satisfy filters",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "multiple choices OR within a group and AND across groups",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "price boundaries are exact paise, without gaps or overlap",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "invalid money fails closed",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "price filters cannot use a cheaper different colour",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "sort by qualifying variant price is stable and leaves source inventory intact",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "clearing filters restores the complete original catalogue including sold-out cards",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "missing fabric does not falsely satisfy a fabric filter",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "product-level sold-out flag cannot be bypassed by stale variant counts",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "matchingVariants retains exact SKU identifiers and does not select a size",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "overlay and full search accept reversed multiword queries",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "search handles case, punctuation, repeated spaces and accent folding",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Workwear Edit search retains the original Work Edit catalogue name and route",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "empty and punctuation-only search never matches the entire store",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "SKU search works without a product name",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "unknown price/sort controls do not mutate or discard catalogue",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "explicit labelled catalogue facts are used without inferring from the name",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "photography and the word set never invent included pieces or fabric",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "labels are case-insensitive and tolerate CRLF and spaces",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "empty or misleading in-sentence labels do not become garment facts",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "complete catalogue evidence clears all readiness gaps",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "each available variant needs usable measurements, not only the first size",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "invalid and zero garment measurements remain a content gap",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "unavailable variant missing measurements does not prevent complete available stock",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "published shipping threshold is inclusive and seven-day eligibility is consistent",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "unapproved exchange, dispatch and refund timelines remain explicit gaps",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "public support never falls back to private SMTP or owner email",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "an approved email is encoded as a mailto link, not active markup",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "header injection, markup and malformed support contacts are rejected",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "valid international support phone is normalized, missing phone is not fabricated",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "PDP narrative omits labelled facts without losing ordinary descriptive text",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "feature off and anonymous sessions make no API requests",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "independent choices and consent version are sent, without storing browsing history",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a paused server still permits a preference withdrawal request",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "switching identity while token resolves prevents the old customer's request",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "switching identity while response resolves rejects stale preferences",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "invalid preference response fails closed",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "tracker stays silent when disabled, anonymous, or personalization not opted in",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "only 30 visible seconds qualify, and each product detail is recorded once",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "size events require consent and matching product; repeated size event is deduplicated",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "logout cancels the clock and suppresses further size events",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "old customer's late consent cannot enable tracking for a new customer",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "withdrawing consent immediately resets tracking pending server confirmation",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "indexing requires an explicitly opened production domain",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "primary HIDI domain can force canonical URLs for SEO consolidation",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "product offers retain each variant's real price, currency, SKU and stock",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "only known migrated media is normalized to the versioned local display proxy",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "HIDI India domain is covered by launch gates and image optimizer allowlists",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "social proof uses only real published review evidence",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "WCAG foundation keeps keyboard focus visible and modal overlays contained",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "forms and utility controls expose assistive status and labels",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "SEO foundation exposes canonical metadata, sitemap and crawl controls",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "analytics and browser security hardening stay environment gated",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "product and collection pages publish search metadata and structured data",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "private and transactional storefront routes are noindex",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "catalogue cards share media observers instead of creating one per card",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "collection LCP prioritizes only the leading product media",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage requests only a bounded featured catalogue payload",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage launch fallback is bounded, premium and navigable",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage premium edit keeps real best sellers first when sales data exists",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Shop by Edit stays concise and shows the four approved categories",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage exposes the four core collection destinations without a marketplace strip",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage showcases HIDI Privileges without turning into a discount banner",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage follows the new editorial shopping flow without repeating promotional sections",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "HIDI Privileges remains closed by default with keyboard-operable terms and responsive columns",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage service strip communicates four practical shopping promises",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage WhatsApp service falls back safely when no business number is configured",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage WhatsApp service creates a clean external handoff when configured",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "empty reviews remain calm without star or zero-count summaries",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "review CTA is a native disclosure with truthful private-invitation guidance",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "populated reviews expose accessible ratings and retain the review disclosure",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "unverified reviews never acquire a verified-purchase badge",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "review copy renders as text, not customer-provided markup",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "WhatsApp control is disabled and explained when no business number is configured",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "configured WhatsApp dialog has labelled controls, icon and a truthful handoff note",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "initial WhatsApp selection never silently chooses size or bypasses stock verification",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "invalid configured WhatsApp numbers fail closed",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "review CTA and review submission have at least 48px minimum height",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage hero preserves the full-body garden composition on desktop",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage section transitions stay compact without oversized blank gaps",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "homepage premium interactions preserve desktop rhythm, mobile stacking and reduced motion",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "craft and lookbook retain honest editorial attribution without unverified fabric or customer claims",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "storefront typography is build-safe and does not depend on Google font fetching",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "HIDI theme keeps homepage and catalogue commerce on Mulberry, Gold and warm ivory",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "Option 1 footer keeps the HIDI ending dusty clay, gold and responsive",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "HIDI Privileges disclosure has usable interaction targets without loud hover panels",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "bag groups the same product and colour while preserving size controls",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "checkout PIN helper is advisory, sanitized and preserves editable delivery fields",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "bag and checkout include the advertised complimentary-shipping threshold",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "checkout keeps guest purchase prominent and minimizes typing friction",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "checkout keeps shipping promise, delivery assistance and recovery aligned",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "HIDI Fit only presents verified garment measurements",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "WhatsApp ordering uses the recognisable WhatsApp mark",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "HIDI Fit selected size toggles off when the same size is clicked again",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "modal CSS bounds desktop size and allows content scrolling",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "mobile modal CSS is a bounded bottom sheet with safe-area space and readable selects",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "modal actions retain usable target sizes, focus outlines and reduced-motion styles",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "dialog source retains native-modal, cancellation and focus-return hooks",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "quality layer loads last without overriding admin or approved theme tokens",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "phone and tablet navigation no longer overlaps the campaign",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "mobile garment area is separate from campaign copy and motion button",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "PDP touch controls have 48px targets and keyboard focus clears sticky chrome",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "entry fields keep a readable minimum without changing colour swatches",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "catalogue filter drawer clears the sticky header and uses reachable controls",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "ivory size and colour fills exclude selected and disabled states",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "surface overrides load after typography and compatibility styles",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "one shared ivory token drives public surfaces",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "inner header is transparent, and desktop grid fits the approved logo",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "collection title is 24px desktop and 22px mobile, using shared font",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "collection headings do not reintroduce HIDI EDIT or descriptive subtitle",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "home logo scrolls to top and closes the menu without stealing focus",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "logo on another page retains normal Next Link navigation to home",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "public CSS modules contain no hard-coded white surface fills",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "inline product and cart fills use the shared token without altering imagery",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "native input rule excludes color swatches and validation feedback",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "wallet feature off or anonymous session never fetches balances",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "wallet request is authenticated/no-store and 404 is unavailable, not a zero balance",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "stale wallet response cannot publish another customer's balance",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "account switch during token refresh makes no wallet request",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "wallet amounts are exact paise and allow full order coverage without percentage cap",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "malformed wallet balances fail closed; disabled real ledger is retained",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "payment response enforces cash + rewards = gross, including full-wallet capture",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "retry fingerprint changes with account, cart, wallet or delivery but not object key order",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "wallet checkbox starts unchecked; full-wallet checkout works without Razorpay SDK",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "cash checkout does not create an order before SDK is available",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "partial redemption sends only the server-authoritative cash amount to Razorpay",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "double submit creates only one prepare request",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "a lower freshly loaded wallet balance blocks new checkout instead of silently increasing cash",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "identical retry reuses checkout token even when its wallet funds are reserved",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "changed wallet choice creates a new idempotency key",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "captured cash retry redirects without opening a second Razorpay payment",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "account switch cancels a late full-wallet response and resets checkbox",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "guest cash checkout has no Authorization and wallet flag off renders no rewards controls",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "bag ownership conflict offers explicit new-bag action without automatic replacement",
+      "status": "FAIL"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "COD response is confirmed but unpaid and requires no gateway fields",
+      "status": "PASS"
+    },
+    {
+      "suite": "frontend-regression",
+      "case": "guest COD checkout bypasses missing Razorpay SDK and redirects once",
+      "status": "FAIL"
+    },
+    {
+      "suite": "api-regression",
+      "case": "signed-in account review is ownership-scoped and published as a verified purchase",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "account review rejects pieces before delivery",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "account review prevents a second review for the same order item",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "public product reviews return verified count and full rating distribution",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "existing wallet authSubject binding remains authoritative when verified email changes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "matching an email must not inherit a wallet bound to a different authenticated subject",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "guest claim writes repeat both unclaimed ownership and current verified email guards",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "ownsOrder uses wallet-bound local identity and cannot authorize another email-matched owner's order",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "global admin search excludes deleted products before the six-result limit while retaining ordinary archived products and order history",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "catalogue search preserves SKU matching and cannot disclose orders or customers",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a one-letter search performs no database lookup",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "an unlisted unlisted@example.test is denied without requesting a code or creating a user",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "an unlisted unlisted243@example.test is denied without requesting a code or creating a user",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "disabled or invalid-role staff are rejected: {\"email\":\"staff@example.test\",\"role\":\"OWNER\",\"active\":false}",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "disabled or invalid-role staff are rejected: {\"email\":\"staff@example.test\",\"role\":\"CUSTOMER\",\"active\":true}",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid or privileged request fields are rejected: null",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid or privileged request fields are rejected: []",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid or privileged request fields are rejected: \"staff@example.test\"",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid or privileged request fields are rejected: {}",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid or privileged request fields are rejected: {\"email\":1}",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid or privileged request fields are rejected: {\"email\":\"a@@b.test\"}",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid or privileged request fields are rejected: {\"email\":\"staff@example.test\",\"create_user\":true}",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid or privileged request fields are rejected: {\"email\":\"staff@example.test\",\"role\":\"OWNER\"}",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "active staff are checked first; email is normalised and provider signup is disabled",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "repeated code requests are throttled before provider delivery",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "staff disabled after code delivery cannot establish an admin session",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "provider and database failures fail closed without exposing provider details",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "deletion validates an explicit name and version and cleanup rejects unbounded or unknown input",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "delete removes a catalogue product and its bag items while preserving all stock and order history",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wrong name, stale version, missing product, reserved inventory and active checkout all leave state unchanged",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "storage failure leaves a durable queue and same deletion retries safely with the original version",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "recent upload authorization prevents deletion between blob upload and metadata attach, then expiry allows deletion",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "shared product-level URLs and variant-level storage paths are preserved across products",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "shared media aliases protect the same object across /media, public HTTPS and both Azure storage-path forms",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "another deleted product's queued photos do not orphan blobs by being treated as protected shared media",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "normal photo upload, attachment and removal cannot bypass a product tombstone",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a fresh product cannot attach a photo still queued by a deleted product, including public URL aliases",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "normal draft product photo attachments still work and recheck deletion inside the write transaction",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "cleanup confirms only completed rows, survives partial cleanup and missing-ID replays, and keeps history",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "cleanup denies another product's images and nondeleted products without changing metadata",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "commit failure rolls deletion back and deleted catalogue entries cannot be republished",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "delete, retry read and cleanup are guarded catalogue-write endpoints",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "replaying the original create request cannot report a tombstone as a newly created draft",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "reserved tombstone URLs cannot be manufactured and ordinary archived products remain readable, listed and editable",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "verified staff email claims the Supabase subject once and returns the configured role",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "sign-in never bootstraps an unlisted owner, even with a matching configured email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "disabled, unknown and subject-conflicting staff cannot enter admin",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "admin RBAC permissions separate support, operations, catalog and owner duties",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a linked auth subject does not authorise a different email outside the staff list",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "legacy shared key is disabled by default and requires an explicit break-glass flag",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser rejects missing or non-Bearer credentials without contacting Auth",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser rejects missing configuration without contacting Auth",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser rejects a failed Auth response even if it contains a user ID",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser accepts a verified mobile number with missing email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser accepts a verified mobile number with null email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser accepts a verified mobile number with empty email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser accepts a verified mobile number with whitespace email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser accepts a verified mobile number with missing email confirmation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser accepts a verified mobile number with null email confirmation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser accepts a verified mobile number with empty email confirmation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser rejects an account with neither a verified mobile number nor verified email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser returns normalized verified email and forwards the bearer only to Auth",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser returns only the confirmed top-level phone, not a different profile phone",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser does not verify a top-level phone with undefined confirmation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser does not verify a top-level phone with null confirmation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser does not verify a top-level phone with  confirmation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser never promotes metadata.phone when top-level phone is absent (no confirmation)",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser never promotes metadata.phone when top-level phone is absent (confirmation present)",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "requireUser does not log credentials, user data, or failure details",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "SMS OTP verification creates and rotates HIDI customer sessions",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP uses the configured OTP template",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP invalidates the challenge after http",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP invalidates the challenge after rejected",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP invalidates the challenge after empty",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP invalidates the challenge after html",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP invalidates the challenge after unknown",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP invalidates the challenge after network",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP invalidates the challenge after timeout",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP rejects unsafe endpoint http://control.msg91.com/api/v5/otp",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP rejects unsafe endpoint https://example.test/api/v5/otp",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP rejects unsafe endpoint https://control.msg91.com@other.test/api/v5/otp",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS OTP rejects unsafe endpoint https://control.msg91.com/api/v5/otp?authkey=unsafe",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS accepts the legacy success acknowledgement and preserves pending proof during rollback",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 stays primary when its send succeeds with Firebase fallback enabled",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "failed MSG91 send invalidates its code before authorising Firebase fallback",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "missing MSG91 credentials use only an explicitly configured Firebase fallback",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "Firebase fallback never bypasses rate limits or failed challenge invalidation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "SMS OTP rejects wrong codes and reuse while creating a verified customer session",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "SMS OTP locks after five incorrect verification attempts",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "SMS OTP cannot be verified after its five-minute expiry",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "MSG91 SMS authorizations enforce the server cooldown at the exact 60-second boundary",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "primary Firebase authorizations enforce the server cooldown at the exact 60-second boundary",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "unconfigured MSG91 fallback authorizations enforce the server cooldown at the exact 60-second boundary",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "msg91 preserves the five-request sliding 15-minute limit after old codes are consumed",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "firebase preserves the five-request sliding 15-minute limit after old codes are consumed",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "concurrent requests reserve only one send and expose retry metadata to the other caller",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "successful resend supersedes older codes and consumed latest codes cannot resurrect legacy challenges",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "an expired latest challenge cannot revive an older unconsumed legacy code",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "concurrent verification consumes a delivered challenge only once",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a failed resend counts toward cooldown but preserves the previously delivered code",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "SQL publication failure rolls back supersession without triggering a Firebase send",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a late provider acknowledgement cannot replace a newer successfully delivered code",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "Firebase phone verification creates a HIDI customer session",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "Razorpay proxy preserves signed bytes and signature, and disables caching",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "conflicting full descriptions across size rows are rejected before importing",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "one design with consistent descriptions accepts a size matrix",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "image_sku column maps across sizes and is separate from generated stock SKUs",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "source metadata helper retains blank data, collections and optimistic version",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "cart size edit preserves quantity and uses the target server price",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "existing target size merges once without losing items",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "same-size edit does not double the current quantity",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "size editing cannot access another cart session",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid, inactive, wrong-product and wrong-colour targets do not change the old size",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "merged quantity must fit both available inventory and the per-size limit",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid quantities and malformed variant IDs fail before writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "failed merge rolls back and preserves the original bag",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a deleted target variant cannot remove the original size",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "reserved and safety stock are excluded even when on-hand stock looks sufficient",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid sessions and non-string variant IDs cannot write",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "editing size recomputes shipping when the merchandise subtotal falls below the threshold",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "HIDI Fit accepts verified variant measurements in millimetres",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "HIDI Fit keeps measurements optional for existing products",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "HIDI Fit rejects implausible garment measurements",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "two fingers smoothly enlarge and reduce the image",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "pinch follows an off-centre detail instead of jumping to the middle",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "pinch and pan stay bounded and reset at 100 percent",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "coincident touches never produce an infinite scale",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "customer testing fails closed outside the isolated guarded database",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "catalogue preview still rejects account reads and all cart writes by default",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "customer preview permits account reads and session-scoped cart lifecycle",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "customer preview permits only the explicit customer sign-in routes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "customer preview permits only explicit staff reads behind the existing AdminGuard",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "customer preview blocks financial, notification, admin writes and route-confusion requests",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "normal production behavior is unchanged when migration restrictions are disabled",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "feature stays disabled without an explicit UTC activation cutoff",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "confirmation includes products, variants, totals, wallet split and shipping address",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "message HTML escapes customer and product input and subject strips newlines",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid recipients are rejected and Indian mobile numbers are normalized",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "provider accepts one confirmation; rerunning the worker cannot reclaim it",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "pending, review, cancelled, refunded and missing orders send no confirmation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "missing email and provider configuration are handled without provider submissions",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a lost claim lease prevents submission",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "email timeout retries the same saved payload and idempotency key after customer data changes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "idempotency expiry and exhausted retries do not resubmit",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "rate limits retry; invalid credentials fail without retaining provider text",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "WhatsApp uses a separate approved order utility template, never the SMS OTP template",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "overlapping worker ticks are serialized within a process",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "queue discovers only committed confirmation audit events with captured payment after cutoff",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "WhatsApp remains separate from email and requires recorded opt-in",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "WhatsApp consent must be verified, current and match the order recipient",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "admin readiness reports an absent additive table without querying it",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a queued WhatsApp retry cannot send to a previous phone number",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "packing plan emits stable HIDI barcodes and physical piece count",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "exact physical scans move CONFIRMED to PACKED and audit scanner source",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wrong item cannot pack an order",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "missing or excess quantities cannot pack an order",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "already packed request is idempotent and performs no write",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "photo tickets accept 5 through 100 MiB and 3 GiB declarations for retained formats",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "empty, unrepresentable and malformed sizes are denied before any upload ticket write",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "larger uploads keep the existing format restriction",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "Code 128B emits the expected symbols and width for AB",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "Code 128B rejects non-ASCII data",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "casual-wear and everyday show primary-category products and retained legacy collection members",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "work-wear and work-edit show primary-category products and retained legacy collection members",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "occasional-wear and occasion show primary-category products and retained legacy collection members",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "Ananya's Pick includes selected Casual, Work and Occasional products irrespective of main category",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "legacy and primary-slug collection records retain their products without duplicated cards",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "unfiltered and unknown collection views retain publication gates and never fall back to all products",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "collection changes preserve bounded featured ordering and only request reviews for returned products",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "new main photo becomes first and compacts the existing gallery while retaining other sizes/colours",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "main replay retains one attachment and stable gallery without redundant position writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "all-size main photo shares one uploaded URL and promotes it separately in each matched colour gallery",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "promoting an existing photo preserves all remaining photos in their prior order",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "ordinary attachment retains the existing append/replay behaviour without reordering",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "malformed main flags fail before database operations",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "pending deletion, concurrent tombstone and failed position update leave all galleries unchanged",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a failure on the second size rolls back already promoted photos from the first size",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "existing SKN map reads are parameterized, deduplicated, chunked and do not consume more numbers",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "duplicate or malformed identities and missing schema fail instead of producing a nullable SKN",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "five-digit lookup uses an exact identity and rejects invalid ranges without SQL",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "new product and all four sizes share one SKN and identical creation retries keep it",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a duplicate create committed by another request replays the same SKN",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "metadata, additional sizes, variant prices and publishing status keep the existing SKN",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "catalogue results include SKN and exact five-digit search retains status/deletion restrictions",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "mapping schema failure rolls back the product and cannot report a successful import",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "sequence exhaustion fails clearly and rolls back the product without reserving a malformed number",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "legacy product reads reserve a missing SKN atomically without changing product, variants or stock",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "allocation validates a real Product before writing and reuses a provided transaction",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "SQL sequence exhaustion remains clear when Prisma wraps the database code",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "qualified repeat interest previews current in-stock price without sending",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "feature is fail-closed and independent marketing/personalization consents are required",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "one ordinary detail view and rapid refreshes are not meaningful interest",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "selected size qualifies alone but only its own current stock is accepted",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "latest interaction restarts the 24-hour inactivity delay",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "any completed purchase after activity suppresses queued recovery",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "removed, inactive and sold-out products cannot be promoted",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "same abandonment is not contacted twice, including pending deliveries",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "two marketing sends across campaigns block a third in rolling seven days",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "owned cart takes priority over browsing even if cart is not yet due",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "cart quantity stock and expiration are checked live",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "courtesy hours use India time with exact boundary handling",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "holdout is stable and cannot accidentally send",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "interest older than seven days is not recovered",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "events from separate abandonment episodes are not combined",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "preferences only look up server-verified subject and return a masked phone",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "browser-supplied identity and phone fields are rejected",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "user-editable metadata phone is never accepted as verified",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "explicit opt-in writes an audit and does not update legacy broad marketing consent",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "withdrawal accepts an old version, deletes browsing events and cancels queued sends",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "enabling consent with an old version is rejected",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "stale wording permits partial withdrawal without upgrading remaining consent",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a different current verified phone does not inherit an older number's opt-in",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "tracking and preview are disabled by default and do not touch the database",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "tracking requires explicit personalization consent and ignores broad marketingOptIn",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "tracking creates a server episode, deduplicates refreshes and reuses the episode",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a concurrent consent withdrawal blocks tracking after the initial read",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "size events require a real active variant belonging to the selected product",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "preview purchase lookup handles unclaimed checkout with the verified account email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "preview purchase lookup handles account-linked checkout with a different email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "preview purchase lookup handles another account's order even with a matching email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "preview purchase lookup handles unclaimed checkout using a different email",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "cash-only return goes entirely back to cash",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only return goes entirely back to wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "split tender preserves the original ratio for a partial item return",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "later returns consume remaining tender and absorb rounding without over-refunding",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "refund allocation rejects inconsistent or exhausted tender balances",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "\u20b92,000 earns an illustrative \u20b940; only complete \u20b9100 blocks count",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "return-window config has no permissive or invented default",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "exact return-window boundary matures estimates, never a wallet balance",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "illustrative basis subtracts discounts and excludes shipping and separate tax",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "refunds, partial refunds and return states hold all rewards",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "only exact fully captured payments can produce estimates",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "missing, invalid and future delivery dates cannot mature rewards",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "all split shipments and order must be delivered; latest delivery controls date",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "unsafe amounts, non-INR, future order dates and bounded relation reads fail closed",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "summary segregates held, pending and eligible estimates",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "disabled preview never queries customer data",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "read-only own-account query is bounded and reports truncated estimates",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "unmapped verified customer only matches unclaimed guest orders",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "relation overflow and missing return configuration never become eligible estimates",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "empty cart has no shipping charge",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "reject invalid shipping subtotal -1",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "reject invalid shipping subtotal 0.5",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "reject invalid shipping subtotal NaN",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "reject invalid shipping subtotal Infinity",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "reject invalid shipping subtotal 2147483648",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "phone sanitation covers typing, paste, duplicate plus, punctuation and length",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "all wallet admin actions reject missing, wrong and non-exact keys before any service call",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "an unset or empty configured admin key fails closed even for a supplied key",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "exact admin key delegates only intended arguments and is never returned or logged",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet support actions require valid reason/reference and reject extra fields before any transaction",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet support actions reject unknown orders without writing",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects cash-only without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects split payment without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects non-wallet provider without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects nonzero cash amount without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects multiple payments without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects no payment without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects zero order total without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects missing wallet hold without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects mismatched wallet hold without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects uncaptured payment without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects unconsumed wallet hold without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects pending order without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet-only refund rejects cancelled order without any staged writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "full wallet refund stages refund evidence then restores tender once; repeated requests are idempotent",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a pre-existing refund with inconsistent order/payment/hold status needs reconciliation and never credits",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "full wallet refund rolls back all staged state if refund.create fails",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "full wallet refund rolls back all staged state if payment.update fails",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "full wallet refund rolls back all staged state if order.update fails",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "full wallet refund rolls back all staged state if wallet.reverseEarned fails",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "full wallet refund rolls back all staged state if wallet.restoreRedeemed fails",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "failed tender restoration is not treated as success and rolls back refund evidence",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "return hold reverses earned reward, preserves redeemed tender and cash payment, and issues no refund",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "return hold rejects terminal or unpaid order states without any writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "return hold rollback also reverses its staged earning reversal when order update fails",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "full-wallet checkout is confirmed atomically without gateway creation or public-key lookup",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "full-wallet retry returns the original order without double debit, payment, or stock consumption",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "mixed checkout reserves wallet funds and charges only the exact cash remainder",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "anonymous wallet use is rejected before any database, wallet or gateway action",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "disabled wallet rejects redemption but still permits normal cash checkout",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "disabled wallet still uses the stable verified subject binding when account email changes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "disabled wallet cannot attach a verified subject to another subject's email-linked account",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "body-supplied account and wallet identity cannot replace verified auth identity",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "guest checkout ignores forged body identity and does not attach an account",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "checkout rejects malformed contact and address data before order creation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "checkout trims customer and delivery text before saving the order",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "checkout delivery serviceability returns only sanitized carrier fields and caches PIN results",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "checkout delivery serviceability rejects invalid PIN before calling the carrier",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "checkout controller rejects an invalid supplied bearer token instead of falling back to guest",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "checkout-token retry rejects a different cart session without returning the provider order",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "checkout-token retry rejects a different wallet amount without returning the provider order",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "checkout-token retry rejects a different account without returning the provider order",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "gateway failure releases wallet and inventory holds and cancels the order idempotently",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "insufficient wallet or stock rolls back both order creation and wallet reservation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet amount and expected-total validation reject invalid money before gateway creation",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "provider order amount or currency mismatch cancels and releases both reservations",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "checkout cancelled while awaiting the provider cannot publish a usable payment order",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a verified customer can adopt the same browser-session cart at purchase",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "shipping boundary 1 paise persists shipping and charges Razorpay once",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "shipping boundary 99900 paise persists shipping and charges Razorpay once",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "shipping boundary 149899 paise persists shipping and charges Razorpay once",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "shipping boundary 149900 paise persists shipping and charges Razorpay once",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "shipping boundary 149901 paise persists shipping and charges Razorpay once",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "shipping boundary 200000 paise persists shipping and charges Razorpay once",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "quantity crosses the free shipping boundary using the whole merchandise subtotal",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "rewards do not change free shipping eligibility",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "rewards can cover both merchandise and charged shipping atomically",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "omitted or manipulated client shipping never controls the server charge",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "stale payable quote is rejected before stock or payment writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid phone abc9876543210 is rejected without order writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid phone 98+76543210 is rejected without order writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid phone ++919876543210 is rejected without order writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid phone 987 6543210 is rejected without order writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid phone (987)6543210 is rejected without order writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid phone 1234567 is rejected without order writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid phone 1234567890123456 is rejected without order writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid phone + is rejected without order writes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "COD confirms unpaid order with shipping and consumes inventory once without gateway",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "COD fails before order or stock mutation for unserviceable or unavailable carrier",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "COD cannot redeem rewards or reuse an online payment token",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "COD switch off and unsupported payment method are rejected",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "capture updates the exact matching payment record, consumes wallet and inventory once, and clears the correct cart",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "duplicate capture webhook and signed checkout verification do not double-consume wallet or stock",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "capture before local payment registration returns non-2xx and succeeds safely on retry",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a different payment id cannot replace a recorded captured payment",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "late capture with expired inventory reservation records cash for review without consuming stock or wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "late capture with released inventory reservation records cash for review without consuming stock or wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "late capture with expired wallet hold records cash for review without consuming stock or wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "late capture with released wallet hold records cash for review without consuming stock or wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "late capture with missing inventory reservations records cash for review without consuming stock or wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "captured cash cannot resurrect a CANCELLED order or spend its wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "captured cash cannot resurrect a RETURN_REQUESTED order or spend its wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "captured cash cannot resurrect a RETURNED order or spend its wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "captured cash cannot resurrect a REFUNDED order or spend its wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "invalid webhook and checkout signatures cannot update a payment or reach provider lookup",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "provider identity, amount and currency mismatches are rejected before capture",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "payment/wallet cash breakdown mismatch aborts the capture transaction",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "failed or authorized messages after capture cannot downgrade paid state",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "failed payment webhook records one immutable audit event and is retry-safe",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "capture does not clear a cart subsequently owned by a different account",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "signed partial refund is provider-verified and deduplicated, reverses earning but not redeemed tender",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "item-level return refund closes ReturnRequest without overwriting delivered fulfilment",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "all cash refunded across multiple events restores original wallet tender once",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "failed wallet restoration rolls back the full-refund accounting transaction for safe retry",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "capture replay after a fully refunded order does not resurrect it or debit restored wallet funds",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "refunds require a valid signature and cannot invent provider-confirmed refunded cash",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "refund event identity cannot be reused with another amount",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "refund currency, malformed money and overflow are rejected without ledger changes",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "cumulative refunds cannot exceed cash captured even if a new event id is supplied",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "refund arriving before capture is reconciled cannot create money or mark the order refunded",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a wallet-consumption error rolls capture back with inventory and payment still untouched",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "exact earning rule uses complete \u20b9100 after discounts and wallet, no shipping reward",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "all available rewards can pay the full order; reserved balance and debt are not spendable",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "rewards mature exactly seven elapsed days after actual delivery, never before",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "split, missing, future and premature delivery timestamps cannot mature",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "cash capture must equal external payable and wallet tender must be consumed",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "any recorded refund, return or payment review reverses rewards; refund-in-progress holds",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet ownership follows verified Auth subject, never email or body identity",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "GET summary is read-only, shows exact ledger not estimates and bounded history",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet summary excludes stale active-return accruals from pending and exposes them as held",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "reservation then consumption debit once and lock order before wallet",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "no cap supports full-wallet order and creates no earning on wallet-funded spend",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "insufficient, released and expired holds cannot spend or silently reacquire",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "late debt invalidating held funds cannot be spent by another capture",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "mature reward posts once; any refund reverses once even after rewards spent",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "return before maturity permanently suppresses accrual without inventing a debit",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "active item return holds reward maturity and release lets normal reconciliation resume",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "return refund wallet credit is idempotent and uses an immutable request key",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "redeemed wallet funds restore only once after a full cash refund, never a partial",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "explicit wallet-only full refund restores its original tender without gateway money",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "kill switch blocks new spend/earning but preserves liabilities, release and reversals",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "batch is bounded, resumable and rejects malformed cursors",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "serializable helper retries only known conflicts and keeps external work out",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "wallet worker is disabled by default and non-exact opt-in values create no timer or batch",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "enabled worker still refuses to run when wallet spending/earning is disabled",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "enabled worker schedules a bounded minute poll, unrefs its timer, and clears it on destroy",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "overlapping ticks never run simultaneous maturation batches",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "cursor advances on successful pages, preserves position on a thrown failure, and restarts after exhaustion",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "failed rows on a completed page are revisited on the next cursor cycle without logging their identities",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "a rejected batch releases the busy guard so the next scheduled attempt can retry",
+      "status": "PASS"
+    },
+    {
+      "suite": "api-regression",
+      "case": "turning worker flag off between ticks pauses processing without discarding its cursor",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "normalizes approved photo /media/products/variants/sku-one/photo.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "normalizes approved photo https://hidiindia.com/media/products/variants/sku-one/photo.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "normalizes approved photo https://thehidi.com/media/products/variants/sku-one/photo.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "normalizes approved photo /media/products/_display_v2/variants/sku-one/photo.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "normalizes approved photo /media/products/_display_v3/variants/sku-one/photo.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unapproved source //evil.com/media/products/a.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unapproved source https://evil.com/media/products/variants/sku-one/photo.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unapproved source http://hidiindia.com/media/products/variants/sku-one/photo.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unapproved source https://u:p@hidiindia.com/media/products/variants/sku-one/photo.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unapproved source /media/products/../private/a.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unapproved source /media/products/a.svg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unapproved source /media/products/variants/sku-one/photo.jpg?token=secret",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unapproved source /media/products/variants/sku-one/photo.jpg?hidi_image=1&hidi_image=2",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unapproved source /media/products/%2e%2e/a.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "keeps approved legacy cache hint",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "negotiates WebP and honours q=0",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "parses a valid optimizer request",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects duplicate/extra parameters &w=750",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects duplicate/extra parameters &q=90",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects duplicate/extra parameters &url=%2Fmedia%2Fproducts%2Fvariants%2Fsku-one%2Fphoto.jpg",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects duplicate/extra parameters &surprise=1",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "cache keys isolate widths, formats, and display/zoom masters",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "bounds an upstream response with no Content-Length",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects oversized declared response and cancels body",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects an oversized chunked response",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects HTML upstream, missing source, and empty bytes",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "returns correctly sized WebP with original pixels untouched",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "does not upscale a small photo",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "normalizes EXIF orientation without retaining EXIF metadata",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "preserves alpha in WebP output",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "bounds very tall photo output without cropping",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects corrupt images rather than serving the original",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects oversized bytes before decoding",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "caches derivatives, deduplicates visitors, and shares the display master",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "fetches zoom only on demand and caches its master",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "serializes source fetching even for simultaneous zoom requests",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "HTTP GET, HEAD, ETag, and unsupported method retain correct semantics",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "processing failure never returns multi-megabyte originals",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "reads exactly one multipart photo",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects multiple file fields",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "enforces multipart request cap before parsing",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "upload slot cannot be prematurely reopened by double release",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "retains recovery for the existing browser-readable truncated JPEG case",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "retains the 100 MP input limit and does not retry pixel-limit errors",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "streamed valid jpeg preserves original bytes and removes temporary files",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "streamed valid png preserves original bytes and removes temporary files",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "streamed valid webp preserves original bytes and removes temporary files",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "streamed valid avif preserves original bytes and removes temporary files",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "streamed multipart accepts 12582912 bytes without the former fixed cap",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "streamed multipart accepts 41943040 bytes without the former fixed cap",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "streamed multipart accepts 41943041 bytes without the former fixed cap",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "streamed multipart accepts 62914560 bytes without the former fixed cap",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "streamed multipart accepts 104857600 bytes without the former fixed cap",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "chunked source download also permits a photo above 40 MiB and bounds display output",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "cold derivative creation always cleans a disk-backed original",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "invalid source decoding also cleans the disk original",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects empty and cleans temporary data",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects corrupt and cleans temporary data",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects SVG masquerading as JPEG and cleans temporary data",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects unsupported PDF and cleans temporary data",
+      "status": "FAIL"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects a MIME mismatch without changing original bytes",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects duplicate file fields",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects duplicate and oversized metadata",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects missing multipart boundary",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "rejects truncated multipart and deletes partial files",
+      "status": "FAIL"
+    },
+    {
+      "suite": "image-regression",
+      "case": "disk-reserve exhaustion fails with 507 and removes partial files",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "abort interrupts ingestion and deletes temporary files",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "declared length mismatch fails instead of saving a truncated source",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "incremental browser digest matches the existing SHA-256 naming contract",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "upload concurrency guard releases safely after failure",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "Azure SDK write uses staged blocks and bounded concurrency",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "identical Azure replay is verified from downloaded bytes without overwrite",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "same-sized different Azure replay bytes are rejected",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "Azure size mismatch and arbitrary-key conflicts are not accepted as successful retries",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "browser-readable progressive JPEG without ending data recovers to bounded WebP",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "valid JPEG retains strict decoder and normal output bytes",
+      "status": "PASS"
+    },
+    {
+      "suite": "image-regression",
+      "case": "unrelated corruption and pixel-limit errors are rejected",
+      "status": "PASS"
+    }
+  ],
+  "unexecuted": [
+    "Authenticated Azure upload and resource test",
+    "Real catalogue colour/embroidery approval",
+    "Production deployment and live speed measurement"
+  ],
+  "summary": {
+    "passedCases": 683,
+    "failedCases": 16,
+    "suiteCounts": {
+      "PASS": 9,
+      "FAIL": 4,
+      "BLOCKED": 0
+    }
+  },
+  "releaseReady": false
+}

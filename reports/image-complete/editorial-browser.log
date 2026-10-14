@@ -1,0 +1,179 @@
+PASS chromium VIS-01 Responsive surfaces, type roles, image rendering and horizontal overflow
+PASS chromium HDR-01 Transparent header, scroll blur and home-logo return to top
+PASS chromium NAV-01 Mobile drawer anchor, single close action, Escape and focus return
+PASS chromium MOT-01 Reduced motion avoids playback and keeps campaign poster visible
+PASS chromium MOT-02 Ambient pause/resume, announcements pause, broken-video poster fallback
+FAIL chromium SRCH-01: TimeoutError: locator.getAttribute: Timeout 8000ms exceeded.
+Call log:
+  - waiting for getByRole('dialog', { name: 'Search HIDI', exact: true }).getByRole('link', { name: 'Workwear Edit', exact: true })
+
+PASS chromium SRCH-02 Search network failure is explicit and retry recovers
+PASS chromium CARD-01 Minimal home cards, same-variant MRP and sold-out safeguards
+PASS chromium CART-01 Quick add requires size, handles colour changes and cycles keyboard focus
+PASS chromium CART-02 Confirmed cart write occurs once; bag and checkout retain the same session
+PASS chromium CART-03 Quick-add conflict response never fabricates success or automatically retries
+PASS chromium CART-04 Quick-add server response never fabricates success or automatically retries
+PASS chromium CART-05 Quick-add rate response never fabricates success or automatically retries
+PASS chromium CART-06 Quick-add malformed response never fabricates success or automatically retries
+PASS chromium CART-07 Touch quick add and mobile bag quantity increase, decrease and removal
+PASS chromium RESP-01 Catalogue header clears measured announcements while scrolling and plus remains accessible
+PASS chromium EDIT-ok Cart size edit updates price, preserves failed edits and merges an existing size
+PASS chromium EDIT-conflict Cart size edit updates price, preserves failed edits and merges an existing size
+PASS chromium EDIT-merge Cart size edit updates price, preserves failed edits and merges an existing size
+PASS chromium EDIT-unavailable Unavailable cart sizes stay disabled and Cancel makes no write
+PASS chromium EDIT-server Failed size update preserves the last confirmed bag and never retries a write
+PASS chromium EDIT-rate Failed size update preserves the last confirmed bag and never retries a write
+PASS chromium EDIT-malformed Failed size update preserves the last confirmed bag and never retries a write
+PASS chromium EDIT-network Failed size update preserves the last confirmed bag and never retries a write
+PASS chromium EDIT-load-retry Size lookup failure can be retried or cancelled without changing the bag
+PASS chromium ZOOM-pinch Native two-finger pinch works on PDP and catalogue without zooming or locking the page
+PASS chromium WISH-01 Wishlist toggles and survives a settled full reload without changing cart
+PASS chromium PRIV-01 Compact privileges preserve offer destinations and terms
+FAIL chromium LOOK-01: TimeoutError: locator.click: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator('[data-section="lookbook"]').getByRole('link', { name: 'Explore the lookbook' })
+
+FAIL chromium FOOT-01: AssertionError [ERR_ASSERTION]: false == true
+PASS chromium EMPTY-01 Empty catalogue retains hero, discovery and calm recovery
+PASS chromium QUAL-01 Mobile hero separates header, garment and copy at 320, 390 and 768px
+PASS chromium QUAL-02 PDP price, MRP, selected size and deselection follow the exact variant
+PASS chromium QUAL-03 Colour changes reset size and update price, specifications and colour-specific photography
+PASS chromium QUAL-04 Size guide units, missing measurements, related-product navigation and sold-out controls
+PASS chromium QUAL-05 PDP duplicate-click guard posts one exact SKU and quantity, no client price
+PASS chromium QUAL-06-conflict PDP conflict response never fabricates success or automatically retries
+PASS chromium QUAL-06-server PDP server response never fabricates success or automatically retries
+PASS chromium QUAL-06-rate PDP rate response never fabricates success or automatically retries
+PASS chromium QUAL-06-malformed PDP malformed response never fabricates success or automatically retries
+PASS chromium QUAL-07 Image inspection supports zoom bounds, arrows, Escape and focus restoration
+PASS chromium QUAL-08 Mobile filters correlate size and colour, expose removable selections, clear and restore focus
+PASS chromium QUAL-09 Every price option, fabric selection, sort radio and desktop sort dropdown works
+PASS chromium QUAL-10 Reversed-word overlay search and full search preserve the current document
+PASS chromium QUAL-11 Malformed search responses show a recoverable error, never an empty catalogue
+PASS chromium QUAL-12 Delivery PIN sanitizes input, rejects invalid PIN locally and distinguishes service states
+FAIL chromium QUAL-13: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+FAIL chromium QUAL-14: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+0 !== 6
+
+PASS chromium QUAL-15 Buy Now retains the bag and guest checkout field constraints without submitting payment
+PASS chromium QUAL-16 Repeated search parameters, resubmission and browser Back preserve query and document
+PASS chromium QUAL-17 Direct-entry About page retains campaign image without a heavy autoplay film
+PASS chromium FIX-01 Guest sign-in card matches hierarchy and all responsive totals include shipping
+PASS chromium FIX-02 Phone typing and pasted content allow digits with one leading plus only
+PASS chromium FIX-03 Filter footer stays visible and never overlaps options on small phones and landscape
+PASS chromium FIX-04 Every product has the screenshot Shipping & Returns rows and a working policy link
+FAIL chromium FIX-07: TimeoutError: locator.evaluate: Timeout 8000ms exceeded.
+Call log:
+  - waiting for getByRole('dialog').filter({ has: getByRole('heading', { name: 'Ira everyday kurta', exact: true }) }).getByRole('button', { name: 'Add to bag', exact: true })
+
+FAIL chromium FIX-05: AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Shipping\s*₹99/. Input:
+
+'Total to pay\n₹1,597.99\nPay securely'
+
+PASS chromium FIX-06 Gateway receives the shipping-inclusive server amount and HIDI button theme
+PASS firefox VIS-01 Responsive surfaces, type roles, image rendering and horizontal overflow
+PASS firefox HDR-01 Transparent header, scroll blur and home-logo return to top
+PASS firefox NAV-01 Mobile drawer anchor, single close action, Escape and focus return
+PASS firefox MOT-01 Reduced motion avoids playback and keeps campaign poster visible
+PASS firefox MOT-02 Ambient pause/resume, announcements pause, broken-video poster fallback
+FAIL firefox SRCH-01: TimeoutError: locator.getAttribute: Timeout 8000ms exceeded.
+Call log:
+  - waiting for getByRole('dialog', { name: 'Search HIDI', exact: true }).getByRole('link', { name: 'Workwear Edit', exact: true })
+
+PASS firefox SRCH-02 Search network failure is explicit and retry recovers
+PASS firefox CARD-01 Minimal home cards, same-variant MRP and sold-out safeguards
+PASS firefox CART-01 Quick add requires size, handles colour changes and cycles keyboard focus
+PASS firefox CART-02 Confirmed cart write occurs once; bag and checkout retain the same session
+PASS firefox CART-03 Quick-add conflict response never fabricates success or automatically retries
+PASS firefox CART-04 Quick-add server response never fabricates success or automatically retries
+PASS firefox CART-05 Quick-add rate response never fabricates success or automatically retries
+PASS firefox CART-06 Quick-add malformed response never fabricates success or automatically retries
+PASS firefox CART-07 Touch quick add and mobile bag quantity increase, decrease and removal
+PASS firefox RESP-01 Catalogue header clears measured announcements while scrolling and plus remains accessible
+PASS firefox EDIT-ok Cart size edit updates price, preserves failed edits and merges an existing size
+PASS firefox EDIT-conflict Cart size edit updates price, preserves failed edits and merges an existing size
+PASS firefox EDIT-merge Cart size edit updates price, preserves failed edits and merges an existing size
+PASS firefox EDIT-unavailable Unavailable cart sizes stay disabled and Cancel makes no write
+PASS firefox EDIT-server Failed size update preserves the last confirmed bag and never retries a write
+PASS firefox EDIT-rate Failed size update preserves the last confirmed bag and never retries a write
+PASS firefox EDIT-malformed Failed size update preserves the last confirmed bag and never retries a write
+PASS firefox EDIT-network Failed size update preserves the last confirmed bag and never retries a write
+PASS firefox EDIT-load-retry Size lookup failure can be retried or cancelled without changing the bag
+PASS firefox WISH-01 Wishlist toggles and survives a settled full reload without changing cart
+PASS firefox PRIV-01 Compact privileges preserve offer destinations and terms
+FAIL firefox LOOK-01: TimeoutError: locator.click: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator('[data-section="lookbook"]').getByRole('link', { name: 'Explore the lookbook' })
+
+FAIL firefox FOOT-01: AssertionError [ERR_ASSERTION]: false == true
+PASS firefox EMPTY-01 Empty catalogue retains hero, discovery and calm recovery
+PASS firefox QUAL-01 Mobile hero separates header, garment and copy at 320, 390 and 768px
+PASS firefox QUAL-02 PDP price, MRP, selected size and deselection follow the exact variant
+PASS firefox QUAL-03 Colour changes reset size and update price, specifications and colour-specific photography
+PASS firefox QUAL-04 Size guide units, missing measurements, related-product navigation and sold-out controls
+PASS firefox QUAL-05 PDP duplicate-click guard posts one exact SKU and quantity, no client price
+PASS firefox QUAL-06-conflict PDP conflict response never fabricates success or automatically retries
+PASS firefox QUAL-06-server PDP server response never fabricates success or automatically retries
+PASS firefox QUAL-06-rate PDP rate response never fabricates success or automatically retries
+PASS firefox QUAL-06-malformed PDP malformed response never fabricates success or automatically retries
+PASS firefox QUAL-07 Image inspection supports zoom bounds, arrows, Escape and focus restoration
+PASS firefox QUAL-08 Mobile filters correlate size and colour, expose removable selections, clear and restore focus
+PASS firefox QUAL-09 Every price option, fabric selection, sort radio and desktop sort dropdown works
+PASS firefox QUAL-10 Reversed-word overlay search and full search preserve the current document
+PASS firefox QUAL-11 Malformed search responses show a recoverable error, never an empty catalogue
+PASS firefox QUAL-12 Delivery PIN sanitizes input, rejects invalid PIN locally and distinguishes service states
+FAIL firefox QUAL-13: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+FAIL firefox QUAL-14: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+0 !== 6
+
+PASS firefox QUAL-15 Buy Now retains the bag and guest checkout field constraints without submitting payment
+PASS firefox QUAL-16 Repeated search parameters, resubmission and browser Back preserve query and document
+PASS firefox QUAL-17 Direct-entry About page retains campaign image without a heavy autoplay film
+PASS firefox FIX-01 Guest sign-in card matches hierarchy and all responsive totals include shipping
+PASS firefox FIX-02 Phone typing and pasted content allow digits with one leading plus only
+PASS firefox FIX-03 Filter footer stays visible and never overlaps options on small phones and landscape
+PASS firefox FIX-04 Every product has the screenshot Shipping & Returns rows and a working policy link
+FAIL firefox FIX-07: TimeoutError: locator.evaluate: Timeout 8000ms exceeded.
+Call log:
+  - waiting for getByRole('dialog').filter({ has: getByRole('heading', { name: 'Ira everyday kurta', exact: true }) }).getByRole('button', { name: 'Add to bag', exact: true })
+
+FAIL firefox FIX-05: AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Shipping\s*₹99/. Input:
+
+'Total to pay\n₹1,597.99\nPay securely'
+
+PASS firefox FIX-06 Gateway receives the shipping-inclusive server amount and HIDI button theme
+PASS webkit VIS-01 Responsive surfaces, type roles, image rendering and horizontal overflow
+PASS webkit HDR-01 Transparent header, scroll blur and home-logo return to top
+PASS webkit NAV-01 Mobile drawer anchor, single close action, Escape and focus return
+PASS webkit MOT-01 Reduced motion avoids playback and keeps campaign poster visible
+PASS webkit MOT-02 Ambient pause/resume, announcements pause, broken-video poster fallback
+FAIL webkit SRCH-01: TimeoutError: locator.getAttribute: Timeout 8000ms exceeded.
+Call log:
+  - waiting for getByRole('dialog', { name: 'Search HIDI', exact: true }).getByRole('link', { name: 'Workwear Edit', exact: true })
+
+PASS webkit SRCH-02 Search network failure is explicit and retry recovers
+PASS webkit CARD-01 Minimal home cards, same-variant MRP and sold-out safeguards
+PASS webkit CART-01 Quick add requires size, handles colour changes and cycles keyboard focus
+PASS webkit CART-02 Confirmed cart write occurs once; bag and checkout retain the same session
+PASS webkit CART-03 Quick-add conflict response never fabricates success or automatically retries
+PASS webkit CART-04 Quick-add server response never fabricates success or automatically retries
+PASS webkit CART-05 Quick-add rate response never fabricates success or automatically retries
+PASS webkit CART-06 Quick-add malformed response never fabricates success or automatically retries
+PASS webkit CART-07 Touch quick add and mobile bag quantity increase, decrease and removal
+PASS webkit RESP-01 Catalogue header clears measured announcements while scrolling and plus remains accessible
+PASS webkit EDIT-ok Cart size edit updates price, preserves failed edits and merges an existing size
+PASS webkit EDIT-conflict Cart size edit updates price, preserves failed edits and merges an existing size
+PASS webkit EDIT-merge Cart size edit updates price, preserves failed edits and merges an existing size
+PASS webkit EDIT-unavailable Unavailable cart sizes stay disabled and Cancel makes no write
+PASS webkit EDIT-server Failed size update preserves the last confirmed bag and never retries a write
+PASS webkit EDIT-rate Failed size update preserves the last confirmed bag and never retries a write
+PASS webkit EDIT-malformed Failed size update preserves the last confirmed bag and never retries a write
+PASS webkit EDIT-network Failed size update preserves the last confirmed bag and never retries a write
+PASS webkit EDIT-load-retry Size lookup failure can be retried or cancelled without changing the bag
