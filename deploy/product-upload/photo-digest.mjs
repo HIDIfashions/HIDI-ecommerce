@@ -323,7 +323,23 @@ var sha2562 = sha256;
 // apps/web/lib/photo-digest.mjs
 async function photoDigest(file) {
   const hash = sha2562.create();
-  for await (const chunk of file.stream()) hash.update(chunk);
+  if (typeof file.stream === "function") {
+    const reader = file.stream().getReader();
+    try {
+      for (; ; ) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        hash.update(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  } else {
+    const chunkBytes = 1024 * 1024;
+    for (let offset = 0; offset < file.size; offset += chunkBytes) {
+      hash.update(new Uint8Array(await file.slice(offset, Math.min(offset + chunkBytes, file.size)).arrayBuffer()));
+    }
+  }
   return Array.from(hash.digest(), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 export {

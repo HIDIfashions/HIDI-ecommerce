@@ -16,6 +16,8 @@ for cmd in ['node --version','pnpm --version','python --version']:
 auth=json.loads((root/'deploy/public-auth.json').read_text())
 for key in ['SUPABASE_URL','SUPABASE_PUBLISHABLE_KEY','CUSTOMER_AUTH_PROVIDER','CUSTOMER_OTP_CHANNEL','FIREBASE_API_KEY','FIREBASE_AUTH_DOMAIN','FIREBASE_PROJECT_ID','FIREBASE_APP_ID','FIREBASE_MESSAGING_SENDER_ID','FIREBASE_STORAGE_BUCKET']:
  os.environ['NEXT_PUBLIC_'+key]=str(auth.get(key,auth.get('NEXT_PUBLIC_'+key,'')))
+# Match the production same-origin browser API configuration during the build.
+os.environ['NEXT_PUBLIC_API_URL']='/api/store'
 os.environ['HIDI_BROWSER_ENGINES']='chromium,firefox,webkit'
 
 def save(): (out/'results.json').write_text(json.dumps(evidence,indent=2))
@@ -50,11 +52,14 @@ web=run('web-build','pnpm --filter @hidi/web build',900)
 run('web-lint','pnpm --filter @hidi/web lint')
 # Standalone localhost fixtures exercise actual served admin modules; none uses live credentials.
 for name,file in [('browser-photo-digest','photo-digest'),('browser-admin-quick-tools','admin-quick-tools'),('browser-skn-photos','product-skn-photos'),('browser-button-states','button-states'),('browser-admin-product-delete','admin-product-delete')]:
- run(name,'node tests/'+file+'.browser.mjs',300)
+ run(name,'node --experimental-strip-types tests/'+file+'.browser.mjs',300)
 for engine in ['chromium','firefox','webkit']:run('admin-browser-'+engine,'HIDI_BROWSER_ENGINE='+engine+' node tests/admin-workspace.browser.mjs',240,web)
 run('homepage-browser','node tests/homepage-background.browser.mjs',240,web)
 run('editorial-browser','node tests/editorial-storefront.browser.mjs',900,web)
 run('polish-browser','node tests/editorial-polish.browser.mjs',300,web)
+run('navigation-browser','node tests/admin-navigation.browser.mjs',300)
+run('otp-browser','node tests/auth-otp-resend.browser.mjs',300,web)
+run('web-upload-and-rendering','node --experimental-strip-types tests/photo-web-upload.browser.mjs',420,web)
 # Preserve the case-level JSON emitted by browser suites, including failures.
 seen=set()
 for p in sorted((root/'test-results').rglob('*.json')):
