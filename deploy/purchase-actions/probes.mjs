@@ -54,7 +54,6 @@ export async function probe(base, output) {
           const add=card.locator('button:visible').filter({hasText:/^Add to Cart$/i}).first();
           const buy=card.locator('button:visible').filter({hasText:/^Buy Now$/i}).first();
           await add.waitFor();assert(await add.isEnabled() && await buy.isEnabled(),'Both actions enabled without a size');
-          await page.mouse.move(1,1);
           assert.equal(await add.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(232, 216, 196)');
           assert.equal(await buy.evaluate(e=>getComputedStyle(e).color),'rgb(255, 248, 239)');
           assert((await buy.evaluate(e=>getComputedStyle(e).backgroundImage)).includes('rgb(89, 29, 32)'),'Buy Now uses the header palette');
