@@ -13,7 +13,15 @@ function load(file, mocks={}) {
   return exports;
 }
 const batch=load("sku-photo-batch.ts");
-const bulk=load("hidi-bulk-photos.ts",{"@/lib/hidi-bulk-import":{skuKey:load("hidi-bulk-import.ts").skuKey}});
+async function loadBulk() {
+  // Exercise the real SKU normalization and Image-SKU preparation functions.
+  // The old harness supplied an alias, but production imports this relative path.
+  const imageSku=await import("../deploy/admin-tools/image-sku-client.mjs");
+  return load("hidi-bulk-photos.ts",{
+    "./hidi-bulk-import":{skuKey:load("hidi-bulk-import.ts").skuKey},
+    "../../../deploy/admin-tools/image-sku-client.mjs":imageSku,
+  });
+}
 const max=40*1024*1024;
 test("single-SKU photo selection accepts exactly 40 MiB and still rejects a larger member before the batch starts",()=>{
   assert.equal(batch.MAX_PHOTO_BYTES,max);
@@ -24,6 +32,7 @@ test("single-SKU photo selection accepts exactly 40 MiB and still rejects a larg
   assert.throws(()=>batch.validatePhotoSelection(Array.from({length:9},()=>({name:"photo",size:1,type:"image/jpeg"}))),/up to 8 photos/);
 });
 test("bulk photos accept the 40 MiB boundary without changing SKU matching or batch limits",async()=>{
+  const bulk=await loadBulk();
   const variants=[{sku:"HIDI-CREAM-M",variantId:"fixture_variant"}];
   const [accepted,rejected]=await bulk.photoCandidatesFromFiles([
     new File([new Uint8Array(max)],"HIDI-CREAM-M_1.jpg",{type:"image/jpeg"}),
