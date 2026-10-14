@@ -1,5 +1,5 @@
 """Two-image additive offers release with tested digests and ownership-aware recovery."""
-import argparse,hashlib,importlib.util,json,os,subprocess,types
+import argparse,hashlib,importlib.util,json,os,subprocess,types,urllib.request
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('offers_guard',HERE.parent/'range-five/release.py');guard=importlib.util.module_from_spec(spec);spec.loader.exec_module(guard)
@@ -73,6 +73,8 @@ def apply():
    marker=app+'-forward.json';g.write_private(marker,{'attempted':False,'mayComplete':False});g.conditional_write_image(photo.originals()['hidi-'+app],published[app],'checkoutoffers'+app+guard.run_key('a'),marker)
    deployed['hidi-'+app]=cloud.snapshot(g.wait_ready(published[app],'checkoutoffers'+app+guard.run_key('a'),deployed));photo.unchanged(deployed)
   guard.routes();assert json.loads(cloud.get('/api/hidi/offers')).get('visible') is False;cloud.get('/api/hidi/offers/admin',401);cloud.get('/admin/offers',401);cloud.get('/api/store/auth/offers-identity',401);cloud.get('/api/store/checkout/payment-options')
+  request=urllib.request.Request(cloud.BASE+'/api/store/checkout/offers/quote',data=json.dumps({'sessionId':'hidi-offer-read-only-check','offer':{'kind':'NONE'}}).encode(),headers={'Content-Type':'application/json'},method='POST')
+  with urllib.request.urlopen(request,timeout=30) as response:assert response.status==200 and json.loads(response.read())=={'available':False}
   assert guard.public_snapshot()==captured;photo.unchanged(deployed)
   save('after.json',{'passed':True,'states':deployed,'unpublishedDefault':True,'checkoutUnchanged':True,'databaseWrites':False,'sourceSha':os.environ['GITHUB_SHA']})
  except Exception:
