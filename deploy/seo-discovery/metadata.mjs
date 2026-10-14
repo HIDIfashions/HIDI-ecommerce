@@ -93,7 +93,25 @@ export function identityUrl(value) {
 
 function normalizeGraph(value, key = '') {
   if (Array.isArray(value)) return value.map(item => normalizeGraph(item, key));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalizeGraph(v, k)]));
+  if (value && typeof value === 'object') {
+    const graph = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalizeGraph(v, k)]));
+    // Align the existing public HIDI identity, without introducing another graph,
+    // a founder assertion, unverified profiles or changes to garment records.
+    if (graph.name === 'HIDI' && [canonicalOrigin, canonicalOrigin + '/'].includes(graph.url)) {
+      if (graph['@type'] === 'Organization' && [canonicalOrigin + '/assets/images/hidi-logo.png', canonicalOrigin + '/brand/hidi-logo-header.svg'].includes(graph.logo)) {
+        graph.logo = canonicalOrigin + '/brand/hidi-logo-header.svg';
+      }
+      if (graph['@type'] === 'WebSite') {
+        if (graph.alternateName === undefined) graph.alternateName = 'HIDI India';
+        else if (Array.isArray(graph.alternateName)) {
+          if (!graph.alternateName.includes('HIDI India')) graph.alternateName = [...graph.alternateName, 'HIDI India'];
+        } else if (typeof graph.alternateName === 'string' && graph.alternateName !== 'HIDI India') {
+          graph.alternateName = [graph.alternateName, 'HIDI India'];
+        }
+      }
+    }
+    return graph;
+  }
   return identityKeys.has(key) ? identityUrl(value) : value;
 }
 

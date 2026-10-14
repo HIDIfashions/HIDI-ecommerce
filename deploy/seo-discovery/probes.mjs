@@ -43,6 +43,7 @@ async function assertCrawlerDirectives(page, privatePage = false, rawHtml) {
 }
 async function assertSearchMetadata(page,path,rawHtml) {
   if (!expectedTitles[path]) return;
+  if (path === '/' || path === '/about') await assertBrandIdentity(page,rawHtml);
   await page.waitForFunction(title=>document.title===title,expectedTitles[path]);
   try {
     await page.waitForFunction(()=>{
@@ -75,6 +76,28 @@ async function assertSearchMetadata(page,path,rawHtml) {
     assert.equal(raw.description,fields.descriptions[0],'Raw HTML and hydrated description agree');
   }
   return fields;
+}
+async function assertBrandIdentity(page,rawHtml) {
+  await page.waitForFunction(()=>{
+    const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(node=>{
+      try {const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}
+    });
+    const brand=values.filter(value=>value.name==='HIDI' && value.url==='https://hidiindia.com/');
+    return brand.some(value=>value['@type']==='Organization') && brand.some(value=>value['@type']==='WebSite') &&
+      brand.filter(value=>value['@type']==='Organization').every(value=>value.logo==='https://hidiindia.com/brand/hidi-logo-header.svg') &&
+      brand.filter(value=>value['@type']==='WebSite').every(value=>[value.alternateName].flat().includes('HIDI India'));
+  },null,{timeout:5000});
+  if (rawHtml) {
+    const values=[...rawHtml.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].flatMap(match=>{
+      const value=JSON.parse(match[1]);return Array.isArray(value)?value:(value['@graph']||[value]);
+    }).filter(value=>value.name==='HIDI' && value.url==='https://hidiindia.com/');
+    assert(values.some(value=>value['@type']==='Organization'),'Raw HIDI organization remains present');
+    assert(values.some(value=>value['@type']==='WebSite'),'Raw HIDI website remains present');
+    for(const value of values) {
+      if(value['@type']==='Organization')assert.equal(value.logo,'https://hidiindia.com/brand/hidi-logo-header.svg','Raw brand logo is consistent');
+      if(value['@type']==='WebSite')assert([value.alternateName].flat().includes('HIDI India'),'Raw alternate brand name remains present');
+    }
+  }
 }
 
 export async function probe(base, output) {

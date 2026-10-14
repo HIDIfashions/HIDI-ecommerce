@@ -64,7 +64,7 @@ def patch_runtime(base, overlay):
     expected={
         'server.mjs':'870fac80dd38422fff7965693a853f3ba0501e5d4fb94414e310cebee19350c2',
         'privacy-policy/handler.mjs':'47bc7f3fd140786d6c25c41e9c44f770b3dfff8fa2a16f016b9589aa7505c328',
-        'seo-discovery/metadata.mjs':'ca2982428864e7f8cb3daa2394fc3a2f5ebcd794d105ed5ea470b55bcb85d260',
+        'seo-discovery/metadata.mjs':'87f65b52a4a7a26a77a659a6f43d85b6b58468d9b335a165c052c9f877d7dd80',
         'seo-discovery/sitemap.mjs':'3a06940f2e8069df26064611536c8479b5f3a2b188c077714b9c765bfa321bd3',
         'seo-discovery/published-product-images.json':'da8de244a5c8d894fd3add64e6c7e17ba11b632eac8eca6eebf5805a74e95347',
         'dist/hidi-analytics.js':'49e768f8ad246d00def4e5e514809424bfdd63c229f100e9298cb2801bac5283',
@@ -74,7 +74,7 @@ def patch_runtime(base, overlay):
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
     metadata=(HERE/'metadata.mjs').read_bytes()
-    assert hashlib.sha256(metadata).hexdigest()=='87f65b52a4a7a26a77a659a6f43d85b6b58468d9b335a165c052c9f877d7dd80', 'Reviewed Google directive helper changed'
+    assert hashlib.sha256(metadata).hexdigest()=='967d8fb08d96640d6972f98d6fa42d9494979d3f169b31aaefac7b74d4f4c973', 'Reviewed brand identity helper changed'
     (overlay/'seo-discovery/metadata.mjs').write_bytes(metadata)
     return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs'],
             'seoOnly':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,

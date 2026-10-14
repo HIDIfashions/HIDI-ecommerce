@@ -6,6 +6,40 @@ import { sitemapXml, createSeoSitemap, productImageUrls } from './sitemap.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
 import {runInNewContext} from 'node:vm';
 
+test('verified HIDI brand identity is consistent across retained graph shapes without changing product facts or visible markup',()=>{
+  const org={'@type':'Organization','@id':'https://thehidi.com/#organization',name:'HIDI',url:'https://thehidi.com/',logo:'https://thehidi.com/assets/images/hidi-logo.png'};
+  const site={'@type':'WebSite',name:'HIDI',url:'https://thidigk.thehidi.com/'};
+  const product={'@type':'Product',name:'Actual garment',description:'Approved garment facts',image:'https://images.example/garment.jpg',offers:{price:'1490',priceCurrency:'INR'}};
+  const unrelated={'@type':'Organization',name:'Other company',url:'https://other.example/',logo:'https://other.example/logo.png'};
+  const body='<body><h1>Original brand story</h1><button>Add to Bag</button></body>';
+  for(const graph of [[org,site,product,unrelated],{'@context':'https://schema.org','@graph':[org,site,product,unrelated]}]) {
+    const input='<head><script type="application/ld+json">'+JSON.stringify(graph)+'</script></head>'+body;
+    const output=normalizeSeoIdentity(input,'/about');
+    const result=JSON.parse(output.match(/application\/ld\+json">(.*?)<\/script>/)[1]);
+    const values=Array.isArray(result)?result:result['@graph'];
+    assert.equal(values[0].logo,'https://hidiindia.com/brand/hidi-logo-header.svg');
+    assert.equal(values[1].alternateName,'HIDI India');
+    assert.deepEqual(values[2],product);assert.deepEqual(values[3],unrelated);
+    assert.equal(output.slice(output.indexOf('<body>')),body);
+    assert.equal(normalizeSeoIdentity(output,'/about'),output);
+  }
+  const siteWithAliases={...site,url:'https://hidiindia.com/',alternateName:['HiDi']};
+  const input='<head><script type="application/ld+json">'+JSON.stringify(siteWithAliases)+'</script></head>';
+  const result=JSON.parse(normalizeSeoIdentity(input).match(/application\/ld\+json">(.*?)<\/script>/)[1]);
+  assert.deepEqual(result.alternateName,['HiDi','HIDI India']);
+});
+
+test('brand graph correction survives client hydration while retaining framework nodes',()=>{
+  const node={textContent:JSON.stringify({'@graph':[{'@type':'Organization',name:'HIDI',url:'https://hidiindia.com/',logo:'https://hidiindia.com/assets/images/hidi-logo.png'},{'@type':'WebSite',name:'HIDI',url:'https://hidiindia.com/'}]})};
+  const robots={name:'robots',content:'index, follow'},events={};
+  const document={title:'About HIDI | HIDI',documentElement:{},head:{querySelectorAll:selector=>selector.includes('robots')?[robots]:[]},querySelectorAll:()=>[node],addEventListener:()=>{}};
+  const location={pathname:'/about'},window={addEventListener:(event,fn)=>events[event]=fn};
+  runInNewContext(clientMetadataScript.replace(/^<script[^>]*>|<\/script>$/g,''),{document,window,location,queueMicrotask:fn=>fn(),MutationObserver:class{observe(){}}});
+  const check=()=>{const graph=JSON.parse(node.textContent)['@graph'];assert.equal(graph[0].logo,'https://hidiindia.com/brand/hidi-logo-header.svg');assert.equal(graph[1].alternateName,'HIDI India');};
+  check();node.textContent=JSON.stringify({'@type':'WebSite',name:'HIDI',url:'https://hidiindia.com/'});events.popstate();
+  assert.equal(JSON.parse(node.textContent).alternateName,'HIDI India');
+});
+
 test('Lookbook directive survives client rendering and navigation without changing private/error directives',()=>{
   const robots={content:'index, follow'},events={};
   const document={title:'Lookbook | HIDI',documentElement:{},

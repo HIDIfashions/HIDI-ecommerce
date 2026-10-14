@@ -1,4 +1,4 @@
-name: Correct Google indexing metadata and cached navigation
+name: Align HIDI brand identity with retained storefront
 on:
   push:
     branches: [migration/azure-sql-blob]
