@@ -34,6 +34,6 @@ export function EditorialLookbook({ archive = false }: { archive?: boolean }) {
     <div ref={track} className={archive ? styles.grid : styles.track} aria-label={isCommunity ? "Customer styling photographs" : "Editorial lookbook"} tabIndex={archive ? undefined : 0}>
       {shown.map(entry => <article key={entry.id} className={styles.look}><Link href={entry.href}><span className={styles.image}><CatalogImage src={entry.image} alt={entry.alt} sizes={archive ? "(max-width: 760px) 50vw, 33vw" : "(max-width: 760px) 76vw, 30vw"} /></span><span className={styles.edit}>{entry.edit}</span><h3>{entry.title}</h3>{"credit" in entry && <span className={styles.credit}>{String(entry.credit)}</span>}</Link></article>)}
     </div>
-    <div className={styles.bottom}><p>{isCommunity ? "Every story is shared with its creator’s permission." : "Seen in HIDI — your story belongs here. Share your look with our team to be considered."}</p><Link href={archive ? "/contact" : "/lookbook"}>{archive ? "Share your HIDI look" : "Explore the lookbook"}<ArrowRight size={14} aria-hidden="true" /></Link></div>
+    <div className={styles.bottom}><p>{isCommunity ? "Every story is shared with its creator’s permission." : "Seen in HIDI — your story belongs here. Share your look with our team to be considered."}</p>{archive && <Link href="/contact">Share your HIDI look<ArrowRight size={14} aria-hidden="true" /></Link>}</div>
   </section>;
 }
