@@ -38,6 +38,7 @@ export async function probe(base, output) {
         });
         const catalogueView=async()=>{
           assert((await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'})).ok());
+          await page.waitForFunction(()=>Array.from(document.querySelectorAll('main article button')).some(button=>/wishlist/i.test(button.getAttribute('aria-label')||'')&&!button.disabled));
           const one=page.getByRole('button',{name:'Show one product per row',exact:true});
           if(await one.isVisible()) {
             await one.click();
