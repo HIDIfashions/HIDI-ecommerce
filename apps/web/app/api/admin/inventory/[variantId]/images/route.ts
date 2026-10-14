@@ -7,6 +7,7 @@ import { adminApiHeaders, isAdminRequest } from "@/lib/admin-auth";
 import { readStreamedPhotoForm, acquirePhotoUploadSlot, PhotoUploadError, type DiskPhoto, type StreamedPhotoForm } from "@/lib/photo-upload-stream.mjs";
 import { createReadStream } from "node:fs";
 import { middleware as uploadDomainPolicy } from "@/middleware";
+import { authorizePhotoUpload } from "@/lib/photo-upload-authorize.mjs";
 
 export const runtime = "nodejs";
 
@@ -187,6 +188,7 @@ export async function POST(
   let photoForm: StreamedPhotoForm | undefined;
 
   try {
+    await authorizePhotoUpload(request, API_URL, adminApiHeaders(request));
     if (!request.headers.get("content-type")?.includes("multipart/form-data")) {
       const payload = await request.json().catch(() => null);
       if (!payload) return NextResponse.json({ message: "Photo or image URL is required" }, { status: 400 });

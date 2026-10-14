@@ -154,7 +154,7 @@ $('upload').onclick = () => void run(async () => {
     // Some folder-selected files have an empty MIME type; the validated extension supplies it.
     const file = row.file.type ? row.file : new File([row.file], row.name, { type: row.mime, lastModified: row.file.lastModified });
     form.append('file', file); form.append('applyToColor', 'true'); form.append('isMain', String(row.isMain)); form.append('alt', alt);
-    const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 90000);
+    const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 600000);
     try {
       const saved = await request('/api/admin/inventory/' + encodeURIComponent(target.variantId) + '/images', { method: 'POST', body: form, signal: controller.signal });
       if (!saved.id || !Array.isArray(saved.images) || !saved.images.some(image => image.alt === alt)) throw new Error('Upload response is incomplete. Check the product photos, then resume to confirm.');

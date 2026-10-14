@@ -12,7 +12,7 @@ const sharp=require('next/dist/server/image-optimizer.js').getSharp(1,false);
 const source='/media/products/variants/example/photo.webp';
 test('versioned display sources pass the retained Next Image local-path rules',()=>{
   const display=productImageSource('https://thidigk.thehidi.com'+source);
-  assert.equal(display,'/media/products/_display_v2/variants/example/photo.webp');
+  assert.equal(display,'/media/products/_display_v2/variants/example/photo.webp?hidi_image=3');
   assert.equal(productImageSource(display),display);
   assert.equal(productImageSource('https://other.invalid/photo.webp'),'https://other.invalid/photo.webp');
   const loader=require('next/dist/shared/lib/image-loader.js').default;

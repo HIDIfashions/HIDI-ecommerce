@@ -9,11 +9,11 @@ const product = (extra = {}) => ({ id: 'p1', skn: '12345', name: 'Magenta suit',
   { id: 'vXL', color: 'Magenta Pink', size: 'XL', sku: 'SKU-XL' },
 ], ...extra });
 
-test('five-digit SKN file names support the four formats and exact 12 MB boundary', () => {
+test('five-digit SKN names accept large photos and reject unrepresentable byte counts', () => {
   for (const [extension, type] of [['jpeg', 'image/jpeg'], ['jpg', 'image/jpeg'], ['png', 'image/png'], ['webp', 'image/webp'], ['avif', 'image/avif']]) {
     const parsed = parsePhoto(file('12345_001_main.' + extension, MAX_PHOTO_BYTES, type));
     assert.equal(parsed.error, ''); assert.equal(parsed.skn, '12345'); assert.equal(parsed.sequence, 1); assert.equal(parsed.isMain, true); assert.equal(parsed.mime, type);
-    assert.match(parsePhoto(file('12345_001.' + extension, MAX_PHOTO_BYTES + 1, type)).error, /12 MB/);
+    assert.match(parsePhoto(file('12345_001.' + extension, MAX_PHOTO_BYTES + 1, type)).error, /valid non-empty photo/);
   }
   assert.equal(parsePhoto(file('99999_999_MAIN.WEBP')).error, '');
   for (const name of ['01234_001.jpeg', '1234_001.jpeg', '123456_001.jpeg', '12345_000.jpeg', '12345_1.jpeg', '12345_001_main.wbep', '12345_001.gif', '../12345_001.jpeg', '__proto___001.jpeg']) assert.ok(parsePhoto(file(name)).error, name);

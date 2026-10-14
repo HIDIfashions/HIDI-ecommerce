@@ -1,4 +1,4 @@
-import { photoDigest } from "../../apps/web/lib/photo-digest.mjs";
+import { photoDigest } from "./photo-digest.mjs";
 export const IMAGE_SKU_ENDPOINT = '/api/hidi/product-image-skus';
 export const canonicalColour = value => String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 export const imageSkuKey = value => String(value ?? '').normalize('NFKC').trim().toUpperCase();

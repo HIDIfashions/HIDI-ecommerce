@@ -7,7 +7,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 SOURCE = HERE
-ASSETS = {'client.mjs', 'model.mjs', 'engine.mjs', 'styles.css', 'HIDI_Product_Upload_Template.xlsx', 'package.mjs', 'HIDI_Product_Upload_Package.zip'}
+ASSETS = {'photo-digest.mjs', 'client.mjs', 'model.mjs', 'engine.mjs', 'styles.css', 'HIDI_Product_Upload_Template.xlsx', 'package.mjs', 'HIDI_Product_Upload_Package.zip'}
 FILES = ASSETS | {'page.html'}
 HANDLER = 'admin-tools/handler.mjs'
 NAVIGATION = 'admin-tools/navigation.js'

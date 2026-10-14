@@ -27,6 +27,8 @@ export async function readStreamedPhotoForm(request,options={}){
   });
   parser.on('file',(name,stream,info)=>{
     count++;
+    // Busboy may fail a file before its asynchronous disk reader is attached.
+    stream.on('error', fail);
     if(name!=='file'||count!==1||!TYPES.has(info.mimeType)){stream.resume();fail(new PhotoUploadError('Upload one JPEG, PNG, WebP or AVIF image.'));return;}
     const task=photoToDisk(stream,{...options,signal}).then(async disk=>{
       saved.push(disk);
@@ -41,7 +43,14 @@ export async function readStreamedPhotoForm(request,options={}){
     jobs.push(task);task.catch(fail);
   });
   try{
-    await pipeline(Readable.fromWeb(request.body),parser,{signal});
+    // An async-generator bridge waits for a pending Web-stream read before
+    // cancellation; Readable.fromWeb may cancel a multipart producer mid-pull.
+    async function* inputChunks(){
+      const reader=request.body.getReader();
+      try{for(;;){const part=await reader.read();if(part.done)break;yield part.value;}}
+      finally{await reader.cancel().catch(()=>{});}
+    }
+    await pipeline(Readable.from(inputChunks()),parser,{signal});
     await Promise.all(jobs);
     if(count!==1||!values.get('file'))throw new PhotoUploadError('Choose one non-empty image file.');
     return {get:name=>values.get(name)??null,cleanup};
