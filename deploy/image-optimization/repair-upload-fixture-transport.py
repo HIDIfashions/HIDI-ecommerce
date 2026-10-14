@@ -19,14 +19,14 @@ once("body:Readable.toWeb(req),duplex:'half'", "body:fixtureRequestBody(req),dup
 once("   res.writeHead(result.status,Object.fromEntries(result.headers));return res.end(Buffer.from(await result.arrayBuffer()));", "   const responseBytes=Buffer.from(await result.arrayBuffer());uploadResponses.push({status:result.status,body:responseBytes.toString().slice(0,1600)});\n   res.writeHead(result.status,Object.fromEntries(result.headers));return res.end(responseBytes);")
 once("results.push({engine,case:name,status:'FAIL',error:String(error.stack||error)});throw error;", "results.push({engine,case:name,status:'FAIL',error:String(error.stack||error),alerts:latestPage?await latestPage.locator('[role=alert]').allTextContents().catch(()=>[]):[],responses:uploadResponses.slice(-3)});throw error;")
 once("page.setDefaultTimeout(30000);", "latestPage=page;page.setDefaultTimeout(30000);")
-# Positive gallery checks are independent of the invalid-file case. Preserve a
-# failed case as FAIL, but still inspect the other browser engines.
+# Preserve failures, but allow the other browser engines to run independently.
 marker="  await record(engine,'Corrupted upload shows an error without attaching a photo'"
 lines=s.splitlines();bad=[line for line in lines if line.startswith(marker)];assert len(bad)==1
 if 'Continue other engines; record() retained the failure.' not in s:
  lines.remove(bad[0]);s='\n'.join(lines)+'\n'
  once("  await record(engine,'Real product-editor screen loads with isolated stock and prices'", "  try {\n  await record(engine,'Real product-editor screen loads with isolated stock and prices'")
  once("  await context.close();await browser.close();browser=undefined;", bad[0]+"\n  } catch { /* Continue other engines; record() retained the failure. */ }\n  finally { await context.close();await browser.close();browser=undefined; }")
+once("await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{await page.locator", "await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{await page.goto(base+'/admin/products/photo-fixture',{waitUntil:'networkidle'});await page.getByRole('heading',{name:'Upload fixture kurta',exact:true}).waitFor();await page.locator")
 s=s.replace('JSON.stringify({results,snapshots,storage:', 'JSON.stringify({results,snapshots,uploadResponses,storage:')
 p.write_text(s)
 print('Fixture error responses retain their socket; all browser failures remain visible and other engines still execute.')
