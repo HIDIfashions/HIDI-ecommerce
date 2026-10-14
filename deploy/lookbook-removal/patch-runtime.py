@@ -37,7 +37,10 @@ def patch_runtime(base, overlay):
     for path in (base/'dist').glob('*.html'):
         before = path.read_text()
         after, count = HTML_LINK.subn('', before)
-        if count:
+        if path.name == 'index.html':
+            assert after.count('</head>') == 1, 'One landing head required'
+            after = after.replace('</head>', '<style data-hidi-lookbook-removal="true">'+CSS+'</style></head>', 1)
+        if after != before:
             name = path.relative_to(base).as_posix()
             files[name] = after
             static.append({'path':name,'removedLinks':count})

@@ -12,11 +12,11 @@ with tempfile.TemporaryDirectory() as temp:
     (base/'server.mjs').write_text(server)
     for name in ['apps/web/.next/server/chunks/layout.js','apps/web/.next/static/chunks/layout.js']:
         target=base/name;target.parent.mkdir(parents=True);target.write_text('unchanged_before;['+links+'];unchanged_after;')
-    (base/'dist').mkdir();(base/'dist/index.html').write_text('<nav><a href="/collections/all">Shop</a><a href="/lookbook">Lookbook</a></nav>')
+    (base/'dist').mkdir();(base/'dist/index.html').write_text('<head></head><nav><a href="/collections/all">Shop</a><a href="/lookbook">Lookbook</a></nav>')
     overlay=Path(temp)/'overlay';report=patch.patch_runtime(base,overlay)
     assert report['passed'] and len(report['compiledFooterLinks'])==2
     for item in report['compiledFooterLinks']:
         assert (overlay/item['path']).read_text()=='unchanged_before;[null,null];unchanged_after;'
     assert (base/'server.mjs').read_text()==server
-    assert (overlay/'dist/index.html').read_text()=='<nav><a href="/collections/all">Shop</a></nav>'
+    assert (overlay/'dist/index.html').read_text()=='<head><style data-hidi-lookbook-removal="true">'+patch.CSS+'</style></head><nav><a href="/collections/all">Shop</a></nav>'
 print('PASS: exact link expressions removed; unrelated markup and source bytes retained')
