@@ -35,7 +35,10 @@ export async function createPhotoRouteFixture(directory,{apiBase='http://127.0.0
   const source=await readFile(resolve(file),'utf8');
   const result=ts.transpileModule(source,{fileName:file,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}});
   const module={exports:{}};
-  vm.runInNewContext(result.outputText,{module,exports:module.exports,require:name=>aliases[name]??require(name),process,Buffer,fetch:send,AbortSignal,URL,URLSearchParams,Request,Response,Headers,File,FormData,console,setTimeout,clearTimeout},{filename:file});
+  // Imported parser/auth errors originate in the host realm. Share Error so the
+  // actual route's instanceof check behaves as it does in one application realm.
+  // The route, error messages, status codes and browser assertions stay unchanged.
+  vm.runInNewContext(result.outputText,{module,exports:module.exports,require:name=>aliases[name]??require(name),process,Buffer,Error,TypeError,fetch:send,AbortSignal,URL,URLSearchParams,Request,Response,Headers,File,FormData,console,setTimeout,clearTimeout},{filename:file});
   return module.exports;
  }
  aliases['@/lib/admin-auth']=await load('apps/web/lib/admin-auth.ts');
