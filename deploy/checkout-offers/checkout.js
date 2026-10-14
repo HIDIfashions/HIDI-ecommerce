@@ -37,7 +37,7 @@
   const cart=await response.clone().json();if(!cart.items?.length){clear();return response;}
   let result;try{result=await getQuote(decodeURIComponent(cartMatch[1]),selected,options?.signal);}catch(error){if(options?.signal?.aborted)throw error;if(selected.kind!=='NONE'){choice={kind:'NONE'};result=await getQuote(decodeURIComponent(cartMatch[1]),choice,options?.signal);}else result={available:false};}
   if(id!==revision||auth!==token())throw Error('Your account or offer changed. Review checkout again.');
-  busy=false;quote=result;if(!result.available)choice={kind:'NONE'};render();
+  busy=false;quote=result;if(!result.available){choice={kind:'NONE'};document.querySelectorAll('.hidi-offer-dialog').forEach(d=>{d.close();d.remove();});}render();
   if(!result.available||choice.kind==='NONE')return response;
   const data={...cart,subtotalPaise:result.netSubtotalPaise,shippingPaise:result.shippingPaise,totalPaise:result.totalPaise};
   if(result.gift){data.itemCount+=1;data.items=[...data.items,{id:'hidi-offer-'+result.gift.id,quantity:1,lineTotalPaise:100,product:{name:result.gift.name+' (₹1 offer)',slug:result.gift.slug,image:result.gift.image},variant:{id:result.gift.id,size:result.gift.size,color:result.gift.color}}];}
@@ -60,5 +60,6 @@
  };
  window.addEventListener('hidi-auth-updated',()=>{clear();if(location.pathname==='/checkout')window.dispatchEvent(new Event('hidi-cart-updated'));});
  window.addEventListener('storage',e=>{if(e.key===KEY||e.key==='hidi_cart_session'||e.key===null){clear();if(location.pathname==='/checkout')window.dispatchEvent(new Event('hidi-cart-updated'));}});
+ setInterval(()=>{if(location.pathname==='/checkout'&&!document.hidden&&!locked&&!busy)window.dispatchEvent(new Event('hidi-cart-updated'));},15000);
  const observer=new MutationObserver(()=>{if(lastPath!==location.pathname){lastPath=location.pathname;clear();}if(panel&&!panel.isConnected)panel=null;if(quote)renderIfDetached();});const renderIfDetached=()=>{if(!panel)render();};observer.observe(document.documentElement,{childList:true,subtree:true});
 })();
