@@ -6,6 +6,9 @@ on:
       - 'deploy/image-optimization/**'
       - 'deploy/collection-speed/images.mjs'
       - 'apps/web/lib/product-photo-upload*'
+      - 'apps/web/lib/product-image.ts'
+      - 'tests/photo-upload-client.test.cjs'
+      - 'tests/seo-images.test.cjs'
       - '.github/workflows/image-optimization-candidate.yml'
 permissions:
   contents: write
@@ -31,6 +34,8 @@ jobs:
           echo "HIDI_TEST_SHARP=$RUNNER_TEMP/image-test/node_modules/sharp" >> "$GITHUB_ENV"
           echo "HIDI_SHARP_MODULE=$RUNNER_TEMP/image-test/node_modules/sharp" >> "$GITHUB_ENV"
           echo "HIDI_TEST_TYPESCRIPT=$RUNNER_TEMP/image-test/node_modules/typescript" >> "$GITHUB_ENV"
+          mkdir -p apps/web/node_modules
+          ln -s "$RUNNER_TEMP/image-test/node_modules/typescript" apps/web/node_modules/typescript
       - name: Prepare guarded source changes
         run: python deploy/image-optimization/prepare-source.py --apply
       - name: Image tests and existing JPEG recovery regressions
@@ -38,6 +43,7 @@ jobs:
           set -o pipefail
           mkdir -p evidence/image-optimization
           node --test deploy/image-optimization/image-optimization.test.mjs deploy/launch-image-repair/recovery.test.mjs | tee evidence/image-optimization/tests.tap
+          node --test tests/photo-upload-client.test.cjs tests/seo-images.test.cjs | tee evidence/image-optimization/integration-tests.tap
           node deploy/image-optimization/check-source.mjs
           node deploy/image-optimization/large-photo-check.mjs evidence/image-optimization/large-photo.json
       - name: Record source changes only on the isolated branch
