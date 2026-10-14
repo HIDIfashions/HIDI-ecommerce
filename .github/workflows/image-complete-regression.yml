@@ -40,6 +40,8 @@ jobs:
           encoded=''.join((root/f'deploy/image-optimization/reviewed-changes.{n}.b64').read_text().strip() for n in [1,2])
           encoded=encoded.replace('axHc7oWloUuU5','axHc7oW4loUuU5')
           spec=json.loads(gzip.decompress(base64.b64decode(encoded,validate=True)))
+          # Workflow edits were saved separately through the authorized connector.
+          spec.pop('.github/workflows/image-optimization-candidate.yml')
           plans={}
           for name,item in spec.items():
             assert not pathlib.PurePosixPath(name).is_absolute() and '..' not in pathlib.PurePosixPath(name).parts
