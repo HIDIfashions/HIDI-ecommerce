@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, HttpException, HttpStatus, Param, Post, Query, Req } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Header, Headers, HttpException, HttpStatus, Param, Post, Query, Req } from "@nestjs/common";
 import { CheckoutService } from "./checkout.service.js";
 import { SupabaseAuthService } from "../auth/supabase-auth.service.js";
 import { DelhiveryService } from "../delhivery/delhivery.service.js";
@@ -63,6 +63,13 @@ export class CheckoutController {
       }
     }
     return value;
+  }
+
+  @Post("offers/quote")
+  @Header("Cache-Control", "private, no-store")
+  async offerQuote(@Body() body: any, @Headers("authorization") authorization?: string) {
+    const customer = authorization === undefined ? null : await this.auth.requireUser(authorization);
+    return this.checkout.quoteOffers(body, customer);
   }
 
   @Post("prepare")

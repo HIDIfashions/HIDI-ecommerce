@@ -1,3 +1,4 @@
+import { loadChoice, normalizedChoice, assertRetry, applyChoice, reservationItems, quote } from './offers-engine.js';
 import { encodeJson, decodeJson } from "../prisma/json.js";
 import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
@@ -26,6 +27,7 @@ type AddressInput = {
 };
 
 type PrepareInput = {
+  offer?: { kind: string; version?: number; variantId?: string };
   paymentMethod?: "RAZORPAY" | "COD";
   sessionId?: string;
   checkoutToken?: string;
@@ -45,6 +47,8 @@ export class CheckoutService {
     private readonly wallet: WalletService,
     private readonly delhivery?: DelhiveryService,
   ) {}
+
+  quoteOffers(input: any, auth: VerifiedAuthUser | null = null) { return quote(this.prisma, input, auth); }
 
   private validate(input: PrepareInput) {
     if (!input || typeof input !== "object" || Array.isArray(input)) throw new BadRequestException("Checkout details are required");
@@ -97,6 +101,7 @@ export class CheckoutService {
 
   async prepare(input: PrepareInput, auth: VerifiedAuthUser | null = null) {
     this.validate(input);
+        normalizedChoice(input.offer);
     const shippingAddress = {
       ...input.shippingAddress!,
       firstName: input.shippingAddress!.firstName.trim(),
@@ -147,6 +152,7 @@ export class CheckoutService {
       include: { payments: { orderBy: { createdAt: "desc" }, take: 1 } },
     });
     if (existing) {
+            assertRetry(existing, input);
       if (existing.cartSessionId !== input.sessionId || existing.userId !== userId || existing.walletAppliedPaise !== walletPaise) {
         throw new ConflictException("Checkout identity or wallet amount changed. Start a new checkout attempt.");
       }
@@ -163,7 +169,8 @@ export class CheckoutService {
       if (!available) throw new BadRequestException("Cash on delivery is unavailable for this PIN code. Choose online payment.");
     }
 
-    const orderNumber = this.makeOrderNumber();
+    const hidiPromotion = await loadChoice(input.offer, auth);
+        const orderNumber = this.makeOrderNumber();
     const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
     const order = await withSerializableRetry(this.prisma, async (tx) => {
@@ -186,7 +193,9 @@ export class CheckoutService {
       }
       if (!Number.isSafeInteger(subtotalPaise) || subtotalPaise <= 0 || subtotalPaise > MAX_PAISE) throw new BadRequestException("Invalid order total");
       if (input.expectedTotalPaise !== undefined && input.expectedTotalPaise !== subtotalPaise) throw new ConflictException("Product prices changed. Refresh your bag and review the total before paying.");
-      const { shippingPaise, totalPaise } = shippingQuote(subtotalPaise);
+      const hidiPricing = await applyChoice(tx, cart, subtotalPaise, hidiPromotion);
+            const { shippingPaise, totalPaise, discountPaise } = hidiPricing;
+            subtotalPaise = hidiPricing.subtotalPaise;
       if (input.expectedPayableTotalPaise !== undefined && input.expectedPayableTotalPaise !== totalPaise) throw new ConflictException("Shipping or prices changed. Refresh your bag and review the total before paying.");
       if (walletPaise > totalPaise) throw new BadRequestException("Wallet amount cannot exceed the order total");
       if (totalPaise - walletPaise > 0 && totalPaise - walletPaise < 100) throw new BadRequestException("The remaining online payment must be at least ₹1. Use the wallet for the full total or reduce the wallet amount.");
@@ -197,9 +206,10 @@ export class CheckoutService {
           cartSessionId: input.sessionId!,
           orderNumber,
           status: "PENDING_PAYMENT",
-          userId,
-          subtotalPaise,
-          shippingPaise,
+          userId,                subtotalPaise,
+                discountPaise,
+                notes: hidiPricing.snapshot ? JSON.stringify({ hidiOffer: hidiPricing.snapshot }) : null,
+                shippingPaise,
           totalPaise,
           walletAppliedPaise: walletPaise,
           customerEmail: auth?.email ?? customerEmail,
@@ -215,7 +225,8 @@ export class CheckoutService {
               color: item.variant.color,
               quantity: item.quantity,
               unitPricePaise: item.variant.pricePaise,
-              totalPaise: item.variant.pricePaise * item.quantity,
+                        discountPaise: (item as any).hidiDiscountPaise || 0,
+                        totalPaise: item.variant.pricePaise * item.quantity - ((item as any).hidiDiscountPaise || 0),
             })),
           },
         },
@@ -244,8 +255,8 @@ export class CheckoutService {
         await this.wallet.reserve(tx, walletAccount.id, created.id, walletPaise, expiresAt);
         await this.wallet.createAccrual(tx, created, walletAccount.id);
       }
-      for (const item of cart.items) {
-        const locked = await tx.$queryRaw<Array<{ onHand: number; reserved: number; safetyStock: number }>>`
+      for (const item of reservationItems(cart.items)) {
+                const locked = await tx.$queryRaw<Array<{ onHand: number; reserved: number; safetyStock: number }>>`
           SELECT "onHand", "reserved", "safetyStock" FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "variantId" = ${item.variantId} 
         `;
         const inventory = locked[0];
@@ -538,7 +549,8 @@ export class CheckoutService {
       orderNumber: order.orderNumber,
       amountPaise: cashDue,
       subtotalPaise: order.subtotalPaise,
-      shippingPaise: order.shippingPaise ?? 0,
+            discountPaise: order.discountPaise || 0,
+            shippingPaise: order.shippingPaise ?? 0,
       totalPaise: order.totalPaise,
       walletAppliedPaise: order.walletAppliedPaise ?? 0,
       status: order.status,
