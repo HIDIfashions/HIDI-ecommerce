@@ -4,10 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
 import { adminApiHeaders, isAdminRequest } from "@/lib/admin-auth";
 
+import { readPhotoForm, acquirePhotoUploadSlot, PhotoUploadError } from "@/lib/product-photo-upload.mjs";
+
 export const runtime = "nodejs";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
-const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 40 * 1024 * 1024;
 const DEFAULT_R2_BUCKET = "hidi-product-media-prod";
 
 type R2UploadResult = {
@@ -175,6 +177,7 @@ export async function POST(
 ) {
   if (!isAdminRequest(request)) return NextResponse.json({ message: "Admin session expired" }, { status: 401 });
   const { variantId } = await context.params;
+  let releasePhotoUpload: (() => void) | undefined;
 
   try {
     if (!request.headers.get("content-type")?.includes("multipart/form-data")) {
@@ -185,14 +188,15 @@ export async function POST(
       return NextResponse.json(body, { status: response.status });
     }
 
-    const form = await request.formData();
+    releasePhotoUpload = acquirePhotoUploadSlot();
+    const form = await readPhotoForm(request);
     const file = form.get("file");
     if (!(file instanceof File)) return NextResponse.json({ message: "Choose an image file" }, { status: 400 });
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
       return NextResponse.json({ message: "Use a JPEG, PNG, WebP or AVIF image" }, { status: 400 });
     }
     if (file.size < 1 || file.size > MAX_IMAGE_BYTES) {
-      return NextResponse.json({ message: "Image must be no larger than 12 MB" }, { status: 400 });
+      return NextResponse.json({ message: "Image must be no larger than 40 MiB" }, { status: 400 });
     }
 
     let uploadKey: string | undefined;
@@ -220,8 +224,10 @@ export async function POST(
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Unable to upload SKU photo" },
-      { status: 502 },
+      { status: error instanceof PhotoUploadError ? error.status : 502 },
     );
+  } finally {
+    releasePhotoUpload?.();
   }
 }
 

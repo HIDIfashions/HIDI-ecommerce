@@ -65,7 +65,7 @@ export async function prepareMappedPhotos(candidates, api = request) {
     let target, error = null;
     try {
       if (!parsed.mime) throw new Error('Use JPEG, JPG, WebP, PNG or AVIF images.');
-      if (item.file.size < 1 || item.file.size > 12 * 1024 * 1024) throw new Error('Each image must be between 1 byte and 12 MB.');
+      if (item.file.size < 1 || item.file.size > 40 * 1024 * 1024) throw new Error('Each image must be between 1 byte and 40 MiB.');
       if (item.file.type && item.file.type !== parsed.mime) throw new Error('Image type and filename extension do not match.');
       if (parsed.sequence < 1 || parsed.sequence > 9999) throw new Error('Photo number must be 1–9999. Example: KUR_001_1.jpeg.');
       if (!products.has(binding.productId)) products.set(binding.productId, await api('/api/admin/products/' + encodeURIComponent(binding.productId)));
@@ -113,7 +113,7 @@ export async function uploadMappedPhotoCandidate(item, api = request) {
   const form = new FormData(); form.set('file', item.file); form.set('applyToColor', 'true'); form.set('imageSku', item.imageSku); form.set('photoNumber', String(item.sequence)); form.set('alt', alt);
   let saved, failure;
   try {
-    const response = await fetch('/api/admin/inventory/' + encodeURIComponent(item.variantId) + '/images', {method: 'POST', credentials: 'same-origin', body: form, signal: AbortSignal.timeout(90000)});
+    const response = await fetch('/api/admin/inventory/' + encodeURIComponent(item.variantId) + '/images', {method: 'POST', credentials: 'same-origin', body: form, signal: AbortSignal.timeout(180000)});
     saved = await response.json().catch(() => ({}));
     if (!response.ok || saved.id !== item.variantId || !confirms({variants: item.targetVariantIds.map(id => ({id, images: saved.images}))}, item, suffix)) throw new Error(saved.message || 'Photo attachment was not confirmed.');
   } catch (error) {failure = error;}

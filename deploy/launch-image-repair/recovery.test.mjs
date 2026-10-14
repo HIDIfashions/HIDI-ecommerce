@@ -12,7 +12,7 @@ test('browser-readable progressive JPEG without ending data recovers to bounded 
  try{const store=createImageStore({sharp,fetchSource:async()=>{reads++;return incomplete;},cacheDir:dir,seedDir:join(dir,'absent')});const spec={source:'/media/products/variants/test/incomplete.jpg',width:640,format:'webp',quality:75};const a=await store.get(spec),b=await store.get(spec);assert.equal(reads,1);assert.equal(b.cache,'HIT');assert.deepEqual(a.bytes,b.bytes);}finally{await rm(dir,{recursive:true,force:true});}
 });
 test('valid JPEG retains strict decoder and normal output bytes',async()=>{
- const source=await sharp({create:{width:960,height:1440,channels:3,background:'#e4cdbb'}}).jpeg().toBuffer();const expected=await sharp(source,{limitInputPixels:100000000,sequentialRead:true}).rotate().resize({width:640,withoutEnlargement:true}).webp({quality:75,effort:2}).toBuffer();assert.deepEqual(await resizedImage(sharp,source,640,'webp',75),expected);
+ const source=await sharp({create:{width:960,height:1440,channels:3,background:'#e4cdbb'}}).jpeg().toBuffer();const expected=await sharp(source,{limitInputPixels:100000000,sequentialRead:true}).rotate().resize({width:640,height:1280,fit:'inside',withoutEnlargement:true}).withIccProfile('srgb').webp({quality:75,effort:2}).toBuffer();assert.deepEqual(await resizedImage(sharp,source,640,'webp',75),expected);
 });
 test('unrelated corruption and pixel-limit errors are rejected',async()=>{
  await assert.rejects(resizedImage(sharp,Buffer.from('invalid image'),640,'webp',75));

@@ -307,8 +307,8 @@ export class AdminInventoryService {
     const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
     if (!allowed.has(mimeType)) throw new BadRequestException("Use a JPEG, PNG, WebP or AVIF image");
-    if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > 12 * 1024 * 1024) {
-      throw new BadRequestException("Image must be no larger than 12 MB");
+    if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > 40 * 1024 * 1024) {
+      throw new BadRequestException("Image must be no larger than 40 MiB");
     }
 
     const variant = await this.prisma.productVariant.findUnique({
