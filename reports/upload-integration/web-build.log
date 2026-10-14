@@ -1,0 +1,135 @@
+
+> @hidi/web@0.1.0 build /home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/web
+> next build --webpack
+
+▲ Next.js 16.3.5 (webpack)
+✓ Running next.config.ts took 25ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+- Experiments (use with caution):
+  · proxyClientMaxBodySize: 44040192
+  ⨯ useTypeScriptCli
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead.
+
+  To migrate automatically, run:
+  npx @next/codemod@canary middleware-to-proxy .
+
+  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+⚠ Compiled with warnings in 966ms
+
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/server/app-render/dynamic-rendering.js
+A Node.js API is used (process.cwd at line: 1044) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/server/app-render/dynamic-rendering.js
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/server/request/connection.js
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/server/web/exports/index.js
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/api/server.js
+
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/server/app-render/dynamic-rendering.js
+A Node.js API is used (process.cwd at line: 1044) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/server/app-render/dynamic-rendering.js
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/server/request/connection.js
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/server/web/exports/index.js
+../../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_@types+node@24.13.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/dist/esm/api/server.js
+
+✓ Compiled successfully in 13.3s
+  Running TypeScript ...
+  Finished TypeScript in 6.1s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/7) ...
+  Generating static pages using 3 workers (1/7) 
+  Generating static pages using 3 workers (3/7) 
+  Generating static pages using 3 workers (5/7) 
+✓ Generating static pages using 3 workers (7/7) in 613ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /about
+├ ƒ /account
+├ ƒ /account/orders
+├ ƒ /account/orders/[orderNumber]
+├ ƒ /account/policy
+├ ƒ /account/preferences
+├ ƒ /account/returns
+├ ƒ /account/rewards
+├ ƒ /admin
+├ ƒ /admin/customers
+├ ƒ /admin/deliveries
+├ ƒ /admin/import
+├ ƒ /admin/inventory
+├ ƒ /admin/inventory/receive
+├ ƒ /admin/orders
+├ ƒ /admin/orders/[orderNumber]
+├ ƒ /admin/products
+├ ƒ /admin/products/[productId]
+├ ƒ /admin/products/new
+├ ƒ /admin/products/price-tags
+├ ƒ /admin/reports
+├ ƒ /admin/returns
+├ ƒ /admin/sign-in
+├ ƒ /admin/signin
+├ ƒ /admin/staff
+├ ƒ /api/admin/dashboard/[resource]
+├ ƒ /api/admin/inventory
+├ ƒ /api/admin/inventory/[variantId]
+├ ƒ /api/admin/inventory/[variantId]/history
+├ ƒ /api/admin/inventory/[variantId]/images
+├ ƒ /api/admin/inventory/receipts
+├ ƒ /api/admin/inventory/receipts/[receiptId]/post
+├ ƒ /api/admin/orders
+├ ƒ /api/admin/orders/[orderNumber]
+├ ƒ /api/admin/orders/[orderNumber]/delhivery/manifest
+├ ƒ /api/admin/orders/[orderNumber]/delhivery/serviceability
+├ ƒ /api/admin/orders/[orderNumber]/delhivery/track
+├ ƒ /api/admin/orders/[orderNumber]/shipment
+├ ƒ /api/admin/orders/[orderNumber]/status
+├ ƒ /api/admin/products
+├ ƒ /api/admin/products/[productId]
+├ ƒ /api/admin/products/[productId]/status
+├ ƒ /api/admin/products/[productId]/variants
+├ ƒ /api/admin/products/[productId]/variants/[variantId]
+├ ƒ /api/admin/products/categories
+├ ƒ /api/admin/products/options
+├ ƒ /api/admin/products/price-tags
+├ ƒ /api/admin/returns/[requestId]
+├ ƒ /api/admin/review-followups
+├ ƒ /api/admin/review-followups/run
+├ ƒ /api/admin/session
+├ ƒ /api/admin/staff
+├ ƒ /api/admin/staff/[staffId]
+├ ƒ /api/reviews/invitations/[token]
+├ ƒ /api/store/[...path]
+├ ƒ /cart
+├ ƒ /checkout
+├ ƒ /collections/[slug]
+├ ƒ /collections/all
+├ ƒ /contact
+├ ƒ /healthz
+├ ƒ /lookbook
+├ ƒ /media/[...path]
+├ ƒ /menu-layout-check
+├ ƒ /offers
+├ ƒ /order-confirmed
+├ ƒ /products/[slug]
+├ ƒ /returns
+├ ƒ /review/[token]
+├ ƒ /robots.txt
+├ ƒ /search
+├ ƒ /shipping
+├ ƒ /sitemap.xml
+└ ƒ /wishlist
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+

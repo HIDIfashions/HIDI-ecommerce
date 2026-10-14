@@ -1,0 +1,2308 @@
+
+> @hidi/api@0.1.0 test:customer-experience /home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/api
+> node --import tsx --test ../../tests/*.test.ts
+
+TAP version 13
+# Subtest: signed-in account review is ownership-scoped and published as a verified purchase
+ok 1 - signed-in account review is ownership-scoped and published as a verified purchase
+  ---
+  duration_ms: 1.876362
+  type: 'test'
+  ...
+# Subtest: account review rejects pieces before delivery
+ok 2 - account review rejects pieces before delivery
+  ---
+  duration_ms: 0.746668
+  type: 'test'
+  ...
+# Subtest: account review prevents a second review for the same order item
+ok 3 - account review prevents a second review for the same order item
+  ---
+  duration_ms: 0.243421
+  type: 'test'
+  ...
+# Subtest: public product reviews return verified count and full rating distribution
+ok 4 - public product reviews return verified count and full rating distribution
+  ---
+  duration_ms: 0.435011
+  type: 'test'
+  ...
+# Subtest: existing wallet authSubject binding remains authoritative when verified email changes
+ok 5 - existing wallet authSubject binding remains authoritative when verified email changes
+  ---
+  duration_ms: 1.778402
+  type: 'test'
+  ...
+# Subtest: matching an email must not inherit a wallet bound to a different authenticated subject
+ok 6 - matching an email must not inherit a wallet bound to a different authenticated subject
+  ---
+  duration_ms: 0.649308
+  type: 'test'
+  ...
+# Subtest: guest claim writes repeat both unclaimed ownership and current verified email guards
+ok 7 - guest claim writes repeat both unclaimed ownership and current verified email guards
+  ---
+  duration_ms: 0.429825
+  type: 'test'
+  ...
+# Subtest: ownsOrder uses wallet-bound local identity and cannot authorize another email-matched owner's order
+ok 8 - ownsOrder uses wallet-bound local identity and cannot authorize another email-matched owner's order
+  ---
+  duration_ms: 0.498075
+  type: 'test'
+  ...
+# Subtest: global admin search excludes deleted products before the six-result limit while retaining ordinary archived products and order history
+ok 9 - global admin search excludes deleted products before the six-result limit while retaining ordinary archived products and order history
+  ---
+  duration_ms: 1.939407
+  type: 'test'
+  ...
+# Subtest: catalogue search preserves SKU matching and cannot disclose orders or customers
+ok 10 - catalogue search preserves SKU matching and cannot disclose orders or customers
+  ---
+  duration_ms: 0.401564
+  type: 'test'
+  ...
+# Subtest: a one-letter search performs no database lookup
+ok 11 - a one-letter search performs no database lookup
+  ---
+  duration_ms: 1.597526
+  type: 'test'
+  ...
+# Subtest: an unlisted unlisted@example.test is denied without requesting a code or creating a user
+ok 12 - an unlisted unlisted@example.test is denied without requesting a code or creating a user
+  ---
+  duration_ms: 2.315427
+  type: 'test'
+  ...
+# Subtest: an unlisted unlisted243@example.test is denied without requesting a code or creating a user
+ok 13 - an unlisted unlisted243@example.test is denied without requesting a code or creating a user
+  ---
+  duration_ms: 0.29343
+  type: 'test'
+  ...
+# Subtest: disabled or invalid-role staff are rejected: {"email":"staff@example.test","role":"OWNER","active":false}
+ok 14 - disabled or invalid-role staff are rejected: {"email":"staff@example.test","role":"OWNER","active":false}
+  ---
+  duration_ms: 0.311262
+  type: 'test'
+  ...
+# Subtest: disabled or invalid-role staff are rejected: {"email":"staff@example.test","role":"CUSTOMER","active":true}
+ok 15 - disabled or invalid-role staff are rejected: {"email":"staff@example.test","role":"CUSTOMER","active":true}
+  ---
+  duration_ms: 0.161822
+  type: 'test'
+  ...
+# Subtest: invalid or privileged request fields are rejected: null
+ok 16 - invalid or privileged request fields are rejected: null
+  ---
+  duration_ms: 0.303266
+  type: 'test'
+  ...
+# Subtest: invalid or privileged request fields are rejected: []
+ok 17 - invalid or privileged request fields are rejected: []
+  ---
+  duration_ms: 0.141213
+  type: 'test'
+  ...
+# Subtest: invalid or privileged request fields are rejected: "staff@example.test"
+ok 18 - invalid or privileged request fields are rejected: "staff@example.test"
+  ---
+  duration_ms: 0.216348
+  type: 'test'
+  ...
+# Subtest: invalid or privileged request fields are rejected: {}
+ok 19 - invalid or privileged request fields are rejected: {}
+  ---
+  duration_ms: 0.125038
+  type: 'test'
+  ...
+# Subtest: invalid or privileged request fields are rejected: {"email":1}
+ok 20 - invalid or privileged request fields are rejected: {"email":1}
+  ---
+  duration_ms: 0.40318
+  type: 'test'
+  ...
+# Subtest: invalid or privileged request fields are rejected: {"email":"a@@b.test"}
+ok 21 - invalid or privileged request fields are rejected: {"email":"a@@b.test"}
+  ---
+  duration_ms: 0.461878
+  type: 'test'
+  ...
+# Subtest: invalid or privileged request fields are rejected: {"email":"staff@example.test","create_user":true}
+ok 22 - invalid or privileged request fields are rejected: {"email":"staff@example.test","create_user":true}
+  ---
+  duration_ms: 0.166115
+  type: 'test'
+  ...
+# Subtest: invalid or privileged request fields are rejected: {"email":"staff@example.test","role":"OWNER"}
+ok 23 - invalid or privileged request fields are rejected: {"email":"staff@example.test","role":"OWNER"}
+  ---
+  duration_ms: 0.105142
+  type: 'test'
+  ...
+# Subtest: active staff are checked first; email is normalised and provider signup is disabled
+ok 24 - active staff are checked first; email is normalised and provider signup is disabled
+  ---
+  duration_ms: 15.535456
+  type: 'test'
+  ...
+# Subtest: repeated code requests are throttled before provider delivery
+ok 25 - repeated code requests are throttled before provider delivery
+  ---
+  duration_ms: 0.492823
+  type: 'test'
+  ...
+# Subtest: staff disabled after code delivery cannot establish an admin session
+ok 26 - staff disabled after code delivery cannot establish an admin session
+  ---
+  duration_ms: 0.630188
+  type: 'test'
+  ...
+# Subtest: provider and database failures fail closed without exposing provider details
+ok 27 - provider and database failures fail closed without exposing provider details
+  ---
+  duration_ms: 0.531834
+  type: 'test'
+  ...
+# Subtest: deletion validates an explicit name and version and cleanup rejects unbounded or unknown input
+ok 28 - deletion validates an explicit name and version and cleanup rejects unbounded or unknown input
+  ---
+  duration_ms: 1.663845
+  type: 'test'
+  ...
+# Subtest: delete removes a catalogue product and its bag items while preserving all stock and order history
+ok 29 - delete removes a catalogue product and its bag items while preserving all stock and order history
+  ---
+  duration_ms: 2.466419
+  type: 'test'
+  ...
+# Subtest: wrong name, stale version, missing product, reserved inventory and active checkout all leave state unchanged
+ok 30 - wrong name, stale version, missing product, reserved inventory and active checkout all leave state unchanged
+  ---
+  duration_ms: 1.943092
+  type: 'test'
+  ...
+# Subtest: storage failure leaves a durable queue and same deletion retries safely with the original version
+ok 31 - storage failure leaves a durable queue and same deletion retries safely with the original version
+  ---
+  duration_ms: 1.197654
+  type: 'test'
+  ...
+# Subtest: recent upload authorization prevents deletion between blob upload and metadata attach, then expiry allows deletion
+ok 32 - recent upload authorization prevents deletion between blob upload and metadata attach, then expiry allows deletion
+  ---
+  duration_ms: 0.630121
+  type: 'test'
+  ...
+# Subtest: shared product-level URLs and variant-level storage paths are preserved across products
+ok 33 - shared product-level URLs and variant-level storage paths are preserved across products
+  ---
+  duration_ms: 0.423697
+  type: 'test'
+  ...
+# Subtest: shared media aliases protect the same object across /media, public HTTPS and both Azure storage-path forms
+ok 34 - shared media aliases protect the same object across /media, public HTTPS and both Azure storage-path forms
+  ---
+  duration_ms: 0.483763
+  type: 'test'
+  ...
+# Subtest: another deleted product's queued photos do not orphan blobs by being treated as protected shared media
+ok 35 - another deleted product's queued photos do not orphan blobs by being treated as protected shared media
+  ---
+  duration_ms: 0.402701
+  type: 'test'
+  ...
+# Subtest: normal photo upload, attachment and removal cannot bypass a product tombstone
+ok 36 - normal photo upload, attachment and removal cannot bypass a product tombstone
+  ---
+  duration_ms: 0.66519
+  type: 'test'
+  ...
+# Subtest: a fresh product cannot attach a photo still queued by a deleted product, including public URL aliases
+ok 37 - a fresh product cannot attach a photo still queued by a deleted product, including public URL aliases
+  ---
+  duration_ms: 0.629715
+  type: 'test'
+  ...
+# Subtest: normal draft product photo attachments still work and recheck deletion inside the write transaction
+ok 38 - normal draft product photo attachments still work and recheck deletion inside the write transaction
+  ---
+  duration_ms: 0.512789
+  type: 'test'
+  ...
+# Subtest: cleanup confirms only completed rows, survives partial cleanup and missing-ID replays, and keeps history
+ok 39 - cleanup confirms only completed rows, survives partial cleanup and missing-ID replays, and keeps history
+  ---
+  duration_ms: 0.985588
+  type: 'test'
+  ...
+# Subtest: cleanup denies another product's images and nondeleted products without changing metadata
+ok 40 - cleanup denies another product's images and nondeleted products without changing metadata
+  ---
+  duration_ms: 0.890845
+  type: 'test'
+  ...
+# Subtest: commit failure rolls deletion back and deleted catalogue entries cannot be republished
+ok 41 - commit failure rolls deletion back and deleted catalogue entries cannot be republished
+  ---
+  duration_ms: 1.437015
+  type: 'test'
+  ...
+# Subtest: delete, retry read and cleanup are guarded catalogue-write endpoints
+ok 42 - delete, retry read and cleanup are guarded catalogue-write endpoints
+  ---
+  duration_ms: 0.152419
+  type: 'test'
+  ...
+# Subtest: replaying the original create request cannot report a tombstone as a newly created draft
+ok 43 - replaying the original create request cannot report a tombstone as a newly created draft
+  ---
+  duration_ms: 0.728772
+  type: 'test'
+  ...
+# Subtest: reserved tombstone URLs cannot be manufactured and ordinary archived products remain readable, listed and editable
+ok 44 - reserved tombstone URLs cannot be manufactured and ordinary archived products remain readable, listed and editable
+  ---
+  duration_ms: 1.472557
+  type: 'test'
+  ...
+# Subtest: verified staff email claims the Supabase subject once and returns the configured role
+ok 45 - verified staff email claims the Supabase subject once and returns the configured role
+  ---
+  duration_ms: 4.078232
+  type: 'test'
+  ...
+# Subtest: sign-in never bootstraps an unlisted owner, even with a matching configured email
+ok 46 - sign-in never bootstraps an unlisted owner, even with a matching configured email
+  ---
+  duration_ms: 1.154917
+  type: 'test'
+  ...
+# Subtest: disabled, unknown and subject-conflicting staff cannot enter admin
+ok 47 - disabled, unknown and subject-conflicting staff cannot enter admin
+  ---
+  duration_ms: 0.347229
+  type: 'test'
+  ...
+# Subtest: admin RBAC permissions separate support, operations, catalog and owner duties
+ok 48 - admin RBAC permissions separate support, operations, catalog and owner duties
+  ---
+  duration_ms: 0.164215
+  type: 'test'
+  ...
+# Subtest: a linked auth subject does not authorise a different email outside the staff list
+ok 49 - a linked auth subject does not authorise a different email outside the staff list
+  ---
+  duration_ms: 0.268789
+  type: 'test'
+  ...
+# Subtest: legacy shared key is disabled by default and requires an explicit break-glass flag
+ok 50 - legacy shared key is disabled by default and requires an explicit break-glass flag
+  ---
+  duration_ms: 0.468106
+  type: 'test'
+  ...
+# (node:5701) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: requireUser rejects missing or non-Bearer credentials without contacting Auth
+ok 51 - requireUser rejects missing or non-Bearer credentials without contacting Auth
+  ---
+  duration_ms: 2.543434
+  type: 'test'
+  ...
+# Subtest: requireUser rejects missing configuration without contacting Auth
+ok 52 - requireUser rejects missing configuration without contacting Auth
+  ---
+  duration_ms: 0.525179
+  type: 'test'
+  ...
+# Subtest: requireUser rejects a failed Auth response even if it contains a user ID
+ok 53 - requireUser rejects a failed Auth response even if it contains a user ID
+  ---
+  duration_ms: 19.51
+  type: 'test'
+  ...
+# Subtest: requireUser accepts a verified mobile number with missing email
+ok 54 - requireUser accepts a verified mobile number with missing email
+  ---
+  duration_ms: 1.540284
+  type: 'test'
+  ...
+# Subtest: requireUser accepts a verified mobile number with null email
+ok 55 - requireUser accepts a verified mobile number with null email
+  ---
+  duration_ms: 0.891382
+  type: 'test'
+  ...
+# Subtest: requireUser accepts a verified mobile number with empty email
+ok 56 - requireUser accepts a verified mobile number with empty email
+  ---
+  duration_ms: 0.524858
+  type: 'test'
+  ...
+# Subtest: requireUser accepts a verified mobile number with whitespace email
+ok 57 - requireUser accepts a verified mobile number with whitespace email
+  ---
+  duration_ms: 0.352289
+  type: 'test'
+  ...
+# Subtest: requireUser accepts a verified mobile number with missing email confirmation
+ok 58 - requireUser accepts a verified mobile number with missing email confirmation
+  ---
+  duration_ms: 0.321703
+  type: 'test'
+  ...
+# Subtest: requireUser accepts a verified mobile number with null email confirmation
+ok 59 - requireUser accepts a verified mobile number with null email confirmation
+  ---
+  duration_ms: 0.432622
+  type: 'test'
+  ...
+# Subtest: requireUser accepts a verified mobile number with empty email confirmation
+ok 60 - requireUser accepts a verified mobile number with empty email confirmation
+  ---
+  duration_ms: 0.504332
+  type: 'test'
+  ...
+# Subtest: requireUser rejects an account with neither a verified mobile number nor verified email
+ok 61 - requireUser rejects an account with neither a verified mobile number nor verified email
+  ---
+  duration_ms: 0.969888
+  type: 'test'
+  ...
+# Subtest: requireUser returns normalized verified email and forwards the bearer only to Auth
+ok 62 - requireUser returns normalized verified email and forwards the bearer only to Auth
+  ---
+  duration_ms: 1.047274
+  type: 'test'
+  ...
+# Subtest: requireUser returns only the confirmed top-level phone, not a different profile phone
+ok 63 - requireUser returns only the confirmed top-level phone, not a different profile phone
+  ---
+  duration_ms: 0.422474
+  type: 'test'
+  ...
+# Subtest: requireUser does not verify a top-level phone with undefined confirmation
+ok 64 - requireUser does not verify a top-level phone with undefined confirmation
+  ---
+  duration_ms: 0.891229
+  type: 'test'
+  ...
+# Subtest: requireUser does not verify a top-level phone with null confirmation
+ok 65 - requireUser does not verify a top-level phone with null confirmation
+  ---
+  duration_ms: 0.324982
+  type: 'test'
+  ...
+# Subtest: requireUser does not verify a top-level phone with  confirmation
+ok 66 - requireUser does not verify a top-level phone with  confirmation
+  ---
+  duration_ms: 0.323991
+  type: 'test'
+  ...
+# Subtest: requireUser never promotes metadata.phone when top-level phone is absent (no confirmation)
+ok 67 - requireUser never promotes metadata.phone when top-level phone is absent (no confirmation)
+  ---
+  duration_ms: 0.416167
+  type: 'test'
+  ...
+# Subtest: requireUser never promotes metadata.phone when top-level phone is absent (confirmation present)
+ok 68 - requireUser never promotes metadata.phone when top-level phone is absent (confirmation present)
+  ---
+  duration_ms: 0.356351
+  type: 'test'
+  ...
+# Subtest: requireUser does not log credentials, user data, or failure details
+ok 69 - requireUser does not log credentials, user data, or failure details
+  ---
+  duration_ms: 0.586578
+  type: 'test'
+  ...
+# Subtest: SMS OTP verification creates and rotates HIDI customer sessions
+ok 70 - SMS OTP verification creates and rotates HIDI customer sessions
+  ---
+  duration_ms: 4.280532
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP uses the configured OTP template
+ok 71 - MSG91 SMS OTP uses the configured OTP template
+  ---
+  duration_ms: 1.428623
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP invalidates the challenge after http
+ok 72 - MSG91 SMS OTP invalidates the challenge after http
+  ---
+  duration_ms: 0.931504
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP invalidates the challenge after rejected
+ok 73 - MSG91 SMS OTP invalidates the challenge after rejected
+  ---
+  duration_ms: 1.1749
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP invalidates the challenge after empty
+ok 74 - MSG91 SMS OTP invalidates the challenge after empty
+  ---
+  duration_ms: 0.794122
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP invalidates the challenge after html
+ok 75 - MSG91 SMS OTP invalidates the challenge after html
+  ---
+  duration_ms: 9.413808
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP invalidates the challenge after unknown
+ok 76 - MSG91 SMS OTP invalidates the challenge after unknown
+  ---
+  duration_ms: 0.72343
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP invalidates the challenge after network
+ok 77 - MSG91 SMS OTP invalidates the challenge after network
+  ---
+  duration_ms: 0.567381
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP invalidates the challenge after timeout
+ok 78 - MSG91 SMS OTP invalidates the challenge after timeout
+  ---
+  duration_ms: 0.755186
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP rejects unsafe endpoint http://control.msg91.com/api/v5/otp
+ok 79 - MSG91 SMS OTP rejects unsafe endpoint http://control.msg91.com/api/v5/otp
+  ---
+  duration_ms: 0.532942
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP rejects unsafe endpoint https://example.test/api/v5/otp
+ok 80 - MSG91 SMS OTP rejects unsafe endpoint https://example.test/api/v5/otp
+  ---
+  duration_ms: 2.403488
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP rejects unsafe endpoint https://control.msg91.com@other.test/api/v5/otp
+ok 81 - MSG91 SMS OTP rejects unsafe endpoint https://control.msg91.com@other.test/api/v5/otp
+  ---
+  duration_ms: 0.433079
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS OTP rejects unsafe endpoint https://control.msg91.com/api/v5/otp?authkey=unsafe
+ok 82 - MSG91 SMS OTP rejects unsafe endpoint https://control.msg91.com/api/v5/otp?authkey=unsafe
+  ---
+  duration_ms: 5.412574
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS accepts the legacy success acknowledgement and preserves pending proof during rollback
+ok 83 - MSG91 SMS accepts the legacy success acknowledgement and preserves pending proof during rollback
+  ---
+  duration_ms: 1.192453
+  type: 'test'
+  ...
+# Subtest: MSG91 stays primary when its send succeeds with Firebase fallback enabled
+ok 84 - MSG91 stays primary when its send succeeds with Firebase fallback enabled
+  ---
+  duration_ms: 0.56716
+  type: 'test'
+  ...
+# Subtest: failed MSG91 send invalidates its code before authorising Firebase fallback
+ok 85 - failed MSG91 send invalidates its code before authorising Firebase fallback
+  ---
+  duration_ms: 0.723151
+  type: 'test'
+  ...
+# Subtest: missing MSG91 credentials use only an explicitly configured Firebase fallback
+ok 86 - missing MSG91 credentials use only an explicitly configured Firebase fallback
+  ---
+  duration_ms: 3.4945
+  type: 'test'
+  ...
+# Subtest: Firebase fallback never bypasses rate limits or failed challenge invalidation
+ok 87 - Firebase fallback never bypasses rate limits or failed challenge invalidation
+  ---
+  duration_ms: 0.889607
+  type: 'test'
+  ...
+# Subtest: SMS OTP rejects wrong codes and reuse while creating a verified customer session
+ok 88 - SMS OTP rejects wrong codes and reuse while creating a verified customer session
+  ---
+  duration_ms: 0.882381
+  type: 'test'
+  ...
+# Subtest: SMS OTP locks after five incorrect verification attempts
+ok 89 - SMS OTP locks after five incorrect verification attempts
+  ---
+  duration_ms: 0.665412
+  type: 'test'
+  ...
+# Subtest: SMS OTP cannot be verified after its five-minute expiry
+ok 90 - SMS OTP cannot be verified after its five-minute expiry
+  ---
+  duration_ms: 0.86111
+  type: 'test'
+  ...
+# Subtest: MSG91 SMS authorizations enforce the server cooldown at the exact 60-second boundary
+ok 91 - MSG91 SMS authorizations enforce the server cooldown at the exact 60-second boundary
+  ---
+  duration_ms: 1.631741
+  type: 'test'
+  ...
+# Subtest: primary Firebase authorizations enforce the server cooldown at the exact 60-second boundary
+ok 92 - primary Firebase authorizations enforce the server cooldown at the exact 60-second boundary
+  ---
+  duration_ms: 0.518597
+  type: 'test'
+  ...
+# Subtest: unconfigured MSG91 fallback authorizations enforce the server cooldown at the exact 60-second boundary
+ok 93 - unconfigured MSG91 fallback authorizations enforce the server cooldown at the exact 60-second boundary
+  ---
+  duration_ms: 0.540146
+  type: 'test'
+  ...
+# Subtest: msg91 preserves the five-request sliding 15-minute limit after old codes are consumed
+ok 94 - msg91 preserves the five-request sliding 15-minute limit after old codes are consumed
+  ---
+  duration_ms: 1.485731
+  type: 'test'
+  ...
+# Subtest: firebase preserves the five-request sliding 15-minute limit after old codes are consumed
+ok 95 - firebase preserves the five-request sliding 15-minute limit after old codes are consumed
+  ---
+  duration_ms: 0.67213
+  type: 'test'
+  ...
+# Subtest: concurrent requests reserve only one send and expose retry metadata to the other caller
+ok 96 - concurrent requests reserve only one send and expose retry metadata to the other caller
+  ---
+  duration_ms: 0.442667
+  type: 'test'
+  ...
+# Subtest: successful resend supersedes older codes and consumed latest codes cannot resurrect legacy challenges
+ok 97 - successful resend supersedes older codes and consumed latest codes cannot resurrect legacy challenges
+  ---
+  duration_ms: 0.722508
+  type: 'test'
+  ...
+# Subtest: an expired latest challenge cannot revive an older unconsumed legacy code
+ok 98 - an expired latest challenge cannot revive an older unconsumed legacy code
+  ---
+  duration_ms: 0.521695
+  type: 'test'
+  ...
+# Subtest: concurrent verification consumes a delivered challenge only once
+ok 99 - concurrent verification consumes a delivered challenge only once
+  ---
+  duration_ms: 0.757605
+  type: 'test'
+  ...
+# Subtest: a failed resend counts toward cooldown but preserves the previously delivered code
+ok 100 - a failed resend counts toward cooldown but preserves the previously delivered code
+  ---
+  duration_ms: 1.170211
+  type: 'test'
+  ...
+# Subtest: SQL publication failure rolls back supersession without triggering a Firebase send
+ok 101 - SQL publication failure rolls back supersession without triggering a Firebase send
+  ---
+  duration_ms: 1.09529
+  type: 'test'
+  ...
+# Subtest: a late provider acknowledgement cannot replace a newer successfully delivered code
+ok 102 - a late provider acknowledgement cannot replace a newer successfully delivered code
+  ---
+  duration_ms: 1.482562
+  type: 'test'
+  ...
+# Subtest: Firebase phone verification creates a HIDI customer session
+ok 103 - Firebase phone verification creates a HIDI customer session
+  ---
+  duration_ms: 231.439088
+  type: 'test'
+  ...
+# Subtest: Razorpay proxy preserves signed bytes and signature, and disables caching
+ok 104 - Razorpay proxy preserves signed bytes and signature, and disables caching
+  ---
+  duration_ms: 13.533149
+  type: 'test'
+  ...
+# Subtest: conflicting full descriptions across size rows are rejected before importing
+ok 105 - conflicting full descriptions across size rows are rejected before importing
+  ---
+  duration_ms: 1.658948
+  type: 'test'
+  ...
+# Subtest: one design with consistent descriptions accepts a size matrix
+ok 106 - one design with consistent descriptions accepts a size matrix
+  ---
+  duration_ms: 0.309297
+  type: 'test'
+  ...
+# Subtest: image_sku column maps across sizes and is separate from generated stock SKUs
+ok 107 - image_sku column maps across sizes and is separate from generated stock SKUs
+  ---
+  duration_ms: 0.556977
+  type: 'test'
+  ...
+# Subtest: source metadata helper retains blank data, collections and optimistic version
+ok 108 - source metadata helper retains blank data, collections and optimistic version
+  ---
+  duration_ms: 0.928957
+  type: 'test'
+  ...
+# Subtest: cart size edit preserves quantity and uses the target server price
+ok 109 - cart size edit preserves quantity and uses the target server price
+  ---
+  duration_ms: 2.590033
+  type: 'test'
+  ...
+# Subtest: existing target size merges once without losing items
+ok 110 - existing target size merges once without losing items
+  ---
+  duration_ms: 0.512584
+  type: 'test'
+  ...
+# Subtest: same-size edit does not double the current quantity
+ok 111 - same-size edit does not double the current quantity
+  ---
+  duration_ms: 0.353887
+  type: 'test'
+  ...
+# Subtest: size editing cannot access another cart session
+ok 112 - size editing cannot access another cart session
+  ---
+  duration_ms: 0.774165
+  type: 'test'
+  ...
+# Subtest: invalid, inactive, wrong-product and wrong-colour targets do not change the old size
+ok 113 - invalid, inactive, wrong-product and wrong-colour targets do not change the old size
+  ---
+  duration_ms: 0.869848
+  type: 'test'
+  ...
+# Subtest: merged quantity must fit both available inventory and the per-size limit
+ok 114 - merged quantity must fit both available inventory and the per-size limit
+  ---
+  duration_ms: 0.482234
+  type: 'test'
+  ...
+# Subtest: invalid quantities and malformed variant IDs fail before writes
+ok 115 - invalid quantities and malformed variant IDs fail before writes
+  ---
+  duration_ms: 0.666965
+  type: 'test'
+  ...
+# Subtest: failed merge rolls back and preserves the original bag
+ok 116 - failed merge rolls back and preserves the original bag
+  ---
+  duration_ms: 0.249807
+  type: 'test'
+  ...
+# Subtest: a deleted target variant cannot remove the original size
+ok 117 - a deleted target variant cannot remove the original size
+  ---
+  duration_ms: 0.326211
+  type: 'test'
+  ...
+# Subtest: reserved and safety stock are excluded even when on-hand stock looks sufficient
+ok 118 - reserved and safety stock are excluded even when on-hand stock looks sufficient
+  ---
+  duration_ms: 0.51747
+  type: 'test'
+  ...
+# Subtest: invalid sessions and non-string variant IDs cannot write
+ok 119 - invalid sessions and non-string variant IDs cannot write
+  ---
+  duration_ms: 0.347711
+  type: 'test'
+  ...
+# Subtest: editing size recomputes shipping when the merchandise subtotal falls below the threshold
+ok 120 - editing size recomputes shipping when the merchandise subtotal falls below the threshold
+  ---
+  duration_ms: 0.149776
+  type: 'test'
+  ...
+# Subtest: HIDI Fit accepts verified variant measurements in millimetres
+ok 121 - HIDI Fit accepts verified variant measurements in millimetres
+  ---
+  duration_ms: 1.053501
+  type: 'test'
+  ...
+# Subtest: HIDI Fit keeps measurements optional for existing products
+ok 122 - HIDI Fit keeps measurements optional for existing products
+  ---
+  duration_ms: 0.268724
+  type: 'test'
+  ...
+# Subtest: HIDI Fit rejects implausible garment measurements
+ok 123 - HIDI Fit rejects implausible garment measurements
+  ---
+  duration_ms: 1.681604
+  type: 'test'
+  ...
+# Subtest: two fingers smoothly enlarge and reduce the image
+ok 124 - two fingers smoothly enlarge and reduce the image
+  ---
+  duration_ms: 1.381244
+  type: 'test'
+  ...
+# Subtest: pinch follows an off-centre detail instead of jumping to the middle
+ok 125 - pinch follows an off-centre detail instead of jumping to the middle
+  ---
+  duration_ms: 0.225762
+  type: 'test'
+  ...
+# Subtest: pinch and pan stay bounded and reset at 100 percent
+ok 126 - pinch and pan stay bounded and reset at 100 percent
+  ---
+  duration_ms: 0.207264
+  type: 'test'
+  ...
+# Subtest: coincident touches never produce an infinite scale
+ok 127 - coincident touches never produce an infinite scale
+  ---
+  duration_ms: 0.209615
+  type: 'test'
+  ...
+# Subtest: customer testing fails closed outside the isolated guarded database
+ok 128 - customer testing fails closed outside the isolated guarded database
+  ---
+  duration_ms: 1.304717
+  type: 'test'
+  ...
+# Subtest: catalogue preview still rejects account reads and all cart writes by default
+ok 129 - catalogue preview still rejects account reads and all cart writes by default
+  ---
+  duration_ms: 0.344947
+  type: 'test'
+  ...
+# Subtest: customer preview permits account reads and session-scoped cart lifecycle
+ok 130 - customer preview permits account reads and session-scoped cart lifecycle
+  ---
+  duration_ms: 0.519654
+  type: 'test'
+  ...
+# Subtest: customer preview permits only the explicit customer sign-in routes
+ok 131 - customer preview permits only the explicit customer sign-in routes
+  ---
+  duration_ms: 0.270434
+  type: 'test'
+  ...
+# Subtest: customer preview permits only explicit staff reads behind the existing AdminGuard
+ok 132 - customer preview permits only explicit staff reads behind the existing AdminGuard
+  ---
+  duration_ms: 0.292274
+  type: 'test'
+  ...
+# Subtest: customer preview blocks financial, notification, admin writes and route-confusion requests
+ok 133 - customer preview blocks financial, notification, admin writes and route-confusion requests
+  ---
+  duration_ms: 0.219354
+  type: 'test'
+  ...
+# Subtest: normal production behavior is unchanged when migration restrictions are disabled
+ok 134 - normal production behavior is unchanged when migration restrictions are disabled
+  ---
+  duration_ms: 0.093966
+  type: 'test'
+  ...
+# Subtest: feature stays disabled without an explicit UTC activation cutoff
+ok 135 - feature stays disabled without an explicit UTC activation cutoff
+  ---
+  duration_ms: 1.390883
+  type: 'test'
+  ...
+# Subtest: confirmation includes products, variants, totals, wallet split and shipping address
+ok 136 - confirmation includes products, variants, totals, wallet split and shipping address
+  ---
+  duration_ms: 0.98666
+  type: 'test'
+  ...
+# Subtest: message HTML escapes customer and product input and subject strips newlines
+ok 137 - message HTML escapes customer and product input and subject strips newlines
+  ---
+  duration_ms: 0.401713
+  type: 'test'
+  ...
+# Subtest: invalid recipients are rejected and Indian mobile numbers are normalized
+ok 138 - invalid recipients are rejected and Indian mobile numbers are normalized
+  ---
+  duration_ms: 0.382908
+  type: 'test'
+  ...
+# Subtest: provider accepts one confirmation; rerunning the worker cannot reclaim it
+ok 139 - provider accepts one confirmation; rerunning the worker cannot reclaim it
+  ---
+  duration_ms: 16.043928
+  type: 'test'
+  ...
+# Subtest: pending, review, cancelled, refunded and missing orders send no confirmation
+ok 140 - pending, review, cancelled, refunded and missing orders send no confirmation
+  ---
+  duration_ms: 0.762187
+  type: 'test'
+  ...
+# Subtest: missing email and provider configuration are handled without provider submissions
+ok 141 - missing email and provider configuration are handled without provider submissions
+  ---
+  duration_ms: 0.567702
+  type: 'test'
+  ...
+# Subtest: a lost claim lease prevents submission
+ok 142 - a lost claim lease prevents submission
+  ---
+  duration_ms: 0.373622
+  type: 'test'
+  ...
+# Subtest: email timeout retries the same saved payload and idempotency key after customer data changes
+ok 143 - email timeout retries the same saved payload and idempotency key after customer data changes
+  ---
+  duration_ms: 6.83483
+  type: 'test'
+  ...
+# Subtest: idempotency expiry and exhausted retries do not resubmit
+ok 144 - idempotency expiry and exhausted retries do not resubmit
+  ---
+  duration_ms: 0.598657
+  type: 'test'
+  ...
+# Subtest: rate limits retry; invalid credentials fail without retaining provider text
+ok 145 - rate limits retry; invalid credentials fail without retaining provider text
+  ---
+  duration_ms: 1.587969
+  type: 'test'
+  ...
+# Subtest: WhatsApp uses a separate approved order utility template, never the SMS OTP template
+ok 146 - WhatsApp uses a separate approved order utility template, never the SMS OTP template
+  ---
+  duration_ms: 1.207531
+  type: 'test'
+  ...
+# Subtest: overlapping worker ticks are serialized within a process
+ok 147 - overlapping worker ticks are serialized within a process
+  ---
+  duration_ms: 14.500379
+  type: 'test'
+  ...
+# Subtest: queue discovers only committed confirmation audit events with captured payment after cutoff
+ok 148 - queue discovers only committed confirmation audit events with captured payment after cutoff
+  ---
+  duration_ms: 0.431998
+  type: 'test'
+  ...
+# Subtest: WhatsApp remains separate from email and requires recorded opt-in
+ok 149 - WhatsApp remains separate from email and requires recorded opt-in
+  ---
+  duration_ms: 2.051734
+  type: 'test'
+  ...
+# Subtest: WhatsApp consent must be verified, current and match the order recipient
+ok 150 - WhatsApp consent must be verified, current and match the order recipient
+  ---
+  duration_ms: 0.504917
+  type: 'test'
+  ...
+# Subtest: admin readiness reports an absent additive table without querying it
+ok 151 - admin readiness reports an absent additive table without querying it
+  ---
+  duration_ms: 0.411399
+  type: 'test'
+  ...
+# Subtest: a queued WhatsApp retry cannot send to a previous phone number
+ok 152 - a queued WhatsApp retry cannot send to a previous phone number
+  ---
+  duration_ms: 0.292057
+  type: 'test'
+  ...
+# Subtest: packing plan emits stable HIDI barcodes and physical piece count
+ok 153 - packing plan emits stable HIDI barcodes and physical piece count
+  ---
+  duration_ms: 1.020648
+  type: 'test'
+  ...
+# Subtest: exact physical scans move CONFIRMED to PACKED and audit scanner source
+ok 154 - exact physical scans move CONFIRMED to PACKED and audit scanner source
+  ---
+  duration_ms: 0.728355
+  type: 'test'
+  ...
+# Subtest: wrong item cannot pack an order
+ok 155 - wrong item cannot pack an order
+  ---
+  duration_ms: 0.644201
+  type: 'test'
+  ...
+# Subtest: missing or excess quantities cannot pack an order
+ok 156 - missing or excess quantities cannot pack an order
+  ---
+  duration_ms: 0.205862
+  type: 'test'
+  ...
+# Subtest: already packed request is idempotent and performs no write
+ok 157 - already packed request is idempotent and performs no write
+  ---
+  duration_ms: 0.227249
+  type: 'test'
+  ...
+# Subtest: photo tickets accept 5 through 100 MiB and 3 GiB declarations for retained formats
+ok 158 - photo tickets accept 5 through 100 MiB and 3 GiB declarations for retained formats
+  ---
+  duration_ms: 3.444284
+  type: 'test'
+  ...
+# Subtest: empty, unrepresentable and malformed sizes are denied before any upload ticket write
+ok 159 - empty, unrepresentable and malformed sizes are denied before any upload ticket write
+  ---
+  duration_ms: 0.914233
+  type: 'test'
+  ...
+# Subtest: larger uploads keep the existing format restriction
+ok 160 - larger uploads keep the existing format restriction
+  ---
+  duration_ms: 0.465735
+  type: 'test'
+  ...
+# Subtest: Code 128B emits the expected symbols and width for AB
+ok 161 - Code 128B emits the expected symbols and width for AB
+  ---
+  duration_ms: 1.46521
+  type: 'test'
+  ...
+# Subtest: Code 128B rejects non-ASCII data
+ok 162 - Code 128B rejects non-ASCII data
+  ---
+  duration_ms: 0.468618
+  type: 'test'
+  ...
+# Subtest: casual-wear and everyday show primary-category products and retained legacy collection members
+ok 163 - casual-wear and everyday show primary-category products and retained legacy collection members
+  ---
+  duration_ms: 2.758472
+  type: 'test'
+  ...
+# Subtest: work-wear and work-edit show primary-category products and retained legacy collection members
+ok 164 - work-wear and work-edit show primary-category products and retained legacy collection members
+  ---
+  duration_ms: 0.552973
+  type: 'test'
+  ...
+# Subtest: occasional-wear and occasion show primary-category products and retained legacy collection members
+ok 165 - occasional-wear and occasion show primary-category products and retained legacy collection members
+  ---
+  duration_ms: 1.529209
+  type: 'test'
+  ...
+# Subtest: Ananya's Pick includes selected Casual, Work and Occasional products irrespective of main category
+ok 166 - Ananya's Pick includes selected Casual, Work and Occasional products irrespective of main category
+  ---
+  duration_ms: 0.854713
+  type: 'test'
+  ...
+# Subtest: legacy and primary-slug collection records retain their products without duplicated cards
+ok 167 - legacy and primary-slug collection records retain their products without duplicated cards
+  ---
+  duration_ms: 0.468596
+  type: 'test'
+  ...
+# Subtest: unfiltered and unknown collection views retain publication gates and never fall back to all products
+ok 168 - unfiltered and unknown collection views retain publication gates and never fall back to all products
+  ---
+  duration_ms: 0.390786
+  type: 'test'
+  ...
+# Subtest: collection changes preserve bounded featured ordering and only request reviews for returned products
+ok 169 - collection changes preserve bounded featured ordering and only request reviews for returned products
+  ---
+  duration_ms: 0.808714
+  type: 'test'
+  ...
+# Subtest: new main photo becomes first and compacts the existing gallery while retaining other sizes/colours
+ok 170 - new main photo becomes first and compacts the existing gallery while retaining other sizes/colours
+  ---
+  duration_ms: 3.188406
+  type: 'test'
+  ...
+# Subtest: main replay retains one attachment and stable gallery without redundant position writes
+ok 171 - main replay retains one attachment and stable gallery without redundant position writes
+  ---
+  duration_ms: 0.962497
+  type: 'test'
+  ...
+# Subtest: all-size main photo shares one uploaded URL and promotes it separately in each matched colour gallery
+ok 172 - all-size main photo shares one uploaded URL and promotes it separately in each matched colour gallery
+  ---
+  duration_ms: 0.951187
+  type: 'test'
+  ...
+# Subtest: promoting an existing photo preserves all remaining photos in their prior order
+ok 173 - promoting an existing photo preserves all remaining photos in their prior order
+  ---
+  duration_ms: 0.557055
+  type: 'test'
+  ...
+# Subtest: ordinary attachment retains the existing append/replay behaviour without reordering
+ok 174 - ordinary attachment retains the existing append/replay behaviour without reordering
+  ---
+  duration_ms: 0.631443
+  type: 'test'
+  ...
+# Subtest: malformed main flags fail before database operations
+ok 175 - malformed main flags fail before database operations
+  ---
+  duration_ms: 3.368789
+  type: 'test'
+  ...
+# Subtest: pending deletion, concurrent tombstone and failed position update leave all galleries unchanged
+ok 176 - pending deletion, concurrent tombstone and failed position update leave all galleries unchanged
+  ---
+  duration_ms: 1.111404
+  type: 'test'
+  ...
+# Subtest: a failure on the second size rolls back already promoted photos from the first size
+ok 177 - a failure on the second size rolls back already promoted photos from the first size
+  ---
+  duration_ms: 0.507362
+  type: 'test'
+  ...
+# Subtest: existing SKN map reads are parameterized, deduplicated, chunked and do not consume more numbers
+ok 178 - existing SKN map reads are parameterized, deduplicated, chunked and do not consume more numbers
+  ---
+  duration_ms: 7.487899
+  type: 'test'
+  ...
+# Subtest: duplicate or malformed identities and missing schema fail instead of producing a nullable SKN
+ok 179 - duplicate or malformed identities and missing schema fail instead of producing a nullable SKN
+  ---
+  duration_ms: 1.253723
+  type: 'test'
+  ...
+# Subtest: five-digit lookup uses an exact identity and rejects invalid ranges without SQL
+ok 180 - five-digit lookup uses an exact identity and rejects invalid ranges without SQL
+  ---
+  duration_ms: 0.312527
+  type: 'test'
+  ...
+# Subtest: new product and all four sizes share one SKN and identical creation retries keep it
+ok 181 - new product and all four sizes share one SKN and identical creation retries keep it
+  ---
+  duration_ms: 5.575212
+  type: 'test'
+  ...
+# Subtest: a duplicate create committed by another request replays the same SKN
+ok 182 - a duplicate create committed by another request replays the same SKN
+  ---
+  duration_ms: 0.697278
+  type: 'test'
+  ...
+# Subtest: metadata, additional sizes, variant prices and publishing status keep the existing SKN
+ok 183 - metadata, additional sizes, variant prices and publishing status keep the existing SKN
+  ---
+  duration_ms: 2.756984
+  type: 'test'
+  ...
+# Subtest: catalogue results include SKN and exact five-digit search retains status/deletion restrictions
+ok 184 - catalogue results include SKN and exact five-digit search retains status/deletion restrictions
+  ---
+  duration_ms: 1.64134
+  type: 'test'
+  ...
+# Subtest: mapping schema failure rolls back the product and cannot report a successful import
+ok 185 - mapping schema failure rolls back the product and cannot report a successful import
+  ---
+  duration_ms: 0.426962
+  type: 'test'
+  ...
+# Subtest: sequence exhaustion fails clearly and rolls back the product without reserving a malformed number
+ok 186 - sequence exhaustion fails clearly and rolls back the product without reserving a malformed number
+  ---
+  duration_ms: 0.715091
+  type: 'test'
+  ...
+# Subtest: legacy product reads reserve a missing SKN atomically without changing product, variants or stock
+ok 187 - legacy product reads reserve a missing SKN atomically without changing product, variants or stock
+  ---
+  duration_ms: 1.407445
+  type: 'test'
+  ...
+# Subtest: allocation validates a real Product before writing and reuses a provided transaction
+ok 188 - allocation validates a real Product before writing and reuses a provided transaction
+  ---
+  duration_ms: 0.992671
+  type: 'test'
+  ...
+# Subtest: SQL sequence exhaustion remains clear when Prisma wraps the database code
+ok 189 - SQL sequence exhaustion remains clear when Prisma wraps the database code
+  ---
+  duration_ms: 0.469763
+  type: 'test'
+  ...
+# Subtest: qualified repeat interest previews current in-stock price without sending
+ok 190 - qualified repeat interest previews current in-stock price without sending
+  ---
+  duration_ms: 1.41996
+  type: 'test'
+  ...
+# Subtest: feature is fail-closed and independent marketing/personalization consents are required
+ok 191 - feature is fail-closed and independent marketing/personalization consents are required
+  ---
+  duration_ms: 0.315335
+  type: 'test'
+  ...
+# Subtest: one ordinary detail view and rapid refreshes are not meaningful interest
+ok 192 - one ordinary detail view and rapid refreshes are not meaningful interest
+  ---
+  duration_ms: 0.227477
+  type: 'test'
+  ...
+# Subtest: selected size qualifies alone but only its own current stock is accepted
+ok 193 - selected size qualifies alone but only its own current stock is accepted
+  ---
+  duration_ms: 0.267712
+  type: 'test'
+  ...
+# Subtest: latest interaction restarts the 24-hour inactivity delay
+ok 194 - latest interaction restarts the 24-hour inactivity delay
+  ---
+  duration_ms: 0.248075
+  type: 'test'
+  ...
+# Subtest: any completed purchase after activity suppresses queued recovery
+ok 195 - any completed purchase after activity suppresses queued recovery
+  ---
+  duration_ms: 0.290922
+  type: 'test'
+  ...
+# Subtest: removed, inactive and sold-out products cannot be promoted
+ok 196 - removed, inactive and sold-out products cannot be promoted
+  ---
+  duration_ms: 0.25899
+  type: 'test'
+  ...
+# Subtest: same abandonment is not contacted twice, including pending deliveries
+ok 197 - same abandonment is not contacted twice, including pending deliveries
+  ---
+  duration_ms: 0.313403
+  type: 'test'
+  ...
+# Subtest: two marketing sends across campaigns block a third in rolling seven days
+ok 198 - two marketing sends across campaigns block a third in rolling seven days
+  ---
+  duration_ms: 0.503462
+  type: 'test'
+  ...
+# Subtest: owned cart takes priority over browsing even if cart is not yet due
+ok 199 - owned cart takes priority over browsing even if cart is not yet due
+  ---
+  duration_ms: 0.62373
+  type: 'test'
+  ...
+# Subtest: cart quantity stock and expiration are checked live
+ok 200 - cart quantity stock and expiration are checked live
+  ---
+  duration_ms: 0.270094
+  type: 'test'
+  ...
+# Subtest: courtesy hours use India time with exact boundary handling
+ok 201 - courtesy hours use India time with exact boundary handling
+  ---
+  duration_ms: 0.207681
+  type: 'test'
+  ...
+# Subtest: holdout is stable and cannot accidentally send
+ok 202 - holdout is stable and cannot accidentally send
+  ---
+  duration_ms: 0.231936
+  type: 'test'
+  ...
+# Subtest: interest older than seven days is not recovered
+ok 203 - interest older than seven days is not recovered
+  ---
+  duration_ms: 0.156983
+  type: 'test'
+  ...
+# Subtest: events from separate abandonment episodes are not combined
+ok 204 - events from separate abandonment episodes are not combined
+  ---
+  duration_ms: 0.143887
+  type: 'test'
+  ...
+# Subtest: preferences only look up server-verified subject and return a masked phone
+ok 205 - preferences only look up server-verified subject and return a masked phone
+  ---
+  duration_ms: 1.758788
+  type: 'test'
+  ...
+# Subtest: browser-supplied identity and phone fields are rejected
+ok 206 - browser-supplied identity and phone fields are rejected
+  ---
+  duration_ms: 0.90942
+  type: 'test'
+  ...
+# Subtest: user-editable metadata phone is never accepted as verified
+ok 207 - user-editable metadata phone is never accepted as verified
+  ---
+  duration_ms: 0.261253
+  type: 'test'
+  ...
+# Subtest: explicit opt-in writes an audit and does not update legacy broad marketing consent
+ok 208 - explicit opt-in writes an audit and does not update legacy broad marketing consent
+  ---
+  duration_ms: 0.519587
+  type: 'test'
+  ...
+# Subtest: withdrawal accepts an old version, deletes browsing events and cancels queued sends
+ok 209 - withdrawal accepts an old version, deletes browsing events and cancels queued sends
+  ---
+  duration_ms: 0.306064
+  type: 'test'
+  ...
+# Subtest: enabling consent with an old version is rejected
+ok 210 - enabling consent with an old version is rejected
+  ---
+  duration_ms: 0.251732
+  type: 'test'
+  ...
+# Subtest: stale wording permits partial withdrawal without upgrading remaining consent
+ok 211 - stale wording permits partial withdrawal without upgrading remaining consent
+  ---
+  duration_ms: 0.291256
+  type: 'test'
+  ...
+# Subtest: a different current verified phone does not inherit an older number's opt-in
+ok 212 - a different current verified phone does not inherit an older number's opt-in
+  ---
+  duration_ms: 0.148851
+  type: 'test'
+  ...
+# Subtest: tracking and preview are disabled by default and do not touch the database
+ok 213 - tracking and preview are disabled by default and do not touch the database
+  ---
+  duration_ms: 0.647319
+  type: 'test'
+  ...
+# Subtest: tracking requires explicit personalization consent and ignores broad marketingOptIn
+ok 214 - tracking requires explicit personalization consent and ignores broad marketingOptIn
+  ---
+  duration_ms: 0.441553
+  type: 'test'
+  ...
+# Subtest: tracking creates a server episode, deduplicates refreshes and reuses the episode
+ok 215 - tracking creates a server episode, deduplicates refreshes and reuses the episode
+  ---
+  duration_ms: 0.884025
+  type: 'test'
+  ...
+# Subtest: a concurrent consent withdrawal blocks tracking after the initial read
+ok 216 - a concurrent consent withdrawal blocks tracking after the initial read
+  ---
+  duration_ms: 0.270963
+  type: 'test'
+  ...
+# Subtest: size events require a real active variant belonging to the selected product
+ok 217 - size events require a real active variant belonging to the selected product
+  ---
+  duration_ms: 0.493438
+  type: 'test'
+  ...
+# Subtest: preview purchase lookup handles unclaimed checkout with the verified account email
+ok 218 - preview purchase lookup handles unclaimed checkout with the verified account email
+  ---
+  duration_ms: 1.081933
+  type: 'test'
+  ...
+# Subtest: preview purchase lookup handles account-linked checkout with a different email
+ok 219 - preview purchase lookup handles account-linked checkout with a different email
+  ---
+  duration_ms: 2.663841
+  type: 'test'
+  ...
+# Subtest: preview purchase lookup handles another account's order even with a matching email
+ok 220 - preview purchase lookup handles another account's order even with a matching email
+  ---
+  duration_ms: 0.349057
+  type: 'test'
+  ...
+# Subtest: preview purchase lookup handles unclaimed checkout using a different email
+ok 221 - preview purchase lookup handles unclaimed checkout using a different email
+  ---
+  duration_ms: 0.345054
+  type: 'test'
+  ...
+# Subtest: cash-only return goes entirely back to cash
+ok 222 - cash-only return goes entirely back to cash
+  ---
+  duration_ms: 1.273175
+  type: 'test'
+  ...
+# Subtest: wallet-only return goes entirely back to wallet
+ok 223 - wallet-only return goes entirely back to wallet
+  ---
+  duration_ms: 0.180873
+  type: 'test'
+  ...
+# Subtest: split tender preserves the original ratio for a partial item return
+ok 224 - split tender preserves the original ratio for a partial item return
+  ---
+  duration_ms: 0.096509
+  type: 'test'
+  ...
+# Subtest: later returns consume remaining tender and absorb rounding without over-refunding
+ok 225 - later returns consume remaining tender and absorb rounding without over-refunding
+  ---
+  duration_ms: 0.146007
+  type: 'test'
+  ...
+# Subtest: refund allocation rejects inconsistent or exhausted tender balances
+ok 226 - refund allocation rejects inconsistent or exhausted tender balances
+  ---
+  duration_ms: 0.389158
+  type: 'test'
+  ...
+# Subtest: ₹2,000 earns an illustrative ₹40; only complete ₹100 blocks count
+ok 227 - ₹2,000 earns an illustrative ₹40; only complete ₹100 blocks count
+  ---
+  duration_ms: 1.330986
+  type: 'test'
+  ...
+# Subtest: return-window config has no permissive or invented default
+ok 228 - return-window config has no permissive or invented default
+  ---
+  duration_ms: 0.516992
+  type: 'test'
+  ...
+# Subtest: exact return-window boundary matures estimates, never a wallet balance
+ok 229 - exact return-window boundary matures estimates, never a wallet balance
+  ---
+  duration_ms: 0.52809
+  type: 'test'
+  ...
+# Subtest: illustrative basis subtracts discounts and excludes shipping and separate tax
+ok 230 - illustrative basis subtracts discounts and excludes shipping and separate tax
+  ---
+  duration_ms: 0.219763
+  type: 'test'
+  ...
+# Subtest: refunds, partial refunds and return states hold all rewards
+ok 231 - refunds, partial refunds and return states hold all rewards
+  ---
+  duration_ms: 0.386969
+  type: 'test'
+  ...
+# Subtest: only exact fully captured payments can produce estimates
+ok 232 - only exact fully captured payments can produce estimates
+  ---
+  duration_ms: 0.389787
+  type: 'test'
+  ...
+# Subtest: missing, invalid and future delivery dates cannot mature rewards
+ok 233 - missing, invalid and future delivery dates cannot mature rewards
+  ---
+  duration_ms: 0.25401
+  type: 'test'
+  ...
+# Subtest: all split shipments and order must be delivered; latest delivery controls date
+ok 234 - all split shipments and order must be delivered; latest delivery controls date
+  ---
+  duration_ms: 0.317251
+  type: 'test'
+  ...
+# Subtest: unsafe amounts, non-INR, future order dates and bounded relation reads fail closed
+ok 235 - unsafe amounts, non-INR, future order dates and bounded relation reads fail closed
+  ---
+  duration_ms: 0.4692
+  type: 'test'
+  ...
+# Subtest: summary segregates held, pending and eligible estimates
+ok 236 - summary segregates held, pending and eligible estimates
+  ---
+  duration_ms: 1.020019
+  type: 'test'
+  ...
+# Subtest: disabled preview never queries customer data
+ok 237 - disabled preview never queries customer data
+  ---
+  duration_ms: 1.403171
+  type: 'test'
+  ...
+# Subtest: read-only own-account query is bounded and reports truncated estimates
+ok 238 - read-only own-account query is bounded and reports truncated estimates
+  ---
+  duration_ms: 2.414935
+  type: 'test'
+  ...
+# Subtest: unmapped verified customer only matches unclaimed guest orders
+ok 239 - unmapped verified customer only matches unclaimed guest orders
+  ---
+  duration_ms: 0.43688
+  type: 'test'
+  ...
+# Subtest: relation overflow and missing return configuration never become eligible estimates
+ok 240 - relation overflow and missing return configuration never become eligible estimates
+  ---
+  duration_ms: 0.421
+  type: 'test'
+  ...
+# Subtest: empty cart has no shipping charge
+ok 241 - empty cart has no shipping charge
+  ---
+  duration_ms: 0.950754
+  type: 'test'
+  ...
+# Subtest: reject invalid shipping subtotal -1
+ok 242 - reject invalid shipping subtotal -1
+  ---
+  duration_ms: 0.460597
+  type: 'test'
+  ...
+# Subtest: reject invalid shipping subtotal 0.5
+ok 243 - reject invalid shipping subtotal 0.5
+  ---
+  duration_ms: 0.092234
+  type: 'test'
+  ...
+# Subtest: reject invalid shipping subtotal NaN
+ok 244 - reject invalid shipping subtotal NaN
+  ---
+  duration_ms: 0.081279
+  type: 'test'
+  ...
+# Subtest: reject invalid shipping subtotal Infinity
+ok 245 - reject invalid shipping subtotal Infinity
+  ---
+  duration_ms: 0.070623
+  type: 'test'
+  ...
+# Subtest: reject invalid shipping subtotal 2147483648
+ok 246 - reject invalid shipping subtotal 2147483648
+  ---
+  duration_ms: 0.061132
+  type: 'test'
+  ...
+# Subtest: phone sanitation covers typing, paste, duplicate plus, punctuation and length
+ok 247 - phone sanitation covers typing, paste, duplicate plus, punctuation and length
+  ---
+  duration_ms: 0.3394
+  type: 'test'
+  ...
+# Subtest: all wallet admin actions reject missing, wrong and non-exact keys before any service call
+ok 248 - all wallet admin actions reject missing, wrong and non-exact keys before any service call
+  ---
+  duration_ms: 6.123872
+  type: 'test'
+  ...
+# Subtest: an unset or empty configured admin key fails closed even for a supplied key
+ok 249 - an unset or empty configured admin key fails closed even for a supplied key
+  ---
+  duration_ms: 0.688756
+  type: 'test'
+  ...
+# Subtest: exact admin key delegates only intended arguments and is never returned or logged
+ok 250 - exact admin key delegates only intended arguments and is never returned or logged
+  ---
+  duration_ms: 1.143263
+  type: 'test'
+  ...
+# Subtest: wallet support actions require valid reason/reference and reject extra fields before any transaction
+ok 251 - wallet support actions require valid reason/reference and reject extra fields before any transaction
+  ---
+  duration_ms: 1.600679
+  type: 'test'
+  ...
+# Subtest: wallet support actions reject unknown orders without writing
+ok 252 - wallet support actions reject unknown orders without writing
+  ---
+  duration_ms: 0.641461
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects cash-only without any staged writes
+ok 253 - wallet-only refund rejects cash-only without any staged writes
+  ---
+  duration_ms: 0.514476
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects split payment without any staged writes
+ok 254 - wallet-only refund rejects split payment without any staged writes
+  ---
+  duration_ms: 0.341265
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects non-wallet provider without any staged writes
+ok 255 - wallet-only refund rejects non-wallet provider without any staged writes
+  ---
+  duration_ms: 0.193725
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects nonzero cash amount without any staged writes
+ok 256 - wallet-only refund rejects nonzero cash amount without any staged writes
+  ---
+  duration_ms: 0.195683
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects multiple payments without any staged writes
+ok 257 - wallet-only refund rejects multiple payments without any staged writes
+  ---
+  duration_ms: 0.268239
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects no payment without any staged writes
+ok 258 - wallet-only refund rejects no payment without any staged writes
+  ---
+  duration_ms: 0.195818
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects zero order total without any staged writes
+ok 259 - wallet-only refund rejects zero order total without any staged writes
+  ---
+  duration_ms: 0.894771
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects missing wallet hold without any staged writes
+ok 260 - wallet-only refund rejects missing wallet hold without any staged writes
+  ---
+  duration_ms: 0.321778
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects mismatched wallet hold without any staged writes
+ok 261 - wallet-only refund rejects mismatched wallet hold without any staged writes
+  ---
+  duration_ms: 0.844427
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects uncaptured payment without any staged writes
+ok 262 - wallet-only refund rejects uncaptured payment without any staged writes
+  ---
+  duration_ms: 0.328714
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects unconsumed wallet hold without any staged writes
+ok 263 - wallet-only refund rejects unconsumed wallet hold without any staged writes
+  ---
+  duration_ms: 0.328487
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects pending order without any staged writes
+ok 264 - wallet-only refund rejects pending order without any staged writes
+  ---
+  duration_ms: 0.22309
+  type: 'test'
+  ...
+# Subtest: wallet-only refund rejects cancelled order without any staged writes
+ok 265 - wallet-only refund rejects cancelled order without any staged writes
+  ---
+  duration_ms: 0.236451
+  type: 'test'
+  ...
+# Subtest: full wallet refund stages refund evidence then restores tender once; repeated requests are idempotent
+ok 266 - full wallet refund stages refund evidence then restores tender once; repeated requests are idempotent
+  ---
+  duration_ms: 0.891597
+  type: 'test'
+  ...
+# Subtest: a pre-existing refund with inconsistent order/payment/hold status needs reconciliation and never credits
+ok 267 - a pre-existing refund with inconsistent order/payment/hold status needs reconciliation and never credits
+  ---
+  duration_ms: 0.550709
+  type: 'test'
+  ...
+# Subtest: full wallet refund rolls back all staged state if refund.create fails
+ok 268 - full wallet refund rolls back all staged state if refund.create fails
+  ---
+  duration_ms: 0.313725
+  type: 'test'
+  ...
+# Subtest: full wallet refund rolls back all staged state if payment.update fails
+ok 269 - full wallet refund rolls back all staged state if payment.update fails
+  ---
+  duration_ms: 0.225293
+  type: 'test'
+  ...
+# Subtest: full wallet refund rolls back all staged state if order.update fails
+ok 270 - full wallet refund rolls back all staged state if order.update fails
+  ---
+  duration_ms: 0.194221
+  type: 'test'
+  ...
+# Subtest: full wallet refund rolls back all staged state if wallet.reverseEarned fails
+ok 271 - full wallet refund rolls back all staged state if wallet.reverseEarned fails
+  ---
+  duration_ms: 0.217877
+  type: 'test'
+  ...
+# Subtest: full wallet refund rolls back all staged state if wallet.restoreRedeemed fails
+ok 272 - full wallet refund rolls back all staged state if wallet.restoreRedeemed fails
+  ---
+  duration_ms: 0.255989
+  type: 'test'
+  ...
+# Subtest: failed tender restoration is not treated as success and rolls back refund evidence
+ok 273 - failed tender restoration is not treated as success and rolls back refund evidence
+  ---
+  duration_ms: 0.274192
+  type: 'test'
+  ...
+# Subtest: return hold reverses earned reward, preserves redeemed tender and cash payment, and issues no refund
+ok 274 - return hold reverses earned reward, preserves redeemed tender and cash payment, and issues no refund
+  ---
+  duration_ms: 0.33854
+  type: 'test'
+  ...
+# Subtest: return hold rejects terminal or unpaid order states without any writes
+ok 275 - return hold rejects terminal or unpaid order states without any writes
+  ---
+  duration_ms: 0.422138
+  type: 'test'
+  ...
+# Subtest: return hold rollback also reverses its staged earning reversal when order update fails
+ok 276 - return hold rollback also reverses its staged earning reversal when order update fails
+  ---
+  duration_ms: 0.226795
+  type: 'test'
+  ...
+# Subtest: full-wallet checkout is confirmed atomically without gateway creation or public-key lookup
+ok 277 - full-wallet checkout is confirmed atomically without gateway creation or public-key lookup
+  ---
+  duration_ms: 9.553802
+  type: 'test'
+  ...
+# Subtest: full-wallet retry returns the original order without double debit, payment, or stock consumption
+ok 278 - full-wallet retry returns the original order without double debit, payment, or stock consumption
+  ---
+  duration_ms: 1.10911
+  type: 'test'
+  ...
+# Subtest: mixed checkout reserves wallet funds and charges only the exact cash remainder
+ok 279 - mixed checkout reserves wallet funds and charges only the exact cash remainder
+  ---
+  duration_ms: 0.915509
+  type: 'test'
+  ...
+# Subtest: anonymous wallet use is rejected before any database, wallet or gateway action
+ok 280 - anonymous wallet use is rejected before any database, wallet or gateway action
+  ---
+  duration_ms: 0.721059
+  type: 'test'
+  ...
+# Subtest: disabled wallet rejects redemption but still permits normal cash checkout
+ok 281 - disabled wallet rejects redemption but still permits normal cash checkout
+  ---
+  duration_ms: 0.932337
+  type: 'test'
+  ...
+# Subtest: disabled wallet still uses the stable verified subject binding when account email changes
+ok 282 - disabled wallet still uses the stable verified subject binding when account email changes
+  ---
+  duration_ms: 0.77167
+  type: 'test'
+  ...
+# Subtest: disabled wallet cannot attach a verified subject to another subject's email-linked account
+ok 283 - disabled wallet cannot attach a verified subject to another subject's email-linked account
+  ---
+  duration_ms: 0.695722
+  type: 'test'
+  ...
+# Subtest: body-supplied account and wallet identity cannot replace verified auth identity
+ok 284 - body-supplied account and wallet identity cannot replace verified auth identity
+  ---
+  duration_ms: 0.832568
+  type: 'test'
+  ...
+# Subtest: guest checkout ignores forged body identity and does not attach an account
+ok 285 - guest checkout ignores forged body identity and does not attach an account
+  ---
+  duration_ms: 1.097943
+  type: 'test'
+  ...
+# Subtest: checkout rejects malformed contact and address data before order creation
+ok 286 - checkout rejects malformed contact and address data before order creation
+  ---
+  duration_ms: 0.961647
+  type: 'test'
+  ...
+# Subtest: checkout trims customer and delivery text before saving the order
+ok 287 - checkout trims customer and delivery text before saving the order
+  ---
+  duration_ms: 0.72225
+  type: 'test'
+  ...
+# Subtest: checkout delivery serviceability returns only sanitized carrier fields and caches PIN results
+ok 288 - checkout delivery serviceability returns only sanitized carrier fields and caches PIN results
+  ---
+  duration_ms: 0.487746
+  type: 'test'
+  ...
+# Subtest: checkout delivery serviceability rejects invalid PIN before calling the carrier
+ok 289 - checkout delivery serviceability rejects invalid PIN before calling the carrier
+  ---
+  duration_ms: 0.217687
+  type: 'test'
+  ...
+# Subtest: checkout controller rejects an invalid supplied bearer token instead of falling back to guest
+ok 290 - checkout controller rejects an invalid supplied bearer token instead of falling back to guest
+  ---
+  duration_ms: 0.257727
+  type: 'test'
+  ...
+# Subtest: checkout-token retry rejects a different cart session without returning the provider order
+ok 291 - checkout-token retry rejects a different cart session without returning the provider order
+  ---
+  duration_ms: 0.990339
+  type: 'test'
+  ...
+# Subtest: checkout-token retry rejects a different wallet amount without returning the provider order
+ok 292 - checkout-token retry rejects a different wallet amount without returning the provider order
+  ---
+  duration_ms: 1.271894
+  type: 'test'
+  ...
+# Subtest: checkout-token retry rejects a different account without returning the provider order
+ok 293 - checkout-token retry rejects a different account without returning the provider order
+  ---
+  duration_ms: 0.721086
+  type: 'test'
+  ...
+# Subtest: gateway failure releases wallet and inventory holds and cancels the order idempotently
+ok 294 - gateway failure releases wallet and inventory holds and cancels the order idempotently
+  ---
+  duration_ms: 1.160081
+  type: 'test'
+  ...
+# Subtest: insufficient wallet or stock rolls back both order creation and wallet reservation
+ok 295 - insufficient wallet or stock rolls back both order creation and wallet reservation
+  ---
+  duration_ms: 0.906502
+  type: 'test'
+  ...
+# Subtest: wallet amount and expected-total validation reject invalid money before gateway creation
+ok 296 - wallet amount and expected-total validation reject invalid money before gateway creation
+  ---
+  duration_ms: 1.258115
+  type: 'test'
+  ...
+# Subtest: provider order amount or currency mismatch cancels and releases both reservations
+ok 297 - provider order amount or currency mismatch cancels and releases both reservations
+  ---
+  duration_ms: 1.291566
+  type: 'test'
+  ...
+# Subtest: checkout cancelled while awaiting the provider cannot publish a usable payment order
+ok 298 - checkout cancelled while awaiting the provider cannot publish a usable payment order
+  ---
+  duration_ms: 0.848404
+  type: 'test'
+  ...
+# Subtest: a verified customer can adopt the same browser-session cart at purchase
+ok 299 - a verified customer can adopt the same browser-session cart at purchase
+  ---
+  duration_ms: 0.598145
+  type: 'test'
+  ...
+# Subtest: shipping boundary 1 paise persists shipping and charges Razorpay once
+ok 300 - shipping boundary 1 paise persists shipping and charges Razorpay once
+  ---
+  duration_ms: 2.510705
+  type: 'test'
+  ...
+# Subtest: shipping boundary 99900 paise persists shipping and charges Razorpay once
+ok 301 - shipping boundary 99900 paise persists shipping and charges Razorpay once
+  ---
+  duration_ms: 0.413914
+  type: 'test'
+  ...
+# Subtest: shipping boundary 149899 paise persists shipping and charges Razorpay once
+ok 302 - shipping boundary 149899 paise persists shipping and charges Razorpay once
+  ---
+  duration_ms: 2.628538
+  type: 'test'
+  ...
+# Subtest: shipping boundary 149900 paise persists shipping and charges Razorpay once
+ok 303 - shipping boundary 149900 paise persists shipping and charges Razorpay once
+  ---
+  duration_ms: 0.463572
+  type: 'test'
+  ...
+# Subtest: shipping boundary 149901 paise persists shipping and charges Razorpay once
+ok 304 - shipping boundary 149901 paise persists shipping and charges Razorpay once
+  ---
+  duration_ms: 0.427195
+  type: 'test'
+  ...
+# Subtest: shipping boundary 200000 paise persists shipping and charges Razorpay once
+ok 305 - shipping boundary 200000 paise persists shipping and charges Razorpay once
+  ---
+  duration_ms: 0.545666
+  type: 'test'
+  ...
+# Subtest: quantity crosses the free shipping boundary using the whole merchandise subtotal
+ok 306 - quantity crosses the free shipping boundary using the whole merchandise subtotal
+  ---
+  duration_ms: 0.435769
+  type: 'test'
+  ...
+# Subtest: rewards do not change free shipping eligibility
+ok 307 - rewards do not change free shipping eligibility
+  ---
+  duration_ms: 0.511299
+  type: 'test'
+  ...
+# Subtest: rewards can cover both merchandise and charged shipping atomically
+ok 308 - rewards can cover both merchandise and charged shipping atomically
+  ---
+  duration_ms: 0.561855
+  type: 'test'
+  ...
+# Subtest: omitted or manipulated client shipping never controls the server charge
+ok 309 - omitted or manipulated client shipping never controls the server charge
+  ---
+  duration_ms: 0.676375
+  type: 'test'
+  ...
+# Subtest: stale payable quote is rejected before stock or payment writes
+ok 310 - stale payable quote is rejected before stock or payment writes
+  ---
+  duration_ms: 0.351418
+  type: 'test'
+  ...
+# Subtest: invalid phone abc9876543210 is rejected without order writes
+ok 311 - invalid phone abc9876543210 is rejected without order writes
+  ---
+  duration_ms: 0.214903
+  type: 'test'
+  ...
+# Subtest: invalid phone 98+76543210 is rejected without order writes
+ok 312 - invalid phone 98+76543210 is rejected without order writes
+  ---
+  duration_ms: 0.126045
+  type: 'test'
+  ...
+# Subtest: invalid phone ++919876543210 is rejected without order writes
+ok 313 - invalid phone ++919876543210 is rejected without order writes
+  ---
+  duration_ms: 0.114464
+  type: 'test'
+  ...
+# Subtest: invalid phone 987 6543210 is rejected without order writes
+ok 314 - invalid phone 987 6543210 is rejected without order writes
+  ---
+  duration_ms: 0.107515
+  type: 'test'
+  ...
+# Subtest: invalid phone (987)6543210 is rejected without order writes
+ok 315 - invalid phone (987)6543210 is rejected without order writes
+  ---
+  duration_ms: 0.110288
+  type: 'test'
+  ...
+# Subtest: invalid phone 1234567 is rejected without order writes
+ok 316 - invalid phone 1234567 is rejected without order writes
+  ---
+  duration_ms: 0.1105
+  type: 'test'
+  ...
+# Subtest: invalid phone 1234567890123456 is rejected without order writes
+ok 317 - invalid phone 1234567890123456 is rejected without order writes
+  ---
+  duration_ms: 2.41872
+  type: 'test'
+  ...
+# Subtest: invalid phone + is rejected without order writes
+ok 318 - invalid phone + is rejected without order writes
+  ---
+  duration_ms: 0.148378
+  type: 'test'
+  ...
+# Subtest: COD confirms unpaid order with shipping and consumes inventory once without gateway
+ok 319 - COD confirms unpaid order with shipping and consumes inventory once without gateway
+  ---
+  duration_ms: 3.268029
+  type: 'test'
+  ...
+# Subtest: COD fails before order or stock mutation for unserviceable or unavailable carrier
+ok 320 - COD fails before order or stock mutation for unserviceable or unavailable carrier
+  ---
+  duration_ms: 0.443079
+  type: 'test'
+  ...
+# Subtest: COD cannot redeem rewards or reuse an online payment token
+ok 321 - COD cannot redeem rewards or reuse an online payment token
+  ---
+  duration_ms: 0.59635
+  type: 'test'
+  ...
+# Subtest: COD switch off and unsupported payment method are rejected
+ok 322 - COD switch off and unsupported payment method are rejected
+  ---
+  duration_ms: 0.267646
+  type: 'test'
+  ...
+# Subtest: capture updates the exact matching payment record, consumes wallet and inventory once, and clears the correct cart
+ok 323 - capture updates the exact matching payment record, consumes wallet and inventory once, and clears the correct cart
+  ---
+  duration_ms: 4.77626
+  type: 'test'
+  ...
+# Subtest: duplicate capture webhook and signed checkout verification do not double-consume wallet or stock
+ok 324 - duplicate capture webhook and signed checkout verification do not double-consume wallet or stock
+  ---
+  duration_ms: 1.489431
+  type: 'test'
+  ...
+# Subtest: capture before local payment registration returns non-2xx and succeeds safely on retry
+ok 325 - capture before local payment registration returns non-2xx and succeeds safely on retry
+  ---
+  duration_ms: 1.578454
+  type: 'test'
+  ...
+# Subtest: a different payment id cannot replace a recorded captured payment
+ok 326 - a different payment id cannot replace a recorded captured payment
+  ---
+  duration_ms: 0.974119
+  type: 'test'
+  ...
+# Subtest: late capture with expired inventory reservation records cash for review without consuming stock or wallet
+ok 327 - late capture with expired inventory reservation records cash for review without consuming stock or wallet
+  ---
+  duration_ms: 0.909669
+  type: 'test'
+  ...
+# Subtest: late capture with released inventory reservation records cash for review without consuming stock or wallet
+ok 328 - late capture with released inventory reservation records cash for review without consuming stock or wallet
+  ---
+  duration_ms: 0.699043
+  type: 'test'
+  ...
+# Subtest: late capture with expired wallet hold records cash for review without consuming stock or wallet
+ok 329 - late capture with expired wallet hold records cash for review without consuming stock or wallet
+  ---
+  duration_ms: 0.527796
+  type: 'test'
+  ...
+# Subtest: late capture with released wallet hold records cash for review without consuming stock or wallet
+ok 330 - late capture with released wallet hold records cash for review without consuming stock or wallet
+  ---
+  duration_ms: 0.690647
+  type: 'test'
+  ...
+# Subtest: late capture with missing inventory reservations records cash for review without consuming stock or wallet
+ok 331 - late capture with missing inventory reservations records cash for review without consuming stock or wallet
+  ---
+  duration_ms: 0.563314
+  type: 'test'
+  ...
+# Subtest: captured cash cannot resurrect a CANCELLED order or spend its wallet
+ok 332 - captured cash cannot resurrect a CANCELLED order or spend its wallet
+  ---
+  duration_ms: 0.775662
+  type: 'test'
+  ...
+# Subtest: captured cash cannot resurrect a RETURN_REQUESTED order or spend its wallet
+ok 333 - captured cash cannot resurrect a RETURN_REQUESTED order or spend its wallet
+  ---
+  duration_ms: 0.434906
+  type: 'test'
+  ...
+# Subtest: captured cash cannot resurrect a RETURNED order or spend its wallet
+ok 334 - captured cash cannot resurrect a RETURNED order or spend its wallet
+  ---
+  duration_ms: 0.323322
+  type: 'test'
+  ...
+# Subtest: captured cash cannot resurrect a REFUNDED order or spend its wallet
+ok 335 - captured cash cannot resurrect a REFUNDED order or spend its wallet
+  ---
+  duration_ms: 0.374486
+  type: 'test'
+  ...
+# Subtest: invalid webhook and checkout signatures cannot update a payment or reach provider lookup
+ok 336 - invalid webhook and checkout signatures cannot update a payment or reach provider lookup
+  ---
+  duration_ms: 0.635139
+  type: 'test'
+  ...
+# Subtest: provider identity, amount and currency mismatches are rejected before capture
+ok 337 - provider identity, amount and currency mismatches are rejected before capture
+  ---
+  duration_ms: 3.422488
+  type: 'test'
+  ...
+# Subtest: payment/wallet cash breakdown mismatch aborts the capture transaction
+ok 338 - payment/wallet cash breakdown mismatch aborts the capture transaction
+  ---
+  duration_ms: 0.631486
+  type: 'test'
+  ...
+# Subtest: failed or authorized messages after capture cannot downgrade paid state
+ok 339 - failed or authorized messages after capture cannot downgrade paid state
+  ---
+  duration_ms: 0.912583
+  type: 'test'
+  ...
+# Subtest: failed payment webhook records one immutable audit event and is retry-safe
+ok 340 - failed payment webhook records one immutable audit event and is retry-safe
+  ---
+  duration_ms: 0.459565
+  type: 'test'
+  ...
+# Subtest: capture does not clear a cart subsequently owned by a different account
+ok 341 - capture does not clear a cart subsequently owned by a different account
+  ---
+  duration_ms: 0.477729
+  type: 'test'
+  ...
+# Subtest: signed partial refund is provider-verified and deduplicated, reverses earning but not redeemed tender
+ok 342 - signed partial refund is provider-verified and deduplicated, reverses earning but not redeemed tender
+  ---
+  duration_ms: 1.639144
+  type: 'test'
+  ...
+# Subtest: item-level return refund closes ReturnRequest without overwriting delivered fulfilment
+ok 343 - item-level return refund closes ReturnRequest without overwriting delivered fulfilment
+  ---
+  duration_ms: 1.190465
+  type: 'test'
+  ...
+# Subtest: all cash refunded across multiple events restores original wallet tender once
+ok 344 - all cash refunded across multiple events restores original wallet tender once
+  ---
+  duration_ms: 1.443838
+  type: 'test'
+  ...
+# Subtest: failed wallet restoration rolls back the full-refund accounting transaction for safe retry
+ok 345 - failed wallet restoration rolls back the full-refund accounting transaction for safe retry
+  ---
+  duration_ms: 1.009953
+  type: 'test'
+  ...
+# Subtest: capture replay after a fully refunded order does not resurrect it or debit restored wallet funds
+ok 346 - capture replay after a fully refunded order does not resurrect it or debit restored wallet funds
+  ---
+  duration_ms: 1.041096
+  type: 'test'
+  ...
+# Subtest: refunds require a valid signature and cannot invent provider-confirmed refunded cash
+ok 347 - refunds require a valid signature and cannot invent provider-confirmed refunded cash
+  ---
+  duration_ms: 1.28168
+  type: 'test'
+  ...
+# Subtest: refund event identity cannot be reused with another amount
+ok 348 - refund event identity cannot be reused with another amount
+  ---
+  duration_ms: 0.825246
+  type: 'test'
+  ...
+# Subtest: refund currency, malformed money and overflow are rejected without ledger changes
+ok 349 - refund currency, malformed money and overflow are rejected without ledger changes
+  ---
+  duration_ms: 7.148967
+  type: 'test'
+  ...
+# Subtest: cumulative refunds cannot exceed cash captured even if a new event id is supplied
+ok 350 - cumulative refunds cannot exceed cash captured even if a new event id is supplied
+  ---
+  duration_ms: 1.211803
+  type: 'test'
+  ...
+# Subtest: refund arriving before capture is reconciled cannot create money or mark the order refunded
+ok 351 - refund arriving before capture is reconciled cannot create money or mark the order refunded
+  ---
+  duration_ms: 0.351946
+  type: 'test'
+  ...
+# Subtest: a wallet-consumption error rolls capture back with inventory and payment still untouched
+ok 352 - a wallet-consumption error rolls capture back with inventory and payment still untouched
+  ---
+  duration_ms: 1.539074
+  type: 'test'
+  ...
+# Subtest: exact earning rule uses complete ₹100 after discounts and wallet, no shipping reward
+ok 353 - exact earning rule uses complete ₹100 after discounts and wallet, no shipping reward
+  ---
+  duration_ms: 0.961129
+  type: 'test'
+  ...
+# Subtest: all available rewards can pay the full order; reserved balance and debt are not spendable
+ok 354 - all available rewards can pay the full order; reserved balance and debt are not spendable
+  ---
+  duration_ms: 0.216215
+  type: 'test'
+  ...
+# Subtest: rewards mature exactly seven elapsed days after actual delivery, never before
+ok 355 - rewards mature exactly seven elapsed days after actual delivery, never before
+  ---
+  duration_ms: 0.628787
+  type: 'test'
+  ...
+# Subtest: split, missing, future and premature delivery timestamps cannot mature
+ok 356 - split, missing, future and premature delivery timestamps cannot mature
+  ---
+  duration_ms: 0.475363
+  type: 'test'
+  ...
+# Subtest: cash capture must equal external payable and wallet tender must be consumed
+ok 357 - cash capture must equal external payable and wallet tender must be consumed
+  ---
+  duration_ms: 0.2478
+  type: 'test'
+  ...
+# Subtest: any recorded refund, return or payment review reverses rewards; refund-in-progress holds
+ok 358 - any recorded refund, return or payment review reverses rewards; refund-in-progress holds
+  ---
+  duration_ms: 0.262817
+  type: 'test'
+  ...
+# Subtest: wallet ownership follows verified Auth subject, never email or body identity
+ok 359 - wallet ownership follows verified Auth subject, never email or body identity
+  ---
+  duration_ms: 1.7309
+  type: 'test'
+  ...
+# Subtest: GET summary is read-only, shows exact ledger not estimates and bounded history
+ok 360 - GET summary is read-only, shows exact ledger not estimates and bounded history
+  ---
+  duration_ms: 0.61437
+  type: 'test'
+  ...
+# Subtest: wallet summary excludes stale active-return accruals from pending and exposes them as held
+ok 361 - wallet summary excludes stale active-return accruals from pending and exposes them as held
+  ---
+  duration_ms: 0.359209
+  type: 'test'
+  ...
+# Subtest: reservation then consumption debit once and lock order before wallet
+ok 362 - reservation then consumption debit once and lock order before wallet
+  ---
+  duration_ms: 1.377118
+  type: 'test'
+  ...
+# Subtest: no cap supports full-wallet order and creates no earning on wallet-funded spend
+ok 363 - no cap supports full-wallet order and creates no earning on wallet-funded spend
+  ---
+  duration_ms: 0.437185
+  type: 'test'
+  ...
+# Subtest: insufficient, released and expired holds cannot spend or silently reacquire
+ok 364 - insufficient, released and expired holds cannot spend or silently reacquire
+  ---
+  duration_ms: 0.426772
+  type: 'test'
+  ...
+# Subtest: late debt invalidating held funds cannot be spent by another capture
+ok 365 - late debt invalidating held funds cannot be spent by another capture
+  ---
+  duration_ms: 0.207404
+  type: 'test'
+  ...
+# Subtest: mature reward posts once; any refund reverses once even after rewards spent
+ok 366 - mature reward posts once; any refund reverses once even after rewards spent
+  ---
+  duration_ms: 1.237546
+  type: 'test'
+  ...
+# Subtest: return before maturity permanently suppresses accrual without inventing a debit
+ok 367 - return before maturity permanently suppresses accrual without inventing a debit
+  ---
+  duration_ms: 0.612628
+  type: 'test'
+  ...
+# Subtest: active item return holds reward maturity and release lets normal reconciliation resume
+ok 368 - active item return holds reward maturity and release lets normal reconciliation resume
+  ---
+  duration_ms: 0.869317
+  type: 'test'
+  ...
+# Subtest: return refund wallet credit is idempotent and uses an immutable request key
+ok 369 - return refund wallet credit is idempotent and uses an immutable request key
+  ---
+  duration_ms: 0.351103
+  type: 'test'
+  ...
+# Subtest: redeemed wallet funds restore only once after a full cash refund, never a partial
+ok 370 - redeemed wallet funds restore only once after a full cash refund, never a partial
+  ---
+  duration_ms: 0.569209
+  type: 'test'
+  ...
+# Subtest: explicit wallet-only full refund restores its original tender without gateway money
+ok 371 - explicit wallet-only full refund restores its original tender without gateway money
+  ---
+  duration_ms: 0.435653
+  type: 'test'
+  ...
+# Subtest: kill switch blocks new spend/earning but preserves liabilities, release and reversals
+ok 372 - kill switch blocks new spend/earning but preserves liabilities, release and reversals
+  ---
+  duration_ms: 0.941367
+  type: 'test'
+  ...
+# Subtest: batch is bounded, resumable and rejects malformed cursors
+ok 373 - batch is bounded, resumable and rejects malformed cursors
+  ---
+  duration_ms: 0.932348
+  type: 'test'
+  ...
+# Subtest: serializable helper retries only known conflicts and keeps external work out
+ok 374 - serializable helper retries only known conflicts and keeps external work out
+  ---
+  duration_ms: 0.701582
+  type: 'test'
+  ...
+# Subtest: wallet worker is disabled by default and non-exact opt-in values create no timer or batch
+ok 375 - wallet worker is disabled by default and non-exact opt-in values create no timer or batch
+  ---
+  duration_ms: 1.576
+  type: 'test'
+  ...
+# Subtest: enabled worker still refuses to run when wallet spending/earning is disabled
+ok 376 - enabled worker still refuses to run when wallet spending/earning is disabled
+  ---
+  duration_ms: 0.193184
+  type: 'test'
+  ...
+# Subtest: enabled worker schedules a bounded minute poll, unrefs its timer, and clears it on destroy
+ok 377 - enabled worker schedules a bounded minute poll, unrefs its timer, and clears it on destroy
+  ---
+  duration_ms: 3.325619
+  type: 'test'
+  ...
+# Subtest: overlapping ticks never run simultaneous maturation batches
+ok 378 - overlapping ticks never run simultaneous maturation batches
+  ---
+  duration_ms: 0.348876
+  type: 'test'
+  ...
+# Subtest: cursor advances on successful pages, preserves position on a thrown failure, and restarts after exhaustion
+ok 379 - cursor advances on successful pages, preserves position on a thrown failure, and restarts after exhaustion
+  ---
+  duration_ms: 0.510522
+  type: 'test'
+  ...
+# Subtest: failed rows on a completed page are revisited on the next cursor cycle without logging their identities
+ok 380 - failed rows on a completed page are revisited on the next cursor cycle without logging their identities
+  ---
+  duration_ms: 0.256962
+  type: 'test'
+  ...
+# Subtest: a rejected batch releases the busy guard so the next scheduled attempt can retry
+ok 381 - a rejected batch releases the busy guard so the next scheduled attempt can retry
+  ---
+  duration_ms: 0.350636
+  type: 'test'
+  ...
+# Subtest: turning worker flag off between ticks pauses processing without discarding its cursor
+ok 382 - turning worker flag off between ticks pauses processing without discarding its cursor
+  ---
+  duration_ms: 0.227061
+  type: 'test'
+  ...
+1..382
+# tests 382
+# suites 0
+# pass 382
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5158.022571

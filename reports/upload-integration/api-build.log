@@ -1,0 +1,20 @@
+
+> @hidi/api@0.1.0 build /home/runner/work/HIDI-ecommerce/HIDI-ecommerce/apps/api
+> prisma generate && nest build
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+┌─────────────────────────────────────────────────────────┐
+│  Update available 7.10.0 -> 8.0.0-rc.22                 │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+
+✔ Generated Prisma Client (7.10.0) to ./src/generated/prisma in 255ms
+
