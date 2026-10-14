@@ -1,0 +1,30 @@
+name: Image reproducible test bundle
+on:
+  push:
+    branches: [work/image-optimization-20261015]
+    paths: ['.github/workflows/image-reproduction.yml']
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Package exact source and isolated image dependencies
+        run: |
+          mkdir -p reproduction
+          git archive --format=tar HEAD | gzip > reproduction/source.tar.gz
+          npm install --prefix "$RUNNER_TEMP/image-repro" --no-audit --no-fund busboy@1.6.0 sharp@0.34.1 @noble/hashes@1.8.0 typescript@5.9.3
+          tar -C "$RUNNER_TEMP/image-repro" -czf reproduction/image-dependencies.tar.gz node_modules
+          git rev-parse HEAD > reproduction/COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-reproduction-bundle
+          path: reproduction/
+          retention-days: 2
