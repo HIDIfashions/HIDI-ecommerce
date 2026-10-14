@@ -1,4 +1,4 @@
-name: Release HIDI brand identity and crawlable homepage links
+name: Release HIDI brand SEO with isolated homepage comparison
 on:
   push:
     branches: [migration/azure-sql-blob]
