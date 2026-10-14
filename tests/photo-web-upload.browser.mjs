@@ -22,8 +22,8 @@ const h=await createPhotoRouteFixture(directory,{apiBase:'http://127.0.0.1:'+api
 const results=[],snapshots=[],contexts=[];let browser,child,log='';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const stock={onHand:8,reserved:1,safetyStock:0,reorderLevel:1};
-function product(){const images=h.state.metadata.map((item,i)=>({id:'photo-'+i,url:item.url,alt:'Upload fixture photograph',isMain:i===0}));return {
- id:'photo-fixture',slug:'photo-fixture',name:'Upload fixture kurta',status:'ACTIVE',currency:'INR',pricePaise:199900,minPricePaise:199900,maxPricePaise:199900,shortDescription:'Isolated image test product',description:'Synthetic fixture. Not an item for sale.',fabric:'Fixture fabric',care:'Fixture care',categoryId:null,category:null,collections:[],images,createdAt:'2026-10-15T00:00:00Z',updatedAt:'2026-10-15T00:00:00Z',
+function product(){const images=h.state.metadata.map((item,i)=>({id:'photo-'+i,url:item.url,alt:'Upload fixture photograph',position:i,isMain:i===0}));return {
+ id:'photo-fixture',slug:'photo-fixture',name:'Upload fixture kurta',status:'ACTIVE',inStock:true,currency:'INR',pricePaise:199900,minPricePaise:199900,maxPricePaise:199900,shortDescription:'Isolated image test product',description:'Synthetic fixture. Not an item for sale.',fabric:'Fixture fabric',care:'Fixture care',categoryId:null,category:null,collections:[],images,createdAt:'2026-10-15T00:00:00Z',updatedAt:'2026-10-15T00:00:00Z',
  variants:['M','L'].map((size,i)=>({id:'v'+(i+1),productId:'photo-fixture',sku:'PHOTO-'+size,size,color:'Cream',colorHex:'#e7d7c7',active:true,pricePaise:199900,mrpPaise:249900,currency:'INR',weightGrams:400,available:7,inventory:{...stock},images,bustMm:1000,waistMm:null,hipMm:null,shoulderMm:null,sleeveLengthMm:null,garmentLengthMm:1100}))};}
 const upstream=createServer(async(req,res)=>{
  const path=new URL(req.url,'http://127.0.0.1').pathname.replace(/^\/v1/,'');
@@ -33,6 +33,8 @@ const upstream=createServer(async(req,res)=>{
  if(path==='/admin/me')return send({admin:{id:'fixture-staff',displayName:'Upload Fixture',email:'fixture@example.invalid',role:'OWNER',authMode:'SUPABASE'}});
  if(path==='/admin/products/options')return send({categories:[],collections:[]});
  if(path==='/admin/products/photo-fixture')return send(product());
+ if(path==='/reviews/products/photo-fixture')return send({averageRating:0,reviewCount:0,verifiedReviewCount:0,ratingDistribution:{1:0,2:0,3:0,4:0,5:0},reviews:[]});
+ if(path==='/products/photo-fixture/related')return send([]);
  if(path==='/products')return send([product()]);
  if(path.startsWith('/products/'))return send(product());
  if(path==='/health')return send({status:'ok'});
