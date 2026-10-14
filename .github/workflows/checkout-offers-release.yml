@@ -2,7 +2,7 @@ name: HIDI checkout offers and ₹1 dress picker
 on:
   push:
     branches: [migration/azure-sql-blob]
-    paths: [deploy/checkout-offers/**, .github/workflows/checkout-offers-release.yml]
+    paths: [deploy/checkout-offers/**, deploy/offers/**, .github/workflows/checkout-offers-release.yml]
   workflow_dispatch:
 permissions:
   contents: read
