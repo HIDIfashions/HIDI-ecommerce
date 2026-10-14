@@ -8,7 +8,7 @@
  const element=(tag,text,className)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(className)e.className=className;return e;};
  const button=(text,action)=>{const b=element('button',text);b.type='button';b.disabled=busy||locked;b.addEventListener('click',action);return b;};
  function changed(next){if(locked||busy)return;choice=next;quote=null;revision++;busy=true;render();window.dispatchEvent(new Event('hidi-cart-updated'));}
- function picker(){if(!quote?.dressUnlocked||locked)return;const modal=element('dialog',null,'hidi-offer-dialog'),heading=element('h2','Congratulations! You’ve unlocked the ₹1 dress offer');modal.setAttribute('aria-label','Choose your ₹1 dress');modal.append(heading,element('p','Pick one eligible dress and an available size. One offer per order.'));
+ function picker(){if(!quote?.dressUnlocked||!quote.candidates.length||locked)return;const modal=element('dialog',null,'hidi-offer-dialog'),heading=element('h2','Congratulations! You’ve unlocked the ₹1 dress offer');modal.setAttribute('aria-label','Choose your ₹1 dress');modal.append(heading,element('p','Pick one eligible dress and an available size. One offer per order.'));
  const grid=element('div',null,'hidi-offer-dress-grid');
  for(const dress of quote.candidates){const card=element('article');if(dress.image){const img=element('img');img.src=dress.image;img.alt=dress.name;img.loading='lazy';card.append(img);}card.append(element('h3',dress.name),element('p','MRP '+money(dress.mrpPaise)+' · '+dress.color+' · Size '+dress.size),button('Choose size '+dress.size+' for ₹1',()=>{const version=quote.version;modal.close();modal.remove();changed({kind:'DRESS1',variantId:dress.id,version});}));grid.append(card);}
  if(!grid.childElementCount)grid.append(element('p','The ₹1 dresses are currently unavailable. You can choose 15% off instead.'));
@@ -18,13 +18,14 @@
  if(location.pathname!=='/checkout'||!quote?.available){panel?.remove();panel=null;return;}
  if(!panel){const main=document.querySelector('main');if(!main)return;panel=element('section',null,'hidi-checkout-offers');panel.dataset.hidiCheckoutOffers='true';panel.setAttribute('aria-label','Choose your HIDI offer');const form=main.querySelector('form');if(form)form.before(panel);else main.append(panel);}
  panel.replaceChildren(element('h2','Choose your HIDI offer'),element('p','One offer per order · No coupon needed'));
- const actions=element('div');actions.append(button((choice.kind==='PERCENT15'?'✓ ':'')+'15% off',()=>changed({kind:'PERCENT15',version:quote.version})),button((choice.kind==='DRESS1'?'✓ ':'')+'Choose a dress for ₹1',picker),button('Continue without an offer',()=>changed({kind:'NONE'})));actions.children[1].disabled=busy||locked||!quote.dressUnlocked;panel.append(actions);
+ const actions=element('div');actions.append(button((choice.kind==='PERCENT15'?'✓ ':'')+'15% off',()=>changed({kind:'PERCENT15',version:quote.version})),button((choice.kind==='DRESS1'?'✓ ':'')+'Choose a dress for ₹1',picker),button('Continue without an offer',()=>changed({kind:'NONE'})));actions.children[1].disabled=busy||locked||!quote.dressUnlocked||!quote.candidates.length;panel.append(actions);
+ if(quote.dressUnlocked&&!quote.candidates.length)panel.append(element('p','₹1 offer dresses are currently unavailable. You can choose 15% off instead.'));
  if(!quote.dressUnlocked)panel.append(element('p','Spend more than ₹3,999 on regular items to unlock the ₹1 dress.'));
  if(choice.kind==='PERCENT15')panel.append(element('strong','15% off applied · You save '+money(quote.discountPaise)));
  if(choice.kind==='DRESS1')panel.append(element('strong','Congratulations! You have availed the ₹1 dress offer. '+quote.gift.name+' · Size '+quote.gift.size));
  if(choice.kind!=='NONE')panel.append(element('p','Regular items '+money(quote.originalSubtotalPaise)+' · Offer savings '+money(quote.discountPaise)+' · Shipping '+money(quote.shippingPaise)+' · Total before rewards '+money(quote.totalPaise)));
  if(locked)panel.append(element('p','Offer selection is locked for this payment attempt. Retry the same payment, or reload checkout to start again.'));
- if(quote.dressUnlocked&&lastCelebration!==localStorage.getItem('hidi_cart_session')&&choice.kind==='NONE'){lastCelebration=localStorage.getItem('hidi_cart_session');queueMicrotask(picker);}
+ if(quote.dressUnlocked&&quote.candidates.length&&lastCelebration!==localStorage.getItem('hidi_cart_session')&&choice.kind==='NONE'){lastCelebration=localStorage.getItem('hidi_cart_session');queueMicrotask(picker);}
  }
  window.fetch=async function(resource,options){
  const raw=typeof resource==='string'?resource:resource instanceof URL?resource.href:resource.url,u=new URL(raw,location.href),method=(options?.method||resource?.method||'GET').toUpperCase();
