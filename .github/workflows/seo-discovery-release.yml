@@ -1,4 +1,4 @@
-name: Release verified HIDI brand and crawlability improvements
+name: Release HIDI brand SEO after scoped read-only regressions
 on:
   push:
     branches: [migration/azure-sql-blob]

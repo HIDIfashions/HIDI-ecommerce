@@ -26,6 +26,20 @@ export async function foundationProbe(base,output,{baseline}={}) {
         });
         const page=await context.newPage(),prior=baseline?await context.newPage():null;
         const errors=[];page.on('pageerror',error=>errors.push(String(error)));
+        const reads=new Map();
+        for(const p of [page,...(prior?[prior]:[])]) {
+          const pending=new Set();reads.set(p,pending);
+          p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/store/carts/')||url.searchParams.has('_rsc')))pending.add(request);});
+          for(const event of ['requestfinished','requestfailed'])p.on(event,request=>pending.delete(request));
+        }
+        const settleReads=async p=>{
+          const pending=reads.get(p);let quiet=0;
+          for(let elapsed=0;elapsed<15000;elapsed+=50) {
+            await new Promise(done=>setTimeout(done,50));
+            quiet=pending.size?0:quiet+50;if(quiet>=500)return;
+          }
+          assert.fail('Cart/prefetch reads did not settle: '+[...pending].map(request=>request.url()).join(', '));
+        };
         page.setDefaultTimeout(30000);prior?.setDefaultTimeout(30000);
         const prepare=async(p,url)=>{
           assert.equal((await p.goto(url+'/',{waitUntil:'domcontentloaded'})).status(),200);
@@ -36,7 +50,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await p.locator('#range-carousel').press('Home');
           await p.waitForFunction(()=>document.querySelector('#range-carousel')?.dataset.activeIndex==='0');
           await p.evaluate(async()=>{await document.fonts.ready;});
-          await p.waitForLoadState('networkidle');
+          await settleReads(p);
         };
         try {
           await Promise.all([prepare(page,base),...(prior?[prepare(prior,baseline)]:[])]);
@@ -83,7 +97,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
           const shop=page.locator('.campaign-shop-button');await shop.focus();await shop.press('Space');
           await page.waitForURL('**/collections/all');
           assert.equal(await page.locator('main article h3 a').count()>0,true,'Existing Shop Now navigation remains functional');
-          await page.waitForLoadState('networkidle');
+          await settleReads(page);
           assert.equal((await page.goto(base+'/about',{waitUntil:'domcontentloaded'})).status(),200);
           const introduction=page.locator('p[class*="subtitle"]').first();
           await introduction.waitFor();assert((await introduction.textContent()).includes('Introduced by actress Ananya Nagalla'),'Visible About association is factual and present');
