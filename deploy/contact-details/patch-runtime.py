@@ -34,7 +34,8 @@ def patch_text(source):
     jsx, class_name = match.groups()
     end = call_end(source, match.start() + len('(0,'+jsx+'.jsxs)'))
     before = source[match.start():end]
-    assert INTRO in before and GUIDANCE in before and 'Talk to HIDI' in before, 'Reviewed contact placeholder and safety guidance required'
+    reviewed = INTRO in before or ('mailto:contact@hidiindia.com' in before and 'https://wa.me/917093709353' in before)
+    assert reviewed and GUIDANCE in before and 'Talk to HIDI' in before, 'Reviewed contact placeholder or initial contact card and safety guidance required'
     render = lambda tag, props: '(0,'+jsx+'.jsx)('+json.dumps(tag)+','+props+')'
     children = [render('h2','{children:"Talk to HIDI"}'),
                 render('div','{dangerouslySetInnerHTML:{__html:'+json.dumps(DETAILS,ensure_ascii=False)+'}}'),
