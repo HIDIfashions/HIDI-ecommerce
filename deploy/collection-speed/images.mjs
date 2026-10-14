@@ -1,5 +1,6 @@
 /** Bounded product-photo delivery. Original Blob objects are never modified. */
 import { createHash } from 'node:crypto';
+import { downloadPhotoToDisk } from './photo-disk.mjs';
 import { createRequire } from 'node:module';
 import { mkdir, readFile, writeFile, rename, readdir, stat, unlink } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -94,7 +95,11 @@ export async function boundedBody(response) {
 
 /** Resize without cropping, reorientation errors, upscaling, or original fallback. */
 export async function resizedImage(sharp, input, width, format, quality) {
-  if (!Buffer.isBuffer(input) || !input.length || input.length > SOURCE_LIMIT) throw new Error('Invalid product photo size');
+  if (Buffer.isBuffer(input)) {
+    if (!input.length || input.length > SOURCE_LIMIT) throw new Error('Invalid in-memory photo size');
+  } else if (typeof input === 'string') {
+    const file = await stat(input); if (!file.isFile() || file.size < 1) throw new Error('Invalid product photo file');
+  } else throw new Error('Invalid product photo input');
   if (!Number.isInteger(width) || width < 1 || width > ZOOM_WIDTH || !['webp','jpeg'].includes(format) ||
       !Number.isInteger(quality) || quality < 1 || quality > 100) throw new Error('Invalid image transform');
   const maxHeight = Math.min(width * 2, 5760);
@@ -112,7 +117,7 @@ export async function resizedImage(sharp, input, width, format, quality) {
   let output;
   try { output = await render(); }
   catch (error) {
-    const jpeg = input[0] === 0xff && input[1] === 0xd8;
+    const jpeg = metadata.format === "jpeg";
     if (!jpeg || !/VipsJpeg: (?:premature end of JPEG image|Corrupt JPEG data: premature end of data segment)/i.test(error.message)) throw error;
     output = await render('none'); // Retain the existing narrow JPEG recovery.
   }
@@ -155,8 +160,10 @@ export function createImageStore({ sharp, fetchSource, cacheDir = join(tmpdir(),
       // Fetch INSIDE the serial queue: concurrent visitors cannot accumulate many
       // 40 MB originals while they wait for a decoder, including zoom requests.
       const original = await fetchSource(source);
-      const bytes = await resizedImage(sharp,original,width,'webp',92);
-      await save(key,bytes); return bytes;
+      try {
+        const bytes = await resizedImage(sharp,original?.path || original,width,'webp',92);
+        await save(key,bytes); return bytes;
+      } finally { await original?.cleanup?.(); }
     });
   }
   async function get(spec) {
@@ -179,7 +186,10 @@ export function createImageStore({ sharp, fetchSource, cacheDir = join(tmpdir(),
 export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'..'), sharp: providedSharp, fetchSource: providedFetch, cacheDir, seedDir }) {
   const require = createRequire(join(runtimeRoot,'apps/web/server.js'));
   const sharp = providedSharp || require('next/dist/server/image-optimizer.js').getSharp(1,false);
-  const fetchSource = providedFetch || (async source => boundedBody(await fetch(new URL(source,origin), { signal:AbortSignal.timeout(60000), redirect:'error' })));
+  const fetchSource = providedFetch || (async source => {
+    const signal = AbortSignal.timeout(300000);
+    return downloadPhotoToDisk(await fetch(new URL(source,origin), {signal,redirect:'error'}), {signal});
+  });
   const store = createImageStore({ sharp,fetchSource,cacheDir,seedDir });
   async function handle(request,response,pathname) {
     if (pathname !== '/_next/image') return false;
