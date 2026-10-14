@@ -1,0 +1,102 @@
+TAP version 13
+# Subtest: current upload route derives idempotent keys from the bytes it actually received
+ok 1 - current upload route derives idempotent keys from the bytes it actually received
+  ---
+  duration_ms: 208.110523
+  type: 'test'
+  ...
+# Subtest: current upload route preserves mapping validation and legacy optional image codes
+ok 2 - current upload route preserves mapping validation and legacy optional image codes
+  ---
+  duration_ms: 67.918232
+  type: 'test'
+  ...
+# Subtest: current upload route rejects missing, expired and cross-origin sessions before reading file bytes
+ok 3 - current upload route rejects missing, expired and cross-origin sessions before reading file bytes
+  ---
+  duration_ms: 41.403841
+  type: 'test'
+  ...
+# Subtest: current upload route cleans temporary files after ticket or metadata failure and never claims success
+ok 4 - current upload route cleans temporary files after ticket or metadata failure and never claims success
+  ---
+  duration_ms: 50.659934
+  type: 'test'
+  ...
+# Subtest: photo digest matches SHA-256 without whole-file arrayBuffer
+ok 5 - photo digest matches SHA-256 without whole-file arrayBuffer
+  ---
+  duration_ms: 37.252548
+  type: 'test'
+  ...
+# Subtest: photo digest supports streams without Symbol.asyncIterator
+ok 6 - photo digest supports streams without Symbol.asyncIterator
+  ---
+  duration_ms: 27.51762
+  type: 'test'
+  ...
+# Subtest: photo digest fallback never reads more than one MiB per slice
+ok 7 - photo digest fallback never reads more than one MiB per slice
+  ---
+  duration_ms: 28.561611
+  type: 'test'
+  ...
+# Subtest: photo digest releases the reader lock after a read failure
+ok 8 - photo digest releases the reader lock after a read failure
+  ---
+  duration_ms: 0.519634
+  type: 'test'
+  ...
+# Subtest: single-SKU selection accepts large photos and rejects invalid sizes before uploading
+ok 9 - single-SKU selection accepts large photos and rejects invalid sizes before uploading
+  ---
+  duration_ms: 1.154394
+  type: 'test'
+  ...
+# Subtest: bulk photos accept files above the former 40 MiB cap with correct SKU mapping
+ok 10 - bulk photos accept files above the former 40 MiB cap with correct SKU mapping
+  ---
+  duration_ms: 158.3783
+  type: 'test'
+  ...
+# (node:5438) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: indexing requires an explicitly opened production domain
+ok 11 - indexing requires an explicitly opened production domain
+  ---
+  duration_ms: 52.613842
+  type: 'test'
+  ...
+# Subtest: primary HIDI domain can force canonical URLs for SEO consolidation
+ok 12 - primary HIDI domain can force canonical URLs for SEO consolidation
+  ---
+  duration_ms: 5.316554
+  type: 'test'
+  ...
+# Subtest: product offers retain each variant's real price, currency, SKU and stock
+ok 13 - product offers retain each variant's real price, currency, SKU and stock
+  ---
+  duration_ms: 4.426766
+  type: 'test'
+  ...
+# Subtest: only known migrated media is normalized to the versioned local display proxy
+ok 14 - only known migrated media is normalized to the versioned local display proxy
+  ---
+  duration_ms: 2.989306
+  type: 'test'
+  ...
+# Subtest: HIDI India domain is covered by launch gates and image optimizer allowlists
+ok 15 - HIDI India domain is covered by launch gates and image optimizer allowlists
+  ---
+  duration_ms: 0.264717
+  type: 'test'
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 621.419726
