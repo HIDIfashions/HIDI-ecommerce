@@ -1,4 +1,4 @@
-name: Publish HIDI business contact details
+name: Add HIDI WhatsApp, phone, email and address icons
 on:
   push:
     branches: [migration/azure-sql-blob]

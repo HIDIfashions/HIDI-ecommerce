@@ -1,58 +1,32 @@
-"""Replace only the compiled Contact HIDI section, preserving all other runtime files."""
+"""Add only four contact label icons to the reviewed live business contact card."""
 from pathlib import Path
 import json
-import re
 
 PAGE = 'apps/web/.next/server/app/contact/page.js'
-INTRO = 'Direct support is not open in this preview.'
-GUIDANCE = 'For an order enquiry, keep your order number and the affected item or size ready. Do not share card details, passwords or payment OTPs.'
-DETAILS = '<p><strong>WhatsApp:</strong> <a href="https://wa.me/917093709353" target="_blank" rel="noopener noreferrer">+91 70937 09353</a></p><p><strong>Mobile:</strong> <a href="tel:+917093709353">+91 70937 09353</a></p><p><strong>Email:</strong> <a href="mailto:Contact@hidiindia.com">Contact@hidiindia.com</a></p><address style="font-style:normal;line-height:1.6"><strong>Contact Address:</strong><br>Flat No. 704, Hyma Arcade<br>Khanamet, Ayyappa Society, Madhapur<br>Hyderabad, Telangana – 500081<br>India</address>'
-SECTION = re.compile(r'\(0,([\w$]+)\.jsxs\)\("section",\{className:([^,]+),"aria-label":"Contact HIDI",children:\[')
+PLAIN_DETAILS = '<p><strong>WhatsApp:</strong> <a href="https://wa.me/917093709353" target="_blank" rel="noopener noreferrer">+91 70937 09353</a></p><p><strong>Mobile:</strong> <a href="tel:+917093709353">+91 70937 09353</a></p><p><strong>Email:</strong> <a href="mailto:Contact@hidiindia.com">Contact@hidiindia.com</a></p><address style="font-style:normal;line-height:1.6"><strong>Contact Address:</strong><br>Flat No. 704, Hyma Arcade<br>Khanamet, Ayyappa Society, Madhapur<br>Hyderabad, Telangana – 500081<br>India</address>'
+ICONS = {'whatsapp': ['M3 21l1.65-3.8a9 9 0 1 1 3.15 3.15L3 21', 'M9 8h1l1 3-1 1a6 6 0 0 0 2 2l1-1 3 1v1a1 1 0 0 1-1 1 8 8 0 0 1-7-7 1 1 0 0 1 1-1Z'], 'phone': ['M5 4h4l2 5-2 1.5a11 11 0 0 0 4.5 4.5L15 13l5 2v4a1 1 0 0 1-1 1C10.7 20 4 13.3 4 5a1 1 0 0 1 1-1Z'], 'email': ['M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z', 'm3 7 9 6 9-6'], 'address': ['M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z', 'M15 10a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z']}
 
-def call_end(source, start):
-    stack = []
-    quote = None
-    escaped = False
-    for index in range(start, len(source)):
-        char = source[index]
-        if quote:
-            if escaped: escaped = False
-            elif char == '\\': escaped = True
-            elif char == quote: quote = None
-            continue
-        if char in '\"\'`': quote = char
-        elif char in '([{': stack.append(char)
-        elif char in ')]}':
-            assert stack and stack.pop() == {')':'(',']':'[','}':'{'}[char], 'Contact expression delimiter mismatch'
-            if not stack: return index + 1
-    raise AssertionError('Contact expression did not terminate')
+def icon(kind):
+    paths = ''.join('<path d="'+path+'" />' for path in ICONS[kind])
+    return '<svg data-hidi-contact-icon="'+kind+'" aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:8px;flex-shrink:0">'+paths+'</svg>'
+
+DETAILS = PLAIN_DETAILS
+for label, kind in [('WhatsApp','whatsapp'),('Mobile','phone'),('Email','email'),('Contact Address','address')]:
+    DETAILS = DETAILS.replace('<strong>'+label+':</strong>', '<strong>'+icon(kind)+label+':</strong>', 1)
 
 def patch_text(source):
-    matches = list(SECTION.finditer(source))
-    assert len(matches) == 1, 'Exactly one existing Contact HIDI section required'
-    match = matches[0]
-    jsx, class_name = match.groups()
-    end = call_end(source, match.start() + len('(0,'+jsx+'.jsxs)'))
-    before = source[match.start():end]
-    reviewed = INTRO in before or ('mailto:contact@hidiindia.com' in before and 'https://wa.me/917093709353' in before)
-    assert reviewed and GUIDANCE in before and 'Talk to HIDI' in before, 'Reviewed contact placeholder or initial contact card and safety guidance required'
-    render = lambda tag, props: '(0,'+jsx+'.jsx)('+json.dumps(tag)+','+props+')'
-    children = [render('h2','{children:"Talk to HIDI"}'),
-                render('div','{dangerouslySetInnerHTML:{__html:'+json.dumps(DETAILS,ensure_ascii=False)+'}}'),
-                render('p','{children:'+json.dumps(GUIDANCE)+'}')]
-    after = '(0,'+jsx+'.jsxs)("section",{className:'+class_name+',"aria-label":"Contact HIDI",children:['+','.join(children)+']})'
-    updated = source[:match.start()] + after + source[end:]
-    assert updated[:match.start()] == source[:match.start()]
-    assert updated[match.start()+len(after):] == source[end:]
-    return updated
+    original = json.dumps(PLAIN_DETAILS, ensure_ascii=False)
+    updated = json.dumps(DETAILS, ensure_ascii=False)
+    assert source.count(original) == 1, 'One reviewed live contact card required'
+    result = source.replace(original, updated, 1)
+    assert result.replace(updated, original, 1) == source, 'Unrelated compiled page bytes changed'
+    return result
 
 def patch_runtime(base, overlay):
     base, overlay = Path(base), Path(overlay)
-    original = (base/PAGE).read_text()
     target = overlay/PAGE
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(patch_text(original))
-    return {'passed':True,'allowedFiles':[PAGE],'contactSectionOnly':True,
+    target.write_text(patch_text((base/PAGE).read_text()))
+    return {'passed':True,'allowedFiles':[PAGE],'contactIconsOnly':True,'icons':list(ICONS),
             'phone':'+917093709353','email':'Contact@hidiindia.com',
-            'address':'Flat No. 704, Hyma Arcade, Khanamet, Ayyappa Society, Madhapur, Hyderabad, Telangana – 500081, India',
-            'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}
+            'contactTextPreserved':True,'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

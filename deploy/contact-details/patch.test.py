@@ -1,12 +1,15 @@
 import importlib.util
+import json
 from pathlib import Path
+import re
 
 spec=importlib.util.spec_from_file_location('patch',Path(__file__).with_name('patch-runtime.py'))
 patch=importlib.util.module_from_spec(spec);spec.loader.exec_module(patch)
-section='(0,e.jsxs)("section",{className:t.default.notice,"aria-label":"Contact HIDI",children:[(0,e.jsx)("h2",{children:"Talk to HIDI"}),s.phone&&(0,e.jsx)("a",{href:`https://wa.me/${s.phone}`,children:"{phone}"}),(0,e.jsx)("p",{children:"'+patch.INTRO+'"}),(0,e.jsx)("p",{children:"'+patch.GUIDANCE+'"})]})'
-source='UNRELATED_BEFORE,'+section+',UNRELATED_AFTER'
+source='UNRELATED_BEFORE,'+json.dumps(patch.PLAIN_DETAILS,ensure_ascii=False)+',UNRELATED_AFTER'
 updated=patch.patch_text(source)
 assert updated.startswith('UNRELATED_BEFORE,') and updated.endswith(',UNRELATED_AFTER')
-assert patch.INTRO not in updated
-for value in ['https://wa.me/917093709353','tel:+917093709353','mailto:Contact@hidiindia.com','Hyma Arcade','500081','Talk to HIDI',patch.GUIDANCE]: assert value in updated
-print('PASS: contact card replaced; surrounding page and customer guidance preserved')
+assert re.sub(r'<svg[\s\S]*?</svg>','',patch.DETAILS)==patch.PLAIN_DETAILS
+assert patch.DETAILS.count('data-hidi-contact-icon=')==4
+assert patch.DETAILS.count('aria-hidden="true"')==4
+assert patch.DETAILS.count('focusable="false"')==4
+print('PASS: four decorative contact icons added; all contact text, links and unrelated page bytes preserved')

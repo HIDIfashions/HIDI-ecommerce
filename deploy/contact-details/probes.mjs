@@ -41,6 +41,14 @@ export async function probe(base, output) {
             const card=page.locator('section[aria-label="Contact HIDI"]');
             await card.waitFor();
             await card.getByRole('heading',{name:'Talk to HIDI',exact:true}).waitFor();
+            const icons=card.locator('svg[data-hidi-contact-icon]');
+            assert.equal(await icons.count(),4,'One icon per contact label');
+            assert.deepEqual(await icons.evaluateAll(nodes=>nodes.map(node=>node.dataset.hidiContactIcon)),['whatsapp','phone','email','address']);
+            for(const icon of await icons.all()) {
+              assert.equal(await icon.getAttribute('aria-hidden'),'true');
+              assert.equal(await icon.getAttribute('focusable'),'false');
+              const box=await icon.boundingBox();assert(box && box.width===18 && box.height===18,'Icons retain the compact size');
+            }
             assert.equal(await card.locator('a[href="https://wa.me/917093709353"]').count(),1);
             assert.equal(await card.locator('a[href="tel:+917093709353"]').count(),1);
             assert.equal(await card.locator('a[href="mailto:Contact@hidiindia.com"]').count(),1);
