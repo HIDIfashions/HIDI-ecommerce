@@ -36,8 +36,16 @@ export async function probe(base, output) {
           if(req.resourceType()==='media'||/googletagmanager|google-analytics|facebook\.net|cloudflareinsights\.com|razorpay\.com/.test(url.hostname))return route.abort();
           return route.continue();
         });
-        try {
+        const catalogueView=async()=>{
           assert((await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'})).ok());
+          const one=page.getByRole('button',{name:'Show one product per row',exact:true});
+          if(await one.isVisible()) {
+            await one.click();
+            await page.waitForFunction(()=>document.querySelector('[class*="collection-browser_gridOne__"]'));
+          }
+        };
+        try {
+          await catalogueView();
           const card=page.locator('main article').filter({has:page.getByRole('heading',{name:product.name,exact:true})}).first();
           await card.waitFor();
           // The wishlist effect confirms React has attached handlers to this card.
@@ -74,7 +82,7 @@ export async function probe(base, output) {
           await buy.dispatchEvent('click');await buy.dispatchEvent('click');
           await page.waitForURL('**/checkout');assert.equal(posts,2,'Buy Now adds once before checkout');
           assert(quantities.every(v=>v.quantity===1));
-          assert((await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'})).ok());
+          await catalogueView();
           const soldOut=products.find(p=>!p.inStock);
           if(soldOut) {
             const soldCard=page.locator('main article').filter({has:page.getByRole('heading',{name:soldOut.name,exact:true})}).first();
