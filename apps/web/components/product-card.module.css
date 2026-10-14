@@ -911,6 +911,7 @@
 .addButton, .mobileAddButton, .mobileSheetAdd { background: #e8d8c4 !important; border-color: #d6c1a7 !important; color: #591d20 !important; }
 .buyButton, .mobileBuyButton, .mobileSheetBuy { background: linear-gradient(104deg, #642326 0%, #591d20 54%, #4b1719 100%) !important; border-color: #591d20 !important; color: #fff8ef !important; }
 .error, .mobileSheetError { color: #b42318 !important; font-size: 12px !important; line-height: 1.45 !important; }
+.card [role="alert"] { color: #b42318 !important; font-size: 12px !important; line-height: 1.45 !important; }
 @media (max-width: 620px) {
   :global([class*="collection-browser_gridOne__"]) .mobileInlineShop { display: block !important; }
   :global([class*="collection-browser_gridOne__"]) .mobilePurchaseActions { display: grid; grid-template-columns: 1.65fr 1fr; gap: 8px; margin-top: 15px; }

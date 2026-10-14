@@ -94,7 +94,10 @@ export async function probe(base, output) {
           const contact=await page.request.get(base+'/contact');assert(contact.ok());assert((await contact.text()).includes('mailto:Contact@hidiindia.com'));
           const lookbook=await page.request.get(base+'/lookbook',{maxRedirects:0});assert.equal(lookbook.status(),301);
           results.push({engine,width,height,passed:true,missingSizeWrites:0,isolatedCartAdds:posts,duplicateClicksBlocked:true,stockChecksRetained:true,chosenSize:size,checkoutNavigation:true});
-        } catch(error) { await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});throw error; }
+        } catch(error) {
+          console.error('PURCHASE_UI_DIAGNOSTIC',JSON.stringify({engine,width,posts,controls:await page.locator('main article').first().locator('button,[role="alert"]').evaluateAll(nodes=>nodes.map(e=>({text:e.textContent,className:e.className,disabled:e.disabled,color:getComputedStyle(e).color,display:getComputedStyle(e).display}))).catch(()=>[])}));
+          await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});throw error;
+        }
         finally { await context.close(); }
       }
     } finally { await browser.close(); }
