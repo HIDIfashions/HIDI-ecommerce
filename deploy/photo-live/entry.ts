@@ -7,16 +7,14 @@ export async function handlePhotoUpload(request: IncomingMessage, response: Serv
   const match = /^\/api\/admin\/inventory\/([A-Za-z0-9_-]{1,128})\/images$/.exec(pathname);
   if (!match || request.method !== 'POST' || !/^multipart\/form-data\s*;/i.test(String(request.headers['content-type'] || ''))) return false;
   const host = String(request.headers['x-forwarded-host'] || request.headers.host || '').split(',')[0].trim();
-  if (!/^[a-z0-9.-]+(?::\d{1,5})?$/i.test(host)) {
-    response.writeHead(400, {'Cache-Control':'no-store'}); response.end(); return true;
+  if (!/^[a-z0-9.-]+(?::\d{1,5})?$/i.test(host) || !request.url?.startsWith('/') || request.url.startsWith('//')) {
+    response.writeHead(400, {'Cache-Control':'no-store','Connection':'close'}); response.end(); return true;
   }
   const local = /^(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(host);
   const protocol = local ? 'http' : 'https';
   const controller = new AbortController();
   const cancel = () => { if (!response.writableFinished) controller.abort(); };
   request.once('aborted', cancel); response.once('close', cancel);
-  // Cancelling the multipart parser must not destroy the socket before an HTTP
-  // validation error has been delivered. Do not buffer the original file.
   const iterator = request.iterator({destroyOnReturn:false});
   const body = new ReadableStream<Uint8Array>({
     async pull(stream) {
@@ -24,15 +22,15 @@ export async function handlePhotoUpload(request: IncomingMessage, response: Serv
       catch (error) { stream.error(error); }
     },
     async cancel() { await iterator.return?.(); },
-  });
+  }, {highWaterMark:0});
   try {
     const headers = new Headers();
     for (const [key,value] of Object.entries(request.headers)) if (value !== undefined) headers.set(key,Array.isArray(value)?value.join(','):value);
-    const url = new URL(request.url || pathname, protocol+'://'+host);
+    const url = new URL(request.url, protocol+'://'+host);
     const incoming = new NextRequest(url, {method:'POST',headers,body,signal:controller.signal,duplex:'half'} as RequestInit & {duplex:'half'});
     const result = await POST(incoming,{params:Promise.resolve({variantId:match[1]})});
     const outgoing = Object.fromEntries(result.headers);
-    Object.assign(outgoing, {'cache-control':'no-store, max-age=0','x-content-type-options':'nosniff','x-frame-options':'DENY','x-hidi-photo-upload':'stream-v1'});
+    Object.assign(outgoing, {'cache-control':'no-store, max-age=0','x-content-type-options':'nosniff','x-frame-options':'DENY','content-security-policy':"frame-ancestors 'none'; base-uri 'self'; object-src 'none'",'referrer-policy':'strict-origin-when-cross-origin','x-hidi-photo-upload':'stream-v1'});
     if (!request.complete) outgoing.connection = 'close';
     response.writeHead(result.status,outgoing);
     response.end(Buffer.from(await result.arrayBuffer()));
