@@ -28,17 +28,6 @@ jobs:
           node-version: '22.16.0'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply reviewed fixture transport corrections
-        run: |
-          python deploy/image-optimization/complete-upload-fixture.py
-          python deploy/image-optimization/align-upload-fixture-origin.py
-          python deploy/image-optimization/repair-upload-fixture-transport.py
-          test "$(git ls-remote origin refs/heads/work/image-optimization-20261015 | cut -f1)" = "$GITHUB_SHA"
-          git add tests/photo-web-upload.browser.mjs tests/photo-route-current.cases.mjs
-          if ! git diff --cached --quiet; then
-            git -c user.name='HIDI upload test' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Preserve rejected-upload responses and test every browser independently'
-            git push origin HEAD:refs/heads/work/image-optimization-20261015
-          fi
       - name: Prepare isolated browser tooling
         run: |
           npm install --prefix "$RUNNER_TEMP/upload-integration" --no-audit --no-fund playwright@1.56.1
