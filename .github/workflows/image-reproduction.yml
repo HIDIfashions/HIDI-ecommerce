@@ -19,19 +19,43 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
-      - name: Install exact application dependencies for isolated reproduction
-        run: pnpm install --frozen-lockfile
-      - name: Package source and reproducible dependency trees only
+      - run: pnpm install --frozen-lockfile
+      - name: Package source and exact application dependencies
         run: |
           mkdir -p reproduction
-          git archive --format=tar HEAD | gzip > reproduction/source.tar.gz
-          tar -czf reproduction/application-dependencies.tar.gz node_modules apps/web/node_modules apps/api/node_modules
-          npm install --prefix "$RUNNER_TEMP/image-repro" --no-audit --no-fund playwright@1.56.1
-          PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/image-repro/browsers" node "$RUNNER_TEMP/image-repro/node_modules/playwright/cli.js" install chromium firefox webkit
-          tar -C "$RUNNER_TEMP/image-repro" -czf reproduction/browser-tools.tar.gz node_modules browsers
+          git archive --format=tar HEAD | gzip -1 > reproduction/source.tar.gz
+          tar -cf - node_modules apps/web/node_modules apps/api/node_modules | gzip -1 > reproduction/application-dependencies.tar.gz
           git rev-parse HEAD > reproduction/COMMIT.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: image-reproduction-bundle
+          name: image-source-dependencies
           path: reproduction/
           retention-days: 2
+          compression-level: 0
+      - name: Package individual browser engines
+        run: |
+          npm install --prefix "$RUNNER_TEMP/image-repro" --no-audit --no-fund playwright@1.56.1
+          export PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/image-repro/browsers"
+          node "$RUNNER_TEMP/image-repro/node_modules/playwright/cli.js" install chromium firefox webkit
+          mkdir -p browser-reproduction
+          tar -C "$RUNNER_TEMP/image-repro" -cf - node_modules | gzip -1 > browser-reproduction/playwright.tar.gz
+          for path in "$PLAYWRIGHT_BROWSERS_PATH"/*; do
+            tar -C "$PLAYWRIGHT_BROWSERS_PATH" -cf - "$(basename "$path")" | gzip -1 > "browser-reproduction/$(basename "$path").tar.gz"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-browser-chromium
+          path: |
+            browser-reproduction/chromium*.tar.gz
+            browser-reproduction/ffmpeg*.tar.gz
+            browser-reproduction/playwright.tar.gz
+          retention-days: 2
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-browser-firefox-webkit
+          path: |
+            browser-reproduction/firefox*.tar.gz
+            browser-reproduction/webkit*.tar.gz
+          retention-days: 2
+          compression-level: 0
