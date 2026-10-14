@@ -4,7 +4,7 @@ HERE=Path(__file__).resolve().parent
 
 def once(source,old,new):
  if source.count(old)==1:return source.replace(old,new,1)
- pattern=re.escape(old).replace(r'\ ',r'[ \t]*').replace('\\\n',r'\s*\n[ \t]*')
+ pattern=re.escape(re.sub(r'\s+', '__WS__', old)).replace('__WS__', r'\s+')
  matches=list(re.finditer(pattern,source));assert len(matches)==1,'One exact checkout hook required: '+old[:100]
  m=matches[0];return source[:m.start()]+new+source[m.end():]
 def service(source):
