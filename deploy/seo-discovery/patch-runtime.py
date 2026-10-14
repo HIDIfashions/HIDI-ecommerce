@@ -74,8 +74,15 @@ def patch_runtime(base, overlay):
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
     metadata=(HERE/'metadata.mjs').read_bytes()
-    assert hashlib.sha256(metadata).hexdigest()=='b116e5a30303f7bdb8dec14d314f8e0941801d3a7706c2b9b1274141ab1f30ce', 'Reviewed brand identity helper changed'
+    assert hashlib.sha256(metadata).hexdigest()=='22e67379bc2aab283a0c0118e60609647e5497effba7ef5ffa699ad39cf4e45e', 'Reviewed brand identity helper changed'
     (overlay/'seo-discovery/metadata.mjs').write_bytes(metadata)
-    return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs'],
+    source=(base/'server.mjs').read_text()
+    old='createSeoIdentityStream(incoming), status, responseHeaders'
+    new='createSeoIdentityStream(incoming, isProductionRequest(request) ? pathname : undefined), status, responseHeaders'
+    assert source.count(old)==1, 'Expected one retained body stream call'
+    server=source.replace(old,new,1)
+    assert server.replace(new,old,1)==source, 'Unrelated server bytes changed'
+    (overlay/'server.mjs').write_text(server)
+    return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs','server.mjs'],
             'seoOnly':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,
             'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

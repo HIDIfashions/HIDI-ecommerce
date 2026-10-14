@@ -191,8 +191,9 @@ function guardMetadata() {
     }
     for (const node of document.querySelectorAll('script[type="application/ld+json"]')) {
       try {
+        const brandPage = path === '/' || path === '/about';
         const inHead = typeof document.head.contains === 'function' && document.head.contains(node);
-        const value = JSON.stringify(normalizeGraph(JSON.parse(node.textContent), '', inHead)).replace(/</g, '\\u003c');
+        const value = JSON.stringify(normalizeGraph(JSON.parse(node.textContent), '', inHead || brandPage)).replace(/</g, '\\u003c');
         if (value !== node.textContent) node.textContent = value;
       } catch { /* Existing malformed markup is left untouched for the audit. */ }
     }
@@ -226,7 +227,8 @@ function normalizeJsonLd(html, brandHead = false) {
 }
 
 /** Bound streaming buffering to JSON-LD only; original visible markup and UTF-8 are retained. */
-export function seoIdentityTransform() {
+export function seoIdentityTransform(pathname) {
+  const brandPage = pathname === '/' || pathname === '/about';
   const decoder=new StringDecoder('utf8');let pending='';
   function consume(stream,text,final=false) {
     pending+=text;
@@ -235,7 +237,7 @@ export function seoIdentityTransform() {
       if(start) {
         if(start.index){stream.push(pending.slice(0,start.index));pending=pending.slice(start.index);}
         const end=/<\/script\s*>/i.exec(pending);
-        if(end){const cut=end.index+end[0].length;stream.push(normalizeJsonLd(pending.slice(0,cut)));pending=pending.slice(cut);continue;}
+        if(end){const cut=end.index+end[0].length;stream.push(normalizeJsonLd(pending.slice(0,cut),brandPage));pending=pending.slice(cut);continue;}
         if(!final && pending.length<262144)return;
         stream.push(pending);pending='';return;
       }
@@ -249,8 +251,8 @@ export function seoIdentityTransform() {
   return new Transform({transform(chunk,encoding,done){try{consume(this,decoder.write(chunk));done();}catch(error){done(error);}},flush(done){try{consume(this,decoder.end(),true);done();}catch(error){done(error);}}});
 }
 
-export function createSeoIdentityStream(incoming) {
-  const transformed=seoIdentityTransform();
+export function createSeoIdentityStream(incoming, pathname) {
+  const transformed=seoIdentityTransform(pathname);
   incoming.on('error',error=>transformed.destroy(error));
   transformed.on('close',()=>{if(!incoming.readableEnded)incoming.destroy();});
   return incoming.pipe(transformed);
