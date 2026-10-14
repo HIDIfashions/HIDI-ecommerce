@@ -1,4 +1,4 @@
-name: Release HIDI brand SEO with isolated homepage comparison
+name: Release HIDI brand SEO and preserve current contact details
 on:
   push:
     branches: [migration/azure-sql-blob]
