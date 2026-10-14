@@ -36,6 +36,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await p.locator('#range-carousel').press('Home');
           await p.waitForFunction(()=>document.querySelector('#range-carousel')?.dataset.activeIndex==='0');
           await p.evaluate(async()=>{await document.fonts.ready;});
+          await p.waitForLoadState('networkidle');
         };
         try {
           await Promise.all([prepare(page,base),...(prior?[prepare(prior,baseline)]:[])]);
@@ -82,6 +83,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
           const shop=page.locator('.campaign-shop-button');await shop.focus();await shop.press('Space');
           await page.waitForURL('**/collections/all');
           assert.equal(await page.locator('main article h3 a').count()>0,true,'Existing Shop Now navigation remains functional');
+          await page.waitForLoadState('networkidle');
           assert.equal((await page.goto(base+'/about',{waitUntil:'domcontentloaded'})).status(),200);
           const introduction=page.locator('p[class*="subtitle"]').first();
           await introduction.waitFor();assert((await introduction.textContent()).includes('Introduced by actress Ananya Nagalla'),'Visible About association is factual and present');

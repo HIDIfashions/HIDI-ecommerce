@@ -1,4 +1,4 @@
-name: Release HIDI brand SEO with retained button alignment
+name: Release verified HIDI brand and crawlability improvements
 on:
   push:
     branches: [migration/azure-sql-blob]
