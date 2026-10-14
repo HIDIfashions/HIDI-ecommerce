@@ -8,20 +8,27 @@ permissions:
 jobs:
   bundle:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
-      - name: Package exact source and isolated image dependencies
+      - name: Install exact application dependencies for isolated reproduction
+        run: pnpm install --frozen-lockfile
+      - name: Package source and reproducible dependency trees only
         run: |
           mkdir -p reproduction
           git archive --format=tar HEAD | gzip > reproduction/source.tar.gz
-          npm install --prefix "$RUNNER_TEMP/image-repro" --no-audit --no-fund busboy@1.6.0 sharp@0.34.1 @noble/hashes@1.8.0 typescript@5.9.3
-          tar -C "$RUNNER_TEMP/image-repro" -czf reproduction/image-dependencies.tar.gz node_modules
+          tar -czf reproduction/application-dependencies.tar.gz node_modules apps/web/node_modules apps/api/node_modules
+          npm install --prefix "$RUNNER_TEMP/image-repro" --no-audit --no-fund playwright@1.56.1
+          PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/image-repro/browsers" node "$RUNNER_TEMP/image-repro/node_modules/playwright/cli.js" install chromium firefox webkit
+          tar -C "$RUNNER_TEMP/image-repro" -czf reproduction/browser-tools.tar.gz node_modules browsers
           git rev-parse HEAD > reproduction/COMMIT.txt
       - uses: actions/upload-artifact@v4
         with:
