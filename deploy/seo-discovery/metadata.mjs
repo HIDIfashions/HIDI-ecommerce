@@ -22,7 +22,7 @@ export const routeSearchMetadata = {
   '/collections/casual-wear': {title: 'Casual Wear Kurta Sets for Women | HIDI India', description: 'Browse HIDI’s Casual Wear edit of women’s kurta sets and Indian wear. Explore printed and embroidered styles, product details and size information.'},
   '/collections/occasional-wear': {title: 'Occasion Wear Kurta Sets for Women | HIDI India', description: 'Explore HIDI’s Occasional Wear edit of kurta and Anarkali sets. Compare styles, garment details, current prices and size information.'},
   '/collections/ananyas-pick': {title: 'Ananya’s Pick: Women’s Indian Wear | HIDI India', description: 'Discover Ananya’s Pick at HIDI, an edit of women’s Indian wear. Browse selected styles and check garment details, current prices and size information.'},
-  '/about': {title: 'About HIDI | HIDI', description: 'Meet HIDI and explore the brand’s approach to women’s Indian wear for work, everyday dressing and occasions.'},
+  '/about': {title: 'About HIDI & Ananya Nagalla | HIDI India', description: 'Introduced by actress Ananya Nagalla, HIDI offers women’s Indian wear for work, everyday dressing and occasions. Discover HIDI India.'},
   '/shipping': {title: 'Shipping Policy | HIDI', description: 'Read HIDI’s shipping policy, including delivery information and order support. Check the current policy before placing your order.'},
   '/returns': {title: 'Returns & Exchanges | HIDI', description: 'Read HIDI’s returns and exchanges policy. Review eligibility, the process and support information before placing your order.'},
   '/contact': {title: 'Contact & Help | HIDI', description: 'Find HIDI’s contact and help information for product questions, orders and support. View the current ways to reach the HIDI team.'},

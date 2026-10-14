@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import urllib.request
+import urllib.error
 
 HERE=Path(__file__).resolve().parent
 def load(name,path):
@@ -24,6 +26,19 @@ def read(name):return guard.read(name)
 def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def image_id(image):return json.loads(images.docker('image','inspect',image))[0]['Id']
 def own_tag():return images.REGISTRY+'/hidi-web:seo-discovery-'+guard.run_key()
+def editorial_snapshot():
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self,*args):return None
+    try:
+        response=urllib.request.build_opener(NoRedirect()).open(cloud.BASE+'/lookbook',timeout=25)
+    except urllib.error.HTTPError as response:
+        value={'status':response.code,'location':response.headers.get('Location'),'bodySha256':hashlib.sha256(response.read()).hexdigest()}
+    else:
+        with response:value={'status':response.status,'location':response.headers.get('Location'),'bodySha256':hashlib.sha256(response.read()).hexdigest()}
+    if os.environ.get('HIDI_SEO_LOOKBOOK_RETIRED')=='1':
+        assert value['status']==301 and value['location']=='/collections/all','Approved Lookbook retirement baseline changed'
+    else:assert value['status']==200,'Retained editorial baseline changed'
+    return value
 def capture():
     photo.capture();before=photo.states();public=guard.public_snapshot();guard.write_private('public-before.json',public)
     image=before['hidi-web']['image'];guard.immutable(image,'web')
@@ -34,7 +49,8 @@ def capture():
     value=subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image','hidi-web:backup-seo-discovery-'+guard.run_key(),'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
     assert value==image.split('@',1)[1],'Backup digest mismatch'
     save('web-backup.json',{'verified':True,'originalImage':image,'backupTag':tag,'digest':value,'settingsHash':before['hidi-web']['settingsHash']})
-    guard.write_private('retained-public-bodies.json',{p:hashlib.sha256(cloud.get(p).split(b'</head>',1)[1]).hexdigest() for p in ['/','/privacy','/lookbook']})
+    guard.write_private('retained-public-bodies.json',{p:hashlib.sha256(cloud.get(p).split(b'</head>',1)[1]).hexdigest() for p in ['/','/privacy']})
+    guard.write_private('retained-editorial-response.json',editorial_snapshot())
     guard.write_private('retained-analytics.json',{'sha256':hashlib.sha256(cloud.get('/hidi-analytics.js')).hexdigest()})
     photo.unchanged(before);assert guard.public_snapshot()==public
     print('PASS: fresh ready baseline captured and exact web backup verified')
@@ -53,13 +69,16 @@ def compose():
     configs=json.loads(images.docker('image','inspect',before['hidi-web']['image'],own_tag()))
     report=guard.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),configs)
     report.update({'baseImage':before['hidi-web']['image'],'candidateImageId':image_id(own_tag()),'candidateTag':own_tag()});save('web-preservation.json',report)
-    photo.unchanged(before);print('PASS: only machine-readable SEO fields and sitemap changed')
+    photo.unchanged(before);print('PASS: only reviewed SEO identity, navigation semantics and About copy changed')
 def seal():
     photo.unchanged(photo.states());manifest={}
-    for name in ['candidate/report.json','patch.json','web-preservation.json']:
+    for name in ['candidate/report.json','foundation-candidate/report.json','patch.json','web-preservation.json']:
         value=read(name);assert value.get('passed') is True,name+' must pass';manifest[name]=digest(EVIDENCE/name)
     assert read('candidate/report.json')['engines']==['chromium','firefox','webkit'] and len(read('candidate/report.json')['results'])==12
     assert read('candidate/report.json')['liveWrites']==0
+    assert len(read('foundation-candidate/report.json')['results'])==12
+    assert read('foundation-candidate/report.json')['liveWrites']==0
+    assert all(value['appearancePreserved'] for value in read('foundation-candidate/report.json')['results'])
     save('candidate-regression.json',{'passed':True,'candidateImageId':image_id(own_tag()),'reportManifest':manifest,'sourceSha':os.environ['GITHUB_SHA']})
 def publish():
     seal();report=read('candidate-regression.json');subprocess.run(['docker','push',own_tag()],check=True)
@@ -82,8 +101,10 @@ def apply(image):
         state=cloud.snapshot(guard.wait_ready(image,suffix,before));assert state['settingsHash']==before['hidi-web']['settingsHash']
         guard.routes()
         subprocess.run(['node',str(HERE/'probes.mjs'),cloud.BASE,'evidence/seo-discovery/live'],check=True,timeout=1000)
+        subprocess.run(['node',str(HERE.parent/'seo-foundation/browser.mjs'),cloud.BASE,'evidence/seo-discovery/foundation-live'],check=True,timeout=1000)
         for path,expected in guard.private_json('retained-public-bodies.json').items():
             assert hashlib.sha256(cloud.get(path).split(b'</head>',1)[1]).hexdigest()==expected, 'Retained public body changed: '+path
+        assert editorial_snapshot()==guard.private_json('retained-editorial-response.json'),'Retained editorial response changed'
         assert hashlib.sha256(cloud.get('/hidi-analytics.js')).hexdigest()==guard.private_json('retained-analytics.json')['sha256'], 'Newer analytics asset changed'
         assert guard.public_snapshot()==captured,'Published media, privacy or public config changed'
         photo.unchanged({'hidi-api':before['hidi-api'],'hidi-web':state})

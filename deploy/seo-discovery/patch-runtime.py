@@ -1,6 +1,6 @@
 """Fail-closed SEO-only overlay for the reviewed current live wrapper."""
 from pathlib import Path
-import hashlib
+import hashlib, importlib.util
 
 HERE = Path(__file__).resolve().parent
 IMAGE_DISCOVERY_SERVER_SHA = '80ca9c482c3c574a1122603ee077ed5b5d740d528a842a3d8cea6e63a36d7365'
@@ -62,7 +62,7 @@ def patch_text(source):
 def patch_runtime(base, overlay):
     base,overlay=Path(base),Path(overlay)
     expected={
-        'server.mjs':'870fac80dd38422fff7965693a853f3ba0501e5d4fb94414e310cebee19350c2',
+        'server.mjs':'52320f0742fc19da1e27e69f4ccda7bb4dcd0d3ff5ce4dbaa77de93a000bfdd8',
         'privacy-policy/handler.mjs':'47bc7f3fd140786d6c25c41e9c44f770b3dfff8fa2a16f016b9589aa7505c328',
         'seo-discovery/metadata.mjs':'87f65b52a4a7a26a77a659a6f43d85b6b58468d9b335a165c052c9f877d7dd80',
         'seo-discovery/sitemap.mjs':'3a06940f2e8069df26064611536c8479b5f3a2b188c077714b9c765bfa321bd3',
@@ -74,7 +74,7 @@ def patch_runtime(base, overlay):
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
     metadata=(HERE/'metadata.mjs').read_bytes()
-    assert hashlib.sha256(metadata).hexdigest()=='22e67379bc2aab283a0c0118e60609647e5497effba7ef5ffa699ad39cf4e45e', 'Reviewed brand identity helper changed'
+    assert hashlib.sha256(metadata).hexdigest()=='caf67764e9b0419c1002fc4560ddba8b34cc99512f8a517922012a01074f7fde', 'Reviewed brand identity helper changed'
     (overlay/'seo-discovery/metadata.mjs').write_bytes(metadata)
     source=(base/'server.mjs').read_text()
     old='createSeoIdentityStream(incoming), status, responseHeaders'
@@ -83,6 +83,10 @@ def patch_runtime(base, overlay):
     server=source.replace(old,new,1)
     assert server.replace(new,old,1)==source, 'Unrelated server bytes changed'
     (overlay/'server.mjs').write_text(server)
-    return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs','server.mjs'],
+    spec=importlib.util.spec_from_file_location('seo_foundation_patch',HERE.parent/'seo-foundation/patch-runtime.py')
+    foundation=importlib.util.module_from_spec(spec);spec.loader.exec_module(foundation)
+    foundation_plan=foundation.patch_runtime(base,overlay)
+    return {'passed':True,'allowedFiles':sorted(set(['seo-discovery/metadata.mjs','server.mjs']+foundation_plan['allowedFiles'])),
+            'foundation':foundation_plan,
             'seoOnly':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,
             'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

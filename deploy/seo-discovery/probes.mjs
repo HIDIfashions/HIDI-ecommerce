@@ -12,7 +12,7 @@ const expectedTitles = {
   '/collections/casual-wear':'Casual Wear Kurta Sets for Women | HIDI India',
   '/collections/occasional-wear':'Occasion Wear Kurta Sets for Women | HIDI India',
   '/collections/ananyas-pick':'Ananya’s Pick: Women’s Indian Wear | HIDI India',
-  '/about':'About HIDI | HIDI',
+  '/about':'About HIDI & Ananya Nagalla | HIDI India',
   '/shipping':'Shipping Policy | HIDI',
   '/returns':'Returns & Exchanges | HIDI',
   '/contact':'Contact & Help | HIDI',
@@ -155,6 +155,9 @@ export async function probe(base, output) {
           isMobile:engine==='webkit'&&width<1000,reducedMotion:'reduce',extraHTTPHeaders:{'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'}});
         await context.route('**/*',async route=>{
           const req=route.request(),url=new URL(req.url());
+          // Synthetic verification must not emit the newly installed external beacon.
+          // Keep the independent deny-and-record policy for every commerce mutation.
+          if(url.hostname==='static.cloudflareinsights.com')return route.abort();
           if(!['GET','HEAD'].includes(req.method())) {
             if(!isBlockedTelemetry(req.method(),req.url(),base))writes.push({method:req.method(),path:url.pathname});
             return route.abort();
@@ -236,6 +239,15 @@ export async function probe(base, output) {
             checks.push({page:key,path,passed:true,...measurement});
           }
           if(width===390||width===1440) {
+            if(process.env.HIDI_SEO_LOOKBOOK_RETIRED==='1') {
+              for(const path of ['/lookbook','/lookbook/'])for(const method of ['GET','HEAD']) {
+                const res=await fetch(base+path,{method,headers:seoHeaders,redirect:'manual'});
+                assert.equal(res.status,301,'Approved retired editorial route remains redirected');
+                assert.equal(res.headers.get('location'),'/collections/all','Retired route keeps its exact destination');
+                assert.equal((await res.arrayBuffer()).byteLength,0,'Retired response remains empty');
+              }
+              checks.push({page:'lookbook-retired',passed:true,status:301,destination:'/collections/all'});
+            } else {
             await page.goto(base+'/lookbook',{waitUntil:'domcontentloaded'});
             await page.locator('footer').first().waitFor({state:'attached'});
             await page.waitForFunction(()=>document.head.querySelector('meta[name="robots"]')?.content==='noindex, follow');
@@ -248,6 +260,7 @@ export async function probe(base, output) {
               assert.equal(res.headers.get('x-robots-tag'),'noindex, follow','GET and HEAD retain consistent deferred indexing');
             }
             checks.push({page:'lookbook-indexing',passed:true,status:200,robots:'noindex, follow'});
+            }
             if(base.startsWith('https://hidiindia.com')) {
               for(const method of ['GET','HEAD']){
                 const res=await fetch(base+'/privacy',{method,headers:seoHeaders});assert.equal(res.status,200);

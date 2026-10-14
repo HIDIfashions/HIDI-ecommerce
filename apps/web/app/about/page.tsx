@@ -2,20 +2,20 @@ import Image from "next/image";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About HIDI",
-  description: "Discover HIDI's point of view: modern Indian wear designed for ease, confidence and everyday elegance.",
+  title: "About HIDI & Ananya Nagalla",
+  description: "Introduced by actress Ananya Nagalla, HIDI offers women’s Indian wear for work, everyday dressing and occasions.",
   alternates: { canonical: "/about" },
   openGraph: {
     type: "website",
     url: "/about",
-    title: "About HIDI",
-    description: "Modern Indian wear designed for ease, confidence and everyday elegance.",
+    title: "About HIDI & Ananya Nagalla",
+    description: "Introduced by actress Ananya Nagalla, HIDI offers women’s Indian wear for work, everyday dressing and occasions.",
     images: ["/brand/hidi-hero-green-garden-fullbody.webp"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "About HIDI",
-    description: "Modern Indian wear designed for ease, confidence and everyday elegance.",
+    title: "About HIDI & Ananya Nagalla",
+    description: "Introduced by actress Ananya Nagalla, HIDI offers women’s Indian wear for work, everyday dressing and occasions.",
     images: ["/brand/hidi-hero-green-garden-fullbody.webp"],
   },
 };
@@ -36,9 +36,9 @@ export default function AboutPage() {
           <p className={styles.eyebrow}>DISCOVER HIDI</p>
           <h1>For every role you carry.</h1>
           <p className={styles.subtitle}>
-            From responsibility and ambition to the moments that are entirely
-            your own, HIDI is made for women who move through every day with
-            ease, confidence and quiet elegance.
+            Introduced by actress Ananya Nagalla, HIDI offers women’s Indian
+            wear for work, everyday dressing and occasions — made for every
+            role you carry.
           </p>
           <div className={styles.actions}>
             <Link href="/collections/work-wear" className={styles.primaryButton}>

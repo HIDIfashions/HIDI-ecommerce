@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { probe } from './probes.mjs';
+import { foundationProbe } from '../seo-foundation/browser.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
 
 const root = resolve(process.env.HIDI_CANDIDATE_RUNTIME);
@@ -41,19 +42,27 @@ const runtime = spawn(process.execPath, [join(root, 'server.mjs')], { cwd: root,
   env: { ...process.env, PORT: String(port), API_URL: api, INTERNAL_API_URL: api }, stdio: ['ignore', 'pipe', 'pipe'] });
 let logs = ''; runtime.stdout.on('data', c => logs += c); runtime.stderr.on('data', c => logs += c);
 const base = 'http://127.0.0.1:' + port;
+const priorReserve=createServer();await new Promise(done=>priorReserve.listen(0,'127.0.0.1',done));
+const priorPort=priorReserve.address().port;await new Promise(done=>priorReserve.close(done));
+const priorRoot=resolve(root,'../base-app');
+const priorRuntime=spawn(process.execPath,[join(priorRoot,'server.mjs')],{cwd:priorRoot,env:{...process.env,PORT:String(priorPort),API_URL:api,INTERNAL_API_URL:api},stdio:['ignore','pipe','pipe']});
+priorRuntime.stdout.on('data',c=>logs+=c);priorRuntime.stderr.on('data',c=>logs+=c);
+const priorBase='http://127.0.0.1:'+priorPort;
 try {
   let ready = false;
   for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(base + '/collections/all')).ok) { ready = true; break; } } catch {}
+    try { if ((await fetch(base + '/collections/all')).ok && (await fetch(priorBase+'/collections/all')).ok) { ready = true; break; } } catch {}
     if (runtime.exitCode !== null) throw new Error('Candidate exited: ' + logs.slice(-2000));
     await new Promise(done => setTimeout(done, 200));
   }
   assert(ready, 'Actual candidate must become ready');
   await probe(base, 'evidence/seo-discovery/candidate');
+  await foundationProbe(base,'evidence/seo-discovery/foundation-candidate',{baseline:priorBase});
   assert(reads.length > 0, 'Catalogue regression must reach read-only fixture');
   assert.deepEqual(writes, []);
 } catch (error) { console.error(logs.slice(-2000)); throw error; }
 finally {
+  priorRuntime.kill('SIGTERM');
   runtime.kill('SIGTERM');
   await new Promise(done => { if (runtime.exitCode !== null) return done(); runtime.once('exit', done); setTimeout(() => { runtime.kill('SIGKILL'); done(); }, 5000).unref(); });
   upstream.closeAllConnections(); await new Promise(done => upstream.close(done));
