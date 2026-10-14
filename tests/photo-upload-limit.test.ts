@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AdminInventoryService } from "../apps/api/src/admin/admin-inventory.service.js";
-const MAX = 12 * 1024 * 1024;
+const MAX = 40 * 1024 * 1024;
 function fixture() {
   const writes: any[] = [];
   const db: any = {
@@ -13,22 +13,22 @@ function fixture() {
   db.$transaction = async (fn: any) => fn(db);
   return { service: new AdminInventoryService(db), writes };
 }
-test("photo tickets accept 5, 8, 10 and exactly 12 MB for all retained formats", async () => {
+test("photo tickets accept 5, 8, 10, 12, 30 and exactly 40 MiB for all retained formats", async () => {
   const { service, writes } = fixture();
   for (const mimeType of ["image/jpeg", "image/png", "image/webp", "image/avif"]) {
-    for (const sizeBytes of [5, 8, 10, 12].map(n => n * 1024 * 1024)) {
+    for (const sizeBytes of [5, 8, 10, 12, 30, 40].map(n => n * 1024 * 1024)) {
       const result = await service.createVariantImageUploadTicket("fixture_variant", { mimeType, sizeBytes });
       assert.equal(typeof result.token, "string");
       assert.equal(writes.at(-1).maxBytes, sizeBytes);
       assert.equal(writes.at(-1).mimeType, mimeType);
     }
   }
-  assert.equal(writes.length, 16);
+  assert.equal(writes.length, 24);
 });
 test("oversize, empty and malformed sizes are denied before any upload ticket write", async () => {
   const { service, writes } = fixture();
-  for (const sizeBytes of [MAX + 1, 13 * 1024 * 1024, 0, -1, NaN, Infinity, 1.5]) {
-    await assert.rejects(() => service.createVariantImageUploadTicket("fixture_variant", { mimeType: "image/jpeg", sizeBytes }), /no larger than 12 MB/);
+  for (const sizeBytes of [MAX + 1, 41 * 1024 * 1024, 0, -1, NaN, Infinity, 1.5]) {
+    await assert.rejects(() => service.createVariantImageUploadTicket("fixture_variant", { mimeType: "image/jpeg", sizeBytes }), /no larger than 40 MiB/);
   }
   assert.equal(writes.length, 0);
 });
