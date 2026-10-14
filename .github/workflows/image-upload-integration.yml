@@ -28,14 +28,15 @@ jobs:
           node-version: '22.16.0'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Complete isolated API and normalized origin fixtures
+      - name: Apply reviewed fixture transport corrections
         run: |
           python deploy/image-optimization/complete-upload-fixture.py
           python deploy/image-optimization/align-upload-fixture-origin.py
+          python deploy/image-optimization/repair-upload-fixture-transport.py
           test "$(git ls-remote origin refs/heads/work/image-optimization-20261015 | cut -f1)" = "$GITHUB_SHA"
           git add tests/photo-web-upload.browser.mjs tests/photo-route-current.cases.mjs
           if ! git diff --cached --quiet; then
-            git -c user.name='HIDI upload test' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Align loopback upload fixture origins and preserve authorization'
+            git -c user.name='HIDI upload test' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Preserve rejected-upload responses and test every browser independently'
             git push origin HEAD:refs/heads/work/image-optimization-20261015
           fi
       - name: Prepare isolated browser tooling
@@ -45,48 +46,8 @@ jobs:
           echo "HIDI_TEST_SHARP=$PWD/apps/web/node_modules/sharp" >> "$GITHUB_ENV"
           echo "HIDI_SHARP_MODULE=$PWD/apps/web/node_modules/sharp" >> "$GITHUB_ENV"
           node "$RUNNER_TEMP/upload-integration/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
-      - name: Build both apps and verify browser upload and rendered photos
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import json,os,subprocess,time,signal,re
-          out=Path('reports/upload-integration');out.mkdir(parents=True,exist_ok=True)
-          data={'testedCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'runId':os.environ['GITHUB_RUN_ID'],'productionChanged':False,'storage':'Isolated filesystem, not Azure','suites':[],'cases':[]}
-          auth=json.loads(Path('deploy/public-auth.json').read_text())
-          for key in ['SUPABASE_URL','SUPABASE_PUBLISHABLE_KEY','CUSTOMER_AUTH_PROVIDER','CUSTOMER_OTP_CHANNEL','FIREBASE_API_KEY','FIREBASE_AUTH_DOMAIN','FIREBASE_PROJECT_ID','FIREBASE_APP_ID','FIREBASE_MESSAGING_SENDER_ID','FIREBASE_STORAGE_BUCKET']:
-            os.environ['NEXT_PUBLIC_'+key]=str(auth.get(key,auth.get('NEXT_PUBLIC_'+key,'')))
-          def run(name,cmd,timeout=300):
-            started=time.monotonic();p=subprocess.Popen(['bash','-o','pipefail','-c',cmd],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,start_new_session=True)
-            try:text,_=p.communicate(timeout=timeout);code=p.returncode
-            except subprocess.TimeoutExpired:
-              os.killpg(p.pid,signal.SIGKILL);text,_=p.communicate();code=124
-            (out/(name+'.log')).write_text(text)
-            for line in text.splitlines():
-              m=re.match(r'^(not )?ok\s+\d+\s+-\s+(.*)',line)
-              if m:data['cases'].append({'suite':name,'case':m[2],'status':'FAIL' if m[1] else 'PASS'})
-            data['suites'].append({'name':name,'status':'PASS' if code==0 else 'FAIL','exitCode':code,'seconds':round(time.monotonic()-started,2),'failureTail':text[-8000:] if code else ''})
-            (out/'results.json').write_text(json.dumps(data,indent=2));print(name,code,flush=True)
-            return code==0
-          run('current-route-and-client','node --experimental-strip-types --test tests/image-sku-runtime-keys.test.mjs tests/photo-digest.test.mjs tests/photo-upload-client.test.cjs tests/seo-images.test.cjs')
-          run('prisma-generate','pnpm db:generate')
-          run('api-build','pnpm --filter @hidi/api build')
-          run('api-regression','pnpm --filter @hidi/api test:customer-experience')
-          built=run('web-build','pnpm --filter @hidi/web build',600)
-          run('browser-photo-digest','node tests/photo-digest.browser.mjs')
-          if built:run('web-upload-and-rendering','node --experimental-strip-types tests/photo-web-upload.browser.mjs',420)
-          else:data['suites'].append({'name':'web-upload-and-rendering','status':'BLOCKED'})
-          for folder in ['photo-digest','photo-web-upload']:
-            p=Path('test-results')/folder/'results.json'
-            if p.exists():
-              body=json.loads(p.read_text())
-              for case in body.get('results',[]):data['cases'].append({'suite':folder,**case})
-              if folder=='photo-web-upload':data['imageMeasurements']=body.get('snapshots',[])
-          (out/'results.json').write_text(json.dumps(data,indent=2))
-          lines=['# Latest browser upload and rendering verification','', 'Tested commit: '+data['testedCommit'],'Run: '+data['runId'],'Production changes: NONE','Storage: isolated filesystem; actual upload handler and built UI','', '| Check | Result |','|---|---|']
-          lines += ['| '+s['name']+' | '+s['status']+' |' for s in data['suites']]
-          lines += ['','## Browser cases']+['- '+c.get('engine','')+' / '+c['case']+': '+c['status'] for c in data['cases'] if c['suite'] in ['photo-digest','photo-web-upload']]
-          (out/'SUMMARY.md').write_text('\n'.join(lines)+'\n')
-          PY
+      - name: Build both apps and verify upload and gallery rendering
+        run: python deploy/image-optimization/verify-web-upload.py
       - name: Preserve logs and browser evidence
         if: always()
         uses: actions/upload-artifact@v4
