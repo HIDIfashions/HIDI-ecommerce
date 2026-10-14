@@ -11,9 +11,9 @@ const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 process.env.MEDIA_STORAGE_PROVIDER='azure';
 async function fixture(t){const h=await createPhotoRouteFixture(await mkdtemp(join(tmpdir(),'hidi-route-case-')));t.after(()=>h.cleanup());return h;}
 async function photo(){return sharp({create:{width:60,height:90,channels:3,background:'#e7d7c7'}}).jpeg().toBuffer();}
-function request(bytes,{imageSku='KUR_001',photoNumber='1',cookie='fixture-owner',mime='image/jpeg',origin='http://127.0.0.1:3219'}={}){
+function request(bytes,{imageSku='KUR_001',photoNumber='1',cookie='fixture-owner',mime='image/jpeg',origin='http://localhost:3219'}={}){
  const form=new FormData();form.set('file',new File([bytes],'fixture.jpg',{type:mime}));form.set('imageSku',imageSku);form.set('photoNumber',photoNumber);form.set('applyToColor','true');
- return new NextRequest('http://127.0.0.1:3219/api/admin/inventory/v1/images',{method:'POST',headers:{...(cookie?{cookie:'hidi_admin_access='+cookie}:{}),origin},body:form});
+ return new NextRequest('http://localhost:3219/api/admin/inventory/v1/images',{method:'POST',headers:{...(cookie?{cookie:'hidi_admin_access='+cookie}:{}),origin},body:form});
 }
 const context={params:Promise.resolve({variantId:'v1'})};
 test('current upload route derives idempotent keys from the bytes it actually received',async t=>{

@@ -2,6 +2,8 @@
  * Storage/API are explicit fixtures. No Azure, real login, payment or catalogue writes.
  */
 import assert from 'node:assert/strict';
+import {setDefaultResultOrder} from 'node:dns';
+setDefaultResultOrder('ipv4first');
 import {createServer,request as httpRequest} from 'node:http';
 import {spawn} from 'node:child_process';
 import {Readable} from 'node:stream';
@@ -15,7 +17,7 @@ import {createPhotoRouteFixture,NextRequest} from './photo-route.fixture.mjs';
 import {createProductImageHandler,mediaPath} from '../deploy/collection-speed/images.mjs';
 const require=createRequire(resolve('apps/web/package.json')),sharp=require('sharp');
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
-const port=3219,nextPort=3220,apiPort=4219,base='http://127.0.0.1:'+port;
+const port=3219,nextPort=3220,apiPort=4219,base='http://localhost:'+port;
 const directory=await mkdtemp(join(tmpdir(),'hidi-web-upload-')),output=resolve('test-results/photo-web-upload');
 await mkdir(output,{recursive:true});process.env.MEDIA_STORAGE_PROVIDER='azure';
 const h=await createPhotoRouteFixture(directory,{apiBase:'http://127.0.0.1:'+apiPort+'/v1'});
@@ -33,6 +35,8 @@ const upstream=createServer(async(req,res)=>{
  if(path==='/admin/me')return send({admin:{id:'fixture-staff',displayName:'Upload Fixture',email:'fixture@example.invalid',role:'OWNER',authMode:'SUPABASE'}});
  if(path==='/admin/products/options')return send({categories:[],collections:[]});
  if(path==='/admin/products/photo-fixture')return send(product());
+ if(path==='/reviews/products/photo-fixture')return send({averageRating:0,reviewCount:0,verifiedReviewCount:0,ratingDistribution:{1:0,2:0,3:0,4:0,5:0},reviews:[]});
+ if(path==='/products/photo-fixture/related')return send([]);
  if(path==='/reviews/products/photo-fixture')return send({averageRating:0,reviewCount:0,verifiedReviewCount:0,ratingDistribution:{1:0,2:0,3:0,4:0,5:0},reviews:[]});
  if(path==='/products/photo-fixture/related')return send([]);
  if(path==='/products')return send([product()]);
