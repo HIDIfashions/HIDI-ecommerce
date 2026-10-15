@@ -38,7 +38,9 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           await page.locator('main article').first().waitFor();
           assert.equal(await page.locator('h1').count(),1);
           assert.equal(await page.locator('.hidi-collection-intro').innerText(),copy[slug].copy);
-          assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'),'https://hidiindia.com'+path);
+          const canonicals=await page.locator('link[rel="canonical"]').evaluateAll(nodes=>nodes.map(n=>n.href));
+          assert(canonicals.length>0,'Canonical missing');
+          assert(canonicals.every(href=>href==='https://hidiindia.com'+path),'Conflicting canonical: '+canonicals.join(', '));
           for(const content of await page.locator('meta[name="robots"],meta[name="googlebot"]').evaluateAll(nodes=>nodes.map(n=>n.content)))assert(!/noindex/.test(content));
           assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Horizontal overflow: '+path);
           const expected=await products(page);assert(expected.length>0);
@@ -74,9 +76,11 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         for(let i=0;i<5;i++){
           if(i){await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');}
           const carousel=page.locator('#range-carousel');await carousel.press('Home');
-          await page.waitForFunction(()=>document.querySelector('#range-carousel')?.dataset.activeIndex==='0');
-          for(let n=0;n<i;n++)await carousel.press('ArrowRight');
-          await page.waitForFunction(index=>document.querySelector('#range-carousel')?.dataset.activeIndex===String(index),i);
+          await page.waitForFunction(()=>{const c=document.querySelector('#range-carousel');return c?.dataset.activeIndex==='0'&&c.dataset.transitioning==='false';});
+          for(let n=0;n<i;n++){
+            await carousel.press('ArrowRight');
+            await page.waitForFunction(index=>{const c=document.querySelector('#range-carousel');return c?.dataset.activeIndex===String(index)&&c.dataset.transitioning==='false';},n+1);
+          }
           const link=page.locator('.hidi-collection-link').nth(i),href=await link.getAttribute('href');
           await link.press('Enter');await page.waitForURL('**'+new URL(href,base).pathname);
           await page.locator('main article').first().waitFor();
