@@ -13,7 +13,7 @@ const output = resolve('test-results/admin-workspace', engine); await mkdir(outp
 const upstreamRequests = [], contexts = [], diagnostics = [];
 const upstream = createServer((req, res) => { upstreamRequests.push({ url: req.url, authorization: req.headers.authorization }); res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ message: 'Test upstream: invalid staff token' })); });
 await new Promise(resolve => upstream.listen(upstreamPort, '127.0.0.1', resolve));
-const server = spawn(process.execPath, [resolve('apps/web/node_modules/next/dist/bin/next'), 'start', '-H', '127.0.0.1', '-p', String(port)], { cwd: resolve('apps/web'), env: { ...process.env, API_URL: `http://127.0.0.1:${upstreamPort}/v1`, NODE_ENV: 'production' }, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [resolve('apps/web/node_modules/next/dist/bin/next'), 'start', '-H', '127.0.0.1', '-p', String(port)], { cwd: resolve('apps/web'), env: { ...process.env, API_URL: `http://127.0.0.1:${upstreamPort}/v1`, INTERNAL_API_URL: `http://127.0.0.1:${upstreamPort}/v1`, NODE_ENV: 'production' }, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = ''; server.stdout.on('data', b => { log += b; }); server.stderr.on('data', b => { log += b; });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let browser; let passes = 0;

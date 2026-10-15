@@ -283,6 +283,7 @@ test("checkout delivery serviceability returns only sanitized carrier fields and
     city: "Hyderabad",
     district: "Hyderabad",
     stateCode: "TG",
+    estimatedDeliveryDate: null,
   });
   assert.deepEqual(second, first);
   assert.equal(calls, 1);
@@ -385,8 +386,8 @@ test("a verified customer can adopt the same browser-session cart at purchase", 
 });
 
 
-for (const [price, shipping] of [[1,9900],[99900,9900],[149899,9900],[149900,0],[149901,0],[200000,0]]) {
-  test(`shipping boundary ${price} paise persists shipping and charges Razorpay once`, async () => {
+for (const [price, shipping] of [[100,0],[99900,0],[149899,0],[149900,0],[149901,0],[200000,0]]) {
+  test(`zero shipping at ${price} paise persists and charges Razorpay once`, async () => {
     const f = fixture({ price });
     const payload = input({ expectedTotalPaise: price, expectedPayableTotalPaise: price + shipping });
     const first = await f.service.prepare(payload); const second = await f.service.prepare(payload);
@@ -396,7 +397,7 @@ for (const [price, shipping] of [[1,9900],[99900,9900],[149899,9900],[149900,0],
     assert.equal(f.calls.filter(c => c.action === 'razorpay.createOrder').length, 1);
   });
 }
-test('quantity crosses the free shipping boundary using the whole merchandise subtotal', async () => {
+test('quantity total keeps shipping zero using the whole merchandise subtotal', async () => {
   const f = fixture({ price: 74950, quantity: 2 });
   const result = await f.service.prepare(input({ expectedTotalPaise: 149900, expectedPayableTotalPaise: 149900 }));
   assert.equal(result.shippingPaise, 0); assert.equal(result.totalPaise, 149900);
@@ -406,20 +407,20 @@ test('rewards do not change free shipping eligibility', async () => {
   const result = await f.service.prepare(input({ expectedTotalPaise: 149900, expectedPayableTotalPaise: 149900, walletPaise: 50000 }), auth);
   assert.equal(result.shippingPaise, 0); assert.equal(result.amountPaise, 99900);
 });
-test('rewards can cover both merchandise and charged shipping atomically', async () => {
+test('rewards can cover the entire order with zero shipping atomically', async () => {
   const f = fixture({ price: 100000 });
-  const result = await f.service.prepare(input({ expectedTotalPaise: 100000, expectedPayableTotalPaise: 109900, walletPaise: 109900 }), auth);
-  assert.equal(result.provider, 'WALLET'); assert.equal(result.shippingPaise, 9900); assert.equal(result.amountPaise, 0);
+  const result = await f.service.prepare(input({ expectedTotalPaise: 100000, expectedPayableTotalPaise: 100000, walletPaise: 100000 }), auth);
+  assert.equal(result.provider, 'WALLET'); assert.equal(result.shippingPaise, 0); assert.equal(result.amountPaise, 0);
   assert.equal(f.calls.some(c => c.action === 'razorpay.createOrder'), false);
 });
 test('omitted or manipulated client shipping never controls the server charge', async () => {
   const f = fixture({ price: 100000 });
-  const result = await f.service.prepare(input({ expectedTotalPaise: 100000, shippingPaise: 0, totalPaise: 100000 }));
-  assert.equal(result.amountPaise, 109900); assert.equal(result.shippingPaise, 9900);
+  const result = await f.service.prepare(input({ expectedTotalPaise: 100000, shippingPaise: 9900, totalPaise: 109900 }));
+  assert.equal(result.amountPaise, 100000); assert.equal(result.shippingPaise, 0);
 });
 test('stale payable quote is rejected before stock or payment writes', async () => {
   const f = fixture({ price: 100000 });
-  await assert.rejects(f.service.prepare(input({ expectedTotalPaise: 100000, expectedPayableTotalPaise: 100000 })), /Shipping or prices changed/);
+  await assert.rejects(f.service.prepare(input({ expectedTotalPaise: 100000, expectedPayableTotalPaise: 109900 })), /Shipping or prices changed/);
   assert.equal(f.state().orders.length, 0); assert.equal(f.state().inventory.reserved, 0);
   assert.equal(f.calls.some(c => c.action === 'razorpay.createOrder'), false);
 });
@@ -432,9 +433,9 @@ for (const phone of ['abc9876543210','98+76543210','++919876543210','987 6543210
 
 async function withCod(run: () => Promise<void>) { const before=process.env.HIDI_COD_ENABLED; process.env.HIDI_COD_ENABLED="true"; try { await run(); } finally { if(before===undefined) delete process.env.HIDI_COD_ENABLED; else process.env.HIDI_COD_ENABLED=before; } }
 test("COD confirms unpaid order with shipping and consumes inventory once without gateway", () => withCod(async () => {
- const f=fixture({price:100000}); const payload=input({paymentMethod:"COD",expectedTotalPaise:100000,expectedPayableTotalPaise:109900});
+ const f=fixture({price:100000}); const payload=input({paymentMethod:"COD",expectedTotalPaise:100000,expectedPayableTotalPaise:100000});
  const first=await f.service.prepare(payload); const second=await f.service.prepare(payload);
- assert.equal(first.provider,"COD"); assert.equal(first.confirmed,true); assert.equal(first.captured,false); assert.equal(first.amountPaise,109900); assert.equal(first.shippingPaise,9900); assert.equal(second.orderNumber,first.orderNumber);
+ assert.equal(first.provider,"COD"); assert.equal(first.confirmed,true); assert.equal(first.captured,false); assert.equal(first.amountPaise,100000); assert.equal(first.shippingPaise,0); assert.equal(second.orderNumber,first.orderNumber);
  assert.equal(f.state().payments[0].status,"CREATED"); assert.equal(f.state().orders.length,1); assert.equal(f.state().payments.length,1); assert.equal(f.state().inventory.onHand,9); assert.equal(f.state().inventory.reserved,0); assert.equal(f.state().reservations[0].status,"CONSUMED"); assert.equal(f.state().cart.items.length,0); assert(!f.calls.some(c=>c.action.startsWith("razorpay.")));
 }));
 test("COD fails before order or stock mutation for unserviceable or unavailable carrier", () => withCod(async () => {

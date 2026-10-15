@@ -9,6 +9,7 @@ type ServiceabilityResult = {
   city?: string;
   district?: string;
   stateCode?: string;
+  estimatedDeliveryDate?: string | null;
   raw: unknown;
 };
 
@@ -135,6 +136,8 @@ export class DelhiveryService {
       city: postal.city,
       district: postal.district,
       stateCode: postal.state_code,
+      // Availability alone is not an arrival-date estimate. Pass through only an explicit courier date.
+      estimatedDeliveryDate: typeof postal.estimated_delivery_date === "string" ? postal.estimated_delivery_date : null,
       raw: body,
     };
   }

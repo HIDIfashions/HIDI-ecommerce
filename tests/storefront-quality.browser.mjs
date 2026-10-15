@@ -81,23 +81,22 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
   await pdp(page);const input=page.getByRole('textbox',{name:'Delivery PIN code'}),check=page.getByRole('button',{name:'Check delivery PIN code'});let calls=0,mode='yes';
   await page.route('**/api/store/checkout/delivery-serviceability?*',route=>{calls++;return route.fulfill({status:mode==='error'?503:200,contentType:'application/json',body:JSON.stringify(mode==='error'?{message:'Unavailable'}:{serviceable:mode==='yes'})});});
   await input.fill('000000');await check.click();assert.equal(calls,0);assert.match(await page.locator('.delivery-box').innerText(),/valid six-digit/);
-  for(const [state,text] of [['yes','Delivery is available'],['no','Delivery is currently unavailable'],['error','cannot be checked right now']]){mode=state;await input.fill('500001');await check.click();await until(async()=>(await page.locator('.delivery-box').innerText()).includes(text),state+' PIN response');}assert.equal(calls,3);
+  for(const [state,text] of [['yes','Delivery available to your PIN'],['no','Delivery is currently unavailable'],['error','cannot be checked right now']]){mode=state;await input.fill('500001');await check.click();await until(async()=>(await page.locator('.delivery-box').innerText()).includes(text),state+' PIN response');}assert.equal(calls,3);
  });
  await run('QUAL-13','Policy, contact and planned-offer links navigate with explicit unapproved-content boundaries',async page=>{
-  const routes=[['/about','For every role you carry.'],['/contact','How can we help?'],['/shipping','Shipping & delivery'],['/returns','Returns & exchanges'],['/offers','A little more, with clear terms.']];
+  const routes=[['/about','Considered clothing. A clear point of view.'],['/contact','How can we help?'],['/shipping','Shipping & delivery'],['/returns','Returns & exchanges'],['/offers','A little more, with clear terms.']];
   for(const [path,title] of routes){
    const response=await page.request.get(base+path);assert.equal(response.status(),200,path);await page.locator(`a[href="${path}"]`).first().click();await page.waitForURL(url=>url.pathname===path);await page.getByRole('heading',{name:title,exact:true}).waitFor();
    assert.equal(await page.locator('main').count(),1);assert.equal(await page.locator('h1').count(),1);assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),path+' overflow');
    const content=await page.locator('#main-content').innerText();
-   if(path==='/shipping')assert.match(content,/₹1,499 and above/);
+   if(path==='/shipping')assert.match(content,/₹0\.00 on every order/);
    if(path==='/returns'){assert.match(content,/7 days/);assert.doesNotMatch(content,/easy exchanges/i);}
    if(path==='/offers'){assert.match(content,/not combined/);assert.equal(await page.locator('#rupee').count(),1);assert.equal(await page.locator('#silver').count(),1);}
-   if(path==='/contact'){assert.equal(await page.locator('a[href^="mailto:"]').count(),0);assert.match(content,/not open in this preview/);await shots(page,'contact');}
+   if(path==='/contact'){assert.equal(await page.locator('a[href="mailto:Contact@hidiindia.com"]').count(),1);assert.match(content,/Contact@hidiindia\.com/);await shots(page,'contact');}
   }
  },phone);
- await run('QUAL-14','Direct-entry editorial archive uses alternate photographs and real product links',async page=>{
-  const images=await page.locator('[aria-label="Editorial lookbook"] img').evaluateAll(items=>items.map(i=>i.getAttribute('src')));assert.equal(images.length,6);assert(images.every(src=>src.includes('02-alt.png')||src.includes('02-alt')));
-  assert.equal(await page.locator('[aria-label="Editorial lookbook"] a[href^="/products/"]').count(),6);
+ await run('QUAL-14','Retired lookbook redirects to the current purchasable collection',async page=>{
+  await page.waitForURL('**/collections/all');assert((await page.locator('a[href^="/products/"]').count())>0);assert.equal(await page.locator('[aria-label="Editorial lookbook"]').count(),0);
  });
  await run('QUAL-15','Buy Now retains the bag and guest checkout field constraints without submitting payment',async page=>{
   await pdp(page);await size(page,'M').click();const before=writes.length;await actions(page).getByRole('button',{name:'Buy Now',exact:true}).click();await page.waitForURL('**/checkout');await page.locator('.checkout-form').getByRole('textbox',{name:'Email address',exact:true}).waitFor();
@@ -111,7 +110,7 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
   await page.evaluate(()=>{window.__qualitySearchDocument='direct-entry';});await input.fill('no such fixture');await page.locator('.search-form').getByRole('button',{name:'Search',exact:true}).click();await page.getByRole('heading',{name:'No styles found.'}).waitFor();assert.equal(await page.evaluate(()=>window.__qualitySearchDocument),'direct-entry');
   await page.goBack({waitUntil:'domcontentloaded'});await until(async()=>(await page.locator('.filter-bar').innerText()).includes('1 result'),'search Back results');assert.equal(await input.inputValue(),'ira');assert.equal(await page.evaluate(()=>window.__qualitySearchDocument),'direct-entry');
  });
- await run('QUAL-17','Direct-entry About page retains campaign image without a heavy autoplay film',async page=>{
-  await page.getByRole('heading',{name:'For every role you carry.',exact:true}).waitFor();assert.equal(await page.locator('#main-content video[autoplay]').count(),0);assert.equal(await page.locator('#main-content img[src*="hidi-manifesto-ananya"]').count(),1);await shots(page,'about');
+ await run('QUAL-17','Direct-entry About page uses the corporate brand introduction without unavailable campaign photography',async page=>{
+  await page.getByRole('heading',{name:'Considered clothing. A clear point of view.',exact:true}).waitFor();assert.equal(await page.locator('#main-content video[autoplay]').count(),0);assert.equal(await page.locator('#main-content img[src*="hidi-manifesto-ananya"]').count(),0);await shots(page,'about');
  });
 }

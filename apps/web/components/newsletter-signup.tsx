@@ -43,8 +43,10 @@ export function NewsletterSignup() {
 
   return (
     <>
+      <label className="newsletter-label" htmlFor="newsletter-email">Email address</label>
       <form className="newsletter" onSubmit={submit}>
         <input
+          id="newsletter-email"
           name="email"
           aria-label="Email address"
           type="email"

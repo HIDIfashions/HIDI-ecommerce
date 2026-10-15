@@ -21,7 +21,7 @@ export function ProductInfoAccordion({ product }: { product: ApiProduct }) {
     </> },
     { title: "Shipping & Returns", icon: Truck, content: <>
       <div className={styles.policyRows}>
-        <div className={styles.policyRow}><CircleCheck className={styles.shippingCheck} size={23} aria-hidden="true" /><div><strong>Free Shipping</strong><p>Enjoy free shipping on orders of ₹1,499 and above.</p></div></div>
+        <div className={styles.policyRow}><CircleCheck className={styles.shippingCheck} size={23} aria-hidden="true" /><div><strong>Free Shipping</strong><p>Shipping is ₹0.00 on every order.</p></div></div>
         <div className={styles.policyRow}><PackageCheck size={23} aria-hidden="true" /><div><strong>Easy Returns</strong><p>Eligible items can be returned within 7 days of delivery, subject to our return policy.</p></div></div>
         <div className={styles.policyRow}><RefreshCw size={23} aria-hidden="true" /><div><strong>Exchanges</strong><p>Exchange eligibility, applicable charges and product availability are subject to our exchange policy.</p></div></div>
       </div>

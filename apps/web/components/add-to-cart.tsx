@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type ApiProduct } from "@/lib/api";
 import { WishlistButton } from "@/components/wishlist-button";
 import Link from "next/link";
+import { ShoppingBag } from "lucide-react";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
 import { cardPrice, money, compareSizes } from "@/lib/product-card-utils";
 import { PRODUCT_VARIANT_EVENT, publishProductSelection, type ProductVariantSelection } from "@/lib/product-sharing";
@@ -101,7 +102,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   }
 
   return (
-    <div>
+    <div className="pdp-purchase">
       {colors.length > 1 && <>
         <div className="size-row-title"><strong>Colour</strong></div>
         <div className="colour-options">
@@ -191,7 +192,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           disabled={busyAction !== null || !product.inStock || !selected}
           onClick={() => void add("bag")}
         >
-          {busyAction === "add" ? "Adding…" : "Add to Cart"}
+          <ShoppingBag size={17} aria-hidden="true" />{busyAction === "add" ? "Adding…" : "Add to Cart"}
         </button>
         <button
           className={styles.buyButton}
@@ -223,7 +224,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
             disabled={busyAction !== null || !product.inStock || !selected}
             onClick={() => void add("bag")}
           >
-            {busyAction === "add" ? "Adding…" : "Add to Cart"}
+            <ShoppingBag size={17} aria-hidden="true" />{busyAction === "add" ? "Adding…" : "Add to Cart"}
           </button>
           <button
             className={styles.mobileBuy}

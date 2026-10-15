@@ -7,6 +7,7 @@ import "./storefront-surfaces.css";
 import "./editorial-chrome.css";
 import "./storefront-quality.css";
 import "./checkout-clear.css";
+import "./storefront-refinements.css";
 import { Suspense } from "react";
 import { AnalyticsTags } from "@/components/analytics-tags";
 import { SiteShell } from "@/components/site-shell";

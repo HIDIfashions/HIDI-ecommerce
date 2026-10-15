@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runQualityChecks } from './storefront-quality.browser.mjs';
 import { runCheckoutThemeChecks } from './checkout-theme.browser.mjs';
+import { runRefinementChecks } from './storefront-refinements.browser.mjs';
 const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
 const output = resolve('test-results/editorial-storefront'); await mkdir(output, {recursive:true});
 const port=3107, apiPort=4107, base=`http://127.0.0.1:${port}`;
@@ -24,7 +25,7 @@ const products=folders.map((slug,i)=>({
 const carts=new Map(),writes=[],results=[],typography=[],pageErrors=[];
 let cartMode='ok',catalogueMode='ok',serverLog='',server,activeBrowser;
 const delay=ms=>new Promise(done=>setTimeout(done,ms));
-function basket(session){if(!carts.has(session))carts.set(session,[]);const items=carts.get(session),subtotalPaise=items.reduce((n,i)=>n+i.lineTotalPaise,0),shippingPaise=subtotalPaise>0&&subtotalPaise<149900?9900:0;return{items,itemCount:items.reduce((n,i)=>n+i.quantity,0),subtotalPaise,shippingPaise,totalPaise:subtotalPaise+shippingPaise};}
+function basket(session){if(!carts.has(session))carts.set(session,[]);const items=carts.get(session),subtotalPaise=items.reduce((n,i)=>n+i.lineTotalPaise,0),shippingPaise=0;return{items,itemCount:items.reduce((n,i)=>n+i.quantity,0),subtotalPaise,shippingPaise,totalPaise:subtotalPaise+shippingPaise};}
 const upstream=createServer(async(req,res)=>{
   const url=new URL(req.url,`http://127.0.0.1:${apiPort}`),route=url.pathname.replace(/^\/v1/,'');
   const send=(status,body)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(body));};
@@ -136,7 +137,7 @@ async function fontAudit(page,engine,label){
   await page.evaluate(()=>document.fonts.ready);
   const values=await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(el=>{const style=getComputedStyle(el),box=el.getBoundingClientRect();return !el.closest('[aria-hidden="true"],.sr-only,.cart-status,script,style')&&style.display!=='none'&&style.visibility!=='hidden'&&box.width>0&&box.height>0&&[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());}).map(el=>{const style=getComputedStyle(el);return{section:el.closest('[data-section]')?.getAttribute('data-section')||(el.closest('.site-header')?'header':el.closest('.footer')?'footer':el.closest('[role="dialog"],dialog')?'dialog':'global'),tag:el.tagName,text:el.textContent.trim().replace(/\s+/g,' ').slice(0,140),family:style.fontFamily,size:style.fontSize,weight:style.fontWeight,lineHeight:style.lineHeight,spacing:style.letterSpacing,color:style.color};}));
   typography.push(...values.map(v=>({engine,viewport:page.viewportSize().width,state:label,...v})));
-  for(const value of values){assert.match(value.family,/Helvetica Neue|Segoe UI|Arial/,`${value.section}: ${value.text}`);assert(parseFloat(value.size)>=11,`Unreadable type: ${JSON.stringify(value)}`);}
+  for(const value of values){assert.match(value.family,new URL(page.url()).pathname==='/about'&&['H1','EM'].includes(value.tag)?/Georgia|serif/:/Helvetica Neue|Segoe UI|Arial/,`${value.section}: ${value.text}`);assert(parseFloat(value.size)>=11,`Unreadable type: ${JSON.stringify(value)}`);}
   for(const input of await page.locator('input:not([type="checkbox"]):not([type="radio"]):visible,select:visible,textarea:visible').all())assert(await input.evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=16),'Text fields must remain at least 16px');
 }
 async function scenario(browser,engine,id,title,work,options={}){
@@ -173,7 +174,7 @@ async function openAdd(page){await card(page).hover();await card(page).getByRole
 try{
   await until(async()=>{try{return(await fetch(base+'/healthz',{signal:AbortSignal.timeout(2000)})).ok;}catch{return false;}},'production server readiness',60000);
   for(const engine of(process.env.HIDI_BROWSER_ENGINES||'chromium').split(',')){
-    const browser=activeBrowser=await pw[engine].launch({headless:true});
+    const browser=activeBrowser=await pw[engine].launch({headless:true,...(process.env.HIDI_BROWSER_CHANNEL&&engine==='chromium'?{channel:process.env.HIDI_BROWSER_CHANNEL}:{})});
     await scenario(browser,engine,'VIS-01','Responsive surfaces, type roles, image rendering and horizontal overflow',async page=>{
       for(const width of[320,360,390,412,768,1024,1440,1846]){
         await page.setViewportSize({width,height:1000});await page.evaluate(()=>scrollTo(0,0));await until(()=>page.locator('.site-header').getAttribute('data-scrolled').then(v=>v==='false'),'top header state');
@@ -205,7 +206,7 @@ try{
       await page.getByRole('button',{name:'Pause announcements',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Play announcements'}).getAttribute('aria-pressed'),'true');await until(()=>page.locator('video').count().then(n=>n===0),'unavailable video removed');assert.equal(await page.locator('[data-motion]').getAttribute('data-video-playing'),'false');
     },{reducedMotion:'no-preference'});
     await scenario(browser,engine,'SRCH-01','Search suggestions, thumbnails, typed results, no-match state and focus restoration',async page=>{
-      await page.getByRole('button',{name:'Search',exact:true}).click();const search=page.getByRole('dialog',{name:'Search HIDI',exact:true});await search.waitFor();await until(()=>search.locator('[aria-label="Discover HIDI products"] a').count().then(n=>n===4),'discovery thumbnails');assert.equal(await search.getByRole('navigation',{name:'Suggested searches'}).getByRole('link').count(),4);assert.equal(await search.getByRole('link',{name:'Workwear Edit',exact:true}).getAttribute('href'),'/collections/work-edit');
+      await page.getByRole('button',{name:'Search',exact:true}).click();const search=page.getByRole('dialog',{name:'Search HIDI',exact:true});await search.waitFor();await until(()=>search.locator('[aria-label="Discover HIDI products"] a').count().then(n=>n===4),'discovery thumbnails');assert.equal(await search.getByRole('navigation',{name:'Suggested searches'}).getByRole('link').count(),4);assert.equal(await search.getByRole('link',{name:'Work Wear',exact:true}).getAttribute('href'),'/collections/work-wear');
       await search.getByRole('searchbox',{name:'Search HIDI products'}).fill('Ira');await until(()=>search.locator('#hidi-search-results a').count().then(n=>n===1),'matching result');await fontAudit(page,engine,'search-dialog');await page.screenshot({timeout:30000,path:resolve(output,`${engine}-search.png`)});
       await search.getByRole('searchbox',{name:'Search HIDI products'}).fill('zz-no-match-zz');await search.getByRole('status').filter({hasText:'No HIDI pieces matched'}).waitFor();await page.keyboard.press('Escape');await search.waitFor({state:'hidden'});await until(()=>page.getByRole('button',{name:'Search',exact:true}).evaluate(el=>el===document.activeElement),'search focus return');
     });
@@ -298,18 +299,18 @@ try{
     await scenario(browser,engine,'PRIV-01','Compact privileges preserve offer destinations and terms',async page=>{
       const details=page.locator('[data-section="privileges"] details');assert.equal(await details.getAttribute('open'),null);await details.locator('summary').click();assert.match(await details.innerText(),/₹3,999\+/);assert.match(await details.innerText(),/2 g silver/);assert.equal(await details.getByRole('link').count(),3);await fontAudit(page,engine,'privileges-expanded');await details.locator('summary').click();assert.equal(await details.getAttribute('open'),null);
     });
-    await scenario(browser,engine,'LOOK-01','Carousel navigates, labels editorial sources and filters the archive',async page=>{
-      const section=page.locator('[data-section="lookbook"]');assert.match(await section.innerText(),/HIDI editorial photography/);assert.equal(await page.locator('[aria-label="Customer styling photographs"]').count(),0);assert.equal(await section.getByRole('button',{name:'Previous look'}).isDisabled(),true);await section.getByRole('button',{name:'Next look'}).click();await until(()=>section.getByRole('button',{name:'Previous look'}).isEnabled(),'carousel advances');await section.getByRole('link',{name:'Explore the lookbook'}).click();await page.waitForURL('**/lookbook');await page.getByRole('heading',{name:'The HIDI lookbook.'}).waitFor();
-      for(const[name,count]of[['Work',2],['Everyday',2],['Occasion',2],['All',6]]){await page.getByRole('group',{name:'Filter lookbook'}).getByRole('button',{name,exact:true}).click();assert.equal(await page.locator('[aria-label="Editorial lookbook"] article').count(),count);}await fontAudit(page,engine,'lookbook-archive');await page.screenshot({timeout:30000,path:resolve(output,`${engine}-lookbook.png`),fullPage:true});
+    await scenario(browser,engine,'LOOK-01','Editorial carousel remains usable without linking to a retired archive',async page=>{
+      const section=page.locator('[data-section="lookbook"]');assert.match(await section.innerText(),/HIDI editorial photography/);assert.equal(await page.locator('[aria-label="Customer styling photographs"]').count(),0);assert.equal(await section.getByRole('button',{name:'Previous look'}).isDisabled(),true);await section.getByRole('button',{name:'Next look'}).click();await until(()=>section.getByRole('button',{name:'Previous look'}).isEnabled(),'carousel advances');assert.equal(await section.locator('a[href="/lookbook"]').count(),0);await fontAudit(page,engine,'editorial-carousel');
     });
     await scenario(browser,engine,'FOOT-01','Footer archive works and newsletter uses the existing service',async page=>{
-      const footer=page.locator('.footer');assert.equal(await footer.locator('[aria-disabled="true"]').count(),0);assert((await footer.locator('a[href="/lookbook"]').count())>0);await footer.getByRole('textbox',{name:'Email address',exact:true}).fill('editorial-fixture@example.invalid');const before=writes.length;await footer.getByRole('button',{name:/Subscribe/}).click();await until(()=>writes.length>before,'newsletter request');assert.equal(writes.at(-1).route,'/marketing/newsletter');assert.equal(writes.at(-1).body.source,'FOOTER');await page.locator('#newsletter-status').filter({hasText:/joined|list|Thank|subscribed|Welcome/i}).waitFor();
+      const footer=page.locator('.footer');assert.equal(await footer.locator('[aria-disabled="true"]').count(),0);assert((await footer.locator('a[href="/shipping"]').count())>0);await footer.getByRole('textbox',{name:'Email address',exact:true}).fill('editorial-fixture@example.invalid');const before=writes.length;await footer.getByRole('button',{name:/Subscribe/}).click();await until(()=>writes.length>before,'newsletter request');assert.equal(writes.at(-1).route,'/marketing/newsletter');assert.equal(writes.at(-1).body.source,'FOOTER');await page.locator('#newsletter-status').filter({hasText:/joined|list|Thank|subscribed|Welcome/i}).waitFor();
     });
     await scenario(browser,engine,'EMPTY-01','Empty catalogue retains hero, discovery and calm recovery',async page=>{
       catalogueMode='empty';await page.waitForLoadState('networkidle');await page.reload({waitUntil:'networkidle'});await page.getByText('Our latest edit is being prepared.').waitFor();assert.equal(await page.locator('[data-editorial-product]').count(),0);assert.equal(await page.getByRole('heading',{name:'Wear the feeling.'}).count(),1);
     });
     await runQualityChecks({browser,engine,scenario,until,base,output,products,writes,setCartMode:value=>{cartMode=value;}});
     await runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products,settleFixtureNetwork});
+    await runRefinementChecks({browser,engine,scenario,until,products,output,base,settleFixtureNetwork});
     await browser.close();activeBrowser=null;
   }
 }finally{

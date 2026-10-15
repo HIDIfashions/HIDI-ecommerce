@@ -7,7 +7,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("../apps/web/node_modules/typescript");
 
-function loadModule(file, imports, globals = {}) {
+function loadModule(file, imports = {}, globals = {}) {
   const source = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const exports = {};
@@ -113,6 +113,9 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
   window.history = { replaceState() {} };
   const state = { prepareCalls: [], redirects: [], paymentOptions: [], walletRefreshes: 0, nextToken: 0, walletData: summary(), prepareResult: prepare(), prepareStatus: 200, prepareImpl: null, newBagCalls: 0 };
   if (sdk) window.Razorpay = class { constructor(options) { state.paymentOptions.push(options); } open() {} close() {} on() {} };
+  const pinField = { value: "", isConnected: true, form: null };
+  const document = Object.assign(new EventTarget(), { querySelector: selector => selector === '\.checkout-form input[name="postalCode"]' ? pinField : null, visibilityState: "visible" });
+  const timers = { setTimeout, clearTimeout, clearInterval, setInterval: (...args) => { const timer = setInterval(...args); timer.unref(); return timer; } };
   const hooks = [];
   let cursor = 0;
   let effects = [];
@@ -123,7 +126,7 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
   };
   const jsx = (type, props, key) => ({ type, props: props ?? {}, key });
   const checkout = loadModule("apps/web/components/checkout-client.tsx", {
-    react, "@/lib/checkout-phone": loadModule("apps/web/lib/checkout-phone.ts"), "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
+    react, "@/lib/checkout-pin": loadModule("apps/web/lib/checkout-pin.ts", {}, {window, document, ...timers}), "@/lib/checkout-phone": loadModule("apps/web/lib/checkout-phone.ts"), "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
     "next/link": "Link", "next/script": "Script", "next/navigation": { useRouter: () => ({ push: (url) => state.redirects.push(url) }) },
     "@/lib/cart-session": {
       getCartSession: () => "bag-a",
@@ -138,7 +141,7 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
     "@/components/wallet-balance": { useWalletSummary: () => ({ userId: h.state.userId, summary: state.walletData, loading: false, error: "", unavailable: !state.walletData.enabled, refresh: async () => { state.walletRefreshes++; return state.walletData; } }) },
     "./wallet.module.css": new Proxy({}, { get: (_, key) => key }),
   }, {
-    window, document: { querySelector: () => null },
+    window, document, AbortSignal,
     process: { env: { NEXT_PUBLIC_API_URL: "http://test.invalid/v1" } },
     FormData: class { constructor(form) { this.form = form; } get(key) { return this.form[key] ?? ""; } },
     fetch: async (url, init = {}) => {
@@ -168,7 +171,7 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
   }
   function submit() { return find((node) => node.type === "form").props.onSubmit({ preventDefault() {}, currentTarget: { email: "customer-a@example.test", phone: "9000000000", firstName: "Test", line1: "Test address", postalCode: "500001", city: "Hyderabad", state: "Telangana" } }); }
   async function ready() { render(); await settle(); render(); }
-  return { ...h, state, session: h.state, window, render, find, changeWallet, submit, ready };
+  return { ...h, state, session: h.state, window, render, find, changeWallet, submit, ready, checkPin: async pin => { pinField.value = pin; document.dispatchEvent(new Event("input")); await new Promise(resolve => setTimeout(resolve, 230)); await settle(); render(); } };
 }
 
 test("wallet checkbox starts unchecked; full-wallet checkout works without Razorpay SDK", async () => {
@@ -278,7 +281,7 @@ test("COD response is confirmed but unpaid and requires no gateway fields", () =
 });
 test("guest COD checkout bypasses missing Razorpay SDK and redirects once",async()=>{
  const h=checkoutHarness({sdk:false,userId:null}); await h.ready();
- await h.find(n=>n.type==="input"&&n.props.name==="postalCode").props.onBlur({currentTarget:{value:"500001",form:null}}); await settle(); h.render();
+ await h.checkPin("500001");
  const radio=h.find(n=>n.type==="input"&&n.props.value==="COD"); assert.equal(radio.props.disabled,false); radio.props.onChange(); h.render();
  h.state.prepareResult=prepare({provider:"COD",confirmed:true,status:"CONFIRMED",razorpayKeyId:undefined,providerOrderId:undefined});
  await h.submit(); assert.equal(h.state.prepareCalls.length,1); assert.equal(h.state.prepareCalls[0].body.paymentMethod,"COD"); assert.equal(h.state.paymentOptions.length,0); assert.equal(h.state.redirects.length,1);

@@ -244,7 +244,7 @@ export function CheckoutClient() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (lock.current || !cart) return;
-    if (cart.subtotalPaise < 149900 && (cart.shippingPaise === undefined || cart.totalPaise !== cart.subtotalPaise + cart.shippingPaise)) { setError("Shipping could not be confirmed. Please refresh your bag before paying."); return; }
+    if ((cart.shippingPaise === undefined || cart.totalPaise !== cart.subtotalPaise + cart.shippingPaise)) { setError("Shipping could not be confirmed. Please refresh your bag before paying."); return; }
     const expectedUserId = walletAccountId();
     if (expectedUserId !== lifecycle.current.userId) { invalidate(true); setError("Your sign-in changed. Please reload checkout before paying."); return; }
     const requestedWallet = useWallet && walletEnabled ? walletAmountPaise(walletInput, cart.totalPaise ?? cart.subtotalPaise, cart.totalPaise ?? cart.subtotalPaise) : 0;
@@ -356,9 +356,9 @@ export function CheckoutClient() {
   const previewWallet = useWallet ? (walletAmountPaise(walletInput, gross, gross) ?? 0) : 0;
   const applied = prepared?.walletAppliedPaise ?? previewWallet;
   const payable = prepared?.amountPaise ?? Math.max(0, gross - previewWallet);
-  const complimentaryShipping = cart.subtotalPaise >= 149900;
+  const complimentaryShipping = cart.shippingPaise === 0;
   const shippingPaise = prepared?.shippingPaise ?? cart.shippingPaise;
-  const shippingLabel = complimentaryShipping ? "Complimentary" : shippingPaise !== undefined ? formatWalletPaise(shippingPaise) : "Confirming shipping…";
+  const shippingLabel = shippingPaise !== undefined ? formatWalletPaise(shippingPaise) : "Confirming shipping…";
 
   return <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
@@ -387,7 +387,6 @@ export function CheckoutClient() {
           </Link>
         ))}
         <div className="checkout-mobile-shipping-row"><span>Shipping</span><strong>{shippingLabel}</strong></div>
-        <p className="checkout-shipping-policy">₹99 shipping below ₹1,499. Free shipping from ₹1,499 before rewards.</p>
         <div className="checkout-mobile-total-row"><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div>
         <Link href="/cart" className="checkout-edit-bag">Edit bag</Link>
       </div>
@@ -642,7 +641,6 @@ export function CheckoutClient() {
         </div>
 
         <div className={walletStyles.summaryRows} aria-live="polite"><div><span>Subtotal</span><strong>{formatWalletPaise(prepared?.subtotalPaise ?? cart.subtotalPaise)}</strong></div><div><span>Shipping</span><strong>{shippingLabel}</strong></div>{walletEnabled && <div><span>HIDI rewards{prepared ? " applied" : " selected"}</span><strong>−{formatWalletPaise(applied)}</strong></div>}<div className={walletStyles.payable}><span>Amount to pay</span><strong>{formatWalletPaise(payable)}</strong></div></div>
-        <p className="checkout-shipping-policy">₹99 shipping below ₹1,499. Free shipping from ₹1,499 before rewards.</p>
         {useWallet && !prepared && <p className={walletStyles.note}>Rewards are applied only after server confirmation.</p>}
         {!!prepared?.walletAppliedPaise && prepared.provider === "RAZORPAY" && <p className={walletStyles.note}>{formatWalletPaise(prepared.walletAppliedPaise)} is reserved for this checkout while the remaining payment is completed.</p>}
         <div className="checkout-payment-action">

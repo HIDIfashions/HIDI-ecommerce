@@ -13,9 +13,9 @@ for (const mode of ['preserve', 'new-secret', 'production', 'migration-failed', 
       copyFileSync(path.join(__dirname, 'fixtures/azure-auth-cli.mjs'), cli);
       chmodSync(cli, 0o700);
       const log = path.join(dir, 'calls.jsonl');
-      const result = spawnSync(process.execPath, ['deploy/configure-firebase-auth.mjs', ...(mode === 'env-only' ? ['--configure-env-only'] : [])], {
+      const result = spawnSync(process.execPath, ['--require', path.join(__dirname, 'fixtures/azure-cli-preload.cjs'), 'deploy/configure-firebase-auth.mjs', ...(mode === 'env-only' ? ['--configure-env-only'] : [])], {
         cwd: path.join(__dirname, '..'), encoding: 'utf8',
-        env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, RUNNER_TEMP: dir,
+        env: { ...process.env, AUTH_SETUP_TEST_FIXTURE: path.join(__dirname, "fixtures/azure-auth-cli.mjs"), RUNNER_TEMP: dir,
           AUTH_SETUP_TEST_MODE: mode, AUTH_SETUP_TEST_LOG: log },
       });
       const calls = readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));

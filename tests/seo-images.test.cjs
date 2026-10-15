@@ -72,7 +72,8 @@ test("only known migrated media is normalized to the local Blob proxy", async ()
   const { productImageSource: source, canOptimizeProductImage: optimize } = await load("product-image.ts");
   for (const host of ["www.thehidi.com", "hidiindia.com", "www.hidiindia.com", "thidigk.thehidi.com", "azure-preview.thehidi.com"]) {
     const local = source(`https://${host}/media/products/migrated/photo.png`);
-    assert.equal(local, "/media/products/migrated/photo.png");
+    assert.equal(local, "/media/products/_display_v2/migrated/photo.png");
+    assert.equal(source(local), local, "Display URL normalization is idempotent");
     assert.equal(optimize(local), true);
   }
   for (const value of ["https://untrusted.example/photo.png", "//untrusted.example/photo.png", "https://www.thehidi.com.evil.example/media/products/photo.png"]) {

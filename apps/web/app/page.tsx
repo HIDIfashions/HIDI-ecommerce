@@ -25,7 +25,7 @@ const privileges = [
   { title: "HIDI Rewards", copy: "Earn HIDI rewards when you shop and use them toward a future order.", href: "/account", cta: "View rewards" },
 ] as const;
 const services = [
-  { icon: Truck, title: "Complimentary shipping", copy: SHIPPING_COPY, href: "/shipping" },
+  { icon: Truck, title: "Shipping · ₹0.00", copy: SHIPPING_COPY, href: "/shipping" },
   { icon: RefreshCcw, title: "Returns & exchanges", copy: RETURN_COPY, href: "/returns" },
   { icon: ShieldCheck, title: "Secure checkout", copy: "Read our payment guidance.", href: "/contact#payments" },
 ] as const;
