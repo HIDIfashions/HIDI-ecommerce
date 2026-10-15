@@ -37,7 +37,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
       const reads=new Map();
       for(const p of [page,...(prior?[prior]:[])]){
         const pending=new Set();reads.set(p,pending);
-        p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/')||url.searchParams.has('_rsc')))pending.add(request);});
+        p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/store/')||url.pathname==='/api/admin/session'||url.searchParams.has('_rsc')))pending.add(request);});
         for(const event of ['requestfinished','requestfailed'])p.on(event,request=>pending.delete(request));
       }
       const settleReads=async p=>{
