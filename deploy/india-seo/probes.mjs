@@ -10,7 +10,7 @@ const engines=['chromium','firefox','webkit'];
 export async function probe(base,output,{baseline,landing,inventory}={}){
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
   await mkdir(output,{recursive:true});
-  const results=[],writes=[],errors=[];
+  const results=[],writes=[],errors=[];let blockedSessionRefreshes=0;
   landing ||= await (await fetch('https://hidiindia.com/api/hidi/landing-media-config')).json();
   for(const engine of engines){
     const browser=await pw[engine].launch({headless:true,...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
@@ -19,6 +19,11 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
       await context.route('**/*',async route=>{
         const request=route.request(),url=new URL(request.url());
         if(!['GET','HEAD'].includes(request.method())){
+          // Admin bootstraps a session refresh without a body. It stays blocked
+          // like every write; record it separately from commerce mutations.
+          if(request.method()==='PUT'&&url.pathname==='/api/admin/session'&&[base,baseline].includes(url.origin)&&!request.postData()){
+            blockedSessionRefreshes++;return route.abort();
+          }
           if(!isBlockedTelemetry(request.method(),request.url(),url.origin)&&!(/(^|\.)cloudflareinsights\.com$/.test(url.hostname)&&url.pathname==='/cdn-cgi/rum'))writes.push({method:request.method(),path:url.pathname});
           return route.abort();
         }
@@ -99,7 +104,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
   }
   await writeFile(output+'/runtime-errors.json',JSON.stringify({errors,writes},null,2));
   assert.deepEqual(writes,[],'Unexpected commerce writes');assert.deepEqual(errors,[],'Browser runtime errors');
-  const report={passed:true,engines,results,liveWrites:0,baselineCompared:Boolean(baseline)};
+  const report={passed:true,engines,results,liveWrites:0,blockedSessionRefreshes,baselineCompared:Boolean(baseline)};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);
