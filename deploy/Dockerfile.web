@@ -6,6 +6,8 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 RUN pnpm install --frozen-lockfile --filter @hidi/web...
 COPY apps/web apps/web
+# Shared admin import code is a build dependency of the existing storefront.
+COPY deploy/admin-tools/image-sku-client.mjs deploy/admin-tools/image-sku-client.mjs
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_API_URL

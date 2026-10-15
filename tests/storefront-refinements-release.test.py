@@ -65,4 +65,22 @@ class ReleaseGuards(unittest.TestCase):
    self.write(data,image,suffix)
   with mock.object(release.cloud,'write_image',side_effect=write),mock.object(release.subprocess,'run',side_effect=RuntimeError('fixture live failed')),self.assertRaises(RuntimeError):self.run_apply()
   report=json.loads((release.OUT/'rollback.json').read_text());self.assertIn('hidi-api',report['restoredApps']);self.assertEqual(report['unrestoredApps'][0]['app'],'hidi-web')
+
+
+import io,runpy
+class SameCommitBuildGate(unittest.TestCase):
+ def run_gate(self,runs):
+  data=json.dumps({'workflow_runs':runs}).encode()
+  with mock.dict(os.environ,{'GITHUB_REPOSITORY':'HIDIfashions/HIDI-ecommerce','GITHUB_SHA':'a'*40,'GITHUB_TOKEN':'isolated-test-token'}),mock('urllib.request.urlopen',side_effect=lambda *args,**kwargs:io.BytesIO(data)),mock('time.sleep'):
+   runpy.run_path(str(ROOT/'deploy/storefront-refinements/source-gate.py'))
+ def fixture(self,**changes):return {'name':'Azure migration build','head_sha':'a'*40,'event':'push','status':'completed','conclusion':'success',**changes}
+ def test_accepts_only_successful_same_commit_build(self):self.run_gate([self.fixture()])
+ def test_failed_standard_build_blocks_release(self):
+  with self.assertRaises(AssertionError):self.run_gate([self.fixture(conclusion='failure')])
+ def test_another_commit_cannot_satisfy_release_gate(self):
+  with self.assertRaises(RuntimeError):self.run_gate([self.fixture(head_sha='b'*40)])
+ def test_pending_build_cannot_satisfy_release_gate(self):
+  with self.assertRaises(RuntimeError):self.run_gate([self.fixture(status='in_progress',conclusion=None)])
+ def test_missing_build_cannot_satisfy_release_gate(self):
+  with self.assertRaises(RuntimeError):self.run_gate([])
 if __name__=='__main__':unittest.main()

@@ -5,6 +5,7 @@ on:
     paths: [deploy/storefront-refinements/**, .github/workflows/storefront-refinements-release.yml]
 permissions:
   contents: read
+  actions: read
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
@@ -63,6 +64,10 @@ jobs:
           for engine in chromium firefox webkit; do HIDI_BROWSER_ENGINE="$engine" node tests/admin-workspace.browser.mjs; done
       - name: Customer OTP resend, account and lifecycle regression in three engines
         run: node tests/auth-otp-resend.browser.mjs
+      - name: Require the standard same-commit source and container builds to pass
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 deploy/storefront-refinements/source-gate.py
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
