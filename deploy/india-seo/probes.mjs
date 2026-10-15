@@ -57,7 +57,9 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         }
         const product=page.locator('main article h3 a').first(),name=await product.innerText();
         await product.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
-        await product.click();await page.waitForURL('**/products/**');
+        // The name is intentionally clipped with ellipsis; target visible text,
+        // rather than WebKit's centre of the full untruncated inline anchor.
+        await product.click({position:{x:8,y:8}});await page.waitForURL('**/products/**');
         await page.getByRole('heading',{level:1,name,exact:true}).waitFor();
         assert(await page.locator('script[type="application/ld+json"]').count()>0,'Product schema missing');
         for(const path of ['/cart','/checkout','/account','/admin']){
