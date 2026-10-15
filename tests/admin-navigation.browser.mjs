@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -25,7 +25,13 @@ const nativeMarkup = (path = '/admin/products') => `<div class="admin_navGroup_f
 const legacyLinks = '<a href="/admin/landing-media">Media Upload</a><a href="/admin/landing-media" data-hidi-admin-tab="media" style="color:red">Media Upload</a><a href="/admin/packing-scanner" data-hidi-admin-tab="packing">Packing Scanner</a><a href="/admin/product-quick-fill" data-hidi-quick-fill="true">Product Quick Fill</a><a href="/admin/product-bulk" data-hidi-bulk-details="true">Bulk Product Details</a>';
 // Reproduce the older injector's marker-based checks while both observers are active.
 const legacyScript = `(() => { let pending = false; function add() { const nav = document.querySelector('nav[aria-label="Admin navigation"]'); if (!nav) return; for (const [key,href,text] of [['media','/admin/landing-media','Media Upload'],['packing','/admin/packing-scanner','Packing Scanner']]) { if (nav.querySelector('[data-hidi-admin-tab="'+key+'"]')) continue; const a = document.createElement('a'); a.href = href; a.textContent = text; a.dataset.hidiAdminTab = key; nav.append(a); } } function schedule() { if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;add()}); } new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true});schedule(); })();`;
+const moduleAssets=new Map();
+const assetRoot=new URL('../deploy/admin-tools/',import.meta.url);
+for(const name of await readdir(assetRoot))if(/\.(?:mjs|js)$/.test(name))moduleAssets.set('/admin-tools-assets/'+name,await readFile(new URL(name,assetRoot)));
 const server = createServer((req, res) => {
+  const assetPath=new URL(req.url,'http://fixture.test').pathname;
+  if(moduleAssets.has(assetPath)){res.writeHead(200,{'content-type':'text/javascript'});return res.end(moduleAssets.get(assetPath));}
+  if(assetPath.startsWith('/api/')){res.writeHead(401,{'content-type':'application/json'});return res.end(JSON.stringify({message:'Isolated navigation fixture: no API writes'}));}
   if (req.url === '/navigation.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); return res.end(navigation); }
   const path = new URL(req.url, 'http://fixture.test').pathname;
   res.writeHead(200, { 'content-type': 'text/html' });

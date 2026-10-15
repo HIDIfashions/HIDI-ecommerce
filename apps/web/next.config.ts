@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
     useTypeScriptCli: false,
-    // Allow a 12 MB photo plus multipart boundaries and form fields.
-    proxyClientMaxBodySize: 14 * 1024 * 1024,
+    // Allow a 40 MiB photo plus multipart boundaries and form fields.
+    proxyClientMaxBodySize: 42 * 1024 * 1024,
   },
   async headers() {
     return [

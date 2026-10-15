@@ -391,9 +391,11 @@ class DormantWorkflow(unittest.TestCase):
         self.assertNotIn("containerapp update", workflow)
         self.assertNotIn("account-otp-rollout", workflow)
         self.assertNotIn("account-otp-private\n", workflow[workflow.index("      - name: Preserve public"):])
-        self.assertIn("PUSH_REVIEWED_SOURCE: ''", workflow)
-        self.assertIn("PUSH_EXPECTED_WEB: ''", workflow)
-        self.assertIn("PUSH_EXPECTED_API: ''", workflow)
+        # Activated release pins are immutable inputs, not necessarily empty.
+        # Existing resolver tests still prove missing and invalid pins fail closed.
+        self.assertRegex(workflow, r"PUSH_REVIEWED_SOURCE: '(?:[0-9a-f]{40})?'")
+        self.assertRegex(workflow, r"PUSH_EXPECTED_WEB: '(?:acrhidiprod0927\.azurecr\.io/hidi-web@sha256:[0-9a-f]{64})?'")
+        self.assertRegex(workflow, r"PUSH_EXPECTED_API: '(?:acrhidiprod0927\.azurecr\.io/hidi-api@sha256:[0-9a-f]{64})?'")
 
 
 if __name__ == "__main__":

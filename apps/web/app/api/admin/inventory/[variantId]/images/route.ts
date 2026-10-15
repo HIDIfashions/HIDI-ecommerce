@@ -1,13 +1,18 @@
-import { uploadProductImage } from "@/lib/azure-blob";
+import { uploadProductImageFile } from "@/lib/azure-blob";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
 import { adminApiHeaders, isAdminRequest } from "@/lib/admin-auth";
 
+import { readStreamedPhotoForm, acquirePhotoUploadSlot, PhotoUploadError, type DiskPhoto, type StreamedPhotoForm } from "@/lib/photo-upload-stream.mjs";
+import { createReadStream } from "node:fs";
+import { middleware as uploadDomainPolicy } from "@/middleware";
+import { authorizePhotoUpload } from "@/lib/photo-upload-authorize.mjs";
+
 export const runtime = "nodejs";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
-const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+// No fixed per-photo byte cap. Streamed ingestion checks available storage.
 const DEFAULT_R2_BUCKET = "hidi-product-media-prod";
 
 type R2UploadResult = {
@@ -31,7 +36,7 @@ async function saveImageMetadata(request: NextRequest, variantId: string, payloa
   });
 }
 
-async function createUploadTicket(request: NextRequest, variantId: string, file: File) {
+async function createUploadTicket(request: NextRequest, variantId: string, file: DiskPhoto) {
   const response = await fetch(
     `${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images/ticket`,
     {
@@ -110,11 +115,11 @@ function encodeS3Path(bucket: string, key: string) {
   return `/${encodeURIComponent(bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
 }
 
-async function uploadToR2(variantId: string, file: File): Promise<R2UploadResult> {
+async function uploadToR2(variantId: string, file: DiskPhoto): Promise<R2UploadResult> {
   const config = getR2Config();
   const key = objectKey(variantId, file.type);
-  const body = Buffer.from(await file.arrayBuffer());
-  const payloadHash = sha256Hex(body);
+  const body = createReadStream(file.path);
+  const payloadHash = file.sha256;
   const now = new Date();
   const amzDate = amzTimestamp(now);
   const dateStamp = amzDate.slice(0, 8);
@@ -151,12 +156,14 @@ async function uploadToR2(variantId: string, file: File): Promise<R2UploadResult
     headers: {
       Authorization: authorization,
       "Content-Type": file.type,
+      "Content-Length": String(file.size),
       "X-Amz-Content-Sha256": payloadHash,
       "X-Amz-Date": amzDate,
     },
-    body,
-    signal: AbortSignal.timeout(90_000),
-  });
+    body: body as unknown as BodyInit,
+    signal: AbortSignal.timeout(600_000),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
 
   if (!upload.ok) {
     const message = await upload.text().catch(() => "");
@@ -173,10 +180,15 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ variantId: string }> },
 ) {
+  const domainPolicy = uploadDomainPolicy(request);
+  if (domainPolicy.status !== 200) return domainPolicy;
   if (!isAdminRequest(request)) return NextResponse.json({ message: "Admin session expired" }, { status: 401 });
   const { variantId } = await context.params;
+  let releasePhotoUpload: (() => void) | undefined;
+  let photoForm: StreamedPhotoForm | undefined;
 
   try {
+    await authorizePhotoUpload(request, API_URL, adminApiHeaders(request));
     if (!request.headers.get("content-type")?.includes("multipart/form-data")) {
       const payload = await request.json().catch(() => null);
       if (!payload) return NextResponse.json({ message: "Photo or image URL is required" }, { status: 400 });
@@ -185,14 +197,16 @@ export async function POST(
       return NextResponse.json(body, { status: response.status });
     }
 
-    const form = await request.formData();
+    releasePhotoUpload = acquirePhotoUploadSlot();
+    const form = await readStreamedPhotoForm(request);
+    photoForm = form;
     const file = form.get("file");
-    if (!(file instanceof File)) return NextResponse.json({ message: "Choose an image file" }, { status: 400 });
+    if (!file || typeof file === "string") return NextResponse.json({ message: "Choose an image file" }, { status: 400 });
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
       return NextResponse.json({ message: "Use a JPEG, PNG, WebP or AVIF image" }, { status: 400 });
     }
-    if (file.size < 1 || file.size > MAX_IMAGE_BYTES) {
-      return NextResponse.json({ message: "Image must be no larger than 12 MB" }, { status: 400 });
+    if (!Number.isSafeInteger(file.size) || file.size < 1) {
+      return NextResponse.json({ message: "Choose a valid non-empty photo" }, { status: 400 });
     }
 
     let uploadKey: string | undefined;
@@ -201,11 +215,11 @@ export async function POST(
       const photoNumber = String(form.get("photoNumber") ?? "");
       if (!/^[A-Z][A-Z0-9]*(?:[_-][A-Z0-9]+)*$/.test(imageSku) || imageSku.length > 64 || !/^[1-9]\d{0,3}$/.test(photoNumber)) return NextResponse.json({ message: "Invalid Image SKU or photo number" }, { status: 400 });
       if (process.env.MEDIA_STORAGE_PROVIDER !== "azure") return NextResponse.json({ message: "Image SKU uploads require the configured Azure photo storage" }, { status: 503 });
-      uploadKey = sha256Hex([imageSku, photoNumber, file.type, sha256Hex(Buffer.from(await file.arrayBuffer()))].join("\u0000"));
+      uploadKey = sha256Hex([imageSku, photoNumber, file.type, file.sha256].join("\u0000"));
     }
     await createUploadTicket(request, variantId, file);
     const uploaded = process.env.MEDIA_STORAGE_PROVIDER === "azure"
-      ? await uploadProductImage(objectKey(variantId, file.type, uploadKey), Buffer.from(await file.arrayBuffer()), file.type)
+      ? await uploadProductImageFile(objectKey(variantId, file.type, uploadKey), file, file.type)
       : await uploadToR2(variantId, file);
 
     const response = await saveImageMetadata(request, variantId, {
@@ -220,8 +234,10 @@ export async function POST(
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Unable to upload SKU photo" },
-      { status: 502 },
+      { status: error instanceof PhotoUploadError ? error.status : 502 },
     );
+  } finally {
+    try { await photoForm?.cleanup(); } finally { releasePhotoUpload?.(); }
   }
 }
 
@@ -229,6 +245,8 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ variantId: string }> },
 ) {
+  const domainPolicy = uploadDomainPolicy(request);
+  if (domainPolicy.status !== 200) return domainPolicy;
   if (!isAdminRequest(request)) return NextResponse.json({ message: "Admin session expired" }, { status: 401 });
 
   const { variantId } = await context.params;

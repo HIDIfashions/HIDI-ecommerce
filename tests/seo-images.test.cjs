@@ -68,13 +68,17 @@ test("product offers retain each variant's real price, currency, SKU and stock",
   assert.deepEqual(productOffers({ variants: [] }, "https://example.com"), []);
 });
 
-test("only known migrated media is normalized to the local Blob proxy", async () => {
+test("only known migrated media is normalized to the versioned local display proxy", async () => {
   const { productImageSource: source, canOptimizeProductImage: optimize } = await load("product-image.ts");
-  for (const host of ["www.thehidi.com", "hidiindia.com", "www.hidiindia.com", "thidigk.thehidi.com", "azure-preview.thehidi.com"]) {
+  const expected = "/media/products/_display_v2/migrated/photo.png?hidi_image=3";
+  for (const host of ["thehidi.com", "www.thehidi.com", "hidiindia.com", "www.hidiindia.com", "thidigk.thehidi.com", "azure-preview.thehidi.com"]) {
     const local = source(`https://${host}/media/products/migrated/photo.png`);
-    assert.equal(local, "/media/products/migrated/photo.png");
+    assert.equal(local, expected);
     assert.equal(optimize(local), true);
   }
+  assert.equal(source("/media/products/migrated/photo.png"), expected);
+  assert.equal(source(expected), expected);
+  assert.equal(source("/media/products/_display_v2/migrated/photo.png?hidi_image=2"), expected);
   for (const value of ["https://untrusted.example/photo.png", "//untrusted.example/photo.png", "https://www.thehidi.com.evil.example/media/products/photo.png"]) {
     assert.equal(source(value), value);
     assert.equal(optimize(value), false);

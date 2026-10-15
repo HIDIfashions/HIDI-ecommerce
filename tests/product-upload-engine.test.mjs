@@ -168,7 +168,7 @@ test('catalogue pagination inconsistency fails rather than risking an incomplete
 
 test('selected files require exact names, allowed types, valid size and one unambiguous association', async () => {
   const row = newRow({ image_sku: 'KUR_001', photo_names: 'Front.jpg' });
-  for (const files of [[], [photo('front.jpg')], [photo('Front.jpg', 'image/png')], [{ name: 'Front.jpg', type: 'image/jpeg', size: 12 * 1024 * 1024 + 1 }], [photo(), photo('FRONT.JPG')], [photo(), photo('Unused.jpg')]]) {
+  for (const files of [[], [photo('front.jpg')], [photo('Front.jpg', 'image/png')], [{ name: 'Front.jpg', type: 'image/jpeg', size: Number.MAX_SAFE_INTEGER + 1 }], [photo(), photo('FRONT.JPG')], [photo(), photo('Unused.jpg')]]) {
     const f = fixture();
     const preview = await previewBatch(groups([row]), files, f.api);
     assert.equal(preview.passed, false);

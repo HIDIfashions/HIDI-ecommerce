@@ -1,0 +1,64 @@
+name: Browser upload and optimized rendering integration
+on:
+  push:
+    branches: [work/image-optimization-20261015]
+    paths: ['.github/workflows/image-upload-integration.yml']
+permissions:
+  contents: write
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+      API_URL: http://127.0.0.1:4100/v1
+      NEXT_PUBLIC_API_URL: /api/store
+      NEXT_TELEMETRY_DISABLED: '1'
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/upload-integration-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare isolated browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/upload-integration" --no-audit --no-fund playwright@1.56.1
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/upload-integration/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          echo "HIDI_TEST_SHARP=$PWD/apps/web/node_modules/sharp" >> "$GITHUB_ENV"
+          echo "HIDI_SHARP_MODULE=$PWD/apps/web/node_modules/sharp" >> "$GITHUB_ENV"
+          node "$RUNNER_TEMP/upload-integration/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Build both apps and verify upload and gallery rendering
+        run: python deploy/image-optimization/verify-web-upload.py
+      - name: Preserve logs and browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-upload-rendering-evidence
+          path: |
+            reports/upload-integration/
+            test-results/
+          retention-days: 14
+      - name: Save test evidence only
+        if: always()
+        run: |
+          if test -f reports/upload-integration/results.json; then
+            git add -f reports/upload-integration
+            git -c user.name='HIDI upload evidence' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[test-evidence] Browser upload and optimized rendering results'
+            git push origin "HEAD:refs/heads/evidence/upload-integration-$GITHUB_RUN_ID"
+          fi
+      - name: Enforce verified checks
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          data=json.load(open('reports/upload-integration/results.json'))
+          assert all(s['status']=='PASS' for s in data['suites']), 'Upload/rendering check failed; inspect preserved results.'
+          PY

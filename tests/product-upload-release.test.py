@@ -171,7 +171,7 @@ class UploaderGuards(unittest.TestCase):
             overlay = root / 'package-overlay'
             report = patcher.patch_runtime(base, overlay)
             self.assertTrue(report['updatingExistingUploader'])
-            self.assertEqual(report['allowedFiles'], sorted([patcher.HANDLER, *['admin-tools/product-upload/' + name for name in ['page.html', 'client.mjs', 'package.mjs', 'HIDI_Product_Upload_Package.zip']]]))
+            self.assertEqual(report['allowedFiles'], sorted([patcher.HANDLER, *['admin-tools/product-upload/' + name for name in ['page.html', 'client.mjs', 'package.mjs', 'engine.mjs', 'model.mjs', 'photo-digest.mjs', 'HIDI_Product_Upload_Package.zip']]]))
             self.assertEqual(report['uploadRetryRepair']['copiesPatched'], 0)
             self.assertFalse((overlay / patcher.NAVIGATION).exists())
             self.assertEqual((base / patcher.NAVIGATION).read_bytes(), original_navigation)

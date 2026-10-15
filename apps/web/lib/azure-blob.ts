@@ -29,3 +29,15 @@ export async function uploadProductImage(key: string, bytes: Buffer, contentType
   }
   return { url: `${base}/${key}`, storagePath: `azure://product-media/${key}` };
 }
+
+import { uploadDiskPhotoToBlob } from "./photo-azure-stream.mjs";
+import type { DiskPhoto } from "./photo-upload-stream.mjs";
+
+export async function uploadProductImageFile(key: string, photo: DiskPhoto, contentType: string) {
+  if (!key.startsWith("products/") || key.includes("..")) throw new Error("Invalid product image key");
+  const base = process.env.MEDIA_PUBLIC_BASE_URL?.replace(/\/$/, "");
+  if (!base || !base.startsWith("https://")) throw new Error("MEDIA_PUBLIC_BASE_URL must be an HTTPS media origin");
+  const blob = productMediaContainer().getBlockBlobClient(key);
+  await uploadDiskPhotoToBlob(blob, photo, contentType);
+  return { url: `${base}/${key}`, storagePath: `azure://product-media/${key}` };
+}

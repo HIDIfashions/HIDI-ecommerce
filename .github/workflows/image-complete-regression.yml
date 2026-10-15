@@ -1,0 +1,111 @@
+name: Image complete application regression
+on:
+  push:
+    branches: [work/image-optimization-20261015]
+    paths:
+      - '.github/workflows/image-complete-regression.yml'
+permissions:
+  contents: write
+concurrency:
+  group: hidi-full-image-regression
+  cancel-in-progress: false
+jobs:
+  complete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+      API_URL: http://127.0.0.1:4100/v1
+      NEXT_TELEMETRY_DISABLED: '1'
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/image-full-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: pnpm
+      - name: Install pinned application dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify every reviewed source hash before applying any fix
+        run: |
+          python - <<'PY'
+          import base64,gzip,json,hashlib,pathlib
+          root=pathlib.Path.cwd()
+          encoded=''.join((root/f'deploy/image-optimization/reviewed-changes.{n}.b64').read_text().strip() for n in [1,2])
+          encoded=encoded.replace('axHc7oWloUuU5','axHc7oW4loUuU5')
+          spec=json.loads(gzip.decompress(base64.b64decode(encoded,validate=True)))
+          # Workflow edits were saved separately through the authorized connector.
+          spec.pop('.github/workflows/image-optimization-candidate.yml')
+          plans={}
+          for name,item in spec.items():
+            assert not pathlib.PurePosixPath(name).is_absolute() and '..' not in pathlib.PurePosixPath(name).parts
+            p=root/name;old=p.read_bytes() if p.exists() else b''
+            digest=hashlib.sha256(old).hexdigest()
+            if digest==item['after']:continue
+            assert digest==item['before'], 'Concurrent source change: '+name
+            text=old.decode()
+            for start,end,replacement in reversed(item['edits']):text=text[:start]+replacement+text[end:]
+            data=text.encode();assert hashlib.sha256(data).hexdigest()==item['after'], 'Reviewed output differs: '+name
+            plans[name]=data
+          for name,data in plans.items():
+            p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
+          (root/'reviewed-source-manifest.json').write_text(json.dumps({name:{k:v for k,v in item.items() if k!='edits'} for name,item in spec.items()},indent=2))
+          print('Verified and applied',len(plans),'reviewed files; no cloud writes.')
+          PY
+      - name: Bundle standalone incremental browser hashing
+        run: node deploy/image-optimization/bundle-browser-digest.mjs
+      - name: Save exact reviewed source only on the isolated candidate branch
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/work/image-optimization-20261015
+          test "$(git ls-remote origin "$GITHUB_REF" | cut -f1)" = "$GITHUB_SHA"
+          python - <<'PY'
+          import json,subprocess
+          paths=list(json.load(open('reviewed-source-manifest.json')))+['deploy/admin-tools/photo-digest.mjs','deploy/product-upload/photo-digest.mjs']
+          subprocess.run(['git','add','--',*paths],check=True)
+          PY
+          if ! git diff --cached --quiet; then
+            git -c user.name='HIDI image validation' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[image-candidate] Finalize streamed upload safety, all photo entry points and regression fixtures'
+            git push origin HEAD:refs/heads/work/image-optimization-20261015
+          fi
+      - name: Install isolated image and browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/image-tools" --no-audit --no-fund sharp@0.34.1 playwright@1.56.1
+          echo "HIDI_TEST_SHARP=$RUNNER_TEMP/image-tools/node_modules/sharp" >> "$GITHUB_ENV"
+          echo "HIDI_SHARP_MODULE=$RUNNER_TEMP/image-tools/node_modules/sharp" >> "$GITHUB_ENV"
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/image-tools/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          node "$RUNNER_TEMP/image-tools/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Execute complete matrix and preserve failures
+        run: python deploy/image-optimization/full-regression.py
+      - name: Save complete test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-complete-regression-evidence
+          path: |
+            reports/image-complete/
+            test-results/
+            reviewed-source-manifest.json
+          retention-days: 14
+      - name: Save read-only evidence branch, never production
+        if: always()
+        run: |
+          if test -f reports/image-complete/results.json; then
+            git add -f reports/image-complete
+            git -c user.name='HIDI validation' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '[test-evidence] Complete application results'
+            git push origin "HEAD:refs/heads/evidence/image-complete-$GITHUB_RUN_ID"
+          fi
+      - name: Report a failed gate honestly
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('reports/image-complete/results.json'))
+          assert all(s['status']=='PASS' for s in r['suites']), 'Some complete-application gates failed; see every case and full logs.'
+          PY

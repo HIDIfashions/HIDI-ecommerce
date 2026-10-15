@@ -1,7 +1,7 @@
 // Browser/Node shared input contract. Importing a workbook never changes products.
 export const HEADERS = ['action','product_key','product_id','skn','product_slug','product_name','category','collection_slugs','ananyas_pick','short_description','description','fabric','care','includes','fit','lining','model','color','color_hex','size','selling_price','mrp','weight_grams','active','bust_mm','waist_mm','hip_mm','shoulder_mm','sleeve_length_mm','garment_length_mm','image_sku','photo_names','main_photo','photo_alt'];
 export const SIMPLE_UPLOAD_HEADERS = HEADERS;
-export const MAX_PRODUCTS = 500, MAX_ROWS = 5000, MAX_VARIANTS = 200, MAX_FILES = 1000, MAX_PHOTO_BYTES = 12 * 1024 * 1024;
+export const MAX_PRODUCTS = 500, MAX_ROWS = 5000, MAX_VARIANTS = 200, MAX_FILES = 1000, MAX_PHOTO_BYTES = Number.MAX_SAFE_INTEGER;
 export const clean = value => String(value ?? '').normalize('NFKC').trim();
 export const canonical = value => clean(value).replace(/\s+/g,' ').toLowerCase();
 export const slugify = value => clean(value).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80).replace(/-+$/,'');

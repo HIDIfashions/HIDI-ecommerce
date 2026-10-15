@@ -92,12 +92,11 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
    if(path==='/shipping')assert.match(content,/₹1,499 and above/);
    if(path==='/returns'){assert.match(content,/7 days/);assert.doesNotMatch(content,/easy exchanges/i);}
    if(path==='/offers'){assert.match(content,/not combined/);assert.equal(await page.locator('#rupee').count(),1);assert.equal(await page.locator('#silver').count(),1);}
-   if(path==='/contact'){assert.equal(await page.locator('a[href^="mailto:"]').count(),0);assert.match(content,/not open in this preview/);await shots(page,'contact');}
+   if(path==='/contact'){const contact=page.getByRole('region',{name:'Contact HIDI'});assert.equal(await contact.locator('a[href="mailto:Contact@hidiindia.com"]').count(),1);assert.equal(await contact.locator('a[href="tel:+917093709353"]').count(),1);assert.equal(await contact.locator('a[href="https://wa.me/917093709353"]').count(),1);assert.match(content,/Flat No\. 704, Hyma Arcade[\s\S]*Hyderabad, Telangana[\s\S]*500081/);assert.equal(await contact.locator('[data-hidi-contact-icon]').count(),4);await shots(page,'contact');}
   }
  },phone);
- await run('QUAL-14','Direct-entry editorial archive uses alternate photographs and real product links',async page=>{
-  const images=await page.locator('[aria-label="Editorial lookbook"] img').evaluateAll(items=>items.map(i=>i.getAttribute('src')));assert.equal(images.length,6);assert(images.every(src=>src.includes('02-alt.png')||src.includes('02-alt')));
-  assert.equal(await page.locator('[aria-label="Editorial lookbook"] a[href^="/products/"]').count(),6);
+ await run('QUAL-14','Direct entry to the removed archive redirects to the shoppable collection',async page=>{
+  await page.waitForURL('**/collections/all');assert.equal(new URL(page.url()).pathname,'/collections/all');assert.equal(await page.locator('a[href="/lookbook"]').count(),0);await until(()=>page.locator('article a[href^="/products/"]').count().then(n=>n>=products.length),'redirected collection has product links');assert.equal(await page.locator('h1').count(),1);
  });
  await run('QUAL-15','Buy Now retains the bag and guest checkout field constraints without submitting payment',async page=>{
   await pdp(page);await size(page,'M').click();const before=writes.length;await actions(page).getByRole('button',{name:'Buy Now',exact:true}).click();await page.waitForURL('**/checkout');await page.locator('.checkout-form').getByRole('textbox',{name:'Email address',exact:true}).waitFor();

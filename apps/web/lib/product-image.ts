@@ -12,6 +12,7 @@ const STOREFRONT_MEDIA_HOSTS = new Set([
 function displaySource(path: string): string {
   const url = new URL(path, "https://hidiindia.com");
   url.pathname = url.pathname.replace(/^\/media\/products\/(?:_display_v2\/)?/, "/media/products/_display_v2/");
+  url.searchParams.set("hidi_image", "3");
   return url.pathname + url.search;
 }
 

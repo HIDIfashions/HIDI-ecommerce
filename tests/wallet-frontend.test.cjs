@@ -123,6 +123,7 @@ function checkoutHarness({ sdk = true, userId = "customer-a", enabled = true } =
   };
   const jsx = (type, props, key) => ({ type, props: props ?? {}, key });
   const checkout = loadModule("apps/web/components/checkout-client.tsx", {
+    "@/lib/checkout-pin": { observeCheckoutPin: check => { state.checkPin = check; return () => {}; } }, // PIN DOM polling is covered independently.
     react, "@/lib/checkout-phone": loadModule("apps/web/lib/checkout-phone.ts"), "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
     "next/link": "Link", "next/script": "Script", "next/navigation": { useRouter: () => ({ push: (url) => state.redirects.push(url) }) },
     "@/lib/cart-session": {
@@ -278,7 +279,7 @@ test("COD response is confirmed but unpaid and requires no gateway fields", () =
 });
 test("guest COD checkout bypasses missing Razorpay SDK and redirects once",async()=>{
  const h=checkoutHarness({sdk:false,userId:null}); await h.ready();
- await h.find(n=>n.type==="input"&&n.props.name==="postalCode").props.onBlur({currentTarget:{value:"500001",form:null}}); await settle(); h.render();
+ await h.state.checkPin("500001",null); await settle(); h.render();
  const radio=h.find(n=>n.type==="input"&&n.props.value==="COD"); assert.equal(radio.props.disabled,false); radio.props.onChange(); h.render();
  h.state.prepareResult=prepare({provider:"COD",confirmed:true,status:"CONFIRMED",razorpayKeyId:undefined,providerOrderId:undefined});
  await h.submit(); assert.equal(h.state.prepareCalls.length,1); assert.equal(h.state.prepareCalls[0].body.paymentMethod,"COD"); assert.equal(h.state.paymentOptions.length,0); assert.equal(h.state.redirects.length,1);

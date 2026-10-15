@@ -1,0 +1,29 @@
+name: Validate isolated image optimization candidate
+on:
+  push:
+    branches: [work/image-optimization-20261015]
+    paths:
+      - 'apps/web/lib/photo-*.mjs'
+      - 'deploy/image-optimization/*.test.mjs'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - run: pnpm install --frozen-lockfile
+      - name: Reproduce browser-safe digest bundles
+        run: node deploy/image-optimization/bundle-browser-digest.mjs
+      - name: Validate all streaming and authorization cases
+        run: |
+          export HIDI_TEST_SHARP="$PWD/apps/web/node_modules/sharp"
+          export HIDI_SHARP_MODULE="$HIDI_TEST_SHARP"
+          node --experimental-strip-types --test deploy/image-optimization/*.test.mjs deploy/launch-image-repair/recovery.test.mjs tests/photo-upload-client.test.cjs tests/seo-images.test.cjs
