@@ -7,12 +7,37 @@ run=r.r.guard.run_key();name='photo-check-'+run
 report={'passed':False,'job':name,'run':run,'photoSourceSha':r.source_sha(),'productionTrafficChanged':False,'databaseWrites':0,'roleAssignmentsChanged':False}
 before=r.r.photo.states();attempted=False;job_url=None;expected=None;executionName=None;subscription=None;group=None
 
+def azure_resource_missing(stderr):
+ # Decode the error code, never match a phrase inside an authorization message.
+ # ARM returns ContainerAppsJobNotFound after successful job deletion.
+ allowed={'ResourceNotFound','ContainerAppsJobNotFound'}
+ for position in re.finditer(r'\{',stderr):
+  try:
+   payload=json.JSONDecoder().raw_decode(stderr[position.start():])[0]
+  except (ValueError,TypeError):continue
+  if isinstance(payload,dict) and isinstance(payload.get('error'),dict):
+   return payload['error'].get('code') in allowed
+ match=re.match(r'^ERROR:\s*\(([A-Za-z0-9_.-]+)\)',stderr.strip())
+ return bool(match and match.group(1) in allowed)
+
 def az(args,timeout=120,absent=False):
  result=subprocess.run(['az',*args,'--only-show-errors','-o','json'],capture_output=True,text=True,timeout=timeout)
  if result.returncode:
-  if absent and re.search(r'\(ResourceNotFound\)|"code"\s*:\s*"ResourceNotFound"',result.stderr):return None
+  if absent and args[:3]==['rest','--method','get'] and azure_resource_missing(result.stderr):return None
   raise RuntimeError('Validation command failed: '+' '.join(args[:3])+'; '+result.stderr[-1800:])
  return json.loads(result.stdout) if result.stdout.strip() else None
+
+def live_state_diagnostics(reference):
+ # Only immutable image IDs, revision names and configuration hashes are saved.
+ # Never expose environment values or substitute this for the unchanged guard.
+ result={}
+ for app,state in reference.items():
+  try:
+   current=r.r.cloud.snapshot(r.r.cloud.app(app))
+   keys=sorted(key for key in set(state)|set(current) if state.get(key)!=current.get(key))
+   result[app]={'matches':not keys,'changedKeys':keys,'expected':state,'observed':current}
+  except Exception as error:result[app]={'matches':False,'errorType':type(error).__name__}
+ return result
 
 def storage_binding(web):
  identities=web.get('identity',{}).get('userAssignedIdentities',{})
@@ -112,7 +137,7 @@ try:
  logs()
  assert status=='Succeeded','Real Azure storage job did not succeed: '+status
  details=report.get('details')
- if details:assert details.get('passed') is True and details.get('deleted') is True and details.get('originalUnchanged') is True,'Original integrity and cleanup must pass'
+ assert isinstance(details,dict) and details.get('run')==run and details.get('passed') is True and details.get('deleted') is True and details.get('originalUnchanged') is True and details.get('sourceBytes',0)>40*1024*1024,'Original integrity, large source and cleanup evidence must pass'
  report.update({'passed':True,'sourceExceeds40MiB':True,'sourceHashVerified':True,'temporaryBlobDeleted':True,'memoryLimit':'1Gi','cpuLimit':0.5,'identitySource':'captured web configuration','registryRoleGrants':0})
 except Exception as error:
  report['passed']=False;report['error']=str(error)
@@ -133,6 +158,8 @@ finally:
    else:report['validationJobRemoved']=False
   except Exception as error:report['passed']=False;report['cleanupError']=str(error)
  try:r.r.photo.unchanged(before)
- except Exception as error:report['passed']=False;report['liveStateError']=str(error)
+ except Exception as error:
+  report['passed']=False;report['liveStateError']=str(error)
+  report['liveStateComparison']=live_state_diagnostics(before)
  r.save('azure-storage-test.json',report);print(json.dumps(report,indent=2))
 assert report['passed'] and report.get('validationJobRemoved'),'Azure validation failed; production rollout must not proceed'
