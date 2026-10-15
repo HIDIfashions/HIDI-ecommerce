@@ -82,6 +82,6 @@ def patch(base,overlay,app):
     write(overlay,'server.mjs',server)
     for name in ['images.mjs','photo-disk.mjs']:
         dest=overlay/'product-images'/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/'deploy/collection-speed'/name,dest)
-    subprocess.run(['node',str(ROOT/'deploy/photo-live/build.mjs'),str(ROOT),str(overlay)],check=True)
+    subprocess.run(['node',str(ROOT/'deploy/photo-live/build.mjs'),str(ROOT),str(overlay),str(base)],check=True)
     files=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
     return {'passed':True,'allowedFiles':files,'renamedAssets':mapping,'validatorChanges':counts,'oldAssetsRetained':True,'globalProxyLimitsUnchanged':True,'commerceAndLandingFilesUnchanged':True,'removedPhotoCapMiB':12,'databaseSchemaUnchanged':True}
