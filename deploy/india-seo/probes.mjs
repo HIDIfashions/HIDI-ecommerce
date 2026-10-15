@@ -34,11 +34,25 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
       const page=await context.newPage(),prior=baseline?await context.newPage():null;
       page.setDefaultTimeout(30000);prior?.setDefaultTimeout(30000);
       page.on('pageerror',error=>errors.push({engine,width,message:error.message}));
+      const reads=new Map();
+      for(const p of [page,...(prior?[prior]:[])]){
+        const pending=new Set();reads.set(p,pending);
+        p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/')||url.searchParams.has('_rsc')))pending.add(request);});
+        for(const event of ['requestfinished','requestfailed'])p.on(event,request=>pending.delete(request));
+      }
+      const settleReads=async p=>{
+        const pending=reads.get(p);let quiet=0;
+        for(let elapsed=0;elapsed<15000;elapsed+=50){
+          await new Promise(done=>setTimeout(done,50));quiet=pending.size?0:quiet+50;if(quiet>=500)return;
+        }
+        assert.fail('Background reads did not settle: '+[...pending].map(request=>request.url()).join(', '));
+      };
+      const go=async(p,url)=>{await settleReads(p);return p.goto(url,{waitUntil:'domcontentloaded'});};
       const products=async p=>(await p.locator('main article h3 a').evaluateAll(nodes=>nodes.map(n=>new URL(n.href).pathname))).sort();
       try{
         for(const slug of routes){
           const path='/collections/'+slug;
-          assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
+          assert((await go(page,base+path)).ok());
           await page.getByRole('heading',{level:1,name:copy[slug].title,exact:true}).waitFor();
           await page.locator('main article').first().waitFor();
           assert.equal(await page.locator('h1').count(),1);
@@ -50,7 +64,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Horizontal overflow: '+path);
           const expected=await products(page);assert(expected.length>0);
           if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
-          if(prior){await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();assert.deepEqual(expected,await products(prior),'Product selection changed');}
+          if(prior){await go(prior,baseline+path);await prior.locator('main article').first().waitFor();assert.deepEqual(expected,await products(prior),'Product selection changed');}
           if(width<700){
             await page.getByRole('button',{name:/Filter.*Sort/i}).click();
             const filters=page.getByRole('dialog',{name:'Product filters'});
@@ -61,6 +75,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           await page.screenshot({path:`${output}/${engine}-${width}-${slug}.png`,fullPage:false});
         }
         const product=page.locator('main article h3 a').first(),name=await product.innerText();
+        await settleReads(page);
         await product.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
         // The name is intentionally clipped with ellipsis; target visible text,
         // rather than WebKit's centre of the full untruncated inline anchor.
@@ -68,10 +83,10 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         await page.getByRole('heading',{level:1,name,exact:true}).waitFor();
         assert(await page.locator('script[type="application/ld+json"]').count()>0,'Product schema missing');
         for(const path of ['/cart','/checkout','/account','/admin']){
-          await page.goto(base+path,{waitUntil:'domcontentloaded'});
+          await go(page,base+path);
           assert.match(await page.locator('meta[name="robots"]').first().getAttribute('content'),/noindex/,'Private indexing changed: '+path);
         }
-        await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+        await go(page,base+'/');
         await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');
         const links=page.locator('.hidi-collection-link');assert.equal(await links.count(),5);
         for(let i=0;i<5;i++){
@@ -82,7 +97,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         }
         // Activate each card through its real keyboard/click handler, not just its href.
         for(let i=0;i<5;i++){
-          if(i){await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');}
+          if(i){await go(page,base+'/');await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');}
           const carousel=page.locator('#range-carousel');await carousel.press('Home');
           await page.waitForFunction(()=>{const c=document.querySelector('#range-carousel');return c?.dataset.activeIndex==='0'&&c.dataset.transitioning==='false';});
           for(let n=0;n<i;n++){
@@ -90,11 +105,13 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
             await page.waitForFunction(index=>{const c=document.querySelector('#range-carousel');return c?.dataset.activeIndex===String(index)&&c.dataset.transitioning==='false';},n+1);
           }
           const link=page.locator('.hidi-collection-link').nth(i),href=await link.getAttribute('href');
+          await settleReads(page);
           await link.press('Enter');await page.waitForURL('**'+new URL(href,base).pathname);
           await page.locator('main article').first().waitFor();
         }
-        await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.locator('.hidi-collection-link').first().waitFor();
+        await go(page,base+'/');await page.locator('.hidi-collection-link').first().waitFor();
         await page.screenshot({path:`${output}/${engine}-${width}-homepage.png`});
+        await settleReads(page);if(prior)await settleReads(prior);
         results.push({engine,width,height,collections:4,carouselLinks:5,carouselActivations:5,productDetails:true,privateNoindex:true,sortPreserved:true,status:'PASS'});
         await writeFile(output+'/progress.json',JSON.stringify({results,errors,writes},null,2));
         console.log(`PASS: India SEO ${engine} ${width}x${height}: collections, inventory, sorting, product details, private indexing and five carousel activations`);
