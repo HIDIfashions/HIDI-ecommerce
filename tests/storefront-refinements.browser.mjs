@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
-export async function runRefinementChecks({browser,engine,scenario,until,products,output,base}) {
+export async function runRefinementChecks({browser,engine,scenario,until,products,output,base,settleFixtureNetwork}) {
  const productPath='/products/'+products[0].slug;
  const phone={viewport:{width:390,height:844},hasTouch:true,startPath:productPath};
  await scenario(browser,engine,'REFINE-FIT','PDP size pills, deselection, unavailable sizes and purchase colours match quick shop',async page=>{
@@ -31,6 +31,7 @@ export async function runRefinementChecks({browser,engine,scenario,until,product
  },phone);
  await scenario(browser,engine,'REFINE-FOOTER','Gold inline newsletter across pages, validation, server errors and confirmed success',async page=>{
   for(const path of ['/about','/shipping','/collections/all',productPath]){
+   await settleFixtureNetwork(page,{prefetchOnly:true});
    await page.goto(base+path,{waitUntil:'networkidle'});
    for(const width of [320,390,768,1440]){
     await page.setViewportSize({width,height:900});const form=page.locator('.footer .newsletter');await form.scrollIntoViewIfNeeded();
@@ -41,6 +42,7 @@ export async function runRefinementChecks({browser,engine,scenario,until,product
   let status=503;await page.route('**/api/store/marketing/newsletter',route=>route.fulfill({status,json:status===200?{message:'You’re subscribed to HIDI.'}:{message:'Please retry later.'}}));
   const footer=page.locator('.footer');await footer.getByLabel('Email address',{exact:true}).fill('fixture@example.invalid');await footer.getByRole('button',{name:'Subscribe',exact:true}).click();await page.locator('#newsletter-status').getByText('Please retry later.').waitFor();
   status=200;await footer.getByRole('button',{name:'Subscribe',exact:true}).click();await page.locator('#newsletter-status').getByText('You’re subscribed to HIDI.').waitFor();
+  await settleFixtureNetwork(page,{prefetchOnly:true});
  },{startPath:'/about'});
  await scenario(browser,engine,'REFINE-ABOUT','Corporate Meet HIDI uses existing brand and working support/policy links on all widths',async page=>{
   for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.locator('main h1').innerText(),'Considered clothing.\nA clear point of view.');assert.equal(await page.locator('main img[src*="hidi-manifesto"]').count(),0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}

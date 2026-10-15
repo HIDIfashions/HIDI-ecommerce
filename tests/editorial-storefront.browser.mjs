@@ -310,7 +310,7 @@ try{
     });
     await runQualityChecks({browser,engine,scenario,until,base,output,products,writes,setCartMode:value=>{cartMode=value;}});
     await runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products,settleFixtureNetwork});
-    await runRefinementChecks({browser,engine,scenario,until,products,output,base});
+    await runRefinementChecks({browser,engine,scenario,until,products,output,base,settleFixtureNetwork});
     await browser.close();activeBrowser=null;
   }
 }finally{

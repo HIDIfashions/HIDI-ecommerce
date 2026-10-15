@@ -340,4 +340,4 @@
 .addButton, .buyButton, .mobileAdd, .mobileBuy { min-height: 46px; gap: 7px; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; }
 .addButton, .mobileAdd { background: #e8d8c4; border-color: #d6c1a7; color: #591d20; }
 .buyButton, .mobileBuy { background: #591d20; color: #fff8ef; }
-.addButton:hover:not(:disabled), .mobileAdd:hover:not(:disabled) { background: #deccb4; }
+.addButton:hover:not(:disabled), .mobileAdd:hover:not(:disabled) { background: #deccb4; border-color: #ccb394; color: #591d20; }
