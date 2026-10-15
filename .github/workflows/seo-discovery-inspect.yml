@@ -1,4 +1,4 @@
-name: Inspect current SEO and policy metadata baseline without changes
+name: Inspect current HIDI SEO baseline and collection rendering without changes
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -29,4 +29,28 @@ jobs:
           for name in files:
               path=root/name
               print('SEO_CURRENT_FILE',json.dumps({'path':name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}))
+          PY
+
+
+      - name: Inspect public-rendering code for India SEO candidate
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])/'hidi-seo-inspection'
+          print('SEO_METADATA_SOURCE',json.dumps((root/'seo-discovery/metadata.mjs').read_text()))
+          source=(root/'server.mjs').read_text()
+          for name in ['streamHtml','injectSeo','serveLanding','serveFile','proxy']:
+              match=re.search(r'^(?:async )?function '+name+r'\([^\n]*\) \{',source,re.M)
+              if match:
+                  end=source.find('\n}\n',match.end())
+                  assert end>=0
+                  print('SEO_RENDER_FUNCTION',json.dumps({'name':name,'source':source[match.start():end+3]}))
+          html=(root/'dist/index.html').read_text()
+          refs=re.findall(r'<script type="module" crossorigin src="([^"]+)"',html)
+          assert len(refs)==1
+          bundle=(root/'dist'/refs[0].removeprefix('./').removeprefix('/')).read_text()
+          for pattern in ['HidiRangeCardCopy','HidiSeoLinkProps','range-everyday','aria-label']:
+              index=bundle.find(pattern)
+              print('SEO_LANDING_ANCHOR',json.dumps({'pattern':pattern,'snippet':bundle[max(0,index-120):index+700] if index>=0 else None}))
           PY
