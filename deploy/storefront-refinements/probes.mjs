@@ -24,7 +24,7 @@ export async function probe(base,output,engines=['chromium','firefox','webkit'])
    await context.route('**/api/store/checkout/delivery-serviceability?**',route=>route.fulfill({status:200,json:delivery}));
    const newsletter=async()=>{
     const form=page.locator('footer form.newsletter');await form.waitFor();await form.scrollIntoViewIfNeeded();const field=form.locator('input[type="email"]'),button=form.getByRole('button',{name:/Subscribe/i});
-    const [i,b]=await Promise.all([field.boundingBox(),button.boundingBox()]);assert(i&&b&&Math.abs(i.y-b.y)<2,'Newsletter input and gold button must share one row');
+    const [i,b]=await Promise.all([field.boundingBox(),button.boundingBox()]);assert(i&&b&&Math.abs(i.y+i.height/2-b.y-b.height/2)<2&&b.x>=i.x+i.width-1,'Newsletter input and gold button must share one row with aligned centres');
     assert.equal(await button.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(229, 194, 121)');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Horizontal overflow');await settle();
    };
    try{
@@ -49,7 +49,7 @@ export async function probe(base,output,engines=['chromium','firefox','webkit'])
     await go('/about');await page.getByRole('heading',{name:'Considered clothing. A clear point of view.',exact:true}).waitFor();assert.equal(await page.locator('main img[src*="hidi-manifesto"]').count(),0);await newsletter();
     if(viewport.width===390||viewport.width===1440)await page.screenshot({path:resolve(output,engine+'-'+viewport.width+'-about.png')});
     await settle();assert.deepEqual(errors,[],'Candidate/live browser errors');reports.push({engine,...viewport,status:'PASS'});console.log('PASS '+engine+' '+viewport.width+'x'+viewport.height+' approved changes and read-only checkout');
-   } finally {await context.close();}
+   } catch(error){await page.screenshot({path:resolve(output,engine+'-'+viewport.width+'-failure.png')}).catch(()=>{});throw error;} finally {await context.close();}
   }
  }finally{await browser.close();}}
  const emptyResponse=await fetch(base+'/api/store/carts/'+randomUUID());assert(emptyResponse.ok,'Read-only empty bag quote must load');const empty=await emptyResponse.json();assert.equal(empty.shippingPaise,0);assert.equal(empty.totalPaise,0);
