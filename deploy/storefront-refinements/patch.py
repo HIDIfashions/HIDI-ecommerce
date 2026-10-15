@@ -2,6 +2,14 @@
 import hashlib, importlib.util, pathlib, re
 ROOT=pathlib.Path(__file__).resolve().parent
 
+def patch_retained_offer_shipping(source):
+    old='const shipping=subtotal<149900?9900:0,total=gross-discount+shipping;'
+    new='const shipping=0,total=gross-discount+shipping;'
+    assert source.count(old)==1,'Unexpected retained offer shipping calculation'
+    updated=source.replace(old,new,1)
+    assert updated.replace(new,old,1)==source
+    return updated
+
 def compatibility(source):
     spec=importlib.util.spec_from_file_location('retained_checkout_compat',ROOT.parent/'checkout-theme/runtime-compat.py')
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)

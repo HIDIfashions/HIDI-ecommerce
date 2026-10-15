@@ -2,6 +2,11 @@ import importlib.util,pathlib,unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('refinements_patch',ROOT/'deploy/storefront-refinements/patch.py');patch=importlib.util.module_from_spec(spec);spec.loader.exec_module(patch)
 class SurgicalPatches(unittest.TestCase):
+ def test_retained_offer_engine_changes_only_shipping(self):
+  original="keepBefore();const shipping=subtotal<149900?9900:0,total=gross-discount+shipping;keepAfter();"
+  self.assertEqual(patch.patch_retained_offer_shipping(original),"keepBefore();const shipping=0,total=gross-discount+shipping;keepAfter();")
+ def test_unknown_retained_offer_calculation_blocks_release(self):
+  with self.assertRaises(AssertionError):patch.patch_retained_offer_shipping('unexpected')
  def test_index_changes_only_subscription_link_and_config_cache_version(self):
   original='<html><head><title>HIDI</title></head><body><script src="./config.js"></script></body></html>'
   result=patch.patch_index(original);self.assertIn('data-hidi-storefront-refinements',result);self.assertIn('config.js?v=',result);self.assertIn('<title>HIDI</title>',result)

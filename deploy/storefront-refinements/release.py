@@ -32,7 +32,10 @@ def compose(app,tag):
  if app=='api':
   for path in API_FILES:
    dest=overlay/path;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(path,dest)
-  allowed=API_FILES
+  retained='apps/api/dist/checkout/offers-engine.mjs'
+  destination=overlay/retained;destination.parent.mkdir(parents=True,exist_ok=True)
+  destination.write_text(patch.patch_retained_offer_shipping((old/retained).read_text()))
+  allowed=API_FILES|{retained}
  else:
   helpers.copy_web_overlay(pathlib.Path('apps/web/.next/standalone'),pathlib.Path('apps/web/.next/static'),overlay)
   cssname,css,_=patch.assets();(overlay/'dist').mkdir()
