@@ -1,0 +1,47 @@
+name: Large photo stress verification - offline only
+on:
+  push:
+    branches: [work/photo-live-release-20261015]
+    paths: [.github/workflows/photo-large-file-isolated-verification.yml]
+permissions:
+  contents: read
+jobs:
+  image-stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 828525c93499507fa8054d5ad7d4f05c64c75ac4
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22.16.0'}
+      - name: Install locked test dependencies only
+        run: pnpm install --frozen-lockfile
+      - name: Stream and resize an actual encoded image above 100 MiB
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 828525c93499507fa8054d5ad7d4f05c64c75ac4
+          mkdir -p reports/photo-large-offline
+          node deploy/image-optimization/genuine-large-photo.mjs reports/photo-large-offline/36mp-results.json 2>&1 | tee reports/photo-large-offline/36mp.log
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('reports/photo-large-offline/36mp-results.json')
+          report=json.loads(p.read_text())
+          assert report['passed'] and report['padded'] is False and report['originalUnchanged'] is True
+          assert report['input']['bytes'] > 100*1024*1024
+          assert len(report['outputs'])==5
+          report.update({'testedSourceSha':'828525c93499507fa8054d5ad7d4f05c64c75ac4','cloudAuthentication':False,'productionChanged':False,'sourceFixtureOnly':True,'productionPerformanceBenchmark':False})
+          p.write_text(json.dumps(report,indent=2)+'\n')
+          print('PASS: genuine encoded 36 MP synthetic image, source hash preservation and five display sizes; no cloud or production access.')
+          PY
+      - name: Retain synthetic test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: photo-large-file-offline-evidence
+          path: reports/photo-large-offline/
+          retention-days: 14
