@@ -1,15 +1,40 @@
+import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {mkdir,writeFile,copyFile} from 'node:fs/promises';
-import {resolve,join} from 'node:path';
+import {mkdir,writeFile,copyFile,access} from 'node:fs/promises';
+import {resolve,join,relative} from 'node:path';
 const source=resolve(process.argv[2]),overlay=resolve(process.argv[3]);
+assert(process.argv[4],'The captured production runtime is required for dependency verification');
+const base=resolve(process.argv[4]);
+await access(join(base,'apps/web/server.js'));
+const retainedRequire=createRequire(join(base,'apps/web/server.js'));
+// Resolve through the retained standalone server, not an assumed node_modules
+// directory. The public next/server aggregator can be omitted by file tracing.
+const retainedModules={
+ request:'next/dist/server/web/spec-extension/request.js',
+ response:'next/dist/server/web/spec-extension/response.js',
+ optimizer:'next/dist/server/image-optimizer.js',
+};
+for(const [name,specifier] of Object.entries(retainedModules)){
+ const resolved=retainedRequire.resolve(specifier);
+ const local=relative(base,resolved);
+ assert(local&&!local.startsWith('..')&&!local.startsWith('/'),'Dependency must belong to the captured runtime: '+name);
+ console.log('Verified retained '+name+': '+local);
+}
+const {NextRequest}=retainedRequire(retainedModules.request);
+const {NextResponse}=retainedRequire(retainedModules.response);
+const retainedSharp=retainedRequire(retainedModules.optimizer).getSharp(1,false);
+assert.equal(new NextRequest('http://localhost/preflight').nextUrl.pathname,'/preflight');
+assert.deepEqual(await NextResponse.json({ready:true}).json(),{ready:true});
+assert.equal(typeof retainedSharp,'function');
 const require=createRequire(resolve(process.env.HIDI_ESBUILD_MODULE,'package.json'));
 const sourceRequire=createRequire(join(source,'apps/web/package.json'));
 const {build}=require(process.env.HIDI_ESBUILD_MODULE);
 const feature=join(overlay,'photo-stream');await mkdir(feature,{recursive:true});
 await build({entryPoints:[join(source,'deploy/photo-live/entry.ts')],outfile:join(feature,'handler.mjs'),bundle:true,platform:'node',format:'esm',target:'node22',tsconfig:join(source,'apps/web/tsconfig.json'),external:['next','next/*','sharp','@azure/identity','@azure/storage-blob'],banner:{js:"import { createRequire as hidiCreateRequire } from 'node:module'; const require = hidiCreateRequire(import.meta.url);"},logLevel:'info'});
+const retainedLoader="const {createRequire}=require('node:module');const {resolve}=require('node:path');const retained=createRequire(resolve(__dirname,'../../../apps/web/server.js'));\n";
 const shims={
- 'next':{files:{'server.cjs':"const n=require('../../../apps/web/node_modules/next/server.js');exports.NextRequest=n.NextRequest;exports.NextResponse=n.NextResponse;\n"},exports:{'./server':'./server.cjs'}},
- 'sharp':{files:{'index.cjs':"module.exports=require('../../../apps/web/node_modules/next/dist/server/image-optimizer.js').getSharp(1,false);\n"}},
+ 'next':{files:{'server.cjs':retainedLoader+"exports.NextRequest=retained('next/dist/server/web/spec-extension/request.js').NextRequest;exports.NextResponse=retained('next/dist/server/web/spec-extension/response.js').NextResponse;\n"},exports:{'./server':'./server.cjs'}},
+ 'sharp':{files:{'index.cjs':retainedLoader+"module.exports=retained('next/dist/server/image-optimizer.js').getSharp(1,false);\n"}},
  '@azure/identity':{files:{'index.cjs':"const a=require('./sdk.cjs');exports.DefaultAzureCredential=a.DefaultAzureCredential;\n"}},
  '@azure/storage-blob':{files:{'index.cjs':"const a=require('./sdk.cjs');exports.BlobServiceClient=a.BlobServiceClient;\n"}},
 };
@@ -21,4 +46,4 @@ for(const [name,config] of Object.entries(shims)){
 }
 await copyFile(join(source,'apps/web/lib/photo-azure-stream.mjs'),join(feature,'storage.mjs'));
 await copyFile(join(source,'deploy/photo-live/storage-probe.mjs'),join(feature,'validate-storage.mjs'));
-console.log('Photo route and source-lockfile Azure SDKs packaged privately; existing Next, Sharp and all commerce dependencies unchanged.');
+console.log('Photo route and source-lockfile Azure SDKs packaged privately; verified retained Next and Sharp implementations are reused without modifying them.');
