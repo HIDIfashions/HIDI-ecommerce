@@ -7,7 +7,7 @@ const copy=JSON.parse(await readFile(new URL('./collections.json',import.meta.ur
 const routes=Object.keys(copy);
 const destinations={'Casual Wear':'casual-wear','Work Wear':'work-wear','Occasional Wear':'occasional-wear','Ananya’s Pick':'ananyas-pick'};
 const engines=['chromium','firefox','webkit'];
-export async function probe(base,output,{baseline,landing}={}){
+export async function probe(base,output,{baseline,landing,inventory}={}){
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
   await mkdir(output,{recursive:true});
   const results=[],writes=[],errors=[];
@@ -42,6 +42,7 @@ export async function probe(base,output,{baseline,landing}={}){
           for(const content of await page.locator('meta[name="robots"],meta[name="googlebot"]').evaluateAll(nodes=>nodes.map(n=>n.content)))assert(!/noindex/.test(content));
           assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Horizontal overflow: '+path);
           const expected=await products(page);assert(expected.length>0);
+          if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
           if(prior){await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();assert.deepEqual(expected,await products(prior),'Product selection changed');}
           const sort=page.getByLabel('Sort products');
           if(await sort.count()){await sort.selectOption({label:'Price: Low to high'});assert.deepEqual(await products(page),expected);}
@@ -78,7 +79,7 @@ export async function probe(base,output,{baseline,landing}={}){
         await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.locator('.hidi-collection-link').first().waitFor();
         await page.screenshot({path:`${output}/${engine}-${width}-homepage.png`});
         results.push({engine,width,height,collections:4,carouselLinks:5,carouselActivations:5,productDetails:true,privateNoindex:true,sortPreserved:true,status:'PASS'});
-      }catch(error){await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});throw error;}
+      }catch(error){await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});await writeFile(`${output}/${engine}-${width}-failure.html`,await page.content()).catch(()=>{});throw error;}
       finally{await context.close();}
     }}finally{await browser.close();}
   }

@@ -13,7 +13,7 @@ NEW_CARD = 'function HidiRangeCardCopy(item,value){const title=HidiPublicRangeTe
 OLD_OPEN = 'm(HidiRangeCards[w].collectionId||HidiRangeCards[w].id)'
 NEW_OPEN = 'm(Se[w].collectionId||Se[w].id)'
 OLD_HEADER = '(0,d.jsx)("header",{className:"collection-header",children:(0,d.jsx)("h1",{children:c.title})})'
-NEW_HEADER = '(0,d.jsxs)("header",{className:"collection-header",children:[(0,d.jsx)("h1",{children:c.title}),["all","casual-wear","work-wear","occasional-wear"].includes(b)?(0,d.jsx)("p",{className:"hidi-collection-intro",style:{maxWidth:"68ch",margin:"12px auto 0",fontSize:"15px",lineHeight:1.6},children:c.copy}):null]})'
+NEW_HEADER = '(0,d.jsxs)("header",{className:"collection-header",style:["all","casual-wear","work-wear","occasional-wear"].includes(b)?{display:"block"}:undefined,children:[(0,d.jsx)("h1",{children:c.title}),["all","casual-wear","work-wear","occasional-wear"].includes(b)?(0,d.jsx)("p",{className:"hidi-collection-intro",style:{display:"block",maxWidth:"68ch",margin:"12px auto 0",fontSize:"15px",lineHeight:1.6},children:c.copy}):null]})'
 OLD_LABELS = {
     'all': {'title': 'All Products', 'copy': 'Explore the complete HIDI edit in one place.'},
     'casual-wear': {'title': 'Casual Wear', 'copy': 'Easy HIDI styles for everyday plans.'},
@@ -71,6 +71,6 @@ def patch_runtime(base, overlay):
         target.write_bytes(data)
     return {'passed': True, 'allowedFiles': sorted(files), 'inverseTransformsVerified': True,
             'collectionCopyRoutes': list(OLD_LABELS), 'oldLandingAssetRetained': True,
-            'wrapperUnchanged': True, 'metadataUnchanged': True, 'stylesheetsUnchanged': True,
+            'wrapperUnchanged': True, 'metadataGeneratorPreserved': True, 'stylesheetsUnchanged': True,
             'publishedMediaAndCaptionsUnchanged': True, 'apiUnchanged': True,
             'databaseWrites': False, 'storageWrites': False}
