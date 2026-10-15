@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: 8aa69d103bcc3fc4257ca1c2b16cd67e8552f8f5
+          ref: e8d5f962558db11f62c4697f0f500b9b4d9e7178
           path: photo-source
       - uses: pnpm/action-setup@v4
         with: {version: 10.15.1}
