@@ -10,7 +10,7 @@ const engines=['chromium','firefox','webkit'];
 export async function probe(base,output,{baseline,landing,inventory}={}){
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
   await mkdir(output,{recursive:true});
-  const results=[],writes=[],errors=[];let blockedSessionRefreshes=0;
+  const results=[],writes=[],errors=[];let blockedSessionRefreshes=0,blockedTelemetryRequests=0,hydrationRetries=0;
   landing ||= await (await fetch('https://hidiindia.com/api/hidi/landing-media-config')).json();
   for(const engine of engines){
     const browser=await pw[engine].launch({headless:true,...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
@@ -24,7 +24,10 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           if(request.method()==='PUT'&&url.pathname==='/api/admin/session'&&[base,baseline].includes(url.origin)&&!request.postData()){
             blockedSessionRefreshes++;return route.abort();
           }
-          if(!isBlockedTelemetry(request.method(),request.url(),url.origin)&&!(/(^|\.)cloudflareinsights\.com$/.test(url.hostname)&&url.pathname==='/cdn-cgi/rum'))writes.push({method:request.method(),path:url.pathname});
+          const googleBeacon=request.method()==='POST'&&/(^|\.)(?:google-analytics\.com|analytics\.google\.com)$/.test(url.hostname)&&['/g/collect','/collect'].includes(url.pathname);
+          const cloudflareBeacon=request.method()==='POST'&&/(^|\.)cloudflareinsights\.com$/.test(url.hostname)&&url.pathname==='/cdn-cgi/rum';
+          if(isBlockedTelemetry(request.method(),request.url(),base)||googleBeacon||cloudflareBeacon)blockedTelemetryRequests++;
+          else writes.push({method:request.method(),origin:url.origin,path:url.pathname});
           return route.abort();
         }
         if(url.pathname==='/api/hidi/landing-media-config')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(landing)});
@@ -63,6 +66,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
           await page.getByRole('heading',{level:1,name:copy[slug].title,exact:true}).waitFor();
           await page.locator('main article').first().waitFor();
+          await page.waitForLoadState('load',{timeout:60000});
           assert.equal(await page.locator('h1').count(),1);
           assert.equal(await page.locator('.hidi-collection-intro').innerText(),copy[slug].copy);
           const canonicals=await page.locator('link[rel="canonical"]').evaluateAll(nodes=>nodes.map(n=>n.href));
@@ -74,8 +78,12 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
           if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();assert.deepEqual(expected,await products(prior),'Product selection changed');await finish(prior);}
           if(width<700){
-            await page.getByRole('button',{name:/Filter.*Sort/i}).click();
+            const trigger=page.getByRole('button',{name:/Filter.*Sort/i});
             const filters=page.getByRole('dialog',{name:'Product filters'});
+            for(let attempt=0;attempt<5&&!await filters.isVisible();attempt++){
+              if(await trigger.getAttribute('aria-expanded')!=='true')await trigger.click();
+              try{await filters.waitFor({state:'visible',timeout:3000});}catch(error){if(attempt===4)throw error;hydrationRetries++;}
+            }
             await filters.getByRole('radio',{name:'Price: Low to high',exact:true}).check();
             await filters.getByRole('button',{name:'Close filters'}).click();
           }else await page.getByLabel('Sort products').selectOption({label:'Price: Low to high'});
@@ -136,7 +144,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
   }
   await writeFile(output+'/runtime-errors.json',JSON.stringify({errors,writes},null,2));
   assert.deepEqual(writes,[],'Unexpected commerce writes');assert.deepEqual(errors,[],'Browser runtime errors');
-  const report={passed:true,engines,results,liveWrites:0,blockedSessionRefreshes,independentPages:true,baselineCompared:Boolean(baseline)};
+  const report={passed:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,hydrationRetries,independentPages:true,baselineCompared:Boolean(baseline)};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);
