@@ -1,0 +1,48 @@
+name: Live storefront smoke checks - GET only
+on:
+  push:
+    branches: [work/photo-live-release-20261015]
+    paths: [.github/workflows/photo-live-readonly-smoke.yml]
+permissions: {}
+jobs:
+  public-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check public pages health images and denied admin access without writes
+        run: |
+          python - <<'PY'
+          import json,time,urllib.request,urllib.error
+          from pathlib import Path
+          from urllib.parse import urlencode,urlparse
+          base='https://hidiindia.com'
+          cases=[('/',200),('/collections/all',200),('/collections/casual-wear',200),('/collections/work-wear',200),('/collections/occasional-wear',200),('/collections/ananyas-pick',200),('/products/cream-embroidered-kurta-pant-set',200),('/cart',200),('/checkout',200),('/account',200),('/wishlist',200),('/health',200),('/healthz',200),('/api/store/health/ready',200),('/api/store/checkout/payment-options',200),('/api/admin/inventory',401),('/api/hidi/offers/admin',401),('/admin/offers',401),('/robots.txt',200),('/sitemap.xml',200)]
+          sample='/media/products/variants/cmv508ble011s01z3rygu4as3/1791794828102-2020f682-53ea-42fb-b4d3-fce9959fcbe5.jpg'
+          cases.append(('/_next/image?'+urlencode({'url':sample,'w':640,'q':75}),200))
+          rows=[]
+          for path,expected in cases:
+              started=time.monotonic();row={'path':path,'method':'GET','expectedStatus':expected,'passed':False}
+              try:
+                  req=urllib.request.Request(base+path,headers={'User-Agent':'HIDI-ReadOnly-Verification/1.0','Accept':'image/webp' if path.startswith('/_next/image?') else '*/*'},method='GET')
+                  try:response=urllib.request.urlopen(req,timeout=25)
+                  except urllib.error.HTTPError as error:response=error
+                  with response:
+                      row['status']=response.status;row['contentType']=response.headers.get('Content-Type','');row['finalHost']=urlparse(response.geturl()).hostname
+                      sample_bytes=response.read(2048)
+                      row['nonEmpty']=bool(sample_bytes)
+                      row['passed']=row['status']==expected and row['finalHost']=='hidiindia.com' and bool(sample_bytes)
+                      if path.startswith('/_next/image?'):row['passed']=row['passed'] and row['contentType'].startswith('image/')
+              except Exception as error:row['errorType']=type(error).__name__
+              row['seconds']=round(time.monotonic()-started,2);rows.append(row);print(json.dumps(row),flush=True)
+          report={'passed':all(r['passed'] for r in rows),'productionWrites':0,'requests':'GET only; no cookies, authentication, uploads, carts, orders, payments or configuration changes','results':rows}
+          out=Path('reports/live-readonly');out.mkdir(parents=True,exist_ok=True);(out/'results.json').write_text(json.dumps(report,indent=2)+'\n')
+          assert report['passed'],'At least one read-only live route check failed; inspect evidence. No production writes were attempted.'
+          print('PASS: all 21 live GET-only checks.')
+          PY
+      - name: Preserve non-sensitive HTTP check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hidi-live-readonly-smoke-evidence
+          path: reports/live-readonly/
+          retention-days: 14
