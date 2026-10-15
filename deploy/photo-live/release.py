@@ -5,6 +5,10 @@ HERE=Path(__file__).resolve().parent;ROOT=HERE.parents[1]
 def load(name,path):
  s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
 r=load('photo_live_guard',HERE.parent/'checkout-offers/release.py')
+state_reader=load('photo_live_arm_state',HERE/'arm-state.py')
+assert r.cloud is r.photo.cloud and r.cloud is r.guard.cloud
+assert r.api_guard.cloud is r.api_guard.photo.cloud
+state_readers=[state_reader.install(g.cloud) for g in [r.guard,r.api_guard]]
 for g in [r.guard,r.api_guard]:
  g.PRIVATE=Path(os.environ.get('RUNNER_TEMP','/tmp'))/'hidi-photo-live-private';g.EVIDENCE=Path('evidence/photo-live');g.setup()
 r.P=r.guard.PRIVATE;r.E=r.guard.EVIDENCE;r.api_guard.photo.PRIVATE=r.P
@@ -14,6 +18,7 @@ patcher=load('photo_live_patch',HERE/'patch.py')
 def source_sha():return subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
 def capture():
  r.capture();save('photo-scope.json',{'sourceSha':os.environ['GITHUB_SHA'],'photoSourceSha':source_sha(),'scope':'Retained-runtime photo-only overlay','sqlSchemaChanged':False,'ticketIntegerCapacityBytes':2147483647})
+ save('arm-state-readers.json',{'passed':True,'readers':state_readers,'snapshotRulesUnchanged':True,'conditionalWriteRulesUnchanged':True})
  r.guard.write_private('offers-before.json',json.loads(r.cloud.get('/api/hidi/offers')))
 def compose():
  r.fresh_source();r.backups();before=r.photo.states();r.photo.unchanged(before)
@@ -68,7 +73,8 @@ def recover():
   assert results[app]['passed'],'Owned recovery failed'
  save('recovery.json',{'passed':True,'results':results})
 def apply():
- r.fresh_source();r.backups();published=verify();assert read('azure-storage-test.json')['passed'],'Real managed-identity storage validation must pass'
+ r.fresh_source();r.backups();published=verify();storage=read('azure-storage-test.json')
+ assert storage['passed'] and storage.get('validationJobRemoved') is True and storage.get('photoSourceSha')==source_sha() and storage.get('image')==published['web'],'Real managed-identity storage validation and cleanup must pass for this exact source and image'
  before=r.photo.states();r.photo.unchanged(before);captured=r.guard.private_json('public-before.json')
  assert r.guard.public_snapshot()==captured;r.guard.install_interrupt_handler();deployed=dict(before)
  try:
