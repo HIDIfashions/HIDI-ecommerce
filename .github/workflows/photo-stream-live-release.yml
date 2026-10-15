@@ -23,8 +23,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: 972bbbfdd6f27ec259e0f90f04fb2d8eeea41b7f
+          ref: 3435cd5bc0fac4f6efba5f75fa85683c6d82e796
           path: photo-source
+      - name: Test cleanup responses and confirm concurrent-change rejection offline
+        run: |
+          set -euo pipefail
+          test "$(git -C photo-source rev-parse HEAD)" = 3435cd5bc0fac4f6efba5f75fa85683c6d82e796
+          mkdir -p evidence/photo-live
+          python photo-source/deploy/photo-live/azure-check.test.py 2>&1 | tee evidence/photo-live/azure-cleanup-regression.log
       - uses: pnpm/action-setup@v4
         with: {version: 10.15.1}
       - uses: actions/setup-node@v4
