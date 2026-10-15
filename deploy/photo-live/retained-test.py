@@ -54,6 +54,20 @@ s=s[:start]+"  if(await compiledUpload(req,res,path))return;\n"+s[end:]
 once("browser=await pw[engine].launch({headless:true});", "browser=await launchIsolatedBrowser(engine);await h.assertClean();")
 once("[resolve('apps/web/node_modules/next/dist/bin/next'),'start','-H','127.0.0.1','-p',String(nextPort)]", "[join(candidateRoot,'apps/web/server.js')]")
 once("cwd:resolve('apps/web'),env:{...process.env,NODE_ENV:'production',", "cwd:join(candidateRoot,'apps/web'),env:{...process.env,NODE_ENV:'production',HOSTNAME:'127.0.0.1',PORT:String(nextPort),")
+# Keep the editor alive when testing the customer page. Reusing the same page
+# cancels Next's pending admin-prefetch requests during a hard navigation; some
+# WebKit builds report these cancellations as access-control page errors. Both
+# pages retain error listeners, and ALL uncaught errors still fail the suite.
+once("const page=await context.newPage(),errors=[],served=[];latestPage=page;page.setDefaultTimeout(30000);page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.url().includes('/_next/image?'))served.push(response);});", """const errors=[],served=[];
+  const observe=target=>{
+   target.setDefaultTimeout(30000);
+   target.on('pageerror',e=>errors.push(e.message));
+   target.on('response',response=>{if(response.url().includes('/_next/image?'))served.push(response);});
+  };
+  const editorPage=await context.newPage();let page=editorPage;observe(page);latestPage=page;""")
+once("served.length=0;await page.goto(base+'/products/photo-fixture'", "served.length=0;page=await context.newPage();observe(page);latestPage=page;await page.goto(base+'/products/photo-fixture'")
+once("await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{await page.goto", "await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{page=editorPage;latestPage=page;await page.goto")
+once("assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);await h.assertClean();});", "assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);await h.assertClean();assert.deepEqual(errors,[],'No uncaught errors on either retained editor or customer product page');});")
 dest=root/'tests/photo-retained-compiled.browser.mjs';dest.write_text(s)
 subprocess.run(['node','--check',str(dest)],cwd=root,check=True)
 subprocess.run(['node','--experimental-strip-types',str(dest)],cwd=root,check=True)
