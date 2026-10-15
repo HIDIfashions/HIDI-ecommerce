@@ -8,7 +8,7 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
   const response=await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:30000});
   assert(response?.ok(),'Successful fixture route '+path);
  };
- const cartFor=price=>({items:[{id:'quote-fixture',quantity:1,lineTotalPaise:price,product:{id:products[0].id,slug:products[0].slug,name:products[0].name,image:products[0].images[0].url},variant:{id:'quote-m',size:'M',color:'Ivory',available:4}}],itemCount:1,subtotalPaise:price,shippingPaise:price<149900?9900:0,totalPaise:price+(price<149900?9900:0)});
+ const cartFor=price=>({items:[{id:'quote-fixture',quantity:1,lineTotalPaise:price,product:{id:products[0].id,slug:products[0].slug,name:products[0].name,image:products[0].images[0].url},variant:{id:'quote-m',size:'M',color:'Ivory',available:4}}],itemCount:1,subtotalPaise:price,shippingPaise:0,totalPaise:price});
  const loadCheckout=async(page,price=100000)=>{
   await page.route('**/api/store/carts/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(cartFor(price))}));
   await navigate(page,'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();
@@ -17,14 +17,14 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
  await scenario(browser,engine,'FIX-01','Guest sign-in card matches hierarchy and all responsive totals include shipping',async page=>{
   await loadCheckout(page);
   const card=page.locator('.checkout-signin-card');await card.waitFor();
-  assert(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),'Charged shipping must be visible without an extra tap');
+  assert.equal(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),false,'Zero-shipping mobile summary may start collapsed');
   for(const width of [320,390,768,1440]){
    await page.setViewportSize({width,height:844});const sign=card.getByRole('link',{name:'Sign In',exact:true}),guest=card.getByRole('button',{name:'Continue as Guest',exact:true});
    assert.equal(await color(sign),brown);assert.equal(await sign.getAttribute('href'),'/account?returnTo=%2Fcheckout');
    const [s,g]=await Promise.all([sign.boundingBox(),guest.boundingBox()]);assert(g.y>=s.y+s.height,'Guest option must be on its own line below Sign In');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Checkout overflow '+width);
    const summary=width<=720?page.locator('.checkout-mobile-summary'):page.locator('.checkout-summary');if(width<=720)await page.locator('.checkout-mobile-summary').evaluate(e=>e.open=true);
-   assert.match(await summary.innerText(),/Shipping[\s\S]*₹99/);assert.match(await summary.innerText(),/1,099/);
+   assert.match(await summary.innerText(),/Shipping[\s\S]*₹0\.00/);assert.match(await summary.innerText(),/1,000/);
    assert.equal(await color(page.locator('.checkout-pay-button')),brown);
   }
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(output,`${engine}-checkout-fixed.png`),fullPage:true});
@@ -52,19 +52,19 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
   for(const product of products.slice(0,3)){
    await settleFixtureNetwork(page,{prefetchOnly:true});
    if(new URL(page.url()).pathname!=='/products/'+product.slug)await navigate(page,'/products/'+product.slug);const section=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await section.waitFor();
-   await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor();assert(await section.evaluate(e=>e.open));assert.match(await section.innerText(),/Free Shipping[\s\S]*₹1,499 and above[\s\S]*Easy Returns[\s\S]*7 days[\s\S]*Exchanges/);
+   await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor();assert(await section.evaluate(e=>e.open));assert.match(await section.innerText(),/Free Shipping[\s\S]*₹0\.00 on every order[\s\S]*Easy Returns[\s\S]*7 days[\s\S]*Exchanges/);
    await settleFixtureNetwork(page,{prefetchOnly:true});
-   const link=section.getByRole('link',{name:/View Shipping, Returns & Exchange Policy/});await link.click();await page.waitForURL('**/returns#shipping-returns-exchange');assert.match(await page.locator('#shipping-returns-exchange').innerText(),/₹99/);
+   const link=section.getByRole('link',{name:/View Shipping, Returns & Exchange Policy/});await link.click();await page.waitForURL('**/returns#shipping-returns-exchange');assert.match(await page.locator('#shipping-returns-exchange').innerText(),/₹0\.00/);
   }
  },{...phone,startPath:'/products/'+products[0].slug});
- await scenario(browser,engine,'FIX-07','Mobile Quick add maintains brown Add to bag through selection and success',async page=>{
-  await page.getByRole('button',{name:'Quick add — '+products[0].name,exact:true}).click();const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:products[0].name,exact:true})});await dialog.waitFor();const add=dialog.getByRole('button',{name:'Add to bag',exact:true});assert.equal(await color(add),brown);await dialog.getByRole('button',{name:'M',exact:true}).click();assert.equal(await color(add),brown);await add.click();await dialog.getByRole('button',{name:'Added to bag',exact:true}).waitFor();assert.equal(await color(dialog.getByRole('button',{name:'Added to bag',exact:true})),brown);await page.screenshot({path:resolve(output,`${engine}-quick-add-fixed.png`)});
+ await scenario(browser,engine,'FIX-07','Mobile Quick add retains the approved beige Add to Cart treatment through selection and success',async page=>{
+  await page.getByRole('button',{name:'Quick add — '+products[0].name,exact:true}).click();const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:products[0].name,exact:true})});await dialog.waitFor();const add=dialog.getByRole('button',{name:'Add to Cart',exact:true});assert.equal(await color(add),'rgb(232, 216, 196)');await dialog.getByRole('button',{name:'M',exact:true}).click();assert.equal(await color(add),'rgb(232, 216, 196)');await add.click();await dialog.getByRole('button',{name:'Added to bag',exact:true}).waitFor();assert.equal(await color(dialog.getByRole('button',{name:'Added to bag',exact:true})),'rgb(232, 216, 196)');await page.screenshot({path:resolve(output,`${engine}-quick-add-fixed.png`)});
  },{...phone,startPath:'/collections/all'});
  await scenario(browser,engine,'FIX-05','Boundary shipping summaries and bag quantity recalculation agree on both screens',async page=>{
-  for(const [price,shipping] of [[149899,9900],[149900,0],[149901,0]]){
+  for(const [price,shipping] of [[100,0],[99900,0],[149899,0],[149900,0],[149901,0]]){
    await page.route('**/api/store/carts/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(cartFor(price))}));
-   await navigate(page,'/cart');await page.locator('.summary-total').waitFor();assert.match(await page.locator('.order-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
-   await navigate(page,'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();assert.equal(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),Boolean(shipping));assert.match(await page.locator('.checkout-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
+   await navigate(page,'/cart');await page.locator('.summary-total').waitFor();assert.match(await page.locator('.order-summary').innerText(),/Shipping\s*₹0\.00/);
+   await navigate(page,'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();assert.equal(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),Boolean(shipping));for (const width of [390,1440]) { await page.setViewportSize({width,height:844}); const summary=width<=720?page.locator('.checkout-mobile-summary'):page.locator('.checkout-summary'); if(width<=720)await summary.evaluate(e=>e.open=true); assert.match(await summary.innerText(),/Shipping\s*₹0\.00/); } await page.setViewportSize({width:390,height:844});
    await settleFixtureNetwork(page);
    await page.unroute('**/api/store/carts/**');
   }
@@ -72,8 +72,8 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
  await scenario(browser,engine,'FIX-06','Gateway receives the shipping-inclusive server amount and HIDI button theme',async page=>{
   await page.route('**/checkout.razorpay.com/**',route=>route.fulfill({contentType:'text/javascript',body:'window.Razorpay=class{constructor(o){window.__payment=o;}open(){}close(){}on(){}}'}));
   await loadCheckout(page);await page.evaluate(()=>{window.Razorpay=class{constructor(o){window.__payment=o;}open(){}close(){}on(){}};});
-  let calls=0;await page.route('**/api/store/checkout/prepare',route=>{calls++;const request=route.request().postDataJSON();assert.equal(request.expectedTotalPaise,100000);assert.equal(request.expectedPayableTotalPaise,109900);return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({orderNumber:'FIXTURE-ORDER',amountPaise:109900,totalPaise:109900,subtotalPaise:100000,shippingPaise:9900,currency:'INR',providerOrderId:'fixture-rzp',razorpayKeyId:'fixture-key'})});});
+  let calls=0;await page.route('**/api/store/checkout/prepare',route=>{calls++;const request=route.request().postDataJSON();assert.equal(request.expectedTotalPaise,100000);assert.equal(request.expectedPayableTotalPaise,100000);return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({orderNumber:'FIXTURE-ORDER',amountPaise:100000,totalPaise:100000,subtotalPaise:100000,shippingPaise:0,currency:'INR',providerOrderId:'fixture-rzp',razorpayKeyId:'fixture-key'})});});
   for(const [name,value] of [['Email address','fixture@example.invalid'],['Mobile number','+919876543210'],['First name','Fixture'],['House, building and street address','1 Test Street'],['PIN code','500001'],['City','Hyderabad'],['State','Telangana']])await page.locator('.checkout-form').getByRole('textbox',{name,exact:true}).fill(value);
-  await page.getByRole('button',{name:/Pay securely/}).click();await until(()=>page.evaluate(()=>Boolean(window.__payment)),'Mock gateway opened');const payment=await page.evaluate(()=>({amount:window.__payment.amount,theme:window.__payment.theme}));assert.equal(payment.amount,109900);assert.equal(payment.theme.color,'#591d20');assert.equal(calls,1);
+  await page.getByRole('button',{name:/Pay securely/}).click();await until(()=>page.evaluate(()=>Boolean(window.__payment)),'Mock gateway opened');const payment=await page.evaluate(()=>({amount:window.__payment.amount,theme:window.__payment.theme}));assert.equal(payment.amount,100000);assert.equal(payment.theme.color,'#591d20');assert.equal(calls,1);
  },phone);
 }

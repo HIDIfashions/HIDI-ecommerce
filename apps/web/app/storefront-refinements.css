@@ -1,0 +1,27 @@
+/* Consistent product fit controls and newsletter, across all storefront routes. */
+.pdp-purchase .size-row-title > strong { color: #bb8746; text-transform: uppercase; letter-spacing: .14em; font-size: var(--type-meta); }
+.pdp-purchase .sizes { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 16px; }
+.pdp-purchase .sizes button { flex: 0 0 auto; min-width: 42px; min-height: 36px; padding: 0 10px; border-radius: 999px; background: var(--hidi-page-bg); }
+.pdp-purchase .sizes button.selected { background: #591d20; color: #fff8ef; }
+.footer .newsletter-label { display: block; margin-top: 22px; margin-bottom: 6px; font-size: 12px; color: #fff3e8; }
+.footer .newsletter { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: stretch; width: 100%; min-height: 54px; padding: 3px; gap: 0; margin-top: 0; border: 1px solid #a78053; border-radius: 4px; }
+.footer .newsletter:focus-within { outline: 2px solid #e5c279; outline-offset: 3px; }
+.footer .newsletter input { flex: 1 1 0%; min-width: 0; width: 0; padding: 10px 9px; border: 0; background: transparent; color: #fff3e8; font-size: 13px; }
+.footer .newsletter button { flex: 0 0 auto; width: auto; min-width: 100px; min-height: 46px; margin: 0; padding: 10px 15px; background: #e5c279; border: 1px solid #e5c279; border-radius: 3px; color: #381719; text-transform: none; font-size: 13px; font-weight: 500; letter-spacing: 0; }
+.footer .newsletter button:hover:not(:disabled) { background: #f0d49c; border-color: #f0d49c; color: #381719; }
+.delivery-box .delivery-heading { display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.delivery-box .delivery-benefits { display: grid; gap: 20px; margin: 24px 0 0; padding: 0; list-style: none; }
+.delivery-benefits li { display: flex; align-items: flex-start; gap: 16px; line-height: 1.5; }
+.delivery-benefits svg { flex-shrink: 0; color: #6a6266; }
+.delivery-benefits strong, .delivery-benefits small { display: block; }
+.delivery-benefits small { margin-top: 3px; color: var(--muted); font-size: 12px; }
+.delivery-benefits a { color: #591d20; text-underline-offset: 4px; }
+
+.delivery-box > .delivery-result { display: block; border: 0; margin-top: 0; }
+.delivery-pin-entry { display: flex; margin-top: 16px; border: 1px solid var(--line); }
+.delivery-pin-entry input { min-width: 0; width: 100%; background: transparent; }
+.delivery-checked-pin { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.delivery-checked-pin button { color: #591d20; background: transparent; text-decoration: underline; min-height: 40px; }
+
+.product-page .pdp-purchase .sizes button { min-width: 42px; min-height: 36px; }
+#main-content .product-page .delivery-result { border: 0; box-shadow: none; overflow: visible; }

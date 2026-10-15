@@ -49,7 +49,7 @@ export function AmbientHero({ videoSrc }: { videoSrc?: string }) {
     {allowed && <button type="button" className={styles.motionControl} data-hidi-motion-control onClick={() => setPaused(value => !value)} aria-label={paused ? "Play ambient motion" : "Pause ambient motion"} aria-pressed={paused}>{paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}<span>Motion {paused ? "off" : "on"}</span></button>}
   </>;
 }
-const messages = ["Complimentary shipping · ₹1,499+", "7-day returns · review eligibility", "Secure checkout. Considered style."];
+const messages = ["Shipping · ₹0.00 on every order", "7-day returns · review eligibility", "Secure checkout. Considered style."];
 export function AnnouncementTicker() {
   const allowed = useMotionPreference();
   const [index, setIndex] = useState(0), [paused, setPaused] = useState(false), [interacting, setInteracting] = useState(false);

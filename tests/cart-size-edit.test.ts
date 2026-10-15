@@ -93,8 +93,8 @@ test("invalid sessions and non-string variant IDs cannot write", async () => {
   assert.equal(f.writes.length, 0);
 });
 
-test('editing size recomputes shipping when the merchandise subtotal falls below the threshold', async () => {
+test('editing size keeps shipping zero when the merchandise subtotal changes', async () => {
   const f = fixture({ target: { pricePaise: 74949 } });
   const result = await f.service.changeSize('session-1', 'item-m', 'variant-l');
-  assert.equal(result.subtotalPaise, 149898); assert.equal(result.shippingPaise, 9900); assert.equal(result.totalPaise, 159798);
+  assert.equal(result.subtotalPaise, 149898); assert.equal(result.shippingPaise, 0); assert.equal(result.totalPaise, 149898);
 });

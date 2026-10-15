@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { productImageSource } from "@/lib/product-image";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, LoaderCircle, Minus, Plus, Share2, X } from "lucide-react";
 import type { ApiProduct } from "@/lib/api";
@@ -255,7 +256,7 @@ export function ProductContactActions({ product }: { product: ApiProduct }) {
         <p className={styles.intro}>A few details help us pick up right where you left off.</p>
 
         <div className={styles.productSummary}>
-          {image ? <div className={styles.thumb}><Image src={image.url} alt={image.alt || snapshot.name} fill sizes="88px" /></div> : <div className={styles.thumb} aria-hidden="true" />}
+          {image ? <div className={styles.thumb}><Image src={productImageSource(image.url)} alt={image.alt || snapshot.name} fill sizes="88px" /></div> : <div className={styles.thumb} aria-hidden="true" />}
           <div><strong>{snapshot.name}</strong><span>{formatPaise(unitPrice)} <small>each</small></span><small>{selected?.sku ? "SKU " + selected.sku : "Choose your colour and size below"}</small></div>
         </div>
 

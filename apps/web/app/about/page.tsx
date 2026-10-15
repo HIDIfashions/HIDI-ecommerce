@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -10,13 +9,13 @@ export const metadata: Metadata = {
     url: "/about",
     title: "About HIDI & Ananya Nagalla",
     description: "Introduced by actress Ananya Nagalla, HIDI offers women’s Indian wear for work, everyday dressing and occasions.",
-    images: ["/brand/hidi-hero-green-garden-fullbody.webp"],
+    images: ["/brand/hidi-logo-gold.jpg"],
   },
   twitter: {
     card: "summary_large_image",
     title: "About HIDI & Ananya Nagalla",
     description: "Introduced by actress Ananya Nagalla, HIDI offers women’s Indian wear for work, everyday dressing and occasions.",
-    images: ["/brand/hidi-hero-green-garden-fullbody.webp"],
+    images: ["/brand/hidi-logo-gold.jpg"],
   },
 };
 import Link from "next/link";
@@ -25,30 +24,29 @@ import styles from "./about.module.css";
 export default function AboutPage() {
   return (
     <div className={styles.page}>
-      <div className={styles.breadcrumbs}>Home / Discover HIDI</div>
+      <div className={styles.breadcrumbs}>Home / Meet HIDI</div>
 
-      <section className={styles.hero}>
-        <Image className={styles.video} src="/brand/hidi-manifesto-ananya.webp" alt="HIDI occasion-wear campaign in a sunlit architectural setting" width={1672} height={941} sizes="(max-width: 1288px) 100vw, 1240px" priority />
-
-        <div className={styles.shade} aria-hidden="true" />
-
-        <div className={styles.overlay}>
-          <p className={styles.eyebrow}>DISCOVER HIDI</p>
-          <h1>For every role you carry.</h1>
-          <p className={styles.subtitle}>
-            Introduced by actress Ananya Nagalla, HIDI offers women’s Indian
-            wear for work, everyday dressing and occasions — made for every
-            role you carry.
-          </p>
+      <section className={styles.brandHero}>
+        <div className={styles.brandIntro}>
+          <p className={styles.sectionEyebrow}>MEET HIDI · WEAR THE FEELING</p>
+          <h1>Considered clothing.<br />A clear point of view.</h1>
+          <p className={styles.brandLead}>Indian wear for the many roles you carry.</p>
+          <p>Introduced by actress Ananya Nagalla, HIDI brings together women’s Indian wear for work, everyday dressing and occasions. Our point of view is simple: feel comfortable, look composed and be yourself.</p>
           <div className={styles.actions}>
-            <Link href="/collections/work-wear" className={styles.primaryButton}>
-              Shop Work Wear
-            </Link>
-            <Link href="/collections/casual-wear" className={styles.secondaryButton}>
-              Explore Casual Wear
-            </Link>
+            <Link href="/collections/all" className={styles.darkButton}>Explore HIDI</Link>
+            <Link href="/contact" className={styles.outlineButton}>Talk to our team ↗</Link>
           </div>
         </div>
+        <div className={styles.brandPanel}>
+          <img src="/brand/hidi-logo-header.svg?v=8f2e2b8731a3" alt="HIDI — Wear the Feeling" width="280" height="148" />
+          <p>FOR EVERY ROLE.<br />FOR EVERY DAY.<br /><em>For you.</em></p>
+          <span>WORK · EVERYDAY · OCCASIONS</span>
+        </div>
+      </section>
+      <section className={styles.assurance} aria-label="Shop with confidence">
+        <div><span>01 / TRANSPARENCY</span><h2>Know your purchase.</h2><p>Style details, available sizes and pricing on every product page.</p><Link href="/collections/all">Browse the collection ↗</Link></div>
+        <div><span>02 / CLARITY</span><h2>Clear policies.</h2><p>Shipping is ₹0.00 on every order. Review return eligibility before you buy.</p><Link href="/returns">Read our returns policy ↗</Link></div>
+        <div><span>03 / CONNECTION</span><h2>A team you can reach.</h2><p>Questions about a piece or an order? Find the right way to contact HIDI.</p><Link href="/contact">Contact HIDI ↗</Link></div>
       </section>
 
       <section className={styles.story}>
@@ -78,7 +76,7 @@ export default function AboutPage() {
         </article>
         <article className={styles.valueCard}>
           <span>03</span>
-          <h3>Casual Wear elegance</h3>
+          <h3>Everyday elegance</h3>
           <p>Quiet pieces you can return to across work, weekends and occasions.</p>
         </article>
       </section>

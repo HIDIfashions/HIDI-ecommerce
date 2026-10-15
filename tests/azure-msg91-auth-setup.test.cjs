@@ -14,9 +14,9 @@ for (const mode of ['sms', 'check', 'existing-key', 'missing-key', 'missing-temp
       copyFileSync(path.join(__dirname, 'fixtures/azure-msg91-auth-cli.mjs'), cli);
       chmodSync(cli, 0o700);
       const log = path.join(dir, 'calls.jsonl');
-      const result = spawnSync(process.execPath, ['deploy/configure-msg91-auth.mjs', ...(mode === 'check' ? ['--check'] : [])], {
+      const result = spawnSync(process.execPath, ['--require', path.join(__dirname, 'fixtures/azure-cli-preload.cjs'), 'deploy/configure-msg91-auth.mjs', ...(mode === 'check' ? ['--check'] : [])], {
         cwd: path.join(__dirname, '..'), encoding: 'utf8',
-        env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, AUTH_SETUP_TEST_MODE: mode, AUTH_SETUP_TEST_LOG: log,
+        env: { ...process.env, AUTH_SETUP_TEST_FIXTURE: path.join(__dirname, "fixtures/azure-msg91-auth-cli.mjs"), AUTH_SETUP_TEST_MODE: mode, AUTH_SETUP_TEST_LOG: log,
           MSG91_AUTHKEY: ['existing-key', 'missing-key', 'missing-key-ref'].includes(mode) ? '' : 'private-test-msg91-key',
           MSG91_SMS_OTP_TEMPLATE_ID: mode === 'missing-template' ? '' : 'test-template-id',
           MSG91_SMS_OTP_ENDPOINT: mode === 'unsafe-endpoint' ? 'https://other.test/api/v5/otp' : '',

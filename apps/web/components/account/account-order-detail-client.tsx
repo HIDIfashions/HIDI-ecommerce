@@ -160,7 +160,7 @@ export function AccountOrderDetailClient({ orderNumber }: { orderNumber: string 
           <div className={styles.rows}>
             <div><span>Merchandise</span><strong>{formatPaise(order.subtotalPaise ?? order.totalPaise)}</strong></div>
             {!!order.discountPaise && <div><span>Discount</span><strong>−{formatPaise(order.discountPaise)}</strong></div>}
-            <div><span>Shipping</span><strong>{(order.shippingPaise ?? 0) === 0 ? "Complimentary" : formatPaise(order.shippingPaise ?? 0)}</strong></div>
+            <div><span>Shipping</span><strong>{formatPaise(order.shippingPaise ?? 0, 2)}</strong></div>
             {!!order.taxPaise && <div><span>Tax</span><strong>{formatPaise(order.taxPaise)}</strong></div>}
             {!!walletApplied && <div><span>HIDI Wallet</span><strong>−{formatWalletPaise(walletApplied)}</strong></div>}
             {!!walletApplied && <div><span>Online payment</span><strong>{formatWalletPaise(cashPayable)}</strong></div>}

@@ -7,3 +7,7 @@ for(const invalid of [-1,0.5,NaN,Infinity,2147483648]) test(`reject invalid ship
 test('phone sanitation covers typing, paste, duplicate plus, punctuation and length',()=>{
   for(const [raw,expected] of [['+91 (987) 654-3210','+919876543210'],['abc9876543210','9876543210'],['++91+9876543210','+919876543210'],['98+76543210','9876543210'],['+12345678901234567890','+123456789012345'],['','']]) assert.equal(sanitizeCheckoutPhone(raw),expected);
 });
+
+for (const subtotal of [1, 9900, 149899, 149900, 149901, 729700, 2147483647]) {
+  test(`shipping is zero for subtotal ${subtotal}`, () => assert.deepEqual(shippingQuote(subtotal), { shippingPaise: 0, totalPaise: subtotal }));
+}

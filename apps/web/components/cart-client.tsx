@@ -150,8 +150,7 @@ export function CartClient() {
   if (cart.items.length === 0) return <div className="empty-state"><h2>Your bag is waiting.</h2><p>Find something you love from the latest HIDI edit.</p><Link className="button button-dark" href="/collections/all">Browse new arrivals</Link></div>;
 
   const groups = groupCartItems(cart.items);
-  const complimentaryShipping = cart.subtotalPaise >= 149900;
-  const shippingLabel = complimentaryShipping ? "Complimentary" : cart.shippingPaise !== undefined ? formatPaise(cart.shippingPaise) : "Calculated at checkout";
+  const shippingLabel = cart.shippingPaise !== undefined ? formatPaise(cart.shippingPaise, 2) : "Calculated at checkout";
 
   return <>
     {error && <p className="form-error" role="alert">{error}</p>}
@@ -221,7 +220,6 @@ export function CartClient() {
         <div><span>Subtotal</span><strong>{formatPaise(cart.subtotalPaise)}</strong></div>
         <div><span>Shipping</span><span>{shippingLabel}</span></div>
         <div className="summary-total"><span>Total</span><strong>{formatPaise(cart.totalPaise ?? cart.subtotalPaise)}</strong></div>
-        <p className="checkout-shipping-policy">₹99 shipping below ₹1,499. Free shipping from ₹1,499 before rewards.</p>
         <Link className="button button-dark cart-checkout-button" href="/checkout" aria-disabled={Boolean(busy)} onClick={event => { if (mutating.current) event.preventDefault(); }}>Continue to checkout</Link>
         <p className="fine-print">Secure checkout · UPI · Cards · Net banking</p>
       </aside>

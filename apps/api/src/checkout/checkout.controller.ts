@@ -50,6 +50,7 @@ export class CheckoutController {
       city: result.city ?? null,
       district: result.district ?? null,
       stateCode: result.stateCode ?? null,
+      estimatedDeliveryDate: result.estimatedDeliveryDate ?? null,
     };
 
     this.deliveryCache.set(pin, { expiresAt: now + 30 * 60_000, value });

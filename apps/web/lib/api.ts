@@ -183,10 +183,11 @@ export async function getProductReviews(productId: string): Promise<ApiProductRe
   return response.json();
 }
 
-export function formatPaise(value: number) {
+export function formatPaise(value: number, decimals: 0 | 2 = 0) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(value / 100);
 }

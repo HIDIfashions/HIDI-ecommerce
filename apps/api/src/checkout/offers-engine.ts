@@ -1,5 +1,6 @@
 // @ts-nocheck -- shared promotion engine; tested against the compiled checkout service.
 import {BadRequestException,ConflictException,UnauthorizedException} from '@nestjs/common';
+import { shippingQuote } from './shipping-policy.js';
 export const normalizedChoice=input=>{
  const value=input??{kind:'NONE'};
  if(!value||typeof value!=='object'||Array.isArray(value)||!['NONE','PERCENT15','DRESS1'].includes(value.kind))throw new BadRequestException('Choose one supported HIDI offer');
@@ -42,7 +43,7 @@ export function amounts(subtotal,choice,gift=null){
   if(!gift)throw new ConflictException('Select an available offer dress and size');
   gross+=gift.pricePaise;discount=gift.pricePaise-100;
  }
- const shipping=subtotal<149900?9900:0,total=gross-discount+shipping;
+ const shipping=shippingQuote(gross-discount).shippingPaise,total=gross-discount+shipping;
  if(!Number.isSafeInteger(total)||gross>2147483647||total>2147483647)throw new BadRequestException('Invalid order total');
  return {originalSubtotalPaise:subtotal,subtotalPaise:gross,discountPaise:discount,shippingPaise:shipping,totalPaise:total,netSubtotalPaise:gross-discount};
 }
