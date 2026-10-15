@@ -17,6 +17,16 @@ process.env.AZURE_STORAGE_ACCOUNT='photofixture';
 process.env.MEDIA_PUBLIC_BASE_URL='https://hidiindia.com/media';
 process.env.API_URL='http://127.0.0.1:'+apiPort+'/v1';
 const uploadTemp=join(directory,'stream-temp');await mkdir(uploadTemp);process.env.TMPDIR=uploadTemp;
+const browserTemp=join(directory,'browser-temp');await mkdir(browserTemp);
+// Playwright creates its active profile and artifacts in the parent's TMPDIR.
+// Give browser launch its own directory, then restore the uploader's directory
+// before any HTTP upload. Keep the strict empty-directory cleanup assertion.
+async function launchIsolatedBrowser(engine){
+ assert.equal(process.env.TMPDIR,uploadTemp);
+ process.env.TMPDIR=browserTemp;
+ try{return await pw[engine].launch({headless:true,env:{...process.env,TMPDIR:browserTemp}});}
+ finally{process.env.TMPDIR=uploadTemp;}
+}
 h.assertClean=async()=>assert.deepEqual(await readdir(uploadTemp),[],'Actual compiled route removed its temporary files');
 const actualFetch=globalThis.fetch;
 globalThis.fetch=(resource,options)=>String(resource).startsWith(process.env.API_URL+'/admin/')?h.send(resource,options):actualFetch(resource,options);
@@ -41,6 +51,7 @@ const {handlePhotoUpload:compiledUpload}=await import(pathToFileURL(join(candida
 start=s.index("  if(path==='/api/admin/inventory/v1/images'&&req.method==='POST'){")
 end=s.index('  if(await optimizer.handle(req,res,path))return;',start)
 s=s[:start]+"  if(await compiledUpload(req,res,path))return;\n"+s[end:]
+once("browser=await pw[engine].launch({headless:true});", "browser=await launchIsolatedBrowser(engine);await h.assertClean();")
 once("[resolve('apps/web/node_modules/next/dist/bin/next'),'start','-H','127.0.0.1','-p',String(nextPort)]", "[join(candidateRoot,'apps/web/server.js')]")
 once("cwd:resolve('apps/web'),env:{...process.env,NODE_ENV:'production',", "cwd:join(candidateRoot,'apps/web'),env:{...process.env,NODE_ENV:'production',HOSTNAME:'127.0.0.1',PORT:String(nextPort),")
 dest=root/'tests/photo-retained-compiled.browser.mjs';dest.write_text(s)
