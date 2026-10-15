@@ -31,15 +31,16 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         if(request.resourceType()==='media'||/razorpay\.com$/.test(url.hostname))return route.abort();
         return route.continue();
       });
-      const page=await context.newPage(),prior=baseline?await context.newPage():null;
-      page.setDefaultTimeout(30000);prior?.setDefaultTimeout(30000);
-      page.on('pageerror',error=>errors.push({engine,width,message:error.message}));
-      const reads=new Map();
-      for(const p of [page,...(prior?[prior]:[])]){
+      let page;
+      const reads=new Map(),handlers=new Map();
+      const fresh=async(stage,observe=true)=>{
+        const p=await context.newPage();p.setDefaultTimeout(30000);
+        if(observe){const handler=error=>errors.push({engine,width,stage,message:error.message});handlers.set(p,handler);p.on('pageerror',handler);}
         const pending=new Set();reads.set(p,pending);
-        p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/store/')||url.pathname==='/api/admin/session'||url.searchParams.has('_rsc')))pending.add(request);});
+        p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/store/')||url.pathname==='/api/admin/session'))pending.add(request);});
         for(const event of ['requestfinished','requestfailed'])p.on(event,request=>pending.delete(request));
-      }
+        return p;
+      };
       const settleReads=async p=>{
         const pending=reads.get(p);let quiet=0;
         for(let elapsed=0;elapsed<15000;elapsed+=50){
@@ -47,12 +48,19 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         }
         assert.fail('Background reads did not settle: '+[...pending].map(request=>request.url()).join(', '));
       };
-      const go=async(p,url)=>{await settleReads(p);return p.goto(url,{waitUntil:'domcontentloaded'});};
+      const finish=async p=>{
+        await settleReads(p);
+        // Teardown is outside the completed scenario. Destroy its page rather
+        // than hard-navigating a Next page with open speculative RSC streams.
+        if(handlers.has(p))p.off('pageerror',handlers.get(p));
+        await p.close();
+      };
       const products=async p=>(await p.locator('main article h3 a').evaluateAll(nodes=>nodes.map(n=>new URL(n.href).pathname))).sort();
       try{
         for(const slug of routes){
           const path='/collections/'+slug;
-          assert((await go(page,base+path)).ok());
+          page=await fresh(path);
+          assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
           await page.getByRole('heading',{level:1,name:copy[slug].title,exact:true}).waitFor();
           await page.locator('main article').first().waitFor();
           assert.equal(await page.locator('h1').count(),1);
@@ -64,7 +72,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Horizontal overflow: '+path);
           const expected=await products(page);assert(expected.length>0);
           if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
-          if(prior){await go(prior,baseline+path);await prior.locator('main article').first().waitFor();assert.deepEqual(expected,await products(prior),'Product selection changed');}
+          if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();assert.deepEqual(expected,await products(prior),'Product selection changed');await finish(prior);}
           if(width<700){
             await page.getByRole('button',{name:/Filter.*Sort/i}).click();
             const filters=page.getByRole('dialog',{name:'Product filters'});
@@ -73,6 +81,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           }else await page.getByLabel('Sort products').selectOption({label:'Price: Low to high'});
           assert.deepEqual(await products(page),expected);
           await page.screenshot({path:`${output}/${engine}-${width}-${slug}.png`,fullPage:false});
+          if(slug!==routes.at(-1))await finish(page);
         }
         const product=page.locator('main article h3 a').first(),name=await product.innerText();
         await settleReads(page);
@@ -82,11 +91,14 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         await product.click({position:{x:8,y:8}});await page.waitForURL('**/products/**');
         await page.getByRole('heading',{level:1,name,exact:true}).waitFor();
         assert(await page.locator('script[type="application/ld+json"]').count()>0,'Product schema missing');
+        await finish(page);
         for(const path of ['/cart','/checkout','/account','/admin']){
-          await go(page,base+path);
+          page=await fresh(path);await page.goto(base+path,{waitUntil:'domcontentloaded'});
+          await settleReads(page);
           assert.match(await page.locator('meta[name="robots"]').first().getAttribute('content'),/noindex/,'Private indexing changed: '+path);
+          await finish(page);
         }
-        await go(page,base+'/');
+        page=await fresh('homepage links');await page.goto(base+'/',{waitUntil:'domcontentloaded'});
         await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');
         const links=page.locator('.hidi-collection-link');assert.equal(await links.count(),5);
         for(let i=0;i<5;i++){
@@ -95,9 +107,11 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           assert(destinations[title],'Unrecognized caption: '+title);
           assert.equal(new URL(await link.getAttribute('href'),base).pathname,'/collections/'+destinations[title]);
         }
+        await finish(page);
         // Activate each card through its real keyboard/click handler, not just its href.
         for(let i=0;i<5;i++){
-          if(i){await go(page,base+'/');await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');}
+          page=await fresh('carousel card '+i);await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+          await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');
           const carousel=page.locator('#range-carousel');await carousel.press('Home');
           await page.waitForFunction(()=>{const c=document.querySelector('#range-carousel');return c?.dataset.activeIndex==='0'&&c.dataset.transitioning==='false';});
           for(let n=0;n<i;n++){
@@ -108,20 +122,21 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           await settleReads(page);
           await link.press('Enter');await page.waitForURL('**'+new URL(href,base).pathname);
           await page.locator('main article').first().waitFor();
+          await finish(page);
         }
-        await go(page,base+'/');await page.locator('.hidi-collection-link').first().waitFor();
+        page=await fresh('homepage screenshot');await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.locator('.hidi-collection-link').first().waitFor();
         await page.screenshot({path:`${output}/${engine}-${width}-homepage.png`});
-        await settleReads(page);if(prior)await settleReads(prior);
+        await finish(page);
         results.push({engine,width,height,collections:4,carouselLinks:5,carouselActivations:5,productDetails:true,privateNoindex:true,sortPreserved:true,status:'PASS'});
         await writeFile(output+'/progress.json',JSON.stringify({results,errors,writes},null,2));
         console.log(`PASS: India SEO ${engine} ${width}x${height}: collections, inventory, sorting, product details, private indexing and five carousel activations`);
-      }catch(error){await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});await writeFile(`${output}/${engine}-${width}-failure.html`,await page.content()).catch(()=>{});await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({message:String(error),url:page.url(),errors,writes},null,2));throw error;}
+      }catch(error){if(page&&!page.isClosed()){await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});await writeFile(`${output}/${engine}-${width}-failure.html`,await page.content()).catch(()=>{});}await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({message:String(error),url:page?.url(),errors,writes},null,2));throw error;}
       finally{await context.close();}
     }}finally{await browser.close();}
   }
   await writeFile(output+'/runtime-errors.json',JSON.stringify({errors,writes},null,2));
   assert.deepEqual(writes,[],'Unexpected commerce writes');assert.deepEqual(errors,[],'Browser runtime errors');
-  const report={passed:true,engines,results,liveWrites:0,blockedSessionRefreshes,baselineCompared:Boolean(baseline)};
+  const report={passed:true,engines,results,liveWrites:0,blockedSessionRefreshes,independentPages:true,baselineCompared:Boolean(baseline)};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);
