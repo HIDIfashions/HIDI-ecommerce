@@ -56,6 +56,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           await page.screenshot({path:`${output}/${engine}-${width}-${slug}.png`,fullPage:false});
         }
         const product=page.locator('main article h3 a').first(),name=await product.innerText();
+        await product.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
         await product.click();await page.waitForURL('**/products/**');
         await page.getByRole('heading',{level:1,name,exact:true}).waitFor();
         assert(await page.locator('script[type="application/ld+json"]').count()>0,'Product schema missing');
@@ -88,10 +89,13 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.locator('.hidi-collection-link').first().waitFor();
         await page.screenshot({path:`${output}/${engine}-${width}-homepage.png`});
         results.push({engine,width,height,collections:4,carouselLinks:5,carouselActivations:5,productDetails:true,privateNoindex:true,sortPreserved:true,status:'PASS'});
-      }catch(error){await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});await writeFile(`${output}/${engine}-${width}-failure.html`,await page.content()).catch(()=>{});throw error;}
+        await writeFile(output+'/progress.json',JSON.stringify({results,errors,writes},null,2));
+        console.log(`PASS: India SEO ${engine} ${width}x${height}: collections, inventory, sorting, product details, private indexing and five carousel activations`);
+      }catch(error){await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});await writeFile(`${output}/${engine}-${width}-failure.html`,await page.content()).catch(()=>{});await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({message:String(error),url:page.url(),errors,writes},null,2));throw error;}
       finally{await context.close();}
     }}finally{await browser.close();}
   }
+  await writeFile(output+'/runtime-errors.json',JSON.stringify({errors,writes},null,2));
   assert.deepEqual(writes,[],'Unexpected commerce writes');assert.deepEqual(errors,[],'Browser runtime errors');
   const report={passed:true,engines,results,liveWrites:0,baselineCompared:Boolean(baseline)};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;

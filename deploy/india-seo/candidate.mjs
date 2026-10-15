@@ -55,7 +55,7 @@ try{
   await probe(base,'evidence/india-seo/candidate',{baseline,landing,inventory:{all:catalogue,...collections}});
   assert.deepEqual(writes,[]);
   assert(reads.some(r=>r.path==='/products'),'Runtime did not reach frozen inventory fixture');
-}catch(error){for(const name of containers)console.error(name+'\n'+docker('logs',name).slice(-3000));console.error('FIXTURE_READS',JSON.stringify(reads));throw error;}
+}catch(error){for(const name of containers)console.error(name+'\n'+docker('logs',name).slice(-3000));console.error('FIXTURE_READS',JSON.stringify({total:reads.length,categories:[...new Set(reads.filter(r=>r.path==='/products').map(r=>r.category))]}));throw error;}
 finally{
   for(const name of containers)docker('rm','--force',name);
   upstream.closeAllConnections();await new Promise(done=>upstream.close(done));
