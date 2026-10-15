@@ -31,11 +31,17 @@ const upstream=createServer((req,res)=>{
 await new Promise(done=>upstream.listen(0,'127.0.0.1',done));
 const api='http://127.0.0.1:'+upstream.address().port+'/v1',children=[];
 let logs='';
-async function start(directory){
+async function freePort(){
   const reserve=createServer();await new Promise(done=>reserve.listen(0,'127.0.0.1',done));
   const port=reserve.address().port;await new Promise(done=>reserve.close(done));
-  const child=spawn(process.execPath,[join(directory,'server.mjs')],{cwd:directory,env:{...process.env,PORT:String(port),API_URL:api,INTERNAL_API_URL:api},stdio:['ignore','pipe','pipe']});
+  return port;
+}
+function launch(directory,file,env){
+  const child=spawn(process.execPath,[join(directory,file)],{cwd:directory,env:{...process.env,NODE_ENV:'production',HOSTNAME:'127.0.0.1',API_URL:api,INTERNAL_API_URL:api,...env},stdio:['ignore','pipe','pipe']});
   children.push(child);child.stdout.on('data',c=>logs+=c);child.stderr.on('data',c=>logs+=c);
+  return child;
+}
+async function ready(child,port){
   const base='http://127.0.0.1:'+port;
   for(let i=0;i<120;i++){
     try{if((await fetch(base+'/collections/all')).ok)return base;}catch{}
@@ -43,6 +49,14 @@ async function start(directory){
     await new Promise(done=>setTimeout(done,250));
   }
   throw Error('Runtime not ready: '+logs.slice(-1500));
+}
+async function start(directory){
+  // Each exact runtime needs its own Next server; the wrapper otherwise uses 3001.
+  const storefrontPort=await freePort();
+  const storefront=launch(directory,'apps/web/server.js',{PORT:String(storefrontPort)});
+  const origin=await ready(storefront,storefrontPort);
+  const port=await freePort();
+  return ready(launch(directory,'server.mjs',{PORT:String(port),STOREFRONT_ORIGIN:origin}),port);
 }
 try{
   const baseline=await start(priorRoot),base=await start(root);
