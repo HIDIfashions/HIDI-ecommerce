@@ -43,7 +43,7 @@ jobs:
           az acr login --name acrhidiprod0927 --only-show-errors
           python3 deploy/india-seo/release.py capture
           echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-india-seo-private/web/candidate-app" >> "$GITHUB_ENV"
-      - name: Compose three-file candidate and prove all unrelated files identical
+      - name: Compose four-file candidate and prove all unrelated files identical
         run: python3 deploy/india-seo/release.py compose
       - name: Test actual candidate against baseline in Chromium Firefox and WebKit
         run: |

@@ -27,6 +27,15 @@ class PatchTests(unittest.TestCase):
         with self.assertRaises(AssertionError): patch.bundle_patch(b'new independent release')
         with self.assertRaises(AssertionError): patch.exact('one one', [('one','two')])
 
+    def test_dedicated_shop_all_renderer(self):
+        before = (HERE/'fixtures/all-before.js').read_bytes().rstrip(b'\n')
+        self.assertEqual(hashlib.sha256(before).hexdigest(), patch.ALL_SHA)
+        after = patch.all_patch(before)
+        self.assertIn(b'i="Women\'s Kurta Sets & Indian Wear"', after)
+        self.assertEqual(after.count(b'hidi-collection-intro'), 1)
+        self.assertIn(b'let a=await (0,f.d$)()', after)
+        with self.assertRaises(AssertionError): patch.all_patch(before+b' ')
+
     def test_landing_changes_only_caption_destination_and_click_lookup(self):
         source = patch.OLD_CARD+'\nconst open=()=>'+patch.OLD_OPEN+';'
         result = patch.exact(source, [(patch.OLD_CARD,patch.NEW_CARD),(patch.OLD_OPEN,patch.NEW_OPEN)])

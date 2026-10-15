@@ -52,7 +52,7 @@ def compose():
     configs=json.loads(images.docker('image','inspect',before['hidi-web']['image'],own_tag()))
     report=guard.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),configs)
     report.update({'baseImage':before['hidi-web']['image'],'candidateImageId':image_id(own_tag()),'candidateTag':own_tag()});save('web-preservation.json',report)
-    photo.unchanged(before);print('PASS: only the collection page and content-addressed carousel bundle changed')
+    photo.unchanged(before);print('PASS: only the two collection renderers, content-addressed carousel bundle and its index reference changed')
 def seal():
     photo.unchanged(photo.states());manifest={}
     for name in ['candidate/report.json','inventory.json','patch.json','web-preservation.json']:

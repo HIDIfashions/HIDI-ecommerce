@@ -44,8 +44,13 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           const expected=await products(page);assert(expected.length>0);
           if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
           if(prior){await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();assert.deepEqual(expected,await products(prior),'Product selection changed');}
-          const sort=page.getByLabel('Sort products');
-          if(await sort.count()){await sort.selectOption({label:'Price: Low to high'});assert.deepEqual(await products(page),expected);}
+          if(width<700){
+            await page.getByRole('button',{name:/Filter.*Sort/i}).click();
+            const filters=page.getByRole('dialog',{name:'Product filters'});
+            await filters.getByRole('radio',{name:'Price: Low to high',exact:true}).check();
+            await filters.getByRole('button',{name:'Close filters'}).click();
+          }else await page.getByLabel('Sort products').selectOption({label:'Price: Low to high'});
+          assert.deepEqual(await products(page),expected);
           await page.screenshot({path:`${output}/${engine}-${width}-${slug}.png`,fullPage:false});
         }
         const product=page.locator('main article h3 a').first(),name=await product.innerText();
