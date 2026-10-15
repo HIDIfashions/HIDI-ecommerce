@@ -2,7 +2,7 @@ name: Approved storefront refinements - backed up and guarded Azure release
 on:
   push:
     branches: [migration/azure-sql-blob]
-    paths: [deploy/storefront-refinements/**, .github/workflows/storefront-refinements-release.yml]
+    paths: [deploy/storefront-refinements/**, deploy/Dockerfile.web, .github/workflows/storefront-refinements-release.yml]
 permissions:
   contents: read
   actions: read
