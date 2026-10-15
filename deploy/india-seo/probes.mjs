@@ -10,8 +10,10 @@ const engines=['chromium','firefox','webkit'];
 export async function probe(base,output,{baseline,landing,inventory}={}){
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
   await mkdir(output,{recursive:true});
-  const results=[],writes=[],errors=[];let blockedSessionRefreshes=0,blockedTelemetryRequests=0,hydrationRetries=0;
+  const results=[],writes=[],errors=[];let blockedSessionRefreshes=0,blockedTelemetryRequests=0,isolatedTrackingScripts=0,hydrationRetries=0;
   landing ||= await (await fetch('https://hidiindia.com/api/hidi/landing-media-config')).json();
+  let offers;
+  if(baseline){const response=await fetch('https://hidiindia.com/api/hidi/offers',{signal:AbortSignal.timeout(30000)});assert(response.ok);offers=await response.json();}
   for(const engine of engines){
     const browser=await pw[engine].launch({headless:true,...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
     try{for(const [width,height] of [[320,740],[390,844],[1440,900]]){
@@ -26,11 +28,18 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           }
           const googleBeacon=request.method()==='POST'&&/(^|\.)(?:google-analytics\.com|analytics\.google\.com)$/.test(url.hostname)&&['/g/collect','/collect'].includes(url.pathname);
           const cloudflareBeacon=request.method()==='POST'&&/(^|\.)cloudflareinsights\.com$/.test(url.hostname)&&url.pathname==='/cdn-cgi/rum';
-          if(isBlockedTelemetry(request.method(),request.url(),base)||googleBeacon||cloudflareBeacon)blockedTelemetryRequests++;
-          else writes.push({method:request.method(),origin:url.origin,path:url.pathname});
+          if(isBlockedTelemetry(request.method(),request.url(),base)||googleBeacon||cloudflareBeacon){
+            blockedTelemetryRequests++;
+            return route.fulfill({status:204,headers:{'access-control-allow-origin':request.headers().origin||new URL(base).origin,'access-control-allow-credentials':'true'}});
+          }
+          writes.push({method:request.method(),origin:url.origin,path:url.pathname});
           return route.abort();
         }
+        if(request.resourceType()==='script'&&/(^|\.)(?:googletagmanager\.com|google-analytics\.com|analytics\.google\.com|cloudflareinsights\.com)$/.test(url.hostname)){
+          isolatedTrackingScripts++;return route.fulfill({status:200,contentType:'application/javascript',body:'/* External tracking isolated during read-only SEO verification. */'});
+        }
         if(url.pathname==='/api/hidi/landing-media-config')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(landing)});
+        if(baseline&&url.pathname==='/api/hidi/offers')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(offers)});
         if(request.resourceType()==='media'||/razorpay\.com$/.test(url.hostname))return route.abort();
         return route.continue();
       });
@@ -40,7 +49,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         const p=await context.newPage();p.setDefaultTimeout(30000);
         if(observe){const handler=error=>errors.push({engine,width,stage,message:error.message});handlers.set(p,handler);p.on('pageerror',handler);}
         const pending=new Set();reads.set(p,pending);
-        p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/store/')||url.pathname==='/api/admin/session'))pending.add(request);});
+        p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/store/')||url.pathname==='/api/admin/session'||url.pathname==='/api/hidi/offers'))pending.add(request);});
         for(const event of ['requestfinished','requestfailed'])p.on(event,request=>pending.delete(request));
         return p;
       };
@@ -144,7 +153,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
   }
   await writeFile(output+'/runtime-errors.json',JSON.stringify({errors,writes},null,2));
   assert.deepEqual(writes,[],'Unexpected commerce writes');assert.deepEqual(errors,[],'Browser runtime errors');
-  const report={passed:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,hydrationRetries,independentPages:true,baselineCompared:Boolean(baseline)};
+  const report={passed:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,isolatedTrackingScripts,hydrationRetries,offersFixtureUsed:Boolean(baseline),independentPages:true,baselineCompared:Boolean(baseline)};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);

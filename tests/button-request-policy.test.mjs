@@ -12,6 +12,8 @@ test('only exact telemetry origins and paths classify as already-blocked telemet
     'https://www.google-analytics.com/collect',
     'https://region1.google-analytics.com/g/collect',
     'https://region1.google-analytics.com/collect?measurement_id=test',
+    'https://www.google.com/g/collect?v=2',
+    'https://www.googletagmanager.com/td?id=verification',
     'https://lumberjack.razorpay.com/v2/logz',
     'https://lumberjack.razorpay.com:443/v2/logz?context=checkout',
   ]) assert.equal(isBlockedTelemetry('POST', url, base), true, url);
@@ -20,7 +22,7 @@ test('only exact telemetry origins and paths classify as already-blocked telemet
 
 test('other HTTP methods never classify as telemetry', () => {
   for (const method of ['GET', 'HEAD', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'post', '', null, undefined]) {
-    for (const url of [base + '/api/hidi/performance', 'https://www.google-analytics.com/g/collect', 'https://lumberjack.razorpay.com/v2/logz']) {
+    for (const url of [base + '/api/hidi/performance', 'https://www.google-analytics.com/g/collect', 'https://www.google.com/g/collect', 'https://www.googletagmanager.com/td', 'https://lumberjack.razorpay.com/v2/logz']) {
       assert.equal(isBlockedTelemetry(method, url, base), false, `${method} ${url}`);
     }
   }
@@ -40,6 +42,9 @@ test('lookalike hosts, nondefault external ports and credential URLs remain unex
     'https://razorpay.com/v2/logz',
     'https://lumberjack.razorpay.com:9443/v2/logz',
     'https://user@lumberjack.razorpay.com/v2/logz',
+    'https://www.google.com.evil.example/g/collect',
+    'https://www.googletagmanager.com.evil.example/td',
+    'https://user@www.google.com/g/collect',
   ]) assert.equal(isBlockedTelemetry('POST', url, base), false, url);
 });
 
@@ -72,6 +77,9 @@ test('telemetry path variants remain unexpected', () => {
     'https://lumberjack.razorpay.com/v1/logz',
     'https://lumberjack.razorpay.com/v2/logs',
     'https://lumberjack.razorpay.com/v2/%6cogz',
+    'https://www.google.com/collect',
+    'https://www.google.com/g/collect/payment',
+    'https://www.googletagmanager.com/td/orders',
   ]) assert.equal(isBlockedTelemetry('POST', url, base), false, url);
 });
 

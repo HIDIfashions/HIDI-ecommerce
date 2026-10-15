@@ -18,5 +18,7 @@ export function isBlockedTelemetry(method, rawUrl, baseOrigin) {
       !['http:', 'https:'].includes(url.protocol) || url.username || url.password) return false;
   if (url.origin === base.origin && url.pathname === '/api/hidi/performance') return true;
   if (analyticsOrigins.has(url.origin) && ['/g/collect', '/collect'].includes(url.pathname)) return true;
+  if (url.origin === 'https://www.google.com' && url.pathname === '/g/collect') return true;
+  if (url.origin === 'https://www.googletagmanager.com' && url.pathname === '/td') return true;
   return url.origin === 'https://lumberjack.razorpay.com' && url.pathname === '/v2/logz';
 }

@@ -26,7 +26,7 @@ jobs:
           python3 -m py_compile deploy/india-seo/patch-runtime.py deploy/india-seo/release.py
           node --check deploy/india-seo/candidate.mjs
           node --check deploy/india-seo/probes.mjs
-          node --test deploy/india-seo/copy.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs
+          node --test deploy/india-seo/copy.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs
       - name: Install isolated browser engines and exact image backup tooling
         run: |
           sudo apt-get update -qq
