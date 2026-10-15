@@ -1,0 +1,55 @@
+name: Photo release corrections - offline tests only
+on:
+  push:
+    branches: [work/photo-live-release-20261015]
+    paths: [.github/workflows/photo-release-offline-verification.yml]
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Execute offline assertions and syntax checks only
+        run: |
+          python - <<'PY'
+          import ast,json,pathlib,subprocess,time
+          root=pathlib.Path.cwd();out=root/'reports/photo-release-offline';out.mkdir(parents=True,exist_ok=True)
+          sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          report={'testedCommit':sha,'azureAuthentication':False,'cloudCommandsExecuted':False,'productionChanged':False,'suites':[],'notExecuted':['Browser rerun with the latest fixture correction','Real Azure rerun with the latest release helpers','Production deployment']}
+          commands=[('cleanup-and-drift-tests',['python','deploy/photo-live/azure-check.test.py']),('canonical-arm-state-tests',['python','deploy/photo-live/arm-state.test.py']),('python-syntax',['python','-m','py_compile','deploy/photo-live/azure-check.py','deploy/photo-live/arm-state.py','deploy/photo-live/release.py','deploy/photo-live/retained-test.py'])]
+          for name,cmd in commands:
+            result=subprocess.run(cmd,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=60)
+            (out/(name+'.log')).write_text(result.stdout)
+            report['suites'].append({'name':name,'passed':result.returncode==0,'exitCode':result.returncode})
+            print(name,result.returncode);print(result.stdout)
+          # Generate the fixture text, but DO NOT execute its browser/handler code.
+          # The generator ends with two subprocess calls: syntax and browser run.
+          p=root/'deploy/photo-live/retained-test.py';tree=ast.parse(p.read_text())
+          for item in tree.body[-2:]:
+            assert isinstance(item,ast.Expr) and isinstance(item.value,ast.Call) and isinstance(item.value.func,ast.Attribute) and isinstance(item.value.func.value,ast.Name) and item.value.func.value.id=='subprocess' and item.value.func.attr=='run'
+          ns={'__file__':str(p),'__name__':'fixture_text_generation_only'}
+          exec(compile(ast.Module(body=tree.body[:-2],type_ignores=[]),str(p),'exec'),ns)
+          generated=root/'tests/photo-retained-compiled.browser.mjs'
+          result=subprocess.run(['node','--check',str(generated)],text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=60)
+          (out/'generated-browser-syntax.log').write_text(result.stdout)
+          report['suites'].append({'name':'generated-browser-syntax-only','passed':result.returncode==0,'exitCode':result.returncode})
+          (out/'results.json').write_text(json.dumps(report,indent=2))
+          diff=subprocess.check_output(['git','diff','972bbbfdd6f27ec259e0f90f04fb2d8eeea41b7f',sha,'--','deploy/photo-live/azure-check.py','deploy/photo-live/azure-check.test.py','deploy/photo-live/arm-state.py','deploy/photo-live/arm-state.test.py','deploy/photo-live/release.py','deploy/photo-live/retained-test.py'],text=True)
+          (out/'reviewed-source-changes.patch').write_text(diff)
+          assert all(item['passed'] for item in report['suites']), 'Offline verification failed'
+          PY
+      - name: Preserve offline evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: photo-release-offline-corrections
+          path: reports/photo-release-offline/
+          retention-days: 14
