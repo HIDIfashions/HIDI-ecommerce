@@ -8,11 +8,11 @@ def once(a,b):
  assert s.count(a)==1,'Retained-browser fixture anchor differs: '+a[:120]
  s=s.replace(a,b,1)
 once("import {createProductImageHandler,mediaPath} from '../deploy/collection-speed/images.mjs';", "const candidateRoot=resolve(process.env.HIDI_CANDIDATE_RUNTIME);\nconst {createProductImageHandler,mediaPath}=await import(pathToFileURL(join(candidateRoot,'product-images/images.mjs')).href);")
-anchor="const results=[],snapshots=[],contexts=[];let browser,child,log='';"
+anchor="const results=[],snapshots=[],contexts=[],uploadResponses=[];let browser,child,latestPage,log='';"
 once(anchor,anchor+'''
 const {copyFile,stat:diskStat,readdir}=await import('node:fs/promises');
 const {createReadStream}=await import('node:fs');
-const {BlobServiceClient}=require(join(candidateRoot,'apps/web/node_modules/@azure/storage-blob'));
+const {BlobServiceClient}=require(join(candidateRoot,'photo-stream/node_modules/@azure/storage-blob'));
 process.env.AZURE_STORAGE_ACCOUNT='photofixture';
 process.env.MEDIA_PUBLIC_BASE_URL='https://hidiindia.com/media';
 process.env.API_URL='http://127.0.0.1:'+apiPort+'/v1';
