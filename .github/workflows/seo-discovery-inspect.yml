@@ -54,3 +54,27 @@ jobs:
               index=bundle.find(pattern)
               print('SEO_LANDING_ANCHOR',json.dumps({'pattern':pattern,'snippet':bundle[max(0,index-120):index+700] if index>=0 else None}))
           PY
+
+      - name: Inspect compiled collection page and carousel destinations
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, re
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])/'hidi-seo-inspection'
+          for path in (root/'apps/web/.next/server').rglob('*.js'):
+              source=path.read_text()
+              if 'collection-header' in source and ('Ananya' in source or 'work-wear' in source):
+                  print('SEO_COLLECTION_CHUNK',json.dumps({'path':str(path.relative_to(root)),'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'source':source}))
+          html=(root/'dist/index.html').read_text()
+          ref=re.findall(r'<script type="module" crossorigin src="([^"]+)"',html)[0]
+          path=root/'dist'/ref.removeprefix('./').removeprefix('/')
+          source=path.read_text()
+          print('SEO_LANDING_FINGERPRINT',json.dumps({'path':str(path.relative_to(root)),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}))
+          for needle in ['HidiRangeCardCopy(', 'HidiSeoLinkProps("/collections/"+', 'HidiRangeCards=']:
+              start=0
+              while True:
+                  index=source.find(needle,start)
+                  if index<0:break
+                  print('SEO_CAROUSEL_ANCHOR',json.dumps({'needle':needle,'source':source[max(0,index-150):index+1800]}))
+                  start=index+len(needle)
+          PY
