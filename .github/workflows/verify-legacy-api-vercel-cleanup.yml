@@ -1,0 +1,75 @@
+name: Verify legacy Vercel API cleanup - no deployment
+on:
+  push:
+    branches: [fix/disable-legacy-api-vercel-20261015]
+    paths: [apps/api/vercel.json, .github/workflows/verify-legacy-api-vercel-cleanup.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22.16.0'}
+      - name: Install locked application dependencies and JSON schema validator
+        run: |
+          pnpm install --frozen-lockfile
+          python -m pip install --disable-pip-version-check jsonschema==4.25.1
+      - name: Validate configuration and reproduce error independently of production
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib,subprocess,urllib.request,time
+          import jsonschema
+          root=pathlib.Path.cwd(); out=root/'reports/vercel-api-cleanup';out.mkdir(parents=True,exist_ok=True)
+          base='96ce6f2af9b4c517129293d1b1fd78b0a115feb8'
+          report={'testedCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'baseCommit':base,'productionDeployment':False,'azureAccess':False,'vercelAccountAccess':False,'databaseConnections':False,'cases':[]}
+          def check(name,fn):
+              start=time.monotonic()
+              try: fn();row={'name':name,'passed':True}
+              except Exception as e:row={'name':name,'passed':False,'error':str(e)}
+              row['seconds']=round(time.monotonic()-start,2);report['cases'].append(row)
+              (out/'results.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(row),flush=True)
+          def equal(a,b):assert a==b,(a,b)
+          paths=subprocess.check_output(['git','diff','--name-only',base,'HEAD'],text=True).splitlines()
+          check('Only Vercel API config and isolated verification workflow differ',lambda:equal(set(paths),{'apps/api/vercel.json','.github/workflows/verify-legacy-api-vercel-cleanup.yml'}))
+          config=json.loads((root/'apps/api/vercel.json').read_text())
+          check('Automatic Git deployments disabled using the documented boolean',lambda:equal(config,{'$schema':'https://openapi.vercel.sh/vercel.json','git':{'deploymentEnabled':False}}))
+          def validate_schema():
+              request=urllib.request.Request('https://openapi.vercel.sh/vercel.json',headers={'User-Agent':'HIDI-Config-Validation'})
+              with urllib.request.urlopen(request,timeout=30) as response:raw=response.read(4*1024*1024)
+              schema=json.loads(raw);jsonschema.validators.validator_for(schema)(schema).validate(config)
+              report['schemaSha256']=hashlib.sha256(raw).hexdigest()
+          check('Configuration validates against official Vercel JSON schema',validate_schema)
+          for path in ['apps/api/prisma.config.ts','apps/api/prisma/schema.prisma','apps/api/package.json','pnpm-lock.yaml','.github/workflows/photo-stream-live-release.yml','.github/workflows/azure-build.yml']:
+              check('Unchanged: '+path,lambda path=path:equal((root/path).read_bytes(),subprocess.check_output(['git','show',base+':'+path])))
+          def reproduce():
+              env=dict(os.environ);env.pop('DATABASE_URL',None)
+              result=subprocess.run(['pnpm','--filter','@hidi/api','exec','prisma','generate'],env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=120)
+              (out/'missing-env-reproduction.log').write_text(result.stdout)
+              assert result.returncode!=0 and 'PrismaConfigEnvError' in result.stdout and 'DATABASE_URL' in result.stdout,'Expected exact missing environment-variable failure'
+          check('Original missing DATABASE_URL error reproduced without any database connection',reproduce)
+          env=dict(os.environ);env['DATABASE_URL']='sqlserver://127.0.0.1:1433;database=fixture;user=build;password=build;encrypt=true'
+          def build():
+              result=subprocess.run(['pnpm','--filter','@hidi/api','build'],env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=300)
+              (out/'api-build.log').write_text(result.stdout)
+              assert result.returncode==0,'API build failed; see api-build.log'
+          check('Complete API generate and build passes with non-secret build-only fixture configuration',build)
+          report['passed']=all(c['passed'] for c in report['cases'])
+          report['limitations']=['No Vercel account settings were changed.','Historical failed deployments are not erased by this configuration.','Git auto-deployment opt-out applies to future revisions that contain this file.','No production environment variable, application code, database or Azure deployment workflow is modified.']
+          (out/'results.json').write_text(json.dumps(report,indent=2)+'\n')
+          assert report['passed'],'Verification failed; see individual cases and logs'
+          PY
+      - name: Save configuration verification and build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-api-cleanup-verification
+          path: reports/vercel-api-cleanup/
+          retention-days: 14
