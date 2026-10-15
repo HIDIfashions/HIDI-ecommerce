@@ -64,7 +64,7 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
   for(const [price,shipping] of [[149899,9900],[149900,0],[149901,0]]){
    await page.route('**/api/store/carts/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(cartFor(price))}));
    await navigate(page,'/cart');await page.locator('.summary-total').waitFor();assert.match(await page.locator('.order-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
-   await navigate(page,'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();assert.equal(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),Boolean(shipping));assert.match(await page.locator('.checkout-summary').innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
+   await navigate(page,'/checkout');await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();assert.equal(await page.locator('.checkout-mobile-summary').evaluate(e=>e.open),Boolean(shipping));const visibleSummary=page.locator('.checkout-mobile-summary');if(!shipping)await visibleSummary.locator(':scope > summary').click();assert(await visibleSummary.evaluate(e=>e.open),'Shipping boundary quote is disclosed visibly');assert.match(await visibleSummary.innerText(),shipping?/Shipping\s*₹99/:/Shipping\s*Complimentary/);
    await settleFixtureNetwork(page);
    await page.unroute('**/api/store/carts/**');
   }

@@ -1,0 +1,48 @@
+name: Verify catalogue styling preview without deployment
+on:
+  pull_request:
+    paths:
+      - 'deploy/catalogue-polish/**'
+      - 'tests/catalogue-polish.test.py'
+      - '.github/workflows/catalogue-polish-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-catalogue-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-catalogue-browsers
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify only the isolated styling and test files changed
+        run: |
+          python3 tests/catalogue-polish.test.py
+          node --check deploy/catalogue-polish/verify.mjs
+          node --check deploy/catalogue-polish/snapshot-server.mjs
+      - name: Install isolated browser engines
+        run: |
+          npm install --prefix /tmp/hidi-catalogue-browser --no-package-lock playwright@1.56.1
+          node /tmp/hidi-catalogue-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Verify frozen live assets and full baseline/candidate commerce regression
+        run: node deploy/catalogue-polish/verify.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hidi-catalogue-preview-evidence
+          path: |
+            evidence/catalogue-polish/report.json
+            evidence/catalogue-polish/snapshot/manifest.json
+            evidence/catalogue-polish/*.jpg
+            evidence/catalogue-polish/*failure.txt
+            evidence/catalogue-polish/baseline-commerce/report.json
+            evidence/catalogue-polish/candidate-commerce/report.json
+            evidence/catalogue-polish/baseline-commerce/*failure.html
+            evidence/catalogue-polish/candidate-commerce/*failure.html
+          retention-days: 14

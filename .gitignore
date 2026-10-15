@@ -6,4 +6,8 @@ dist
 *.log
 apps/api/src/generated/prisma
 coverage
+/evidence/catalogue-polish/
+/deploy/care-break/retained-generated.mjs
 .DS_Store
+
+/deploy/catalogue-polish/commerce-generated.mjs
