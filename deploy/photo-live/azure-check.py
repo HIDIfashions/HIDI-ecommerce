@@ -1,7 +1,7 @@
 """Owned storage check using captured app identities; no role grants or live edits."""
 from pathlib import Path
 from urllib.parse import quote
-import importlib.util,json,subprocess,time,os,re
+import importlib.util,json,subprocess,time,os,re,sys
 p=Path(__file__).with_name('release.py');s=importlib.util.spec_from_file_location('photo_job_release',p);r=importlib.util.module_from_spec(s);s.loader.exec_module(r)
 run=r.r.guard.run_key();name='photo-check-'+run
 report={'passed':False,'job':name,'run':run,'photoSourceSha':r.source_sha(),'productionTrafficChanged':False,'databaseWrites':0,'roleAssignmentsChanged':False}
@@ -13,6 +13,39 @@ def az(args,timeout=120,absent=False):
   if absent and re.search(r'\(ResourceNotFound\)|"code"\s*:\s*"ResourceNotFound"',result.stderr):return None
   raise RuntimeError('Validation command failed: '+' '.join(args[:3])+'; '+result.stderr[-1800:])
  return json.loads(result.stdout) if result.stdout.strip() else None
+
+def storage_binding(web):
+ identities=web.get('identity',{}).get('userAssignedIdentities',{})
+ entries=web['properties']['template']['containers'][0].get('env',[])
+ env={item['name']:str(item.get('value','')).strip() for item in entries if not item.get('secretRef')}
+ assert all(env.get(key) for key in ['AZURE_STORAGE_ACCOUNT','AZURE_CLIENT_ID']),'Existing explicit web storage identity required'
+ assert isinstance(identities,dict) and identities,'No user-assigned identity is attached to the captured production app'
+ wanted=env['AZURE_CLIENT_ID'].lower();matches=[];resolved=0
+ for resource,value in identities.items():
+  assert re.fullmatch(r'/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\.ManagedIdentity/userAssignedIdentities/[^/]+',resource,re.I),'Captured identity reference is not a managed identity resource'
+  client=str((value or {}).get('clientId','')).strip().lower()
+  if not client:
+   # ARM may return empty objects for attached identities. Resolve only that
+   # existing reference, returning just its ID and client ID. Do not enumerate
+   # other identities, inspect credentials, or change any identity or role.
+   item=az(['identity','show','--ids',resource,'--query','{id:id,clientId:clientId}'])
+   assert isinstance(item,dict) and str(item.get('id','')).lower()==resource.lower(),'Identity read returned a different resource'
+   client=str(item.get('clientId','')).strip().lower();resolved+=1
+  assert re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',client),'Attached identity client ID could not be verified'
+  if client==wanted:matches.append(resource)
+ assert len(matches)==1,'The configured storage client ID does not uniquely match the app attached identities'
+ report['identityBinding']={'matched':True,'attachedReferenceCount':len(identities),'resolvedExistingReferences':resolved}
+ return env,identities,matches[0]
+
+if sys.argv[1:]==['identity-preflight']:
+ try:
+  r.r.photo.unchanged(before);storage_binding(r.r.photo.originals()['hidi-web']);r.r.photo.unchanged(before)
+  report.update({'passed':True,'readOnly':True})
+ except Exception as error:report['error']=str(error)
+ r.save('identity-preflight.json',report);print(json.dumps(report,indent=2))
+ assert report['passed'],'Existing identity binding could not be verified; no package or production change is allowed'
+ sys.exit(0)
+assert not sys.argv[1:],'Unsupported storage-check mode'
 
 def owned(current):
  assert current and current.get('id','').lower()==expected['id'].lower(),'Unexpected validation resource'
@@ -35,15 +68,7 @@ try:
  r.r.photo.unchanged(before);published=r.verify();web=r.r.photo.originals()['hidi-web'];report['image']=published['web']
  match=re.fullmatch(r'/subscriptions/([^/]+)/resourceGroups/([^/]+)/providers/Microsoft\.App/containerApps/hidi-web',web['id'],re.I)
  assert match,'Captured production app ID is required';subscription,group=match.groups()
- identities=web.get('identity',{}).get('userAssignedIdentities',{})
- entries=web['properties']['template']['containers'][0].get('env',[])
- env={item['name']:item.get('value','') for item in entries if not item.get('secretRef')}
- assert all(env.get(key) for key in ['AZURE_STORAGE_ACCOUNT','AZURE_CLIENT_ID']),'Existing explicit web storage identity required'
- # The storage identity is selected by its configured client ID, not by the
- # registry credential. A registry may use a password or system identity.
- storage=[key for key,value in identities.items() if str((value or {}).get('clientId','')).lower()==env['AZURE_CLIENT_ID'].lower()]
- assert len(storage)==1,'Captured app must identify exactly one attached storage identity by client ID'
- storage=storage[0]
+ env,identities,storage=storage_binding(web)
  registry=next(item for item in web['properties']['configuration']['registries'] if item['server']==r.r.images.REGISTRY)
  configured=str(registry.get('identity') or '').rstrip('/')
  registry_matches=[key for key in identities if key.rstrip('/').lower()==configured.lower()]
@@ -88,8 +113,6 @@ try:
  assert status=='Succeeded','Real Azure storage job did not succeed: '+status
  details=report.get('details')
  if details:assert details.get('passed') is True and details.get('deleted') is True and details.get('originalUnchanged') is True,'Original integrity and cleanup must pass'
- # The exact sealed image exits zero only after hash verification, resizing and
- # owned Blob deletion. Logs add evidence but never override a failed execution.
  report.update({'passed':True,'sourceExceeds40MiB':True,'sourceHashVerified':True,'temporaryBlobDeleted':True,'memoryLimit':'1Gi','cpuLimit':0.5,'identitySource':'captured web configuration','registryRoleGrants':0})
 except Exception as error:
  report['passed']=False;report['error']=str(error)
