@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: fd371a610f54c8a99f6fd1c30f73a33c8d339b7d
+          ref: 972bbbfdd6f27ec259e0f90f04fb2d8eeea41b7f
           path: photo-source
       - uses: pnpm/action-setup@v4
         with: {version: 10.15.1}
@@ -50,6 +50,8 @@ jobs:
         run: |
           az acr login --name acrhidiprod0927 --only-show-errors
           python photo-source/deploy/photo-live/release.py capture
+      - name: Verify the existing production storage identity binding without changes
+        run: python photo-source/deploy/photo-live/azure-check.py identity-preflight
       - name: Compose photo-only packages and prove preservation
         run: python photo-source/deploy/photo-live/release.py compose
       - name: Test the actual packaged handler, retained UI, images and checkout
