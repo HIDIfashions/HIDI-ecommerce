@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/hidi_ivory" />
+        </shape>
+    </item>
+    <item
+        android:width="92dp"
+        android:height="92dp"
+        android:gravity="center">
+        <shape android:shape="oval">
+            <solid android:color="@color/hidi_mulberry" />
+        </shape>
+    </item>
+    <item
+        android:width="58dp"
+        android:height="58dp"
+        android:drawable="@drawable/ic_hidi_h"
+        android:gravity="center" />
+</layer-list>
