@@ -50,16 +50,26 @@ async function ready(page) {
   }).every(i=>i.complete&&i.naturalWidth>0),null,{timeout:60000});
   await page.waitForTimeout(150);
 }
-async function setCandidate(page, enabled) {
-  await page.evaluate(({css,enabled,live})=>{
-    const element=document.querySelector('style[data-hidi-storefront-layer-fix="true"]');
-    if(!element)throw Error('Retained storefront style block is missing');
+async function setCandidate(page, enabled, nonCollectionProbe=false) {
+  await page.evaluate(({css,enabled,live,nonCollectionProbe})=>{
+    let element=document.querySelector('style[data-hidi-storefront-layer-fix="true"]');
+    // Some unrelated routes intentionally have no catalogue wrapper styles.
+    // Probe selector isolation there without weakening the collection/live gate.
+    if(!element&&nonCollectionProbe&&!live&&!document.querySelector('.collection-page')) {
+      element=document.querySelector('style[data-hidi-desktop-isolation-probe]');
+      if(!element) {
+        element=document.createElement('style');
+        element.setAttribute('data-hidi-desktop-isolation-probe','true');
+        document.head.appendChild(element);
+      }
+    }
+    if(!element)throw Error('Retained storefront style block is missing: '+location.pathname);
     if(element.dataset.desktopBaseline===undefined){
       if(live&&!element.textContent.includes(css))throw Error('Live page does not contain the exact approved desktop CSS');
       element.dataset.desktopBaseline=element.textContent.includes(css)?element.textContent.replace(css,''):element.textContent;
     }
     element.textContent=element.dataset.desktopBaseline+(enabled?'\n'+css+'\n':'');
-  },{css,enabled,live});
+  },{css,enabled,live,nonCollectionProbe});
   await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
 }
 async function styles(page, all=false) {
@@ -178,9 +188,10 @@ try {
             const product=await page.locator(gridSelector+' article h3 a').first().getAttribute('href');
             for(const path of ['/',product,'/cart','/checkout','/account','/admin/sign-in']) {
               if(!path)throw Error('Real product link missing');
+              console.log('CHECK unrelated '+engine+' '+width+' '+path);
               await page.goto(base+path,{waitUntil:'domcontentloaded'});await freeze(page);await page.waitForTimeout(500);
-              await setCandidate(page,false);const original=await stable(page,true);
-              await setCandidate(page,true);assert.deepEqual(await stable(page,true),original,'Non-collection page unchanged: '+path);
+              await setCandidate(page,false,true);const original=await stable(page,true);
+              await setCandidate(page,true,true);assert.deepEqual(await stable(page,true),original,'Non-collection page unchanged: '+path);
               extraCases.push({engine,width,test:'unchanged-route',path,passed:true});
             }
           }

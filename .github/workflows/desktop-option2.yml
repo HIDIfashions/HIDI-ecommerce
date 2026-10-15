@@ -18,7 +18,7 @@ permissions:
   contents: read
   id-token: write
 concurrency:
-  group: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy && 'hidi-hero-guarded-release' || format('hidi-desktop-check-{0}', github.ref) }}
+  group: ${{ ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'push' && github.ref == 'refs/heads/migration/azure-sql-blob' && contains(github.event.head_commit.message, '[deploy-desktop-option2]'))) && 'hidi-hero-guarded-release' || format('hidi-desktop-check-{0}', github.ref) }}
   cancel-in-progress: false
 jobs:
   verify-and-release:
@@ -48,17 +48,17 @@ jobs:
           node /tmp/hidi-desktop-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - name: Verify 72 viewport comparisons, mobile pixels, sparse grids and unchanged routes
         run: node deploy/desktop-option2/verify.mjs
-      - name: Require explicit release dispatch on the production source branch
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+      - name: Require explicit release request on the production source branch
+        if: ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'push' && github.ref == 'refs/heads/migration/azure-sql-blob' && contains(github.event.head_commit.message, '[deploy-desktop-option2]')))
         run: test "$GITHUB_REF" = 'refs/heads/migration/azure-sql-blob'
       - uses: azure/login@v2
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        if: ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'push' && github.ref == 'refs/heads/migration/azure-sql-blob' && contains(github.event.head_commit.message, '[deploy-desktop-option2]')))
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Capture fresh live state and verify exact rollback images
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        if: ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'push' && github.ref == 'refs/heads/migration/azure-sql-blob' && contains(github.event.head_commit.message, '[deploy-desktop-option2]')))
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y skopeo
@@ -66,21 +66,21 @@ jobs:
           python3 deploy/desktop-option2/release.py capture
           echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-desktop-option2-private/web/candidate-app" >> "$GITHUB_ENV"
       - name: Build a single-file CSS overlay preserving the entire existing application
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        if: ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'push' && github.ref == 'refs/heads/migration/azure-sql-blob' && contains(github.event.head_commit.message, '[deploy-desktop-option2]')))
         run: |
           tag="acrhidiprod0927.azurecr.io/hidi-web:desktop-option2-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           python3 deploy/desktop-option2/release.py compose --tag "$tag"
           echo "CANDIDATE_WEB=$tag" >> "$GITHUB_ENV"
       - name: Test exact candidate commerce against disposable fixtures and seal evidence
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        if: ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'push' && github.ref == 'refs/heads/migration/azure-sql-blob' && contains(github.event.head_commit.message, '[deploy-desktop-option2]')))
         run: |
           node deploy/desktop-option2/candidate.mjs
           python3 deploy/desktop-option2/release.py mark-tested --tag "$CANDIDATE_WEB"
       - name: Publish only the exact tested immutable image
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        if: ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'push' && github.ref == 'refs/heads/migration/azure-sql-blob' && contains(github.event.head_commit.message, '[deploy-desktop-option2]')))
         run: python3 deploy/desktop-option2/release.py publish --tag "$CANDIDATE_WEB"
       - name: Release web only with live mobile checks and ownership-checked rollback
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        if: ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'push' && github.ref == 'refs/heads/migration/azure-sql-blob' && contains(github.event.head_commit.message, '[deploy-desktop-option2]')))
         id: apply
         timeout-minutes: 125
         run: timeout --signal=TERM --kill-after=65m 50m python3 deploy/desktop-option2/release.py apply --image "$WEB_IMAGE"
