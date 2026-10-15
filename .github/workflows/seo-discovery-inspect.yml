@@ -78,3 +78,25 @@ jobs:
                   print('SEO_CAROUSEL_ANCHOR',json.dumps({'needle':needle,'source':source[max(0,index-150):index+1800]}))
                   start=index+len(needle)
           PY
+
+      - name: Inspect cached collection rendering and runtime selection
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])/'hidi-seo-inspection'
+          for name in ['prerender-manifest.json','routes-manifest.json','required-server-files.json']:
+              path=root/'apps/web/.next'/name
+              value=json.loads(path.read_text())
+              if name=='required-server-files.json':value={'appDir':value.get('appDir'),'relativeAppDir':value.get('relativeAppDir'),'distDir':value.get('config',{}).get('distDir')}
+              if name=='routes-manifest.json':value={k:v for k,v in value.items() if k in ['dynamicRoutes','staticRoutes','dataRoutes']}
+              print('SEO_RUNTIME_MANIFEST',json.dumps({'path':name,'value':value}))
+          print('SEO_COLLECTION_FILES',json.dumps([str(p.relative_to(root)) for p in (root/'apps/web/.next/server/app/collections').rglob('*') if p.is_file()]))
+          source=(root/'server.mjs').read_text()
+          for line in source.splitlines():
+              if any(s in line for s in ['STOREFRONT','storefrontServer','publicHtmlCache','snapshot','Snapshot']):print('SEO_RUNTIME_SELECTION',line)
+          for path in (root/'apps/web/.next/server/chunks').glob('*.js'):
+              source=path.read_text()
+              index=source.find('34314:')
+              if index>=0:print('SEO_API_MODULE',json.dumps({'path':str(path.relative_to(root)),'snippet':source[index:index+4500]}))
+          PY
