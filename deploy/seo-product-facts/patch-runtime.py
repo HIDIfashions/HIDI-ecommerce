@@ -40,6 +40,8 @@ def patch_runtime(base,overlay):
     files[metadata]=(HERE.parent/'seo-discovery/metadata.mjs').read_bytes()
     sitemapFile='seo-discovery/sitemap.mjs';sitemap=(base/sitemapFile).read_text()
     changes=[("import { canonicalOrigin, identityUrl, isPublishedProductImage } from './metadata.mjs';","import { canonicalOrigin, identityUrl, isPublishedProductImage, registerPublishedProductImages } from './metadata.mjs';"),('        cached = sitemapXml(JSON.parse(body)); expires = Date.now() + 30000;','        const products=JSON.parse(body);\n        registerPublishedProductImages(products);\n        cached = sitemapXml(products); expires = Date.now() + 30000;')]
+    changes += [("const routes =", "import {readFileSync} from 'node:fs';\nconst reviewedImages=JSON.parse(readFileSync(new URL('./reviewed-product-image-map.json',import.meta.url),'utf8'));\n\nconst routes ="), ('  const urls = new Set();', "  const reviewed=reviewedImages[product.slug];\n  if ((!product.status || product.status === 'ACTIVE') && reviewed && reviewed.id === product.id) {\n    records.push(...reviewed.paths.map(path=>({url:canonicalOrigin+path})));\n  }\n  const urls = new Set();")]
+    files['seo-discovery/reviewed-product-image-map.json']=(HERE.parent/'seo-discovery/reviewed-product-image-map.json').read_bytes()
     updated=sitemap
     for old,new in changes:
         assert updated.count(old)==1 and new not in updated,'Sitemap refresh anchor changed'

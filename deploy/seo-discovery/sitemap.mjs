@@ -1,5 +1,8 @@
 import { canonicalOrigin, identityUrl, isPublishedProductImage, registerPublishedProductImages } from './metadata.mjs';
 
+import {readFileSync} from 'node:fs';
+const reviewedImages=JSON.parse(readFileSync(new URL('./reviewed-product-image-map.json',import.meta.url),'utf8'));
+
 const routes = ['/', '/collections/all', '/collections/work-wear', '/collections/casual-wear', '/collections/occasional-wear', '/collections/ananyas-pick', '/about', '/shipping', '/returns', '/contact', '/offers', '/privacy', '/guides', '/guides/kurta-set-buying-guide', '/guides/choosing-kurta-set-size'];
 const xmlEscape = text => String(text).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]));
 // Only existing, reviewed public product assets are eligible. Do not fetch or
@@ -7,6 +10,10 @@ const xmlEscape = text => String(text).replace(/[<>&"']/g, c => ({'<':'&lt;','>'
 export function productImageUrls(product) {
   const records = [...(Array.isArray(product.images) ? product.images : []),
     ...(Array.isArray(product.variants) ? product.variants.flatMap(variant => Array.isArray(variant.images) ? variant.images : []) : [])];
+  const reviewed=reviewedImages[product.slug];
+  if ((!product.status || product.status === 'ACTIVE') && reviewed && reviewed.id === product.id) {
+    records.push(...reviewed.paths.map(path=>({url:canonicalOrigin+path})));
+  }
   const urls = new Set();
   for (const image of records) {
     if (typeof image?.url !== 'string') continue;

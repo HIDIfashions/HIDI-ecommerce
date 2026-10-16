@@ -9,6 +9,7 @@ import {resolve} from 'node:path';
 const images=JSON.parse(await readFile('evidence/seo-product-facts/web-preservation.json','utf8'));
 const read=async path=>{const r=await fetch('https://hidiindia.com'+path);assert(r.ok);return r.json();};
 const {loadProducts}=await import('../merchant-feed/feed.mjs');
+const catalogueSummary=await read('/api/store/products');
 const catalogue=await loadProducts('https://hidiindia.com/api/store/products');
 assert(catalogue.length>0);
 const collections=Object.fromEntries(await Promise.all(['casual-wear','work-wear','occasional-wear','ananyas-pick'].map(async slug=>[slug,await read('/api/store/products?category='+slug)])));
@@ -24,7 +25,7 @@ const upstream=createServer((req,res)=>{
   if(path.includes('/health'))return send(200,{status:'ok'});
   if(path.startsWith('/carts/'))return send(200,{items:[],itemCount:0,subtotalPaise:0,shippingPaise:0,totalPaise:0});
   if(path.includes('/reviews'))return send(200,{averageRating:0,reviewCount:0,verifiedReviewCount:0,reviews:[],ratingDistribution:{1:0,2:0,3:0,4:0,5:0}});
-  if(/^\/products(?:\/(featured|best-sellers))?$/.test(path))return send(200,collections[url.searchParams.get('category')]||catalogue);
+  if(/^\/products(?:\/(featured|best-sellers))?$/.test(path))return send(200,collections[url.searchParams.get('category')]||catalogueSummary);
   if(path.startsWith('/products/')){
     if(path.endsWith('/related'))return send(200,catalogue.slice(0,4));
     const p=catalogue.find(p=>p.slug===decodeURIComponent(path.split('/')[2]));return send(p?200:404,p||{});
