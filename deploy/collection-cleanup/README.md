@@ -1,6 +1,6 @@
 # Collection header cleanup
 
-The visible collection SEO additions placed a long heading, buying-guidance paragraph and cross-category links above the catalogue. Restore short storefront headings (All Products, Casual Wear, Work Wear and Occasional Wear) and remove those paragraphs and extra links. Keep existing search/social metadata. The remaining category aliases and Ananya's Pick already use short headings and have no added introduction.
+The visible collection SEO additions placed a long heading, buying-guidance paragraph and cross-category links above the catalogue. Restore short storefront headings (All Products, Casual Wear, Work Wear and Occasional Wear) and remove those paragraphs and extra links. Keep existing search/social metadata and the existing mobile header visibility rule. New Arrivals redirects to All Products and receives the same cleanup; the other category aliases and Ananya's Pick have no added introduction.
 
 ## Impact reviewed before deployment
 

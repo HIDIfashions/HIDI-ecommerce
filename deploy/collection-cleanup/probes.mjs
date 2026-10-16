@@ -79,7 +79,10 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           const path='/collections/'+slug;
           page=await fresh(path);
           assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
-          await page.getByRole('heading',{level:1,name:titles[slug],exact:true}).waitFor();
+          // Existing catalogue CSS intentionally hides the short header on mobile.
+          // Assert its content without forcing a layout change to make it visible.
+          await page.locator('.collection-header h1').waitFor({state:'attached'});
+          assert.equal(await page.locator('.collection-header h1').textContent(),titles[slug]);
           await page.locator('main article').first().waitFor();
           await page.waitForLoadState('load',{timeout:60000});
           assert.equal(await page.locator('h1').count(),1);
@@ -112,7 +115,8 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         }
         for(const [slug,title] of Object.entries({'ananyas-pick':'Ananya’s Pick','new-arrivals':'All Products','work-edit':'Work Wear',everyday:'Casual Wear',occasion:'Occasional Wear'})){
           const alias=await fresh('alias '+slug);await alias.goto(base+'/collections/'+slug,{waitUntil:'domcontentloaded'});
-          await alias.getByRole('heading',{level:1,name:title,exact:true}).waitFor();
+          await alias.locator('.collection-header h1').waitFor({state:'attached'});
+          assert.equal(await alias.locator('.collection-header h1').textContent(),title);
           assert.equal(await alias.locator('h1').count(),1);
           assert.equal(await alias.locator('.hidi-collection-intro').count(),0);
           assert.equal(await alias.getByRole('navigation',{name:'Explore HIDI collections'}).count(),0);
