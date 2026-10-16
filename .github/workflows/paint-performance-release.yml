@@ -1,5 +1,5 @@
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
-# Negotiated poster bytes travel in HTML once, then reuse the browser cache; original CSS and commerce gates stay intact.
+# Poster cache verification uses the same production-capable Chrome and decoded-frame checks as playback verification.
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
