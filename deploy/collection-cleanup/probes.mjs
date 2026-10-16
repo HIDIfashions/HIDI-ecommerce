@@ -87,7 +87,10 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           await page.locator('.collection-header h1').waitFor({state:'attached'});
           assert.equal(await page.locator('.collection-header h1').textContent(),titles[slug]);
           await page.locator('main article').first().waitFor();
-          await page.waitForLoadState('load',{timeout:60000});
+          // Catalogue readiness is independent of slow offscreen image loads.
+          // Require every visible product photo and fonts before visual checks.
+          await page.waitForFunction(()=>[...document.querySelectorAll('main article img')].filter(img=>{const r=img.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight;}).every(img=>img.complete&&img.naturalWidth>0),{},{timeout:45000});
+          await page.evaluate(()=>document.fonts.ready.then(()=>true));
           assert.equal(await page.locator('h1').count(),1);
           assert.equal(await page.locator('.hidi-collection-intro').count(),0,'Visible SEO paragraph remains');
           const canonicals=await page.locator('link[rel="canonical"]').evaluateAll(nodes=>nodes.map(n=>n.href));
@@ -98,7 +101,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           assert.equal(await page.getByRole('navigation',{name:'Explore HIDI collections'}).count(),0,'Extra SEO links remain');
           await settleReads(page);const expected=await products(page);assert(expected.length>0);
           if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
-          if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();await prior.waitForLoadState('load');await settleReads(prior);assert.deepEqual(expected,await products(prior),'Product selection changed');
+          if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();await settleReads(prior);assert.deepEqual(expected,await products(prior),'Product selection changed');
           assert.deepEqual(await cardFacts(page),await cardFacts(prior),'Product card facts or prices changed');
           const metadata=async p=>p.locator('head title,head meta,head link[rel=canonical]').evaluateAll(nodes=>nodes.map(n=>n.outerHTML).sort());
           assert.deepEqual(await metadata(page),await metadata(prior),'Search/social metadata changed');await finish(prior);}
