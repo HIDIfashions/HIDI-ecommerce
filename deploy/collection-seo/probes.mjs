@@ -10,7 +10,7 @@ const engines=['chromium','firefox','webkit'];
 export async function probe(base,output,{baseline,landing,inventory}={}){
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
   await mkdir(output,{recursive:true});
-  const results=[],writes=[],errors=[];let blockedSessionRefreshes=0,blockedTelemetryRequests=0,isolatedTrackingScripts=0,hydrationRetries=0;
+  const results=[],writes=[],errors=[],publicApiReads=[];const navigationOnly=new WeakSet();let blockedSessionRefreshes=0,blockedTelemetryRequests=0,isolatedTrackingScripts=0,hydrationRetries=0;
   landing ||= await (await fetch('https://hidiindia.com/api/hidi/landing-media-config')).json();
   let offers;
   if(baseline){const response=await fetch('https://hidiindia.com/api/hidi/offers',{signal:AbortSignal.timeout(30000)});assert(response.ok);offers=await response.json();}
@@ -40,7 +40,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         }
         if(url.pathname==='/api/hidi/landing-media-config')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(landing)});
         if(baseline&&url.pathname==='/api/hidi/offers')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(offers)});
-        if(baseline&&url.origin===baseline&&request.resourceType()==='image')return route.abort();
+        if(request.resourceType()==='image'&&((baseline&&url.origin===baseline)||navigationOnly.has(request.frame().page())))return route.abort();
         if(request.resourceType()==='media'||/razorpay\.com$/.test(url.hostname))return route.abort();
         return route.continue();
       });
@@ -48,6 +48,8 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
       const reads=new Map(),handlers=new Map();
       const fresh=async(stage,observe=true)=>{
         const p=await context.newPage();p.setDefaultTimeout(30000);
+        if(stage==='homepage links'||stage.startsWith('carousel card '))navigationOnly.add(p);
+        p.on('response',response=>{const path=new URL(response.url()).pathname;if(['/api/store/products','/api/hidi/offers'].includes(path))publicApiReads.push({engine,width,stage,path,status:response.status()});});
         if(observe){const handler=error=>errors.push({engine,width,stage,message:error.message});handlers.set(p,handler);p.on('pageerror',handler);}
         const pending=new Set();reads.set(p,pending);
         p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/store/')||url.pathname==='/api/admin/session'||url.pathname==='/api/hidi/offers'))pending.add(request);});
@@ -56,7 +58,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
       };
       const settleReads=async p=>{
         const pending=reads.get(p);let quiet=0;
-        for(let elapsed=0;elapsed<15000;elapsed+=50){
+        for(let elapsed=0;elapsed<45000;elapsed+=50){
           await new Promise(done=>setTimeout(done,50));quiet=pending.size?0:quiet+50;if(quiet>=500)return;
         }
         assert.fail('Background reads did not settle: '+[...pending].map(request=>request.url()).join(', '));
@@ -171,7 +173,8 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
   await writeFile(output+'/runtime-errors.json',JSON.stringify({errors,writes},null,2));
   assert.deepEqual(writes,[],'Unexpected commerce writes');assert.deepEqual(errors,[],'Browser runtime errors');
   const feed=await fetch(base+'/google-products.xml',{headers:{'X-Forwarded-Host':'hidiindia.com'}});assert(feed.ok);const xml=await feed.text();assert.match(xml,/<g:id>/);assert.match(xml,/<g:price>/);
-  const report={passed:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,isolatedTrackingScripts,hydrationRetries,offersFixtureUsed:Boolean(baseline),independentPages:true,baselineCompared:Boolean(baseline)};
+  assert(publicApiReads.every(read=>read.status>=200&&read.status<400),'Public API response failed: '+JSON.stringify(publicApiReads.filter(read=>read.status>=400)));
+  const report={passed:true,publicApiReads,navigationImagesIsolated:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,isolatedTrackingScripts,hydrationRetries,offersFixtureUsed:Boolean(baseline),independentPages:true,baselineCompared:Boolean(baseline)};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);

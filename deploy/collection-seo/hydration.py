@@ -36,15 +36,17 @@ def changes(base):
             for old,new in reversed(list(replacements.items())):inverse=inverse.replace(new,old)
             assert inverse==previous
             files[p.relative_to(base).as_posix()]=updated.encode()
-    source=(base/'pricing/storefront.mjs').read_text();updated=source
-    if PDP not in updated:updated=updated.replace('function apply(){\n','function apply(){\n'+PDP,1)
-    assert GUARD not in updated
-    updated=updated.replace('function apply(){\n','function apply(){\n'+GUARD,1)
-    if PDP_EVENT not in updated:updated=updated.replace("window.addEventListener('pageshow',refresh);",PDP_EVENT+"window.addEventListener('pageshow',refresh);",1)
-    updated=updated.replace("window.addEventListener('pageshow',refresh);",EVENT+"window.addEventListener('pageshow',refresh);",1)
-    restored=updated.replace(GUARD,'',1).replace(EVENT,'',1)
-    if PDP not in source:restored=restored.replace(PDP,'',1)
-    if PDP_EVENT not in source:restored=restored.replace(PDP_EVENT,'',1)
+    source=(base/'pricing/storefront.mjs').read_text();updated=source;additions=[]
+    for text in [PDP,GUARD]:
+        if text in updated:assert updated.count(text)==1
+        else:
+            updated=updated.replace('function apply(){\n','function apply(){\n'+text,1);additions.append(text)
+    for event in [PDP_EVENT,EVENT]:
+        if event.strip() in updated:assert updated.count(event.strip())==1
+        else:
+            updated=updated.replace("window.addEventListener('pageshow',refresh);",event+"window.addEventListener('pageshow',refresh);",1);additions.append(event)
+    restored=updated
+    for text in reversed(additions):restored=restored.replace(text,'',1)
     assert restored==source
     files['pricing/storefront.mjs']=updated.encode()
     return files
