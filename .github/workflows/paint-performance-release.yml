@@ -1,5 +1,5 @@
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
-# Live release preserves the verified collection cleanup and product editor; all performance gates remain required.
+# Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
   workflow_dispatch: {}
