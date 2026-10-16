@@ -33,8 +33,10 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y skopeo
-          npm install --prefix /tmp/hidi-collection-seo-browser --no-save playwright@1.56.1
+          npm install --prefix /tmp/hidi-collection-seo-browser --no-save playwright@1.56.1 typescript@5.9.3
           node /tmp/hidi-collection-seo-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Verify confirmed policy facts and catalogue filtering rules
+        run: HIDI_TYPESCRIPT_MODULE=/tmp/hidi-collection-seo-browser/node_modules/typescript/lib/typescript.js node --test tests/quality-domain.test.cjs
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af

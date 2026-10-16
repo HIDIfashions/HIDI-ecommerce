@@ -84,9 +84,9 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           for(const content of await page.locator('meta[name="robots"],meta[name="googlebot"]').evaluateAll(nodes=>nodes.map(n=>n.content)))assert(!/noindex/.test(content));
           assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Horizontal overflow: '+path);
           const related=page.getByRole('navigation',{name:'Explore HIDI collections'});assert.equal(await related.locator('a').count(),3);
-          const expected=await products(page);assert(expected.length>0);
+          await settleReads(page);const expected=await products(page);assert(expected.length>0);
           if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
-          if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();assert.deepEqual(expected,await products(prior),'Product selection changed');
+          if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();await prior.waitForLoadState('load');await settleReads(prior);assert.deepEqual(expected,await products(prior),'Product selection changed');
           assert.deepEqual(await page.locator('main article').allTextContents(),await prior.locator('main article').allTextContents(),'Product card facts or prices changed');await finish(prior);}
           if(width<700){
             const trigger=page.getByRole('button',{name:/Filter.*Sort/i});
