@@ -8,11 +8,14 @@ const images=JSON.parse(await readFile('evidence/merchant-feed/web-preservation.
 const products=await loadProducts('https://hidiindia.com/api/store/products'),catalogue=products,writes=[],reads=[];
 await mkdir('evidence/merchant-feed',{recursive:true});
 await writeFile('evidence/merchant-feed/frozen-catalogue.json',JSON.stringify(products));
-const upstream=createServer((req,res)=>{
+const upstream=createServer(async(req,res)=>{
   const url=new URL(req.url,'http://fixture'),path=url.pathname.replace(/^\/v1/,'');
   const send=(status,value)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(value));};
   if(!['GET','HEAD'].includes(req.method)){writes.push(path);return send(403,{message:'Read-only fixture'});}
   reads.push({path,category:url.searchParams.get('category')});
+  if(path.startsWith('/media/products/')) {
+    const r=await fetch('https://hidiindia.com'+path);res.writeHead(r.status,Object.fromEntries([...r.headers].filter(([k])=>!['content-encoding','content-length','transfer-encoding','connection'].includes(k))));return res.end(Buffer.from(await r.arrayBuffer()));
+  }
   if(path.includes('/health'))return send(200,{status:'ok'});
   if(path.startsWith('/carts/'))return send(200,{items:[],itemCount:0,subtotalPaise:0,shippingPaise:0,totalPaise:0});
   if(path.includes('/reviews'))return send(200,{averageRating:0,reviewCount:0,verifiedReviewCount:0,reviews:[],ratingDistribution:{1:0,2:0,3:0,4:0,5:0}});

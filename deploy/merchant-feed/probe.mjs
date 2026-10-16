@@ -11,6 +11,11 @@ export async function probe(base,out,{products,preview=false}={}) {
   const r=await fetch(base+'/google-products.xml',{headers});assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/application\/xml/);
   const text=await r.text();assert.equal(text,expected.xml,'Feed differs from frozen live catalogue');
   await writeFile(out+'/google-products.xml',text);
+  const imageChecks=[];
+  for(const url of [...new Set([...text.matchAll(/<g:image_link>(.*?)<\/g:image_link>/g)].map(m=>m[1].replaceAll('&amp;','&')))]) {
+    const image=await fetch(base+new URL(url).pathname,{headers});assert.equal(image.status,200,'Feed image unavailable '+url);assert.match(image.headers.get('content-type'),/^image\//);assert(!String(image.headers.get('x-robots-tag')).includes('noindex'),'Image blocked from indexing '+url);
+    assert((await image.arrayBuffer()).byteLength>1000);imageChecks.push(url);
+  }
   const head=await fetch(base+'/google-products.xml',{method:'HEAD',headers});assert.equal(head.status,200);assert.equal(await head.text(),'');assert.equal(Number(head.headers.get('content-length')),Buffer.byteLength(text));
   const pw=await import(process.env.HIDI_PLAYWRIGHT_MODULE);
   // Include the price-changing size, a second size and a second product.
@@ -53,7 +58,7 @@ export async function probe(base,out,{products,preview=false}={}) {
     }} finally {await browser.close();}
   }
   assert.deepEqual(writes,[],'Unexpected commerce mutation');assert.deepEqual(errors,[],'Browser runtime errors');
-  const report={passed:true,...expected.audit,results,engines:['chromium','firefox','webkit'],liveWrites:writes.length,runtimeErrors:errors.length,preview};
+  const report={passed:true,...expected.audit,results,imageChecks,engines:['chromium','firefox','webkit'],liveWrites:writes.length,runtimeErrors:errors.length,preview};
   await writeFile(out+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)await probe(process.argv[2],process.argv[3]);

@@ -18,7 +18,7 @@ for i in items:
 def get(url):
     with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'HIDI-Merchant-Feed-Validation/1.0'}),timeout=45) as r:
         assert r.status==200
-        if '/api/' not in url:assert 'noindex' not in r.headers.get('X-Robots-Tag','').lower()
+        if '/api/' not in url and not ('--candidate' in sys.argv and '/media/products/' in url):assert 'noindex' not in r.headers.get('X-Robots-Tag','').lower()
         return r.read(),r.headers
 class Document(HTMLParser):
     def __init__(self,body):

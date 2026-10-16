@@ -80,6 +80,7 @@ def apply(image):
         state=cloud.snapshot(guard.wait_ready(image,suffix,before));assert state['settingsHash']==before['hidi-web']['settingsHash']
         guard.routes()
         subprocess.run(['node',str(HERE/'probe.mjs'),cloud.BASE,'evidence/merchant-feed/live'],check=True,timeout=1000)
+        subprocess.run(['python3',str(HERE/'validate.py'),'evidence/merchant-feed/live'],check=True,timeout=300)
         assert guard.public_snapshot()==captured,'Published media, privacy or public config changed'
         photo.unchanged({'hidi-api':before['hidi-api'],'hidi-web':state})
         save('after.json',{'passed':True,'states':{'hidi-api':before['hidi-api'],'hidi-web':state},'apiUnchanged':True,'publishedContentPreserved':True,'webSettingsPreserved':True,'sourceSha':os.environ['GITHUB_SHA'],'databaseWrites':False,'blobWrites':False})

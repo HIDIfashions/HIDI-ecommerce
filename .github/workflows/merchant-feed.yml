@@ -49,7 +49,7 @@ jobs:
       - name: Test actual candidate against baseline in Chromium Firefox and WebKit
         run: |
           node deploy/merchant-feed/candidate.mjs
-          python3 deploy/merchant-feed/validate.py evidence/merchant-feed/candidate
+          python3 deploy/merchant-feed/validate.py evidence/merchant-feed/candidate --candidate
           cp evidence/merchant-feed/candidate/catalogue-validation.json evidence/merchant-feed/catalogue-validation.json
           python3 deploy/merchant-feed/release.py seal
       - name: Publish the exact tested image

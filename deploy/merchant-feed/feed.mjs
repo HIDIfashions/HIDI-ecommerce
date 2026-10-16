@@ -99,3 +99,37 @@ export function createMerchantFeed({catalogueUrl,isProductionRequest,fetcher=fet
     }
   };
 }
+
+// Public catalogue membership is checked before clearing an image-only directive.
+// Unknown paths, unpublished media, non-image bodies and errors retain their headers.
+export function createPublishedImageGuard({catalogueUrl,isProductionRequest,fetcher=fetch,now=Date.now}) {
+  let paths=new Set(),expires=0,pending;
+  return async function guard(request,response,pathname) {
+    if (!isProductionRequest(request) || !['GET','HEAD'].includes(request.method) || !pathname.startsWith('/media/products/')) return;
+    try {
+      if(now()>=expires) {
+        if(!pending)pending=(async()=>{
+          const r=await fetcher(catalogueUrl,{method:'GET',redirect:'error',signal:AbortSignal.timeout(8000),headers:{Accept:'application/json'}});
+          if(!r.ok)throw Error('Catalogue unavailable');
+          const list=await r.json();if(!Array.isArray(list)||!list.length)throw Error('Invalid catalogue');
+          const next=new Set();
+          for(const p of list.filter(p=>!p.status||p.status==='ACTIVE'))for(const i of [...(p.images||[]),...(p.variants||[]).flatMap(v=>v.images||[])])next.add(new URL(imageUrl(i.url)).pathname);
+          paths=next;expires=now()+60000;
+        })().finally(()=>{pending=undefined;});
+        await pending;
+      }
+      if(!paths.has(pathname))return;
+      const original=response.writeHead;
+      response.writeHead=function(status,...args) {
+        const headerIndex=args.findIndex(a=>a&&typeof a==='object');
+        const headers=headerIndex>=0?args[headerIndex]:{};
+        const type=Object.entries(headers).find(([k])=>k.toLowerCase()==='content-type')?.[1]||this.getHeader('Content-Type');
+        if(status===200&&String(type).startsWith('image/')) {
+          this.removeHeader('X-Robots-Tag');
+          if(headerIndex>=0)args[headerIndex]=Object.fromEntries(Object.entries(headers).filter(([k])=>k.toLowerCase()!=='x-robots-tag'));
+        }
+        return original.call(this,status,...args);
+      };
+    } catch { /* Keep existing headers on catalogue failures. */ }
+  };
+}
