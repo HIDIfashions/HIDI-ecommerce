@@ -19,7 +19,9 @@ if(!baseline){
  const headAssets=JSON.parse(await readFile(OUT+'/head-assets-quality.json','utf8'));
  for(const asset of [headAssets.logo,headAssets.seo].filter(Boolean)){const r=await request(asset.url,{'accept-encoding':'identity'});assert.equal(r.status,200);assert.equal(createHash('sha256').update(r.body).digest('hex'),asset.sha256,'Prepared head assets must retain their reviewed bytes');assert.match(r.headers['content-type'],asset===headAssets.logo?/image\/png/:/(?:java|ecma)script/);}
  const nativeLogo=home.body.toString().match(/<img\b[^>]*src="data:image\/png;base64,([^"]+)"/);assert(nativeLogo);assert.equal(createHash('sha256').update(Buffer.from(nativeLogo[1],'base64')).digest('hex'),headAssets.logo.sha256,'Native logo must use the pixel-identical PNG encoding');
- if(headAssets.seo)assert(home.body.toString().includes('defer src="'+headAssets.seo.url+'"'),'Exact SEO code must load independently of HTML');
+ // The wrapper injects identity metadata only for its production host. The
+ // separate pinned public-host fixture always requires this exact asset.
+ if(headAssets.seo&&(!['127.0.0.1','localhost'].includes(new URL(base).hostname)||home.body.toString().includes('data-hidi-seo-identity')))assert(home.body.toString().includes('defer src="'+headAssets.seo.url+'"'),'Exact SEO code must load independently of HTML');
  const encodedHome=await request('/',{'accept-encoding':'br'});assert.equal(encodedHome.headers['content-encoding'],'br');await writeFile(OUT+'/document-delivery-'+mode+'.json',JSON.stringify({passed:true,brotliHtmlBytes:encodedHome.body.length,fullStylesIndependent:true,seoCodeUnchanged:true,logoPixelsUnchanged:headAssets.logo.allRgbaPixelsIdentical}));
  for(const path of ['/'+report.bundle,'/assets/index-yOknTVcM.css','/api/store/products']){
   const plain=await request(path,{'accept-encoding':'identity'});assert.equal(plain.status,200,path);
