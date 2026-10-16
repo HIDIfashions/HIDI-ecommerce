@@ -9,7 +9,7 @@ class PatchTests(unittest.TestCase):
    self.assertIn('percentage discounts are disabled',result);self.assertTrue(result.startswith('before\n'+anchor));self.assertTrue(result.endswith('\nafter'));self.assertEqual(patch.disable_percent(result),result)
   with self.assertRaises(AssertionError):patch.disable_percent('unknown runtime')
  def test_web_install_is_idempotent_and_keeps_original_wrapper_hooks(self):
-  source='\n'.join(['import { createOffersHandler } from "./offers/handler.mjs";','const handleOffers = createOffersHandler({ origin });','  if (await handleOffers(request, response, pathname)) return;','function injectOffers(html, pathname) {','return html;','}'])
+  source='\n'.join(['import { createOffersHandler } from "./offers/handler.mjs";','const handleOffers = createOffersHandler({ origin });','  if (await handleOffers(request, response, pathname)) return;','function injectOffers(html, pathname) {','return html;','}','function injectStorefrontLayerFix(html) {','return html;','}'])
   with tempfile.TemporaryDirectory() as directory:
    root=Path(directory);base=root/'base';base.mkdir();(base/'server.mjs').write_text(source)
    result=patch.patch_runtime(base,root/'first');self.assertFalse(result['databaseWrites']);self.assertEqual((base/'server.mjs').read_text(),source)
