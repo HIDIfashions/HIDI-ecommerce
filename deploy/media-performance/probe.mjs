@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';import {readFile,writeFile,mkdir} from 'node:fs/promises';import {pathToFileURL} from 'node:url';import {get} from 'node:http';import {get as getHttps} from 'node:https';import {brotliDecompressSync,gunzipSync} from 'node:zlib';
+import {existsSync} from 'node:fs';
 const [base,mode='live']=process.argv.slice(2),OUT='evidence/media-performance';await mkdir(OUT+'/'+mode,{recursive:true});
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),manifest=JSON.parse(await readFile(OUT+'/manifest.json','utf8'));
 const baseline=mode==='baseline',rows=[];
@@ -16,7 +17,7 @@ if(!baseline){
  }
 }
 for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
- const browser=await pw[engine].launch({headless:true});
+ const browser=await pw[engine].launch({headless:true,...(engine==='chromium'&&existsSync('/usr/bin/google-chrome')?{executablePath:'/usr/bin/google-chrome'}:{})});
  try{for(const width of engine==='chromium'?[320,390,768,1440]:[390,1440]){
   const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<700,reducedMotion:engine==='chromium'?'no-preference':'reduce'}),page=await context.newPage();page.setDefaultTimeout(45000);
   const errors=[],network=[],media=[];let transferred=0;page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{network.push(r.url());if(r.resourceType()==='media')media.push(r.url());});
@@ -46,7 +47,7 @@ for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
    const photos=await page.locator('main img').evaluateAll(imgs=>imgs.filter(i=>{const r=i.getBoundingClientRect();return r.width>0&&r.right>0&&r.left<innerWidth;}).map(i=>({original:i.dataset.hidiOriginalSrc||i.src,src:i.currentSrc,loaded:i.complete&&i.naturalWidth>1,fit:getComputedStyle(i).objectFit,position:getComputedStyle(i).objectPosition})));
    assert(photos.every(i=>i.loaded),'All homepage photographs must decode after scrolling');assert.deepEqual(errors,[]);
    await page.screenshot({path:OUT+'/'+mode+'/'+engine+'-'+width+'.png',fullPage:true});rows.push({engine,width,passed:true,initialBytes,initialRequests,initial,geometry,photos});
-  }finally{await context.close();}
+  }catch(error){await page.screenshot({path:OUT+'/'+mode+'/'+engine+'-'+width+'-failure.png',fullPage:true}).catch(()=>{});await writeFile(OUT+'/'+mode+'/'+engine+'-'+width+'-failure.json',JSON.stringify({error:String(error),errors,media,hero:await page.locator('.hero-media').evaluate(el=>el.outerHTML).catch(()=>null)}));throw error;}finally{await context.close();}
  }}finally{await browser.close();}
 }
 if(!baseline&&mode==='candidate'){

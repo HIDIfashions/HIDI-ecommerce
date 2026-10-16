@@ -27,6 +27,7 @@ jobs:
         with: {node-version: 24}
       - name: Verify protocol safety and install media/browser tooling
         run: |
+          google-chrome --version
           node --test deploy/media-performance/compression.test.mjs
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
