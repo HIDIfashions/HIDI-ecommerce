@@ -1,5 +1,5 @@
 """Independent XML, landing-page and original-image validation. GET requests only."""
-import concurrent.futures,io,json,sys,urllib.request,xml.etree.ElementTree as ET
+import concurrent.futures,io,json,sys,time,urllib.request,xml.etree.ElementTree as ET
 from pathlib import Path
 from PIL import Image
 from html.parser import HTMLParser
@@ -16,10 +16,15 @@ for i in items:
     assert '?variant='+value(i,'id') in value(i,'link')
     assert value(i,'link').startswith('https://hidiindia.com/products/')
 def get(url):
-    with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'HIDI-Merchant-Feed-Validation/1.0'}),timeout=45) as r:
-        assert r.status==200
-        if '/api/' not in url:assert 'noindex' not in r.headers.get('X-Robots-Tag','').lower()
-        return r.read(),r.headers
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'HIDI-Merchant-Feed-Validation/1.0'}),timeout=60) as r:
+                assert r.status==200
+                if '/api/' not in url:assert 'noindex' not in r.headers.get('X-Robots-Tag','').lower()
+                return r.read(),r.headers
+        except (urllib.error.URLError,TimeoutError) as error:
+            if attempt==2:raise RuntimeError('Public URL unavailable: '+url) from error
+            time.sleep(5)
 class Document(HTMLParser):
     def __init__(self,body):
         super().__init__();self.canonicals=[];self.schemas=[];self.mode=False;self.parts=[];self.feed(body.decode())
@@ -55,6 +60,8 @@ def image(url):
         w,h=im.size;assert w>=250 and h>=250,(url,w,h);im.verify()
     return {'url':url,'width':w,'height':h,'passed':True}
 with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-    pages=list(pool.map(page,groups.items()));images=list(pool.map(image,sorted({value(i,'image_link') for i in items})))
+    pages=list(pool.map(page,groups.items()))
+with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+    images=list(pool.map(image,sorted({value(i,'image_link') for i in items})))
 report={'passed':True,'offers':len(items),'products':len(groups),'landingPages':pages,'originalImages':images,'readOnly':True}
 (folder/'catalogue-validation.json').write_text(json.dumps(report,indent=2));print(json.dumps({'passed':True,'products':len(groups),'offers':len(items),'originalImages':len(images)}))

@@ -13,7 +13,13 @@ export async function probe(base,out,{products,preview=false}={}) {
   await writeFile(out+'/google-products.xml',text);
   const imageChecks=[];
   for(const url of [...new Set([...text.matchAll(/<g:image_link>(.*?)<\/g:image_link>/g)].map(m=>m[1].replaceAll('&amp;','&')))]) {
-    const image=await fetch(base+new URL(url).pathname+new URL(url).search,{headers});assert.equal(image.status,200,'Feed image unavailable '+url);assert.match(image.headers.get('content-type'),/^image\//);assert(!String(image.headers.get('x-robots-tag')).includes('noindex'),'Image blocked from indexing '+url);
+    let image;
+    for(let attempt=0;attempt<3;attempt++) {
+      image=await fetch(base+new URL(url).pathname+new URL(url).search,{headers,signal:AbortSignal.timeout(90000)});
+      if(image.status!==503||attempt===2)break;
+      await image.arrayBuffer();await new Promise(done=>setTimeout(done,5000));
+    }
+    assert.equal(image.status,200,'Feed image unavailable '+url);assert.match(image.headers.get('content-type'),/^image\//);assert(!String(image.headers.get('x-robots-tag')).includes('noindex'),'Image blocked from indexing '+url);
     assert((await image.arrayBuffer()).byteLength>1000);imageChecks.push(url);
   }
   const head=await fetch(base+'/google-products.xml',{method:'HEAD',headers});assert.equal(head.status,200);assert.equal(await head.text(),'');assert.equal(Number(head.headers.get('content-length')),Buffer.byteLength(text));
