@@ -1,4 +1,4 @@
-import hashlib,json,re
+import base64,hashlib,json,re
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
 def once(text,before,after):
@@ -25,13 +25,16 @@ def patch_web(base,overlay,poster):
           signal: controller.signal
         });'''
     text=once(text,anchor,replacement)
+    logo=(base/'dist/assets/images/hidi-logo.png').read_bytes();assert len(logo)<=32768
+    text=once(text,'src:Tt("images/hidi-logo.png"),fetchPriority:"high"','src:'+json.dumps('data:image/png;base64,'+base64.b64encode(logo).decode())+',fetchPriority:"high"')
     name='assets/index-'+hashlib.sha256(text.encode()).hexdigest()[:16]+'.js'
     assert html.count('/'+old)==2,'Expected app and preload references'
     html=html.replace('/'+old,'/'+name)
     posters=re.findall(r'<link rel="preload" as="image" fetchpriority="high" media="[^"]+" href="/media-performance/assets/[^"]+">',html);assert len(posters)==2
     for hint in posters:html=once(html,hint,'')
     for row in poster['report']:
-        posters=[hint.replace(row['original'],row['url']).replace('as="image"','as="image" type="image/avif"') for hint in posters]
+        posters=[hint.replace(row['original'],row['url']) for hint in posters]
+    posters=[hint.replace('as="image"','as="image" type="image/avif"') for hint in posters]
     viewport='<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
     html=once(html,viewport,viewport+'\n'+'\n'.join(posters)+'\n<script data-hidi-early-hero="true">'+(HERE/'early-hero.js').read_text().replace('__AVIF_PROBE__',poster['probe'])+'</script>')
     runtime=(base/'server.mjs').read_text()

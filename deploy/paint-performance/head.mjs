@@ -26,7 +26,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   const inlineBundles=new Set();
   html=html.replace(/<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi,(tag,before,src,after)=>{
    const url=new URL(src,'https://hidiindia.com/');
-   if(url.origin!=='https://hidiindia.com'||!(/^\/assets\/index-[\w-]+\.js$/.test(url.pathname)||url.pathname==='/config.js'))return tag;
+   if(url.origin!=='https://hidiindia.com'||url.pathname!=='/config.js')return tag;
    if(/\b(?:async|integrity)\b/.test(before+after))return tag;
    try{
     const file=realpathSync(resolve(root,'.'+url.pathname));if(!file.startsWith(realpathSync(root)+sep))return tag;

@@ -13,19 +13,19 @@ test('future image overlays supply fresh CSS and unavailable or unsafe paths fal
   const link='<link rel="stylesheet" href="/a.css">';writeFileSync(join(root,'a.css'),'a{color:red}');assert(createHomeHead(root)(link).includes('color:red'));writeFileSync(join(root,'a.css'),'a{color:blue}');assert(createHomeHead(root)(link).includes('color:blue'));assert.equal(createHomeHead(root)('<link rel="stylesheet" href="/missing.css">'),'<link rel="stylesheet" href="/missing.css">');
  }finally{rmSync(root,{recursive:true,force:true});}
 });
-test('self-contained app and public config retain module/parser execution order without extra requests; imports retain external loading',()=>{
+test('app stays external and preloaded so the parser can paint the header sooner; config retains execution order',()=>{
  const root=mkdtempSync(join(tmpdir(),'hidi-head-'));try{
   mkdirSync(join(root,'assets'));writeFileSync(join(root,'assets/index-abc.js'),'globalThis.app="</script>";');writeFileSync(join(root,'config.js'),'window.HIDI_CONFIG={siteUrl:"/"};');
   const input='<link rel="modulepreload" href="/assets/index-abc.js"><script type="module" crossorigin src="/assets/index-abc.js"></script><div id="root"></div><script src="./config.js?v=one"></script>';
-  const result=createHomeHead(root)(input);assert(!result.includes('modulepreload'));assert(result.includes('type="module"'));assert(result.includes('globalThis.app="<\\/script>"'));assert(result.includes('data-hidi-inline-script="/config.js"'));assert(result.indexOf('id="root"')<result.indexOf('window.HIDI_CONFIG'));assert(!result.includes('src="'));
+  const result=createHomeHead(root)(input);assert(result.includes('modulepreload'));assert(result.includes('type="module"'));assert(result.includes('src="/assets/index-abc.js"'));assert(!result.includes('globalThis.app='));assert(result.includes('data-hidi-inline-script="/config.js"'));assert(result.indexOf('id="root"')<result.indexOf('window.HIDI_CONFIG'));assert(!result.includes('src="./config.js'));
   writeFileSync(join(root,'assets/index-split.js'),'import x from "./chunk.js";');const split='<script type="module" src="/assets/index-split.js"></script>';assert.equal(createHomeHead(root)(split),split);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
-test('header logo embeds the exact current image bytes in HTML and app, while originals remain untouched',()=>{
+test('parser header logo embeds exact bytes while external app loading is preserved',()=>{
  const root=mkdtempSync(join(tmpdir(),'hidi-logo-'));try{
   mkdirSync(join(root,'assets/images'),{recursive:true});const logo=Buffer.from([137,80,78,71,13,10,26,10]);writeFileSync(join(root,'assets/images/hidi-logo.png'),logo);
   writeFileSync(join(root,'assets/index-abc.js'),'const x={src:Tt("images/hidi-logo.png"),fetchPriority:"high"};');
   const html='<link rel="preload" as="image" href="./assets/images/hidi-logo.png"><script type="module" src="/assets/index-abc.js"></script><header><img src="./assets/images/hidi-logo.png"></header>';
-  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,3);assert(!result.includes('rel="preload"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
+  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(!result.includes('rel="preload"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
