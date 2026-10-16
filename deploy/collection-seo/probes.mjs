@@ -68,6 +68,8 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         if(handlers.has(p))p.off('pageerror',handlers.get(p));
         await p.close();
       };
+      // Baseline images are deliberately blocked; exclude only their fallback caption from card-fact comparisons.
+      const cardFacts=async p=>(await p.locator('main article').allTextContents()).map(text=>text.replace(/^HHIDI · Photo unavailable/,''));
       const products=async p=>(await p.locator('main article h3 a').evaluateAll(nodes=>nodes.map(n=>new URL(n.href).pathname))).sort();
       try{
         for(const slug of routes){
@@ -88,7 +90,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           await settleReads(page);const expected=await products(page);assert(expected.length>0);
           if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
           if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();await prior.waitForLoadState('load');await settleReads(prior);assert.deepEqual(expected,await products(prior),'Product selection changed');
-          assert.deepEqual(await page.locator('main article').allTextContents(),await prior.locator('main article').allTextContents(),'Product card facts or prices changed');await finish(prior);}
+          assert.deepEqual(await cardFacts(page),await cardFacts(prior),'Product card facts or prices changed');await finish(prior);}
           if(width<700){
             const trigger=page.getByRole('button',{name:/Filter.*Sort/i});
             const filters=page.getByRole('dialog',{name:'Product filters'});
