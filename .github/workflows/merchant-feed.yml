@@ -3,6 +3,7 @@ on:
   push:
     branches: [migration/azure-sql-blob]
     paths: [deploy/merchant-feed/**, .github/workflows/merchant-feed.yml]
+  workflow_dispatch:
 permissions:
   contents: read
   id-token: write
