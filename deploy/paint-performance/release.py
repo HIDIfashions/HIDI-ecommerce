@@ -14,6 +14,14 @@ def selections():
 def capture():
     # Read-only preparation may overlap other testing; exact-state guards reject any changed live image.
     photo.capture();photo.backup()
+    resources={}
+    for name,app in photo.originals().items():
+        properties=app.get('properties',{});template=properties.get('template') or {};scale=template.get('scale') or {};ingress=(properties.get('configuration') or {}).get('ingress') or {}
+        resources[name]={'containers':[{'name':c.get('name'),'resources':c.get('resources'),
+            'probes':[{'type':p.get('type'),'initialDelaySeconds':p.get('initialDelaySeconds'),'periodSeconds':p.get('periodSeconds'),'timeoutSeconds':p.get('timeoutSeconds'),'failureThreshold':p.get('failureThreshold'),'path':(p.get('httpGet') or {}).get('path'),'port':(p.get('httpGet') or {}).get('port')} for p in (c.get('probes') or [])]} for c in template.get('containers',[])],
+            'scale':{key:scale.get(key) for key in ['minReplicas','maxReplicas','pollingInterval','cooldownPeriod']},
+            'ingress':{key:ingress.get(key) for key in ['targetPort','external','transport','allowInsecure']}}
+    save('runtime-resources.json',resources)
     selected=selections();(PRIVATE/'selections.json').write_text(json.dumps(selected));save('published-selections.json',selected)
     (PRIVATE/'catalogue.json').write_bytes(cloud.get('/api/store/products'))
 def compose():
