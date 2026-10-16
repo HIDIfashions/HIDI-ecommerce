@@ -33,6 +33,7 @@ def compose():
  report['baseImage']=before['hidi-web']['image'];save('web-preservation.json',report);photo.unchanged(before)
 def browser_reports(folder):
  report=read(folder+'/report.json');assert report['passed'] and report['productionWrites']==0 and report['runtimeErrors']==[] and len(report['cases'])==24
+ assert sorted(report['publicConfigFixturePaths'])==(['/api/hidi/hero-config','/api/hidi/landing-media-config'] if folder=='candidate' else [])
  assert {(r['engine'],r['width'],r['delayed'],r['entry']) for r in report['cases']}=={(e,w,d,p) for e in ['chromium','firefox','webkit'] for w in [375,1440] for d in [False,True] for p in ['/cart','/checkout']}
  product=read(folder+'/product/report.json');assert product['passed'] and product['newRuntimeErrors']==[] and product['existingBaselineWarnings']==[] and product['productionWrites']==0
  assert {(r['engine'],r['width']) for r in product['cases']}=={(e,w) for e in ['chromium','firefox','webkit'] for w in [375,1440]}
@@ -41,7 +42,7 @@ def browser_reports(folder):
 
 def seal():
  photo.unchanged(photo.states());manifest={}
- for name in ['patch.json','web-preservation.json','source-ci.json','candidate/report.json','candidate/product/report.json','candidate/pricing/report.json']:
+ for name in ['patch.json','web-preservation.json','source-ci.json','candidate/public-config.json','candidate/report.json','candidate/product/report.json','candidate/pricing/report.json']:
   assert read(name)['passed'],name;manifest[name]=g.sha256_file(E/name)
  assert read('source-ci.json')['sourceSha']==os.environ['GITHUB_SHA'] and read('source-ci.json')['allSourceGatesPassed']
  browser_reports('candidate')

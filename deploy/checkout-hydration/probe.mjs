@@ -37,8 +37,8 @@ export async function probe(base,output,{overlay=false,publicConfig,engines=proc
   // Exercise React client navigation away and Back; campaign copy must follow route.
   const home=page.locator('header .wordmark');await home.focus();await page.keyboard.press('Enter');await page.waitForURL(base+'/');await page.waitForFunction(()=>!document.querySelector('[data-hidi-price-note]'));await settle();await page.goBack();await page.waitForURL(base+paths.at(-1));await page.locator('[data-hidi-price-note]').waitFor();await settle();
   assert.deepEqual(localErrors,[]);cases.push({engine,width,delayed,entry,passed:true,cartAndCheckout:true,noteOutsideReact:true,clientNavigation:true});console.log('HYDRATION_CASE',JSON.stringify(cases.at(-1)));
-  }catch(error){await writeFile(`${output}/${engine}-${width}-${delayed}-failure.html`,await page.content());throw error;}finally{release();errors.push(...localErrors);await context.close();}
+  }catch(error){const name=`${output}/${engine}-${width}-${delayed}-${entry.slice(1)}-failure`;await writeFile(name+'.html',await page.content());await writeFile(name+'.json',JSON.stringify({engine,width,delayed,entry,error:String(error),runtimeErrors:localErrors,pendingRequests:[...pending].map(r=>r.url())},null,2));throw error;}finally{release();errors.push(...localErrors);await context.close();}
  }}finally{await browser.close();}}
- assert.deepEqual(writes,[]);assert.deepEqual(errors,[]);const result={passed:true,cases,runtimeErrors:errors,productionWrites:0,gatewayRetries};await writeFile(output+'/report.json',JSON.stringify(result,null,2));return result;
+ assert.deepEqual(writes,[]);assert.deepEqual(errors,[]);const result={passed:true,cases,runtimeErrors:errors,productionWrites:0,publicConfigFixturePaths:Object.keys(publicConfig||{}),gatewayRetries};await writeFile(output+'/report.json',JSON.stringify(result,null,2));return result;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)await probe(process.argv[2]||'https://hidiindia.com',process.argv[3]||'evidence/checkout-hydration/local',{overlay:process.env.HIDI_LOCAL_OVERLAY==='1'});
