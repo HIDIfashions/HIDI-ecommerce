@@ -1,4 +1,5 @@
 /* Shared inline subscription treatment for the retained homepage and Next pages. */
+footer .footer-signature { display: none !important; }
 .footer form.newsletter button,
 #newsletter-form .newsletter-field button {
   background: #e5c279 !important;

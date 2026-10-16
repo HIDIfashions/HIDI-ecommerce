@@ -7,19 +7,20 @@ import {resolve} from 'node:path';
 import {probe} from './probes.mjs';
 const work=resolve(process.env.RUNNER_TEMP,'hidi-refinements-private');
 const failures=[];
-for(const name of ['wallet-checkout','cart-size-edit','shipping-policy','free-shipping-offers']){
+for(const name of ['wallet-checkout','cart-size-edit','shipping-policy','free-shipping-offers','delhivery-transit']){
  let source=await readFile('tests/'+name+'.test.ts','utf8');source=source.replaceAll('../apps/api/src/',work+'/api/candidate-app/apps/api/dist/');
  const file='tests/refinements-compiled-'+name+'.fixture.ts';await writeFile(file,source);
  try{execFileSync(process.execPath,['--import','tsx','--test','../../'+file],{cwd:resolve('apps/api'),stdio:'inherit'});}catch(error){failures.push(name);console.error('FAILED compiled candidate suite: '+name);}
 }
 try{execFileSync(process.execPath,['--test','tests/image-sku-runtime-keys.test.mjs'],{env:{...process.env,HIDI_CANDIDATE_RUNTIME:work+'/web/candidate-app'},stdio:'inherit'});}catch(error){failures.push('image-sku-runtime-keys');console.error('FAILED candidate upload suite');}
 const product={id:'isolated-product',slug:'isolated-style',name:'Isolated candidate style',status:'ACTIVE',fabric:'Fixture fabric',care:'Fixture care',collections:[],minPricePaise:100000,maxPricePaise:100000,inStock:true,images:[],variants:[{id:'fixture-m',sku:'FIXTURE-M',size:'M',color:'Ivory',available:4,pricePaise:100000,mrpPaise:120000},{id:'fixture-l',sku:'FIXTURE-L',size:'L',color:'Ivory',available:0,pricePaise:100000,mrpPaise:120000}]};
+const other={...product,id:'isolated-second-product',slug:'isolated-second-style',name:'Second isolated candidate style',variants:product.variants.map(v=>({...v,id:v.id+'-second',sku:v.sku+'-SECOND'}))};
 const mock=createServer((req,res)=>{
  const path=new URL(req.url,'http://127.0.0.1').pathname;res.setHeader('Content-Type','application/json');
  let body={status:'ok'};
  if(path.includes('/carts/'))body={items:[],itemCount:0,subtotalPaise:0,shippingPaise:0,totalPaise:0};
  else if(path.includes('/reviews'))body={averageRating:0,reviewCount:0,verifiedReviewCount:0,reviews:[],ratingDistribution:{1:0,2:0,3:0,4:0,5:0}};
- else if(path.includes('/products'))body=path.endsWith('/related')?[]:path.endsWith('/isolated-style')?product:[product];
+ else if(path.includes('/products'))body=path.endsWith('/related')?[other]:path.endsWith('/isolated-style')?product:path.endsWith('/isolated-second-style')?other:[product,other];
  else if(path.endsWith('/payment-options'))body={online:true,cod:true};
  res.end(JSON.stringify(body));
 });
