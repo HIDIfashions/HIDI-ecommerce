@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {isBlockedTelemetry} from '../button-states/request-policy.mjs';
 import {navigate} from '../collection-cleanup/navigation.mjs';
 const pw=await import(process.env.HIDI_PLAYWRIGHT_MODULE?pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href:'playwright');
-export async function probe(base,output,{overlay=false,engines=process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit'}={}){
+export async function probe(base,output,{overlay=false,publicConfig,engines=process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit'}={}){
  await mkdir(output,{recursive:true});const cases=[],writes=[],gatewayRetries=[],errors=[];
  for(const engine of engines.split(',')){const browser=await pw[engine].launch({headless:true});try{for(const width of [375,1440])for(const delayed of [false,true])for(const entry of ['/cart','/checkout']){
   const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage();let release;const gate=new Promise(done=>release=done);let released=!delayed;
@@ -14,6 +14,7 @@ export async function probe(base,output,{overlay=false,engines=process.env.HIDI_
   const settle=async()=>{const start=Date.now();while(Date.now()-start<30000){if(!pending.size&&Date.now()-Math.max(start,activity)>=600)return;await new Promise(done=>setTimeout(done,50));}throw Error('Application requests did not settle: '+[...pending].map(r=>r.url()).join(', '));};
   const localErrors=[];page.on('pageerror',e=>localErrors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/hydration|Minified React error/i.test(m.text()))localErrors.push(m.text());});
   await context.route('**/*',async route=>{const req=route.request(),url=new URL(req.url()),path=url.pathname;
+   if(url.origin===base&&publicConfig&&Object.hasOwn(publicConfig,path))return route.fulfill({contentType:'application/json',body:JSON.stringify(publicConfig[path])});
    if(overlay&&url.origin===base&&path==='/pricing-assets/storefront.mjs')return route.fulfill({contentType:'application/javascript',body:await readFile(new URL('../pricing/storefront.mjs',import.meta.url),'utf8')});
    if(!['GET','HEAD','OPTIONS'].includes(req.method())){if(isBlockedTelemetry(req.method(),req.url(),base))return route.fulfill({status:204,body:''});writes.push({method:req.method(),path});return route.fulfill({status:403,contentType:'application/json',body:'{}'});}
    if(url.origin===base&&/^\/api\/store\/carts\//.test(path))return route.fulfill({contentType:'application/json',body:JSON.stringify({items:[],itemCount:0,subtotalPaise:0,totalPaise:0})});
