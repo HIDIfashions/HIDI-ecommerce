@@ -1,4 +1,5 @@
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
+# Fresh first-screen CSS, streaming head and responsive AV1 retain mandatory design and commerce gates.
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
@@ -72,7 +73,7 @@ jobs:
     if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[prepare-only]')
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     concurrency:
       group: hidi-hero-guarded-release
       queue: max
