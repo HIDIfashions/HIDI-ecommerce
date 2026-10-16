@@ -41,7 +41,10 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
   await page.getByRole('button',{name:'Filter & Sort',exact:true}).waitFor();
   for(const viewport of [{width:320,height:568},{width:390,height:360},{width:390,height:844}]){
    await page.setViewportSize(viewport);await page.getByRole('button',{name:'Filter & Sort',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Product filters'});await dialog.waitFor();
-   const show=dialog.getByRole('button',{name:/Show \d+ styles/});assert.equal(await color(show),brown);
+   const show=dialog.getByRole('button',{name:/Show \d+ styles/});
+   // New collection copy can place the trigger over the drawer footer. Move the
+   // pointer away before measuring the normal colour; hover has its own style.
+   await page.mouse.move(1,1);await until(async()=>await color(show)===brown,'filter footer normal colour');assert.equal(await color(show),brown);
    const geometry=()=>dialog.evaluate(d=>{const scroll=d.querySelector('[class*="filterScroll"]'),footer=d.querySelector('[class*="drawerApply"]'),b=footer.querySelector('button'),r=b.getBoundingClientRect(),s=scroll.getBoundingClientRect(),f=footer.getBoundingClientRect();return {scrollBottom:s.bottom,footerTop:f.top,bottom:r.bottom,height:innerHeight,hit:b.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};});
    let g=await geometry();assert(g.scrollBottom<=g.footerTop+1);assert(g.bottom<=g.height&&g.hit);
    await dialog.locator('[class*="filterScroll"]').evaluate(e=>e.scrollTop=e.scrollHeight);g=await geometry();assert(g.scrollBottom<=g.footerTop+1&&g.hit);
