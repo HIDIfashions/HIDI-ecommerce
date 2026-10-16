@@ -13,6 +13,29 @@
   } catch { /* The normal component request remains the fallback. */ }
 })();
 
+// Keep the native poster visible for a paint before React takes over the hero.
+// Decode completion drives the handoff; a deadline retains interactivity on error.
+(() => {
+  if (location.pathname !== '/') return;
+  window.__HidiWaitForPosterPaint = video => {
+    if (!video?.poster || document.visibilityState === 'hidden') return Promise.resolve();
+    return new Promise(resolve => {
+      let settled = false;
+      const finish = () => { if (settled) return; settled = true; clearTimeout(timer); resolve(); };
+      const timer = setTimeout(finish, 1200);
+      try {
+        const image = new Image();
+        image.src = video.poster;
+        image.decode().then(() => {
+          if (settled) return;
+          if (document.visibilityState === 'hidden') finish();
+          else requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(finish, 0)));
+        }, finish);
+      } catch { finish(); }
+    });
+  };
+})();
+
 (() => {
   if (location.pathname !== '/') return;
   window.__HidiAvifSupport = new Promise(resolve => {

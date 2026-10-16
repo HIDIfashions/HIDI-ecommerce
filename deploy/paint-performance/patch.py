@@ -80,7 +80,7 @@ def patch_web(base,overlay,poster,icons=None):
     end=text.index('  }, [showBundled, heroConfigStatus, mobile, reduced]);',start)
     expected=(HERE/'video-delay.txt').read_text()
     text=once(text,expected,'    setVideoAllowed(true);\n')
-    text='if (location.pathname === "/" && window.__HidiFullCssReady) await window.__HidiFullCssReady;\nif (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));\n'+text
+    text='if (location.pathname === "/" && window.__HidiFullCssReady) await window.__HidiFullCssReady;\nif (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await (window.__HidiNativePosterReady || new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))));\n'+text
     name='assets/index-'+hashlib.sha256(text.encode()).hexdigest()[:16]+'.js'
     assert html.count('/'+old)==2,'Expected app and preload references'
     html=html.replace('/'+old,'/'+name)
@@ -110,6 +110,11 @@ def patch_web(base,overlay,poster,icons=None):
     runtime='import { renderInitialHome } from "./paint-performance/announcement.mjs";\n'+runtime
     runtime='import { sendCachedHome } from "./paint-performance/delivery.mjs";\n'+runtime
     runtime='import { sendPreparedAsset } from "./paint-performance/static-encoding.mjs";\n'+runtime
+    runtime='import { sendCriticalPoster } from "./paint-performance/critical-poster.mjs";\n'+runtime
+    # Small critical posters enter the response queue immediately, just like JS,
+    # rather than waiting behind synchronous bundle responses for an async read.
+    static_condition='if (status === 200 && !range && request.method === "GET" && [".js", ".css", ".json", ".svg", ".xml", ".webmanifest", ".txt"].includes(extension)) {'
+    runtime=once(runtime,static_condition,'if (sendCriticalPoster(request, response, status, pathname, filePath, stat)) return;\n  '+static_condition)
     runtime=once(runtime,'return sendBuffer(request, response, status, response.getHeaders(), readFileSync(filePath));','return sendPreparedAsset(request, response, status, response.getHeaders(), readFileSync(filePath));')
     anchor='    return sendBuffer(request, response, 200, response.getHeaders(), body);'
     runtime=once(runtime,anchor,'    return pathname === "/" ? sendCachedHome(request, response, 200, response.getHeaders(), body) : sendBuffer(request, response, 200, response.getHeaders(), body);')
@@ -133,6 +138,7 @@ def patch_web(base,overlay,poster,icons=None):
         initial_home='import {addHomeDiscovery} from "../seo-document/discovery.mjs";\n'+once(initial_home,' return renderHero(await renderAnnouncement(html,async()=>products),hero,{request});',' return addHomeDiscovery(renderHero(await renderAnnouncement(html,async()=>products),hero,{request}));')
     files={'paint-performance/static-encoding.mjs':(HERE/'static-encoding.mjs').read_text(),'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'dist/'+pricing_name:pricing,'paint-performance/home-pricing.json':json.dumps(pricing_metadata),'paint-performance/announcement.mjs':initial_home,'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
     files['paint-performance/stream-home.mjs']=(HERE/'stream-home.mjs').read_text()
+    files['paint-performance/critical-poster.mjs']=(HERE/'critical-poster.mjs').read_text()
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)
     return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'seoHomeDiscoveryPreserved':has_discovery,'homePricingBundle':pricing_name,'globalPricingSourceSha256':hashlib.sha256((base/'pricing/storefront.mjs').read_bytes()).hexdigest(),'pricingPresentationAndHydrationPreserved':True,'pricingPresentationSha256':hashlib.sha256(price_presentation.encode()).hexdigest(),'pricingCalculationsSha256':hashlib.sha256(price_calculations.encode()).hexdigest(),'manifest':manifest}

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';import {readFile,writeFile,mkdir} from 'node:fs/promises';import {join} from 'node:path';import {createHash} from 'node:crypto';
 import {existsSync} from 'node:fs';import {pathToFileURL} from 'node:url';
+import {indexedPng} from './indexed-png.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function readSeoScript(base){
  const module=join(base,'seo-discovery/metadata.mjs');
@@ -11,6 +12,7 @@ export async function buildHeadAssets(base,overlay,sharp){
  const chunks=[];for(let offset=8;offset<source.length;){const length=source.readUInt32BE(offset);chunks.push(source.subarray(offset+4,offset+8).toString());offset+=12+length;}
  const plainPng=chunks.every(type=>['IHDR','IDAT','IEND'].includes(type));
  if(!info.icc&&plainPng)for(const adaptiveFiltering of [false,true]){const bytes=await sharp(source).png({compressionLevel:9,adaptiveFiltering}).toBuffer();if(bytes.length<encoded.length)encoded=bytes;}
+ if(!info.icc&&plainPng){const bytes=indexedPng(pixels,info.width,info.height);if(bytes&&bytes.length<encoded.length)encoded=bytes;}
  const next=await sharp(encoded).metadata();assert.equal(next.width,info.width);assert.equal(next.height,info.height);assert(pixels.equals(await sharp(encoded).ensureAlpha().raw().toBuffer()),'Every logo RGBA pixel must remain exact');
  const logoUrl='/media-performance/assets/logo-'+hash(encoded).slice(0,16)+'.png';await mkdir(join(overlay,'dist/media-performance/assets'),{recursive:true});await writeFile(join(overlay,'dist',logoUrl),encoded);
  const logo={url:logoUrl,sourceSha256:hash(source),sha256:hash(encoded),width:info.width,height:info.height,sourceBytes:source.length,bytes:encoded.length,allRgbaPixelsIdentical:true};

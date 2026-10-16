@@ -35,7 +35,16 @@ def compose():
     folder=PRIVATE/'web';folder.mkdir();base=folder/'base-app';overlay=folder/'overlay';candidate=folder/'candidate-app'
     image=photo.states()['hidi-web']['image'];images.extract(image,base)
     icons=patch.build_icons(base,overlay);save('icon-quality.json',icons)
-    subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True)
+    # Reuse only independently revalidated encoded video bytes. The runtime and
+    # every original still come exclusively from the current accepted image.
+    media_cache_image=images.REGISTRY+'/hidi-web@sha256:68f0998ba3eb335bfa868862622b9177073d428b25d29d6d4da650398badd480'
+    media_cache=folder/'media-cache';media_env={**os.environ}
+    try:
+        images.extract(media_cache_image,media_cache);media_env['HIDI_MEDIA_REUSE_DIR']=str(media_cache)
+        save('media-cache.json',{'passed':True,'available':True,'encodedVideosOnly':True,'image':media_cache_image,'currentRuntimeImage':image,'allQualityChecksRetained':True})
+    except subprocess.CalledProcessError:
+        save('media-cache.json',{'passed':True,'available':False,'encodedVideosOnly':True,'currentRuntimeImage':image,'allQualityChecksRetained':True})
+    subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True,env=media_env)
     poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);save('head-assets-quality.json',poster['headAssets']);(overlay/'poster-build.json').unlink()
     # Native-screen CSS paints immediately; exact complete sheets load independently at low priority.
     subprocess.run(['node',str(HERE/'critical-css.mjs'),str(base),str(overlay)],check=True)
@@ -65,7 +74,7 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json','media-cache.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
