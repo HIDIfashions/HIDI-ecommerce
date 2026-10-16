@@ -18,7 +18,7 @@ for i in items:
 def get(url):
     with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'HIDI-Merchant-Feed-Validation/1.0'}),timeout=45) as r:
         assert r.status==200
-        if '/api/' not in url and not ('--candidate' in sys.argv and '/media/products/' in url):assert 'noindex' not in r.headers.get('X-Robots-Tag','').lower()
+        if '/api/' not in url:assert 'noindex' not in r.headers.get('X-Robots-Tag','').lower()
         return r.read(),r.headers
 class Document(HTMLParser):
     def __init__(self,body):
@@ -50,7 +50,7 @@ def page(pair):
         assert any(o.get('sku')==v['sku'] and f"{float(o['price']):.2f}"==expected for o in published),'Offer markup mismatch '+url
     return {'url':url,'offers':len(offers),'passed':True}
 def image(url):
-    body,headers=get(url);assert headers.get('Content-Type','').startswith('image/')
+    body,headers=get(url);assert headers.get('Content-Type','').startswith('image/');assert len(body)<=16*1024*1024
     with Image.open(io.BytesIO(body)) as im:
         w,h=im.size;assert w>=250 and h>=250,(url,w,h);im.verify()
     return {'url':url,'width':w,'height':h,'passed':True}

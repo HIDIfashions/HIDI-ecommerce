@@ -8,9 +8,8 @@ def patch_runtime(base,overlay):
     source=(base/'server.mjs').read_text()
     assert hashlib.sha256(source.encode()).hexdigest()=='c5e26ae2eb31ab5ae3d959e722308926f658cc096c6d8240c731a99b3c8143b3','Runtime changed after inspection; inspect before patching'
     changes=[
-      ('import { createSeoSitemap } from "./seo-discovery/sitemap.mjs";', 'import { createSeoSitemap } from "./seo-discovery/sitemap.mjs";\nimport { createMerchantFeed, createPublishedImageGuard } from "./merchant-feed/feed.mjs";'),
-      ('const sendSeoSitemap = createSeoSitemap({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });', 'const sendSeoSitemap = createSeoSitemap({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });\nconst sendMerchantFeed = createMerchantFeed({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });\nconst guardMerchantImage = createPublishedImageGuard({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });'),
-      ('  if (handleCatalogueAlias(request, response, pathname)) return;', '  await guardMerchantImage(request, response, pathname);\n  if (handleCatalogueAlias(request, response, pathname)) return;'),
+      ('import { createSeoSitemap } from "./seo-discovery/sitemap.mjs";', 'import { createSeoSitemap } from "./seo-discovery/sitemap.mjs";\nimport { createMerchantFeed } from "./merchant-feed/feed.mjs";'),
+      ('const sendSeoSitemap = createSeoSitemap({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });', 'const sendSeoSitemap = createSeoSitemap({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });\nconst sendMerchantFeed = createMerchantFeed({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });'),
       ('  if (pathname === "/sitemap.xml") {', '  if (pathname === "/google-products.xml") return sendMerchantFeed(request, response);\n\n  if (pathname === "/sitemap.xml") {'),
       ('    verification,\n    isProductionRequest(request) ? clientMetadataScript : "",', '    verification,\n    /^\\/products\\/[a-z0-9-]+$/.test(pathname) && /^[A-Za-z0-9_-]{1,50}$/.test(new URL(request.url, "http://localhost").searchParams.get("variant") || "") ? \'<script defer src="/hidi-merchant-variant-v1.js"></script>\' : "",\n    isProductionRequest(request) ? clientMetadataScript : "",'),
     ]
