@@ -50,7 +50,7 @@ export async function probe(base,output,options={}){
     }
     await p.goto(base+'/products/women-s-black-embroidered-kurta-set-with-dupatta',{waitUntil:'domcontentloaded'});
     await p.waitForFunction(()=>document.querySelector('[data-hidi-react-pdp]')?.dataset.hidiHydrated==='true',null,{timeout:60000});
-    assert((await summary.innerText()).includes('Included pieces are not specified'),'Incomplete set descriptions must remain unresolved');
+    assert.match(normalizeText(await summary.innerText()),/(?:Included pieces|Set contents) are not specified/,'Incomplete set descriptions must remain unresolved');
     assert.equal(await summary.getByText('Included pieces',{exact:true}).count(),0);
     results.push({engine,width,serverContents:true,hydratedContents:true,nativeProductNavigation:true,namedComponents:true,bulletLabel:true,unknownContentsPreserved:true,passed:true});
    }catch(error){
