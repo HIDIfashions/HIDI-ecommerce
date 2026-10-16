@@ -9,7 +9,7 @@ export async function probe(base,output,{baseline,landing}={}){
  assert(proof.passed&&proof.unchangedBaseline&&proof.liveWrites===0);
  const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
  await mkdir(output,{recursive:true});
- const errors=[],writes=[],gatewayRetries=[],results=[];
+ const errors=[],writes=[],gatewayRetries=[],results=[],readiness=[];
  landing ||= await (await fetch('https://hidiindia.com/api/hidi/landing-media-config')).json();
  const hero=await (await fetch('https://hidiindia.com/api/hidi/hero-config')).json();
  const offers=await (await fetch('https://hidiindia.com/api/hidi/offers')).json();
@@ -37,10 +37,15 @@ export async function probe(base,output,{baseline,landing}={}){
    });
    let page,stage='';
    const pending=new Map();
-   const fresh=async(path,observed=true)=>{const p=await context.newPage();p.setDefaultTimeout(45000);const reads=new Set();pending.set(p,reads);p.on('request',r=>{const path=new URL(r.url()).pathname;if(path.startsWith('/api/store/')||path==='/api/admin/session'||path==='/api/hidi/offers')reads.add(r);});for(const event of ['requestfinished','requestfailed'])p.on(event,r=>reads.delete(r));if(observed)p.on('pageerror',e=>errors.push({engine,width,stage:path,message:e.message}));await navigate(p,(observed?base:baseline)+path,gatewayRetries);
+   const fresh=async(path,observed=true)=>{const p=await context.newPage();p.setDefaultTimeout(45000);const reads=new Set(),network=[];pending.set(p,reads);p.on('request',r=>{const path=new URL(r.url()).pathname;if(path.startsWith('/api/store/')||path==='/api/admin/session'||path==='/api/hidi/offers')reads.add(r);});for(const event of ['requestfinished','requestfailed'])p.on(event,r=>reads.delete(r));p.on('requestfailed',r=>network.push({path:new URL(r.url()).pathname,failure:r.failure(),type:r.resourceType()}));p.on('response',r=>{if(r.status()>=400)network.push({path:new URL(r.url()).pathname,status:r.status()});});if(observed)p.on('pageerror',e=>errors.push({engine,width,stage:path,message:e.message}));await navigate(p,(observed?base:baseline)+path,gatewayRetries);
     // SSR controls can be visible before React attaches their handlers. This
     // inline measurement is written by Header's client effect, never by CSS.
-    if(path!=='/')await p.waitForFunction(()=>Boolean(document.documentElement.style.getPropertyValue('--hidi-header-height'))&&Boolean(localStorage.getItem('hidi_cart_session')),{},{polling:100,timeout:45000});
+    const started=Date.now();
+    // Both unchanged and candidate containers take ~37-39s on the first cold
+    // collection render; subsequent cases take <1s. Keep live's 45s bound.
+    const readinessTimeout=new URL(observed?base:baseline).hostname==='127.0.0.1'?90000:45000;
+    if(path!=='/')try{await p.waitForFunction(()=>Boolean(document.documentElement.style.getPropertyValue('--hidi-header-height'))&&Boolean(localStorage.getItem('hidi_cart_session')),{},{polling:100,timeout:readinessTimeout});}catch(error){const name=`${output}/${engine}-${width}-${observed?'candidate':'baseline'}-readiness`;await writeFile(name+'.html',await p.content());await p.screenshot({path:name+'.png'});await writeFile(name+'.json',JSON.stringify({path,network,pending:[...reads].map(r=>new URL(r.url()).pathname),state:await p.evaluate(()=>({readyState:document.readyState,headerStyle:document.documentElement.getAttribute('style'),storageKeys:Object.keys(localStorage),scripts:[...document.scripts].map(s=>({src:s.getAttribute('src'),type:s.type})),collectionFlag:document.querySelector('[data-hidi-collection-hydrated]')?.getAttribute('data-hidi-collection-hydrated')}))},null,2));throw error;}
+    readiness.push({engine,width,path,observed,clientReadyMs:Date.now()-started});await writeFile(output+'/readiness-progress.json',JSON.stringify(readiness,null,2));
     return p;};
    const settle=async p=>{let quiet=0;for(let elapsed=0;elapsed<30000;elapsed+=50){await new Promise(r=>setTimeout(r,50));quiet=pending.get(p).size?0:quiet+50;if(quiet>=500)return;}assert.fail('Commerce reads did not settle: '+[...pending.get(p)].map(r=>r.url()).join(', '));};
    const finish=async p=>{await settle(p);p.removeAllListeners('pageerror');await p.close();};
