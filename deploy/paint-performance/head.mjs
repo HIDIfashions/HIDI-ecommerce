@@ -18,7 +18,8 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   const file=realpathSync(resolve(root,'.'+data.url));if(!file.startsWith(realpathSync(root)+sep))return null;
   return digest(resolve(appRoot,'pricing/storefront.mjs'))===data.sourceSha256&&digest(file)===data.homeSha256?data.url:null;
  }catch{return null;}})();
- const logoData=(()=>{try{let file=readFileSync(resolve(root,'assets/images/hidi-logo.png'));if(assets.logo?.sourceSha256===createHash('sha256').update(file).digest('hex'))file=verifiedAsset(assets.logo,/^\/media-performance\/assets\/logo-[a-f0-9]{16}\.png$/)||file;return file.length<=32768?'data:image/png;base64,'+file.toString('base64'):null;}catch{return null;}})();
+ let logoUrl=null;
+ const logoData=(()=>{try{let file=readFileSync(resolve(root,'assets/images/hidi-logo.png'));if(assets.logo?.sourceSha256===createHash('sha256').update(file).digest('hex')){const optimized=verifiedAsset(assets.logo,/^\/media-performance\/assets\/logo-[a-f0-9]{16}\.png$/);if(optimized){file=optimized;logoUrl=assets.logo.url;}}return file.length<=32768?'data:image/png;base64,'+file.toString('base64'):null;}catch{return null;}})();
  function cssFor(href){
   if(cache.has(href))return cache.get(href);
   let result=null;
@@ -61,7 +62,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    if(/\brel=["']modulepreload["']/.test(tag)&&[...inlineBundles].some(path=>tag.includes('href="'+path+'"')))return '';
    return tag;
   });
-  if(logoData)html=html.replace(/(<img\b[^>]*\bsrc=["'])(?:\.\/|\/)assets\/images\/hidi-logo\.png(["'])/gi,(_,start,end)=>start+logoData+end);
+  if(logoData)html=html.replace(/(<img\b[^>]*\bsrc=["'])(?:\.\/|\/)assets\/images\/hidi-logo\.png(["'])/gi,(_,start,end)=>start+(logoUrl||logoData)+end);
   html=html.replace(/<script\b([^>]*data-hidi-seo-identity=["']1["'][^>]*)>([\s\S]*?)<\/script>/i,(tag,attrs,code)=>seoBytes&&assets.seo.sha256===createHash('sha256').update(code).digest('hex')&&!/(?:^|\s)(?:src|async|integrity)\b/i.test(attrs)?'<script'+attrs+' defer src="'+assets.seo.url+'"></script>':tag);
   let deferred=0;const completeHead=/<\/head>/i.test(html);
   html=html.replace(/<link\b[^>]*>/gi,tag=>{
@@ -79,7 +80,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
   });
   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=new Promise(resolve=>{let started=false;window.__HidiLoadFullCss=()=>{if(started)return;started=true;Promise.all([...document.querySelectorAll("link[data-hidi-deferred-style]")].map(link=>new Promise(done=>{const ready=()=>{link.media="all";done();};link.addEventListener("load",ready,{once:true});link.addEventListener("error",ready,{once:true});link.href=link.dataset.hidiFullHref;if(link.sheet)ready();}))).then(resolve);};const fallback=()=>{if(document.readyState!=="loading"&&!document.querySelector("video[data-hidi-first-hero]"))window.__HidiLoadFullCss();};document.addEventListener("readystatechange",fallback);fallback();});</script></head>');
-  if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,'');
+  if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,tag=>logoUrl?tag.replace(/\bhref=["'][^"']+["']/i,'href="'+logoUrl+'"'):'');
   return html;
  };
 }

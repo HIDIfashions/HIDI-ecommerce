@@ -45,6 +45,10 @@ def patch_web(base,overlay,poster,icons=None):
     assert (base/'lcp-performance/head.mjs').read_bytes()==(HERE.parent/'lcp-performance/head.mjs').read_bytes(),'Existing response transform changed; stop'
     original_manifest=re.search(r'^const HidiMediaManifest=(.*);$',text,re.M)[0]
     manifest=poster['manifest']
+    logo=poster['headAssets']['logo'];assert re.fullmatch(r'/media-performance/assets/logo-[a-f0-9]{16}\.png',logo['url'])
+    assert hashlib.sha256((base/'dist/assets/images/hidi-logo.png').read_bytes()).hexdigest()==logo['sourceSha256']
+    assert hashlib.sha256((overlay/'dist'/logo['url'].lstrip('/')).read_bytes()).hexdigest()==logo['sha256']
+    text=once(text,'function Tt(a){return','function Tt(a){if(a==="images/hidi-logo.png")return '+json.dumps(logo['url'])+';return')
     original_video=(HERE.parent/'media-performance/client.js').read_text().split('function HidiMediaVideo(value) {',1)[1].split('function HidiMediaPoster',1)[0]
     text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
     text=once(text,'      onCanPlay: revealLiveVideo,\n      onError: () => setFailedSource(liveHero.url),','      onCanPlay: revealLiveVideo,\n      onError: (event) => HidiMediaVideoFallback(event, liveHero.url, () => setFailedSource(liveHero.url)),')
