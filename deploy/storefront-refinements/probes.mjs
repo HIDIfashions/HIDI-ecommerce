@@ -25,7 +25,7 @@ export async function probe(base,output,engines=['chromium','firefox','webkit'])
    const newsletter=async()=>{
     const form=page.locator('footer form.newsletter');await form.waitFor();await form.scrollIntoViewIfNeeded();const field=form.locator('input[type="email"]'),button=form.getByRole('button',{name:/Subscribe/i});
     const [i,b]=await Promise.all([field.boundingBox(),button.boundingBox()]);assert(i&&b&&Math.abs(i.y+i.height/2-b.y-b.height/2)<2&&b.x>=i.x+i.width-1,'Newsletter input and gold button must share one row with aligned centres');
-    assert.equal(await button.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(229, 194, 121)');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Horizontal overflow');await settle();
+    assert.equal(await button.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(229, 194, 121)');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Horizontal overflow');for(const tagline of await page.locator('footer .footer-note, footer .footer-signature').all())assert(!(await tagline.isVisible()),'Standalone footer tagline must be absent');await settle();
    };
    try{
     await go('/');await page.locator('footer').waitFor();await newsletter();
@@ -39,7 +39,9 @@ export async function probe(base,output,engines=['chromium','firefox','webkit'])
     await size.click();assert(await add.isDisabled()&&await buy.isDisabled());
     const box=page.locator('.delivery-box'),pin=box.getByLabel('Delivery PIN code',{exact:true}),check=box.getByRole('button',{name:'Check delivery PIN code',exact:true});await pin.fill('000000');await check.click();await box.getByText('Enter a valid six-digit Indian PIN code.').waitFor();
     await pin.fill('500089');await check.click();await box.getByText(/Estimated delivery by/).waitFor();await box.getByText('Pay on delivery available',{exact:true}).waitFor();
-    await box.getByRole('button',{name:'Change',exact:true}).click();delivery={serviceable:true,cod:false,estimatedDeliveryDate:null};await check.click();await box.getByText('The courier has not supplied an arrival date yet.').waitFor();await box.getByText('Pay on delivery is unavailable for this PIN.').waitFor();
+    assert.equal(await box.locator('.delivery-checked-pin').count(),0);
+    await box.getByRole('button',{name:'Change',exact:true}).click();delivery={serviceable:true,cod:false,estimatedDeliveryDate:null,estimatedTransitDays:1};await check.click();await box.getByText('Estimated delivery in 1 day after dispatch').waitFor();await box.getByText('Pay on delivery is unavailable for this PIN.').waitFor();
+    await box.getByRole('button',{name:'Change',exact:true}).click();delivery={serviceable:true,cod:false,estimatedDeliveryDate:null,estimatedTransitDays:null};await check.click();await box.getByText('The courier has not supplied an arrival estimate yet.').waitFor();
     await newsletter();
     await go('/cart');await page.locator('.order-summary').waitFor();assert.match(await page.locator('.order-summary').innerText(),/Shipping\s*₹0\.00/);assert.doesNotMatch(await page.locator('.order-summary').innerText(),/Complimentary|₹99 shipping|1,499/);
     await go('/checkout');await page.locator('.checkout-form').waitFor();

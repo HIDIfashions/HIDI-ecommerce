@@ -1,7 +1,7 @@
 name: Approved storefront refinements - complete regression only
 on:
   push:
-    branches: [codex/storefront-refinements-20261016]
+    branches: [codex/storefront-refinements-20261016, codex/storefront-followup-20261016]
 permissions:
   contents: read
 concurrency:
@@ -30,6 +30,7 @@ jobs:
       - name: All API and frontend/domain regressions must pass
         run: |
           set -euo pipefail
+          python3 tests/storefront-refinements-release.test.py
           pnpm test:customer-experience
           git fetch origin 04447f465df48f3a9be5b6a5e2cde693dffa7823
           node --test $(find tests -maxdepth 1 -name '*.test.mjs' ! -name 'image-sku-runtime-keys.test.mjs' -print)

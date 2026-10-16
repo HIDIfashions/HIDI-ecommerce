@@ -1,22 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { Truck, Banknote, RefreshCw } from "lucide-react";
 import { BROWSER_API_URL } from "@/lib/browser-api";
-import { courierDateLabel } from "@/lib/delivery-estimate";
+import { courierDateLabel, courierTransitLabel } from "@/lib/delivery-estimate";
 
-type DeliveryResult = { pin: string; serviceable: boolean; cod: boolean; city?: string | null; estimatedDeliveryDate?: string | null };
+type DeliveryResult = { pin: string; serviceable: boolean; cod: boolean; city?: string | null; estimatedDeliveryDate?: string | null; estimatedTransitDays?: number | null };
 
 export function DeliveryCheck() {
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<DeliveryResult | null>(null);
+  const pinInput = useRef<HTMLInputElement>(null);
 
   async function check(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || result) return;
     if (!/^[1-9]\d{5}$/.test(pin)) {
       setMessage("Enter a valid six-digit Indian PIN code.");
       setResult(null);
@@ -40,22 +41,22 @@ export function DeliveryCheck() {
     } finally { setBusy(false); }
   }
   const date = courierDateLabel(result?.estimatedDeliveryDate);
+  const transit = courierTransitLabel(result?.estimatedTransitDays);
 
   return <section className="delivery-box" aria-label="Delivery options">
     <strong className="delivery-heading">Delivery options <Truck size={21} aria-hidden="true" /></strong>
     <form onSubmit={check}>
       <div className="delivery-pin-entry">
-        <input aria-label="Delivery PIN code" placeholder="Enter PIN code" inputMode="numeric" maxLength={6}
-          value={pin} disabled={busy} onChange={(event) => { setPin(event.target.value.replace(/\D/g, "")); setMessage(""); setResult(null); }} />
-        <button type="submit" disabled={busy} aria-label="Check delivery PIN code">{busy ? "Checking…" : "Check"}</button>
+        <input ref={pinInput} aria-label="Delivery PIN code" placeholder="Enter PIN code" inputMode="numeric" maxLength={6}
+          value={pin} disabled={busy} readOnly={Boolean(result)} onChange={(event) => { setPin(event.target.value.replace(/\D/g, "")); setMessage(""); setResult(null); }} />
+        {result ? <button type="button" onClick={() => { setResult(null); requestAnimationFrame(() => pinInput.current?.focus()); }}>Change</button> : <button type="submit" disabled={busy} aria-label="Check delivery PIN code">{busy ? "Checking…" : "Check"}</button>}
       </div>
     </form>
     <div role="status" aria-live="polite" className="delivery-result">
       {message && <p>{message}</p>}
       {result && <>
-        <p className="delivery-checked-pin"><strong>{result.pin}{result.city ? ` · ${result.city}` : ""}</strong><button type="button" onClick={() => { setResult(null); document.querySelector<HTMLInputElement>('[aria-label="Delivery PIN code"]')?.focus(); }}>Change</button></p>
         <ul className="delivery-benefits">
-          <li><Truck size={28} aria-hidden="true" /><div><strong>{date ? `Estimated delivery by ${date}` : "Delivery available to your PIN"}</strong><small>{date ? "Courier estimate; timing may change." : "The courier has not supplied an arrival date yet."}</small></div></li>
+          <li><Truck size={28} aria-hidden="true" /><div><strong>{date ? `Estimated delivery by ${date}` : transit || "Delivery available to your PIN"}</strong><small>{date ? "Courier estimate; timing may change." : transit ? "Delhivery estimate from courier handover; dispatch time is additional." : "The courier has not supplied an arrival estimate yet."}</small></div></li>
           <li><Banknote size={28} aria-hidden="true" /><div><strong>{result.cod ? "Pay on delivery available" : "Online payment available"}</strong><small>{result.cod ? "Select an available payment method at checkout." : "Pay on delivery is unavailable for this PIN."}</small></div></li>
           <li><RefreshCw size={28} aria-hidden="true" /><div><strong>7-day returns on eligible items</strong><Link href="/returns">View returns &amp; exchange policy →</Link></div></li>
         </ul>

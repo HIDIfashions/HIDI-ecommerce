@@ -105,7 +105,7 @@ export function RecentlyViewedProducts({ currentSlug }: { currentSlug: string })
         </div>
       </div>
       <div className="pdp-related-grid">
-        {products.map((product) => <ProductCard key={product.id} product={product} />)}
+        {products.map((product) => <ProductCard key={product.id} product={product} showExpand={false} />)}
       </div>
     </section>
   );

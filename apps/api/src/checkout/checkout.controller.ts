@@ -51,6 +51,7 @@ export class CheckoutController {
       district: result.district ?? null,
       stateCode: result.stateCode ?? null,
       estimatedDeliveryDate: result.estimatedDeliveryDate ?? null,
+      estimatedTransitDays: result.prepaid ? await this.delhivery.estimateTransitDays(pin) : null,
     };
 
     this.deliveryCache.set(pin, { expiresAt: now + 30 * 60_000, value });

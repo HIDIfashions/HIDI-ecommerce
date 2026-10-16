@@ -142,6 +142,23 @@ export class DelhiveryService {
     };
   }
 
+  /** Delhivery B2C Expected TAT is measured from courier handover, not checkout. */
+  async estimateTransitDays(pin: string): Promise<number | null> {
+    const origin = process.env.DELHIVERY_ORIGIN_PIN || "500081";
+    const mode = process.env.DELHIVERY_TRANSPORT_MODE || "S";
+    if (!this.token() || !/^[1-9]\d{5}$/.test(pin) || !/^[1-9]\d{5}$/.test(origin) || !["S", "E", "N"].includes(mode)) return null;
+    const query = new URLSearchParams({ origin_pin: origin, destination_pin: pin, mot: mode, pdt: "B2C" });
+    try {
+      const response = await fetch(`${this.baseUrl()}/api/dc/expected_tat?${query}`, {
+        headers: this.headers(), signal: AbortSignal.timeout(3000), redirect: "error",
+      });
+      if (!response.ok) return null;
+      const body = await response.json();
+      const days = body?.data?.tat;
+      return body?.success === true && Number.isSafeInteger(days) && days >= 0 && days <= 60 ? days : null;
+    } catch { return null; }
+  }
+
   async createForwardShipment(input: ManifestInput): Promise<ManifestResult> {
     this.assertManifestConfig();
 
