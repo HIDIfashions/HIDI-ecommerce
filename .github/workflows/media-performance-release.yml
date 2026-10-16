@@ -1,0 +1,59 @@
+name: Guarded homepage media and compression release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/media-performance-release.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/media-tools/node_modules/playwright/index.mjs
+      HIDI_LIGHTHOUSE_MODULE: /tmp/media-tools/node_modules/lighthouse/cli/index.js
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/media-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Verify compression safety and install media/browser tooling
+        run: |
+          node --test deploy/media-performance/compression.test.mjs
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
+          node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Back up current live images and published selections
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/media-performance/release.py capture
+          echo "CANDIDATE_WEB=acrhidiprod0927.azurecr.io/hidi-web:media-performance-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+      - name: Measure current mobile and desktop performance
+        run: node deploy/media-performance/lighthouse.mjs before
+      - name: Generate media variants and prove exact image preservation
+        run: python3 deploy/media-performance/release.py compose
+      - name: Compare original and candidate layouts and verify media/compression
+        run: node deploy/media-performance/candidate.mjs
+      - name: Publish the tested image
+        run: |
+          docker push "$CANDIDATE_WEB"
+          digest="$(az acr repository show --name acrhidiprod0927 --image "hidi-web:media-performance-${GITHUB_RUN_ID}" --query digest -o tsv --only-show-errors)"
+          echo "WEB_IMAGE=acrhidiprod0927.azurecr.io/hidi-web@$digest" >> "$GITHUB_ENV"
+      - name: Deploy web only and verify live design, media and performance
+        run: python3 deploy/media-performance/release.py apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: media-performance-${{ github.run_id }}
+          path: evidence/media-performance
+          retention-days: 30
