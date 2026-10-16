@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHomeHead} from './head.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHash} from 'node:crypto';import {createHomeHead} from './head.mjs';
 test('public CSS retains cascade order, markers and asset URL resolution; remote/imported/conditional styles remain links',()=>{
  const root=mkdtempSync(join(tmpdir(),'hidi-head-'));
  try{
@@ -28,4 +28,14 @@ test('parser header logo embeds exact bytes while external app loading is preser
   const html='<link rel="preload" as="image" href="./assets/images/hidi-logo.png"><script type="module" src="/assets/index-abc.js"></script><header><img src="./assets/images/hidi-logo.png"></header>';
   const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(!result.includes('rel="preload"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
  }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test('sized favicons retain Apple/PWA declarations and stale branding metadata is ignored',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-icons-')),root=join(app,'dist');try{
+  mkdirSync(root);mkdirSync(join(app,'paint-performance'));const source=Buffer.from('current-icon-frames');writeFileSync(join(root,'brand.ico'),source);
+  const markup='<link rel="icon" type="image/png" sizes="32x32" href="/media-performance/assets/icon-exact-32.png">';writeFileSync(join(app,'paint-performance/icons.json'),JSON.stringify({sourceFile:'dist/brand.ico',originalSha256:createHash('sha256').update(source).digest('hex'),markup}));
+  const input='<link rel="shortcut icon" href="/brand.ico"><link rel="icon" href="/other.png"><link rel="apple-touch-icon" href="/touch.png"><link rel="manifest" href="/site.webmanifest">';const output=createHomeHead(root,app)(input);
+  assert(output.startsWith(markup));assert(!output.includes('/brand.ico'));assert(!output.includes('/other.png'));assert(output.includes('href="/touch.png"'));assert(output.includes('href="/site.webmanifest"'));
+  writeFileSync(join(root,'brand.ico'),'updated-brand');assert.equal(createHomeHead(root,app)(input),input);
+ }finally{rmSync(app,{recursive:true,force:true});}
 });

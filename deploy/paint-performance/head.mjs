@@ -1,10 +1,12 @@
 import {readFileSync,realpathSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
+import {createHash} from 'node:crypto';
 
 // Inline the existing public CSS in the same cascade position. Resolve from the
 // current image, so later image overlays cannot leave stale style contents.
 export function createHomeHead(root,appRoot=resolve(root,'..')) {
  const cache=new Map();
+ const iconMarkup=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/icons.json'),'utf8'));const source=realpathSync(resolve(appRoot,data.sourceFile));if(!source.startsWith(realpathSync(appRoot)+sep))return null;const hash=createHash('sha256').update(readFileSync(source)).digest('hex');return hash===data.originalSha256&&typeof data.markup==='string'?data.markup:null;}catch{return null;}})();
  const logoData=(()=>{try{const file=readFileSync(resolve(root,'assets/images/hidi-logo.png'));return file.length<=32768?'data:image/png;base64,'+file.toString('base64'):null;}catch{return null;}})();
  function cssFor(href){
   if(cache.has(href))return cache.get(href);
@@ -23,6 +25,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   cache.set(href,result);return result;
  }
  return html=>{
+  if(iconMarkup){let inserted=false;html=html.replace(/<link\b[^>]*rel=["'](?:shortcut icon|icon)["'][^>]*>/gi,()=>{if(inserted)return '';inserted=true;return iconMarkup;});}
   const inlineBundles=new Set();
   html=html.replace(/<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi,(tag,before,src,after)=>{
    const url=new URL(src,'https://hidiindia.com/');

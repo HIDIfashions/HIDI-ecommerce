@@ -1,5 +1,5 @@
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
-# Live release requires quality, preservation, browser and three-run Lighthouse gates.
+# Live release preserves the verified collection cleanup and product editor; all performance gates remain required.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
   workflow_dispatch: {}
@@ -31,6 +31,7 @@ jobs:
       - name: Verify protocol safety and install media/browser tooling
         run: |
           google-chrome --version
+          python3 deploy/paint-performance/test_icons.py
           node --test deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/announcement.test.mjs deploy/paint-performance/hero.test.mjs deploy/paint-performance/video-client.test.mjs
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
