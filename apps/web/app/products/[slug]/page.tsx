@@ -15,6 +15,7 @@ import { RecentlyViewedProducts } from "@/components/recently-viewed-products";
 import { getProduct, getProductReviews, getRelatedProducts } from "@/lib/api";
 import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 import { productOffers } from "@/lib/seo";
+import { ProductCopy } from "@/components/product-copy";
 import { productNarrative } from "@/lib/product-facts";
 import { DeliveryCheck } from "@/components/delivery-check";
 import { ProductPageShell } from "@/components/product-page-shell";
@@ -161,9 +162,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <h1>{product.name}</h1>
           <WishlistButton slug={product.slug} compact />
         </div>
-        <p className="pdp-subtitle">{product.shortDescription}</p>
+        <div className="pdp-subtitle"><ProductCopy text={product.shortDescription} /></div>
         <ProductPurchaseSummary key={product.id} product={product} />
-        {productNarrative(product.description) && <p className="pdp-description">{productNarrative(product.description)}</p>}
+        {productNarrative(product.description) && <div className="pdp-description"><ProductCopy text={productNarrative(product.description)} /></div>}
         <AddToCart key={product.id} product={product} />
         <ProductContactActions product={product} />
         <ProductQualitySummary product={product} />

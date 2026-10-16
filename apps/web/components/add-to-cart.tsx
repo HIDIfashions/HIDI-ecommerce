@@ -103,6 +103,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
 
   return (
     <div className="pdp-purchase">
+      {colors.length === 1 && <p className="pdp-selected-detail">Colour: {color}</p>}
       {colors.length > 1 && <>
         <div className="size-row-title"><strong>Colour</strong></div>
         <div className="colour-options">

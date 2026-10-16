@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {chromium,firefox,webkit} from 'playwright';
+import {createPreviewServer} from '../deploy/product-preview/preview.mjs';
+const make=i=>({id:'dress-'+i,skn:String(10000+i),name:'Dress '+i,slug:'dress-'+i,status:i===22?'ARCHIVED':i===21?'DRAFT':'ACTIVE',categoryId:'cat',category:{id:'cat'},shortDescription:'Three piece cotton set',description:'Royal blue embroidered dress.\n\nComfortable cotton.\nIncludes: Kurta, pants, dupatta',fabric:'Cotton',care:'Hand wash',collections:[{collectionId:'keep'}],updatedAt:'2026-10-16T00:00:00.000Z',images:[],variants:['M','L'].map(size=>({id:i+size,sku:i+size,size,color:'Royal blue',active:true,pricePaise:182750,mrpPaise:219900,images:[],inventory:{onHand:7,reserved:1}}))});
+const output='evidence/product-preview';await mkdir(output,{recursive:true});const results=[];
+for(const [engine,browserType] of Object.entries({chromium,firefox,webkit}).filter(([engine])=>(process.env.HIDI_BROWSER_ENGINES||'chromium').split(',').includes(engine))){
+ let browser;try{browser=await browserType.launch({headless:true});}catch(e){throw Error(engine+' browser unavailable: '+e.message);}
+ try{for(const width of [320,375,768,1440]){const {server,products,writes}=await createPreviewServer(Array.from({length:23},(_,i)=>make(i)));await new Promise(done=>server.listen(0,'127.0.0.1',done));const context=await browser.newContext({viewport:{width,height:1000}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());const base='http://127.0.0.1:'+server.address().port;
+ try{
+ await page.goto(base+'/admin/product-preview');await page.getByText('23 dresses',{exact:true}).waitFor();assert.equal(await page.locator('.dress-row').count(),20);
+ await page.locator('#next').click();await page.getByText('Page 2 of 2').waitFor();assert.equal(await page.locator('.dress-row').count(),3);await page.locator('[data-id="dress-22"]').click();await page.locator('#copy-name').waitFor();assert.equal(await page.locator('#copy-name').inputValue(),'Dress 22');
+ await page.locator('#copy-description').fill('# Details\n**Embroidered** *cotton*\n\n- Hand wash\n- Dry flat\n<script>window.bad=true</script>');await page.locator('#preview h3').getByText('Details').waitFor();assert.equal(await page.locator('#preview strong').getByText('Embroidered').count(),1);assert.equal(await page.locator('#preview li').count(),2);assert.equal(await page.evaluate(()=>window.bad),undefined);assert.equal(writes.length,0);
+ await page.getByRole('button',{name:'Bold in Material care',exact:true}).click();await page.locator('#copy-care').fill('**Cold** hand wash\n\nDry in shade');await page.locator('#device').selectOption('desktop');assert.equal(await page.locator('#preview').getAttribute('data-device'),'desktop');
+ const before=structuredClone(products.get('dress-22'));await page.locator('#save').click();await page.getByText('Saved Dress 22. Product text updated.').waitFor();assert.equal(writes.length,1);const after=products.get('dress-22');for(const key of ['status','variants','images','collections','slug','categoryId'])assert.deepEqual(after[key],before[key]);assert.equal(writes[0].body.expectedUpdatedAt,before.updatedAt);assert.equal(after.care,'**Cold** hand wash\n\nDry in shade');
+ await page.reload();await page.locator('#copy-care').waitFor();assert.equal(await page.locator('#copy-care').inputValue(),after.care);
+ await page.locator('#copy-name').fill('Unsaved rename');await page.locator('#reset').click();assert.equal(await page.locator('#copy-name').inputValue(),'Dress 22');
+ await page.locator('#copy-care').fill('Keep failed draft');await page.route('**/api/admin/products/dress-22',route=>route.request().method()==='PATCH'?route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({message:'Changed elsewhere. Reload before saving.'})}):route.continue());await page.locator('#save').click();await page.getByText('Changed elsewhere. Reload before saving.').waitFor();assert.equal(await page.locator('#copy-care').inputValue(),'Keep failed draft');assert.equal(writes.length,1);await page.unroute('**/api/admin/products/dress-22');
+ await page.locator('#reset').click();await page.locator('#filter').selectOption('DRAFT');await page.locator('#searchForm button').click();await page.getByText('1 dress',{exact:true}).waitFor();assert.equal(await page.locator('.dress-row').count(),1);await page.locator('.dress-row').click();await page.waitForFunction(()=>document.getElementById('copy-name').value==='Dress 21');assert.equal(await page.locator('#copy-name').inputValue(),'Dress 21');
+ await page.locator('#copy-description').fill('# Thoughtfully made\n**Soft cotton** with fine embroidery.\n\n- Three coordinated pieces\n- Gentle hand wash');await page.locator('#device').selectOption('mobile');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'No horizontal overflow');await page.screenshot({path:output+'/'+engine+'-'+width+'.png',fullPage:true});
+ assert.deepEqual(errors,[]);results.push({engine,width,passed:true});
+ // An expired staff session must show sign-in and retain draft text.
+ await page.route('**/api/admin/products/dress-21',route=>route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({message:'Please sign in'})}));await page.locator('#save').click();await page.locator('#auth').waitFor({state:'visible'});assert.match(await page.locator('#copy-description').inputValue(),/Thoughtfully made/);
+ }finally{await context.close();await new Promise(done=>server.close(done));}}
+ }finally{await browser.close();}
+}
+await writeFile(output+'/browser-results.json',JSON.stringify(results,null,2));console.log(JSON.stringify(results));
+
+
