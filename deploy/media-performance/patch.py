@@ -36,14 +36,14 @@ def patch_web(base,overlay,manifest):
     refs=re.findall(r'<script type="module" crossorigin src="([^"\s]+)"></script>',html);assert len(refs)==1
     old=refs[0].removeprefix('./').removeprefix('/')
     original=(base/'dist'/old).read_text();updated=bundle(original,manifest)
-    name='assets/index-'+hashlib.sha256(updated.encode()).hexdigest()[:16]+'.js'
-    html=once(html,refs[0],'/'+name)
+    bundle_name='assets/index-'+hashlib.sha256(updated.encode()).hexdigest()[:16]+'.js'
+    html=once(html,refs[0],'/'+bundle_name)
     posters=[]
     for video in manifest['videos'].values():
         for kind,media in [('mobile','(max-width: 700px)'),('desktop','(min-width: 701px)')]:
             posters.append('<link rel="preload" as="image" fetchpriority="high" media="'+media+'" href="'+video[kind]['poster']+'">')
     html=once(html,'</head>','\n'.join(posters)+'\n</head>')
-    files={'dist/index.html':html,'dist/'+name:updated,'server.mjs':runtime((base/'server.mjs').read_text()),'media-performance/compression.mjs':(HERE/'compression.mjs').read_text()}
+    files={'dist/index.html':html,'dist/'+bundle_name:updated,'server.mjs':runtime((base/'server.mjs').read_text()),'media-performance/compression.mjs':(HERE/'compression.mjs').read_text()}
     for name,value in files.items():
         p=overlay/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(value)
-    return {'passed':True,'allowedFiles':sorted(files),'bundle':name,'originalBundle':old,'cssUnchanged':True,'mediaSelectionsPreserved':True}
+    return {'passed':True,'allowedFiles':sorted(files),'bundle':bundle_name,'originalBundle':old,'cssUnchanged':True,'mediaSelectionsPreserved':True}

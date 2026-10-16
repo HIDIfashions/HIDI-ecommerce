@@ -49,7 +49,7 @@ jobs:
         run: node deploy/media-performance/lighthouse.mjs before
       - name: Generate media variants and prove original-file preservation
         run: python3 deploy/media-performance/release.py compose
-      - name: Compare original and candidate design, media and compression
+      - name: Verify candidate bundle, design, media and compression
         run: node deploy/media-performance/candidate.mjs
       - name: Publish the tested immutable image
         id: publish
