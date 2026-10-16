@@ -28,8 +28,8 @@ for(const engine of ['chromium','firefox','webkit']){
  try{
   for(const width of [390,1440]){
    const context=await browser.newContext({viewport:{width,height:920}});const page=await context.newPage();
-   await page.route('**/*',route=>!['GET','HEAD'].includes(route.request().method())||route.request().resourceType()==='image'?route.abort():route.continue());
-   await page.goto(base+'/collections/all',{waitUntil:'networkidle'});
+   await page.route('**/*',route=>!['GET','HEAD'].includes(route.request().method())||route.request().resourceType()==='image'||new URL(route.request().url()).origin!==new URL(base).origin?route.abort():route.continue());
+   await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded',timeout:90000});
    await page.getByRole('button',{name:width<1000?/^Filter & Sort/:/^Filter(?: \(\d+\))?$/}).first().click();
    const dialog=page.getByRole('dialog',{name:'Product filters',exact:true});await dialog.waitFor();
    const values=await assess(page);

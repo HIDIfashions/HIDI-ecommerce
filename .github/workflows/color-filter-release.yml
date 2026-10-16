@@ -1,4 +1,5 @@
 name: Guarded color filter swatch release
+# Verify filter readiness independently of background telemetry traffic.
 on:
   push:
     branches: [migration/azure-sql-blob]
