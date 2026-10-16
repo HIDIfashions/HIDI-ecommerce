@@ -3,11 +3,32 @@ import { StringDecoder } from 'node:string_decoder';
 import publishedProductImages from './published-product-images.json' with {type: 'json'};
 const publishedProductImagePaths = new Set(publishedProductImages);
 export function isPublishedProductImage(pathname) { return publishedProductImagePaths.has(pathname); }
+// The sitemap already reads the public catalogue. Refresh image eligibility from
+// that same approved data so future uploads do not depend on a stale snapshot.
+export function registerPublishedProductImages(products) {
+  if (!Array.isArray(products)) return 0;
+  const origins = new Set(['https://hidiindia.com','https://www.hidiindia.com','https://thehidi.com','https://www.thehidi.com','https://thidigk.thehidi.com']);
+  let added=0;
+  for (const product of products) {
+    if (!product || product.status && product.status !== 'ACTIVE' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(product.slug || '')) continue;
+    const records=[...(Array.isArray(product.images)?product.images:[]),...(Array.isArray(product.variants)?product.variants.flatMap(v=>Array.isArray(v.images)?v.images:[]):[])];
+    for (const image of records) {
+      if (typeof image?.url !== 'string') continue;
+      try {
+        const url=new URL(image.url,'https://hidiindia.com');
+        if (!origins.has(url.origin) || url.username || url.password || url.search || url.hash || !/^\/media\/products\/(?:[a-z0-9_.-]+\/)*[a-z0-9_.-]+\.(?:jpe?g|png|webp|avif)$/i.test(url.pathname)) continue;
+        if (!publishedProductImagePaths.has(url.pathname)) {publishedProductImagePaths.add(url.pathname);added++;}
+      } catch { /* Unknown references remain restricted. */ }
+    }
+  }
+  return added;
+}
 export function shouldIndexPublishedImage(status, contentType, hostname, pathname) {
-  const productImage = /^image\/(?:jpeg|png|webp|avif)(?:;|$)/i.test(contentType) && isPublishedProductImage(pathname);
+  const cachedType = status === 304 && !contentType;
+  const productImage = (/^image\/(?:jpeg|png|webp|avif)(?:;|$)/i.test(contentType) || cachedType) && isPublishedProductImage(pathname);
   // The existing Organization graph names this verified, public brand logo.
-  const brandLogo = pathname === '/brand/hidi-logo-header.svg' && /^image\/svg\+xml(?:;|$)/i.test(contentType);
-  return status === 200 && ['hidiindia.com', 'www.hidiindia.com'].includes(hostname) && (productImage || brandLogo);
+  const brandLogo = pathname === '/brand/hidi-logo-header.svg' && (/^image\/svg\+xml(?:;|$)/i.test(contentType) || cachedType);
+  return [200,304].includes(status) && ['hidiindia.com', 'www.hidiindia.com'].includes(hostname) && (productImage || brandLogo);
 }
 export const canonicalOrigin = 'https://hidiindia.com';
 const legacyHosts = new Set(['thehidi.com', 'www.thehidi.com', 'thidigk.thehidi.com', 'azure-preview.thehidi.com', 'www.hidiindia.com', 'localhost', '127.0.0.1']);
