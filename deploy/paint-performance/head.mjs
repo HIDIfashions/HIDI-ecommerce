@@ -36,6 +36,11 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   cache.set(href,result);return result;
  }
  return html=>{
+  const posterHints=[...html.matchAll(/<link\b[^>]*rel=["']preload["'][^>]*type=["']image\/avif["'][^>]*>/gi)];
+  if(posterHints.length&&/<\/head>/i.test(html)){
+   const modules=[];html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*fetchpriority=["']low["'][^>]*>/gi,tag=>{modules.push(tag);return '';});
+   if(modules.length){const last=posterHints.at(-1)[0];html=html.replace(last,last+modules.join(''));}
+  }
   if(iconMarkup){let inserted=false;html=html.replace(/<link\b[^>]*rel=["'](?:shortcut icon|icon)["'][^>]*>/gi,()=>{if(inserted)return '';inserted=true;return iconMarkup;});}
   const inlineBundles=new Set();
   html=html.replace(/<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi,(tag,before,src,after)=>{
@@ -74,7 +79,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
   });
   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=Promise.all([...document.querySelectorAll("link[data-hidi-deferred-style]")].map(link=>new Promise(resolve=>{const done=()=>{link.media="all";resolve();};if(link.sheet)done();else{link.addEventListener("load",done,{once:true});link.addEventListener("error",done,{once:true});}})));</script></head>');
-  if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,tag=>tag.replace(/\bfetchpriority=["']high["']/i,'fetchpriority="low"'));
+  if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,'');
   return html;
  };
 }

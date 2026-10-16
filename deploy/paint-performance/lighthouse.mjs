@@ -1,7 +1,7 @@
 import {spawn} from 'node:child_process';import {readFile,writeFile,mkdir,open} from 'node:fs/promises';import {pathToFileURL} from 'node:url';import {resolve} from 'node:path';
 import {existsSync} from 'node:fs';
 import {summarizeTrials} from './summary.mjs';
-import {externalScriptUrls,isPinnedFixtureResponse} from './audit-parity.mjs';
+import {externalScriptUrls,isPinnedFixtureResponse,requireHealthyAudit} from './audit-parity.mjs';
 const mode=process.argv[2],out=resolve('evidence/paint-performance/lighthouse');await mkdir(out,{recursive:true});
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),rows=[],fixtureConnections=[];
 const chromeFlags=['--headless','--no-sandbox','--disable-dev-shm-usage'];
@@ -13,6 +13,7 @@ for(const device of ['mobile','desktop']){
  const child=spawn(process.execPath,[cli,process.env.HIDI_AUDIT_URL||'https://hidiindia.com/','--only-categories=performance','--output=json','--output=html','--output-path='+prefix,'--max-wait-for-load=45000','--chrome-flags='+chromeFlags.join(' '),'--quiet',...(['candidate','after'].includes(mode)&&trial===1?['--save-assets']:[]),...(device==='desktop'?['--preset=desktop']:[])],{env:{...process.env,CHROME_PATH:chrome},stdio:['ignore',log.fd,log.fd]});
  const code=await new Promise(done=>child.on('exit',done));await log.close();if(code!==0)throw Error('Lighthouse failed for '+device+'; inspect bounded log');
  const report=JSON.parse(await readFile(prefix+'.report.json','utf8'));if(report.runtimeError)throw Error(report.runtimeError.message);
+ requireHealthyAudit(report.audits['network-requests'].details.items);
  if(mode==='candidate'&&trial===1){const events=JSON.parse(await readFile(prefix+'-0.devtoolslog.json','utf8'));const response=events.find(event=>event.method==='Network.responseReceived'&&event.params.type==='Document'&&event.params.response.url==='https://hidiindia.com/')?.params.response;if(!isPinnedFixtureResponse(response))throw Error('Candidate origin must connect to 127.0.0.1:3190, never the live website');fixtureConnections.push({device,url:response.url,address:response.remoteIPAddress,port:response.remotePort});}
  const a=report.audits,protocol=a['network-requests'].details.items.find(item=>item.resourceType==='Document')?.protocol;samples.push({device,protocol,externalScripts:externalScriptUrls(a['network-requests'].details.items),networkDiagnostics:a.diagnostics.details.items[0],profile:{formFactor:report.configSettings.formFactor,throttlingMethod:report.configSettings.throttlingMethod,throttling:report.configSettings.throttling,screenEmulation:report.configSettings.screenEmulation},score:Math.round(report.categories.performance.score*100),lcp:a['largest-contentful-paint'].numericValue,blocking:a['total-blocking-time'].numericValue,cls:a['cumulative-layout-shift'].numericValue,bytes:a['total-byte-weight'].numericValue,warnings:report.runWarnings});
  }

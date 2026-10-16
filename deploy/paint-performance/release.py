@@ -28,6 +28,7 @@ def capture():
     save('runtime-resources.json',resources)
     selected=selections();(PRIVATE/'selections.json').write_text(json.dumps(selected));save('published-selections.json',selected)
     (PRIVATE/'analytics.json').write_text(json.dumps(analytics()))
+    (PRIVATE/'public-offers.json').write_bytes(cloud.get('/api/hidi/offers'))
     (PRIVATE/'catalogue.json').write_bytes(cloud.get('/api/store/products'))
 def compose():
     photo.require_backups();photo.unchanged(photo.states())
@@ -64,7 +65,7 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):

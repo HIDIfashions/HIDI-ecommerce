@@ -6,7 +6,7 @@ test('prepared logo and SEO assets require matching source and immutable content
  const original=Buffer.from('reviewed-original-logo'),optimized=Buffer.from('same-reviewed-pixels'),code='window.__hidiSeo="original";',logo='/media-performance/assets/logo-'+hash(optimized).slice(0,16)+'.png',seo='/assets/home-seo-'+hash(code).slice(0,16)+'.js';
  writeFileSync(join(root,'assets/images/hidi-logo.png'),original);writeFileSync(join(root,logo),optimized);writeFileSync(join(root,seo),code);writeFileSync(join(app,'paint-performance/head-assets.json'),JSON.stringify({logo:{url:logo,sourceSha256:hash(original),sha256:hash(optimized)},seo:{url:seo,sha256:hash(code)}}));
  const html='<head><script data-hidi-seo-identity="1">'+code+'</script><link rel="preload" as="image" fetchpriority="high" href="/assets/images/hidi-logo.png"></head><body><img src="/assets/images/hidi-logo.png"></body>';
- let output=createHomeHead(root,app)(html);assert(output.includes('defer src="'+seo+'"'));assert(!output.includes(code));assert(output.includes('data:image/png;base64,'+optimized.toString('base64')));assert(output.includes('fetchpriority="low"'));
+ let output=createHomeHead(root,app)(html);assert(output.includes('defer src="'+seo+'"'));assert(!output.includes(code));assert(output.includes('data:image/png;base64,'+optimized.toString('base64')));assert(!output.includes('rel="preload"'));
  writeFileSync(join(root,seo),'corrupt');writeFileSync(join(root,logo),'corrupt');output=createHomeHead(root,app)(html);assert(output.includes(code));assert(output.includes('data:image/png;base64,'+original.toString('base64')));
  const changed=html.replace(code,'window.__hidiSeo="updated";');assert(createHomeHead(root,app)(changed).includes('window.__hidiSeo="updated";'));
  }finally{rmSync(app,{recursive:true,force:true});}
@@ -38,7 +38,7 @@ test('parser header logo embeds exact bytes while external app loading is preser
   mkdirSync(join(root,'assets/images'),{recursive:true});const logo=Buffer.from([137,80,78,71,13,10,26,10]);writeFileSync(join(root,'assets/images/hidi-logo.png'),logo);
   writeFileSync(join(root,'assets/index-abc.js'),'const x={src:Tt("images/hidi-logo.png"),fetchPriority:"high"};');
   const html='<link rel="preload" as="image" href="./assets/images/hidi-logo.png"><script type="module" src="/assets/index-abc.js"></script><header><img src="./assets/images/hidi-logo.png"></header>';
-  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(result.includes('rel="preload"'));assert(result.includes('href="./assets/images/hidi-logo.png"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
+  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(!result.includes('href="./assets/images/hidi-logo.png"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 
