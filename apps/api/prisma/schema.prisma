@@ -1,0 +1,819 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+
+
+
+
+
+
+
+
+
+
+model User {
+  id            String   @id @default(cuid()) @db.NVarChar(64)
+  email         String?  @unique @db.NVarChar(254)
+  phone         String?  @unique @db.NVarChar(191)
+  firstName     String? @db.NVarChar(Max)
+  lastName      String? @db.NVarChar(Max)
+  role          String @default("CUSTOMER") @db.NVarChar(40)
+  marketingOptIn Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  addresses     Address[]
+  carts         Cart[]
+  orders        Order[]
+  couponUses    CouponRedemption[]
+  retentionProfile RetentionProfile?
+  wallet        WalletAccount?
+  authSessions  CustomerAuthSession[]
+
+  @@index([createdAt])
+}
+
+model CustomerAuthOtp {
+  id          String   @id @default(cuid()) @db.NVarChar(64)
+  phone       String   @db.NVarChar(191)
+  codeHash    String   @db.NVarChar(128)
+  purpose     String   @default("SIGN_IN") @db.NVarChar(40)
+  channel     String   @default("WHATSAPP") @db.NVarChar(40)
+  attempts    Int      @default(0)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([phone, purpose, expiresAt])
+  @@index([expiresAt, consumedAt])
+}
+
+model CustomerAuthSession {
+  id          String   @id @default(cuid()) @db.NVarChar(64)
+  userId      String   @db.NVarChar(64)
+  authSubject String   @db.NVarChar(191)
+  tokenHash   String   @unique @db.NVarChar(128)
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, expiresAt])
+  @@index([authSubject])
+  @@index([expiresAt, revokedAt])
+}
+
+model Address {
+  id          String   @id @default(cuid()) @db.NVarChar(64)
+  userId      String @db.NVarChar(64)
+  label       String? @db.NVarChar(Max)
+  firstName   String @db.NVarChar(Max)
+  lastName    String? @db.NVarChar(Max)
+  phone       String @db.NVarChar(Max)
+  line1       String @db.NVarChar(Max)
+  line2       String? @db.NVarChar(Max)
+  landmark    String? @db.NVarChar(Max)
+  city        String @db.NVarChar(Max)
+  state       String @db.NVarChar(Max)
+  postalCode  String @db.NVarChar(191)
+  countryCode String   @default("IN") @db.NVarChar(Max)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId])
+  @@index([postalCode])
+}
+
+model Category {
+  id          String    @id @default(cuid()) @db.NVarChar(64)
+  name        String @db.NVarChar(Max)
+  slug        String    @unique @db.NVarChar(191)
+  description String? @db.NVarChar(Max)
+  active      Boolean   @default(true)
+  position    Int       @default(0)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id             String        @id @default(cuid()) @db.NVarChar(64)
+  categoryId     String? @db.NVarChar(64)
+  name           String @db.NVarChar(Max)
+  slug           String        @unique @db.NVarChar(191)
+  shortDescription String? @db.NVarChar(Max)
+  description    String? @db.NVarChar(Max)
+  fabric         String? @db.NVarChar(Max)
+  care           String? @db.NVarChar(Max)
+  status         String @default("DRAFT") @db.NVarChar(40)
+  featuredRank   Int           @default(9999)
+  seoTitle       String? @db.NVarChar(Max)
+  seoDescription String? @db.NVarChar(Max)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  images         ProductImage[]
+  variants       ProductVariant[]
+  orderItems     OrderItem[]
+  reviews        ProductReview[]
+  cartItems      CartItem[]
+  collections    ProductCollection[]
+
+  @@index([status, featuredRank])
+  @@index([categoryId, status])
+}
+
+model Collection {
+  id          String              @id @default(cuid()) @db.NVarChar(64)
+  name        String @db.NVarChar(Max)
+  slug        String              @unique @db.NVarChar(191)
+  description String? @db.NVarChar(Max)
+  active      Boolean             @default(true)
+  position    Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  products    ProductCollection[]
+}
+
+model ProductCollection {
+  productId    String @db.NVarChar(64)
+  collectionId String @db.NVarChar(64)
+  position     Int        @default(0)
+  product      Product    @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([productId, collectionId])
+  @@index([collectionId, position])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid()) @db.NVarChar(64)
+  productId String @db.NVarChar(64)
+  url       String @db.NVarChar(Max)
+  alt       String @db.NVarChar(Max)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([productId, position])
+}
+
+model ProductVariant {
+  id          String    @id @default(cuid()) @db.NVarChar(64)
+  productId   String @db.NVarChar(64)
+  sku         String    @unique @db.NVarChar(191)
+  size        String @db.NVarChar(191)
+  color       String @db.NVarChar(191)
+  colorHex    String? @db.NVarChar(Max)
+  mrpPaise    Int
+  pricePaise  Int
+  active      Boolean   @default(true)
+  weightGrams Int?
+  bustMm      Int?
+  waistMm     Int?
+  hipMm       Int?
+  shoulderMm  Int?
+  sleeveLengthMm Int?
+  garmentLengthMm Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  product     Product   @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  images      ProductVariantImage[]
+  inventory   Inventory?
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  reservations InventoryReservation[]
+  stockReceiptLines StockReceiptLine[]
+  adminMediaUploadTickets AdminMediaUploadTicket[]
+
+  @@unique([productId, size, color])
+  @@index([productId, active])
+}
+
+model AdminStaff {
+  id           String   @id @default(cuid()) @db.NVarChar(64)
+  authSubject  String?  @unique @db.NVarChar(191)
+  email        String   @unique @db.NVarChar(254)
+  displayName  String @db.NVarChar(Max)
+  role         String @db.NVarChar(191)
+  active       Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([role, active])
+}
+
+model AdminMediaUploadTicket {
+  id         String         @id @default(cuid()) @db.NVarChar(64)
+  tokenHash  String         @unique @db.NVarChar(191)
+  variantId  String @db.NVarChar(64)
+  mimeType   String @db.NVarChar(Max)
+  maxBytes   Int
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime       @default(now())
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([variantId, expiresAt])
+  @@index([expiresAt, usedAt])
+}
+
+model ProductVariantImage {
+  id          String         @id @default(cuid()) @db.NVarChar(64)
+  variantId   String @db.NVarChar(64)
+  url         String @db.NVarChar(512)
+  storagePath String? @db.NVarChar(Max)
+  alt         String @db.NVarChar(Max)
+  position    Int            @default(0)
+  createdAt   DateTime       @default(now())
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([variantId, url])
+  @@index([variantId, position])
+}
+
+model Inventory {
+  id           String              @id @default(cuid()) @db.NVarChar(64)
+  variantId    String              @unique @db.NVarChar(64)
+  onHand       Int                 @default(0)
+  reserved     Int                 @default(0)
+  safetyStock  Int                 @default(0)
+  reorderLevel Int                 @default(5)
+  updatedAt    DateTime            @updatedAt
+  variant      ProductVariant      @relation(fields: [variantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  movements    InventoryMovement[]
+}
+
+model InventoryMovement {
+  id           String                @id @default(cuid()) @db.NVarChar(64)
+  inventoryId  String @db.NVarChar(64)
+  type         String @db.NVarChar(40)
+  delta        Int
+  onHandBefore Int
+  onHandAfter  Int
+  reason       String @db.NVarChar(Max)
+  note         String? @db.NVarChar(Max)
+  reference    String? @db.NVarChar(Max)
+  actor        String? @db.NVarChar(Max)
+  createdAt    DateTime              @default(now())
+  inventory    Inventory             @relation(fields: [inventoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([inventoryId, createdAt])
+  @@index([createdAt])
+}
+
+model StockReceipt {
+  id                  String             @id @default(cuid()) @db.NVarChar(64)
+  receiptNumber       String             @unique @db.NVarChar(191)
+  supplierName        String @db.NVarChar(Max)
+  invoiceNumber       String? @db.NVarChar(Max)
+  purchaseOrderNumber String? @db.NVarChar(Max)
+  receivedAt          DateTime
+  status              String @default("DRAFT") @db.NVarChar(40)
+  note                String? @db.NVarChar(Max)
+  totalAccepted       Int                @default(0)
+  totalRejected       Int                @default(0)
+  createdBy           String? @db.NVarChar(Max)
+  postedAt            DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  lines               StockReceiptLine[]
+
+  @@index([status, createdAt])
+  @@index([receivedAt])
+}
+
+model StockReceiptLine {
+  id               String         @id @default(cuid()) @db.NVarChar(64)
+  receiptId        String @db.NVarChar(64)
+  variantId        String @db.NVarChar(64)
+  acceptedQuantity Int
+  rejectedQuantity Int            @default(0)
+  unitCostPaise    Int?
+  createdAt        DateTime       @default(now())
+  receipt          StockReceipt   @relation(fields: [receiptId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([receiptId, variantId])
+  @@index([variantId])
+}
+
+model Cart {
+  id        String     @id @default(cuid()) @db.NVarChar(64)
+  userId    String? @db.NVarChar(64)
+  sessionId String?    @unique @db.NVarChar(64)
+  currency  String     @default("INR") @db.NVarChar(Max)
+  expiresAt DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User?      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  items     CartItem[]
+
+  @@index([userId])
+}
+
+model CartItem {
+  id        String         @id @default(cuid()) @db.NVarChar(64)
+  cartId    String @db.NVarChar(64)
+  productId String @db.NVarChar(64)
+  variantId String @db.NVarChar(64)
+  quantity  Int            @default(1)
+  unitPricePaise Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product   Product        @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+  @@index([productId])
+  @@index([variantId])
+}
+
+model Order {
+  id            String      @id @default(cuid()) @db.NVarChar(64)
+  orderNumber   String      @unique @db.NVarChar(191)
+  userId        String? @db.NVarChar(64)
+  status        String @default("PENDING_PAYMENT") @db.NVarChar(40)
+  currency      String      @default("INR") @db.NVarChar(Max)
+  subtotalPaise Int
+  discountPaise Int         @default(0)
+  shippingPaise Int         @default(0)
+  taxPaise      Int         @default(0)
+  totalPaise    Int
+  walletAppliedPaise Int    @default(0)
+  customerEmail String? @db.NVarChar(254)
+  customerPhone String @db.NVarChar(191)
+  shippingAddress String @db.NVarChar(Max)
+  billingAddress  String? @db.NVarChar(Max)
+  notes         String? @db.NVarChar(Max)
+  checkoutToken String?      @unique @db.NVarChar(191)
+  cartSessionId String? @db.NVarChar(64)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User?       @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  items         OrderItem[]
+  payments      Payment[]
+  shipments     Shipment[]
+  reservations  InventoryReservation[]
+  reviewFollowUps ReviewFollowUp[]
+  reviews         ProductReview[]
+  walletHold      WalletHold?
+  rewardAccrual   RewardAccrual?
+  walletEntries   WalletLedger[]
+  returnRequests  ReturnRequest[]
+  auditEvents     OrderAuditEvent[]
+  notifications   OrderNotificationOutbox[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([customerPhone])
+  @@index([cartSessionId])
+}
+
+model OrderAuditEvent {
+  id            String   @id @default(cuid()) @db.NVarChar(64)
+  orderId       String @db.NVarChar(64)
+  eventType     String @db.NVarChar(191)
+  actorType     String @db.NVarChar(Max)
+  actorId       String? @db.NVarChar(64)
+  entityType    String? @db.NVarChar(Max)
+  entityId      String? @db.NVarChar(64)
+  fromStatus    String? @db.NVarChar(Max)
+  toStatus      String? @db.NVarChar(Max)
+  amountPaise   Int?
+  eventKey      String?  @unique @db.NVarChar(191)
+  correlationId String? @db.NVarChar(64)
+  source        String? @db.NVarChar(Max)
+  metadata      String? @db.NVarChar(Max)
+  createdAt     DateTime @default(now())
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([orderId, createdAt, id])
+  @@index([eventType, createdAt])
+  @@index([correlationId])
+}
+
+model ReviewFollowUp {
+  id                String                @id @default(cuid()) @db.NVarChar(64)
+  orderId           String @db.NVarChar(64)
+  channel           String @default("EMAIL") @db.NVarChar(40)
+  status            String  @default("PENDING") @db.NVarChar(40)
+  dueAt             DateTime
+  sentAt            DateTime?
+  attempts          Int                   @default(0)
+  lastAttemptAt     DateTime?
+  lastError         String? @db.NVarChar(Max)
+  providerMessageId String? @db.NVarChar(64)
+  reviewToken       String?               @unique @db.NVarChar(191)
+  completedAt       DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  order             Order                 @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([orderId, channel])
+  @@index([status, dueAt])
+  @@index([orderId])
+}
+
+model ProductReview {
+  id               String    @id @default(cuid()) @db.NVarChar(64)
+  productId        String @db.NVarChar(64)
+  orderId          String @db.NVarChar(64)
+  orderItemId      String    @unique @db.NVarChar(64)
+  rating           Int
+  title            String? @db.NVarChar(Max)
+  body             String @db.NVarChar(Max)
+  reviewerName     String @db.NVarChar(Max)
+  verifiedPurchase Boolean   @default(true)
+  published        Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  product          Product   @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  orderItem        OrderItem @relation(fields: [orderItemId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([productId, published, createdAt])
+  @@index([orderId])
+}
+model OrderItem {
+  id             String         @id @default(cuid()) @db.NVarChar(64)
+  orderId        String @db.NVarChar(64)
+  productId      String @db.NVarChar(64)
+  variantId      String @db.NVarChar(64)
+  productName    String @db.NVarChar(Max)
+  sku            String @db.NVarChar(Max)
+  size           String @db.NVarChar(Max)
+  color          String @db.NVarChar(Max)
+  quantity       Int
+  unitPricePaise Int
+  discountPaise  Int            @default(0)
+  totalPaise     Int
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product        Product        @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  variant        ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  review         ProductReview?
+  returnRequests ReturnRequest[]
+
+  @@index([orderId])
+  @@index([variantId])
+  @@index([productId])
+}
+
+
+model InventoryReservation {
+  id         String            @id @default(cuid()) @db.NVarChar(64)
+  orderId    String @db.NVarChar(64)
+  variantId  String @db.NVarChar(64)
+  quantity   Int
+  status     String @default("ACTIVE") @db.NVarChar(40)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  releasedAt DateTime?
+  createdAt  DateTime          @default(now())
+  order      Order             @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  variant    ProductVariant    @relation(fields: [variantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([orderId, variantId])
+  @@index([status, expiresAt])
+  @@index([variantId, status])
+}
+
+model Payment {
+  id                String        @id @default(cuid()) @db.NVarChar(64)
+  orderId           String @db.NVarChar(64)
+  provider          String        @default("RAZORPAY") @db.NVarChar(Max)
+  providerOrderId   String? @db.NVarChar(64)
+  providerPaymentId String?       @unique @db.NVarChar(64)
+  status            String @default("CREATED") @db.NVarChar(40)
+  amountPaise       Int
+  method            String? @db.NVarChar(Max)
+  rawReference      String? @db.NVarChar(Max)
+  refunds           PaymentRefund[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([orderId, status])
+  @@index([providerOrderId])
+}
+
+model Shipment {
+  id              String         @id @default(cuid()) @db.NVarChar(64)
+  orderId         String @db.NVarChar(64)
+  provider        String? @db.NVarChar(Max)
+  providerOrderId String? @db.NVarChar(64)
+  awb             String?        @unique @db.NVarChar(191)
+  trackingUrl     String? @db.NVarChar(Max)
+  status          String @default("PENDING") @db.NVarChar(40)
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  order           Order          @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([orderId, status])
+}
+
+model Coupon {
+  id            String   @id @default(cuid()) @db.NVarChar(64)
+  code          String   @unique @db.NVarChar(191)
+  active        Boolean  @default(true)
+  discountType  String @db.NVarChar(Max)
+  discountValue Int
+  minOrderPaise Int      @default(0)
+  maxDiscountPaise Int?
+  startsAt      DateTime?
+  endsAt        DateTime?
+  maxUses       Int?
+  perUserLimit  Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  redemptions   CouponRedemption[]
+}
+
+model CouponRedemption {
+  id        String   @id @default(cuid()) @db.NVarChar(64)
+  couponId  String @db.NVarChar(64)
+  userId    String @db.NVarChar(64)
+  orderId   String @db.NVarChar(64)
+  createdAt DateTime @default(now())
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([couponId, userId, orderId])
+  @@index([couponId, userId])
+  @@index([userId])
+}
+
+// Backend-only retention data. Browser/Data API access is denied by the migration.
+model RetentionProfile {
+  id                    String   @id @default(cuid()) @db.NVarChar(64)
+  authSubject           String   @unique @db.NVarChar(191)
+  userId                String   @unique @db.NVarChar(64)
+  whatsappOptIn         Boolean  @default(false)
+  personalizationOptIn  Boolean  @default(false)
+  consentVersion        String   @default("hidi-retention-v1") @db.NVarChar(Max)
+  verifiedPhone         String? @db.NVarChar(Max)
+  phoneVerifiedAt       DateTime?
+  consentUpdatedAt      DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  audits                RetentionConsentAudit[]
+  events                RetentionEvent[]
+  deliveries            RetentionDelivery[]
+}
+
+model RetentionConsentAudit {
+  id                    String   @id @default(cuid()) @db.NVarChar(64)
+  profileId             String @db.NVarChar(64)
+  whatsappOptIn         Boolean
+  personalizationOptIn  Boolean
+  consentVersion        String @db.NVarChar(Max)
+  source                String @db.NVarChar(Max)
+  verifiedPhone         String? @db.NVarChar(Max)
+  createdAt             DateTime @default(now())
+  profile               RetentionProfile @relation(fields: [profileId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([profileId, createdAt])
+}
+
+model RetentionEvent {
+  id         String   @id @default(cuid()) @db.NVarChar(64)
+  profileId  String @db.NVarChar(64)
+  productId  String @db.NVarChar(64)
+  variantId  String? @db.NVarChar(64)
+  kind       String @db.NVarChar(Max)
+  episodeKey String @db.NVarChar(Max)
+  createdAt  DateTime @default(now())
+  profile    RetentionProfile @relation(fields: [profileId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([profileId, productId, createdAt])
+  @@index([createdAt])
+}
+
+model RetentionDelivery {
+  id         String   @id @default(cuid()) @db.NVarChar(64)
+  profileId  String @db.NVarChar(64)
+  episodeKey String   @unique @db.NVarChar(191)
+  kind       String @db.NVarChar(Max)
+  category   String   @default("MARKETING") @db.NVarChar(191)
+  status     String @db.NVarChar(Max)
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+  profile    RetentionProfile @relation(fields: [profileId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([profileId, category, sentAt])
+}
+
+// Server-only store credit. No client/Data API writes or transferable balances.
+model WalletAccount {
+  id            String   @id @default(cuid()) @db.NVarChar(64)
+  authSubject   String   @unique @db.NVarChar(191)
+  userId        String   @unique @db.NVarChar(64)
+  currency      String   @default("INR") @db.NVarChar(Max)
+  balancePaise  Int      @default(0)
+  reservedPaise Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  entries       WalletLedger[]
+  holds         WalletHold[]
+  accruals      RewardAccrual[]
+}
+
+model WalletLedger {
+  id         String   @id @default(cuid()) @db.NVarChar(64)
+  walletId   String @db.NVarChar(64)
+  orderId    String? @db.NVarChar(64)
+  kind       String @db.NVarChar(Max)
+  deltaPaise Int
+  eventKey   String   @unique @db.NVarChar(191)
+  createdAt  DateTime @default(now())
+  wallet     WalletAccount @relation(fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  order      Order?        @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([walletId, createdAt, id])
+  @@index([orderId])
+}
+
+model WalletHold {
+  id           String   @id @default(cuid()) @db.NVarChar(64)
+  walletId     String @db.NVarChar(64)
+  orderId      String   @unique @db.NVarChar(64)
+  amountPaise  Int
+  status       String   @default("ACTIVE") @db.NVarChar(191)
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  releasedAt   DateTime?
+  refundedAt   DateTime?
+  createdAt    DateTime @default(now())
+  wallet       WalletAccount @relation(fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([walletId, status])
+  @@index([status, expiresAt])
+}
+
+model RewardAccrual {
+  id               String   @id @default(cuid()) @db.NVarChar(64)
+  walletId         String @db.NVarChar(64)
+  orderId          String   @unique @db.NVarChar(64)
+  basisPaise       Int
+  rewardPaise      Int
+  returnWindowDays Int
+  policyVersion   String @db.NVarChar(Max)
+  status          String   @default("PENDING") @db.NVarChar(191)
+  eligibleAt      DateTime?
+  creditedAt      DateTime?
+  reversedAt      DateTime?
+  reason          String? @db.NVarChar(Max)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  wallet          WalletAccount @relation(fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([walletId, status])
+  @@index([status, eligibleAt, id])
+  @@index([createdAt, id])
+}
+
+model PaymentRefund {
+  id               String   @id @default(cuid()) @db.NVarChar(64)
+  paymentId        String @db.NVarChar(64)
+  providerRefundId String   @unique @db.NVarChar(64)
+  amountPaise      Int
+  status          String   @default("PROCESSED") @db.NVarChar(191)
+  processedAt     DateTime
+  createdAt       DateTime @default(now())
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([paymentId, status])
+}
+
+
+model WhatsAppConversation {
+  id            String            @id @default(cuid()) @db.NVarChar(64)
+  phone         String            @unique @db.NVarChar(191)
+  state         String            @default("IDLE") @db.NVarChar(191)
+  context       String? @db.NVarChar(Max)
+  lastInboundAt DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  messages      WhatsAppMessage[]
+
+  @@index([state, updatedAt])
+}
+
+model WhatsAppMessage {
+  id                 String               @id @default(cuid()) @db.NVarChar(64)
+  conversationId     String @db.NVarChar(64)
+  providerMessageSid String               @unique @db.NVarChar(191)
+  direction          String @db.NVarChar(Max)
+  body               String @db.NVarChar(Max)
+  status             String               @default("RECEIVED") @db.NVarChar(Max)
+  createdAt          DateTime             @default(now())
+  conversation       WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([conversationId, createdAt])
+}
+
+
+model NewsletterSubscriber {
+  id             String   @id @default(cuid()) @db.NVarChar(64)
+  email          String   @unique @db.NVarChar(254)
+  status         String   @default("ACTIVE") @db.NVarChar(191)
+  source         String   @default("FOOTER") @db.NVarChar(Max)
+  consentVersion String   @default("hidi-newsletter-v1") @db.NVarChar(Max)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+
+model ReturnRequest {
+  id                       String    @id @default(cuid()) @db.NVarChar(64)
+  orderId                  String @db.NVarChar(64)
+  orderItemId              String @db.NVarChar(64)
+  type                     String @db.NVarChar(Max)
+  reason                   String @db.NVarChar(Max)
+  detail                   String? @db.NVarChar(Max)
+  quantity                 Int       @default(1)
+  refundDestination        String? @db.NVarChar(Max)
+  requestedVariantId       String? @db.NVarChar(64)
+  requestedSize            String? @db.NVarChar(Max)
+  refundPaise              Int       @default(0)
+  status                   String    @default("REQUESTED") @db.NVarChar(191)
+  adminNote                String? @db.NVarChar(Max)
+  rejectionReason          String? @db.NVarChar(Max)
+  pickupProvider           String? @db.NVarChar(Max)
+  pickupAwb                String? @db.NVarChar(Max)
+  pickupTrackingUrl        String? @db.NVarChar(Max)
+  pickupScheduledAt        DateTime?
+  receivedAt               DateTime?
+  inventoryDisposition     String? @db.NVarChar(Max)
+  refundWalletPaise        Int       @default(0)
+  refundCashPaise          Int       @default(0)
+  refundStatus             String? @db.NVarChar(Max)
+  refundProviderId         String?   @unique @db.NVarChar(64)
+  replacementProvider      String? @db.NVarChar(Max)
+  replacementAwb           String? @db.NVarChar(Max)
+  replacementTrackingUrl   String? @db.NVarChar(Max)
+  replacementShippedAt     DateTime?
+  exchangeReservationStatus String? @db.NVarChar(Max)
+  exchangeReservedAt       DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  approvedAt               DateTime?
+  processedAt              DateTime?
+  completedAt              DateTime?
+  order                    Order     @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  orderItem                OrderItem @relation(fields: [orderItemId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([orderId, status, createdAt])
+  @@index([orderItemId, status])
+  @@index([status, updatedAt])
+}
+
+model BackgroundLease {
+  id String @id @db.NVarChar(64)
+  owner String? @db.NVarChar(64)
+  expiresAt DateTime
+}
+
+// The worker uses atomic SQL claims; expose its additive table for future Prisma migrations.
+model OrderNotificationOutbox {
+  id                String    @id @db.NVarChar(64)
+  orderId           String    @db.NVarChar(64)
+  channel           String    @db.NVarChar(40)
+  status            String    @default("PENDING") @db.NVarChar(40)
+  provider          String?   @db.NVarChar(40)
+  payload           String?   @db.NVarChar(Max)
+  attempts          Int      @default(0)
+  dueAt             DateTime @default(dbgenerated("SYSUTCDATETIME()"))
+  firstAttemptAt    DateTime?
+  sentAt            DateTime?
+  providerMessageId String?   @db.NVarChar(191)
+  lastError         String?   @db.NVarChar(191)
+  leaseOwner        String?   @db.NVarChar(64)
+  leaseUntil        DateTime?
+  createdAt         DateTime @default(dbgenerated("SYSUTCDATETIME()"))
+  updatedAt         DateTime @default(dbgenerated("SYSUTCDATETIME()"))
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([orderId, channel])
+  @@index([status, dueAt])
+}

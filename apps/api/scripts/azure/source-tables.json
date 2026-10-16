@@ -1,0 +1,131 @@
+{
+  "User": {
+    "json": []
+  },
+  "Address": {
+    "json": []
+  },
+  "Category": {
+    "json": []
+  },
+  "Product": {
+    "json": []
+  },
+  "Collection": {
+    "json": []
+  },
+  "ProductCollection": {
+    "json": []
+  },
+  "ProductImage": {
+    "json": []
+  },
+  "ProductVariant": {
+    "json": []
+  },
+  "AdminStaff": {
+    "json": []
+  },
+  "AdminMediaUploadTicket": {
+    "json": []
+  },
+  "ProductVariantImage": {
+    "json": []
+  },
+  "Inventory": {
+    "json": []
+  },
+  "InventoryMovement": {
+    "json": []
+  },
+  "StockReceipt": {
+    "json": []
+  },
+  "StockReceiptLine": {
+    "json": []
+  },
+  "Cart": {
+    "json": []
+  },
+  "CartItem": {
+    "json": []
+  },
+  "Order": {
+    "json": [
+      "shippingAddress",
+      "billingAddress"
+    ]
+  },
+  "OrderAuditEvent": {
+    "json": [
+      "metadata"
+    ]
+  },
+  "ReviewFollowUp": {
+    "json": []
+  },
+  "ProductReview": {
+    "json": []
+  },
+  "OrderItem": {
+    "json": []
+  },
+  "InventoryReservation": {
+    "json": []
+  },
+  "Payment": {
+    "json": [
+      "rawReference"
+    ]
+  },
+  "Shipment": {
+    "json": []
+  },
+  "Coupon": {
+    "json": []
+  },
+  "CouponRedemption": {
+    "json": []
+  },
+  "RetentionProfile": {
+    "json": []
+  },
+  "RetentionConsentAudit": {
+    "json": []
+  },
+  "RetentionEvent": {
+    "json": []
+  },
+  "RetentionDelivery": {
+    "json": []
+  },
+  "WalletAccount": {
+    "json": []
+  },
+  "WalletLedger": {
+    "json": []
+  },
+  "WalletHold": {
+    "json": []
+  },
+  "RewardAccrual": {
+    "json": []
+  },
+  "PaymentRefund": {
+    "json": []
+  },
+  "WhatsAppConversation": {
+    "json": [
+      "context"
+    ]
+  },
+  "WhatsAppMessage": {
+    "json": []
+  },
+  "NewsletterSubscriber": {
+    "json": []
+  },
+  "ReturnRequest": {
+    "json": []
+  }
+}

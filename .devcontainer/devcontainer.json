@@ -1,0 +1,16 @@
+{
+  "name": "HIDI Development",
+  "forwardPorts": [3000, 4000],
+  "portsAttributes": {
+    "3000": {
+      "label": "HIDI Web",
+      "protocol": "http",
+      "onAutoForward": "openBrowser"
+    },
+    "4000": {
+      "label": "HIDI API",
+      "protocol": "http",
+      "onAutoForward": "silent"
+    }
+  }
+}

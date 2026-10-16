@@ -1,0 +1,21 @@
+<details class="card range-copy-card" id="rangeTextEditor">
+<summary>Edit Explore our range text</summary>
+<p class="hint">Edit the section text and all five photo captions. Save Text publishes these words independently of your photos.</p>
+<form id="rangeTextForm"><fieldset id="rangeTextFields" disabled>
+<legend>Section text</legend><div class="range-copy-fields">
+<label for="rangeText-eyebrow">Small top line<input id="rangeText-eyebrow" type="text" maxlength="80"></label>
+<label for="rangeText-heading">Main heading<input id="rangeText-heading" type="text" maxlength="80" required></label>
+<label for="rangeText-accent">Italic heading text<input id="rangeText-accent" type="text" maxlength="40"></label>
+<label for="rangeText-subtitle">Subtitle<input id="rangeText-subtitle" type="text" maxlength="200"></label>
+<label for="rangeText-footer">Bottom text<input id="rangeText-footer" type="text" maxlength="160"></label>
+<label for="rangeText-buttonLabel">Browse button text<input id="rangeText-buttonLabel" type="text" maxlength="60" required></label>
+</div><h3>Photo captions</h3><div class="range-copy-fields">
+<label for="rangeText-range-everyday">Casual Wear photo caption<input id="rangeText-range-everyday" type="text" maxlength="60" required></label>
+<label for="rangeText-range-work-edit">Work Wear photo caption<input id="rangeText-range-work-edit" type="text" maxlength="60" required></label>
+<label for="rangeText-range-occasion">Occasional Wear photo caption<input id="rangeText-range-occasion" type="text" maxlength="60" required></label>
+<label for="rangeText-range-new-arrivals">Ananya’s Pick — Photo 1 caption<input id="rangeText-range-new-arrivals" type="text" maxlength="60" required></label>
+<label for="rangeText-range-shop-all">Ananya’s Pick — Photo 2 caption<input id="rangeText-range-shop-all" type="text" maxlength="60" required></label>
+</div><h3>Text preview</h3><div id="rangeTextPreview" class="range-copy-preview" aria-label="Explore our range text preview"></div>
+<div class="actions"><button id="rangeTextSave" class="btn" type="submit">Save Text</button><button id="rangeTextRestore" class="btn secondary" type="button">Restore Previous Text</button><button id="rangeTextReset" class="btn secondary" type="button">Reset Default Text</button></div>
+</fieldset></form><p class="hint" id="rangeTextStatus" role="status" aria-live="polite">Loading current text...</p>
+</details>

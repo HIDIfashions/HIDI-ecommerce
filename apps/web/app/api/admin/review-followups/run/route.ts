@@ -1,0 +1,23 @@
+import { NextRequest, NextResponse } from "next/server";
+import { API_URL } from "@/lib/api";
+import { adminApiHeaders, isAdminRequest } from "@/lib/admin-auth";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function POST(request: NextRequest) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ message: "Admin session expired" }, { status: 401 });
+  }
+  try {
+    const response = await fetch(`${API_URL}/admin/review-followups/run`, {
+      method: "POST",
+      cache: "no-store",
+      headers: adminApiHeaders(request),
+    });
+    const body = await response.json().catch(() => ({ message: "Unable to run review follow-ups" }));
+    return NextResponse.json(body, { status: response.status });
+  } catch {
+    return NextResponse.json({ message: "Unable to reach the HIDI API" }, { status: 502 });
+  }
+}

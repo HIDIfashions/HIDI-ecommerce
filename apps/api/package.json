@@ -1,0 +1,42 @@
+{
+  "name": "@hidi/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "prisma generate && node scripts/dev.mjs",
+    "start:dev": "prisma generate && node scripts/dev.mjs",
+    "build": "prisma generate && nest build",
+    "start:prod": "node dist/main.js",
+    "lint": "eslint src --ext .ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "media:r2:dry-run": "node scripts/migrate-product-media-to-r2.mjs",
+    "media:r2:migrate": "node scripts/migrate-product-media-to-r2.mjs --write",
+    "test:customer-experience": "node --import tsx --test ../../tests/*.test.ts"
+  },
+  "dependencies": {
+    "@azure/identity": "4.13.0",
+    "@azure/storage-blob": "12.29.1",
+    "@nestjs/common": "11.2.3",
+    "@nestjs/core": "11.2.3",
+    "@nestjs/platform-fastify": "11.2.3",
+    "@prisma/adapter-mssql": "7.10.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "^17.0.0",
+    "mssql": "12.0.0",
+    "pg": "^8.16.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "11.0.10",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "prisma": "7.10.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

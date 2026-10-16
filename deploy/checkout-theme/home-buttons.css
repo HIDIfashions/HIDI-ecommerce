@@ -1,0 +1,16 @@
+/* Keep homepage actions aligned with the HIDI mulberry header palette. */
+.button, .button--gold, .button--burgundy, .button--glass, .button--header,
+.newsletter .newsletter-field button {
+  background: #591d20;
+  border-color: #591d20;
+  color: #fff8ef;
+}
+.button:hover, .button--gold:hover, .button--burgundy:hover,
+.button--glass:hover, .button--header:hover,
+.newsletter .newsletter-field button:hover:not(:disabled) {
+  background: #69282a;
+  border-color: #69282a;
+  color: #fff8ef;
+}
+.site-header .button, .newsletter .newsletter-field button { border-color: #d8c4b6; }
+.button:focus-visible, .newsletter .newsletter-field button:focus-visible { outline: 2px solid #d5a24d; outline-offset: 3px; }

@@ -1,0 +1,122 @@
+name: Guarded Admin single-package product upload release
+# Verify the primary ZIP control and optional separate selections; preserve API, storefront and navigation.
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/product-upload-release.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/migration/azure-sql-blob'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-product-upload-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-product-upload-browsers
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Verify uploader model, API and retained Admin safeguards without production writes
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm db:generate
+          pnpm --filter @hidi/api test:customer-experience
+          node --check deploy/product-upload/client.mjs
+          node --check deploy/product-upload/package.mjs
+          node --check deploy/product-upload/model.mjs
+          node --check deploy/product-upload/engine.mjs
+          node --check tests/product-upload.browser.mjs
+          node --check tests/product-upload-navigation.browser.mjs
+          node --check tests/product-upload-next-http.mjs
+          node --check tests/product-upload-api-images.mjs
+          node --check tests/product-upload-api-products.mjs
+          node --check deploy/product-upload/retained-commerce.mjs
+          node --test tests/product-upload*.test.mjs
+          node --test tests/admin-quick-tools.test.mjs tests/admin-product-delete-handler.test.mjs tests/admin-product-delete-schema.test.mjs tests/bulk-publication.test.mjs tests/product-skn-photos.test.mjs tests/product-skn-taxonomy.test.mjs tests/image-sku.test.mjs tests/button-request-policy.test.mjs
+          python3 tests/product-upload-release.test.py
+          python3 tests/product-upload-retry-patch.test.py
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh ready images and verify both immutable rollback backups
+        run: |
+          set -euo pipefail
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/product-upload/release.py capture
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-product-upload-private/web/candidate-app" >> "$GITHUB_ENV"
+          echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-product-upload-private/api/base-app" >> "$GITHUB_ENV"
+      - name: Add the uploader and repair only verified cached image retry copies
+        run: python3 deploy/product-upload/release.py compose
+      - name: Verify actual retained API and Next photo contracts before browser regression
+        run: |
+          set -euo pipefail
+          node tests/product-upload-api-images.mjs
+          node tests/product-upload-api-products.mjs
+          node --test tests/image-sku-runtime-keys.test.mjs
+          node tests/product-upload-next-http.mjs
+      - name: Install isolated desktop and mobile browser engines
+        run: |
+          npm install --prefix /tmp/hidi-product-upload-browser --no-save playwright@1.56.1
+          node /tmp/hidi-product-upload-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Test one ZIP package, real template, drafts, photos and publication in twelve browser and viewport cases
+        run: |
+          set -euo pipefail
+          node tests/product-upload.browser.mjs
+      - name: Verify retained Admin deletion, navigation, checkout, SEO and mobile footer
+        run: |
+          set -euo pipefail
+          node tests/admin-quick-tools.runtime.mjs > evidence/product-upload/admin-runtime.json
+          node tests/admin-product-delete.browser.mjs
+          cp test-results/admin-product-delete/results.json evidence/product-upload/admin-deletion.json
+          node tests/product-upload-navigation.browser.mjs
+          node deploy/product-upload/retained-commerce.mjs
+          python3 deploy/product-upload/release.py seal
+      - name: Refresh Azure authentication after browser regression
+        uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Publish the exact tested immutable Web image
+        run: python3 deploy/product-upload/release.py publish
+      - name: Release the Admin-only image and verify live without product or photo writes
+        id: apply
+        timeout-minutes: 20
+        run: timeout --signal=TERM --kill-after=10m 15m python3 deploy/product-upload/release.py apply --image "$WEB_IMAGE"
+      - name: Refresh Azure authentication before owned rollout recovery
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Reconcile an interrupted owned uploader rollout
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        timeout-minutes: 15
+        run: python3 deploy/product-upload/release.py recover --image "$WEB_IMAGE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: product-upload-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            evidence/product-upload
+            evidence/seo-discovery/candidate
+            test-results/admin-product-delete
+            test-results/admin-navigation
+          retention-days: 30

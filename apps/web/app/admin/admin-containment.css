@@ -1,0 +1,11 @@
+/* Admin-only scroll containment. Keep absolutely positioned screen-reader
+   table labels inside their scrollport rather than the page's viewport. */
+[data-hidi-admin-workspace] [class*="tableWrap"] {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+[data-hidi-admin-workspace] [class*="srOnly"] {
+  clip-path: inset(50%);
+}

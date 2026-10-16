@@ -1,0 +1,38 @@
+#meet-hidi.portrait-gallery { padding: 72px 24px; background: #f8f5ef; color: #52283c; }
+#meet-hidi .portrait-gallery__layout { width: min(100%, 1050px); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: clamp(40px, 7vw, 100px); align-items: center; }
+#meet-hidi .portrait-gallery__visual { min-width: 0; }
+#meet-hidi .portrait-gallery__frame { aspect-ratio: 1365 / 2048; background: #e3e1e0; border-radius: 4px; overflow: hidden; }
+#meet-hidi .portrait-gallery__portrait { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+#meet-hidi .portrait-gallery__placeholder { height: 100%; display: grid; place-items: center; padding: 24px; text-align: center; }
+#meet-hidi .portrait-gallery__previews { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+#meet-hidi .portrait-gallery__preview { display: block; min-width: 44px; min-height: 44px; padding: 3px; background: transparent; border: 1px solid #b9abae; border-radius: 3px; cursor: pointer; opacity: .72; }
+#meet-hidi .portrait-gallery__preview img { display: block; width: 100%; height: auto; aspect-ratio: 1365 / 2048; object-fit: contain; border-radius: 1px; }
+#meet-hidi .portrait-gallery__preview[aria-pressed="true"] { border: 2px solid #74364d; padding: 2px; opacity: 1; }
+#meet-hidi .portrait-gallery__preview:hover { opacity: 1; }
+#meet-hidi .portrait-gallery__preview:focus-visible, #meet-hidi .portrait-gallery__shop:focus-visible, #meet-hidi .portrait-gallery__pause:focus-visible { outline: 3px solid #74364d; outline-offset: 4px; }
+#meet-hidi .portrait-gallery__hint { margin: 13px 0 0; font-size: 12px; text-align: center; color: #755e68; letter-spacing: .02em; }
+#meet-hidi .portrait-gallery__eyebrow { margin: 0 0 24px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
+#meet-hidi #meet-title { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: clamp(40px, 4.7vw, 62px); line-height: 1.08; letter-spacing: -.025em; }
+#meet-hidi #meet-title em { display: block; font-weight: 400; }
+#meet-hidi .portrait-gallery__intro { max-width: 340px; margin: 28px 0 36px; color: #755e68; font-size: 16px; line-height: 1.8; }
+#meet-hidi .portrait-gallery__story { border-top: 1px solid #d8cbd0; padding-top: 26px; min-height: 116px; max-width: 360px; }
+#meet-hidi .portrait-gallery__story h3 { margin: 0 0 10px; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 25px; }
+#meet-hidi .portrait-gallery__story p { margin: 0; font-size: 14px; line-height: 1.7; color: #755e68; }
+#meet-hidi .portrait-gallery__shop { display: inline-flex; align-items: center; justify-content: center; gap: 24px; min-height: 48px; margin-top: 32px; padding: 12px 22px; background: #623149; color: #fff8f1; border-radius: 2px; font-size: 13px; text-decoration: none; }
+#meet-hidi .portrait-gallery__pause { display: block; margin: 4px auto 0; min-height: 44px; padding: 8px 16px; border: 0; background: transparent; color: inherit; text-decoration: underline; cursor: pointer; }
+@media (max-width: 700px) {
+  #meet-hidi.portrait-gallery { padding: 36px 16px 44px; }
+  #meet-hidi .portrait-gallery__layout { grid-template-columns: minmax(0, 1fr); gap: 32px; max-width: 420px; }
+  #meet-hidi .portrait-gallery__visual { width: min(100%, 420px); margin: 0 auto; }
+  #meet-hidi .portrait-gallery__previews { gap: 7px; margin-top: 12px; }
+  #meet-hidi .portrait-gallery__copy { padding: 0 8px; }
+  #meet-hidi .portrait-gallery__eyebrow { margin-bottom: 17px; }
+  #meet-hidi #meet-title { font-size: clamp(38px, 10vw, 48px); }
+  #meet-hidi .portrait-gallery__intro { margin: 20px 0 26px; font-size: 15px; }
+  #meet-hidi .portrait-gallery__story { padding-top: 22px; min-height: 105px; }
+  #meet-hidi .portrait-gallery__shop { margin-top: 24px; }
+}
+
+@media (min-width: 1100px) {
+  #meet-hidi .portrait-gallery__layout { width: min(100%, 1320px); grid-template-columns: minmax(0, min(40vw, 540px)) minmax(0, 1fr); gap: clamp(100px, 14vw, 240px); }
+}

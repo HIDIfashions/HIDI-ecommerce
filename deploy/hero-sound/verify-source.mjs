@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {createRequire} from 'node:module';
+import {resolve} from 'node:path';
+const root=resolve(process.argv[2]);
+const changed=execFileSync('git',['diff','--name-only',process.env.HIDI_HERO_BASE_SOURCE_SHA,process.env.HIDI_MEDIA_SOURCE_SHA],{cwd:root,encoding:'utf8'}).trim().split('\n');
+assert.deepEqual(changed,['apps/web/src/components/VideoHero.jsx','apps/web/src/styles/hero-sound.css']);
+assert.equal(await readFile(root+'/apps/web/src/styles/hero-sound.css','utf8'),await readFile(new URL('./hero-sound.css',import.meta.url),'utf8'));
+let source=await readFile(root+'/apps/web/src/components/VideoHero.jsx','utf8');
+source=source.replace(/^import .*;\n/gm,'').replace('export default function VideoHero()', 'function HidiHeroComponent()');
+for(const [key,value] of Object.entries({React:'HidiHeroReact',useEffect:'HidiHeroReact.useEffect',useState:'HidiHeroReact.useState',useRef:'HidiHeroReact.useRef',asset:'HidiHeroAsset',safeWebUrl:'HidiHeroSafeUrl',useHidi:'HidiHeroContext',useMediaQuery:'HidiHeroQuery',useReducedMotion:'HidiHeroReduced',useDocumentVisible:'HidiHeroVisible',useInView:'HidiHeroInView',useMediaSequence:'HidiHeroSequence',MediaSequenceControls:'HidiHeroControls',saveDataEnabled:'HidiHeroSaveData'}))source=source.replace(new RegExp('\\b'+key+'\\b','g'),value);
+const require=createRequire(root+'/apps/web/package.json');
+const {code}=require('esbuild').transformSync(source,{loader:'jsx',jsxFactory:'HidiHeroReact.createElement',jsxFragment:'HidiHeroReact.Fragment',minify:false});
+assert.equal(code,await readFile(new URL('./component.runtime.js',import.meta.url),'utf8'));
+console.log('PASS: permanent source and scoped hero audio component/CSS match; other source unchanged');

@@ -1,0 +1,34 @@
+'use client';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { ArrowUpRight, ChevronLeft, ChevronRight, Download, RefreshCw, Search } from 'lucide-react';
+import { count, downloadCsv, label, money, useAdminData, when, type Queue, type ReturnRow, type OrderRow } from './admin-client';
+import { ErrorPanel, LoadingPanel, OrderTable, StatusPill } from './admin-overview';
+import styles from './admin-workspace.module.css';
+const statuses = {
+  orders: ['ALL', 'PENDING_PAYMENT', 'CONFIRMED', 'PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'PAYMENT_REVIEW', 'RETURN_REQUESTED', 'RETURNED', 'REFUNDED'],
+  deliveries: ['ALL', 'CONFIRMED', 'PACKED', 'SHIPPED', 'DELIVERED'],
+  returns: ['ALL', 'REQUESTED', 'APPROVED', 'PICKUP_SCHEDULED', 'RECEIVED', 'REFUND_PROCESSING', 'EXCHANGE_SHIPPED', 'REFUNDED', 'EXCHANGED', 'COMPLETED', 'REJECTED', 'CANCELLED'],
+};
+export function AdminQueue({ kind }: { kind: 'orders' | 'deliveries' | 'returns' }) {
+  const router = useRouter(), params = useSearchParams();
+  const status = params.get('status') || 'ALL', q = params.get('q') || '', page = params.get('page') || '1';
+  const [draft, setDraft] = useState(q);
+  useEffect(() => setDraft(q), [q]);
+  const { data, error, loading, reload } = useAdminData<Queue>(`/api/admin/dashboard/queue?${new URLSearchParams({ kind, status, q, page })}`);
+  function navigate(values: Record<string, string>) { const next = new URLSearchParams({ status, q, page: '1', ...values }); router.replace(`/admin/${kind}?${next}`, { scroll: false }); }
+  const title = kind === 'returns' ? 'Returns & exchanges' : kind === 'deliveries' ? 'Deliveries' : 'Orders';
+  function exportPage() {
+    if (!data) return;
+    const rows: (string | number)[][] = kind === 'returns' ? [['Order', 'Type', 'Status', 'Product', 'Size', 'Quantity', 'Proposed refund (INR)', 'Created (UTC)'], ...(data.rows as ReturnRow[]).map(row => [row.order.orderNumber, row.type, row.status, row.orderItem.productName, row.orderItem.size, row.quantity, (row.refundPaise / 100).toFixed(2), row.createdAt])] : [['Order', 'Status', 'Items', 'Order total (INR)', 'Carrier', 'AWB', 'Created (UTC)'], ...(data.rows as OrderRow[]).map(row => [row.orderNumber, row.status, row.itemCount, (row.totalPaise / 100).toFixed(2), row.shipments[0]?.provider || '', row.shipments[0]?.awb || '', row.createdAt])];
+    downloadCsv(`hidi-${kind}-page-${data.page}.csv`, rows);
+  }
+  return <main className={styles.page}><div className={styles.pageHeading}><div><p className={styles.eyebrow}>OPERATIONS · ALL DATES</p><h1>{title}</h1><p>{kind === 'deliveries' ? 'Pack, dispatch and follow every shipment. The oldest orders come first.' : kind === 'returns' ? 'Handle each request at item level, without losing the rest of the order.' : 'Find any order and open its complete fulfilment, payment and audit history.'}</p></div><div className={styles.actions}><button onClick={reload} disabled={loading}><RefreshCw size={16}/> Refresh</button><button onClick={exportPage} disabled={!data || loading}><Download size={16}/> Export this page</button></div></div>
+    <section className={styles.queueNotice}><strong>{kind === 'returns' ? 'Refunds remain deliberate.' : kind === 'deliveries' ? 'One order. One accountable next step.' : 'The full order record, one click away.'}</strong><span>{kind === 'returns' ? 'Approval, pickup, quality checks, wallet/source refund and exchange actions stay in the existing audited order workflow.' : kind === 'deliveries' ? 'Open an order to pack it, create a Delhivery shipment, record an AWB or refresh carrier tracking. This view never books a carrier automatically.' : 'Cancelled and unpaid orders stay searchable, but are excluded from booked-sales reporting.'}</span></section>
+    <section className={styles.panel}><div className={styles.queueToolbar}><form onSubmit={event => { event.preventDefault(); navigate({ q: draft.trim() }); }}><Search size={18}/><label className={styles.srOnly} htmlFor="admin-queue-search">Search {title}</label><input id="admin-queue-search" value={draft} maxLength={100} onChange={event => setDraft(event.target.value)} placeholder="Order, phone, email or AWB"/><button type="submit">Search</button></form><label>Status<select value={status} onChange={event => navigate({ status: event.target.value })}>{statuses[kind].map(value => <option key={value} value={value}>{value === 'ALL' ? (kind === 'returns' ? 'All active requests' : kind === 'deliveries' ? 'All pending deliveries' : 'All orders') : label(value)}</option>)}</select></label></div>
+      {error && <ErrorPanel message={error} retry={reload}/>} {loading && <LoadingPanel/>}
+      {data && !loading && <><div className={styles.queueSummary}><strong>{count(data.total)} {kind === 'returns' ? 'requests' : 'orders'}</strong><span>Updated {when(data.asOf)} IST</span></div>{data.rows.length === 0 ? <div className={styles.empty}><h2>Nothing in this view</h2><p>{data.total > 0 ? 'This page no longer has rows. Return to the first page.' : 'No records match these filters. Try a different status or search.'}</p><button onClick={() => { setDraft(''); navigate({ status: 'ALL', q: '', page: '1' }); }}>Reset filters</button></div> : kind !== 'returns' ? <OrderTable rows={data.rows as OrderRow[]} delivery={kind === 'deliveries'}/> : <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Request / order</th><th>Item</th><th>Reason</th><th>Quantity</th><th>Proposed refund</th><th>Status</th><th><span className={styles.srOnly}>Action</span></th></tr></thead><tbody>{(data.rows as ReturnRow[]).map(row => <tr key={row.id}><td><Link className={styles.orderLink} href={`/admin/orders/${encodeURIComponent(row.order.orderNumber)}`}>{row.order.orderNumber}</Link><small>{label(row.type)} · {when(row.createdAt)} IST</small></td><td><span>{row.orderItem.productName}</span><small>Size {row.orderItem.size}</small></td><td>{row.reason}</td><td>{row.quantity}</td><td className={styles.numeric}>{money(row.refundPaise)}</td><td><StatusPill status={row.status}/></td><td><Link className={styles.rowAction} href={`/admin/orders/${encodeURIComponent(row.order.orderNumber)}`} aria-label={`Manage ${row.type.toLowerCase()} for ${row.order.orderNumber}`}><ArrowUpRight size={18}/></Link></td></tr>)}</tbody></table></div>}<div className={styles.pagination}><span>Page {data.page} of {Math.max(1, Math.ceil(data.total / data.pageSize))} · {data.pageSize} per page</span><div><button disabled={data.page <= 1} onClick={() => navigate({ page: String(data.page - 1) })}><ChevronLeft size={16}/> Previous</button><button disabled={data.page * data.pageSize >= data.total} onClick={() => navigate({ page: String(data.page + 1) })}>Next <ChevronRight size={16}/></button></div></div></>}
+    </section>
+  </main>;
+}

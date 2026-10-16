@@ -1,0 +1,79 @@
+name: Hero first-paint pre-change backup
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/hero-first-paint-backup.yml]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 561d46940f57fe28d6de36c0d165089c7e8787dc
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Rebuild pre-change landing for live-base verification
+        working-directory: apps/web
+        run: npm ci && npm run build
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture safe rollback references and retain the exact web image in ACR
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backup/live-dist
+          for app in hidi-web hidi-api; do
+            az containerapp show -g rg-hidi-prod -n "$app" --only-show-errors --query '{name:name,image:properties.template.containers[0].image,revision:properties.latestRevisionName,ready:properties.latestReadyRevisionName,mode:properties.configuration.activeRevisionsMode,traffic:properties.configuration.ingress.traffic,fqdn:properties.configuration.ingress.fqdn}' -o json > "backup/$app.json"
+          done
+          image="$(jq -r .image backup/hidi-web.json)"
+          [[ "$image" == acrhidiprod0927.azurecr.io/hidi-web:* || "$image" == acrhidiprod0927.azurecr.io/hidi-web@sha256:* ]]
+          az acr login --name acrhidiprod0927 --only-show-errors
+          docker pull "$image"
+          digest="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"
+          tag="acrhidiprod0927.azurecr.io/hidi-web:backup-hero-first-paint-${GITHUB_RUN_ID}"
+          docker tag "$image" "$tag"
+          docker push "$tag"
+          printf '%s\n' "$digest" > backup/rollback-image.txt
+          printf '%s\n' "$tag" > backup/backup-tag.txt
+          cid="$(docker create "$image")"
+          trap 'docker rm "$cid" >/dev/null 2>&1 || true' EXIT
+          docker cp "$cid:/app/dist/." backup/live-dist/
+          docker cp "$cid:/app/server.mjs" backup/live-server.mjs
+          docker cp "$cid:/app/hero-media.mjs" backup/live-hero-media.mjs
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('backup/live-dist'); built=pathlib.Path('apps/web/dist')
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          files={str(p.relative_to(root)):sha(p) for p in root.rglob('*') if p.is_file()}
+          expected={str(p.relative_to(built)):sha(p) for p in built.rglob('*') if p.is_file()}
+          mismatches=[p for p,h in expected.items() if files.get(p)!=h]
+          report={'source':'561d46940f57fe28d6de36c0d165089c7e8787dc','landing_matches_source':not mismatches,'mismatches':mismatches,'live_files':len(files),'runtime_hash':sha(pathlib.Path('backup/live-server.mjs')),'hero_handler_hash':sha(pathlib.Path('backup/live-hero-media.mjs'))}
+          pathlib.Path('backup/file-hashes.json').write_text(json.dumps(files,indent=2))
+          pathlib.Path('backup/baseline-report.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report))
+          # Retain references and fingerprints only, not a new public copy of media or secrets.
+          PY
+          cat backup/hidi-web.json backup/hidi-api.json
+          cat backup/rollback-image.txt backup/backup-tag.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hero-first-paint-prechange-${{ github.run_id }}
+          path: |
+            backup/hidi-web.json
+            backup/hidi-api.json
+            backup/rollback-image.txt
+            backup/backup-tag.txt
+            backup/file-hashes.json
+            backup/baseline-report.json
+          retention-days: 30

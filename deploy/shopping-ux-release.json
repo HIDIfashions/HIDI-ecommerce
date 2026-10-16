@@ -1,0 +1,29 @@
+{
+  "landing_ref": "561d46940f57fe28d6de36c0d165089c7e8787dc",
+  "storefront_base": "fb664ca85ecf13e69166942acbfef7cbe9372d41",
+  "storefront_files": [
+    "apps/web/app/about/page.tsx",
+    "apps/web/app/collections/[slug]/page.tsx",
+    "apps/web/app/editorial-chrome.css",
+    "apps/web/app/globals.css",
+    "apps/web/app/page.tsx",
+    "apps/web/app/products/[slug]/page.tsx",
+    "apps/web/components/cart-client.tsx",
+    "apps/web/components/cart-size-editor.module.css",
+    "apps/web/components/cart-size-editor.tsx",
+    "apps/web/components/editorial-product-card.module.css",
+    "apps/web/components/editorial-product-card.tsx",
+    "apps/web/components/header-search.tsx",
+    "apps/web/components/header.tsx",
+    "apps/web/components/product-card-media.module.css",
+    "apps/web/components/product-card-media.tsx",
+    "apps/web/components/product-card.module.css",
+    "apps/web/components/product-card.tsx",
+    "apps/web/components/product-gallery.tsx",
+    "apps/web/components/site-footer.tsx",
+    "apps/web/components/use-image-zoom.ts",
+    "apps/web/lib/catalogue-discovery.ts",
+    "apps/web/lib/image-zoom.ts",
+    "apps/web/lib/product-information.ts"
+  ]
+}

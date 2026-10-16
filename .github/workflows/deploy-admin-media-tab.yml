@@ -1,0 +1,78 @@
+name: Deploy admin media tab overlay
+
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-admin-media-tab:
+    if: contains(github.event.head_commit.message, '[deploy-admin-media-tab]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RG: rg-hidi-prod
+      APP: hidi-web
+      ACR: acrhidiprod0927
+      BASE_IMAGE: hidi-web@sha256:53a948e73f072d56b7aa3b23901a2898b4b39b925a115720ad4c32c3ba00a5e0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: hidi-web-new
+          path: landing-source
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Test runtime injection
+        run: node --test landing-source/deploy/hidi-web-new/runtime.test.mjs
+      - name: Package runtime-only overlay
+        run: |
+          mkdir -p runtime-only
+          cp landing-source/deploy/hidi-web-new/server.mjs runtime-only/server.mjs
+          tar -czf hidi-admin-media-tab-runtime.tar.gz -C runtime-only server.mjs
+      - name: Publish runtime-only overlay image
+        id: publish
+        run: |
+          tag="admin-media-tab-${GITHUB_SHA::8}-${GITHUB_RUN_NUMBER}"
+          python3 landing-source/deploy/hidi-web-new/push-hidi-landing-oci.py \
+            --registry "$ACR" \
+            --payload hidi-admin-media-tab-runtime.tar.gz \
+            --base "$BASE_IMAGE" \
+            --tag "$tag" \
+            --runtime-only | tee published-image.json
+          digest="$(python3 - <<'PY'
+          import json
+          with open('published-image.json', 'r', encoding='utf-8') as stream:
+              print(json.load(stream)['manifest_digest'])
+          PY
+          )"
+          echo "image=${ACR}.azurecr.io/hidi-web@${digest}" >> "$GITHUB_OUTPUT"
+      - name: Update hidi-web only
+        run: |
+          set -euo pipefail
+          revision="mediatab${GITHUB_SHA::8}${GITHUB_RUN_NUMBER}"
+          az containerapp update -g "$RG" -n "$APP" --image "${{ steps.publish.outputs.image }}" --revision-suffix "${revision:0:63}" >/tmp/media-tab.json
+          target="$(az containerapp show -g "$RG" -n "$APP" --query properties.latestRevisionName -o tsv)"
+          deadline=$((SECONDS + 600))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            health="$(az containerapp revision show -g "$RG" -n "$APP" --revision "$target" --query properties.healthState -o tsv 2>/dev/null || true)"
+            ready="$(az containerapp show -g "$RG" -n "$APP" --query properties.latestReadyRevisionName -o tsv)"
+            if [ "$health" = "Healthy" ] && [ "$ready" = "$target" ]; then exit 0; fi
+            sleep 15
+          done
+          exit 1
+      - name: Verify storefront unchanged and media page reachable
+        run: |
+          set -euo pipefail
+          curl -fsSI --max-time 30 https://thidigk.thehidi.com/ >/dev/null
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 https://thidigk.thehidi.com/admin/landing-media)"
+          case "$code" in 200|301|302|303|307|308|401|403) ;; *) echo "Unexpected media page HTTP $code" >&2; exit 1 ;; esac
+          echo "Admin media tab overlay deployed; API and storefront base image remain untouched."

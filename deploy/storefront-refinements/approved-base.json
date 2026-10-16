@@ -1,0 +1,14 @@
+{
+  "hidi-api": {
+    "image": "acrhidiprod0927.azurecr.io/hidi-api@sha256:4054cb0c31211e409882dddd6ea0ecf9e462f9873ddd7e526006f773bbb28ab1",
+    "settingsHash": "a548cee6234c7880c176bcdb77b1cf19afb453eb102ef7384960998fcb5e1f76",
+    "ready": "hidi-api--photostreamapi38675472247a1",
+    "backupTag": "acrhidiprod0927.azurecr.io/hidi-api:backup-refinements-38795193457"
+  },
+  "hidi-web": {
+    "image": "acrhidiprod0927.azurecr.io/hidi-web@sha256:5f116892cd1a55b9e8fd52d7a4b7a81a6ad5616b9c87c2f1b7e52eca198d4edf",
+    "settingsHash": "c2f7f6552921035d187c5f0a2237ec03e08df6f01ee5b711501b643cb8b62f36",
+    "ready": "hidi-web--indiaseo38786176185a1",
+    "backupTag": "acrhidiprod0927.azurecr.io/hidi-web:backup-refinements-38795193457"
+  }
+}

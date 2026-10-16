@@ -1,0 +1,44 @@
+name: Verify published drafts in customer catalogue
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/verify-saved-draft-publication.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: saved-draft-publication-results-38093150528
+          run-id: 38093150528
+          github-token: ${{ github.token }}
+          path: publication-results
+      - name: Verify published products in the shared web and mobile catalogue
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, urllib.request
+          files=list(pathlib.Path('publication-results').rglob('publication-result.json'))
+          assert len(files)==1,'Publication results missing'
+          result=json.loads(files[0].read_text())
+          assert result['report']['passed'],'Publication run did not pass'
+          expected={row['id'] for row in result['results'] if row['result'] in ('PUBLISHED','ALREADY_ACTIVE')}
+          request=urllib.request.Request('https://hidiindia.com/api/store/products',headers={'Cache-Control':'no-cache','User-Agent':'HIDI-draft-publication-verification'})
+          with urllib.request.urlopen(request,timeout=90) as response: products=json.load(response)
+          assert isinstance(products,list),'Unexpected customer catalogue response'
+          visible={row['id'] for row in products}
+          missing=sorted(expected-visible)
+          report={'passed':not missing,'expectedPublishedCount':len(expected),'visiblePublishedCount':len(expected&visible),'catalogueCount':len(products),'missingProductIds':missing,'publication':result['report'],'readOnly':True}
+          pathlib.Path('customer-catalogue-verification.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          assert report['passed'],'Some published products were missing from the customer catalogue'
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-draft-catalogue-verification-${{ github.run_id }}
+          path: customer-catalogue-verification.json
+          retention-days: 30

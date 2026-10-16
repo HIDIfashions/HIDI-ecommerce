@@ -1,0 +1,575 @@
+import { loadChoice, normalizedChoice, assertRetry, applyChoice, reservationItems, quote } from './offers-engine.js';
+import { encodeJson, decodeJson } from "../prisma/json.js";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { RazorpayService } from "../razorpay/razorpay.service.js";
+import type { VerifiedAuthUser } from "../auth/supabase-auth.service.js";
+import { WalletService } from "../wallet/wallet.service.js";
+import { withSerializableRetry } from "../wallet/wallet-transaction.js";
+import { appendOrderAudit } from "../audit/order-audit.js";
+import { shippingQuote } from "./shipping-policy.js";
+import { DelhiveryService } from "../delhivery/delhivery.service.js";
+
+const RESERVATION_MINUTES = 15;
+const MAX_PAISE = 2_147_483_647;
+
+type AddressInput = {
+  firstName: string;
+  lastName?: string;
+  phone: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  countryCode?: string;
+};
+
+type PrepareInput = {
+  offer?: { kind: string; version?: number; variantId?: string };
+  paymentMethod?: "RAZORPAY" | "COD";
+  sessionId?: string;
+  checkoutToken?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  shippingAddress?: AddressInput;
+  walletPaise?: number;
+  expectedTotalPaise?: number;
+  expectedPayableTotalPaise?: number;
+};
+
+@Injectable()
+export class CheckoutService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly razorpay: RazorpayService,
+    private readonly wallet: WalletService,
+    private readonly delhivery?: DelhiveryService,
+  ) {}
+
+  quoteOffers(input: any, auth: VerifiedAuthUser | null = null) { return quote(this.prisma, input, auth); }
+
+  private validate(input: PrepareInput) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) throw new BadRequestException("Checkout details are required");
+    if (input.paymentMethod !== undefined && !["RAZORPAY", "COD"].includes(input.paymentMethod)) throw new BadRequestException("Choose a supported payment method");
+    if (typeof input.sessionId !== "string" || input.sessionId.length < 8 || input.sessionId.length > 128) throw new BadRequestException("Cart session is required");
+    if (typeof input.checkoutToken !== "string" || input.checkoutToken.length < 8 || input.checkoutToken.length > 128) {
+      throw new BadRequestException("checkoutToken is required");
+    }
+
+    if (input.customerEmail !== undefined && input.customerEmail !== null && input.customerEmail !== "") {
+      const email = String(input.customerEmail).trim();
+      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new BadRequestException("Enter a valid email address");
+      }
+    }
+
+    if (typeof input.customerPhone !== "string") throw new BadRequestException("A valid mobile number is required");
+    const phone = input.customerPhone.trim();
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (!/^\+?[0-9]{8,15}$/.test(phone) || phoneDigits.length < 8 || phoneDigits.length > 15) {
+      throw new BadRequestException("A valid mobile number is required");
+    }
+
+    if (input.walletPaise !== undefined && (!Number.isSafeInteger(input.walletPaise) || input.walletPaise < 0 || input.walletPaise > MAX_PAISE)) throw new BadRequestException("Wallet amount must be nonnegative integer paise within the supported range");
+    if (input.expectedTotalPaise !== undefined && (!Number.isSafeInteger(input.expectedTotalPaise) || input.expectedTotalPaise < 0 || input.expectedTotalPaise > MAX_PAISE)) throw new BadRequestException("Expected total must be nonnegative integer paise within the supported range");
+    if (input.expectedPayableTotalPaise !== undefined && (!Number.isSafeInteger(input.expectedPayableTotalPaise) || input.expectedPayableTotalPaise < 0 || input.expectedPayableTotalPaise > MAX_PAISE)) throw new BadRequestException("Expected payable total must be nonnegative integer paise within the supported range");
+
+    const a = input.shippingAddress;
+    const requiredText = (value: unknown, max: number) =>
+      typeof value === "string" && value.trim().length > 0 && value.trim().length <= max;
+    const optionalText = (value: unknown, max: number) =>
+      value === undefined || value === null || value === "" || (typeof value === "string" && value.trim().length <= max);
+
+    if (
+      !a ||
+      !requiredText(a.firstName, 80) ||
+      !requiredText(a.phone, 20) ||
+      !optionalText(a.lastName, 80) ||
+      !requiredText(a.line1, 250) ||
+      !optionalText(a.line2, 250) ||
+      !requiredText(a.city, 100) ||
+      !requiredText(a.state, 100) ||
+      !/^\d{6}$/.test(String(a.postalCode ?? "").trim())
+    ) {
+      throw new BadRequestException("Complete delivery address with a 6-digit PIN code is required");
+    }
+    if (a.countryCode && a.countryCode !== "IN") throw new BadRequestException("HIDI checkout currently supports delivery addresses in India");
+    if (!/^\+?[0-9]{8,15}$/.test(a.phone.trim())) throw new BadRequestException("A valid delivery mobile number is required");
+  }
+
+  async prepare(input: PrepareInput, auth: VerifiedAuthUser | null = null) {
+    this.validate(input);
+        normalizedChoice(input.offer);
+    const shippingAddress = {
+      ...input.shippingAddress!,
+      firstName: input.shippingAddress!.firstName.trim(),
+      lastName: input.shippingAddress!.lastName?.trim() || "",
+      phone: input.shippingAddress!.phone.trim(),
+      line1: input.shippingAddress!.line1.trim(),
+      line2: input.shippingAddress!.line2?.trim() || "",
+      city: input.shippingAddress!.city.trim(),
+      state: input.shippingAddress!.state.trim(),
+      postalCode: input.shippingAddress!.postalCode.trim(),
+      countryCode: input.shippingAddress!.countryCode ?? "IN",
+    };
+    const customerEmail = input.customerEmail?.trim() || null;
+    const customerPhone = input.customerPhone!.trim();
+    const walletPaise = input.walletPaise ?? 0;
+    const cod = input.paymentMethod === "COD";
+    if (cod && walletPaise > 0) throw new BadRequestException("Choose online payment to redeem HIDI rewards");
+    if (cod && process.env.HIDI_COD_ENABLED !== "true") throw new BadRequestException("Cash on delivery is temporarily unavailable. Choose online payment.");
+    if (walletPaise > 0 && !auth) throw new UnauthorizedException("Sign in before using your wallet");
+    if (walletPaise > 0 && !this.wallet.enabled()) throw new BadRequestException("Wallet redemption is not enabled");
+    const walletEnabled = this.wallet.enabled();
+    const identityWallet = auth ? (walletEnabled ? await this.wallet.ensureWallet(auth) : await this.prisma.walletAccount.findUnique({ where: { authSubject: auth.id } })) : null;
+    const walletAccount = walletEnabled ? identityWallet : null;
+    const customer = auth && !identityWallet
+      ? auth.phoneVerified && auth.phone
+        ? await this.prisma.user.upsert({
+            where: { phone: auth.phone },
+            create: { phone: auth.phone, email: auth.email ?? null },
+            update: auth.email ? { email: auth.email } : {},
+          })
+        : auth.email
+          ? await this.prisma.user.upsert({
+              where: { email: auth.email },
+              create: { email: auth.email },
+              update: {},
+            })
+          : null
+      : null;
+    if (customer && auth) {
+      const binding = await this.prisma.walletAccount.findUnique({ where: { userId: customer.id } });
+      if (binding && binding.authSubject !== auth.id) throw new ConflictException("Customer identity requires support review");
+    }
+    const userId = identityWallet?.userId ?? customer?.id ?? null;
+    await this.releaseExpiredReservations(50);
+
+    const existing = await this.prisma.order.findUnique({
+      where: { checkoutToken: input.checkoutToken! },
+      include: { payments: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+    if (existing) {
+            assertRetry(existing, input);
+      if (existing.cartSessionId !== input.sessionId || existing.userId !== userId || existing.walletAppliedPaise !== walletPaise) {
+        throw new ConflictException("Checkout identity or wallet amount changed. Start a new checkout attempt.");
+      }
+      const payment = existing.payments[0];
+      if ((payment?.provider === "COD") !== cod) throw new ConflictException("Payment method changed. Start a new checkout attempt.");
+      if (payment && ((payment.providerOrderId && existing.status === "PENDING_PAYMENT") || ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].includes(existing.status))) return this.checkoutView(existing, payment);
+      throw new ConflictException("This checkout attempt has ended. Please retry payment.");
+    }
+
+    if (cod) {
+      let available = false;
+      try { available = (await this.delhivery?.checkServiceability(shippingAddress.postalCode))?.cod === true; }
+      catch { throw new BadRequestException("Cash on delivery could not be confirmed for this PIN code. Choose online payment or try again."); }
+      if (!available) throw new BadRequestException("Cash on delivery is unavailable for this PIN code. Choose online payment.");
+    }
+
+    const hidiPromotion = await loadChoice(input.offer, auth);
+        const orderNumber = this.makeOrderNumber();
+    const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
+
+    const order = await withSerializableRetry(this.prisma, async (tx) => {
+      const cart = await tx.cart.findUnique({
+        where: { sessionId: input.sessionId! },
+        include: { items: { orderBy: { variantId: "asc" }, include: { product: true, variant: { include: { inventory: true } } } } },
+      });
+      if (!cart || !cart.items.length) throw new BadRequestException("Your bag is empty");
+      // The bag is browser-session scoped. Account ownership is enforced on the
+      // Order and Wallet, not on the reusable browser cart. This lets a customer
+      // sign in with a new verified identity without losing the bag that is
+      // already open in this browser.
+      let subtotalPaise = 0;
+      for (const item of cart.items) {
+        if (!item.variant.active || item.product.status !== "ACTIVE" || !item.variant.inventory) {
+          throw new ConflictException(`${item.product.name} is no longer available`);
+        }
+        if (!Number.isInteger(item.quantity) || item.quantity < 1 || !Number.isSafeInteger(item.variant.pricePaise) || item.variant.pricePaise <= 0) throw new ConflictException("Invalid product quantity or price");
+        subtotalPaise += item.variant.pricePaise * item.quantity;
+      }
+      if (!Number.isSafeInteger(subtotalPaise) || subtotalPaise <= 0 || subtotalPaise > MAX_PAISE) throw new BadRequestException("Invalid order total");
+      if (input.expectedTotalPaise !== undefined && input.expectedTotalPaise !== subtotalPaise) throw new ConflictException("Product prices changed. Refresh your bag and review the total before paying.");
+      const hidiPricing = await applyChoice(tx, cart, subtotalPaise, hidiPromotion);
+            const { shippingPaise, totalPaise, discountPaise } = hidiPricing;
+            subtotalPaise = hidiPricing.subtotalPaise;
+      if (input.expectedPayableTotalPaise !== undefined && input.expectedPayableTotalPaise !== totalPaise) throw new ConflictException("Shipping or prices changed. Refresh your bag and review the total before paying.");
+      if (walletPaise > totalPaise) throw new BadRequestException("Wallet amount cannot exceed the order total");
+      if (totalPaise - walletPaise > 0 && totalPaise - walletPaise < 100) throw new BadRequestException("The remaining online payment must be at least ₹1. Use the wallet for the full total or reduce the wallet amount.");
+
+      const created = await tx.order.create({
+        data: {
+          checkoutToken: input.checkoutToken!,
+          cartSessionId: input.sessionId!,
+          orderNumber,
+          status: "PENDING_PAYMENT",
+          userId,                subtotalPaise,
+                discountPaise,
+                notes: hidiPricing.snapshot ? JSON.stringify({ hidiOffer: hidiPricing.snapshot }) : null,
+                shippingPaise,
+          totalPaise,
+          walletAppliedPaise: walletPaise,
+          customerEmail: auth?.email ?? customerEmail,
+          customerPhone: auth?.phoneVerified && auth.phone ? auth.phone : customerPhone,
+          shippingAddress: encodeJson(shippingAddress),
+          items: {
+            create: cart.items.map((item) => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              productName: item.product.name,
+              sku: item.variant.sku,
+              size: item.variant.size,
+              color: item.variant.color,
+              quantity: item.quantity,
+              unitPricePaise: item.variant.pricePaise,
+                        discountPaise: (item as any).hidiDiscountPaise || 0,
+                        totalPaise: item.variant.pricePaise * item.quantity - ((item as any).hidiDiscountPaise || 0),
+            })),
+          },
+        },
+      });
+      await appendOrderAudit(tx, {
+        orderId: created.id,
+        eventType: "ORDER_CREATED",
+        actorType: auth ? "CUSTOMER" : "SYSTEM",
+        actorId: auth?.id ?? null,
+        entityType: "ORDER",
+        entityId: created.id,
+        toStatus: "PENDING_PAYMENT",
+        amountPaise: created.totalPaise,
+        eventKey: `order:${created.id}:created`,
+        source: "CHECKOUT",
+        metadata: {
+          itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
+          subtotalPaise,
+          walletAppliedPaise: walletPaise,
+          guestCheckout: !auth,
+        },
+      });
+      // Created order is exclusively owned by this transaction. Every other
+      // lifecycle path locks Order first, then Wallet, then sorted Inventory.
+      if (walletAccount) {
+        await this.wallet.reserve(tx, walletAccount.id, created.id, walletPaise, expiresAt);
+        await this.wallet.createAccrual(tx, created, walletAccount.id);
+      }
+      for (const item of reservationItems(cart.items)) {
+                const locked = await tx.$queryRaw<Array<{ onHand: number; reserved: number; safetyStock: number }>>`
+          SELECT "onHand", "reserved", "safetyStock" FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "variantId" = ${item.variantId} 
+        `;
+        const inventory = locked[0];
+        const available = inventory ? inventory.onHand - inventory.reserved - inventory.safetyStock : 0;
+        if (!inventory || available < item.quantity) throw new ConflictException(`Only ${Math.max(0, available)} of ${item.product.name} / ${item.variant.size} remain`);
+        await tx.inventory.update({
+          where: { variantId: item.variantId },
+          data: { reserved: { increment: item.quantity } },
+        });
+        await tx.inventoryReservation.create({
+          data: {
+            orderId: created.id,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            expiresAt,
+          },
+        });
+      }
+      if (cart.userId !== userId) {
+        await tx.cart.update({ where: { id: cart.id }, data: { userId } });
+      }
+      if (cod) {
+        for (const item of cart.items) await tx.inventory.update({ where: { variantId: item.variantId }, data: { onHand: { decrement: item.quantity }, reserved: { decrement: item.quantity } } });
+        await tx.inventoryReservation.updateMany({ where: { orderId: created.id, status: "ACTIVE" }, data: { status: "CONSUMED", consumedAt: new Date() } });
+        const payment = await tx.payment.create({ data: { orderId: created.id, provider: "COD", amountPaise: created.totalPaise, status: "CREATED", method: "cod" } });
+        const confirmed = await tx.order.update({ where: { id: created.id }, data: { status: "CONFIRMED" } });
+        await appendOrderAudit(tx, { orderId: created.id, eventType: "ORDER_CONFIRMED", actorType: auth ? "CUSTOMER" : "SYSTEM", actorId: auth?.id ?? null, entityType: "ORDER", entityId: created.id, fromStatus: "PENDING_PAYMENT", toStatus: "CONFIRMED", eventKey: `order:${created.id}:payment-outcome:CONFIRMED`, source: "CHECKOUT", metadata: { provider: "COD", paymentId: payment.id, amountDuePaise: created.totalPaise } });
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+        return confirmed;
+      }
+      if (created.totalPaise === walletPaise) {
+        if (!await this.wallet.consume(tx, created.id)) throw new ConflictException("Wallet funds changed. Please review your bag and try again.");
+        for (const item of cart.items) await tx.inventory.update({ where: { variantId: item.variantId }, data: { onHand: { decrement: item.quantity }, reserved: { decrement: item.quantity } } });
+        await tx.inventoryReservation.updateMany({ where: { orderId: created.id, status: "ACTIVE" }, data: { status: "CONSUMED", consumedAt: new Date() } });
+        const walletPayment = await tx.payment.create({ data: { orderId: created.id, provider: "WALLET", amountPaise: 0, status: "CAPTURED", method: "wallet" } });
+        const confirmed = await tx.order.update({ where: { id: created.id }, data: { status: "CONFIRMED" } });
+        await appendOrderAudit(tx, {
+          orderId: created.id,
+          eventType: "PAYMENT_CAPTURED",
+          actorType: "SYSTEM",
+          actorId: "HIDI_WALLET",
+          entityType: "PAYMENT",
+          entityId: walletPayment.id,
+          fromStatus: "CREATED",
+          toStatus: "CAPTURED",
+          amountPaise: created.totalPaise,
+          eventKey: `wallet-payment:${walletPayment.id}:captured`,
+          source: "CHECKOUT",
+          metadata: { provider: "WALLET", walletAppliedPaise: created.walletAppliedPaise },
+        });
+        await appendOrderAudit(tx, {
+          orderId: created.id,
+          eventType: "ORDER_CONFIRMED",
+          actorType: "SYSTEM",
+          entityType: "ORDER",
+          entityId: created.id,
+          fromStatus: "PENDING_PAYMENT",
+          toStatus: "CONFIRMED",
+          eventKey: `order:${created.id}:payment-outcome:CONFIRMED`,
+          source: "CHECKOUT",
+          metadata: { provider: "WALLET" },
+        });
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+        return confirmed;
+      }
+      return created;
+    });
+
+    if (cod) return this.checkoutView(order, { provider: "COD", status: "CREATED" });
+
+    if (order.totalPaise === order.walletAppliedPaise) return this.checkoutView(order, { provider: "WALLET", status: "CAPTURED", amountPaise: 0 });
+
+    try {
+      const providerOrder = await this.razorpay.createOrder({
+        amountPaise: order.totalPaise - order.walletAppliedPaise,
+        receipt: order.orderNumber,
+        hidiOrderId: order.id,
+      });
+      if (providerOrder.amount !== order.totalPaise - order.walletAppliedPaise || providerOrder.currency !== "INR" || !providerOrder.id) throw new ConflictException("Payment provider returned an unexpected order amount");
+      const payment = await withSerializableRetry(this.prisma, async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${order.id} `;
+        const pending = await tx.order.findUnique({ where: { id: order.id } });
+        if (!pending || pending.status !== "PENDING_PAYMENT" || expiresAt <= new Date()) throw new ConflictException("Checkout expired before payment was ready. Please start a new attempt.");
+        const payment = await tx.payment.create({ data: {
+          orderId: order.id, providerOrderId: providerOrder.id,
+          amountPaise: order.totalPaise - order.walletAppliedPaise, status: "CREATED",
+        } });
+        await appendOrderAudit(tx, {
+          orderId: order.id,
+          eventType: "PAYMENT_CREATED",
+          actorType: "SYSTEM",
+          entityType: "PAYMENT",
+          entityId: payment.id,
+          toStatus: "CREATED",
+          amountPaise: payment.amountPaise,
+          eventKey: `payment:${providerOrder.id}:created`,
+          correlationId: providerOrder.id,
+          source: "CHECKOUT",
+          metadata: { provider: "RAZORPAY", providerOrderId: providerOrder.id },
+        });
+        return payment;
+      });
+      return this.checkoutView(order, payment);
+    } catch (error) {
+      await this.releaseOrder(order.id, "CANCELLED");
+      throw error;
+    }
+  }
+
+  async orders(sessionId?: string) {
+    if (!sessionId || sessionId.length < 8) {
+      throw new BadRequestException("Cart session is required");
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        cartSessionId: sessionId,
+        status: { not: "CANCELLED" },
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: { images: { orderBy: { position: "asc" }, take: 1 } },
+            },
+            variant: {
+              include: { images: { orderBy: { position: "asc" }, take: 1 } },
+            },
+          },
+          orderBy: { id: "asc" },
+        },
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    return orders.map((order) => ({
+      orderNumber: order.orderNumber,
+      status: order.status,
+      createdAt: order.createdAt,
+      totalPaise: order.totalPaise,
+      walletAppliedPaise: order.walletAppliedPaise,
+      cashPaidPaise: ["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(order.payments[0]?.status ?? "") ? order.totalPaise - order.walletAppliedPaise : 0,
+      cashDuePaise: order.payments[0]?.provider === "COD" && order.payments[0]?.status === "CREATED" ? order.totalPaise : 0,
+      paymentStatus: order.payments[0]?.status ?? null,
+      itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
+      items: order.items.map((item) => ({
+        id: item.id,
+        productName: item.productName,
+        slug: item.product.slug,
+        image: item.variant.images[0]?.url ?? item.product.images[0]?.url ?? null,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        totalPaise: item.totalPaise,
+      })),
+    }));
+  }
+
+  async confirmation(orderNumber: string, sessionId?: string) {
+    if (!orderNumber || !sessionId || sessionId.length < 8) {
+      throw new BadRequestException("Order and cart session are required");
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: { images: { orderBy: { position: "asc" }, take: 1 } },
+            },
+            variant: {
+              include: { images: { orderBy: { position: "asc" }, take: 1 } },
+            },
+          },
+          orderBy: { id: "asc" },
+        },
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    if (!order || order.cartSessionId !== sessionId) {
+      throw new NotFoundException("Order not found");
+    }
+
+    const payment = order.payments[0] ?? null;
+    const address = decodeJson(order.shippingAddress);
+
+    return {
+      orderNumber: order.orderNumber,
+      status: order.status,
+      createdAt: order.createdAt,
+      currency: order.currency,
+      subtotalPaise: order.subtotalPaise,
+      discountPaise: order.discountPaise,
+      shippingPaise: order.shippingPaise,
+      taxPaise: order.taxPaise,
+      totalPaise: order.totalPaise,
+      walletAppliedPaise: order.walletAppliedPaise,
+      cashPaidPaise: ["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(payment?.status ?? "") ? order.totalPaise - order.walletAppliedPaise : 0,
+      cashDuePaise: payment?.provider === "COD" && payment.status === "CREATED" ? order.totalPaise : 0,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      shippingAddress: address,
+      payment: payment ? {
+        provider: payment.provider,
+        status: payment.status,
+        method: payment.method,
+        amountPaise: payment.amountPaise,
+      } : null,
+      items: order.items.map((item) => ({
+        id: item.id,
+        productName: item.productName,
+        slug: item.product.slug,
+        image: item.variant.images[0]?.url ?? item.product.images[0]?.url ?? null,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        unitPricePaise: item.unitPricePaise,
+        totalPaise: item.totalPaise,
+      })),
+    };
+  }
+
+  async releaseExpiredReservations(limit = 100) {
+    const expired = await this.prisma.inventoryReservation.findMany({
+      where: { status: "ACTIVE", expiresAt: { lt: new Date() }, order: { status: "PENDING_PAYMENT" } },
+      orderBy: { expiresAt: "asc" },
+      take: limit,
+      select: { orderId: true },
+      distinct: ["orderId"],
+    });
+    for (const item of expired) {
+      try { await this.releaseOrder(item.orderId, "CANCELLED"); } catch { /* another API instance may have released it */ }
+    }
+  }
+
+  async releaseOrder(orderId: string, orderStatus: "CANCELLED" = "CANCELLED") {
+    await withSerializableRetry(this.prisma, async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${orderId} `;
+      const order = await tx.order.findUnique({ where: { id: orderId } });
+      if (!order || order.status !== "PENDING_PAYMENT") return;
+      await this.wallet.release(tx, orderId);
+      await this.wallet.reverseEarned(tx, orderId, "CHECKOUT_CANCELLED");
+      const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: "ACTIVE" }, orderBy: { variantId: "asc" } });
+      for (const reservation of reservations) {
+        const locked = await tx.$queryRaw<Array<{ reserved: number }>>`
+          SELECT "reserved" FROM "Inventory" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "variantId" = ${reservation.variantId} 
+        `;
+        if (locked[0]) {
+          await tx.inventory.update({
+            where: { variantId: reservation.variantId },
+            data: { reserved: Math.max(0, locked[0].reserved - reservation.quantity) },
+          });
+        }
+      }
+      if (reservations.length) {
+        await tx.inventoryReservation.updateMany({
+          where: { orderId, status: "ACTIVE" },
+          data: { status: "RELEASED", releasedAt: new Date() },
+        });
+      }
+      const released = await tx.order.updateMany({
+        where: { id: orderId, status: "PENDING_PAYMENT" },
+        data: { status: orderStatus },
+      });
+      if (released.count > 0) {
+        await appendOrderAudit(tx, {
+          orderId,
+          eventType: "ORDER_CANCELLED",
+          actorType: "SYSTEM",
+          entityType: "ORDER",
+          entityId: orderId,
+          fromStatus: "PENDING_PAYMENT",
+          toStatus: orderStatus,
+          eventKey: `order:${orderId}:cancelled`,
+          source: "CHECKOUT_RESERVATION",
+          metadata: { releasedReservationCount: reservations.length },
+        });
+      }
+    });
+  }
+
+  private checkoutView(order: any, payment: any) {
+    const cashDue = order.totalPaise - (order.walletAppliedPaise ?? 0);
+    const captured = ["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(payment.status);
+    return {
+      hidiOrderId: order.id,
+      orderNumber: order.orderNumber,
+      amountPaise: cashDue,
+      subtotalPaise: order.subtotalPaise,
+            discountPaise: order.discountPaise || 0,
+            shippingPaise: order.shippingPaise ?? 0,
+      totalPaise: order.totalPaise,
+      walletAppliedPaise: order.walletAppliedPaise ?? 0,
+      status: order.status,
+      captured,
+      confirmed: payment.provider === "COD" && ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].includes(order.status),
+      currency: order.currency,
+      provider: payment.provider === "COD" ? "COD" : cashDue === 0 ? "WALLET" : "RAZORPAY",
+      ...(cashDue > 0 && payment.provider !== "COD" ? { providerOrderId: payment.providerOrderId, razorpayKeyId: this.razorpay.publicKey() } : {}),
+      reservationMinutes: RESERVATION_MINUTES,
+    };
+  }
+
+  private makeOrderNumber() {
+    const d = new Date();
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const token = randomBytes(3).toString("hex").toUpperCase();
+    return `HIDI-${y}${m}${day}-${token}`;
+  }
+}
+

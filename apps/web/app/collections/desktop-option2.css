@@ -1,0 +1,7 @@
+/* Option 2: desktop only. Keep the existing three columns and image proportions. */
+@media (min-width: 1051px) {
+  .container.collection-page [class*="collection-browser_content__"] {
+    max-width: calc(1080px + clamp(48px, 6vw, 104px));
+    margin-inline: auto;
+  }
+}

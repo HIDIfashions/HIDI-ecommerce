@@ -1,0 +1,33 @@
+name: Read-only bulk publication rollout status
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/bulk-publish-status.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Inspect ready revisions and published asset status without writes
+        run: |
+          python3 - <<'PY'
+          import importlib.util,json,urllib.request,urllib.error
+          spec=importlib.util.spec_from_file_location('rollout','deploy/bulk-publish/release.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          print(json.dumps({name:m.cloud.snapshot(m.cloud.app(name)) for name in ('hidi-web','hidi-api')},indent=2))
+          for path in ('/health','/admin/import','/admin-tools-assets/product-publication.mjs','/admin-tools-assets/product-publication-panel.mjs'):
+              try:
+                  with urllib.request.urlopen('https://hidiindia.com'+path,timeout=15) as response:status=response.status
+              except urllib.error.HTTPError as error:status=error.code
+              print(json.dumps({'path':path,'httpStatus':status}))
+          print(json.dumps({'publicContentHashes':m.photo.public_state(),'readOnly':True}))
+          PY

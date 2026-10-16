@@ -1,0 +1,48 @@
+/* Only the approved campaign block; global navigation and commerce stay owned
+   by their existing styles. The photograph has no text or controls over it. */
+#hidi-edit.next-chapter {
+  --chapter-brown: #582528;
+  --chapter-ivory: #f8f4eb;
+  --chapter-ink: #4b302f;
+  --chapter-muted: #76625b;
+  --chapter-border: #d6c9bc;
+  padding: 0;
+  background: var(--chapter-ivory);
+  color: var(--chapter-ink);
+}
+#hidi-edit .next-chapter__frame { display: grid; grid-template-columns: 48% 52%; min-height: 580px; overflow: hidden; }
+#hidi-edit .next-chapter__copy { grid-column: 1; grid-row: 1; padding: clamp(32px, 4vw, 66px); align-self: center; min-width: 0; }
+#hidi-edit .next-chapter__eyebrow { margin: 0 0 24px; font-size: 11px; letter-spacing: 2px; line-height: 1.6; }
+#hidi-edit #edit-title { margin: 0 0 24px; font-family: Georgia, serif; font-size: clamp(38px, 4.9vw, 70px); font-weight: 400; line-height: 1.12; letter-spacing: -1.8px; color: var(--chapter-ink); }
+#hidi-edit #edit-title em { font-weight: 400; }
+#hidi-edit .next-chapter__intro { margin: 0 0 32px; font-size: 15px; line-height: 1.75; }
+#hidi-edit .next-chapter__prompt { margin: 0 0 13px; font-size: 12px; line-height: 1.6; color: var(--chapter-muted); }
+#hidi-edit .next-chapter__choices { display: flex; flex-wrap: wrap; gap: 9px; }
+#hidi-edit .next-chapter__choices button { min-height: 44px; padding: 10px 15px; border: 1px solid var(--chapter-brown); border-radius: 0; background: var(--chapter-ivory); color: var(--chapter-brown); font: inherit; font-size: 12px; cursor: pointer; }
+#hidi-edit .next-chapter__choices button[aria-pressed="true"] { background: var(--chapter-brown); color: var(--chapter-ivory); }
+#hidi-edit .next-chapter__description { min-height: 39px; margin: 22px 0 10px; font-size: 12px; line-height: 1.6; color: var(--chapter-muted); }
+#hidi-edit .next-chapter__link { display: inline-flex; align-items: center; gap: 24px; min-height: 44px; padding: 8px 0; border-bottom: 1px solid var(--chapter-brown); font-size: 13px; color: var(--chapter-brown); text-decoration: none; }
+#hidi-edit .next-chapter__link span { font-size: 20px; }
+#hidi-edit .next-chapter__motion { display: block; min-height: 44px; margin-top: 12px; padding: 8px 0; border: 0; background: transparent; color: var(--chapter-muted); font: inherit; font-size: 11px; cursor: pointer; }
+#hidi-edit .next-chapter__choices button:focus-visible, #hidi-edit .next-chapter__link:focus-visible, #hidi-edit .next-chapter__motion:focus-visible { outline: 2px solid var(--chapter-brown); outline-offset: 4px; }
+#hidi-edit .edit-campaign > .next-chapter__photo { display: block; grid-column: 2; grid-row: 1; width: 100%; height: auto; min-height: 580px; min-width: 0; aspect-ratio: 0.98; object-fit: var(--landing-media-fit, cover); object-position: var(--chapter-position-desktop, 84% 50%); animation: hidi-next-chapter-drift 18s ease-in-out infinite alternate; animation-play-state: paused; }
+#hidi-edit .next-chapter__photo[data-photo-motion="playing"] { animation-play-state: running; }
+#hidi-edit .next-chapter__placeholder { grid-column: 2; grid-row: 1; min-height: 580px; background: var(--chapter-ivory); }
+#hidi-edit .next-chapter__signoff { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px 24px; border-top: 1px solid var(--chapter-border); padding: 22px clamp(24px, 4vw, 66px); }
+#hidi-edit .next-chapter__signoff p { margin: 0; font-size: 12px; line-height: 1.6; }
+#hidi-edit .next-chapter__signoff p:last-child { font-family: Georgia, serif; font-size: 18px; font-style: italic; }
+@keyframes hidi-next-chapter-drift { from { object-position: var(--chapter-position-desktop, 84% 50%); } to { object-position: var(--chapter-drift-desktop, 86% 50%); } }
+@keyframes hidi-next-chapter-drift-mobile { from { object-position: var(--chapter-position-mobile, 84% 50%); } to { object-position: var(--chapter-drift-mobile, 86% 50%); } }
+@media (max-width: 700px) {
+  #hidi-edit .next-chapter__frame { grid-template-columns: 1fr; min-height: 0; }
+  #hidi-edit .next-chapter__copy { grid-column: 1; grid-row: 2; padding: 32px 24px; }
+  #hidi-edit #edit-title { font-size: clamp(37px, 10vw, 48px); margin-bottom: 20px; }
+  #hidi-edit .next-chapter__intro { margin-bottom: 25px; }
+  #hidi-edit .next-chapter__choices { gap: 7px; }
+  #hidi-edit .next-chapter__choices button { padding: 10px 11px; }
+  #hidi-edit .edit-campaign > .next-chapter__photo, #hidi-edit .next-chapter__placeholder { grid-column: 1; grid-row: 1; min-height: 330px; height: auto; aspect-ratio: 0.98; }
+  #hidi-edit .edit-campaign > .next-chapter__photo { object-position: var(--chapter-position-mobile, 84% 50%); animation-name: hidi-next-chapter-drift-mobile; }
+  #hidi-edit .next-chapter__description { min-height: 0; }
+  #hidi-edit .next-chapter__signoff { align-items: flex-start; flex-direction: column; padding: 20px 24px; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { #hidi-edit .next-chapter__photo { animation: none !important; } }

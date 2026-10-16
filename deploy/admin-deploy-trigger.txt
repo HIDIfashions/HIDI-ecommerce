@@ -1,0 +1,5 @@
+Azure admin deploy trigger
+
+Purpose: trigger the GitHub Actions update-existing-admin job for the validated price tags Azure release.
+Requested: 2026-10-06 21:15 IST
+Previous validated merge commit: 9d61ede

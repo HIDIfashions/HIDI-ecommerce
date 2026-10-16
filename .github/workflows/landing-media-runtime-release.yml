@@ -1,0 +1,99 @@
+name: Guarded landing media runtime repair
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths:
+      - .github/workflows/landing-media-runtime-release.yml
+      - deploy/landing-media-fix/**
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/migration/azure-sql-blob'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-landing-media-browsers
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-landing-media-browser/node_modules/playwright/index.mjs
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+      HIDI_BUTTON_OUTPUT: evidence/landing-media-fix/retained-commerce
+      HIDI_MEDIA_SOURCE_SHA: 24af2006fa1cdbefbbc61a6d693ddd1ee7217b64
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Verify the bounded runtime patch and permanent source regression
+        run: |
+          set -euo pipefail
+          python3 -m py_compile deploy/landing-media-fix/release.py deploy/landing-media-fix/patch-runtime.py
+          python3 deploy/landing-media-fix/patch-runtime.py
+          python3 deploy/landing-media-fix/release.py self-test
+          node --check deploy/landing-media-fix/candidate.mjs
+          node --check deploy/landing-media-fix/live.mjs
+          git fetch origin hidi-web-new
+          test "$(git rev-parse origin/hidi-web-new)" = "$HIDI_MEDIA_SOURCE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/hidi-landing-source" "$HIDI_MEDIA_SOURCE_SHA"
+          node --test "$RUNNER_TEMP/hidi-landing-source/deploy/hidi-web-new/runtime.test.mjs"
+          npm --prefix "$RUNNER_TEMP/hidi-landing-source/apps/web" test
+          pnpm install --frozen-lockfile
+      - name: Install desktop and mobile browser engines
+        run: |
+          set -euo pipefail
+          npm install --prefix /tmp/hidi-landing-media-browser --no-save playwright@1.56.1
+          node /tmp/hidi-landing-media-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture and back up the fresh live images, settings and media selection
+        run: |
+          set -euo pipefail
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/landing-media-fix/release.py capture
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-landing-media-private/web/candidate-app" >> "$GITHUB_ENV"
+          echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-landing-media-private/api/base-app" >> "$GITHUB_ENV"
+          echo "HIDI_CATEGORY_PRIVATE=$RUNNER_TEMP/hidi-landing-media-private" >> "$GITHUB_ENV"
+      - name: Compose only the media runtime and current Admin slot repair
+        run: |
+          set -euo pipefail
+          tag="acrhidiprod0927.azurecr.io/hidi-web:landing-media-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          python3 deploy/landing-media-fix/release.py compose --tag "$tag"
+          echo "CANDIDATE_WEB=$tag" >> "$GITHUB_ENV"
+      - name: Test URL recovery, future uploads and retained storefront flows
+        run: |
+          set -euo pipefail
+          node deploy/landing-media-fix/candidate.mjs
+          node tests/admin-quick-tools.runtime.mjs | tee evidence/landing-media-fix/admin-quick-tools.json
+          node deploy/four-categories/candidate.mjs
+          node deploy/button-states/revert-candidate.mjs
+          python3 deploy/landing-media-fix/release.py mark-tested --tag "$CANDIDATE_WEB"
+      - name: Publish the exact tested immutable image
+        run: python3 deploy/landing-media-fix/release.py publish --tag "$CANDIDATE_WEB"
+      - name: Release web only and verify live with ownership-checked rollback
+        id: apply
+        timeout-minutes: 125
+        # A slow-but-valid forward release is deliberately reconciled after
+        # 50 minutes; the process then has 65 minutes to finish owned rollback.
+        run: timeout --signal=TERM --kill-after=65m 50m python3 deploy/landing-media-fix/release.py apply --image "$WEB_IMAGE"
+      - name: Reconcile an interrupted or failed release
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        timeout-minutes: 65
+        run: python3 deploy/landing-media-fix/release.py recover --image "$WEB_IMAGE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: landing-media-runtime-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            evidence/landing-media-fix
+            evidence/four-categories
+          retention-days: 30

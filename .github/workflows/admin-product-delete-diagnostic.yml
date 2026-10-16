@@ -1,0 +1,39 @@
+name: Admin product deletion read-only schema diagnostic
+
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/admin-product-delete-diagnostic.yml]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+
+jobs:
+  schema-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture fresh ready application states
+        run: python3 deploy/admin-delete/release.py capture
+      - name: Inspect product status metadata without changing schema or application rows
+        run: python3 deploy/admin-delete/schema-readiness.py --diagnose
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-product-delete-schema-diagnostic-${{ github.run_id }}
+          path: |
+            evidence/admin-delete/before.json
+            evidence/admin-delete/schema-diagnostic.json
+            evidence/admin-delete/schema-failure.json
+          retention-days: 30
