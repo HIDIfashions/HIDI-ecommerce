@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
+import {isBlockedTelemetry} from '../button-states/request-policy.mjs';
 import {guideRoutes,returnPolicy} from './discovery.mjs';
 import {probe as collectionProbe} from './shopping-probes.mjs';
 export async function discoveryProbe(base,output,{baseline}={}){
@@ -24,7 +25,7 @@ export async function discoveryProbe(base,output,{baseline}={}){
    await context.route('**/*',route=>{
     const req=route.request(),u=new URL(req.url());
     if(/google-analytics|googletagmanager|cloudflareinsights|facebook\.net/.test(u.hostname)||u.pathname==='/hidi-analytics.js')return route.abort();
-    if(!['GET','HEAD'].includes(req.method())){if(u.pathname!=='/api/admin/session')writes.push({url:req.url(),method:req.method()});return route.abort();}
+    if(!['GET','HEAD'].includes(req.method())){if(u.pathname!=='/api/admin/session'&&!isBlockedTelemetry(req.url(),req.method(),base))writes.push({url:req.url(),method:req.method()});return route.abort();}
     if(req.resourceType()==='media')return route.abort();
     return route.continue();
    });
