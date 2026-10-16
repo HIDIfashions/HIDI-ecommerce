@@ -27,6 +27,7 @@ jobs:
           python3 deploy/compact-header/test_patch.py
           python3 -m py_compile deploy/compact-header/patch-runtime.py deploy/compact-header/release.py
           node --check deploy/compact-header/candidate.mjs
+          node --check deploy/compact-header/baseline.mjs
           node --check deploy/compact-header/probes.mjs
           node --test deploy/collection-cleanup/navigation.test.mjs
           node --test deploy/merchant-feed/feed.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs tests/storefront-surfaces.test.cjs

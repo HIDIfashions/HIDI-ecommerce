@@ -10,6 +10,7 @@ class Tests(unittest.TestCase):
     server='// existing overlays\nfunction injectStorefrontLayerFix('+signature+') {\n  return html;\n}\n'
     html='<html><head><link rel="stylesheet" href="old.css"></head><body>Original</body></html>'
     (base/'server.mjs').write_text(server);(base/'dist/index.html').write_text(html)
+    (base/'pricing').mkdir();(base/'pricing/storefront.mjs').write_bytes((HERE.parent/'pricing/storefront.mjs').read_bytes())
     report=p.patch_runtime(base,overlay);self.assertEqual(len(report['allowedFiles']),3)
     self.assertIn('old.css',(overlay/'dist/index.html').read_text());self.assertIn('return html;', (overlay/'server.mjs').read_text())
     self.assertEqual((overlay/'dist'/report['cssAsset']).read_bytes(),p.CSS.read_bytes())

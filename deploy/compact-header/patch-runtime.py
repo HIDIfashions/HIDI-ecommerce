@@ -19,4 +19,6 @@ def patch_runtime(base,overlay):
  files={'server.mjs':updated.encode(),'dist/index.html':updated_html.encode(),'dist/'+name:css}
  for path,data in files.items():
   target=overlay/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
- return {'passed':True,'allowedFiles':sorted(files),'cssAsset':name,'inverseTransformsVerified':True,'existingStylesRetained':True,'logoArtworkUnchanged':True,'databaseWrites':False,'storageWrites':False}
+ pricing=(base/'pricing/storefront.mjs').read_bytes()
+ mode='fixed' if pricing==(HERE.parent/'pricing/storefront.mjs').read_bytes() else 'legacy'
+ return {'passed':True,'allowedFiles':sorted(files),'cssAsset':name,'privatePricingMode':mode,'inverseTransformsVerified':True,'existingStylesRetained':True,'logoArtworkUnchanged':True,'databaseWrites':False,'storageWrites':False}
