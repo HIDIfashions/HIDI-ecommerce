@@ -26,7 +26,7 @@ test('parser header logo embeds exact bytes while external app loading is preser
   mkdirSync(join(root,'assets/images'),{recursive:true});const logo=Buffer.from([137,80,78,71,13,10,26,10]);writeFileSync(join(root,'assets/images/hidi-logo.png'),logo);
   writeFileSync(join(root,'assets/index-abc.js'),'const x={src:Tt("images/hidi-logo.png"),fetchPriority:"high"};');
   const html='<link rel="preload" as="image" href="./assets/images/hidi-logo.png"><script type="module" src="/assets/index-abc.js"></script><header><img src="./assets/images/hidi-logo.png"></header>';
-  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(!result.includes('rel="preload"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
+  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(result.includes('rel="preload"'));assert(result.includes('href="./assets/images/hidi-logo.png"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 
@@ -37,5 +37,14 @@ test('sized favicons retain Apple/PWA declarations and stale branding metadata i
   const input='<link rel="shortcut icon" href="/brand.ico"><link rel="icon" href="/other.png"><link rel="apple-touch-icon" href="/touch.png"><link rel="manifest" href="/site.webmanifest">';const output=createHomeHead(root,app)(input);
   assert(output.startsWith(markup));assert(!output.includes('/brand.ico'));assert(!output.includes('/other.png'));assert(output.includes('href="/touch.png"'));assert(output.includes('href="/site.webmanifest"'));
   writeFileSync(join(root,'brand.ico'),'updated-brand');assert.equal(createHomeHead(root,app)(input),input);
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
+test('homepage pricing gets a scoped module while the original commerce file stays exact; changed versions fall back',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-home-price-')),root=join(app,'dist'),url='/assets/home-pricing-0123456789abcdef.js',original='export const pricing="reviewed";\n',home='export const homeOnly=true;\n',hash=value=>createHash('sha256').update(value).digest('hex');
+ try{mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'pricing'));mkdirSync(join(app,'paint-performance'));writeFileSync(join(app,'pricing/storefront.mjs'),original);writeFileSync(join(root,url.slice(1)),home);writeFileSync(join(app,'paint-performance/home-pricing.json'),JSON.stringify({url,sourceSha256:hash(original),homeSha256:hash(home)}));
+ const input='<script type="module" data-hidi-pricing-loader src="/pricing-assets/storefront.mjs"></script>',result=createHomeHead(root,app)(input);assert(result.includes('src="'+url+'"'));assert(result.includes('data-hidi-pricing-loader'));assert(!result.includes('src="/pricing-assets/storefront.mjs"'));
+ writeFileSync(join(app,'pricing/storefront.mjs'),original+'// later reviewed release');assert.equal(createHomeHead(root,app)(input),input);
+ writeFileSync(join(app,'pricing/storefront.mjs'),original);writeFileSync(join(root,url.slice(1)),home+'// changed');assert.equal(createHomeHead(root,app)(input),input);
  }finally{rmSync(app,{recursive:true,force:true});}
 });

@@ -7,6 +7,13 @@ import {createHash} from 'node:crypto';
 export function createHomeHead(root,appRoot=resolve(root,'..')) {
  const cache=new Map();
  const iconMarkup=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/icons.json'),'utf8'));const source=realpathSync(resolve(appRoot,data.sourceFile));if(!source.startsWith(realpathSync(appRoot)+sep))return null;const hash=createHash('sha256').update(readFileSync(source)).digest('hex');return hash===data.originalSha256&&typeof data.markup==='string'?data.markup:null;}catch{return null;}})();
+ const homePricing=(()=>{try{
+  const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/home-pricing.json'),'utf8'));
+  if(!/^\/assets\/home-pricing-[a-f0-9]{16}\.js$/.test(data.url))return null;
+  const digest=file=>createHash('sha256').update(readFileSync(file,'utf8').replace(/\r\n/g,'\n')).digest('hex');
+  const file=realpathSync(resolve(root,'.'+data.url));if(!file.startsWith(realpathSync(root)+sep))return null;
+  return digest(resolve(appRoot,'pricing/storefront.mjs'))===data.sourceSha256&&digest(file)===data.homeSha256?data.url:null;
+ }catch{return null;}})();
  const logoData=(()=>{try{const file=readFileSync(resolve(root,'assets/images/hidi-logo.png'));return file.length<=32768?'data:image/png;base64,'+file.toString('base64'):null;}catch{return null;}})();
  function cssFor(href){
   if(cache.has(href))return cache.get(href);
@@ -29,20 +36,19 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   const inlineBundles=new Set();
   html=html.replace(/<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi,(tag,before,src,after)=>{
    const url=new URL(src,'https://hidiindia.com/');
+   if(homePricing&&url.origin==='https://hidiindia.com'&&url.pathname==='/pricing-assets/storefront.mjs'&&/\btype=["']module["']/.test(before+after)&&!/\b(?:async|integrity)\b/.test(before+after))return '<script'+before+'src="'+homePricing+'"'+after+'></script>';
    if(url.origin!=='https://hidiindia.com'||url.pathname!=='/config.js')return tag;
    if(/\b(?:async|integrity)\b/.test(before+after))return tag;
    try{
     const file=realpathSync(resolve(root,'.'+url.pathname));if(!file.startsWith(realpathSync(root)+sep))return tag;
     let code=cache.get(src);if(code===undefined){code=readFileSync(file,'utf8');cache.set(src,code);}
     if(code.length>512000||/import\s*\(|import\.meta|^\s*import[\s{*]/m.test(code))return tag;
-    if(logoData)code=code.replace('src:Tt("images/hidi-logo.png"),fetchPriority:"high"','src:'+JSON.stringify(logoData)+',fetchPriority:"high"');
     code=code.replace(/<\/script/gi,'<\\/script');
     if(url.pathname!=='/config.js')inlineBundles.add(url.pathname);
     return '<script '+before+after+' data-hidi-inline-script="'+url.pathname+'">'+code+'</script>';
    }catch{return tag;}
   });
   html=html.replace(/<link\b[^>]*>/gi,tag=>{
-   if(logoData&&/\brel=["']preload["']/.test(tag)&&/href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["']/.test(tag))return '';
    if(/\brel=["']modulepreload["']/.test(tag)&&[...inlineBundles].some(path=>tag.includes('href="'+path+'"')))return '';
    return tag;
   });
