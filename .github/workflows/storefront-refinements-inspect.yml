@@ -1,4 +1,5 @@
 name: Backup and inspect live storefront before approved refinements
+# Fresh backup for the approved delivery, recommendations and footer follow-up.
 on:
   push:
     branches: [migration/azure-sql-blob]
