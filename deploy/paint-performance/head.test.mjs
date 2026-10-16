@@ -48,3 +48,14 @@ test('homepage pricing gets a scoped module while the original commerce file sta
  writeFileSync(join(app,'pricing/storefront.mjs'),original);writeFileSync(join(root,url.slice(1)),home+'// changed');assert.equal(createHomeHead(root,app)(input),input);
  }finally{rmSync(app,{recursive:true,force:true});}
 });
+
+test('critical styles retain their full sheet and cascade position; changed CSS uses complete inline fallback',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-critical-')),root=join(app,'dist');try{
+  mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));
+  const css='header{color:red}footer{color:blue}',critical='header{color:red}';writeFileSync(join(root,'assets/index-test.css'),css);
+  const metadata={styles:{'/assets/index-test.css':{sha256:createHash('sha256').update(css).digest('hex'),critical}}};writeFileSync(join(app,'paint-performance/critical-css.json'),JSON.stringify(metadata));
+  const html='<head><link rel="stylesheet" href="/assets/index-test.css" /><style>header{padding:2px}</style></head>';
+  const result=createHomeHead(root,app)(html);assert(result.includes('>'+critical+'</style><link'));assert(result.includes('media="print"'));assert(result.includes('window.__HidiFullCssReady'));assert(result.indexOf('media="print"')<result.indexOf('padding:2px'));assert(!result.includes('/ media='));
+  writeFileSync(join(root,'assets/index-test.css'),'header{color:green}footer{color:purple}');const fresh=createHomeHead(root,app)(html);assert(fresh.includes('color:purple'));assert(!fresh.includes('data-hidi-deferred-style'));assert(!fresh.includes('__HidiFullCssReady'));
+ }finally{rmSync(app,{recursive:true,force:true});}
+});

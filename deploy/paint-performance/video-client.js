@@ -3,7 +3,7 @@ function HidiMediaVideo(value) {
   if (!item) return value;
   const variant = matchMedia('(max-width: 700px)').matches ? item.mobile : item.desktop;
   try {
-    if (variant.av1Url && HidiMediaVideo.av1 !== false && document.createElement('video').canPlayType('video/mp4; codecs="av01.0.05M.08,mp4a.40.2"')) return variant.av1Url;
+    if (variant.av1Url && HidiMediaVideo.av1 !== false && document.createElement('video').canPlayType('video/mp4; codecs="'+(variant.av1Codec || 'av01.0.05M.08,mp4a.40.2')+'"')) return variant.av1Url;
   } catch {}
   return variant.url;
 }
