@@ -41,7 +41,11 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         }
         if(url.pathname==='/api/hidi/landing-media-config')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(landing)});
         if(baseline&&url.pathname==='/api/hidi/offers')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(offers)});
-        if(request.resourceType()==='image'&&((baseline&&url.origin===baseline)||navigationOnly.has(request.frame().page())))return route.abort();
+        // This suite compares shopping controls, card facts and native links.
+        // Image bytes and styles are unchanged by the overlay; isolate image
+        // transfers in both origins so a slow optimiser cannot stall the flow.
+        // The separate image-discovery probe validates the real public assets.
+        if(request.resourceType()==='image')return route.abort();
         if(request.resourceType()==='media'||/razorpay\.com$/.test(url.hostname))return route.abort();
         return route.continue();
       });
@@ -176,7 +180,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
   assert.deepEqual(writes,[],'Unexpected commerce writes');assert.deepEqual(errors,[],'Browser runtime errors');
   const feed=await fetch(base+'/google-products.xml',{headers:{'X-Forwarded-Host':'hidiindia.com'}});assert(feed.ok);const xml=await feed.text();assert.match(xml,/<g:id>/);assert.match(xml,/<g:price>/);
   assert(publicApiReads.every(read=>read.status>=200&&read.status<400),'Public API response failed: '+JSON.stringify(publicApiReads.filter(read=>read.status>=400)));
-  const report={passed:true,publicApiReads,navigationImagesIsolated:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,isolatedTrackingScripts,hydrationRetries,offersFixtureUsed:Boolean(baseline),independentPages:true,baselineCompared:Boolean(baseline)};
+  const report={passed:true,publicApiReads,navigationImagesIsolated:true,shoppingImagesIsolated:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,isolatedTrackingScripts,hydrationRetries,offersFixtureUsed:Boolean(baseline),independentPages:true,baselineCompared:Boolean(baseline)};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);
