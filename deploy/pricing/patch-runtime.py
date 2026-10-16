@@ -44,4 +44,11 @@ def patch_runtime(base,overlay,app='web'):
         put('server.mjs',source)
         for name in ['model.mjs','handler.mjs','admin.html','admin.mjs','storefront.mjs','styles.css']:put('pricing/'+name,(HERE/name).read_text(encoding='utf-8'))
         put('offers/checkout.js',(HERE/'checkout.js').read_text(encoding='utf-8'))
+        editor=base/'offers/editor.html'
+        if editor.exists():
+            content=editor.read_text(encoding='utf-8')
+            old='Enable checkout offers to apply 15% off, or one selected dress for ₹1 on regular purchases above ₹3,999. One offer per order. Shipping is separate.'
+            new='Manage the private ₹1 dress test for the selected verified login. Additional checkout percentage discounts are disabled. Review and correct published MRPs and selling prices in the Published product pricing page.'
+            assert content.count(old)==1 or content.count(new)==1,'Recognized offer editor description required'
+            put('offers/editor.html',content.replace(old,new,1))
     return {'passed':True,'allowedFiles':sorted(allowed),'databaseWrites':False,'cataloguePricesUnchanged':True,'checkoutPercentDisabled':True}
