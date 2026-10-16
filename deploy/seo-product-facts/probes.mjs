@@ -33,7 +33,9 @@ export async function probe(base,output,options={}){
     await p.screenshot({path:`${output}/${engine}-${width}-included-pieces.png`,fullPage:false});
     // Navigate through the real collection and its product link to test RSC/client assets.
     await p.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});await p.locator('main article').first().waitFor();
-    await p.locator('main article a[href="'+path+'"]').first().click({position:{x:8,y:8}});
+    const productLink=p.locator('main article h3 a[href="'+path+'"]').first();
+    await productLink.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
+    await productLink.click({position:{x:8,y:8}});
     await p.waitForURL('**'+path,{waitUntil:'domcontentloaded'});await summary.getByText('Included pieces',{exact:true}).waitFor();
     assert.equal(await summary.innerText(),before);
     for(const [slug,statement] of [
