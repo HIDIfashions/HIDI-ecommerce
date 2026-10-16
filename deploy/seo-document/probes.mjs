@@ -3,7 +3,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {guideRoutes,returnPolicy} from './discovery.mjs';
-import {probe as collectionProbe} from '../collection-seo/probes.mjs';
+import {probe as collectionProbe} from './shopping-probes.mjs';
 export async function discoveryProbe(base,output,{baseline}={}){
  await mkdir(output,{recursive:true});
  const headers={'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'};

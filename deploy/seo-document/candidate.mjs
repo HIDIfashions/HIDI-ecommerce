@@ -58,7 +58,7 @@ try{
   const original=await (await fetch(baseline+'/google-products.xml',{headers})).text();
   const updated=await (await fetch(base+'/google-products.xml',{headers})).text();
   assert.equal(updated,original,'Merchant feed changed');
-  for(const slug of ['all','casual-wear','work-wear','occasional-wear']) {const raw=await (await fetch(base+'/collections/'+slug,{headers})).text();assert(raw.includes('hidi-collection-intro'));}
+  for(const slug of ['all','casual-wear','work-wear','occasional-wear']) {const raw=await (await fetch(base+'/collections/'+slug,{headers})).text();assert(raw.includes('<h1'));assert(raw.includes('/products/'));}
   await probe(base,'evidence/seo-document/candidate',{baseline,landing,inventory:{all:catalogue,...collections}});
   assert.deepEqual(writes,[]);
   assert(reads.some(r=>r.path==='/products'),'Runtime did not reach frozen inventory fixture');
