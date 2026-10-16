@@ -1,0 +1,117 @@
+name: Guarded mobile LCP and homepage performance release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/lcp-performance-release.yml]
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+env:
+  HIDI_PLAYWRIGHT_MODULE: /tmp/media-tools/node_modules/playwright/index.mjs
+  HIDI_LIGHTHOUSE_MODULE: /tmp/media-tools/node_modules/lighthouse/cli/index.js
+  PLAYWRIGHT_BROWSERS_PATH: /tmp/media-browsers
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    concurrency:
+      group: hidi-home-lcp-prepare
+      queue: max
+      cancel-in-progress: false
+    outputs:
+      image: ${{ steps.publish.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Verify protocol safety and install media/browser tooling
+        run: |
+          google-chrome --version
+          node --test deploy/lcp-performance/head.test.mjs
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
+          node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture stable production and fresh rollback copies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/lcp-performance/release.py capture
+          echo "CANDIDATE_WEB=acrhidiprod0927.azurecr.io/hidi-web:lcp-performance-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+      - name: Measure current mobile and desktop performance
+        run: node deploy/lcp-performance/lighthouse.mjs before
+      - name: Compose parser-first header and responsive portraits; preserve CSS
+        run: python3 deploy/lcp-performance/release.py compose
+      - name: Verify candidate bundle, design, media and compression
+        run: node deploy/lcp-performance/candidate.mjs
+      - name: Publish the tested immutable image
+        id: publish
+        run: |
+          docker push "$CANDIDATE_WEB"
+          digest="$(az acr repository show --name acrhidiprod0927 --image "hidi-web:lcp-performance-${GITHUB_RUN_ID}" --query digest -o tsv --only-show-errors)"
+          echo "image=acrhidiprod0927.azurecr.io/hidi-web@$digest" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcp-prepared-${{ github.run_id }}
+          path: evidence/lcp-performance
+          retention-days: 30
+          overwrite: true
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: hidi-hero-guarded-release
+      queue: max
+      cancel-in-progress: false
+    env:
+      WEB_IMAGE: ${{ needs.prepare.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: lcp-prepared-${{ github.run_id }}
+          path: evidence/lcp-performance
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Install live verification tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
+          node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Reject concurrent changes, deploy web only and verify live
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          export CANDIDATE_WEB="acrhidiprod0927.azurecr.io/hidi-web:lcp-performance-${GITHUB_RUN_ID}"
+          if ! python3 deploy/lcp-performance/release.py deploy_capture; then
+            echo "Production advanced while preparing; rebuild and repeat every check under the deployment lock."
+            python3 deploy/lcp-performance/release.py capture
+            node deploy/lcp-performance/lighthouse.mjs before
+            python3 deploy/lcp-performance/release.py compose
+            node deploy/lcp-performance/candidate.mjs
+            docker push "$CANDIDATE_WEB"
+            digest="$(az acr repository show --name acrhidiprod0927 --image "hidi-web:lcp-performance-${GITHUB_RUN_ID}" --query digest -o tsv --only-show-errors)"
+            export WEB_IMAGE="acrhidiprod0927.azurecr.io/hidi-web@$digest"
+          fi
+          python3 deploy/lcp-performance/release.py apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcp-live-${{ github.run_id }}
+          path: evidence/lcp-performance
+          retention-days: 30
+          overwrite: true
