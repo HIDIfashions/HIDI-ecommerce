@@ -15,7 +15,7 @@ function apply(){
   }else removeCampaign();
   // Compare only an explicit MRP and selling price rendered together. Variant
   // changes trigger this observer again; ranges never inherit another size's MRP.
-  const groups=document.querySelectorAll('[class*="priceRow"],[class*="priceBlock"],[class*="pricing"],.pdp-price');
+  const groups=document.querySelectorAll('[class*="priceRow"],[class*="priceBlock"],[class*="pricing"],[class*="editorial-product-card_price__"],[class*="quickPrice"],.pdp-price');
   for(const group of groups){
     const old=group.querySelector('[data-hidi-price-badge]'),mrp=group.querySelector('s,del'),selling=group.querySelector('strong');
     const directText=[...group.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('');

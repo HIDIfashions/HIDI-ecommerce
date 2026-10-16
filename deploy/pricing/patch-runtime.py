@@ -27,13 +27,16 @@ def patch_runtime(base,overlay,app='web'):
         assert allowed,'Existing offer engine required'
     else:
         source=(base/'server.mjs').read_text(encoding='utf-8')
-        assert 'createPricingHandler' not in source,'Pricing already installed'
-        source=once(source,'import { createOffersHandler } from "./offers/handler.mjs";','\nimport { createPricingHandler } from "./pricing/handler.mjs";')
-        source=once(source,'const handleOffers = createOffersHandler({ origin });','\nconst handlePricing = createPricingHandler({ origin });')
-        source=once(source,'  if (await handleOffers(request, response, pathname)) return;','\n  if (await handlePricing(request, response, pathname)) return;')
         injection="\n  if (!html.includes('data-hidi-pricing-loader')) html = html.replace(/<\\/head>/i, '<link rel=\"stylesheet\" href=\"/pricing-assets/styles.css\"><script type=\"module\" data-hidi-pricing-loader src=\"/pricing-assets/storefront.mjs\"></script></head>');"
-        # injectOffers runs for both the static homepage and retained Next routes.
-        source=once(source,'function injectOffers(html, pathname) {',injection)
+        if 'createPricingHandler' in source:
+            for hook in ['import { createPricingHandler } from "./pricing/handler.mjs";','const handlePricing = createPricingHandler({ origin });','  if (await handlePricing(request, response, pathname)) return;',injection]:
+                assert source.count(hook)==1,'Unexpected existing pricing hook'
+        else:
+            source=once(source,'import { createOffersHandler } from "./offers/handler.mjs";','\nimport { createPricingHandler } from "./pricing/handler.mjs";')
+            source=once(source,'const handleOffers = createOffersHandler({ origin });','\nconst handlePricing = createPricingHandler({ origin });')
+            source=once(source,'  if (await handleOffers(request, response, pathname)) return;','\n  if (await handlePricing(request, response, pathname)) return;')
+            # injectOffers runs for both the static homepage and retained Next routes.
+            source=once(source,'function injectOffers(html, pathname) {',injection)
         put('server.mjs',source)
         for name in ['model.mjs','handler.mjs','admin.html','admin.mjs','storefront.mjs','styles.css']:put('pricing/'+name,(HERE/name).read_text(encoding='utf-8'))
         put('offers/checkout.js',(HERE/'checkout.js').read_text(encoding='utf-8'))

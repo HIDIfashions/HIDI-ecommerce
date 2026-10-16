@@ -1,4 +1,4 @@
-import { priceStatus, target15, variantPayload } from './model.mjs';
+import { priceStatus, target15, variantPayload, paise } from './model.mjs';
 const $ = id => document.getElementById(id), rupees = n => (n / 100).toFixed(2);
 let products = [], busy = false, dirty = new Set();
 const inputs = new Map();
@@ -33,7 +33,7 @@ function render() {
     cell(state.valid?state.percent.toFixed(2)+'%'+(state.exact15?' · Ready':''):'Invalid prices');
     const suggestion=cell(rupees(target15(v.mrpPaise))),action=cell(''),target=document.createElement('button'),save=document.createElement('button'),feedback=document.createElement('span');
     target.type=save.type='button';target.textContent='Use 15% target';save.textContent='Save row';feedback.setAttribute('role','status');
-    target.onclick=()=>{try{const body=variantPayload(p,v,fields.mrp.value,fields.price.value);fields.price.value=rupees(target15(body.mrpPaise));suggestion.textContent=fields.price.value;dirty.add(v.id);summary();}catch(e){feedback.textContent=e.message;}};
+    target.onclick=()=>{try{fields.price.value=rupees(target15(paise(fields.mrp.value)));suggestion.textContent=fields.price.value;dirty.add(v.id);summary();}catch(e){feedback.textContent=e.message;}};
     save.onclick=async()=>{
       if(busy)return;
       let body;try{body=variantPayload(p,v,fields.mrp.value,fields.price.value);}catch(e){feedback.textContent=e.message;return;}

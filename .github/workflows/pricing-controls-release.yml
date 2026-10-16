@@ -26,6 +26,7 @@ jobs:
         run: |
           node --test deploy/pricing/model.test.mjs deploy/pricing/handler.test.mjs deploy/offers/model.test.mjs deploy/offers/handler.test.mjs
           python3 -m py_compile deploy/pricing/patch-runtime.py deploy/pricing/release.py
+          python3 deploy/pricing/patch.test.py
           for file in deploy/pricing/*.mjs deploy/pricing/checkout.js; do node --check "$file"; done
       - name: Install exact-manifest backup tooling and three browser engines
         run: |
