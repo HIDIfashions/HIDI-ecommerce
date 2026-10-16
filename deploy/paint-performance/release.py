@@ -43,6 +43,9 @@ def compose():
     proof=preserve.verify(base,candidate,overlay,set(report['allowedFiles']),json.loads(images.docker('image','inspect',image,tag)))
     assert all((candidate/p).read_bytes()==(base/p).read_bytes() for p in images.fingerprints(base) if p.endswith('.css'))
     proof.update({'allExistingCssIdentical':True,'originalUploadsPreserved':True,'nextStorefrontIdentical':True})
+    assert not any(name.startswith(('pricing/','apps/web/')) for name in report['allowedFiles']),'Commerce files must remain outside the performance overlay'
+    assert (candidate/'pricing/storefront.mjs').read_bytes()==(base/'pricing/storefront.mjs').read_bytes()
+    save('commerce-preservation.json',{'passed':True,'allPricingAndNextFilesByteIdentical':True,'homepageLoaderOnly':True,'globalPricingSourceSha256':report['globalPricingSourceSha256']})
     save('preservation.json',proof);photo.unchanged(photo.states())
 def wait(image,suffix,baseline):
     for _ in range(120):
@@ -53,7 +56,7 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
