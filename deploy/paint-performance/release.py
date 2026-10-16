@@ -28,9 +28,10 @@ def compose():
     photo.require_backups();photo.unchanged(photo.states())
     folder=PRIVATE/'web';folder.mkdir();base=folder/'base-app';overlay=folder/'overlay';candidate=folder/'candidate-app'
     image=photo.states()['hidi-web']['image'];images.extract(image,base)
+    icons=patch.build_icons(base,overlay);save('icon-quality.json',icons)
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True)
     poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);(overlay/'poster-build.json').unlink()
-    report=patch.patch_web(base,overlay,poster);manifest=report.pop('manifest')
+    report=patch.patch_web(base,overlay,poster,icons);manifest=report.pop('manifest')
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
     save('patch.json',report);save('manifest.json',manifest)
     for name in report['allowedFiles']:
