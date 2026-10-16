@@ -39,6 +39,11 @@ export async function probe(base,output,{engines=['chromium','firefox','webkit']
   await page.locator('#pricing-pdp-fixture [data-hidi-price-mrp]').waitFor();assert.match(await page.locator('#pricing-pdp-fixture [data-hidi-price-mrp]').innerText(),/1,000/);assert.equal(await page.locator('#pricing-pdp-fixture [data-hidi-price-badge]').innerText(),'0% discount');
   await page.evaluate(()=>{document.querySelector('#pricing-pdp-fixture .pdp-price').innerHTML='₹850<del>MRP ₹1,000</del><span>inclusive of taxes</span>';document.querySelector('#pricing-pdp-fixture .pdp-selected-detail').textContent='Ivory · Size L · SKU PRICE-L';});
   await page.locator('#pricing-pdp-fixture [data-hidi-price-badge]').filter({hasText:'15% OFF'}).waitFor();assert.equal(await page.locator('#pricing-pdp-fixture [data-hidi-price-mrp]').count(),0);assert.match(await page.locator('#pricing-pdp-fixture [data-hidi-selling-label]').innerText(),/Selling price/);
+  // Pricing is a child entry immediately below Products in every admin menu.
+  await page.evaluate(()=>{history.replaceState(null,'','/admin');const nav=document.createElement('nav');nav.setAttribute('aria-label','Admin navigation');nav.innerHTML='<div><a href="/admin/products">Products</a><a href="/admin/inventory">Inventory</a></div>';document.querySelector('main').prepend(nav);});
+  await page.getByRole('link',{name:'Product pricing',exact:true}).waitFor();
+  assert.equal(await page.locator('a[href="/admin/products"] + [data-hidi-pricing-link]').count(),1);
+  assert.equal(await page.getByRole('link',{name:'Product pricing',exact:true}).getAttribute('href'),'/admin/product-pricing');
   const checkout=await(await fetch(base+'/offers-assets/checkout.js')).text();assert(!checkout.includes("+'15% off',()=>changed"));assert(checkout.includes('Your private ₹1 dress test'));
   await context.close();results.push({engine,width,pagination:true,noAutomaticPriceWrites:true,manualSave:true,automaticSellingPrice:true,invalidPercentBlocked:true,zeroDiscountProductMrp:true,productSelectionRefresh:true,measurementsPreserved:true,unsavedSiblingPreserved:true,conflictsRejected:true,falseSitewideClaimSuppressed:true,qualifiedBanner:true,extraPercentButtonRemoved:true});
  }}finally{await browser.close();}}

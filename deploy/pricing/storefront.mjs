@@ -5,7 +5,13 @@ function removeCampaign(){document.querySelectorAll('[data-hidi-price-announceme
 function apply(){
   if(location.pathname.startsWith('/admin')){
     removeCampaign();
-    for(const nav of document.querySelectorAll('nav[aria-label="Admin navigation"]'))if(!nav.querySelector('[data-hidi-pricing-link]')){const a=document.createElement('a');a.href='/admin/product-pricing';a.textContent='Published product pricing';a.className='hidi-price-admin-link';a.dataset.hidiPricingLink='true';nav.append(a);}
+    for(const nav of document.querySelectorAll('nav[aria-label="Admin navigation"]')){
+      const products=nav.querySelector('a[href="/admin/products"]');
+      if(!products)continue;
+      let a=nav.querySelector('[data-hidi-pricing-link]');
+      if(!a){a=document.createElement('a');a.href='/admin/product-pricing';a.textContent='Pricing';a.setAttribute('aria-label','Product pricing');a.className=products.className+' hidi-price-admin-link';a.dataset.hidiPricingLink='true';}
+      if(products.nextElementSibling!==a)products.after(a);
+    }
     return;
   }
   if(ready){
