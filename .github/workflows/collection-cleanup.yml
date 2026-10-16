@@ -27,6 +27,7 @@ jobs:
           python3 deploy/collection-cleanup/test_patch.py
           python3 -m py_compile deploy/collection-cleanup/patch-runtime.py deploy/collection-cleanup/release.py
           node --check deploy/collection-cleanup/candidate.mjs
+          node --check deploy/collection-cleanup/baseline-private.mjs
           node --check deploy/collection-cleanup/probes.mjs
           node --test deploy/merchant-feed/feed.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs tests/storefront-surfaces.test.cjs
       - name: Install isolated browser engines and exact image backup tooling

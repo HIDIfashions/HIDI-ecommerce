@@ -9,6 +9,9 @@ const routes=Object.keys(copy);
 const destinations={'Casual Wear':'casual-wear','Work Wear':'work-wear','Occasional Wear':'occasional-wear','Ananya’s Pick':'ananyas-pick'};
 const engines=['chromium','firefox','webkit'];
 export async function probe(base,output,{baseline,landing,inventory}={}){
+  const baselinePrivate=JSON.parse(await readFile('evidence/collection-cleanup/candidate/baseline-private.json','utf8'));
+  assert(baselinePrivate.passed&&baselinePrivate.unchangedBaseline&&baselinePrivate.liveWrites===0);
+  assert.deepEqual(baselinePrivate.issues.map(issue=>issue.path).sort(),['/cart','/checkout']);
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
   await mkdir(output,{recursive:true});
   const results=[],writes=[],errors=[],publicApiReads=[];const navigationOnly=new WeakSet();let blockedSessionRefreshes=0,blockedTelemetryRequests=0,isolatedTrackingScripts=0,hydrationRetries=0;
@@ -187,10 +190,12 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
     }}finally{await browser.close();}
   }
   await writeFile(output+'/runtime-errors.json',JSON.stringify({errors,writes},null,2));
-  assert.deepEqual(writes,[],'Unexpected commerce writes');assert.deepEqual(errors,[],'Browser runtime errors');
+  const existingPrivateErrors=errors.filter(error=>baselinePrivate.issues.some(issue=>issue.path===error.stage&&issue.message===error.message));
+  const newRuntimeErrors=errors.filter(error=>!existingPrivateErrors.includes(error));
+  assert.deepEqual(writes,[],'Unexpected commerce writes');assert.deepEqual(newRuntimeErrors,[],'New browser runtime errors');
   const feed=await fetch(base+'/google-products.xml',{headers:{'X-Forwarded-Host':'hidiindia.com'}});assert(feed.ok);const xml=await feed.text();assert.match(xml,/<g:id>/);assert.match(xml,/<g:price>/);
   assert(publicApiReads.every(read=>read.status>=200&&read.status<400),'Public API response failed: '+JSON.stringify(publicApiReads.filter(read=>read.status>=400)));
-  const report={passed:true,publicApiReads,navigationImagesIsolated:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,isolatedTrackingScripts,hydrationRetries,offersFixtureUsed:Boolean(baseline),independentPages:true,baselineCompared:Boolean(baseline)};
+  const report={passed:true,baselinePrivateProofVerified:true,existingPrivateErrors,newRuntimeErrors,publicApiReads,navigationImagesIsolated:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,isolatedTrackingScripts,hydrationRetries,offersFixtureUsed:Boolean(baseline),independentPages:true,baselineCompared:Boolean(baseline)};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);

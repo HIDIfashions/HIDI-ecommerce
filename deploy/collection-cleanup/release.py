@@ -54,11 +54,13 @@ def compose():
     photo.unchanged(before);print('PASS: only reviewed collection content changed')
 def seal():
     photo.unchanged(photo.states());manifest={}
-    for name in ['candidate/report.json','inventory.json','patch.json','web-preservation.json']:
+    for name in ['candidate/report.json','candidate/baseline-private.json','inventory.json','patch.json','web-preservation.json']:
         value=read(name);assert value.get('passed') is True,name+' must pass';manifest[name]=digest(EVIDENCE/name)
     assert read('candidate/report.json')['engines']==['chromium','firefox','webkit'] and len(read('candidate/report.json')['results'])==9
     assert read('candidate/report.json')['baselineCompared'] is True
     assert read('candidate/report.json')['liveWrites']==0
+    assert read('candidate/report.json')['baselinePrivateProofVerified'] is True
+    assert read('candidate/report.json')['newRuntimeErrors']==[]
     save('candidate-regression.json',{'passed':True,'candidateImageId':image_id(own_tag()),'reportManifest':manifest,'sourceSha':os.environ['GITHUB_SHA']})
 def publish():
     seal();report=read('candidate-regression.json');subprocess.run(['docker','push',own_tag()],check=True)

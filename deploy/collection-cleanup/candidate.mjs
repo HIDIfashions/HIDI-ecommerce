@@ -3,6 +3,7 @@ import {createServer} from 'node:http';
 import {execFileSync} from 'node:child_process';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {probe} from './probes.mjs';
+import {baselinePrivateProof} from './baseline-private.mjs';
 import {resolve} from 'node:path';
 
 const images=JSON.parse(await readFile('evidence/collection-cleanup/web-preservation.json','utf8'));
@@ -59,6 +60,7 @@ try{
   const updated=await (await fetch(base+'/google-products.xml',{headers})).text();
   assert.equal(updated,original,'Merchant feed changed');
   for(const slug of ['all','casual-wear','work-wear','occasional-wear']) {const raw=await (await fetch(base+'/collections/'+slug,{headers})).text();assert(!raw.includes('hidi-collection-intro'));assert(!raw.includes('Explore HIDI collections'));}
+  await baselinePrivateProof(baseline,'evidence/collection-cleanup/candidate');
   await probe(base,'evidence/collection-cleanup/candidate',{baseline,landing,inventory:{all:catalogue,...collections}});
   assert.deepEqual(writes,[]);
   assert(reads.some(r=>r.path==='/products'),'Runtime did not reach frozen inventory fixture');
