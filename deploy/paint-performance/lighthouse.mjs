@@ -1,5 +1,6 @@
 import {spawn} from 'node:child_process';import {readFile,writeFile,mkdir,open} from 'node:fs/promises';import {pathToFileURL} from 'node:url';import {resolve} from 'node:path';
 import {existsSync} from 'node:fs';
+import {summarizeTrials} from './summary.mjs';
 const mode=process.argv[2],out=resolve('evidence/paint-performance/lighthouse');await mkdir(out,{recursive:true});
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),rows=[];
 const chromeFlags=['--headless','--no-sandbox','--disable-dev-shm-usage'];
@@ -13,7 +14,7 @@ for(const device of ['mobile','desktop']){
  const report=JSON.parse(await readFile(prefix+'.report.json','utf8'));if(report.runtimeError)throw Error(report.runtimeError.message);
  const a=report.audits,protocol=a['network-requests'].details.items.find(item=>item.resourceType==='Document')?.protocol;samples.push({device,protocol,profile:{formFactor:report.configSettings.formFactor,throttlingMethod:report.configSettings.throttlingMethod,throttling:report.configSettings.throttling,screenEmulation:report.configSettings.screenEmulation},score:Math.round(report.categories.performance.score*100),lcp:a['largest-contentful-paint'].numericValue,blocking:a['total-blocking-time'].numericValue,cls:a['cumulative-layout-shift'].numericValue,bytes:a['total-byte-weight'].numericValue,warnings:report.runWarnings});
  }
- samples.sort((a,b)=>a.lcp-b.lcp);const score=[...samples].sort((a,b)=>a.score-b.score)[1].score;rows.push({...samples[1],score,samples});
+ rows.push(summarizeTrials(samples));
 }
 await writeFile(out+'/'+mode+'.json',JSON.stringify(rows,null,2));
 if(mode==='candidate'){

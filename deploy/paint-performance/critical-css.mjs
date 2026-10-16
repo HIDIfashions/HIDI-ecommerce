@@ -12,9 +12,6 @@ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});const
 await page.route('**/*',r=>r.abort());await page.setContent(html);
 const styles={};
 try{for(const href of new Set(hrefs)){
- // Only split the main homepage sheet. Runtime offer, header, countdown and
- // other supplemental sheets keep their existing complete inline delivery.
- if(!/^(?:\.?\/)?assets\/index-[A-Za-z0-9_-]+\.css$/.test(href))continue;
  const url=new URL(href,'https://hidiindia.com/'),special={'/pricing-assets/styles.css':'pricing/styles.css','/offers-assets/offers.css':'offers/offers.css'};
  let input;try{input=await readFile(resolve(base,special[url.pathname]||'dist'+url.pathname),'utf8');}catch{continue;}
  if(input.length>160000||/@import\b/i.test(input)||/<\/style/i.test(input))continue;
@@ -24,7 +21,7 @@ try{for(const href of new Set(hrefs)){
   const keep=rule=>{
    if(rule.type===CSSRule.STYLE_RULE){
     const selector=rule.selectorText;
-    if(/\.(?:hero[\w-]*|site-header|header-actions|desktop-nav|brand-logo|announcement[\w-]*|hidi-price-announcement)\b/.test(selector))return rule.cssText;
+    if(/\.hidi-price-announcement\b/.test(selector))return rule.cssText;
     try{const plain=selector.replace(/::[\w-]+(?:\([^)]*\))?/g,'').replace(/:(?:hover|focus-visible|focus-within|focus|active|visited|link|target|disabled|enabled|checked)\b/g,'');return document.querySelector(plain)?rule.cssText:'';}catch{return rule.cssText;}
    }
    if(rule.cssRules&&rule.type!==CSSRule.KEYFRAMES_RULE){const children=[...rule.cssRules].map(keep).join('');return children?rule.cssText.slice(0,rule.cssText.indexOf('{')+1)+children+'}':'';}

@@ -9,6 +9,11 @@ export async function verifyInitialCss(pw,base,out,mode){
    try{
     await page.route('**/*',async route=>{const req=route.request(),url=new URL(req.url());
      if(url.origin!==new URL(base).origin||!['GET','HEAD'].includes(req.method()))return route.abort();
+     if(url.pathname==='/'){
+      const response=await route.fetch();let html=await response.text();
+      html=html.replace(/<script data-hidi-full-css-activate="true">[\s\S]*?<\/script>/,'');
+      return route.fulfill({response,body:html});
+     }
      if(/\/assets\/index-[^/]+\.js$/.test(url.pathname))return route.abort();
      if(/\/assets\/index-[^/]+\.css$/.test(url.pathname))await gate;
      return route.continue();
@@ -28,7 +33,7 @@ export async function verifyInitialCss(pw,base,out,mode){
     }));
     const initial=await snapshot();
     release();await page.evaluate(async()=>{
-     if(window.__HidiFullCssReady)return window.__HidiFullCssReady;
+     if(window.__HidiFullCssReady){window.__HidiActivateFullCss?.();return window.__HidiFullCssReady;}
      const inline=document.querySelector('style[data-hidi-inline-css*="index-"]');
      const link=document.createElement('link');link.rel='stylesheet';link.href=inline.dataset.hidiInlineCss;
      await new Promise((resolve,reject)=>{link.onload=resolve;link.onerror=()=>reject(Error('Original CSS unavailable'));inline.before(link);});
