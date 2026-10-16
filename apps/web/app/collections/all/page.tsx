@@ -1,3 +1,4 @@
+import { CollectionLinks } from "@/components/collection-links";
 import type { Metadata } from "next";
 import { CollectionBrowser } from "@/components/collection-browser";
 import { getProducts } from "@/lib/api";
@@ -5,7 +6,7 @@ import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
-const title = "All Products";
+const title = "Women's Kurta Sets & Indian Wear";
 const description = "Shop HIDI women's kurta sets and Indian wear for work, everyday dressing and special occasions. Explore colours, sizes and the complete collection.";
 
 export const metadata: Metadata = {
@@ -41,8 +42,10 @@ export default async function ShopAllPage() {
   return (
     <div className="container collection-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }} />
-      <header className="collection-header">
+      <header className="collection-header" style={{display:"block"}}>
         <h1>{title}</h1>
+        <p className="hidi-collection-intro" style={{maxWidth:"68ch",margin:"12px auto 0",fontSize:15,lineHeight:1.6}}>Shop women’s kurta sets and Indian wear for everyday plans, the office and celebrations. Explore printed and embroidered designs, including styles with straight pants and dupattas. Check each product for the exact included pieces, fabric, garment measurements and available sizes.</p>
+        <CollectionLinks current="all" />
       </header>
 
       <CollectionBrowser products={products} />
