@@ -1,3 +1,4 @@
+# Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
   workflow_dispatch: {}
