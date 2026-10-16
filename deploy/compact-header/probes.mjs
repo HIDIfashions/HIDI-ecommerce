@@ -37,7 +37,11 @@ export async function probe(base,output,{baseline,landing}={}){
    });
    let page,stage='';
    const pending=new Map();
-   const fresh=async(path,observed=true)=>{const p=await context.newPage();p.setDefaultTimeout(45000);const reads=new Set();pending.set(p,reads);p.on('request',r=>{const path=new URL(r.url()).pathname;if(path.startsWith('/api/store/')||path==='/api/admin/session'||path==='/api/hidi/offers')reads.add(r);});for(const event of ['requestfinished','requestfailed'])p.on(event,r=>reads.delete(r));if(observed)p.on('pageerror',e=>errors.push({engine,width,stage:path,message:e.message}));await navigate(p,(observed?base:baseline)+path,gatewayRetries);return p;};
+   const fresh=async(path,observed=true)=>{const p=await context.newPage();p.setDefaultTimeout(45000);const reads=new Set();pending.set(p,reads);p.on('request',r=>{const path=new URL(r.url()).pathname;if(path.startsWith('/api/store/')||path==='/api/admin/session'||path==='/api/hidi/offers')reads.add(r);});for(const event of ['requestfinished','requestfailed'])p.on(event,r=>reads.delete(r));if(observed)p.on('pageerror',e=>errors.push({engine,width,stage:path,message:e.message}));await navigate(p,(observed?base:baseline)+path,gatewayRetries);
+    // SSR controls can be visible before React attaches their handlers. This
+    // inline measurement is written by Header's client effect, never by CSS.
+    if(path!=='/')await p.waitForFunction(()=>Boolean(document.documentElement.style.getPropertyValue('--hidi-header-height'))&&Boolean(localStorage.getItem('hidi_cart_session')),{},{polling:100,timeout:45000});
+    return p;};
    const settle=async p=>{let quiet=0;for(let elapsed=0;elapsed<30000;elapsed+=50){await new Promise(r=>setTimeout(r,50));quiet=pending.get(p).size?0:quiet+50;if(quiet>=500)return;}assert.fail('Commerce reads did not settle: '+[...pending.get(p)].map(r=>r.url()).join(', '));};
    const finish=async p=>{await settle(p);p.removeAllListeners('pageerror');await p.close();};
    const measure=async(p,path)=>{
