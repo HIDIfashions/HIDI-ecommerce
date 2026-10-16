@@ -9,11 +9,13 @@ export async function probe(base,output,{baseline,landing}={}){
  assert(proof.passed&&proof.unchangedBaseline&&proof.liveWrites===0);
  const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
  await mkdir(output,{recursive:true});
- const errors=[],writes=[],gatewayRetries=[],results=[];
+ const errors=[],writes=[],gatewayRetries=[],results=[],readiness=[];
  landing ||= await (await fetch('https://hidiindia.com/api/hidi/landing-media-config')).json();
  const hero=await (await fetch('https://hidiindia.com/api/hidi/hero-config')).json();
  const offers=await (await fetch('https://hidiindia.com/api/hidi/offers')).json();
- const metadata=p=>p.locator('head title,head meta,head link[rel=canonical]').evaluateAll(nodes=>nodes.map(n=>n.outerHTML).sort());
+ // Next streams duplicate identical head tags during client commit. Compare
+ // exact semantic values; any missing or conflicting value still differs.
+ const metadata=p=>p.locator('head title,head meta,head link[rel=canonical]').evaluateAll(nodes=>[...new Set(nodes.map(n=>n.outerHTML))].sort());
  const footer=p=>p.locator('footer').evaluateAll(nodes=>nodes.map(n=>({text:n.textContent,images:[...n.querySelectorAll('img')].map(i=>({src:new URL(i.src).pathname,width:i.getBoundingClientRect().width,height:i.getBoundingClientRect().height}))})));
  for(const engine of engines){
   const browser=await pw[engine].launch({headless:true,...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
@@ -35,7 +37,16 @@ export async function probe(base,output,{baseline,landing}={}){
    });
    let page,stage='';
    const pending=new Map();
-   const fresh=async(path,observed=true)=>{const p=await context.newPage();p.setDefaultTimeout(45000);const reads=new Set();pending.set(p,reads);p.on('request',r=>{const path=new URL(r.url()).pathname;if(path.startsWith('/api/store/')||path==='/api/admin/session'||path==='/api/hidi/offers')reads.add(r);});for(const event of ['requestfinished','requestfailed'])p.on(event,r=>reads.delete(r));if(observed)p.on('pageerror',e=>errors.push({engine,width,stage:path,message:e.message}));await navigate(p,(observed?base:baseline)+path,gatewayRetries);return p;};
+   const fresh=async(path,observed=true)=>{const p=await context.newPage();p.setDefaultTimeout(45000);const reads=new Set(),network=[];pending.set(p,reads);p.on('request',r=>{const path=new URL(r.url()).pathname;if(path.startsWith('/api/store/')||path==='/api/admin/session'||path==='/api/hidi/offers')reads.add(r);});for(const event of ['requestfinished','requestfailed'])p.on(event,r=>reads.delete(r));p.on('requestfailed',r=>network.push({path:new URL(r.url()).pathname,failure:r.failure(),type:r.resourceType()}));p.on('response',r=>{if(r.status()>=400)network.push({path:new URL(r.url()).pathname,status:r.status()});});if(observed)p.on('pageerror',e=>errors.push({engine,width,stage:path,message:e.message}));await navigate(p,(observed?base:baseline)+path,gatewayRetries);
+    // SSR controls can be visible before React attaches their handlers. This
+    // inline measurement is written by Header's client effect, never by CSS.
+    const started=Date.now();
+    // Both unchanged and candidate containers take ~37-39s on the first cold
+    // collection render; subsequent cases take <1s. Keep live's 45s bound.
+    const readinessTimeout=new URL(observed?base:baseline).hostname==='127.0.0.1'?90000:45000;
+    if(path!=='/')try{await p.waitForFunction(()=>Boolean(document.documentElement.style.getPropertyValue('--hidi-header-height'))&&Boolean(localStorage.getItem('hidi_cart_session')),{},{polling:100,timeout:readinessTimeout});}catch(error){const name=`${output}/${engine}-${width}-${observed?'candidate':'baseline'}-readiness`;await writeFile(name+'.html',await p.content());await p.screenshot({path:name+'.png'});await writeFile(name+'.json',JSON.stringify({path,network,pending:[...reads].map(r=>new URL(r.url()).pathname),state:await p.evaluate(()=>({readyState:document.readyState,headerStyle:document.documentElement.getAttribute('style'),storageKeys:Object.keys(localStorage),scripts:[...document.scripts].map(s=>({src:s.getAttribute('src'),type:s.type})),collectionFlag:document.querySelector('[data-hidi-collection-hydrated]')?.getAttribute('data-hidi-collection-hydrated')}))},null,2));throw error;}
+    readiness.push({engine,width,path,observed,clientReadyMs:Date.now()-started});await writeFile(output+'/readiness-progress.json',JSON.stringify(readiness,null,2));
+    return p;};
    const settle=async p=>{let quiet=0;for(let elapsed=0;elapsed<30000;elapsed+=50){await new Promise(r=>setTimeout(r,50));quiet=pending.get(p).size?0:quiet+50;if(quiet>=500)return;}assert.fail('Commerce reads did not settle: '+[...pending.get(p)].map(r=>r.url()).join(', '));};
    const finish=async p=>{await settle(p);p.removeAllListeners('pageerror');await p.close();};
    const measure=async(p,path)=>{
@@ -61,9 +72,9 @@ export async function probe(base,output,{baseline,landing}={}){
       await page.getByRole('button',{name:'Search HIDI products',exact:true}).click();await page.getByRole('dialog').waitFor();await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
      }
      if(path==='/collections/all'){
-      await page.locator('main article').first().waitFor();await page.locator('[data-hidi-collection-hydrated="true"]').waitFor({state:'attached'});assert.equal(await page.locator('.hidi-collection-intro').count(),0);assert.equal(await page.locator('.collection-header h1').textContent(),'All Products');
+      await page.locator('main article').first().waitFor();assert.equal(await page.locator('.hidi-collection-intro').count(),0);assert.equal(await page.locator('.collection-header h1').textContent(),'All Products');
       productPath=new URL(await page.locator('main article h3 a').first().getAttribute('href'),base).pathname;
-      if(baseline){const prior=await fresh(path,false);await prior.locator('[data-hidi-collection-hydrated="true"]').waitFor({state:'attached'});await settle(page);await settle(prior);assert.deepEqual(await metadata(page),await metadata(prior));assert.deepEqual(await footer(page),await footer(prior),'Footer changed');const old=await prior.locator('.wordmark').boundingBox();const ratio=shapes[path].logoWidth/old.width;assert(ratio>=.75&&ratio<=.8,'Logo reduction outside20–25%');await finish(prior);}
+      if(baseline){const prior=await fresh(path,false);await prior.locator('main article').first().waitFor();await settle(page);await settle(prior);assert.deepEqual(await metadata(page),await metadata(prior));assert.deepEqual(await footer(page),await footer(prior),'Footer changed');const old=await prior.locator('.wordmark').boundingBox();const ratio=shapes[path].logoWidth/old.width;assert(ratio>=.75&&ratio<=.8,'Logo reduction outside20–25%');await finish(prior);}
       if(width<=1000){
        const menu=page.getByRole('button',{name:'Open menu',exact:true});await menu.click();const dialog=page.getByRole('dialog',{name:'Mobile navigation'});await dialog.waitFor();
        await page.waitForFunction(()=>{const h=document.querySelector('.site-header').getBoundingClientRect(),d=document.querySelector('#mobile-navigation').getBoundingClientRect();return Math.abs(h.bottom-d.top)<=2;});

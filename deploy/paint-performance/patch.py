@@ -1,4 +1,4 @@
-import base64,hashlib,json,re,struct
+import hashlib,json,re,struct
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
 def once(text,before,after):
@@ -42,7 +42,7 @@ def patch_web(base,overlay,poster,icons=None):
     text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
     text=once(text,'      onCanPlay: revealLiveVideo,\n      onError: () => setFailedSource(liveHero.url),','      onCanPlay: revealLiveVideo,\n      onError: (event) => HidiMediaVideoFallback(event, liveHero.url, () => setFailedSource(liveHero.url)),')
     text=once(text,original_manifest,'const HidiMediaManifest='+json.dumps(manifest,separators=(',',':'))+';')
-    text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; return window.__HidiAvifEnabled && variant.avifPoster ? variant.avifPoster : variant.poster;')
+    text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; const poster = window.__HidiAvifEnabled && variant.avifPoster ? variant.avifPoster : variant.poster; return window.__HidiInlinePosters?.[poster] || poster;')
     text=once(text,'const value = await response.json();','const value = await response.json();\n        window.__HidiAvifEnabled = await window.__HidiAvifSupport || false;')
     anchor='''        const response = await fetch("/api/hidi/hero-config", {
           cache: "no-store",
@@ -55,18 +55,25 @@ def patch_web(base,overlay,poster,icons=None):
           signal: controller.signal
         });'''
     text=once(text,anchor,replacement)
+    text=once(text,'    void loadSelection();','    window.__HidiHeroInitial = null;\n    void loadSelection();')
+    text=once(text,'function Tf() {',(HERE/'hero-initial.js').read_text()+'\nfunction Tf() {\n  const initialHero = HidiHeroReact.useMemo(HidiHeroInitialSelection, []);')
+    for before,after in [
+        ('const [liveItems, setLiveItems] = HidiHeroReact.useState([]);','const [liveItems, setLiveItems] = HidiHeroReact.useState(() => initialHero?.items || []);'),
+        ('const [heroAutoPlay, setHeroAutoPlay] = HidiHeroReact.useState(true);','const [heroAutoPlay, setHeroAutoPlay] = HidiHeroReact.useState(() => initialHero?.autoPlay ?? true);'),
+        ('const [heroInterval, setHeroInterval] = HidiHeroReact.useState(6);','const [heroInterval, setHeroInterval] = HidiHeroReact.useState(() => initialHero?.interval || 6);'),
+        ('const [heroConfigStatus, setHeroConfigStatus] = HidiHeroReact.useState("loading");','const [heroConfigStatus, setHeroConfigStatus] = HidiHeroReact.useState(() => initialHero ? "uploaded" : "loading");'),
+        ('const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(false);','const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(() => Boolean(initialHero) && !reduced && !HidiHeroSaveData());')
+    ]:text=once(text,before,after)
     text=once(text,'const G=await fetch("/api/hidi/landing-media-config",{cache:"no-store",signal:C.signal});','const HidiLandingEarly=window.__HidiLandingEarly;window.__HidiLandingEarly=null;const G=await HidiLandingEarly||await fetch("/api/hidi/landing-media-config",{cache:"no-store",signal:C.signal});')
     text=once(text,'const [soundEnabled, setSoundEnabled] = HidiHeroReact.useState(false);','const [soundEnabled, setSoundEnabled] = HidiHeroReact.useState(() => { const enabled = window.__HidiHeroSoundIntent === true; window.__HidiHeroSoundIntent = false; return enabled; });')
     text=once(text,'const [manualPlayback, setManualPlayback] = HidiHeroReact.useState(false);','const [manualPlayback, setManualPlayback] = HidiHeroReact.useState(() => soundEnabled);')
-    logo=(base/'dist/assets/images/hidi-logo.png').read_bytes();assert len(logo)<=32768
-    text=once(text,'src:Tt("images/hidi-logo.png"),fetchPriority:"high"','src:'+json.dumps('data:image/png;base64,'+base64.b64encode(logo).decode())+',fetchPriority:"high"')
     text=once(text,'    return () => video.pause();\n  }, [liveHero?.url, videoAllowed, reduced, sequence.paused, heroVisible, pageVisible, dialogOpen, soundEnabled, manualPlayback]);','  }, [liveHero?.url, videoAllowed, reduced, sequence.paused, heroVisible, pageVisible, dialogOpen, soundEnabled, manualPlayback]);\n  HidiHeroReact.useEffect(() => {\n    const video = liveVideoRef.current;\n    return () => video?.pause();\n  }, [liveHero?.url]);')
     text=once(text,'  const toggleSound = async () => {\n    const video = liveVideoRef.current;\n    if (!video) return;\n    if (!video.getAttribute("src")) { video.src = HidiMediaVideo(liveHero.url); video.load(); }\n    const enabled = !soundEnabled;\n    setManualPlayback(true);\n    video.muted = !enabled;\n    setSoundEnabled(enabled);\n    try {\n      await video.play();\n    } catch {\n      video.muted = true;\n      setSoundEnabled(false);\n      video.play().catch(() => {\n      });\n    }\n  };\n','  const toggleSound = () => {\n    if (!liveVideoRef.current) return;\n    setManualPlayback(true);\n    setSoundEnabled(enabled => !enabled);\n  };\n')
     start=text.index('    setVideoAllowed(false);\n    let idleId = null;')
     end=text.index('  }, [showBundled, heroConfigStatus, mobile, reduced]);',start)
     expected=(HERE/'video-delay.txt').read_text()
     text=once(text,expected,'    setVideoAllowed(true);\n')
-    text='if (location.pathname === "/" && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));\n'+text
+    text='if (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));\n'+text
     name='assets/index-'+hashlib.sha256(text.encode()).hexdigest()[:16]+'.js'
     assert html.count('/'+old)==2,'Expected app and preload references'
     html=html.replace('/'+old,'/'+name)
@@ -81,16 +88,41 @@ def patch_web(base,overlay,poster,icons=None):
     html=once(html,viewport,viewport+'\n'+'\n'.join(posters)+'\n<script data-hidi-early-hero="true">'+(HERE/'early-hero.js').read_text().replace('__AVIF_PROBE__',poster['probe'])+'</script>')
     runtime=(base/'server.mjs').read_text()
     runtime=once(runtime,'(?:webp|mp4)$','(?:webp|avif|png|mp4)$')
-    runtime=once(runtime,'    if (pathname === "/") html = optimizeHomeHead(html);','    if (pathname === "/") { html = optimizeHomeHead(html); html = await renderInitialHome(html); }')
+    runtime=once(runtime,'    if (pathname === "/") html = optimizeHomeHead(html);','''    if (pathname === "/") {
+      html = optimizeHomeHead(html);
+      response.setHeader("Vary", "Accept, User-Agent, Sec-CH-UA-Mobile, Cookie, Save-Data");
+      if (request.method === "GET") {
+        const headers = applySecurityHeaders({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" }, request, pathname);
+        if (shouldNoIndex(request, pathname)) headers["X-Robots-Tag"] = "noindex, nofollow, noarchive";
+        return streamInitialHome(request, response, headers, html);
+      }
+      html = await renderInitialHome(html, request);
+    }''')
+    runtime='import { streamInitialHome } from "./paint-performance/stream-home.mjs";\n'+runtime
     runtime='import { renderInitialHome } from "./paint-performance/announcement.mjs";\n'+runtime
     runtime='import { sendCachedHome } from "./paint-performance/delivery.mjs";\n'+runtime
+    runtime='import { sendPreparedAsset } from "./paint-performance/static-encoding.mjs";\n'+runtime
+    runtime=once(runtime,'return sendBuffer(request, response, status, response.getHeaders(), readFileSync(filePath));','return sendPreparedAsset(request, response, status, response.getHeaders(), readFileSync(filePath));')
     anchor='    return sendBuffer(request, response, 200, response.getHeaders(), body);'
     runtime=once(runtime,anchor,'    return pathname === "/" ? sendCachedHome(request, response, 200, response.getHeaders(), body) : sendBuffer(request, response, 200, response.getHeaders(), body);')
     pricing=(base/'pricing/storefront.mjs').read_text()
     assert pricing==(HERE.parent/'pricing/storefront.mjs').read_text(),'Current offer module changed; stop'
+    price_presentation=pricing.split('  if(ready){\n',1)[1].split('  }else ',1)[0]
+    price_calculations=pricing.split('  // Compare only an explicit MRP',1)[1].split('async function refresh(){',1)[0]
     pricing=once(pricing,'let ready=false,pending=false','let ready=null,pending=false')
     pricing=once(pricing,'}else removeCampaign();','}else if(ready===false) removeCampaign();')
-    files={'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'pricing/storefront.mjs':pricing,'paint-performance/announcement.mjs':(HERE/'announcement.mjs').read_text(),'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
+    pricing=once(pricing,"const response=await fetch('/api/store/products',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(15000)});", "const initial=window.__HidiCatalogueEarly;window.__HidiCatalogueEarly=null;const response=await initial||await fetch('/api/store/products',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(15000)});")
+    pricing=once(pricing,"window.addEventListener('pageshow',refresh);", "window.addEventListener('pageshow',event=>{if(event.persisted)refresh();});")
+    assert price_presentation in pricing and price_calculations in pricing,'Pricing presentation, hydration protection and calculations must remain exact'
+    pricing=once(pricing,"from './model.mjs'", "from '/pricing-assets/model.mjs'")
+    pricing=once(pricing,'function apply(){',"function apply(){\n  if(location.pathname!=='/'){void import('/pricing-assets/storefront.mjs');return;}")
+    pricing=once(pricing,'async function refresh(){',"async function refresh(){\n  if(location.pathname!=='/'){await import('/pricing-assets/storefront.mjs');return;}")
+    pricing_name='assets/home-pricing-'+hashlib.sha256(pricing.encode()).hexdigest()[:16]+'.js'
+    pricing_metadata={'url':'/'+pricing_name,'sourceSha256':hashlib.sha256((base/'pricing/storefront.mjs').read_text().encode()).hexdigest(),'homeSha256':hashlib.sha256(pricing.encode()).hexdigest()}
+    files={'paint-performance/static-encoding.mjs':(HERE/'static-encoding.mjs').read_text(),'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'dist/'+pricing_name:pricing,'paint-performance/home-pricing.json':json.dumps(pricing_metadata),'paint-performance/announcement.mjs':(HERE/'announcement.mjs').read_text(),'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
+    files['paint-performance/poster-cache-client.js']=(HERE/'poster-cache-client.js').read_text()
+    files['paint-performance/inline-poster.mjs']=(HERE/'inline-poster.mjs').read_text()
+    files['paint-performance/stream-home.mjs']=(HERE/'stream-home.mjs').read_text()
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)
-    return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'manifest':manifest}
+    return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'homePricingBundle':pricing_name,'globalPricingSourceSha256':hashlib.sha256((base/'pricing/storefront.mjs').read_bytes()).hexdigest(),'pricingPresentationAndHydrationPreserved':True,'pricingPresentationSha256':hashlib.sha256(price_presentation.encode()).hexdigest(),'pricingCalculationsSha256':hashlib.sha256(price_calculations.encode()).hexdigest(),'manifest':manifest}

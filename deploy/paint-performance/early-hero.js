@@ -9,6 +9,7 @@
     };
     window.__HidiHeroEarly = read('/api/hidi/hero-config');
     window.__HidiLandingEarly = read('/api/hidi/landing-media-config');
+    window.__HidiCatalogueEarly = read('/api/store/products');
   } catch { /* The normal component request remains the fallback. */ }
 })();
 

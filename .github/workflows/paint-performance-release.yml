@@ -1,5 +1,6 @@
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
-# Live release preserves the verified collection cleanup and product editor; all performance gates remain required.
+# Poster cache verification uses the same production-capable Chrome and decoded-frame checks as playback verification.
+# Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
   workflow_dispatch: {}
@@ -32,9 +33,9 @@ jobs:
         run: |
           google-chrome --version
           python3 deploy/paint-performance/test_icons.py
-          node --test deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/announcement.test.mjs deploy/paint-performance/hero.test.mjs deploy/paint-performance/video-client.test.mjs
+          node --test deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/stream-home.test.mjs deploy/paint-performance/inline-poster.test.mjs deploy/paint-performance/announcement.test.mjs deploy/paint-performance/hero.test.mjs deploy/paint-performance/hero-initial.test.mjs deploy/paint-performance/video-client.test.mjs deploy/paint-performance/static-encoding.test.mjs
           sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg openssl
           npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
@@ -72,7 +73,7 @@ jobs:
     if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[prepare-only]')
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     concurrency:
       group: hidi-hero-guarded-release
       queue: max
@@ -90,7 +91,7 @@ jobs:
       - name: Install live verification tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg openssl
           npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2

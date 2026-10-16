@@ -31,7 +31,12 @@ def compose():
     icons=patch.build_icons(base,overlay);save('icon-quality.json',icons)
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True)
     poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);(overlay/'poster-build.json').unlink()
+    # Keep all original CSS inline: production traces showed the extra sheet request delayed first paint.
+    (overlay/'paint-performance').mkdir(parents=True,exist_ok=True)
+    (overlay/'paint-performance/critical-css.json').write_text(json.dumps({'styles':{}}))
+    save('critical-css-quality.json',{'strategy':'full-inline','allSourceCssPreserved':True,'deferredStyles':0})
     report=patch.patch_web(base,overlay,poster,icons);manifest=report.pop('manifest')
+    subprocess.run(['node',str(HERE/'precompress.mjs'),str(overlay),report['bundle'],str(OUT/'static-encoding-quality.json')],check=True)
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
     save('patch.json',report);save('manifest.json',manifest)
     for name in report['allowedFiles']:
@@ -42,6 +47,9 @@ def compose():
     proof=preserve.verify(base,candidate,overlay,set(report['allowedFiles']),json.loads(images.docker('image','inspect',image,tag)))
     assert all((candidate/p).read_bytes()==(base/p).read_bytes() for p in images.fingerprints(base) if p.endswith('.css'))
     proof.update({'allExistingCssIdentical':True,'originalUploadsPreserved':True,'nextStorefrontIdentical':True})
+    assert not any(name.startswith(('pricing/','apps/web/')) for name in report['allowedFiles']),'Commerce files must remain outside the performance overlay'
+    assert (candidate/'pricing/storefront.mjs').read_bytes()==(base/'pricing/storefront.mjs').read_bytes()
+    save('commerce-preservation.json',{'passed':True,'allPricingAndNextFilesByteIdentical':True,'homepageLoaderOnly':True,'globalPricingSourceSha256':report['globalPricingSourceSha256']})
     save('preservation.json',proof);photo.unchanged(photo.states())
 def wait(image,suffix,baseline):
     for _ in range(120):
@@ -52,8 +60,9 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
+    checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1
         assert row['device']!='mobile' or row['lcp']<2200
@@ -69,6 +78,7 @@ def apply():
         for path in ['/health','/healthz','/api/store/health/ready','/','/collections/all','/cart','/checkout','/account','/admin','/admin/hero-media','/admin/landing-media']:
             cloud.get(path)
         subprocess.run(['node',str(HERE/'probe.mjs'),'https://hidiindia.com','live'],check=True,timeout=600)
+        subprocess.run(['node',str(HERE.parent/'checkout-hydration/probe.mjs'),'https://hidiindia.com',str(OUT/'checkout-live')],check=True,timeout=900,env={**os.environ,'HIDI_BROWSER_ENGINES':'chromium,firefox,webkit','HIDI_LOCAL_OVERLAY':'0'})
         subprocess.run(['node',str(HERE/'lighthouse.mjs'),'after'],check=True,timeout=600)
         assert photo.public_state()==protected,'Published configuration changed'
         assert cloud.snapshot(cloud.app('hidi-api'))==before['hidi-api'],'API changed independently'

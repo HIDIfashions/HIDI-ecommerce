@@ -8,7 +8,7 @@ Candidate and live tests run Chromium, Firefox and WebKit at320,390,768,1001,144
 
 The user saw desktop/mobile layout previews before deployment. Preview HTML disables client scripts; functional gates use the actual complete image. No real orders or payment mutations are performed.
 
-At the768px boundary, the checkout logo needs an explicit full-row grid placement because its menu controls are hidden. Only logo alignment changes; the checkout header height, back link and form clearance are retained. Metadata comparisons wait for both candidate and baseline hydration and commerce reads, retaining exact tag/count comparison.
+At the768px boundary, the checkout logo needs an explicit full-row grid placement because its menu controls are hidden. Only logo alignment changes; the checkout header height, back link and form clearance are retained. Metadata comparisons settle commerce reads and compare exact head values; duplicate identical tags during Next's streamed client commit have the same meaning, while missing or conflicting values still fail. Readiness is proved by real menu/search interactions rather than an internal collection flag.
 
 After the separate checkout fix lands, exact pricing-module byte equality selects strict normal/delayed baseline validation. Its proof has an empty warning allowance; every runtime error fails the complete header matrix. The legacy warning reproduction remains available only when composing over the earlier unchanged pricing module.
 

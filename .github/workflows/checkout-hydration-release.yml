@@ -35,11 +35,6 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y skopeo
           npm install --prefix /tmp/hidi-hydration-browser --no-save playwright@1.62.1
           node /tmp/hidi-hydration-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
-      - name: Require complete regression on this exact source before deployment
-        timeout-minutes: 35
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: python3 deploy/checkout-hydration/wait-source-ci.py
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
@@ -54,6 +49,12 @@ jobs:
       - name: Test actual candidate in Chromium, Firefox and Safari engines
         run: |
           node deploy/checkout-hydration/candidate.mjs
+      - name: Require complete regression on this exact source before publication
+        timeout-minutes: 35
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 deploy/checkout-hydration/wait-source-ci.py
           python3 deploy/checkout-hydration/release.py seal
       - name: Publish the tested immutable image
         run: python3 deploy/checkout-hydration/release.py publish
