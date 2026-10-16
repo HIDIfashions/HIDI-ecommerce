@@ -5,7 +5,7 @@
 @media (min-width: 1001px) {
   .site-header[data-editorial-header] .header-inner { grid-template-columns: 136px minmax(0, 1fr) auto; }
 }
-.hidi-page { --header-height: 72px; }
+.site-shell, .hidi-page { --header-height: 72px; }
 #site-header .campaign-brand,
 #site-header .campaign-brand img { width: 102px; }
 #site-header .campaign-brand { min-height: 44px; }
@@ -21,7 +21,7 @@
   #site-header .campaign-brand img { width: 92px; }
 }
 @media (max-width: 700px) {
-  .hidi-page { --header-height: 58px; }
+  .site-shell, .hidi-page { --header-height: 58px; }
   #site-header .campaign-brand,
   #site-header .campaign-brand img { width: 74px; }
 }

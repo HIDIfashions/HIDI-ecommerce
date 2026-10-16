@@ -51,7 +51,7 @@ export async function probe(base,output,{baseline,landing}={}){
    try{
     const shapes={};let productPath;
     for(const path of ['/','/collections/all']){
-     stage=path;page=await fresh(path);shapes[path]=await measure(page,path);
+     stage=path;page=await fresh(path);if(path==='/')await page.locator('#site-header:not([data-hidi-first-header])').waitFor();shapes[path]=await measure(page,path);
      if(path==='/'){
       await page.locator('#site-header:not([data-hidi-first-header])').waitFor();
       await page.getByRole('button',{name:'Open HIDI menu',exact:true}).click();await page.getByRole('dialog').waitFor();await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
