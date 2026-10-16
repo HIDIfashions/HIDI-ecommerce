@@ -14,15 +14,22 @@ def patch_runtime(base,overlay):
     base,overlay=pathlib.Path(base),pathlib.Path(overlay)
     assert not overlay.exists()
     server=(base/'server.mjs').read_bytes()
-    assert hashlib.sha256(server).hexdigest()=='6a62c78c71f98dc7c060abd25ce44289229ca4e34a8f5d7641195aef176c294a','Deployed wrapper changed; inspect before release'
+    serverHash=hashlib.sha256(server).hexdigest()
+    assert serverHash in ['6a62c78c71f98dc7c060abd25ce44289229ca4e34a8f5d7641195aef176c294a','eabf3e78f1511bce5143d3f5ea255740466e8644f3496cce9223fc79b0fc8365'],'Deployed wrapper changed; inspect before release'
     changes=[
       ('import { createSeoSitemap } from "./seo-discovery/sitemap.mjs";','import { createSeoSitemap } from "./seo-discovery/sitemap.mjs";\nimport { addHomeDiscovery, addReturnPolicy, handleGuide } from "./seo-document/discovery.mjs";'),
       ('        "Disallow: /api/",','        "Disallow: /api/",\n        "Allow: /api/hidi/hero-asset/",'),
       ('  html = normalizeSeoIdentity(html, isProductionRequest(request) ? pathname : undefined);','  html = normalizeSeoIdentity(html, isProductionRequest(request) ? pathname : undefined);\n  if (isProductionRequest(request)) html = addReturnPolicy(html, pathname);'),
       ('  if (handleCatalogueAlias(request, response, pathname)) return;','  if (handleGuide(request, response, pathname, isProductionRequest(request))) return;\n  if (handleCatalogueAlias(request, response, pathname)) return;'),
-      ('    if (pathname === "/") html = optimizeHomeHead(html);','    if (pathname === "/") html = addHomeDiscovery(optimizeHomeHead(html));'),
     ]
+    if serverHash=='6a62c78c71f98dc7c060abd25ce44289229ca4e34a8f5d7641195aef176c294a':
+        changes.append(('    if (pathname === "/") html = optimizeHomeHead(html);','    if (pathname === "/") html = addHomeDiscovery(optimizeHomeHead(html));'))
     files={'server.mjs':exact(server.decode(),changes).encode(),'seo-document/discovery.mjs':(HERE/'discovery.mjs').read_bytes()}
+    if serverHash=='eabf3e78f1511bce5143d3f5ea255740466e8644f3496cce9223fc79b0fc8365':
+        name='paint-performance/announcement.mjs';source=(base/name).read_text()
+        old=' return renderHero(await renderAnnouncement(preparePosterHead(html,request),async()=>products),hero,{request});'
+        new=' return addHomeDiscovery(renderHero(await renderAnnouncement(preparePosterHead(html,request),async()=>products),hero,{request}));'
+        files[name]=('import {addHomeDiscovery} from "../seo-document/discovery.mjs";\n'+exact(source,[(old,new)])).encode()
     sitemap=(base/'seo-discovery/sitemap.mjs').read_text()
     files['seo-discovery/sitemap.mjs']=sitemap.replace("'/privacy'];","'/privacy', '/guides', '/guides/kurta-set-buying-guide', '/guides/choosing-kurta-set-size'];",1).encode()
     assert files['seo-discovery/sitemap.mjs'].decode().replace("'/privacy', '/guides', '/guides/kurta-set-buying-guide', '/guides/choosing-kurta-set-size'];","'/privacy'];",1)==sitemap

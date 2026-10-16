@@ -9,7 +9,7 @@ export async function discoveryProbe(base,output,{baseline}={}){
  await mkdir(output,{recursive:true});
  const headers={'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'};
  const get=async path=>{const r=await fetch(base+path,{headers,signal:AbortSignal.timeout(60000)});assert(r.ok,path+' '+r.status);return r.text();};
- const raw=await get('/');assert.match(raw,/<main[^>]*data-hidi-home-discovery/);assert.match(raw,/<h1[^>]*>HIDI India/);assert.match(raw,/href="\/collections\/work-wear"/);assert(!raw.includes('This React preview requires JavaScript'));
+ const raw=await get('/');assert.match(raw,/<(?:main|section)[^>]*data-hidi-home-discovery/);assert.match(raw,/<h1[^>]*>[^<]*HIDI/);assert.match(raw,/href="\/collections\/work-wear"/);assert(!raw.includes('This React preview requires JavaScript'));
  const robots=await get('/robots.txt');assert.match(robots,/Allow: \/api\/hidi\/hero-asset\//);assert.match(robots,/Disallow: \/api\//);assert.match(robots,/Disallow: \/admin\//);
  const sitemap=await get('/sitemap.xml');for(const path of guideRoutes)assert(sitemap.includes('<loc>https://hidiindia.com'+path+'</loc>'));
  const policy=await get('/returns');assert.match(policy,/data-hidi-approved-return-policy/);assert.match(policy,/merchantReturnDays":7/);assert(!policy.includes('returnLabelSource'));

@@ -15,6 +15,11 @@ test('returns markup uses confirmed terms without claiming label workflow or ref
  const result=addReturnPolicy(html,'/returns');assert.match(result,/MerchantReturnPolicy/);assert(result.endsWith('<body>Published policy</body>'));
  assert.equal(addReturnPolicy(html,'/cart'),html);assert.equal(addReturnPolicy(result,'/returns'),result);
 });
+test('an existing initial hero keeps one main and one H1 with discovery below the hero',()=>{
+ const html='<head></head><body><div id="root"><header>HIDI</header><main id="main" tabindex="-1"><section data-hidi-first-hero><h1>HIDI Indian wear</h1></section></main></div><noscript>Preview</noscript></body>';
+ const result=addHomeDiscovery(html);assert.equal((result.match(/<main\b/g)||[]).length,1);assert.equal((result.match(/<h1\b/g)||[]).length,1);
+ assert(result.indexOf('data-hidi-first-hero')<result.indexOf('data-hidi-home-discovery'));assert.match(result,/<h2[^>]*>HIDI India/);
+});
 test('each guide has original useful HTML, stable canonical, one heading and accessible anchors without script dependence',()=>{
  for(const route of guideRoutes){const html=guideHtml(route);assert.equal((html.match(/<h1>/g)||[]).length,1);assert(html.includes('href="https://hidiindia.com'+route+'"'));assert.match(html,/href="\/collections\/all"/);assert(!html.includes('thehidi.com'));assert.match(guideHtml(route,false),/noindex, nofollow/);}
  assert.equal(guideHtml('/guides/not-real'),null);

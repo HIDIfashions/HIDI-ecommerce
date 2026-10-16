@@ -22,7 +22,15 @@ export function addHomeDiscovery(html){
   const content='<main id="main" data-hidi-home-discovery style="padding:112px 24px 56px;max-width:1080px;margin:auto;color:#602124;background:#fffdf8"><h1 style="font-size:clamp(28px,5vw,44px);line-height:1.2">HIDI India — Women’s Indian Wear &amp; Kurta Sets</h1><p style="max-width:65ch;margin:20px 0;line-height:1.7">Explore HIDI’s Indian wear for work, everyday dressing and occasions. Compare each kurta set’s fabric information, included pieces, measurements and available sizes before choosing.</p><nav aria-label="Explore HIDI collections" style="display:flex;flex-wrap:wrap;gap:16px 24px"><a href="/collections/all">All kurta sets</a><a href="/collections/casual-wear">Casual wear</a><a href="/collections/work-wear">Work wear</a><a href="/collections/occasional-wear">Occasion wear</a><a href="/collections/ananyas-pick">Ananya’s Pick</a></nav><p style="margin-top:24px;line-height:1.8"><a href="/guides">Kurta set buying guides</a> · <a href="/shipping">Shipping information</a> · <a href="/returns">Returns &amp; exchanges</a> · <a href="/contact">Contact HIDI</a></p></main>';
   const root=/(<div id="root">)([\s\S]*?)(<\/div>\s*<noscript>)/;
   if(!root.test(html))throw Error('Reviewed homepage root boundary changed');
-  return html.replace(root,(_,start,body,end)=>start+body+content+end)
+  return html.replace(root,(_,start,body,end)=>{
+    // A newer performance release can already supply the real hero and main.
+    // Keep that first paint intact and append only the discovery text below it.
+    if(/<main\b[^>]*\bid="main"/.test(body)){
+      const section=content.replace('<main id="main" data-hidi-home-discovery','<section aria-label="Explore HIDI" data-hidi-home-discovery').replace('<h1 ','<h2 ').replace('</h1>','</h2>').replace('</main>','</section>');
+      return start+body.replace('</main>',section+'</main>')+end;
+    }
+    return start+body+content+end;
+  })
     .replace(/<noscript>[\s\S]*?<\/noscript>/,'<noscript><p style="padding:16px 24px;text-align:center">You can browse HIDI collections using the links above. Enable JavaScript for size selection and checkout.</p></noscript>');
 }
 const articles={
