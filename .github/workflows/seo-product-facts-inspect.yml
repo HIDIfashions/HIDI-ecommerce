@@ -43,3 +43,4 @@ jobs:
         with:
           name: seo-product-facts-inspection
           path: evidence/seo-product-facts
+          include-hidden-files: true
