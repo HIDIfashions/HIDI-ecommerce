@@ -41,4 +41,3 @@ export async function createPreviewServer(records){
  return {server,products,writes};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){const {server}=await createPreviewServer();server.listen(Number(process.env.PORT||4318),'127.0.0.1',()=>console.log('Local catalogue review: http://127.0.0.1:'+server.address().port+'/admin/product-preview'));}
-

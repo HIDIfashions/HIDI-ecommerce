@@ -5,7 +5,7 @@ function copy(source,key,text){
  if(!source)return;
  source.dataset.hidiCopySource=key;
  let panel=source.parentElement.querySelector('[data-hidi-copy="'+key+'"]');
- if(!panel){panel=document.createElement('div');panel.dataset.hidiCopy=key;panel.className='hidi-formatted-copy';source.after(panel);}
+ if(!panel){panel=document.createElement('div');panel.dataset.hidiCopy=key;panel.className='hidi-formatted-copy '+source.className;source.after(panel);}
  const value=String(text??'');if(panel.dataset.copyText!==value){panel.innerHTML=renderProductCopy(value);panel.dataset.copyText=value;}
 }
 function adminLinks(){
