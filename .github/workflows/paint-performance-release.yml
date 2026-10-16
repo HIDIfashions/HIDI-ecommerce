@@ -66,7 +66,7 @@ jobs:
           retention-days: 30
           overwrite: true
   deploy:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[prepare-only]')
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 45
