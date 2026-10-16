@@ -1,7 +1,14 @@
 name: Read-only compact header container diagnostics
 on:
   push:
-    branches: [codex/compact-header-debug]
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/compact-header-debug.yml]
+  workflow_dispatch:
+    inputs:
+      debug_ref:
+        description: Reviewed same-repository diagnostic source revision
+        required: true
+        default: 08e4dbda84250de65ce4a8b04a16546619aa1024
 permissions:
   contents: read
   id-token: write
@@ -14,6 +21,8 @@ jobs:
       PLAYWRIGHT_BROWSERS_PATH: /tmp/header-debug-browsers
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.debug_ref || '08e4dbda84250de65ce4a8b04a16546619aa1024' }}
       - uses: actions/setup-node@v4
         with: {node-version: 24}
       - run: |
