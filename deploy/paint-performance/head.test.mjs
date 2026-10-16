@@ -26,7 +26,7 @@ test('parser header logo embeds exact bytes while external app loading is preser
   mkdirSync(join(root,'assets/images'),{recursive:true});const logo=Buffer.from([137,80,78,71,13,10,26,10]);writeFileSync(join(root,'assets/images/hidi-logo.png'),logo);
   writeFileSync(join(root,'assets/index-abc.js'),'const x={src:Tt("images/hidi-logo.png"),fetchPriority:"high"};');
   const html='<link rel="preload" as="image" href="./assets/images/hidi-logo.png"><script type="module" src="/assets/index-abc.js"></script><header><img src="./assets/images/hidi-logo.png"></header>';
-  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(!result.includes('rel="preload"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
+  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(result.includes('rel="preload"'));assert(result.includes('href="./assets/images/hidi-logo.png"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 

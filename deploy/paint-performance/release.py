@@ -32,6 +32,7 @@ def compose():
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True)
     poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);(overlay/'poster-build.json').unlink()
     report=patch.patch_web(base,overlay,poster,icons);manifest=report.pop('manifest')
+    subprocess.run(['node',str(HERE/'precompress.mjs'),str(overlay),report['bundle'],str(OUT/'static-encoding-quality.json')],check=True)
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
     save('patch.json',report);save('manifest.json',manifest)
     for name in report['allowedFiles']:
@@ -52,7 +53,7 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1

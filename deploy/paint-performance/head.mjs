@@ -35,14 +35,12 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
     const file=realpathSync(resolve(root,'.'+url.pathname));if(!file.startsWith(realpathSync(root)+sep))return tag;
     let code=cache.get(src);if(code===undefined){code=readFileSync(file,'utf8');cache.set(src,code);}
     if(code.length>512000||/import\s*\(|import\.meta|^\s*import[\s{*]/m.test(code))return tag;
-    if(logoData)code=code.replace('src:Tt("images/hidi-logo.png"),fetchPriority:"high"','src:'+JSON.stringify(logoData)+',fetchPriority:"high"');
     code=code.replace(/<\/script/gi,'<\\/script');
     if(url.pathname!=='/config.js')inlineBundles.add(url.pathname);
     return '<script '+before+after+' data-hidi-inline-script="'+url.pathname+'">'+code+'</script>';
    }catch{return tag;}
   });
   html=html.replace(/<link\b[^>]*>/gi,tag=>{
-   if(logoData&&/\brel=["']preload["']/.test(tag)&&/href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["']/.test(tag))return '';
    if(/\brel=["']modulepreload["']/.test(tag)&&[...inlineBundles].some(path=>tag.includes('href="'+path+'"')))return '';
    return tag;
   });
