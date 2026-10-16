@@ -10,6 +10,7 @@ permissions:
 env:
   HIDI_PLAYWRIGHT_MODULE: /tmp/media-tools/node_modules/playwright/index.mjs
   HIDI_LIGHTHOUSE_MODULE: /tmp/media-tools/node_modules/lighthouse/cli/index.js
+  HIDI_POSTCSS_MODULE: /tmp/media-tools/node_modules/postcss
   PLAYWRIGHT_BROWSERS_PATH: /tmp/media-browsers
 jobs:
   prepare:
@@ -31,7 +32,7 @@ jobs:
           node --test deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 postcss@8.5.6
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
@@ -86,7 +87,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 postcss@8.5.6
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:

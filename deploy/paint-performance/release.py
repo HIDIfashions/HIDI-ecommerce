@@ -21,6 +21,7 @@ def compose():
     folder=PRIVATE/'web';folder.mkdir();base=folder/'base-app';overlay=folder/'overlay';candidate=folder/'candidate-app'
     image=photo.states()['hidi-web']['image'];images.extract(image,base)
     report=patch.patch_web(base,overlay);manifest=report.pop('manifest')
+    subprocess.run(['node',str(HERE/'critical.mjs'),report['bundle']],check=True,timeout=300)
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
     save('patch.json',report);save('manifest.json',manifest)
     for name in report['allowedFiles']:
@@ -41,7 +42,7 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','critical-comparison.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1

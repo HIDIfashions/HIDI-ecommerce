@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHomeHead} from './head.mjs';
+import {createHash} from 'node:crypto';
 test('public CSS retains cascade order, markers and asset URL resolution; remote/imported/conditional styles remain links',()=>{
  const root=mkdtempSync(join(tmpdir(),'hidi-head-'));
  try{
@@ -28,4 +29,13 @@ test('header logo embeds the exact current image bytes in HTML and app, while or
   const html='<link rel="preload" as="image" href="./assets/images/hidi-logo.png"><script type="module" src="/assets/index-abc.js"></script><header><img src="./assets/images/hidi-logo.png"></header>';
   const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,3);assert(!result.includes('rel="preload"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
  }finally{rmSync(root,{recursive:true,force:true});}
+});
+test('critical styles preserve cascade slots and fall back to complete inline CSS when app or CSS changes',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-critical-')),root=join(app,'dist');try{
+  mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));const css='a{color:red}.b{color:blue}';writeFileSync(join(root,'a.css'),css);writeFileSync(join(root,'assets/index-abc.js'),'window.app=true;');writeFileSync(join(root,'assets/index-def.js'),'window.app=true;');
+  writeFileSync(join(app,'paint-performance/critical.json'),JSON.stringify({bundle:'/assets/index-abc.js',sheets:{'/a.css':{hash:createHash('sha256').update(css).digest('hex'),css:'a{color:red}'}}}));
+  const html='<script type="module" src="/assets/index-abc.js"></script><link rel="stylesheet" href="/a.css">',result=createHomeHead(root)(html);assert(result.includes('data-hidi-critical-css'));assert(result.includes('media="print"'));assert(result.includes("this.media='all'"));assert(result.includes('<noscript><link rel="stylesheet"'));assert(result.indexOf('a{color:red}')<result.indexOf('data-hidi-deferred-css'));
+  assert(!createHomeHead(root)(html.replace('index-abc','index-def')).includes('data-hidi-critical-css'));
+  writeFileSync(join(root,'a.css'),'a{color:green}');const changed=createHomeHead(root)(html);assert(!changed.includes('data-hidi-critical-css'));assert(changed.includes('color:green'));assert(!changed.includes('media="print"'));
+ }finally{rmSync(app,{recursive:true,force:true});}
 });
