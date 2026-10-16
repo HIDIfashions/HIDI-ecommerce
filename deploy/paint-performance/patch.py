@@ -97,11 +97,14 @@ def patch_web(base,overlay,poster,icons=None):
     runtime=once(runtime,anchor,'    return pathname === "/" ? sendCachedHome(request, response, 200, response.getHeaders(), body) : sendBuffer(request, response, 200, response.getHeaders(), body);')
     pricing=(base/'pricing/storefront.mjs').read_text()
     assert pricing==(HERE.parent/'pricing/storefront.mjs').read_text(),'Current offer module changed; stop'
+    price_presentation=pricing.split('  if(ready){\n',1)[1].split('  }else ',1)[0]
+    price_calculations=pricing.split('  // Compare only an explicit MRP',1)[1].split('async function refresh(){',1)[0]
     pricing=once(pricing,'let ready=false,pending=false','let ready=null,pending=false')
     pricing=once(pricing,'}else removeCampaign();','}else if(ready===false) removeCampaign();')
     pricing=once(pricing,"const response=await fetch('/api/store/products',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(15000)});", "const initial=window.__HidiCatalogueEarly;window.__HidiCatalogueEarly=null;const response=await initial||await fetch('/api/store/products',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(15000)});")
     pricing=once(pricing,"window.addEventListener('pageshow',refresh);", "window.addEventListener('pageshow',event=>{if(event.persisted)refresh();});")
+    assert price_presentation in pricing and price_calculations in pricing,'Pricing presentation, hydration protection and calculations must remain exact'
     files={'paint-performance/static-encoding.mjs':(HERE/'static-encoding.mjs').read_text(),'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'pricing/storefront.mjs':pricing,'paint-performance/announcement.mjs':(HERE/'announcement.mjs').read_text(),'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)
-    return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'manifest':manifest}
+    return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'pricingPresentationAndHydrationPreserved':True,'pricingPresentationSha256':hashlib.sha256(price_presentation.encode()).hexdigest(),'pricingCalculationsSha256':hashlib.sha256(price_calculations.encode()).hexdigest(),'manifest':manifest}
