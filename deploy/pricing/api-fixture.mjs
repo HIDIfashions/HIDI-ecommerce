@@ -28,6 +28,8 @@ for(const price of [10000,149899,149900]){
 for(const identity of [null,auth,{...auth,offerAuthorization:'Bearer other'}]){
  const blocked=fixture();await assert.rejects(blocked.service.prepare(input({kind:'PERCENT15',version:1},200000,170000),identity),/percentage discounts are disabled/);
  await assert.rejects(engine.quote(blocked.db,{sessionId:'fixture-session',offer:{kind:'PERCENT15',version:1}},identity),/percentage discounts are disabled/);
+ assert.equal(typeof blocked.service.quoteOffers,'function','The HTTP controller requires the retained service quote bridge');
+ await assert.rejects(blocked.service.quoteOffers({sessionId:'fixture-session',offer:{kind:'PERCENT15',version:1}},identity),/percentage discounts are disabled/);
  assert.equal(blocked.state().orders.length,0);assert.equal(blocked.gateway.length,0);checks++;
 }
 let f=fixture({price:400000}),body=input({kind:'DRESS1',version:1,variantId:'gift'},400000,400100),result=await f.service.prepare(body,auth);

@@ -25,6 +25,16 @@ def patch_runtime(base,overlay,app='web'):
         for name in ['apps/api/dist/checkout/offers-engine.mjs','apps/api/dist/checkout/offers-engine.js']:
             if (base/name).exists():put(name,disable_percent((base/name).read_text(encoding='utf-8')))
         assert allowed,'Existing offer engine required'
+        name='apps/api/dist/checkout/checkout.service.js'
+        service=(base/name).read_text(encoding='utf-8')
+        # A newer controller can call quoteOffers while the retained service
+        # predates that method. Restore the read-only bridge without replacing
+        # prepare, payment, inventory, wallet or delivery implementations.
+        if not re.search(r'\bquoteOffers\s*\(',service):
+            module='./offers-engine.mjs' if (base/'apps/api/dist/checkout/offers-engine.mjs').exists() else './offers-engine.js'
+            service="import { quote as hidiPricingQuote } from '"+module+"';\n"+service
+            service=once(service,'class CheckoutService {','\n    quoteOffers(input, auth = null) { return hidiPricingQuote(this.prisma, input, auth); }\n')
+            put(name,service)
     else:
         source=(base/'server.mjs').read_text(encoding='utf-8')
         injection="\n  if (!html.includes('data-hidi-pricing-loader')) html = html.replace(/<\\/head>/i, '<link rel=\"stylesheet\" href=\"/pricing-assets/styles.css\"><script type=\"module\" data-hidi-pricing-loader src=\"/pricing-assets/storefront.mjs\"></script></head>');"

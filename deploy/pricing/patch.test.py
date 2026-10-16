@@ -3,6 +3,14 @@ from pathlib import Path
 HERE=Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('pricing_patch',HERE/'patch-runtime.py');patch=importlib.util.module_from_spec(spec);spec.loader.exec_module(patch)
 class PatchTests(unittest.TestCase):
+ def test_retained_checkout_gets_the_quote_method_expected_by_controller(self):
+  with tempfile.TemporaryDirectory() as directory:
+   root=Path(directory);base=root/'base';folder=base/'apps/api/dist/checkout';folder.mkdir(parents=True)
+   (folder/'offers-engine.mjs').write_text("export const normalizedChoice=input=>{const value=input??{kind:'NONE'};};")
+   original='class CheckoutService { async prepare(){return "retained";} }'
+   (folder/'checkout.service.js').write_text(original)
+   result=patch.patch_runtime(base,root/'first','api');self.assertIn('apps/api/dist/checkout/checkout.service.js',result['allowedFiles'])
+   updated=(root/'first/apps/api/dist/checkout/checkout.service.js').read_text();self.assertIn('quoteOffers(input, auth = null)',updated);self.assertIn('async prepare(){return "retained";}',updated);self.assertEqual((folder/'checkout.service.js').read_text(),original)
  def test_normalization_rejects_percentage_and_preserves_other_bytes(self):
   for anchor in ["const value=input??{kind:'NONE'};",'const value = input ?? { kind: "NONE" };']:
    source='before\n'+anchor+'\nafter';result=patch.disable_percent(source)
