@@ -1,12 +1,10 @@
 import {readFileSync,realpathSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
-import {createHash} from 'node:crypto';
 
 // Inline the existing public CSS in the same cascade position. Resolve from the
 // current image, so later image overlays cannot leave stale style contents.
 export function createHomeHead(root,appRoot=resolve(root,'..')) {
  const cache=new Map();
- const critical=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/critical.json'),'utf8'));}catch{return null;}})();
  const logoData=(()=>{try{const file=readFileSync(resolve(root,'assets/images/hidi-logo.png'));return file.length<=32768?'data:image/png;base64,'+file.toString('base64'):null;}catch{return null;}})();
  function cssFor(href){
   if(cache.has(href))return cache.get(href);
@@ -51,11 +49,6 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   const href=/\bhref=["']([^"']+)["']/i.exec(tag)?.[1];if(!href)return tag;
   const css=cssFor(href);if(css===null)return tag;
   const data=[...tag.matchAll(/\s(data-[\w-]+)(?:=["']([^"']*)["'])?/g)].map(m=>' '+m[1]+'="'+(m[2]||'')+'"').join('');
-  const entry=critical?.sheets?.[new URL(href,'https://hidiindia.com/').pathname];
-  if(inlineBundles.has(critical?.bundle)&&entry?.hash===createHash('sha256').update(css).digest('hex')){
-   const deferred=tag.replace(/\brel=["']stylesheet["']/i,'rel="stylesheet" media="print" onload="this.media=\'all\'" data-hidi-deferred-css="true"');
-   return '<style data-hidi-critical-css="'+href.replaceAll('"','&quot;')+'">'+entry.css+'</style>'+deferred+'<noscript>'+tag+'</noscript>';
-  }
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
   });
  };

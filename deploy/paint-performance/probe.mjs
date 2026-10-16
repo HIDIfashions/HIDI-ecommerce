@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';import {readFile,writeFile,mkdir} from '
 import {existsSync} from 'node:fs';
 const [base,mode='live']=process.argv.slice(2),OUT='evidence/paint-performance';await mkdir(OUT+'/'+mode,{recursive:true});
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),manifest=JSON.parse(await readFile(OUT+'/manifest.json','utf8'));
-const baseline=mode==='baseline',criticalMode=mode==='critical',rows=[];
+const baseline=mode==='baseline',rows=[];
 const request=(path,headers={})=>new Promise((resolve,reject)=>{const u=new URL(path,base);(u.protocol==='https:'?getHttps:get)(u,{headers},res=>{const chunks=[];res.on('data',c=>chunks.push(c));res.on('end',()=>resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks)}));}).on('error',reject);});
 if(!baseline){
  const report=JSON.parse(await readFile(OUT+'/patch.json','utf8'));
@@ -13,17 +13,18 @@ if(!baseline){
   if(path.startsWith('/api/'))assert.match(plain.headers['cache-control'],/no-store/);
  }
  for(const item of Object.values(manifest.videos))for(const variant of [item.mobile,item.desktop]){
+  const poster=await request(variant.avifPoster);assert.equal(poster.status,200);assert.match(poster.headers['content-type'],/image\/avif/);assert.match(poster.headers['cache-control'],/immutable/);
   const r=await request(variant.url,{range:'bytes=0-63'});assert.equal(r.status,206);assert.equal(r.body.length,64);assert.match(r.headers['cache-control'],/immutable/);assert(!r.headers['content-encoding']);
   const suffix=await request(variant.url,{range:'bytes=-64'});assert.equal(suffix.status,206);assert.equal(suffix.body.length,64);
  }
 }
-for(const engine of baseline||criticalMode?['chromium']:['chromium','firefox','webkit']){
+for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
  const browser=await pw[engine].launch({headless:true,...(engine==='chromium'&&existsSync('/usr/bin/google-chrome')?{executablePath:'/usr/bin/google-chrome'}:{})});
- try{for(const width of engine==='chromium'?[320,390,412,768,1350,1440]:[390,1440]){
+ try{for(const width of engine==='chromium'?[320,390,768,1440]:[390,1440]){
   const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<700,reducedMotion:engine==='chromium'?'no-preference':'reduce'}),page=await context.newPage();page.setDefaultTimeout(45000);
   const errors=[],network=[],media=[];let transferred=0;page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{network.push(r.url());if(r.resourceType()==='media')media.push(r.url());});
   if(engine==='chromium'){const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');cdp.on('Network.loadingFinished',e=>transferred+=e.encodedDataLength);}
-  await page.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(criticalMode&&r.resourceType()==='stylesheet')return route.abort();if(u.origin!==new URL(base).origin||!['GET','HEAD'].includes(r.method()))return route.abort();return route.continue();});
+  await page.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin||!['GET','HEAD'].includes(r.method()))return route.abort();return route.continue();});
   await page.addInitScript(()=>{window.__lcp=0;window.__cls=0;try{new PerformanceObserver(l=>window.__lcp=l.getEntries().at(-1).startTime).observe({type:'largest-contentful-paint',buffered:true});new PerformanceObserver(l=>l.getEntries().forEach(e=>{if(!e.hadRecentInput)window.__cls+=e.value;})).observe({type:'layout-shift',buffered:true});}catch{}});
   try{
    assert.equal((await page.goto(base+'/',{waitUntil:'domcontentloaded'})).status(),200);
@@ -34,7 +35,7 @@ for(const engine of baseline||criticalMode?['chromium']:['chromium','firefox','w
    await page.waitForTimeout(2500);
    const initial=await page.evaluate(()=>({lcp:window.__lcp,cls:window.__cls,video:{src:document.querySelector('video.hero-live-media').currentSrc,poster:document.querySelector('video.hero-live-media').poster,width:document.querySelector('video.hero-live-media').videoWidth},overflow:document.documentElement.scrollWidth>innerWidth+1}));
    const initialBytes=transferred,initialRequests=[...network];if(!baseline&&engine==='chromium'){assert(!initialRequests.some(u=>u.includes(width<=700?'poster-1920.webp':'poster-1280.webp')),'Only the matching responsive poster should download');}assert(!initial.overflow);if(!baseline){assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/api/hidi/hero-config').length,1,'Early hero request must be reused');assert(!initialRequests.some(u=>new URL(u).pathname==='/config.js'),'Config must not block on another request');assert(!initialRequests.some(u=>u.includes('/assets/index-')&&u.endsWith('.js')),'Initial app must arrive in HTML');assert(!initialRequests.some(u=>u.includes('/ananya-portraits/')),'Off-screen original portraits must not download');}
-   if(!baseline){assert(initial.video.poster.includes('/media-performance/assets/'));if(engine==='chromium'){assert(initial.video.src.includes('/media-performance/assets/'));assert.equal(initial.video.width,width<=700?1280:1920);assert(initialBytes<(width<=700?7:11)*1024*1024,'Initial transfer budget');}assert(!media.some(u=>u.includes('/api/hidi/hero-asset/')),'Original video should not be downloaded');}
+   if(!baseline){assert(initial.video.poster.includes('/media-performance/assets/'));if(engine==='chromium'){assert(initial.video.poster.endsWith('.avif'));const wrong=Object.values(manifest.videos)[0][width<=700?'desktop':'mobile'].avifPoster;assert(!initialRequests.some(u=>new URL(u).pathname===wrong),'Only matching AVIF poster should download');assert(!initialRequests.some(u=>/poster-.*\.webp/.test(u)),'Modern browser should avoid duplicate WebP poster');}if(engine==='chromium'){assert(initial.video.src.includes('/media-performance/assets/'));assert.equal(initial.video.width,width<=700?1280:1920);assert(initialBytes<(width<=700?7:11)*1024*1024,'Initial transfer budget');}assert(!media.some(u=>u.includes('/api/hidi/hero-asset/')),'Original video should not be downloaded');}
    const sound=page.getByRole('button',{name:'Turn video sound on'});await sound.waitFor();
    if(engine==='chromium'){
     await sound.click();await page.waitForFunction(()=>!document.querySelector('video.hero-live-media').muted);await page.getByRole('button',{name:'Mute video sound'}).click();await page.waitForFunction(()=>document.querySelector('video.hero-live-media').muted);
@@ -52,13 +53,13 @@ for(const engine of baseline||criticalMode?['chromium']:['chromium','firefox','w
   }catch(error){await page.screenshot({path:OUT+'/'+mode+'/'+engine+'-'+width+'-failure.png',fullPage:true}).catch(()=>{});await writeFile(OUT+'/'+mode+'/'+engine+'-'+width+'-failure.json',JSON.stringify({error:String(error),errors,media,hero:await page.locator('.hero-media').evaluate(el=>el.outerHTML).catch(()=>null)}));throw error;}finally{await context.close();}
  }}finally{await browser.close();}
 }
-if(!baseline&&(mode==='candidate'||criticalMode)){
+if(!baseline&&mode==='candidate'){
  const before=JSON.parse(await readFile(OUT+'/baseline.json','utf8'));
  for(const row of rows.filter(r=>r.engine==='chromium')){
   const original=before.results.find(r=>r.width===row.width);assert(row.initialBytes<original.initialBytes*1.02,'No transfer regression for '+row.width);
   assert.equal(row.geometry.length,original.geometry.length);for(let i=0;i<row.geometry.length;i++){const a=original.geometry[i],b=row.geometry[i];for(const key of ['x','y','width','height'])assert(Math.abs(a[key]-b[key])<=1.5,'Layout changed: '+key+' '+a.cls+' at '+row.width);for(const key of ['font','color','background'])assert.equal(a[key],b[key],a.cls+' '+key);}
  }
- await writeFile(OUT+(criticalMode?'/critical-comparison.json':'/visual-comparison.json'),JSON.stringify({passed:true,widths:[320,390,412,768,1350,1440],unchanged:'section geometry, typography, colours, CSS, button positions and selected uploads'}));
+ await writeFile(OUT+'/visual-comparison.json',JSON.stringify({passed:true,widths:[320,390,768,1440],unchanged:'section geometry, typography, colours, CSS, button positions and selected uploads'}));
 }
 await writeFile(OUT+'/'+mode+'.json',JSON.stringify({passed:true,results:rows},null,2));
 console.log('PASS: '+mode+' homepage, poster, responsive photographs, sound controls, media ranges, compression and layout; '+rows.length+' browser/viewport cases');

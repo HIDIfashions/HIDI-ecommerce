@@ -6,3 +6,10 @@ test('early selection request is homepage-only, fresh, bounded and falls back on
  context.location.pathname='/about';context.window={};runInNewContext(code,context);assert.equal(calls,1);assert.equal(context.window.__HidiHeroEarly,undefined);
  context.location.pathname='/';context.fetch=async()=>{throw Error('unavailable');};runInNewContext(code,context);assert.equal(await context.window.__HidiHeroEarly,null);
 });
+
+test('AVIF capability detection resolves both decoding and safe fallback',async()=>{
+ for(const supported of [true,false]){
+  const context={window:{},location:{pathname:'/'},AbortController,setTimeout:()=>1,clearTimeout:()=>{},fetch:async()=>null,Image:class {naturalWidth=supported?2:0;set src(value){assert(value.startsWith('data:image/avif;base64,'));queueMicrotask(()=>supported?this.onload():this.onerror());}}};
+  runInNewContext(code,context);assert.equal(await context.window.__HidiAvifSupport,supported);
+ }
+});
