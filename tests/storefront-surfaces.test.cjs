@@ -31,11 +31,13 @@ test('collection title is 24px desktop and 22px mobile, using shared font', () =
   assert.match(css, /\.collection-page \.collection-header h1\s*\{[^}]*font-family:\s*var\(--font-sans\);[^}]*font-size:\s*24px;/);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.collection-page \.collection-header h1\s*\{\s*font-size:\s*22px;/);
 });
-test('collection headings do not reintroduce HIDI EDIT or descriptive subtitle', () => {
+test('collection headings retain one title and approved buying guidance without the retired HIDI EDIT label', () => {
   for (const file of ['apps/web/app/collections/all/page.tsx', 'apps/web/app/collections/[slug]/page.tsx']) {
-    const markup = read(file).match(/<header className="collection-header">([\s\S]*?)<\/header>/)[1];
-    assert.doesNotMatch(markup, /HIDI EDIT|<p\b/);
-    assert.match(markup, /<h1>/);
+    const markup = read(file).match(/<header className="collection-header"[^>]*>([\s\S]*?)<\/header>/)[1];
+    assert.doesNotMatch(markup, /HIDI EDIT/);
+    assert.equal((markup.match(/<h1>/g)||[]).length,1);
+    assert.match(markup, /hidi-collection-intro/);
+    assert.match(markup, /<CollectionLinks/);
   }
 });
 test('home logo scrolls to top and closes the menu without stealing focus', () => {
