@@ -17,7 +17,7 @@ export async function discoveryProbe(base,output,{baseline}={}){
  const feed=await get('/google-products.xml');assert.match(feed,/<g:id>/);
  if(baseline){const r=await fetch(baseline+'/google-products.xml',{headers});assert.equal(feed,await r.text(),'Merchant XML unchanged');}
  const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
- const results=[],errors=[],writes=[];
+ const results=[],errors=[],writes=[],canceledNavigationRequests=[];
  for(const engine of ['chromium','firefox','webkit']){
   const browser=await pw[engine].launch({headless:true,...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
   try{for(const width of [320,390,1440]){
@@ -29,13 +29,18 @@ export async function discoveryProbe(base,output,{baseline}={}){
     if(req.resourceType()==='media')return route.abort();
     return route.continue();
    });
-   const page=await context.newPage();page.on('pageerror',e=>errors.push({engine,width,message:e.message}));
+   let leavingHome=false;
+   const page=await context.newPage();page.on('pageerror',e=>{
+    const item={engine,width,message:e.message};
+    if(leavingHome&&engine==='webkit'&&/\/api\/hidi\/(?:hero-config|landing-media-config) due to access control checks\.$/.test(e.message))canceledNavigationRequests.push(item);
+    else errors.push(item);
+   });
    try{
     await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.locator('.hidi-collection-link').first().waitFor({timeout:60000});
     assert.equal(await page.locator('[data-hidi-home-discovery]').count(),0,'React replaces the initial fallback');
     const link=page.locator('footer a[href="/guides"]');await link.waitFor();assert.equal(await link.count(),1);
     await page.screenshot({path:`${output}/${engine}-${width}-home.png`});
-    await link.click();await page.waitForURL('**/guides');assert.equal(await page.locator('h1').count(),1);
+    leavingHome=true;await link.click();await page.waitForURL('**/guides');assert.equal(await page.locator('h1').count(),1);
     for(const path of guideRoutes){
      if(path!=='/guides')await page.goto(base+path,{waitUntil:'domcontentloaded'});
      assert.equal(await page.locator('h1').count(),1);assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'),'https://hidiindia.com'+path);
@@ -63,7 +68,7 @@ export async function discoveryProbe(base,output,{baseline}={}){
   await p.screenshot({path:output+'/no-javascript-collection.png'});await c.close();
  }finally{await nojs.close();}
  assert.deepEqual(errors,[],'Browser runtime errors');assert.deepEqual(writes,[],'Commerce writes');
- const report={passed:true,results,errors,liveWrites:0,initialHtmlVerified:true,jsDisabledNavigation:true,merchantFeedPreserved:Boolean(baseline)};
+ const report={passed:true,results,errors,canceledNavigationRequests,liveWrites:0,initialHtmlVerified:true,jsDisabledNavigation:true,merchantFeedPreserved:Boolean(baseline)};
  await writeFile(output+'/report.json',JSON.stringify(report,null,2));console.log('PASS: discovery HTML, guides, return schema and nine browser scenarios');return report;
 }
 export async function probe(base,output,options={}){
