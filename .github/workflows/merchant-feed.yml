@@ -8,6 +8,7 @@ permissions:
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
+  queue: max
   cancel-in-progress: false
 jobs:
   verify-and-release:
