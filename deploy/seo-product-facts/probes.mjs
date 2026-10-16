@@ -17,8 +17,10 @@ export async function probe(base,output,options={}){
   const browser=await pw[engine].launch({headless:true,...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
   try{for(const width of [320,390,1440]){
    const c=await browser.newContext({viewport:{width,height:900},extraHTTPHeaders:headers,reducedMotion:'reduce'});
-   await c.route('**/*',r=>{const req=r.request(),u=new URL(req.url());if(/google-analytics|googletagmanager|cloudflareinsights|facebook\.net/.test(u.hostname)||u.pathname==='/hidi-analytics.js')return r.abort();if(!['GET','HEAD'].includes(req.method())){if(u.pathname!=='/api/admin/session'&&!isBlockedTelemetry(req.method(),req.url(),base))writes.push(req.url());return r.abort();}if(req.resourceType()==='media')return r.abort();return r.continue();});
-   const p=await c.newPage();p.on('pageerror',e=>errors.push({engine,width,message:e.message}));
+   await c.route('**/*',r=>{const req=r.request(),u=new URL(req.url());if(/google-analytics|googletagmanager|cloudflareinsights|facebook\.net/.test(u.hostname)||u.pathname==='/hidi-analytics.js')return r.abort();if(!['GET','HEAD'].includes(req.method())){if(u.pathname!=='/api/admin/session'&&!isBlockedTelemetry(req.method(),req.url(),base))writes.push(req.url());return r.abort();}if(['image','media'].includes(req.resourceType()))return r.abort();return r.continue();});
+   const p=await c.newPage(),resources=[],localErrors=[];p.on('pageerror',e=>{const item={engine,width,message:e.message};errors.push(item);localErrors.push(item);});
+   p.on('response',r=>{if(r.status()>=400)resources.push({url:r.url(),status:r.status()});});
+   p.on('requestfailed',r=>{if(['script','document'].includes(r.resourceType()))resources.push({url:r.url(),failure:r.failure()});});
    try{
     await p.goto(base+path,{waitUntil:'domcontentloaded'});
     const summary=p.getByRole('region',{name:'Product quality and fit summary'});
@@ -35,11 +37,15 @@ export async function probe(base,output,options={}){
     await p.waitForURL('**'+path,{waitUntil:'domcontentloaded'});await summary.getByText('Included pieces',{exact:true}).waitFor();
     assert.equal(await summary.innerText(),before);
     results.push({engine,width,serverContents:true,hydratedContents:true,nativeProductNavigation:true,passed:true});
+   }catch(error){
+    const stem=`${output}/${engine}-${width}-failure`;
+    await writeFile(stem+'.json',JSON.stringify({error:String(error),url:p.url(),localErrors,resources,shell:await p.locator('[data-hidi-react-pdp]').count(),scripts:await p.locator('script[src]').evaluateAll(ns=>ns.map(n=>n.getAttribute('src')))},null,2));
+    await writeFile(stem+'.html',await p.content());await p.screenshot({path:stem+'.png'}).catch(()=>{});throw error;
    }finally{await c.close();}
   }}finally{await browser.close();}
  }
  assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
- const combined={passed:true,engines:['chromium','firefox','webkit'],results,liveWrites:0,baselineCompared:Boolean(options.baseline),productFactsPassed:true,productFactResults:results,productErrors:errors,imageDiscovery:images,scope:'Published-image indexing and focused product-summary hydration, size selection and native navigation; unrelated files preserved by exact-image verification'};
+ const combined={passed:true,navigationImagesIsolated:true,engines:['chromium','firefox','webkit'],results,liveWrites:0,baselineCompared:Boolean(options.baseline),productFactsPassed:true,productFactResults:results,productErrors:errors,imageDiscovery:images,scope:'Published-image indexing and focused product-summary hydration, size selection and native navigation; unrelated files preserved by exact-image verification'};
  await mkdir(output,{recursive:true});await writeFile(output+'/report.json',JSON.stringify(combined,null,2));return combined;
 }
 if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url)await probe(process.argv[2],process.argv[3]);
