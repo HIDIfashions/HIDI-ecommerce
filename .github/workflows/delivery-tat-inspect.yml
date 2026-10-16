@@ -1,0 +1,47 @@
+name: Read-only Delhivery B2C transit-time inspection
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/delivery-tat-inspect.yml]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Query only transit-time estimates; no app, order or shipment writes
+        run: |
+          python3 - <<'PY'
+          import importlib.util,json,urllib.request,urllib.parse,urllib.error
+          spec=importlib.util.spec_from_file_location('cloud','deploy/privacy-policy/rollout.py');cloud=importlib.util.module_from_spec(spec);spec.loader.exec_module(cloud)
+          app=cloud.app('hidi-api');env={x['name']:x for x in app['properties']['template']['containers'][0]['env']}
+          token=env['DELHIVERY_API_TOKEN'].get('value')
+          if not token:
+            secrets=cloud.azure('rest','--method','post','--url',app['id']+'/listSecrets?api-version=2025-07-01')
+            token=next(x['value'] for x in secrets['value'] if x['name']==env['DELHIVERY_API_TOKEN']['secretRef'])
+          base=env.get('DELHIVERY_BASE_URL',{}).get('value','https://staging-express.delhivery.com').rstrip('/')
+          assert urllib.parse.urlparse(base).hostname in ['track.delhivery.com','staging-express.delhivery.com']
+          mode=env.get('DELHIVERY_MODE',{}).get('value','S')
+          mode={'surface':'S','express':'E'}.get(mode.lower(),mode.upper());assert mode in ['S','E','N']
+          def safe(value):
+            if isinstance(value,dict):return {k:safe(v) for k,v in value.items() if not any(s in k.lower() for s in ['token','authorization','credential'])}
+            if isinstance(value,list):return [safe(v) for v in value]
+            if isinstance(value,str):return value.replace(token,'[redacted]')[:300]
+            return value
+          for pin in ['500089','110001']:
+            query=urllib.parse.urlencode({'origin_pin':'500081','destination_pin':pin,'mot':mode,'pdt':'B2C'})
+            request=urllib.request.Request(base+'/api/dc/expected_tat?'+query,headers={'Authorization':'Token '+token,'Accept':'application/json'})
+            try:
+              with urllib.request.urlopen(request,timeout=12) as response:status=response.status;body=json.load(response)
+            except urllib.error.HTTPError as error:status=error.code;body=json.loads(error.read() or b'{}')
+            print(json.dumps({'origin':'500081','destination':pin,'mode':mode,'environment':urllib.parse.urlparse(base).hostname,'status':status,'response':safe(body)}))
+          print('Read-only inspection complete; no application, configuration, order or shipment change.')
+          PY
