@@ -28,7 +28,7 @@ export async function probe(base,output,options={}){
     assert((await summary.innerText()).includes('2-Piece Set Kurta Set with Straight-Fit Pants, Embroidered Kurta and Matching Pants'));
     await p.waitForFunction(()=>document.querySelector('[data-hidi-react-pdp]')?.dataset.hidiHydrated==='true',null,{timeout:60000});
     assert(!((await summary.innerText()).includes('not specified')),'Client hydration must not restore contradiction');
-    const medium=p.getByRole('button',{name:'M',exact:true});await medium.click();assert.equal(await medium.getAttribute('aria-pressed'),'true');
+    const medium=p.locator('.pdp-info .sizes').getByRole('button',{name:'M',exact:true});await medium.click();assert.equal(await medium.getAttribute('aria-pressed'),'true');
     const normalizeText=value=>value.replace(/\s+/g,' ').trim();
     const before=normalizeText(await summary.innerText());
     await p.screenshot({path:`${output}/${engine}-${width}-included-pieces.png`,fullPage:false});
@@ -53,6 +53,8 @@ export async function probe(base,output,options={}){
     assert.match(normalizeText(await summary.innerText()),/(?:Included pieces|Set contents) are not specified/,'Incomplete set descriptions must remain unresolved');
     assert.equal(await summary.getByText('Included pieces',{exact:true}).count(),0);
     results.push({engine,width,serverContents:true,hydratedContents:true,nativeProductNavigation:true,namedComponents:true,bulletLabel:true,unknownContentsPreserved:true,passed:true});
+    await writeFile(output+'/progress.json',JSON.stringify({results,errors,writes},null,2));
+    console.log('PDP_FACT_CASE',JSON.stringify(results.at(-1)));
    }catch(error){
     const stem=`${output}/${engine}-${width}-failure`;
     await writeFile(stem+'.json',JSON.stringify({error:String(error),url:p.url(),localErrors,resources,shell:await p.locator('[data-hidi-react-pdp]').count(),scripts:await p.locator('script[src]').evaluateAll(ns=>ns.map(n=>n.getAttribute('src')))},null,2));
@@ -60,6 +62,7 @@ export async function probe(base,output,options={}){
    }finally{await c.close();}
   }}finally{await browser.close();}
  }
+ await writeFile(output+'/runtime-checks.json',JSON.stringify({results,errors,writes},null,2));
  assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
  const combined={passed:true,navigationImagesIsolated:true,engines:['chromium','firefox','webkit'],results,liveWrites:0,baselineCompared:Boolean(options.baseline),productFactsPassed:true,productFactResults:results,productErrors:errors,imageDiscovery:images,scope:'Published-image indexing and focused product-summary hydration, size selection and native navigation; unrelated files preserved by exact-image verification'};
  await mkdir(output,{recursive:true});await writeFile(output+'/report.json',JSON.stringify(combined,null,2));return combined;
