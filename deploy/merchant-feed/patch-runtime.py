@@ -3,6 +3,17 @@ from pathlib import Path
 import hashlib
 
 HERE=Path(__file__).resolve().parent
+PRICING_GUARD='  const product=document.querySelector("[data-hidi-react-pdp]");\n  if(product && product.dataset.hidiHydrated!=="true")return;\n'
+PRICING_READY="window.addEventListener('hidi:product-ready',apply);\n"
+def patch_pricing(source):
+    if PRICING_GUARD in source:
+        assert source.count(PRICING_GUARD)==1 and source.count(PRICING_READY)==1
+        return source
+    first='function apply(){\n';second="window.addEventListener('pageshow',refresh);"
+    assert source.count(first)==1 and source.count(second)==1,'Unreviewed pricing enhancer'
+    result=source.replace(first,first+PRICING_GUARD,1).replace(second,PRICING_READY+second,1)
+    assert result.replace(PRICING_GUARD,'',1).replace(PRICING_READY,'',1)==source
+    return result
 def patch_runtime(base,overlay):
     base,overlay=Path(base),Path(overlay)
     source=(base/'server.mjs').read_text()
@@ -23,7 +34,11 @@ def patch_runtime(base,overlay):
     for before,after in reversed(changes):restored=restored.replace(after,before,1)
     assert restored==source,'Unrelated runtime code changed'
     files={'server.mjs':result.encode(),'merchant-feed/feed.mjs':(HERE/'feed.mjs').read_bytes(),'dist/hidi-merchant-variant-v1.js':(HERE/'variant.js').read_bytes()}
+    pricing=base/'pricing/storefront.mjs'
+    if pricing.is_file():
+        previous=pricing.read_text();compatible=patch_pricing(previous)
+        if compatible!=previous:files['pricing/storefront.mjs']=compatible.encode()
     for name,data in files.items():
-        assert name=='server.mjs' or not (base/name).exists(),'Feed already installed'
+        assert name in ['server.mjs','pricing/storefront.mjs'] or not (base/name).exists(),'Feed already installed'
         target=overlay/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
     return {'passed':True,'allowedFiles':sorted(files),'baselineServerSha256':hashlib.sha256(source.encode()).hexdigest(),'inverseTransformsVerified':True,'databaseWrites':False,'apiUnchanged':True}

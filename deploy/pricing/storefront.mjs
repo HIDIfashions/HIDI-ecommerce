@@ -3,6 +3,8 @@ let ready=false,pending=false,lastPath=location.pathname;
 const parse=text=>{const value=String(text).replace(/^\s*MRP\s*/i,'').replace(/[,\s₹]/g,'');return /^\d+(?:\.\d{1,2})?$/.test(value)?Math.round(Number(value)*100):null;};
 function removeCampaign(){document.querySelectorAll('[data-hidi-price-announcement],[data-hidi-price-note]').forEach(el=>el.remove());}
 function apply(){
+  const product=document.querySelector("[data-hidi-react-pdp]");
+  if(product && product.dataset.hidiHydrated!=="true")return;
   if(location.pathname.startsWith('/admin')){
     removeCampaign();
     for(const nav of document.querySelectorAll('nav[aria-label="Admin navigation"]'))if(!nav.querySelector('[data-hidi-pricing-link]')){const a=document.createElement('a');a.href='/admin/product-pricing';a.textContent='Published product pricing';a.className='hidi-price-admin-link';a.dataset.hidiPricingLink='true';nav.append(a);}
@@ -32,4 +34,5 @@ async function refresh(){
   catch{ready=false;}finally{pending=false;apply();}
 }
 let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;if(lastPath!==location.pathname){lastPath=location.pathname;ready=false;refresh();}apply();});}).observe(document.documentElement,{subtree:true,childList:true,characterData:true});
+window.addEventListener('hidi:product-ready',apply);
 window.addEventListener('pageshow',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});setInterval(()=>{if(!document.hidden)refresh();},60000);refresh();

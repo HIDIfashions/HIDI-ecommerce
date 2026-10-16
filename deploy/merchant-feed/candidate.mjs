@@ -52,6 +52,17 @@ try{
   // while isolating each runtime's internal storefront port.
   const baseline=await start(images.baseImage),base=await start(images.candidateTag);
   assert.equal((await fetch(baseline+'/google-products.xml',{headers:{'X-Forwarded-Host':'hidiindia.com'}})).status,404);
+  const pw=await import(process.env.HIDI_PLAYWRIGHT_MODULE),browser=await pw.chromium.launch({headless:true});
+  const baselineErrors=[];
+  try {
+    const context=await browser.newContext({extraHTTPHeaders:{'X-Forwarded-Host':'hidiindia.com','X-Forwarded-Proto':'https'}});
+    await context.route('**/*',route=>!['GET','HEAD'].includes(route.request().method())?route.abort():route.continue());
+    const page=await context.newPage();page.on('pageerror',e=>baselineErrors.push(e.message));
+    await page.goto(baseline+'/products/'+products[0].slug,{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>document.querySelector('[data-hidi-react-pdp]')?.dataset.hidiHydrated==='true');
+    await page.waitForTimeout(500);await context.close();
+  } finally {await browser.close();}
+  await writeFile('evidence/merchant-feed/baseline-hydration.json',JSON.stringify({errors:baselineErrors,merchantHelperInstalled:false},null,2));
   await probe(base,'evidence/merchant-feed/candidate',{products,preview:true});
   assert.deepEqual(writes,[]);
   assert(reads.some(r=>r.path==='/products'),'Runtime did not reach frozen inventory fixture');

@@ -28,7 +28,7 @@ jobs:
           node --check deploy/merchant-feed/candidate.mjs
           node --check deploy/merchant-feed/probe.mjs
           node --check deploy/merchant-feed/variant.js
-          node --test deploy/merchant-feed/feed.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs
+          node --test deploy/merchant-feed/feed.test.mjs deploy/merchant-feed/pricing-readiness.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs
       - name: Install isolated browser engines and exact image backup tooling
         run: |
           sudo apt-get update -qq
