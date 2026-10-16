@@ -17,9 +17,10 @@ export async function verifyInitialCss(pw,base,out,mode){
     await page.addStyleTag({content:'*{animation-play-state:paused!important;transition:none!important}'});
     await page.waitForFunction(()=>document.querySelector('video[data-hidi-first-hero]')&&Boolean(window.__HidiFullCssReady));
     await page.evaluate(()=>window.__HidiAvifSupport);await page.waitForTimeout(1000);
+    await page.evaluate(()=>document.querySelector('#main').focus({preventScroll:true}));
     const snapshot=()=>page.evaluate(()=>[document.body,...document.querySelectorAll('#root,#root *,body>.hidi-price-announcement')].filter(el=>!['SCRIPT','STYLE','LINK'].includes(el.tagName)).map(el=>{
      const r=el.getBoundingClientRect(),s=getComputedStyle(el);
-     return {tag:el.tagName,cls:el.className,rect:[r.x,r.y,r.width,r.height],style:Object.fromEntries(['display','position','font','color','backgroundColor','padding','margin','border','opacity','objectFit','objectPosition','zIndex','transform'].map(key=>[key,s[key]]))};
+     return {tag:el.tagName,cls:el.className,rect:[r.x,r.y,r.width,r.height],style:Object.fromEntries(['display','position','font','color','backgroundColor','padding','margin','border','outline','opacity','objectFit','objectPosition','zIndex','transform'].map(key=>[key,s[key]]))};
     }));
     const initial=await snapshot();
     release();await page.evaluate(()=>window.__HidiFullCssReady);await page.waitForTimeout(100);
