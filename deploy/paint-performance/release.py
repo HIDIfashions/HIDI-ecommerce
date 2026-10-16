@@ -55,6 +55,7 @@ def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
     for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
+    checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1
         assert row['device']!='mobile' or row['lcp']<2200
@@ -70,6 +71,7 @@ def apply():
         for path in ['/health','/healthz','/api/store/health/ready','/','/collections/all','/cart','/checkout','/account','/admin','/admin/hero-media','/admin/landing-media']:
             cloud.get(path)
         subprocess.run(['node',str(HERE/'probe.mjs'),'https://hidiindia.com','live'],check=True,timeout=600)
+        subprocess.run(['node',str(HERE.parent/'checkout-hydration/probe.mjs'),'https://hidiindia.com',str(OUT/'checkout-live')],check=True,timeout=900,env={**os.environ,'HIDI_BROWSER_ENGINES':'chromium,firefox,webkit','HIDI_LOCAL_OVERLAY':'0'})
         subprocess.run(['node',str(HERE/'lighthouse.mjs'),'after'],check=True,timeout=600)
         assert photo.public_state()==protected,'Published configuration changed'
         assert cloud.snapshot(cloud.app('hidi-api'))==before['hidi-api'],'API changed independently'
