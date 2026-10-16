@@ -48,7 +48,19 @@ export async function discoveryProbe(base,output,{baseline}={}){
   }}finally{await browser.close();}
  }
  const nojs=await pw.chromium.launch({headless:true});
- try{const c=await nojs.newContext({javaScriptEnabled:false,viewport:{width:390,height:844},extraHTTPHeaders:headers});const p=await c.newPage();await p.goto(base+'/');await p.locator('[data-hidi-home-discovery]').waitFor();await p.getByRole('link',{name:'All kurta sets',exact:true}).click();await p.waitForURL('**/collections/all');assert((await p.locator('h1').innerText()).includes('Kurta'));await p.screenshot({path:output+'/no-javascript-collection.png'});await c.close();}finally{await nojs.close();}
+ try{
+  const c=await nojs.newContext({javaScriptEnabled:false,viewport:{width:390,height:844},extraHTTPHeaders:headers});
+  // This case tests native navigation with JavaScript disabled. Actual media
+  // layout is already captured in the nine regular browser cases above.
+  await c.route('**/*',r=>['image','media'].includes(r.request().resourceType())?r.abort():r.continue());
+  const p=await c.newPage();await p.goto(base+'/',{waitUntil:'domcontentloaded'});
+  await p.locator('[data-hidi-home-discovery]').waitFor();
+  await p.getByRole('link',{name:'All kurta sets',exact:true}).click();
+  await p.waitForURL('**/collections/all',{waitUntil:'domcontentloaded'});
+  assert.equal((await p.locator('h1').innerText()).trim(),'All Products');
+  assert(await p.locator('main article').count()>0,'Collection products remain in initial HTML');
+  await p.screenshot({path:output+'/no-javascript-collection.png'});await c.close();
+ }finally{await nojs.close();}
  assert.deepEqual(errors,[],'Browser runtime errors');assert.deepEqual(writes,[],'Commerce writes');
  const report={passed:true,results,errors,liveWrites:0,initialHtmlVerified:true,jsDisabledNavigation:true,merchantFeedPreserved:Boolean(baseline)};
  await writeFile(output+'/report.json',JSON.stringify(report,null,2));console.log('PASS: discovery HTML, guides, return schema and nine browser scenarios');return report;
