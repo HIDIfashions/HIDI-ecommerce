@@ -15,10 +15,10 @@ export function ProductInfoAccordion({ product }: { product: ApiProduct }) {
     </> },
     { title: "Specifications", icon: SquareCheckBig, content: <>
       {color && <p><strong>Colour:</strong> {color}</p>}
-      <p><strong>Included pieces:</strong> {facts.includes || "Not specified. Do not infer included items from photography."}</p>
-      {facts.fit && <p><strong>Fit:</strong> {facts.fit}</p>}
-      {facts.lining && <p><strong>Lining:</strong> {facts.lining}</p>}
-      {facts.model && <p><strong>Model:</strong> {facts.model}</p>}
+      <div><strong>Included pieces:</strong><ProductCopy text={facts.includes || "Not specified. Do not infer included items from photography."} /></div>
+      {facts.fit && <div><strong>Fit:</strong><ProductCopy text={facts.fit} /></div>}
+      {facts.lining && <div><strong>Lining:</strong><ProductCopy text={facts.lining} /></div>}
+      {facts.model && <div><strong>Model:</strong><ProductCopy text={facts.model} /></div>}
     </> },
     { title: "Shipping & Returns", icon: Truck, content: <>
       <div className={styles.policyRows}>

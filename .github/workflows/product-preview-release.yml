@@ -9,6 +9,7 @@ permissions:
 concurrency:
   group: hidi-hero-guarded-release
   cancel-in-progress: false
+  queue: max
 jobs:
   verify-and-release:
     runs-on: ubuntu-latest
