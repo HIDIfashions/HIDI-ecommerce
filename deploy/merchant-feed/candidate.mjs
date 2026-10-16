@@ -4,6 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {probe} from './probe.mjs';
 import {loadProducts} from './feed.mjs';
+import {resolve} from 'node:path';
 const images=JSON.parse(await readFile('evidence/merchant-feed/web-preservation.json','utf8'));
 const products=await loadProducts('https://hidiindia.com/api/store/products'),catalogue=products,writes=[],reads=[];
 await mkdir('evidence/merchant-feed',{recursive:true});
@@ -36,7 +37,7 @@ async function freePort(){
 }
 async function start(image){
   const port=await freePort(),name='hidi-merchant-feed-'+process.pid+'-'+containers.length;
-  docker('run','--detach','--name',name,'--add-host','host.docker.internal:host-gateway','-p',`127.0.0.1:${port}:3000`,'-e','PORT=3000','-e','API_URL='+api,'-e','INTERNAL_API_URL='+api,image);
+  docker('run','--detach','--name',name,'--add-host','host.docker.internal:host-gateway','--mount','type=bind,src='+resolve('deploy/merchant-feed')+',dst=/hidi-merchant-fixtures,readonly','-p',`127.0.0.1:${port}:3000`,'-e','PORT=3000','-e','NODE_OPTIONS=--import=/hidi-merchant-fixtures/media-preload.mjs','-e','API_URL='+api,'-e','INTERNAL_API_URL='+api,image);
   containers.push(name);
   const base='http://127.0.0.1:'+port;
   for(let i=0;i<120;i++){
