@@ -1,0 +1,45 @@
+name: Inspect product facts renderer without catalogue writes
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/seo-product-facts-inspect.yml]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 - <<'PY'
+          import importlib.util,json,pathlib,os,hashlib
+          def load(name,path):
+              s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
+          cloud=load('cloud','deploy/privacy-policy/rollout.py');cloud.API_VERSION='2025-07-01'
+          images=load('images','deploy/compose-msg91-images.py')
+          out=pathlib.Path('evidence/seo-product-facts');out.mkdir(parents=True)
+          state=cloud.snapshot(cloud.app('hidi-web'));cloud.ready(state)
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'seo-product-facts';images.extract(state['image'],root)
+          found={}
+          for folder in ['apps/web/.next/server','apps/web/.next/static']:
+              for p in (root/folder).rglob('*.js'):
+                  data=p.read_bytes()
+                  if b'Included pieces are not specified for this style yet.' not in data:continue
+                  name=p.relative_to(root).as_posix();dest=out/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data)
+                  found[name]=hashlib.sha256(data).hexdigest()
+          assert found,'Product facts renderer not found'
+          (out/'baseline.json').write_text(json.dumps({'state':state,'files':found,'readOnly':True},indent=2))
+          print('PASS: read-only product facts renderer inspection')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seo-product-facts-inspection
+          path: evidence/seo-product-facts
