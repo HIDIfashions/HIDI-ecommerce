@@ -6,8 +6,11 @@ CLIENT='apps/web/.next/static/chunks/app/products/[slug]/page-7c49fc199b11b33e.j
 def replacement(source,server):
     label,clean,description=('c','d','b') if server else ('i','r','t')
     old='includes:'+label+'("Includes")'
-    statement=description+r'.split(/\r?\n/).map(line=>line.trim()).find(line=>/^(?:2|3)\s*[- ]\s*piece\s+set\b/i.test(line)&&/\bkurta\b/i.test(line)&&/\b(?:pants?|bottom|trousers?)\b/i.test(line)&&(/^3/.test(line)?/\bdupatta\b/i.test(line):!/\bdupatta\b/i.test(line))&&!/\b(?:not|excluding|without|optional|may|or)\b/i.test(line))'
-    new=old+'||'+clean+'('+statement+')'
+    counted=r'(/^(?:2|3)\s*[- ]\s*piece\s+set\b/i.test(line)&&/\bkurta\b/i.test(line)&&/\b(?:pants?|bottom|trousers?)\b/i.test(line)&&(/^3/.test(line)?/\bdupatta\b/i.test(line):!/\bdupatta\b/i.test(line)))'
+    components=r'/^(?:(?:designer|embroidered|printed|anarkali|co-ord)\s+)*(?:kurta|kurti|suit)\s+set\s+with\s+(?:bottom|pants?|palazzo)(?:\s+and\s+dupatta)?[.!]?$/i.test(line)||/^(?:co-ord|coord)\s+set\s+with\s+top\s+and\s+bottom[.!]?$/i.test(line)'
+    statement=description+r'.split(/\r?\n/).map(line=>line.trim()).find(line=>('+counted+'||'+components+r')&&!/\b(?:not|excluding|without|optional|may|or)\b/i.test(line))'
+    bullet=description+r'.match(/(?:^|\n)\s*[-*•]\s*Includes\s*:\s*([^\n]+)/i)?.[1]'
+    new=old+'||'+clean+'('+bullet+')||'+clean+'('+statement+')'
     assert source.count(old)==1 and new not in source,'Inspected catalogue facts function changed'
     updated=source.replace(old,new,1)
     assert updated.replace(new,old,1)==source

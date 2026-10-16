@@ -36,7 +36,19 @@ export async function probe(base,output,options={}){
     await p.locator('main article a[href="'+path+'"]').first().click({position:{x:8,y:8}});
     await p.waitForURL('**'+path,{waitUntil:'domcontentloaded'});await summary.getByText('Included pieces',{exact:true}).waitFor();
     assert.equal(await summary.innerText(),before);
-    results.push({engine,width,serverContents:true,hydratedContents:true,nativeProductNavigation:true,passed:true});
+    for(const [slug,statement] of [
+     ['navy-blue-embroidered-kurta-set-with-dupatta','Embroidered Kurta Set with Bottom and Dupatta'],
+     ['hidi-060-purple-embroidered-kurta-set-with-dupatta','Kurta Set With Bottom And Dupatta']
+    ]){
+     await p.goto(base+'/products/'+slug,{waitUntil:'domcontentloaded'});
+     await p.waitForFunction(()=>document.querySelector('[data-hidi-react-pdp]')?.dataset.hidiHydrated==='true',null,{timeout:60000});
+     await summary.getByText('Included pieces',{exact:true}).waitFor();assert((await summary.innerText()).includes(statement));
+    }
+    await p.goto(base+'/products/women-s-black-embroidered-kurta-set-with-dupatta',{waitUntil:'domcontentloaded'});
+    await p.waitForFunction(()=>document.querySelector('[data-hidi-react-pdp]')?.dataset.hidiHydrated==='true',null,{timeout:60000});
+    assert((await summary.innerText()).includes('Included pieces are not specified'),'Incomplete set descriptions must remain unresolved');
+    assert.equal(await summary.getByText('Included pieces',{exact:true}).count(),0);
+    results.push({engine,width,serverContents:true,hydratedContents:true,nativeProductNavigation:true,namedComponents:true,bulletLabel:true,unknownContentsPreserved:true,passed:true});
    }catch(error){
     const stem=`${output}/${engine}-${width}-failure`;
     await writeFile(stem+'.json',JSON.stringify({error:String(error),url:p.url(),localErrors,resources,shell:await p.locator('[data-hidi-react-pdp]').count(),scripts:await p.locator('script[src]').evaluateAll(ns=>ns.map(n=>n.getAttribute('src')))},null,2));
