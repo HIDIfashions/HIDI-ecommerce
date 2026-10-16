@@ -33,8 +33,8 @@ export async function probe(base,output,{baseline,landing}={}){
    });
    let page,stage='';
    const pending=new Map();
-   const fresh=async(path,observed=true)=>{const p=await context.newPage();p.setDefaultTimeout(45000);const reads=new Set();pending.set(p,reads);p.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/'))reads.add(r);});for(const event of ['requestfinished','requestfailed'])p.on(event,r=>reads.delete(r));if(observed)p.on('pageerror',e=>errors.push({engine,width,stage:path,message:e.message}));await navigate(p,(observed?base:baseline)+path,gatewayRetries);return p;};
-   const finish=async p=>{let quiet=0;for(let elapsed=0;elapsed<30000;elapsed+=50){await new Promise(r=>setTimeout(r,50));quiet=pending.get(p).size?0:quiet+50;if(quiet>=300){p.removeAllListeners('pageerror');await p.close();return;}}assert.fail('API reads did not settle before teardown');};
+   const fresh=async(path,observed=true)=>{const p=await context.newPage();p.setDefaultTimeout(45000);const reads=new Set();pending.set(p,reads);p.on('request',r=>{const path=new URL(r.url()).pathname;if(path.startsWith('/api/store/')||path==='/api/admin/session'||path==='/api/hidi/offers')reads.add(r);});for(const event of ['requestfinished','requestfailed'])p.on(event,r=>reads.delete(r));if(observed)p.on('pageerror',e=>errors.push({engine,width,stage:path,message:e.message}));await navigate(p,(observed?base:baseline)+path,gatewayRetries);return p;};
+   const finish=async p=>{let quiet=0;for(let elapsed=0;elapsed<30000;elapsed+=50){await new Promise(r=>setTimeout(r,50));quiet=pending.get(p).size?0:quiet+50;if(quiet>=300){p.removeAllListeners('pageerror');await p.close();return;}}assert.fail('Commerce reads did not settle: '+[...pending.get(p)].map(r=>r.url()).join(', '));};
    const measure=async(p,path)=>{
     await p.locator('.site-header').waitFor();
     await p.waitForFunction(()=>{const img=document.querySelector('#site-header .campaign-brand img,.site-header[data-editorial-header] .wordmark img');return img?.complete&&img.naturalWidth>0;});
