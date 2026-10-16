@@ -47,7 +47,7 @@ jobs:
           echo "CANDIDATE_WEB=acrhidiprod0927.azurecr.io/hidi-web:lcp-performance-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
       - name: Measure current mobile and desktop performance
         run: node deploy/lcp-performance/lighthouse.mjs before
-      - name: Compose parser-first header and responsive portraits; preserve CSS
+      - name: Compose initial HTML delivery and responsive portraits; preserve design
         run: python3 deploy/lcp-performance/release.py compose
       - name: Verify candidate bundle, design, media and compression
         run: node deploy/lcp-performance/candidate.mjs

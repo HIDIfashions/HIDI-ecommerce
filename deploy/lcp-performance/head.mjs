@@ -21,11 +21,31 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   }catch{}
   cache.set(href,result);return result;
  }
- return html=>html.replace(/<link\b[^>]*>/gi,tag=>{
+ return html=>{
+  const inlineBundles=new Set();
+  html=html.replace(/<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi,(tag,before,src,after)=>{
+   const url=new URL(src,'https://hidiindia.com/');
+   if(url.origin!=='https://hidiindia.com'||!(/^\/assets\/index-[\w-]+\.js$/.test(url.pathname)||url.pathname==='/config.js'))return tag;
+   if(/\b(?:async|integrity)\b/.test(before+after))return tag;
+   try{
+    const file=realpathSync(resolve(root,'.'+url.pathname));if(!file.startsWith(realpathSync(root)+sep))return tag;
+    let code=cache.get(src);if(code===undefined){code=readFileSync(file,'utf8');cache.set(src,code);}
+    if(code.length>512000||/import\s*\(|import\.meta|^\s*import[\s{*]/m.test(code))return tag;
+    code=code.replace(/<\/script/gi,'<\\/script');
+    if(url.pathname!=='/config.js')inlineBundles.add(url.pathname);
+    return '<script '+before+after+' data-hidi-inline-script="'+url.pathname+'">'+code+'</script>';
+   }catch{return tag;}
+  });
+  html=html.replace(/<link\b[^>]*>/gi,tag=>{
+   if(/\brel=["']modulepreload["']/.test(tag)&&[...inlineBundles].some(path=>tag.includes('href="'+path+'"')))return '';
+   return tag;
+  });
+  return html.replace(/<link\b[^>]*>/gi,tag=>{
   if(!/\brel=["']stylesheet["']/i.test(tag)||/\b(?:media|disabled|integrity)\s*=/i.test(tag))return tag;
   const href=/\bhref=["']([^"']+)["']/i.exec(tag)?.[1];if(!href)return tag;
   const css=cssFor(href);if(css===null)return tag;
   const data=[...tag.matchAll(/\s(data-[\w-]+)(?:=["']([^"']*)["'])?/g)].map(m=>' '+m[1]+'="'+(m[2]||'')+'"').join('');
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
- });
+  });
+ };
 }
