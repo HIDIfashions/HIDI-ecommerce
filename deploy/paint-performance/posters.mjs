@@ -31,7 +31,8 @@ for(const item of Object.values(manifest.videos))for(const kind of ['mobile','de
 }
 const {encodeHeroVideos}=await import('./video.mjs');
 const videoReport=await encodeHeroVideos(base,overlay,manifest);
+const {buildHeadAssets}=await import('./head-assets.mjs');const headAssets=await buildHeadAssets(base,overlay,sharp);
 const probe=await sharp({create:{width:2,height:2,channels:3,background:'#ffffff'}}).avif().toBuffer();
-await writeFile(join(overlay,'poster-build.json'),JSON.stringify({manifest,report,videoReport,probe:probe.toString('base64')}));
+await writeFile(join(overlay,'poster-build.json'),JSON.stringify({manifest,report,videoReport,headAssets,probe:probe.toString('base64')}));
 for(const kind of ['mobile','desktop'])for(const suffix of ['reference','decoded'])await (await import('node:fs/promises')).unlink(join(overlay,kind+'-'+suffix+'.png'));
 console.log(JSON.stringify(report));

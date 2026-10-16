@@ -6,6 +6,9 @@ import {createHash} from 'node:crypto';
 // current image, so later image overlays cannot leave stale style contents.
 export function createHomeHead(root,appRoot=resolve(root,'..')) {
  const cache=new Map();
+ const assets=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/head-assets.json'),'utf8'));}catch{return {};}})();
+ function verifiedAsset(row,pattern){try{if(!row||!pattern.test(row.url)||!row.url.includes(row.sha256.slice(0,16)))return null;const file=realpathSync(resolve(root,'.'+row.url));if(!file.startsWith(realpathSync(root)+sep))return null;const bytes=readFileSync(file);return createHash('sha256').update(bytes).digest('hex')===row.sha256?bytes:null;}catch{return null;}}
+ const seoBytes=verifiedAsset(assets.seo,/^\/assets\/home-seo-[a-f0-9]{16}\.js$/);
  const criticalStyles=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/critical-css.json'),'utf8')).styles||{};}catch{return {};}})();
  const iconMarkup=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/icons.json'),'utf8'));const source=realpathSync(resolve(appRoot,data.sourceFile));if(!source.startsWith(realpathSync(appRoot)+sep))return null;const hash=createHash('sha256').update(readFileSync(source)).digest('hex');return hash===data.originalSha256&&typeof data.markup==='string'?data.markup:null;}catch{return null;}})();
  const homePricing=(()=>{try{
@@ -15,7 +18,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   const file=realpathSync(resolve(root,'.'+data.url));if(!file.startsWith(realpathSync(root)+sep))return null;
   return digest(resolve(appRoot,'pricing/storefront.mjs'))===data.sourceSha256&&digest(file)===data.homeSha256?data.url:null;
  }catch{return null;}})();
- const logoData=(()=>{try{const file=readFileSync(resolve(root,'assets/images/hidi-logo.png'));return file.length<=32768?'data:image/png;base64,'+file.toString('base64'):null;}catch{return null;}})();
+ const logoData=(()=>{try{let file=readFileSync(resolve(root,'assets/images/hidi-logo.png'));if(assets.logo?.sourceSha256===createHash('sha256').update(file).digest('hex'))file=verifiedAsset(assets.logo,/^\/media-performance\/assets\/logo-[a-f0-9]{16}\.png$/)||file;return file.length<=32768?'data:image/png;base64,'+file.toString('base64'):null;}catch{return null;}})();
  function cssFor(href){
   if(cache.has(href))return cache.get(href);
   let result=null;
@@ -54,28 +57,24 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    return tag;
   });
   if(logoData)html=html.replace(/(<img\b[^>]*\bsrc=["'])(?:\.\/|\/)assets\/images\/hidi-logo\.png(["'])/gi,(_,start,end)=>start+logoData+end);
-  const deferred=[];
+  html=html.replace(/<script\b([^>]*data-hidi-seo-identity=["']1["'][^>]*)>([\s\S]*?)<\/script>/i,(tag,attrs,code)=>seoBytes&&assets.seo.sha256===createHash('sha256').update(code).digest('hex')&&!/(?:^|\s)(?:src|async|integrity)\b/i.test(attrs)?'<script'+attrs+' defer src="'+assets.seo.url+'"></script>':tag);
+  let deferred=0;const completeHead=/<\/head>/i.test(html);
   html=html.replace(/<link\b[^>]*>/gi,tag=>{
   if(!/\brel=["']stylesheet["']/i.test(tag)||/\b(?:media|disabled|integrity)\s*=/i.test(tag))return tag;
   const href=/\bhref=["']([^"']+)["']/i.exec(tag)?.[1];if(!href)return tag;
   const css=cssFor(href);if(css===null)return tag;
   const data=[...tag.matchAll(/\s(data-[\w-]+)(?:=["']([^"']*)["'])?/g)].map(m=>' '+m[1]+'="'+(m[2]||'')+'"').join('');
   const row=criticalStyles[new URL(href,'https://hidiindia.com/').pathname];
-  if(row&&typeof row.critical==='string'&&!/<\/style/i.test(row.critical)&&row.sha256===createHash('sha256').update(css).digest('hex')){
-   const id='hidi-full-style-'+deferred.length;
-   deferred.push('<template data-hidi-full-style="'+id+'">'+css.replaceAll('&','&amp;').replaceAll('<','&lt;')+'</template>');
-   return '<style id="'+id+'" data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+row.critical+'</style>';
+  if(completeHead&&row&&typeof row.critical==='string'&&!/<\/style/i.test(row.critical)&&row.sha256===createHash('sha256').update(css).digest('hex')){
+   deferred++;
+   const full=href+(href.includes('?')?'&':'?')+'hidi_full='+row.sha256.slice(0,16);
+   const link=tag.replace(/\bhref=["'][^"']+["']/i,'href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true">');
+   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+row.critical+'</style>'+link;
   }
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
   });
-  if(deferred.length&&/<\/body>/i.test(html)){
-   let seo='';html=html.replace(/<script\b[^>]*data-hidi-seo-identity=["']1["'][^>]*>[\s\S]*?<\/script>/i,tag=>{seo=tag;return '';});
-   html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=new Promise(resolve=>window.__HidiActivateFullCss=()=>{for(const node of document.querySelectorAll("template[data-hidi-full-style]")){document.getElementById(node.dataset.hidiFullStyle).textContent=node.content.textContent;node.remove();}resolve();});</script></head>');
-   html=html.replace(/<\/body>/i,deferred.join('')+seo+'<script data-hidi-full-css-activate="true">if(document.visibilityState==="hidden")window.__HidiActivateFullCss();else requestAnimationFrame(()=>setTimeout(window.__HidiActivateFullCss,0));</script></body>');
-  }else if(deferred.length){
-   // Incomplete documents retain complete CSS rather than leaving missing styles.
-   for(let i=0;i<deferred.length;i++){const full=/>([\s\S]*)<\/template>/.exec(deferred[i])[1].replaceAll('&lt;','<').replaceAll('&amp;','&');html=html.replace(new RegExp('(<style id="hidi-full-style-'+i+'"[^>]*>)[\\s\\S]*?(</style>)'),(_,start,end)=>start+full+end);}
-  }
+  if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=Promise.all([...document.querySelectorAll("link[data-hidi-deferred-style]")].map(link=>new Promise(resolve=>{const done=()=>{link.media="all";resolve();};if(link.sheet)done();else{link.addEventListener("load",done,{once:true});link.addEventListener("error",done,{once:true});}})));</script></head>');
+  if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,tag=>tag.replace(/\bfetchpriority=["']high["']/i,'fetchpriority="low"'));
   return html;
  };
 }
