@@ -25,7 +25,7 @@ export async function discoveryProbe(base,output,{baseline}={}){
    await context.route('**/*',route=>{
     const req=route.request(),u=new URL(req.url());
     if(/google-analytics|googletagmanager|cloudflareinsights|facebook\.net/.test(u.hostname)||u.pathname==='/hidi-analytics.js')return route.abort();
-    if(!['GET','HEAD'].includes(req.method())){if(u.pathname!=='/api/admin/session'&&!isBlockedTelemetry(req.url(),req.method(),base))writes.push({url:req.url(),method:req.method()});return route.abort();}
+    if(!['GET','HEAD'].includes(req.method())){if(u.pathname!=='/api/admin/session'&&!isBlockedTelemetry(req.method(),req.url(),base))writes.push({url:req.url(),method:req.method()});return route.abort();}
     if(req.resourceType()==='media')return route.abort();
     return route.continue();
    });
@@ -73,3 +73,4 @@ export async function probe(base,output,options={}){
  await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url)await probe(process.argv[2],process.argv[3]);
+
