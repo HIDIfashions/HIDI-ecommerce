@@ -1,4 +1,4 @@
-import { priceStatus, target15, variantPayload, paise } from './model.mjs';
+import { priceStatus, target15, variantPayload, paise, sellingForDiscount } from './model.mjs';
 const $ = id => document.getElementById(id), rupees = n => (n / 100).toFixed(2);
 let products = [], busy = false, dirty = new Set();
 const inputs = new Map();
@@ -26,14 +26,14 @@ function render() {
     const name=cell(''),a=document.createElement('a');a.href='/admin/products/'+encodeURIComponent(p.id);a.textContent=p.name;name.append(a,document.createElement('br'),'SKN '+(p.skn||'—')+' · '+v.sku);
     cell(v.color+' / '+v.size);
     const fields={};
-    for(const [key,label,value] of [['mrp','MRP',v.mrpPaise],['price','Selling price',v.pricePaise]]) {
-      const el=document.createElement('input');el.type='text';el.inputMode='decimal';el.value=rupees(value);el.setAttribute('aria-label',label+' for '+v.sku);fields[key]=el;cell('').append(el);
-      el.oninput=()=>{dirty.add(v.id);summary();};
+    for(const [key,label,value] of [['mrp','MRP',rupees(v.mrpPaise)],['discount','Discount percent',state.valid?state.percent.toFixed(2):''],['price','Selling price',rupees(v.pricePaise)]]) {
+      const el=document.createElement('input');el.type='text';el.inputMode='decimal';el.value=value;el.readOnly=key==='price';el.setAttribute('aria-label',label+' for '+v.sku);fields[key]=el;cell('').append(el);
+      el.oninput=()=>{dirty.add(v.id);try{const mrp=paise(fields.mrp.value);suggestion.textContent=rupees(target15(mrp));fields.price.value=rupees(sellingForDiscount(mrp,fields.discount.value));feedback.textContent='Calculated selling price. Save row to apply.';}catch(e){fields.price.value='';feedback.textContent=e.message;}summary();};
     }
     cell(state.valid?state.percent.toFixed(2)+'%'+(state.exact15?' · Ready':''):'Invalid prices');
     const suggestion=cell(rupees(target15(v.mrpPaise))),action=cell(''),target=document.createElement('button'),save=document.createElement('button'),feedback=document.createElement('span');
     target.type=save.type='button';target.textContent='Use 15% target';save.textContent='Save row';feedback.setAttribute('role','status');
-    target.onclick=()=>{try{fields.price.value=rupees(target15(paise(fields.mrp.value)));suggestion.textContent=fields.price.value;dirty.add(v.id);summary();}catch(e){feedback.textContent=e.message;}};
+    target.onclick=()=>{fields.discount.value='15';fields.discount.dispatchEvent(new Event('input'));suggestion.textContent=fields.price.value;};
     save.onclick=async()=>{
       if(busy)return;
       let body;try{body=variantPayload(p,v,fields.mrp.value,fields.price.value);}catch(e){feedback.textContent=e.message;return;}
@@ -44,8 +44,8 @@ function render() {
         if(!saved.id||!saved.updatedAt||!Array.isArray(saved.variants))throw Error('Incomplete save response. Reload to confirm before retrying.');
         products=products.map(item=>item.id===saved.id?saved:item);dirty.delete(v.id);
         // Preserve unsaved edits in other rows while updating the revision for this product.
-        const drafts=new Map([...inputs].filter(([id])=>dirty.has(id)).map(([id,f])=>[id,{mrp:f.mrp.value,price:f.price.value}]));
-        render();for(const [id,values]of drafts){const f=inputs.get(id);if(f){f.mrp.value=values.mrp;f.price.value=values.price;}}
+        const drafts=new Map([...inputs].filter(([id])=>dirty.has(id)).map(([id,f])=>[id,{mrp:f.mrp.value,discount:f.discount.value,price:f.price.value}]));
+        render();for(const [id,values]of drafts){const f=inputs.get(id);if(f){f.mrp.value=values.mrp;f.discount.value=values.discount;f.price.value=values.price;}}
         say('Saved '+v.sku+'. Other rows and product details are unchanged.');
       }catch(e){feedback.textContent=e.message+' Your edits are still here. Reload to confirm before retrying.';say('Save was not confirmed. '+e.message,true);}
       finally{lock(false);}
@@ -60,7 +60,9 @@ async function load() {
   try {
     const list=[];let page=1,total=Infinity;
     while(list.length<total){const result=await api('?status=ACTIVE&page='+page++);if(!Array.isArray(result.items)||!Number.isInteger(result.total))throw Error('Incomplete published-product list.');total=result.total;if(!result.items.length&&list.length<total)throw Error('Published-product list changed. Reload.');list.push(...result.items);}
-    const next=[];for(const p of list){const detail=await api('/'+encodeURIComponent(p.id));if(detail.status==='ACTIVE')next.push(detail);}
+    const details=new Array(list.length);let cursor=0,loaded=0;
+    await Promise.all(Array.from({length:Math.min(4,list.length)},async()=>{while(cursor<list.length){const index=cursor++;details[index]=await api('/'+encodeURIComponent(list[index].id));say('Loading published products '+(++loaded)+' of '+list.length+'. Nothing has been changed.');}}));
+    const next=details.filter(detail=>detail.status==='ACTIVE');
     if(new Set(next.map(p=>p.id)).size!==next.length)throw Error('Products changed during loading. Reload.');
     products=next;dirty.clear();render();$('export').disabled=false;say('All published prices loaded. Nothing has been changed.');
   }catch(e){say(e.message,true);}finally{lock(false);}

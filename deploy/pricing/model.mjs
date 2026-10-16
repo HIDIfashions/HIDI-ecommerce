@@ -1,4 +1,13 @@
 export const target15 = mrp => Math.floor((mrp * 85 + 50) / 100);
+export function sellingForDiscount(mrp, discount) {
+  const value=String(discount).trim();
+  if(!/^\d+(?:\.\d{1,2})?$/.test(value))throw Error('Enter a discount from 0 to 99.99 with at most two decimal places.');
+  const [whole,fraction='']=value.split('.'),basisPoints=Number(whole)*100+Number(fraction.padEnd(2,'0'));
+  if(!Number.isSafeInteger(mrp)||mrp<1||mrp>100000000||!Number.isSafeInteger(basisPoints)||basisPoints<0||basisPoints>=10000)throw Error('Enter a discount from 0 to 99.99 and a valid MRP.');
+  const price=Math.floor((mrp*(10000-basisPoints)+5000)/10000);
+  if(price<1)throw Error('The calculated selling price must be at least ₹0.01.');
+  return price;
+}
 export function priceStatus(mrp, price) {
   const valid = Number.isSafeInteger(mrp) && Number.isSafeInteger(price) && mrp > 0 && price > 0 && price <= mrp && mrp <= 2147483647;
   return { valid, exact15: valid && price === target15(mrp), percent: valid ? (mrp - price) * 100 / mrp : null, suggestedPaise: valid ? target15(mrp) : null };
