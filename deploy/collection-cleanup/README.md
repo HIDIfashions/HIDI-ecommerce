@@ -1,0 +1,13 @@
+# Collection header cleanup
+
+The visible collection SEO additions placed a long heading, buying-guidance paragraph and cross-category links above the catalogue. Restore short storefront headings (All Products, Casual Wear, Work Wear and Occasional Wear) and remove those paragraphs and extra links. Keep existing search/social metadata. The remaining category aliases and Ananya's Pick already use short headings and have no added introduction.
+
+## Impact reviewed before deployment
+
+The runtime overlay changes only `apps/web/.next/server/app/collections/all/page.js` and `apps/web/.next/server/app/collections/[slug]/page.js`. Exact unique anchors and inverse transforms reject unknown runtimes and prove all other bytes are unchanged. No client chunks, filters, product selection, prices, images, cart, checkout, account, admin, APIs, database, media storage, policies, authentication or deployment settings are changed. Removing visible descriptive text and cross-links reduces on-page collection SEO content; existing metadata, canonical URLs and merchant feed are retained. Preserve a single short H1 for accessibility and orientation.
+
+## Release verification
+
+Use the existing guarded deployment sequence with a dedicated workflow and evidence directory. Capture the fresh ready production image, verify its exact rollback backup, compose the two-file overlay, compare the actual candidate against baseline and frozen active catalogue, then publish only the tested image. Chromium, Firefox and WebKit each run 320px, 390px and 1440px scenarios. Checks cover nine collection/alias routes, headings, absent intro/links, no horizontal overflow, unchanged head metadata, product cards and prices, sorting, product details/schema, five real carousel activations, policies, private-route indexing, merchant feed, browser errors and unexpected writes. Candidate tests use isolated read-only catalogue fixtures; production probes block writes. Live failure or changed deployment ownership prevents publication or triggers guarded rollback.
+
+The source contract and compiled-runtime patch tests run before browser tests. This scope does not place a real order, initiate payment, change stock or test authenticated account mutations.

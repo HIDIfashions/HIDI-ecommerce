@@ -1,0 +1,82 @@
+name: HIDI collection header cleanup - exact-image tests and guarded release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [deploy/collection-cleanup/**, .github/workflows/collection-cleanup.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  queue: max
+  cancel-in-progress: false
+jobs:
+  verify-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-collection-cleanup-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-collection-cleanup-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Verify patch boundaries, caption destinations and existing SEO regressions
+        run: |
+          python3 deploy/collection-cleanup/test_patch.py
+          python3 -m py_compile deploy/collection-cleanup/patch-runtime.py deploy/collection-cleanup/release.py
+          node --check deploy/collection-cleanup/candidate.mjs
+          node --check deploy/collection-cleanup/probes.mjs
+          node --test deploy/merchant-feed/feed.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs tests/storefront-surfaces.test.cjs
+      - name: Install isolated browser engines and exact image backup tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y skopeo
+          npm install --prefix /tmp/hidi-collection-cleanup-browser --no-save playwright@1.56.1 typescript@5.9.3
+          node /tmp/hidi-collection-cleanup-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Verify confirmed policy facts and catalogue filtering rules
+        run: HIDI_TYPESCRIPT_MODULE=/tmp/hidi-collection-cleanup-browser/node_modules/typescript/lib/typescript.js node --test tests/quality-domain.test.cjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture ready deployment and verify exact rollback image
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/collection-cleanup/release.py capture
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-collection-cleanup-private/web/candidate-app" >> "$GITHUB_ENV"
+      - name: Compose two-file candidate and prove all unrelated files identical
+        run: python3 deploy/collection-cleanup/release.py compose
+      - name: Test actual candidate against baseline in Chromium Firefox and WebKit
+        run: |
+          node deploy/collection-cleanup/candidate.mjs
+          python3 deploy/collection-cleanup/release.py seal
+      - name: Publish the exact tested image
+        run: python3 deploy/collection-cleanup/release.py publish
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Apply with concurrency guard and verify live shopping and SEO
+        id: apply
+        timeout-minutes: 25
+        run: timeout --signal=TERM --kill-after=10m 20m python3 deploy/collection-cleanup/release.py apply --image "$WEB_IMAGE"
+      - uses: azure/login@v2
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Recover interrupted owned rollout
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        timeout-minutes: 15
+        run: python3 deploy/collection-cleanup/release.py recover --image "$WEB_IMAGE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: collection-cleanup-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/collection-cleanup
+          retention-days: 30

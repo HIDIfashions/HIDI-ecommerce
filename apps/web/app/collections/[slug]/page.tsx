@@ -1,4 +1,3 @@
-import { CollectionLinks } from "@/components/collection-links";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CollectionBrowser } from "@/components/collection-browser";
@@ -17,6 +16,13 @@ const labels: Record<string, { title: string; copy: string }> = {
   "work-wear": {"title": "Office Wear Kurta Sets for Women", "copy": "Build your working wardrobe with HIDI’s office wear kurta sets. Compare straight and coordinated silhouettes, floral designs and embroidery. Check the fabric, garment measurements, included pieces and available sizes on each product before choosing your work outfit."},
   "occasional-wear": {"title": "Occasion Wear Kurta & Anarkali Sets", "copy": "Explore occasion wear kurta and Anarkali sets for celebrations and festive plans. Discover embroidered designs and outfits with dupattas, with the exact included pieces listed on each product. Compare fabric, garment measurements and available sizes before choosing your outfit."},
   "ananyas-pick": { title: "Ananya’s Pick", copy: "Ananya’s selected styles from Casual, Work and Occasional Wear." },
+};
+
+// Keep descriptive search metadata separate from the short storefront heading.
+const displayTitles: Record<string, string> = {
+  "casual-wear": "Casual Wear",
+  "work-wear": "Work Wear",
+  "occasional-wear": "Occasional Wear",
 };
 
 export async function generateMetadata({
@@ -77,7 +83,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
 
   return <div className="container collection-page">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }} />
-    <header className="collection-header" style={{display:"block"}}><h1>{collection.title}</h1>{["casual-wear","work-wear","occasional-wear"].includes(slug) && <><p className="hidi-collection-intro" style={{maxWidth:"68ch",margin:"12px auto 0",fontSize:15,lineHeight:1.6}}>{collection.copy}</p><CollectionLinks current={slug} /></>}</header>
+    <header className="collection-header"><h1>{displayTitles[slug] || collection.title}</h1></header>
     <CollectionBrowser products={products} />
   </div>;
 }
