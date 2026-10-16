@@ -269,6 +269,7 @@ test("checkout delivery serviceability returns only sanitized carrier fields and
           raw: { secretCarrierPayload: true },
         };
       },
+      estimateTransitDays: async () => 1,
     } as any,
   );
 
@@ -284,6 +285,7 @@ test("checkout delivery serviceability returns only sanitized carrier fields and
     district: "Hyderabad",
     stateCode: "TG",
     estimatedDeliveryDate: null,
+    estimatedTransitDays: 1,
   });
   assert.deepEqual(second, first);
   assert.equal(calls, 1);

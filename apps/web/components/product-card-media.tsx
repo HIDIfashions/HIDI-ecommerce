@@ -128,6 +128,7 @@ type Props = {
   href: string;
   priority?: boolean;
   sizes?: string;
+  showExpand?: boolean;
 };
 
 /**
@@ -340,10 +341,12 @@ function Gallery({
   href,
   priority = false,
   sizes = "(max-width:720px) 50vw, (max-width:1050px) 50vw, 33vw",
+  showExpand = true,
 }: {
   name: string;
   items: CardMedia[];
   sizes?: string;
+  showExpand?: boolean;
   soldOut?: boolean;
   intervalMs?: number;
   href: string;
@@ -617,7 +620,7 @@ function Gallery({
                 )}
               </button>
 
-              {active && (
+              {active && showExpand && (
                 <button
                   type="button"
                   ref={expandButton}

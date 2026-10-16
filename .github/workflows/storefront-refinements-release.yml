@@ -1,4 +1,4 @@
-name: Approved storefront refinements - backed up and guarded Azure release
+name: Approved storefront follow-up - backed up and guarded Azure release
 on:
   push:
     branches: [migration/azure-sql-blob]

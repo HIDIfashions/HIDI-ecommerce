@@ -9,7 +9,7 @@ cloud=module('refinements_cloud',ROOT.parent/'privacy-policy/rollout.py');cloud.
 patch=module('refinements_patch',ROOT/'patch.py')
 WORK=pathlib.Path(os.environ.get('RUNNER_TEMP','/tmp'))/'hidi-refinements-private'
 OUT=pathlib.Path('evidence/storefront-refinements')
-API_FILES={f'apps/api/dist/{name}{ext}' for name in ['checkout/checkout.controller','checkout/shipping-policy','checkout/offers-engine','delhivery/delhivery.service'] for ext in ['.js','.js.map']}
+API_FILES={f'apps/api/dist/{name}{ext}' for name in ['checkout/checkout.controller','delhivery/delhivery.service'] for ext in ['.js','.js.map']}
 def setup():
  WORK.mkdir(parents=True,exist_ok=True);WORK.chmod(0o700);OUT.mkdir(parents=True,exist_ok=True)
 def save(name,data): (OUT/name).write_text(json.dumps(data,indent=2))
@@ -20,22 +20,25 @@ def capture():
  setup();expected=json.loads((ROOT/'approved-base.json').read_text());states={}
  for name in ['hidi-api','hidi-web']:
   data=cloud.app(name);state=cloud.snapshot(data);cloud.ready(state);helpers.validate_image(state['image'],name.removeprefix('hidi-'))
-  assert state['image']==expected[name]['image'] and state['settingsHash']==expected[name]['settingsHash'],'Production changed since the reviewed backup; refusing to replace '+name
+  assert state['settingsHash']==expected[name]['settingsHash'],'Production settings changed since the reviewed backup: '+name
+  if name=='hidi-api':assert state['image']==expected[name]['image'],'Independent API release changed the reviewed checkout baseline'
+  # Web extensions are composed onto this fresh ready image and fingerprinted,
+  # so concurrent Merchant feed or colour work is retained instead of reverted.
   target=WORK/(name+'.json');target.write_text(json.dumps(data));target.chmod(0o600);states[name]=state
  save('before.json',states);save('published-before.json',public())
+ try: merchant=b'<rss' in cloud.get('/google-products.xml')
+ except Exception: merchant=False
+ save('optional-live.json',{'merchantFeed':merchant})
  with open(os.environ['GITHUB_ENV'],'a') as env:
   for name,state in states.items():env.write('EXPECTED_'+name.removeprefix('hidi-').upper()+'='+state['image']+'\n')
- print('Fresh ready images/settings match the production backup; published content captured')
+ print('Fresh ready baseline captured; settings and reviewed API baseline verified')
 def compose(app,tag):
  setup();name='hidi-'+app;base=cloud.snapshot(json.loads((WORK/(name+'.json')).read_text()))['image']
  folder=WORK/app;folder.mkdir();old=folder/'base-app';overlay=folder/'overlay';candidate=folder/'candidate-app';helpers.extract(base,old)
  if app=='api':
   for path in API_FILES:
    dest=overlay/path;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(path,dest)
-  retained='apps/api/dist/checkout/offers-engine.mjs'
-  destination=overlay/retained;destination.parent.mkdir(parents=True,exist_ok=True)
-  destination.write_text(patch.patch_retained_offer_shipping((old/retained).read_text()))
-  allowed=API_FILES|{retained}
+  allowed=API_FILES
  else:
   helpers.copy_web_overlay(pathlib.Path('apps/web/.next/standalone'),pathlib.Path('apps/web/.next/static'),overlay)
   cssname,css,_=patch.assets();(overlay/'dist').mkdir()
@@ -81,11 +84,16 @@ def apply(api,web):
    state=cloud.snapshot(wait(name,image,suffix));assert state['settingsHash']==before[name]['settingsHash'],'App settings changed'
   for path in ['/health','/healthz','/api/store/health/ready','/','/about','/collections/all','/cart','/checkout','/account','/shipping','/returns','/admin','/admin/products/price-tags','/admin/landing-media','/admin/packing-scanner','/admin/privacy-policy']:cloud.get(path)
   assert public()==protected,'Published hero, media or privacy policy changed'
+  if json.loads((OUT/'optional-live.json').read_text())['merchantFeed']:assert b'<rss' in cloud.get('/google-products.xml'),'Existing Merchant feed failed'
   subprocess.run(['node','deploy/storefront-refinements/probes.mjs','https://hidiindia.com','evidence/storefront-refinements/live'],check=True,timeout=900)
+  courier=json.loads(cloud.get('/api/store/checkout/delivery-serviceability?pin=500089'))
+  assert courier.get('pin')=='500089' and isinstance(courier.get('serviceable'),bool) and 'estimatedTransitDays' in courier,'Live courier response contract failed'
+  days=courier['estimatedTransitDays'];assert days is None or type(days) is int and 0<=days<=60,'Invalid live courier estimate'
+  save('live-courier.json',{key:courier.get(key) for key in ['pin','serviceable','cod','estimatedTransitDays','estimatedDeliveryDate']})
   after={name:cloud.snapshot(cloud.app(name)) for name in images}
   for name in images:assert after[name]['image']==images[name] and after[name]['settingsHash']==before[name]['settingsHash'];cloud.ready(after[name])
   save('after.json',{'states':after,'shippingPaise':0,'settingsPreserved':True,'publishedContentPreserved':True,'primaryDomain':'https://hidiindia.com'})
-  print('PASS: all five approved changes live; desktop/mobile checks passed; settings and published content preserved')
+  print('PASS: three approved follow-up changes live; desktop/mobile checks passed; settings and published content preserved')
  except Exception:
   restored=[];unrestored=[]
   for name,image in reversed(list(owned.items())):

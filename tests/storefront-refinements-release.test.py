@@ -2,6 +2,20 @@ import importlib.util,pathlib,unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('refinements_patch',ROOT/'deploy/storefront-refinements/patch.py');patch=importlib.util.module_from_spec(spec);spec.loader.exec_module(patch)
 class SurgicalPatches(unittest.TestCase):
+ def test_existing_live_homepage_refreshes_only_stylesheet_and_config_version(self):
+  oldlink='<link rel="stylesheet" data-hidi-storefront-refinements href="/storefront-refinements-'+'a'*16+'.css">'
+  source='<head>'+oldlink+'</head><script src="./config.js?v=refinements-'+'b'*12+'"></script><script src="/merchant-variant.js"></script>'
+  result=patch.patch_index(source);self.assertEqual(patch.patch_index(result),result)
+  name,_,link=patch.assets();version=patch.hashlib.sha256(link.encode()).hexdigest()[:12]
+  self.assertEqual(result.replace(link,oldlink).replace('refinements-'+version,'refinements-'+'b'*12),source)
+ def test_existing_runtime_refresh_preserves_other_integrations(self):
+  oldlink='<link rel="stylesheet" data-hidi-storefront-refinements href="/storefront-refinements-'+'a'*16+'.css">'
+  source='function injectStorefrontLayerFix(html) {\n  if (!html.includes("data-hidi-storefront-refinements")) html = html.replace(/<\\/head>/i, '+repr(oldlink)+" + '</head>');\n return merchantFeed(html);\n}\n"
+  with mock.object(patch,'compatibility',side_effect=lambda value:value):
+   result=patch.patch_runtime(source);self.assertEqual(result.replace(patch.assets()[2],oldlink),source);self.assertEqual(patch.patch_runtime(result),result)
+ def test_already_zero_shipping_configuration_is_preserved(self):
+  source="window.HIDI_CONFIG={message:'Shipping is ₹0.00 on every order',other:'keep'};"
+  self.assertEqual(patch.patch_config(source),source)
  def test_retained_offer_engine_changes_only_shipping(self):
   original="keepBefore();const shipping=subtotal<149900?9900:0,total=gross-discount+shipping;keepAfter();"
   self.assertEqual(patch.patch_retained_offer_shipping(original),"keepBefore();const shipping=0,total=gross-discount+shipping;keepAfter();")
@@ -31,12 +45,21 @@ class ReleaseGuards(unittest.TestCase):
   self.new={name:'acrhidiprod0927.azurecr.io/'+name+'@sha256:'+char*64 for name,char in [('hidi-api','c'),('hidi-web','d')]}
   for name,data in self.old.items():(release.WORK/(name+'.json')).write_text(json.dumps(data))
   (release.OUT/'published-before.json').write_text('{}');(release.OUT/'candidate').mkdir()
+  (release.OUT/'optional-live.json').write_text('{"merchantFeed":false}')
   (release.OUT/'candidate/report.json').write_text(json.dumps({'reports':[{'engine':engine,'width':width,'status':'PASS'} for engine in ['chromium','firefox','webkit'] for width in [320,390,844,1440]]}))
   self.receipt={'passed':True,'compiledApiFixturesPassed':True,'retainedUploadChecksPassed':True,'adminRoutesPassed':True,'runId':'123','commit':'tested-commit','apiId':'tested-api','webId':'tested-web'};(release.OUT/'candidate-verified.json').write_text(json.dumps(self.receipt))
   patches=[mock.dict(os.environ,{'GITHUB_RUN_ID':'123','GITHUB_SHA':'tested-commit'}),mock.object(release.cloud,'app',side_effect=lambda name:copy.deepcopy(self.current[name])),mock.object(release.cloud,'snapshot',side_effect=copy.deepcopy),mock.object(release.cloud,'ready',return_value=None),mock.object(release,'public',return_value={}),mock.object(release.cloud,'get',return_value=b'ok'),mock.object(release.helpers,'docker',side_effect=lambda *args:'tested-api' if args[-1]==self.new['hidi-api'] else 'tested-web'),mock.object(release,'wait',side_effect=lambda name,*args:copy.deepcopy(self.current[name]))]
   for patcher in patches:patcher.start();self.addCleanup(patcher.stop)
  def write(self,data,image,suffix):
   name=next(name for name in self.current if image.startswith('acrhidiprod0927.azurecr.io/'+name+'@'));self.writes.append((name,image));self.current[name]['image']=image;self.current[name]['latest']=self.current[name]['ready']=name+'--'+suffix
+ def test_capture_preserves_fresh_web_extensions_instead_of_replacing_the_old_image(self):
+  (release.WORK/'approved-base.json').write_text(json.dumps(self.old));fresh='acrhidiprod0927.azurecr.io/hidi-web@sha256:'+'e'*64;self.current['hidi-web']['image']=fresh
+  with mock.object(release,'ROOT',release.WORK),mock.dict(os.environ,{'GITHUB_ENV':str(release.WORK/'github-env')}):release.capture()
+  self.assertEqual(json.loads((release.OUT/'before.json').read_text())['hidi-web']['image'],fresh);self.assertEqual(self.writes,[])
+ def test_independent_api_change_blocks_capture_before_application_writes(self):
+  (release.WORK/'approved-base.json').write_text(json.dumps(self.old));self.current['hidi-api']['image']='acrhidiprod0927.azurecr.io/hidi-api@sha256:'+'e'*64
+  with mock.object(release,'ROOT',release.WORK),self.assertRaises(AssertionError):release.capture()
+  self.assertEqual(self.writes,[])
  def run_apply(self):release.apply(self.new['hidi-api'],self.new['hidi-web'])
  def test_missing_or_incomplete_candidate_receipt_cannot_deploy(self):
   (release.OUT/'candidate-verified.json').unlink()

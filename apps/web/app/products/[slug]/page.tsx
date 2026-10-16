@@ -181,7 +181,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <Link href="/collections/all" className="text-link">Shop all</Link>
         </div>
         <div className="pdp-related-grid">
-          {related.map((item) => <ProductCard key={item.id} product={item} />)}
+          {related.map((item) => <ProductCard key={item.id} product={item} showExpand={false} />)}
         </div>
       </section>
     )}
