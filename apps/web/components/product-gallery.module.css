@@ -152,4 +152,4 @@
 }
 
 
-.portraitFrame{aspect-ratio:3/4!important;height:auto!important;overflow:hidden!important}.portraitFrame>img{object-fit:cover!important;object-position:50% 80%!important}
+.portraitFrame{aspect-ratio:3/4!important;height:auto!important;min-height:0!important;overflow:hidden!important}:global(.pdp-gallery) .portraitFrame:global(.pdp-image)>img{object-fit:cover!important;object-position:50% 80%!important}

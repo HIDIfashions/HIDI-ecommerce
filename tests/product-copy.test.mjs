@@ -15,3 +15,11 @@ test('production admin handler serves only registered preview assets with privat
  try{for(const path of ['/admin/product-preview','/admin-tools-assets/product-preview.mjs','/admin-tools-assets/product-preview.css','/admin-tools-assets/product-copy.mjs']){const response=await fetch(base+path);assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');assert.match(response.headers.get('content-security-policy'),/script-src 'self'/);assert.equal((await fetch(base+path,{method:'HEAD'})).status,200);assert.equal((await fetch(base+path,{method:'POST'})).status,405);}assert.equal((await fetch(base+'/admin-tools-assets/handler.mjs')).status,404);}
  finally{await new Promise(done=>server.close(done));}
 });
+
+test('only the individually reviewed photograph receives automatic tighter framing',async()=>{
+ const {photoFraming,REVIEWED_PORTRAIT_PHOTO,reviewedPortraitPhoto}=await import('../deploy/admin-tools/product-photo-framing.mjs');
+ assert.equal(photoFraming('/photo/other-dress.jpg'),'original');assert.equal(photoFraming('/photo/closeup.jpg'),'original');
+ assert.equal(photoFraming('/photo/'+REVIEWED_PORTRAIT_PHOTO+'.jpg'),'portrait');assert.equal(photoFraming('/photo/'+REVIEWED_PORTRAIT_PHOTO+'.jpg','original'),'original');assert.equal(photoFraming('/photo/other.jpg','portrait'),'portrait');
+ assert(reviewedPortraitPhoto('/_next/image?url='+encodeURIComponent('/photo/'+REVIEWED_PORTRAIT_PHOTO+'.jpg')));
+ assert.equal(await readFile(new URL('../deploy/admin-tools/product-photo-framing.mjs',import.meta.url),'utf8'),await readFile(new URL('../apps/web/lib/product-photo-framing.mjs',import.meta.url),'utf8'));
+});

@@ -1,7 +1,7 @@
 """Add reviewed copy editor and bounded storefront enhancement to the current runtime."""
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
-ASSETS=['product-copy.mjs','product-preview.mjs','product-preview.css','product-preview.html','product-copy-storefront.mjs','product-copy-storefront.css']
+ASSETS=['product-photo-framing.mjs','product-copy.mjs','product-preview.mjs','product-preview.css','product-preview.html','product-copy-storefront.mjs','product-copy-storefront.css']
 def once(text,anchor,new):
  assert text.count(anchor)==1,'One retained anchor required: '+anchor
  return text.replace(anchor,new,1)
