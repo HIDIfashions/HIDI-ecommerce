@@ -1,4 +1,5 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';import {pathToFileURL} from 'node:url';import {createHash} from 'node:crypto';import {createRequire} from 'node:module';import assert from 'node:assert/strict';import {resolve} from 'node:path';
+import {selectInitialCss} from './critical-filter.mjs';
 const {chromium}=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
 const require=createRequire(process.env.HIDI_POSTCSS_MODULE),postcss=require(process.env.HIDI_POSTCSS_MODULE);
 const sheets=new Map(),hash=s=>createHash('sha256').update(s).digest('hex');
@@ -26,15 +27,7 @@ try{for(const width of [320,390,412,768,1100,1350,1440]){
 }}finally{await browser.close();}
 const manifest={bundle:'/'+process.argv[2],sheets:{}},summary=[];
 for(const [href,item] of sheets){
- const ast=postcss.parse(item.css);ast.walkComments(c=>c.remove());
- ast.walkRules(rule=>{
-  let parent=rule.parent;while(parent&&parent.type!=='root'){if(/keyframes$/i.test(parent.name||''))return;parent=parent.parent;}
-  if(/:hover|:focus|:active|:disabled|\[aria-/.test(rule.selector))return;
-  const start=rule.source.start.offset,end=rule.source.end.offset;
-  if(!item.ranges.some(([a,b])=>start>=a&&end<=b))rule.remove();
- });
- ast.walkAtRules(rule=>{if(rule.name==='charset'||rule.nodes&&!rule.nodes.length)rule.remove();});
- const critical=ast.toString();if(!critical.trim()||critical.length>=item.css.length*.95)continue;
+ const critical=selectInitialCss(postcss,item.css,item.ranges);if(!critical.trim()||critical.length>=item.css.length*.95)continue;
  manifest.sheets[href]={hash:item.hash,css:critical};summary.push({href,fullBytes:Buffer.byteLength(item.css),initialBytes:Buffer.byteLength(critical)});
 }
 assert(Object.keys(manifest.sheets).length>=3,'Expected several verified critical stylesheets');
