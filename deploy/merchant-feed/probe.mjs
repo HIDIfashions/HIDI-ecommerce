@@ -27,8 +27,9 @@ export async function probe(base,out,{products,preview=false}={}) {
   const pw=await import(process.env.HIDI_PLAYWRIGHT_MODULE);
   // Include the price-changing size, a second size and a second product.
   const mixed=products.find(p=>new Set(p.variants.map(v=>v.pricePaise)).size>1)||products[0];
-  const offers=[...mixed.variants.filter(v=>v.available>0).slice(0,1).map(v=>({p:mixed,v})),
-    ...mixed.variants.filter(v=>v.available>0).slice(-1).map(v=>({p:mixed,v})),
+  const included=new Set([...expected.xml.matchAll(/<g:id>(.*?)<\/g:id>/g)].map(m=>m[1]));
+  const offers=[...mixed.variants.filter(v=>included.has(v.id)).slice(0,1).map(v=>({p:mixed,v})),
+    ...mixed.variants.filter(v=>included.has(v.id)).slice(-1).map(v=>({p:mixed,v})),
     {p:products[0],v:products[0].variants.find(v=>v.available>0)}];
   for (const engine of ['chromium','firefox','webkit']) {
     const browser=await pw[engine].launch({headless:true});

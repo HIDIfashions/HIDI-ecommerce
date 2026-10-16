@@ -14,7 +14,7 @@ export function imageUrl(value) {
 }
 export function buildFeed(products) {
   if (!Array.isArray(products) || !products.length) throw new Error('Empty catalogue');
-  const ids = new Set(), items = [], audit = {products:0, offers:0, omittedUnavailable:0, identifiers:'Brand supplied; no invented GTIN or MPN'};
+  const ids = new Set(), items = [], audit = {products:0, offers:0, omittedUnavailable:0, omittedUnverifiedColorImages:0, identifiers:'Brand supplied; no invented GTIN or MPN'};
   for (const p of products) {
     if (p.status && p.status !== 'ACTIVE') continue;
     if (!validId(p.id) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.slug) || !clean(p.name)) throw new Error('Invalid product');
@@ -32,7 +32,10 @@ export function buildFeed(products) {
       const combination = clean(v.color).toLowerCase()+'|'+size;
       if (combinations.has(combination)) throw new Error('Duplicate size/color: '+p.slug);
       combinations.add(combination); ids.add(v.id);
-      const records = [...(v.images || []), ...p.variants.filter(other => other.color === v.color).flatMap(other => other.images || []), ...(p.images || [])];
+      const colourImages=[...(v.images || []), ...p.variants.filter(other => other.color === v.color).flatMap(other => other.images || [])];
+      const multipleColours=new Set(p.variants.map(other=>other.color)).size>1;
+      if(multipleColours&&!colourImages.length) { audit.omittedUnverifiedColorImages++;continue; }
+      const records = multipleColours?colourImages:[...colourImages,...(p.images || [])];
       const images = [...new Set(records.map(i => imageUrl(i.url)))];
       if (!images.length) throw new Error('Missing image: '+p.slug);
       const suffix = ' — '+clean(v.color)+' — '+size;

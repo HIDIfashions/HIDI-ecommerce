@@ -9,6 +9,10 @@ test('removes sold-out variants and inactive products without substitution',()=>
   const p=sample();p.variants.push({...p.variants[0],id:'v2',size:'M',available:0});assert.equal(buildFeed([p]).audit.omittedUnavailable,1);
   assert.throws(()=>buildFeed([{...p,status:'DRAFT'}]));
 });
+test('never substitutes another colour photo for an unphotographed colour',()=>{
+  const p=sample();p.variants[0].images=p.images;p.variants.push({...p.variants[0],id:'v2',color:'Pink',images:[]});
+  const result=buildFeed([p]);assert.equal(result.audit.offers,1);assert.equal(result.audit.omittedUnverifiedColorImages,1);assert.doesNotMatch(result.xml,/<g:id>v2<\/g:id>/);
+});
 test('rejects invalid price, duplicate variants, duplicate size/color and missing descriptions',()=>{
   for(const patch of [{pricePaise:0},{pricePaise:1.5},{available:-1},{size:''},{color:''}]){const p=sample();Object.assign(p.variants[0],patch);assert.throws(()=>buildFeed([p]));}
   const p=sample();assert.throws(()=>buildFeed([p,p]));p.variants.push({...p.variants[0],id:'v2'});assert.throws(()=>buildFeed([p]));assert.throws(()=>buildFeed([{...sample(),description:''}]));
