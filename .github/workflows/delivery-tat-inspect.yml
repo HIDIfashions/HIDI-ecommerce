@@ -1,4 +1,5 @@
 name: Read-only Delhivery B2C transit-time inspection
+# Inspect the existing account only; this workflow never deploys application images.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -22,15 +23,14 @@ jobs:
           python3 - <<'PY'
           import importlib.util,json,urllib.request,urllib.parse,urllib.error
           spec=importlib.util.spec_from_file_location('cloud','deploy/privacy-policy/rollout.py');cloud=importlib.util.module_from_spec(spec);spec.loader.exec_module(cloud)
-          app=cloud.app('hidi-api');env={x['name']:x for x in app['properties']['template']['containers'][0]['env']}
+          app=cloud.app('hidi-api');print(json.dumps({'apiState':cloud.snapshot(app),'webState':cloud.snapshot(cloud.app('hidi-web'))}));env={x['name']:x for x in app['properties']['template']['containers'][0]['env']}
           token=env['DELHIVERY_API_TOKEN'].get('value')
           if not token:
             secrets=cloud.azure('rest','--method','post','--url',app['id']+'/listSecrets?api-version=2025-07-01')
             token=next(x['value'] for x in secrets['value'] if x['name']==env['DELHIVERY_API_TOKEN']['secretRef'])
           base=env.get('DELHIVERY_BASE_URL',{}).get('value','https://staging-express.delhivery.com').rstrip('/')
           assert urllib.parse.urlparse(base).hostname in ['track.delhivery.com','staging-express.delhivery.com']
-          mode=env.get('DELHIVERY_MODE',{}).get('value','S')
-          mode={'surface':'S','express':'E'}.get(mode.lower(),mode.upper());assert mode in ['S','E','N']
+          mode='S'
           def safe(value):
             if isinstance(value,dict):return {k:safe(v) for k,v in value.items() if not any(s in k.lower() for s in ['token','authorization','credential'])}
             if isinstance(value,list):return [safe(v) for v in value]
