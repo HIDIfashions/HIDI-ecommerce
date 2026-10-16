@@ -1,4 +1,3 @@
-import {preparePosterHead} from './inline-poster.mjs';
 import {renderHero} from './hero.mjs';
 import {catalogueStatus} from '../pricing/model.mjs';
 // The browser already validates this same public catalogue before showing the bar.
@@ -21,5 +20,5 @@ export async function renderAnnouncement(html,loadProducts=()=>loadPublic('/api/
 
 export async function renderInitialHome(html,request){
  const [products,hero]=await Promise.all(['/api/store/products','/api/hidi/hero-config'].map(path=>loadPublic(path).catch(()=>null)));
- return renderHero(await renderAnnouncement(preparePosterHead(html,request),async()=>products),hero,{request});
+ return renderHero(await renderAnnouncement(html,async()=>products),hero,{request});
 }
