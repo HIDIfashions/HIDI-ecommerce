@@ -94,6 +94,14 @@ function toggleValue(current: string[], value: string) {
 }
 
 export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>(".collection-page");
+    if (root) {
+      root.dataset.hidiCollectionHydrated = "true";
+      window.dispatchEvent(new Event("hidi:collection-ready"));
+    }
+  }, []);
+
   const savedColourHexes = useMemo(() => {
     const hexes = new Map<string, string>();
     for (const product of products) {

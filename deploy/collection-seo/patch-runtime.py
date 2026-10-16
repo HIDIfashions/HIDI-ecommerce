@@ -83,6 +83,9 @@ def patch_runtime(base,overlay):
         files[name]=exact(source,changes).encode()
     required={key for key in replacements if not key.startswith(' The launch')}
     assert required<=matched,'Policy terms moved; inspect before proceeding: '+str(required-matched)
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('collection_hydration',HERE/'hydration.py');hydration=importlib.util.module_from_spec(spec);spec.loader.exec_module(hydration)
+    files.update(hydration.changes(base))
     for name,data in files.items():
         target=overlay/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
     return {'passed':True,'allowedFiles':sorted(files),'inverseTransformsVerified':True,'productSelectionUnchanged':True,'confirmedPoliciesPublished':True,'apiUnchanged':True,'databaseWrites':False,'storageWrites':False}

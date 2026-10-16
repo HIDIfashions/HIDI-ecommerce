@@ -40,6 +40,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         }
         if(url.pathname==='/api/hidi/landing-media-config')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(landing)});
         if(baseline&&url.pathname==='/api/hidi/offers')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(offers)});
+        if(baseline&&url.origin===baseline&&request.resourceType()==='image')return route.abort();
         if(request.resourceType()==='media'||/razorpay\.com$/.test(url.hostname))return route.abort();
         return route.continue();
       });
