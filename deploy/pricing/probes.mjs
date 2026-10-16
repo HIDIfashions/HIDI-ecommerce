@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
-export async function probe(base,output,{engines=['chromium','firefox','webkit']}={}){
+export async function probe(base,output,{engines=['chromium','firefox','webkit'],prepareContext}={}){
  const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);await mkdir(output,{recursive:true});const results=[];
  for(const engine of engines){const browser=await pw[engine].launch({headless:true});try{for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:1000},reducedMotion:'reduce'});await context.addCookies([{name:'hidi_admin_access',value:'owner',url:base}]);
@@ -19,6 +19,7 @@ export async function probe(base,output,{engines=['chromium','firefox','webkit']
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
   });
   await context.route('**/api/store/products',route=>route.fulfill({contentType:'application/json',body:JSON.stringify([{id:'isolated-product',slug:'isolated-style',name:'Isolated candidate style',minPricePaise:sitewide?85000:100000,inStock:true,images:[],variants:[{...variant,pricePaise:sitewide?85000:100000,mrpPaise:100000}]}])}));
+  await prepareContext?.(context);
   const page=await context.newPage();page.setDefaultTimeout(20000);await page.goto(base+'/admin/product-pricing');await page.getByText('All published prices loaded. Nothing has been changed.',{exact:true}).waitFor();assert.equal(await page.locator('#rows tr').count(),21);assert.equal(writes,0);assert.equal(await page.getByLabel('MRP for Price style 20',{exact:true}).inputValue(),'');assert.equal(await page.getByLabel('Selling price for Price style 20',{exact:true}).inputValue(),'');
   await page.getByLabel('Discount percent for Price style 1',{exact:true}).fill('20');
   assert.equal(await page.getByLabel('Selling price for Price style 1',{exact:true}).inputValue(),'920.00');assert.equal(await page.getByLabel('Selling price for Price style 1',{exact:true}).getAttribute('readonly'),'');

@@ -18,9 +18,19 @@ function apply(){
     return;
   }
   if(ready){
-    if(!document.querySelector('[data-hidi-price-announcement]')){const bar=document.createElement('aside');bar.className='hidi-price-announcement';bar.dataset.hidiPriceAnnouncement='true';bar.setAttribute('aria-label','HIDI price offer');bar.textContent='15% off across HIDI · Prices already reduced · No code needed';document.body.prepend(bar);}
-    if(['/cart','/checkout'].includes(location.pathname)&&!document.querySelector('[data-hidi-price-note]')){const main=document.querySelector('main');if(main){const p=document.createElement('p');p.className='hidi-price-note';p.dataset.hidiPriceNote='true';p.textContent='Your product prices already include 15% off. No additional percentage discount is applied at checkout.';main.prepend(p);}}
-    else if(!['/cart','/checkout'].includes(location.pathname))document.querySelectorAll('[data-hidi-price-note]').forEach(el=>el.remove());
+    // Keep campaign content in our own banner, outside React-owned page trees.
+    // Inserting a note into <main> before hydration changes React's expected HTML.
+    let bar=document.querySelector('[data-hidi-price-announcement]');
+    if(!bar){bar=document.createElement('aside');bar.className='hidi-price-announcement';bar.dataset.hidiPriceAnnouncement='true';bar.setAttribute('aria-label','HIDI price offer');document.body.prepend(bar);}
+    const privatePage=['/cart','/checkout'].includes(location.pathname);
+    const message=privatePage?'Your product prices already include 15% off. No additional percentage discount is applied at checkout.':'15% off across HIDI · Prices already reduced · No code needed';
+    if(bar.textContent!==message)bar.textContent=message;
+    bar.toggleAttribute('data-hidi-price-note',privatePage);
+    // Checkout's fixed header occupies the banner's normal top position.
+    // Move only our own banner into the existing content clearance.
+    const header=document.querySelector('header');
+    const offset=location.pathname==='/checkout'&&header&&getComputedStyle(header).position==='fixed'?Math.ceil(header.getBoundingClientRect().height):0;
+    const transform=offset?'translateY('+offset+'px)':'';if(bar.style.transform!==transform)bar.style.transform=transform;
   }else removeCampaign();
   // Compare only an explicit MRP and selling price rendered together. Variant
   // changes trigger this observer again; ranges never inherit another size's MRP.
@@ -56,4 +66,4 @@ async function refresh(){
 }
 let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;if(lastPath!==location.pathname){lastPath=location.pathname;ready=false;refresh();}apply();});}).observe(document.documentElement,{subtree:true,childList:true,characterData:true});
 window.addEventListener('hidi:product-ready',apply);window.addEventListener('hidi:collection-ready',apply);
-window.addEventListener('pageshow',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});setInterval(()=>{if(!document.hidden)refresh();},60000);refresh();
+window.addEventListener('resize',apply);window.addEventListener('pageshow',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});setInterval(()=>{if(!document.hidden)refresh();},60000);refresh();
