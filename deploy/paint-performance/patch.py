@@ -11,6 +11,9 @@ def patch_web(base,overlay,poster):
     assert (base/'lcp-performance/head.mjs').read_bytes()==(HERE.parent/'lcp-performance/head.mjs').read_bytes(),'Existing response transform changed; stop'
     original_manifest=re.search(r'^const HidiMediaManifest=(.*);$',text,re.M)[0]
     manifest=poster['manifest']
+    original_video=(HERE.parent/'media-performance/client.js').read_text().split('function HidiMediaVideo(value) {',1)[1].split('function HidiMediaPoster',1)[0]
+    text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
+    text=once(text,'      onCanPlay: revealLiveVideo,\n      onError: () => setFailedSource(liveHero.url),','      onCanPlay: revealLiveVideo,\n      onError: (event) => HidiMediaVideoFallback(event, liveHero.url, () => setFailedSource(liveHero.url)),')
     text=once(text,original_manifest,'const HidiMediaManifest='+json.dumps(manifest,separators=(',',':'))+';')
     text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; return window.__HidiAvifEnabled && variant.avifPoster ? variant.avifPoster : variant.poster;')
     text=once(text,'const value = await response.json();','const value = await response.json();\n        window.__HidiAvifEnabled = await window.__HidiAvifSupport || false;')
@@ -29,6 +32,8 @@ def patch_web(base,overlay,poster):
     text=once(text,'const [manualPlayback, setManualPlayback] = HidiHeroReact.useState(false);','const [manualPlayback, setManualPlayback] = HidiHeroReact.useState(() => soundEnabled);')
     logo=(base/'dist/assets/images/hidi-logo.png').read_bytes();assert len(logo)<=32768
     text=once(text,'src:Tt("images/hidi-logo.png"),fetchPriority:"high"','src:'+json.dumps('data:image/png;base64,'+base64.b64encode(logo).decode())+',fetchPriority:"high"')
+    text=once(text,'    return () => video.pause();\n  }, [liveHero?.url, videoAllowed, reduced, sequence.paused, heroVisible, pageVisible, dialogOpen, soundEnabled, manualPlayback]);','  }, [liveHero?.url, videoAllowed, reduced, sequence.paused, heroVisible, pageVisible, dialogOpen, soundEnabled, manualPlayback]);\n  HidiHeroReact.useEffect(() => {\n    const video = liveVideoRef.current;\n    return () => video?.pause();\n  }, [liveHero?.url]);')
+    text=once(text,'  const toggleSound = async () => {\n    const video = liveVideoRef.current;\n    if (!video) return;\n    if (!video.getAttribute("src")) { video.src = HidiMediaVideo(liveHero.url); video.load(); }\n    const enabled = !soundEnabled;\n    setManualPlayback(true);\n    video.muted = !enabled;\n    setSoundEnabled(enabled);\n    try {\n      await video.play();\n    } catch {\n      video.muted = true;\n      setSoundEnabled(false);\n      video.play().catch(() => {\n      });\n    }\n  };\n','  const toggleSound = () => {\n    if (!liveVideoRef.current) return;\n    setManualPlayback(true);\n    setSoundEnabled(enabled => !enabled);\n  };\n')
     start=text.index('    setVideoAllowed(false);\n    let idleId = null;')
     end=text.index('  }, [showBundled, heroConfigStatus, mobile, reduced]);',start)
     expected=(HERE/'video-delay.txt').read_text()

@@ -14,6 +14,14 @@ def selections():
 def capture():
     # Read-only preparation may overlap other testing; exact-state guards reject any changed live image.
     photo.capture();photo.backup()
+    resources={}
+    for name,app in photo.originals().items():
+        properties=app.get('properties',{});template=properties.get('template') or {};scale=template.get('scale') or {};ingress=(properties.get('configuration') or {}).get('ingress') or {}
+        resources[name]={'containers':[{'name':c.get('name'),'resources':c.get('resources'),
+            'probes':[{'type':p.get('type'),'initialDelaySeconds':p.get('initialDelaySeconds'),'periodSeconds':p.get('periodSeconds'),'timeoutSeconds':p.get('timeoutSeconds'),'failureThreshold':p.get('failureThreshold'),'path':(p.get('httpGet') or {}).get('path'),'port':(p.get('httpGet') or {}).get('port')} for p in (c.get('probes') or [])]} for c in template.get('containers',[])],
+            'scale':{key:scale.get(key) for key in ['minReplicas','maxReplicas','pollingInterval','cooldownPeriod']},
+            'ingress':{key:ingress.get(key) for key in ['targetPort','external','transport','allowInsecure']}}
+    save('runtime-resources.json',resources)
     selected=selections();(PRIVATE/'selections.json').write_text(json.dumps(selected));save('published-selections.json',selected)
     (PRIVATE/'catalogue.json').write_bytes(cloud.get('/api/store/products'))
 def compose():
@@ -21,7 +29,7 @@ def compose():
     folder=PRIVATE/'web';folder.mkdir();base=folder/'base-app';overlay=folder/'overlay';candidate=folder/'candidate-app'
     image=photo.states()['hidi-web']['image'];images.extract(image,base)
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True)
-    poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);(overlay/'poster-build.json').unlink()
+    poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);(overlay/'poster-build.json').unlink()
     report=patch.patch_web(base,overlay,poster);manifest=report.pop('manifest')
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
     save('patch.json',report);save('manifest.json',manifest)
@@ -43,7 +51,7 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1

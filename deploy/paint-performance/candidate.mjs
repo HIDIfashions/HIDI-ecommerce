@@ -11,7 +11,7 @@ const gateway=createServer(async(req,res)=>{try{
 }catch{res.writeHead(500);res.end();}});
 await new Promise(done=>gateway.listen(3188,'0.0.0.0',done));
 async function probe(image,mode){
- execFileSync('docker',['run','-d','--name','hidi-paint-check','--network','host','-e','PORT=3186','-e','API_URL=http://127.0.0.1:4107/v1','-e','INTERNAL_API_URL=http://127.0.0.1:4107/v1',image],{stdio:'inherit'});
+ execFileSync('docker',['run','-d','--name','hidi-paint-check','--network','host','-e','PORT=3186','-e','API_URL=http://127.0.0.1:4107/v1','-e','INTERNAL_API_URL=http://127.0.0.1:4107/v1','-e','HIDI_PUBLIC_READ_ORIGIN=http://127.0.0.1:3188',image],{stdio:'inherit'});
  try{let ready=false;for(let i=0;i<90;i++){try{if((await fetch('http://127.0.0.1:3186/health')).ok){ready=true;break;}}catch{}await new Promise(done=>setTimeout(done,1000));}assert(ready);
   const child=spawn(process.execPath,['deploy/paint-performance/probe.mjs','http://127.0.0.1:3188',mode],{stdio:'inherit'});assert.equal(await new Promise(done=>child.on('exit',done)),0);
   if(mode==='candidate'){const audit=spawn(process.execPath,['deploy/paint-performance/lighthouse.mjs','candidate'],{stdio:'inherit',env:{...process.env,HIDI_AUDIT_URL:'http://127.0.0.1:3188/'}});assert.equal(await new Promise(done=>audit.on('exit',done)),0,'Candidate must meet performance headroom before any production write');}
