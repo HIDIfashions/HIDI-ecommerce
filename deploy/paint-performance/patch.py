@@ -39,10 +39,16 @@ def patch_web(base,overlay,poster):
     html=once(html,viewport,viewport+'\n'+'\n'.join(posters)+'\n<script data-hidi-early-hero="true">'+(HERE/'early-hero.js').read_text().replace('__AVIF_PROBE__',poster['probe'])+'</script>')
     runtime=(base/'server.mjs').read_text()
     runtime=once(runtime,'(?:webp|mp4)$','(?:webp|avif|mp4)$')
+    runtime=once(runtime,'    if (pathname === "/") html = optimizeHomeHead(html);','    if (pathname === "/") { html = optimizeHomeHead(html); html = await renderAnnouncement(html); }')
+    runtime='import { renderAnnouncement } from "./paint-performance/announcement.mjs";\n'+runtime
     runtime='import { sendCachedHome } from "./paint-performance/delivery.mjs";\n'+runtime
     anchor='    return sendBuffer(request, response, 200, response.getHeaders(), body);'
     runtime=once(runtime,anchor,'    return pathname === "/" ? sendCachedHome(request, response, 200, response.getHeaders(), body) : sendBuffer(request, response, 200, response.getHeaders(), body);')
-    files={'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
+    pricing=(base/'pricing/storefront.mjs').read_text()
+    assert pricing==(HERE.parent/'pricing/storefront.mjs').read_text(),'Current offer module changed; stop'
+    pricing=once(pricing,'let ready=false,pending=false','let ready=null,pending=false')
+    pricing=once(pricing,'}else removeCampaign();','}else if(ready===false) removeCampaign();')
+    files={'pricing/storefront.mjs':pricing,'paint-performance/announcement.mjs':(HERE/'announcement.mjs').read_text(),'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)
     return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'manifest':manifest}

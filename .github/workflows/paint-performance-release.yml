@@ -28,7 +28,7 @@ jobs:
       - name: Verify protocol safety and install media/browser tooling
         run: |
           google-chrome --version
-          node --test deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs
+          node --test deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/announcement.test.mjs
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
           npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
@@ -47,7 +47,7 @@ jobs:
           echo "CANDIDATE_WEB=acrhidiprod0927.azurecr.io/hidi-web:paint-performance-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
       - name: Measure current mobile and desktop performance
         run: node deploy/paint-performance/lighthouse.mjs before
-      - name: Compose early header, independent app loading and smaller hero posters
+      - name: Compose validated offer banner, early header and smaller hero posters
         run: python3 deploy/paint-performance/release.py compose
       - name: Verify candidate bundle, design, media and compression
         run: node deploy/paint-performance/candidate.mjs
