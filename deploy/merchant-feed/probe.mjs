@@ -54,10 +54,12 @@ export async function probe(base,out,{products,preview=false}={}) {
         const shown=(await page.locator('[data-pdp-summary] .pdp-price').innerText()).match(/₹\s*([\d,]+(?:\.\d{1,2})?)/);
         assert(shown&&Number(shown[1].replaceAll(',',''))===v.pricePaise/100,'Selected price mismatch '+summary);
         assert.equal(await page.locator('link[rel="canonical"]').first().getAttribute('href'),'https://hidiindia.com/products/'+p.slug);
-        assert.equal(await page.getByRole('button',{name:v.size,exact:true}).getAttribute('aria-pressed'),'true');
+        const sizes=page.locator('.sizes');
+        assert.equal(await sizes.getByRole('button',{name:v.size,exact:true}).getAttribute('aria-pressed'),'true');
         const others=p.variants.filter(o=>o.available>0&&o.color===v.color&&o.id!==v.id);
-        if(others.length){await page.getByRole('button',{name:others[0].size,exact:true}).click();await page.waitForFunction(sku=>document.querySelector('[data-pdp-summary]')?.textContent.includes(sku),others[0].sku);}
+        if(others.length){await sizes.getByRole('button',{name:others[0].size,exact:true}).click();await page.waitForFunction(sku=>document.querySelector('[data-pdp-summary]')?.textContent.includes(sku),others[0].sku);}
         results.push({engine,width,slug:p.slug,variant:v.id,passed:true});
+        await writeFile(out+'/progress.json',JSON.stringify({results,errors,writes},null,2));
         if(results.length===1||results.length===18)await page.screenshot({path:out+'/'+engine+'-'+width+'.png',fullPage:true});
         await page.close();
       }
