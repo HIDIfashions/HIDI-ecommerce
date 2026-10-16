@@ -13,3 +13,11 @@ test('future image overlays supply fresh CSS and unavailable or unsafe paths fal
   const link='<link rel="stylesheet" href="/a.css">';writeFileSync(join(root,'a.css'),'a{color:red}');assert(createHomeHead(root)(link).includes('color:red'));writeFileSync(join(root,'a.css'),'a{color:blue}');assert(createHomeHead(root)(link).includes('color:blue'));assert.equal(createHomeHead(root)('<link rel="stylesheet" href="/missing.css">'),'<link rel="stylesheet" href="/missing.css">');
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+test('self-contained app and public config retain module/parser execution order without extra requests; imports retain external loading',()=>{
+ const root=mkdtempSync(join(tmpdir(),'hidi-head-'));try{
+  mkdirSync(join(root,'assets'));writeFileSync(join(root,'assets/index-abc.js'),'globalThis.app="</script>";');writeFileSync(join(root,'config.js'),'window.HIDI_CONFIG={siteUrl:"/"};');
+  const input='<link rel="modulepreload" href="/assets/index-abc.js"><script type="module" crossorigin src="/assets/index-abc.js"></script><div id="root"></div><script src="./config.js?v=one"></script>';
+  const result=createHomeHead(root)(input);assert(!result.includes('modulepreload'));assert(result.includes('type="module"'));assert(result.includes('globalThis.app="<\\/script>"'));assert(result.includes('data-hidi-inline-script="/config.js"'));assert(result.indexOf('id="root"')<result.indexOf('window.HIDI_CONFIG'));assert(!result.includes('src="'));
+  writeFileSync(join(root,'assets/index-split.js'),'import x from "./chunk.js";');const split='<script type="module" src="/assets/index-split.js"></script>';assert.equal(createHomeHead(root)(split),split);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});

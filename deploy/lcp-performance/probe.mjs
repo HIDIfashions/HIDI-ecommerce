@@ -6,7 +6,7 @@ const baseline=mode==='baseline',rows=[];
 const request=(path,headers={})=>new Promise((resolve,reject)=>{const u=new URL(path,base);(u.protocol==='https:'?getHttps:get)(u,{headers},res=>{const chunks=[];res.on('data',c=>chunks.push(c));res.on('end',()=>resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks)}));}).on('error',reject);});
 if(!baseline){
  const report=JSON.parse(await readFile(OUT+'/patch.json','utf8'));
- const home=await request('/');assert(home.body.toString().includes('data-hidi-first-header'));assert(home.body.toString().includes('data-hidi-inline-css'));
+ const home=await request('/');assert(home.body.toString().includes('data-hidi-first-header'));assert(home.body.toString().includes('data-hidi-inline-css'));assert(home.body.toString().includes('data-hidi-inline-script="/'+report.bundle+'"'));assert(home.body.toString().includes('data-hidi-inline-script="/config.js"'));
  for(const path of ['/'+report.bundle,'/assets/index-yOknTVcM.css','/api/store/products']){
   const plain=await request(path,{'accept-encoding':'identity'});assert.equal(plain.status,200,path);
   for(const encoding of ['br','gzip']){const r=await request(path,{'accept-encoding':encoding});assert.equal(r.status,200);assert.equal(r.headers['content-encoding'],encoding,path);assert.match(r.headers.vary,/Accept-Encoding/i);const decoded=encoding==='br'?brotliDecompressSync(r.body):gunzipSync(r.body);if(mode==='live'&&path.startsWith('/api/'))assert(Array.isArray(JSON.parse(decoded)));else assert.deepEqual(decoded,plain.body);assert(r.body.length<plain.body.length*.7,path+' should compress');}
@@ -33,7 +33,7 @@ for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
    else await page.waitForFunction(()=>!!document.querySelector('video.hero-live-media')?.poster);
    await page.waitForTimeout(2500);
    const initial=await page.evaluate(()=>({lcp:window.__lcp,cls:window.__cls,video:{src:document.querySelector('video.hero-live-media').currentSrc,poster:document.querySelector('video.hero-live-media').poster,width:document.querySelector('video.hero-live-media').videoWidth},overflow:document.documentElement.scrollWidth>innerWidth+1}));
-   const initialBytes=transferred,initialRequests=[...network];assert(!initial.overflow);
+   const initialBytes=transferred,initialRequests=[...network];assert(!initial.overflow);if(!baseline){assert(!initialRequests.some(u=>new URL(u).pathname==='/config.js'),'Config must not block on another request');assert(!initialRequests.some(u=>u.includes('/assets/index-')&&u.endsWith('.js')),'Initial app must arrive in HTML');assert(!initialRequests.some(u=>u.includes('/ananya-portraits/')),'Off-screen original portraits must not download');}
    if(!baseline){assert(initial.video.poster.includes('/media-performance/assets/'));if(engine==='chromium'){assert(initial.video.src.includes('/media-performance/assets/'));assert.equal(initial.video.width,width<=700?1280:1920);assert(initialBytes<(width<=700?7:11)*1024*1024,'Initial transfer budget');}assert(!media.some(u=>u.includes('/api/hidi/hero-asset/')),'Original video should not be downloaded');}
    const sound=page.getByRole('button',{name:'Turn video sound on'});await sound.waitFor();
    if(engine==='chromium'){
