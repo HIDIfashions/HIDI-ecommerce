@@ -32,7 +32,7 @@ export async function probe(base,output,{engines=['chromium','firefox','webkit']
   page.on('dialog',dialog=>dialog.accept());await page.goto(base+'/collections/all');await page.locator('[data-hidi-pricing-loader]').waitFor({state:'attached'});await page.waitForLoadState('networkidle');assert.equal(await page.locator('[data-hidi-price-announcement]').count(),0);
   // Real catalogue card prices retain their actual percentages rather than 15.
   const badges=await page.locator('[data-hidi-price-badge]').allTextContents();assert(badges.every(label=>label!=='15% OFF'));
-  sitewide=true;await page.reload();await page.locator('[data-hidi-price-announcement]').waitFor();assert.match(await page.locator('[data-hidi-price-announcement]').innerText(),/Prices already reduced/);
+  sitewide=true;await page.reload();await page.evaluate(()=>{document.querySelector('main').setAttribute('data-hidi-collection-hydrated','true');window.dispatchEvent(new Event('hidi:collection-ready'));});await page.locator('[data-hidi-price-announcement]').waitFor();assert.match(await page.locator('[data-hidi-price-announcement]').innerText(),/Prices already reduced/);
   await page.screenshot({path:output+'/'+engine+'-'+width+'-qualified-banner.png'});
   // Exercise the product-page overlay for an undiscounted size, then a changed
   // size/price. This fixture DOM is local to the disposable browser context.
