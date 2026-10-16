@@ -11,6 +11,7 @@ export async function probe(base,output,{baseline,landing}={}){
  await mkdir(output,{recursive:true});
  const errors=[],writes=[],gatewayRetries=[],results=[];
  landing ||= await (await fetch('https://hidiindia.com/api/hidi/landing-media-config')).json();
+ const hero=await (await fetch('https://hidiindia.com/api/hidi/hero-config')).json();
  const offers=await (await fetch('https://hidiindia.com/api/hidi/offers')).json();
  const metadata=p=>p.locator('head title,head meta,head link[rel=canonical]').evaluateAll(nodes=>nodes.map(n=>n.outerHTML).sort());
  const footer=p=>p.locator('footer').evaluateAll(nodes=>nodes.map(n=>({text:n.textContent,images:[...n.querySelectorAll('img')].map(i=>({src:new URL(i.src).pathname,width:i.getBoundingClientRect().width,height:i.getBoundingClientRect().height}))})));
@@ -28,6 +29,7 @@ export async function probe(base,output,{baseline,landing}={}){
     if(r.resourceType()==='script'&&/googletagmanager\.com|google-analytics\.com|cloudflareinsights\.com/.test(u.hostname))return route.fulfill({status:200,contentType:'application/javascript',body:'/* tracking isolated */'});
     if(r.resourceType()==='media'||/razorpay\.com$/.test(u.hostname))return route.abort();
     if(u.pathname==='/api/hidi/landing-media-config')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(landing)});
+    if(u.pathname==='/api/hidi/hero-config')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(hero)});
     if(u.pathname==='/api/hidi/offers')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(offers)});
     return route.continue();
    });

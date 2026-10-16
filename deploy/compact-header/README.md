@@ -11,3 +11,5 @@ The user saw desktop/mobile layout previews before deployment. Preview HTML disa
 At the768px boundary, the checkout logo needs an explicit full-row grid placement because its menu controls are hidden. Only logo alignment changes; the checkout header height, back link and form clearance are retained. Metadata comparisons wait for both candidate and baseline hydration and commerce reads, retaining exact tag/count comparison.
 
 After the separate checkout fix lands, exact pricing-module byte equality selects strict normal/delayed baseline validation. Its proof has an empty warning allowance; every runtime error fails the complete header matrix. The legacy warning reproduction remains available only when composing over the earlier unchanged pricing module.
+
+The full exact-commit source regression must succeed before capture. Candidate media configuration uses fresh public hero/landing snapshots so isolated runners do not depend on the private media provider. Commerce reads still settle and all writes remain blocked.
