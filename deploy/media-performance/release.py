@@ -12,17 +12,7 @@ def save(name,value): (OUT/name).write_text(json.dumps(value,indent=2))
 def selections():
     return {key:json.loads(cloud.get(path)) for key,path in [('hero','/api/hidi/hero-config'),('landing','/api/hidi/landing-media-config')]}
 def capture():
-    for attempt in range(180):
-        request=urllib.request.Request('https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/runs?per_page=100',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
-        runs=json.load(urllib.request.urlopen(request))['workflow_runs'];busy=[]
-        for run in runs:
-            if str(run['id'])==os.environ['GITHUB_RUN_ID'] or run['status'] not in ['in_progress','pending','queued']:continue
-            path=Path(run['path'].split('@')[0])
-            if path.is_file() and 'group: hidi-hero-guarded-release' in path.read_text():busy.append(run['name'])
-        if not busy:break
-        if attempt==0 or attempt%6==0:print('Waiting for existing production deployments: '+', '.join(sorted(set(busy))),flush=True)
-        time.sleep(10)
-    else:raise AssertionError('Production has not become idle; no live change attempted')
+    # Read-only preparation may overlap other testing; exact-state guards reject any changed live image.
     photo.capture();photo.backup()
     selected=selections();(PRIVATE/'selections.json').write_text(json.dumps(selected));save('published-selections.json',selected)
     (PRIVATE/'catalogue.json').write_bytes(cloud.get('/api/store/products'))
