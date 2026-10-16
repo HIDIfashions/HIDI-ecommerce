@@ -88,7 +88,16 @@ def patch_web(base,overlay,poster,icons=None):
     html=once(html,viewport,viewport+'\n'+'\n'.join(posters)+'\n<script data-hidi-early-hero="true">'+(HERE/'early-hero.js').read_text().replace('__AVIF_PROBE__',poster['probe'])+'</script>')
     runtime=(base/'server.mjs').read_text()
     runtime=once(runtime,'(?:webp|mp4)$','(?:webp|avif|png|mp4)$')
-    runtime=once(runtime,'    if (pathname === "/") html = optimizeHomeHead(html);','    if (pathname === "/") { html = optimizeHomeHead(html); html = await renderInitialHome(html); }')
+    runtime=once(runtime,'    if (pathname === "/") html = optimizeHomeHead(html);','''    if (pathname === "/") {
+      html = optimizeHomeHead(html);
+      if (request.method === "GET") {
+        const headers = applySecurityHeaders({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" }, request, pathname);
+        if (shouldNoIndex(request, pathname)) headers["X-Robots-Tag"] = "noindex, nofollow, noarchive";
+        return streamInitialHome(request, response, headers, html);
+      }
+      html = await renderInitialHome(html);
+    }''')
+    runtime='import { streamInitialHome } from "./paint-performance/stream-home.mjs";\n'+runtime
     runtime='import { renderInitialHome } from "./paint-performance/announcement.mjs";\n'+runtime
     runtime='import { sendCachedHome } from "./paint-performance/delivery.mjs";\n'+runtime
     runtime='import { sendPreparedAsset } from "./paint-performance/static-encoding.mjs";\n'+runtime
@@ -110,6 +119,7 @@ def patch_web(base,overlay,poster,icons=None):
     pricing_name='assets/home-pricing-'+hashlib.sha256(pricing.encode()).hexdigest()[:16]+'.js'
     pricing_metadata={'url':'/'+pricing_name,'sourceSha256':hashlib.sha256((base/'pricing/storefront.mjs').read_text().encode()).hexdigest(),'homeSha256':hashlib.sha256(pricing.encode()).hexdigest()}
     files={'paint-performance/static-encoding.mjs':(HERE/'static-encoding.mjs').read_text(),'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'dist/'+pricing_name:pricing,'paint-performance/home-pricing.json':json.dumps(pricing_metadata),'paint-performance/announcement.mjs':(HERE/'announcement.mjs').read_text(),'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
+    files['paint-performance/stream-home.mjs']=(HERE/'stream-home.mjs').read_text()
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)
     return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'homePricingBundle':pricing_name,'globalPricingSourceSha256':hashlib.sha256((base/'pricing/storefront.mjs').read_bytes()).hexdigest(),'pricingPresentationAndHydrationPreserved':True,'pricingPresentationSha256':hashlib.sha256(price_presentation.encode()).hexdigest(),'pricingCalculationsSha256':hashlib.sha256(price_calculations.encode()).hexdigest(),'manifest':manifest}

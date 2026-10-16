@@ -32,7 +32,7 @@ jobs:
         run: |
           google-chrome --version
           python3 deploy/paint-performance/test_icons.py
-          node --test deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/announcement.test.mjs deploy/paint-performance/hero.test.mjs deploy/paint-performance/hero-initial.test.mjs deploy/paint-performance/video-client.test.mjs deploy/paint-performance/static-encoding.test.mjs
+          node --test deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/stream-home.test.mjs deploy/paint-performance/announcement.test.mjs deploy/paint-performance/hero.test.mjs deploy/paint-performance/hero-initial.test.mjs deploy/paint-performance/video-client.test.mjs deploy/paint-performance/static-encoding.test.mjs
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg openssl
           npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
