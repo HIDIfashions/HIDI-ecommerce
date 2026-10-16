@@ -54,7 +54,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    return tag;
   });
   if(logoData)html=html.replace(/(<img\b[^>]*\bsrc=["'])(?:\.\/|\/)assets\/images\/hidi-logo\.png(["'])/gi,(_,start,end)=>start+logoData+end);
-  let deferred=0;
+  const deferred=[];
   html=html.replace(/<link\b[^>]*>/gi,tag=>{
   if(!/\brel=["']stylesheet["']/i.test(tag)||/\b(?:media|disabled|integrity)\s*=/i.test(tag))return tag;
   const href=/\bhref=["']([^"']+)["']/i.exec(tag)?.[1];if(!href)return tag;
@@ -62,12 +62,20 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   const data=[...tag.matchAll(/\s(data-[\w-]+)(?:=["']([^"']*)["'])?/g)].map(m=>' '+m[1]+'="'+(m[2]||'')+'"').join('');
   const row=criticalStyles[new URL(href,'https://hidiindia.com/').pathname];
   if(row&&typeof row.critical==='string'&&!/<\/style/i.test(row.critical)&&row.sha256===createHash('sha256').update(css).digest('hex')){
-   deferred++;
-   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+row.critical+'</style>'+tag.replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true">');
+   const id='hidi-full-style-'+deferred.length;
+   deferred.push('<template data-hidi-full-style="'+id+'">'+css.replaceAll('&','&amp;').replaceAll('<','&lt;')+'</template>');
+   return '<style id="'+id+'" data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+row.critical+'</style>';
   }
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
   });
-  if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=Promise.all([...document.querySelectorAll("link[data-hidi-deferred-style]")].map(link=>new Promise(resolve=>{const done=()=>{link.media="all";resolve();};if(link.sheet)done();else{link.addEventListener("load",done,{once:true});link.addEventListener("error",done,{once:true});}})));</script></head>');
+  if(deferred.length&&/<\/body>/i.test(html)){
+   let seo='';html=html.replace(/<script\b[^>]*data-hidi-seo-identity=["']1["'][^>]*>[\s\S]*?<\/script>/i,tag=>{seo=tag;return '';});
+   html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=new Promise(resolve=>window.__HidiActivateFullCss=()=>{for(const node of document.querySelectorAll("template[data-hidi-full-style]")){document.getElementById(node.dataset.hidiFullStyle).textContent=node.content.textContent;node.remove();}resolve();});</script></head>');
+   html=html.replace(/<\/body>/i,deferred.join('')+seo+'<script data-hidi-full-css-activate="true">if(document.visibilityState==="hidden")window.__HidiActivateFullCss();else requestAnimationFrame(()=>setTimeout(window.__HidiActivateFullCss,0));</script></body>');
+  }else if(deferred.length){
+   // Incomplete documents retain complete CSS rather than leaving missing styles.
+   for(let i=0;i<deferred.length;i++){const full=/>([\s\S]*)<\/template>/.exec(deferred[i])[1].replaceAll('&lt;','<').replaceAll('&amp;','&');html=html.replace(new RegExp('(<style id="hidi-full-style-'+i+'"[^>]*>)[\\s\\S]*?(</style>)'),(_,start,end)=>start+full+end);}
+  }
   return html;
  };
 }

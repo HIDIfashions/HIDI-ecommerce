@@ -54,8 +54,8 @@ test('critical styles retain their full sheet and cascade position; changed CSS 
   mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));
   const css='header{color:red}footer{color:blue}',critical='header{color:red}';writeFileSync(join(root,'assets/index-test.css'),css);
   const metadata={styles:{'/assets/index-test.css':{sha256:createHash('sha256').update(css).digest('hex'),critical}}};writeFileSync(join(app,'paint-performance/critical-css.json'),JSON.stringify(metadata));
-  const html='<head><link rel="stylesheet" href="/assets/index-test.css" /><style>header{padding:2px}</style></head>';
-  const result=createHomeHead(root,app)(html);assert(result.includes('>'+critical+'</style><link'));assert(result.includes('media="print"'));assert(result.includes('window.__HidiFullCssReady'));assert(result.indexOf('media="print"')<result.indexOf('padding:2px'));assert(!result.includes('/ media='));
+  const html='<head><link rel="stylesheet" href="/assets/index-test.css" /><style>header{padding:2px}</style></head><body><header>Same design</header></body>';
+  const result=createHomeHead(root,app)(html);assert(result.includes('>'+critical+'</style>'));assert(!result.includes('rel="stylesheet"'));assert(result.includes('window.__HidiFullCssReady'));assert(result.indexOf('>'+critical+'</style>')<result.indexOf('padding:2px'));assert(result.includes('>'+css+'</template>'));assert(result.indexOf('<template')>result.indexOf('</header>'));assert(result.includes('requestAnimationFrame'));
   writeFileSync(join(root,'assets/index-test.css'),'header{color:green}footer{color:purple}');const fresh=createHomeHead(root,app)(html);assert(fresh.includes('color:purple'));assert(!fresh.includes('data-hidi-deferred-style'));assert(!fresh.includes('__HidiFullCssReady'));
  }finally{rmSync(app,{recursive:true,force:true});}
 });

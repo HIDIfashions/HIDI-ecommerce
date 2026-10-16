@@ -31,10 +31,9 @@ def compose():
     icons=patch.build_icons(base,overlay);save('icon-quality.json',icons)
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True)
     poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);(overlay/'poster-build.json').unlink()
-    # Keep all original CSS inline: production traces showed the extra sheet request delayed first paint.
-    (overlay/'paint-performance').mkdir(parents=True,exist_ok=True)
-    (overlay/'paint-performance/critical-css.json').write_text(json.dumps({'styles':{}}))
-    save('critical-css-quality.json',{'strategy':'full-inline','allSourceCssPreserved':True,'deferredStyles':0})
+    # Deliver native-screen CSS first and exact complete sheets later in the same HTML response.
+    subprocess.run(['node',str(HERE/'critical-css.mjs'),str(base),str(overlay)],check=True)
+    save('critical-css-quality.json',{'strategy':'same-response','allSourceCssPreserved':True,'styles':json.loads((overlay/'paint-performance/critical-css.json').read_text())['styles']})
     report=patch.patch_web(base,overlay,poster,icons);manifest=report.pop('manifest')
     subprocess.run(['node',str(HERE/'precompress.mjs'),str(overlay),report['bundle'],str(OUT/'static-encoding-quality.json')],check=True)
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
