@@ -7,7 +7,7 @@ export async function baselinePrivateProof(base,output,mode){
  assert.equal(mode,'fixed');
  // When the separately deployed fix is present byte-for-byte, retain no legacy
  // warning allowance. Prove normal/delayed hydration and route transitions.
- const publicConfig=Object.fromEntries(await Promise.all(['/api/hidi/hero-config','/api/hidi/landing-media-config'].map(async path=>{const response=await fetch('https://hidiindia.com'+path);assert(response.ok());return[path,await response.json()];})));
+ const publicConfig=Object.fromEntries(await Promise.all(['/api/hidi/hero-config','/api/hidi/landing-media-config'].map(async path=>{const response=await fetch('https://hidiindia.com'+path);assert(response.ok);return[path,await response.json()];})));
  const report=await fixedProof(base,output+'/fixed-checkout-baseline',{engines:'chromium',publicConfig});
  assert(report.passed&&report.productionWrites===0);assert.deepEqual(report.runtimeErrors,[]);
  const proof={passed:true,unchangedBaseline:true,liveWrites:0,fixedCheckout:true,issues:[],zeroRuntimeErrors:true,cases:report.cases.length};
