@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
@@ -14,7 +15,7 @@ concurrency:
 jobs:
   verify-and-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 90
     env:
       HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-compact-header-browser/node_modules/playwright/index.mjs
       PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-compact-header-browsers
@@ -39,6 +40,11 @@ jobs:
           node /tmp/hidi-compact-header-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - name: Verify confirmed policy facts and catalogue filtering rules
         run: HIDI_TYPESCRIPT_MODULE=/tmp/hidi-compact-header-browser/node_modules/typescript/lib/typescript.js node --test tests/quality-domain.test.cjs
+      - name: Require complete source regression before capture or deployment
+        timeout-minutes: 35
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 deploy/compact-header/wait-source-ci.py
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af

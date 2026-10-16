@@ -25,6 +25,7 @@ def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def image_id(image):return json.loads(images.docker('image','inspect',image))[0]['Id']
 def own_tag():return images.REGISTRY+'/hidi-web:compact-header-'+guard.run_key()
 def capture():
+    source=read('source-ci.json');assert source['passed'] and source['allSourceGatesPassed'] and source['sourceSha']==os.environ['GITHUB_SHA'],'Complete exact-source regression required before capture'
     photo.capture();before=photo.states();public=guard.public_snapshot();guard.write_private('public-before.json',public)
     image=before['hidi-web']['image'];guard.immutable(image,'web')
     tag=images.REGISTRY+'/hidi-web:backup-compact-header-'+guard.run_key()
@@ -54,7 +55,7 @@ def compose():
     photo.unchanged(before);print('PASS: only reviewed header styling changed')
 def seal():
     photo.unchanged(photo.states());manifest={}
-    for name in ['candidate/report.json','candidate/baseline-private.json','inventory.json','patch.json','web-preservation.json']:
+    for name in ['source-ci.json','candidate/report.json','candidate/baseline-private.json','inventory.json','patch.json','web-preservation.json']:
         value=read(name);assert value.get('passed') is True,name+' must pass';manifest[name]=digest(EVIDENCE/name)
     assert read('candidate/report.json')['engines']==['chromium','firefox','webkit'] and len(read('candidate/report.json')['results'])==15
     assert read('candidate/report.json')['baselineCompared'] is True
