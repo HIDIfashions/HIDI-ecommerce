@@ -3,6 +3,7 @@ let published={version:1,config:{audience:'SELECTED',allowedPhones:['+9190000000
 process.env.AZURE_STORAGE_ACCOUNT='fixtureaccount';process.env.IDENTITY_ENDPOINT='http://127.0.0.1/identity';
 globalThis.fetch=async(url,o={})=>{if(String(url)==='https://hidiindia.com/api/hidi/offers/checkout-policy'){const c=published.config,allowed=c.audience==='EVERYONE'||c.audience==='SELECTED'&&o.headers?.Authorization==='Bearer selected';return Response.json(allowed&&c.checkoutEnabled?{available:true,version:published.version,eligibleProductIds:c.eligibleProductIds}:{available:false});}throw Error('External network forbidden in financial test');};
 const {CheckoutService}=await import('./checkout.service.js');const engine=await import('./offers-engine.mjs');
+const {CheckoutController}=await import('./checkout.controller.js');
 const auth={id:'fixture-subject',phoneVerified:true,phone:'+919000000001',email:null,offerAuthorization:'Bearer selected'};
 let checks=0;
 const input=(offer,subtotal,total)=>({sessionId:'fixture-session',checkoutToken:'fixture-token-'+checks,customerPhone:'9000000001',shippingAddress:{firstName:'Fixture',phone:'9000000001',line1:'Fixture street',city:'Hyderabad',state:'Telangana',postalCode:'500001'},walletPaise:0,expectedTotalPaise:subtotal,expectedPayableTotalPaise:total,offer});
@@ -18,6 +19,11 @@ function fixture({price=200000,quantity=1,stock=10,giftMrp=100000,giftStock=5,wa
  return {db,state:()=>state,gateway,service:new CheckoutService(db,razorpay,wallet)};
 }
 
+const controllerFixture=fixture({price:400000});
+const controller=new CheckoutController(controllerFixture.service,{requireUser:async()=>auth},{});
+await assert.rejects(controller.offerQuote({sessionId:'fixture-session',offer:{kind:'PERCENT15',version:1}},undefined),/percentage discounts are disabled/);
+const controllerQuote=await controller.offerQuote({sessionId:'fixture-session',offer:{kind:'NONE'}},'Bearer selected');
+assert.equal(controllerQuote.available,true);assert.equal(controllerQuote.originalSubtotalPaise,400000);assert.equal(controllerFixture.state().orders.length,0);checks++;
 const {shippingQuote}=await import('./shipping-policy.js');
 for(const price of [10000,149899,149900]){
  const expected=price+shippingQuote(price).shippingPaise,small=fixture({price});
@@ -43,4 +49,4 @@ f=fixture({price:400000});await assert.rejects(f.service.prepare(input({kind:'DR
 f=fixture({price:400000,walletEnabled:true});body={...input({kind:'DRESS1',version:1,variantId:'gift'},400000,400100),walletPaise:50000};result=await f.service.prepare(body,auth);assert.equal(result.amountPaise,350100);checks++;
 published.config.audience='HIDDEN';f=fixture({price:400000});await assert.rejects(f.service.prepare(input({kind:'DRESS1',version:1,variantId:'gift'},400000,400100),auth));checks++;
 f=fixture();result=await f.service.prepare(input({kind:'NONE'},200000,200000),null);assert.equal(result.amountPaise,200000);checks++;
-console.log('CHECKOUT_OFFERS_RESULT:'+JSON.stringify({passed:true,actualCheckoutService:true,checks,providerStubOnly:true,productionWrites:0,extraPercentRejected:true,privateDressEligibilityVerified:true,exactPaymentAmounts:true,orderAndInventoryVerified:true}));
+console.log('CHECKOUT_OFFERS_RESULT:'+JSON.stringify({passed:true,actualCheckoutService:true,actualControllerPathVerified:true,checks,providerStubOnly:true,productionWrites:0,extraPercentRejected:true,privateDressEligibilityVerified:true,exactPaymentAmounts:true,orderAndInventoryVerified:true}));
