@@ -1,0 +1,27 @@
+name: HIDI Merchant read-only three-browser preflight
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/merchant-feed-preflight.yml, tests/merchant-feed-preflight.mjs]
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/merchant-preflight/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/merchant-preflight-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - run: |
+          npm install --prefix /tmp/merchant-preflight --no-save playwright@1.56.1
+          node /tmp/merchant-preflight/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+          node tests/merchant-feed-preflight.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: merchant-public-preflight-${{ github.run_id }}
+          path: evidence/merchant-preflight
