@@ -7,7 +7,7 @@ export async function probe(base,out,{products,preview=false}={}) {
   await mkdir(out,{recursive:true});
   products ||= await loadProducts(base+'/api/store/products');
   const expected=buildFeed(products), results=[],errors=[],writes=[];
-  const headers=preview?{Host:'hidiindia.com','X-Forwarded-Host':'hidiindia.com','X-Forwarded-Proto':'https'}:{};
+  const headers=preview?{'X-Forwarded-Host':'hidiindia.com','X-Forwarded-Proto':'https'}:{};
   const r=await fetch(base+'/google-products.xml',{headers});assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/application\/xml/);
   const text=await r.text();assert.equal(text,expected.xml,'Feed differs from frozen live catalogue');
   await writeFile(out+'/google-products.xml',text);
