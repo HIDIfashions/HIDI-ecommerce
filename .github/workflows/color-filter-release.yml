@@ -1,0 +1,53 @@
+name: Guarded color filter swatch release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/color-filter-release.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/color-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/color-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Install browser verification engines
+        run: |
+          npm install --prefix /tmp/color-browser --no-save playwright@1.56.1
+          node /tmp/color-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture and back up fresh production images
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/color-filter/release.py capture
+          echo "CANDIDATE_WEB=acrhidiprod0927.azurecr.io/hidi-web:color-filter-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+      - name: Patch only retained colour modules and version browser assets
+        run: python3 deploy/color-filter/release.py compose
+      - name: Verify all swatches and filter selections before deployment
+        run: node deploy/color-filter/candidate.mjs
+      - name: Publish tested image
+        run: |
+          docker push "$CANDIDATE_WEB"
+          digest="$(az acr repository show --name acrhidiprod0927 --image "hidi-web:color-filter-${GITHUB_RUN_ID}" --query digest -o tsv --only-show-errors)"
+          echo "WEB_IMAGE=acrhidiprod0927.azurecr.io/hidi-web@$digest" >> "$GITHUB_ENV"
+      - name: Deploy and verify all live swatches with rollback on failure
+        run: python3 deploy/color-filter/release.py apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: color-filter-${{ github.run_id }}
+          path: evidence/color-filter
+          retention-days: 30

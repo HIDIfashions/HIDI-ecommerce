@@ -39,9 +39,53 @@ const COLOR_SWATCHES: Record<string, string> = {
   Teal: "#3b8d8c",
   Mustard: "#c3953e",
   Grey: "#9ca3a6",
+  "Golden Yellow": "#e3b52f",
+  "Grey / Beige": "linear-gradient(90deg, #9ca3a6 50%, #d9c9b2 50%)",
+  Lavender: "#b9a0cf",
+  "Light Orchid Pink": "#e6b4d5",
+  "Navy Blue": "#243858",
+  "Olive Green": "#70764b",
+  "Rust Orange": "#b85b35",
+  "Wine Purple": "#702850",
+  "Royal Blue": "#3155b7",
+  "Fuchsia Pink": "#d64291",
+  "White and Purple": "linear-gradient(90deg, #ffffff 50%, #7d3f87 50%)",
+  "Megenta Pink": "#c93c8a",
+  "Magenta Pink": "#c93c8a",
+  "Dusty Pink": "#c994a4",
+  "Chocolate Brown": "#654035",
+  "Baby Pink": "#f0c4d3",
+  "Teal Blue": "#27858c",
+  "Lilac Pink": "#cda7cd",
+  "Pista Green": "#b4c887",
+  Cream: "#f5edcf",
+  "White / Off-White": "linear-gradient(90deg, #ffffff 50%, #f1eee5 50%)",
+  "Cream / Off-White": "linear-gradient(90deg, #f5edcf 50%, #f1eee5 50%)",
+  "Pastel Yellow": "#f3e6a4",
+  "Bright Orange": "#ef852d",
+  "Coral Pink": "#eb929b",
+  "Sage Green with Multicolour Print": "conic-gradient(#9fa88d 0% 65%, #c9575c 65% 77%, #c7a445 77% 89%, #4f7fb7 89%)",
+  "Sky Blue with White Floral Print": "linear-gradient(135deg, #9ec9e3 0% 65%, #ffffff 65%)",
+  "Navy Blue with Pink and Multicolour Embr": "conic-gradient(#243858 0% 65%, #dda0b5 65% 80%, #c7a445 80% 90%, #6ba268 90%)",
+  "Red with Multicolour Floral Print": "conic-gradient(#c9575c 0% 65%, #dda0b5 65% 80%, #c7a445 80% 90%, #6ba268 90%)",
 };
 
-const LIGHT_SWATCHES = new Set(["White", "Off White", "Ivory", "Beige", "Sand"]);
+function normalizeColour(value: string) {
+  return value.trim().toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
+}
+
+const NORMALIZED_SWATCHES = new Map(Object.entries(COLOR_SWATCHES).map(([name, color]) => [normalizeColour(name), color]));
+
+function colourBackground(value: string) {
+  const name = normalizeColour(value);
+  const known = NORMALIZED_SWATCHES.get(name);
+  if (known) return known;
+  // Pattern names describe several colours rather than a single flat shade.
+  if (/multi\s*colou?r|floral/.test(name)) {
+    return "conic-gradient(#c9575c, #dda0b5, #c7a445, #6ba268, #4f7fb7, #c9575c)";
+  }
+  return "#b8b5ae";
+}
 
 function toggleValue(current: string[], value: string) {
   return current.includes(value)
@@ -50,6 +94,18 @@ function toggleValue(current: string[], value: string) {
 }
 
 export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
+  const savedColourHexes = useMemo(() => {
+    const hexes = new Map<string, string>();
+    for (const product of products) {
+      for (const variant of product.variants) {
+        const hex = variant.colorHex?.trim();
+        if (hex && /^#[0-9a-f]{6}$/i.test(hex) && !hexes.has(variant.color)) {
+          hexes.set(variant.color, hex);
+        }
+      }
+    }
+    return hexes;
+  }, [products]);
   const sizes = useMemo(
     () => Array.from(new Set(products.flatMap((p) => p.variants.map((v) => v.size)))).sort(compareSizes),
     [products],
@@ -160,8 +216,8 @@ export function CollectionBrowser({ products }: { products: ApiProduct[] }) {
           {colors.map((value) => <label className={styles.colorOption} key={value}>
             <input type="checkbox" checked={selectedColors.includes(value)} onChange={() => setSelectedColors((current) => toggleValue(current, value))} />
             <span
-              className={`${styles.colorSwatch} ${LIGHT_SWATCHES.has(value) ? styles.colorSwatchLight : ""}`}
-              style={{ backgroundColor: COLOR_SWATCHES[value] ?? "#b8b5ae" }}
+              className={`${styles.colorSwatch} ${styles.colorSwatchLight}`}
+              style={{ background: savedColourHexes.get(value) ?? colourBackground(value) }}
               aria-hidden="true"
             />
             <span className={styles.colorLabel}>{value}</span>
