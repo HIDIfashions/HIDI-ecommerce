@@ -42,7 +42,7 @@ def patch_web(base,overlay,poster,icons=None):
     text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
     text=once(text,'      onCanPlay: revealLiveVideo,\n      onError: () => setFailedSource(liveHero.url),','      onCanPlay: revealLiveVideo,\n      onError: (event) => HidiMediaVideoFallback(event, liveHero.url, () => setFailedSource(liveHero.url)),')
     text=once(text,original_manifest,'const HidiMediaManifest='+json.dumps(manifest,separators=(',',':'))+';')
-    text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; return window.__HidiAvifEnabled && variant.avifPoster ? variant.avifPoster : variant.poster;')
+    text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; const poster = window.__HidiAvifEnabled && variant.avifPoster ? variant.avifPoster : variant.poster; return window.__HidiInlinePosters?.[poster] || poster;')
     text=once(text,'const value = await response.json();','const value = await response.json();\n        window.__HidiAvifEnabled = await window.__HidiAvifSupport || false;')
     anchor='''        const response = await fetch("/api/hidi/hero-config", {
           cache: "no-store",
@@ -73,7 +73,7 @@ def patch_web(base,overlay,poster,icons=None):
     end=text.index('  }, [showBundled, heroConfigStatus, mobile, reduced]);',start)
     expected=(HERE/'video-delay.txt').read_text()
     text=once(text,expected,'    setVideoAllowed(true);\n')
-    text='if (location.pathname === "/") await window.__HidiFullCssReady;\nif (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));\n'+text
+    text='if (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));\n'+text
     name='assets/index-'+hashlib.sha256(text.encode()).hexdigest()[:16]+'.js'
     assert html.count('/'+old)==2,'Expected app and preload references'
     html=html.replace('/'+old,'/'+name)
@@ -90,12 +90,13 @@ def patch_web(base,overlay,poster,icons=None):
     runtime=once(runtime,'(?:webp|mp4)$','(?:webp|avif|png|mp4)$')
     runtime=once(runtime,'    if (pathname === "/") html = optimizeHomeHead(html);','''    if (pathname === "/") {
       html = optimizeHomeHead(html);
+      response.setHeader("Vary", "Accept, User-Agent, Sec-CH-UA-Mobile, Cookie, Save-Data");
       if (request.method === "GET") {
         const headers = applySecurityHeaders({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" }, request, pathname);
         if (shouldNoIndex(request, pathname)) headers["X-Robots-Tag"] = "noindex, nofollow, noarchive";
         return streamInitialHome(request, response, headers, html);
       }
-      html = await renderInitialHome(html);
+      html = await renderInitialHome(html, request);
     }''')
     runtime='import { streamInitialHome } from "./paint-performance/stream-home.mjs";\n'+runtime
     runtime='import { renderInitialHome } from "./paint-performance/announcement.mjs";\n'+runtime
@@ -119,6 +120,8 @@ def patch_web(base,overlay,poster,icons=None):
     pricing_name='assets/home-pricing-'+hashlib.sha256(pricing.encode()).hexdigest()[:16]+'.js'
     pricing_metadata={'url':'/'+pricing_name,'sourceSha256':hashlib.sha256((base/'pricing/storefront.mjs').read_text().encode()).hexdigest(),'homeSha256':hashlib.sha256(pricing.encode()).hexdigest()}
     files={'paint-performance/static-encoding.mjs':(HERE/'static-encoding.mjs').read_text(),'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'dist/'+pricing_name:pricing,'paint-performance/home-pricing.json':json.dumps(pricing_metadata),'paint-performance/announcement.mjs':(HERE/'announcement.mjs').read_text(),'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
+    files['paint-performance/poster-cache-client.js']=(HERE/'poster-cache-client.js').read_text()
+    files['paint-performance/inline-poster.mjs']=(HERE/'inline-poster.mjs').read_text()
     files['paint-performance/stream-home.mjs']=(HERE/'stream-home.mjs').read_text()
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)

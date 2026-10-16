@@ -31,8 +31,10 @@ def compose():
     icons=patch.build_icons(base,overlay);save('icon-quality.json',icons)
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True)
     poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);(overlay/'poster-build.json').unlink()
-    subprocess.run(['node',str(HERE/'critical-css.mjs'),str(base),str(overlay)],check=True)
-    save('critical-css-quality.json',json.loads((overlay/'paint-performance/critical-css.json').read_text()))
+    # Keep all original CSS inline: production traces showed the extra sheet request delayed first paint.
+    (overlay/'paint-performance').mkdir(parents=True,exist_ok=True)
+    (overlay/'paint-performance/critical-css.json').write_text(json.dumps({'styles':{}}))
+    save('critical-css-quality.json',{'strategy':'full-inline','allSourceCssPreserved':True,'deferredStyles':0})
     report=patch.patch_web(base,overlay,poster,icons);manifest=report.pop('manifest')
     subprocess.run(['node',str(HERE/'precompress.mjs'),str(overlay),report['bundle'],str(OUT/'static-encoding-quality.json')],check=True)
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
@@ -58,7 +60,7 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):

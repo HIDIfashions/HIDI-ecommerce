@@ -9,7 +9,7 @@ test('fresh body waits for data while unchanged head is delivered through each e
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   try{await new Promise((resolve,reject)=>{
    const req=http.get({hostname:'127.0.0.1',port:server.address().port,headers:{'accept-encoding':encoding,'if-none-match':'"old"'}},res=>{
-    assert.equal(res.statusCode,200);assert(!res.headers.etag);assert(!res.headers['content-length']);assert.match(res.headers.vary,/Accept-Encoding/);
+    assert.equal(res.statusCode,200);assert(!res.headers.etag);assert(!res.headers['content-length']);assert.match(res.headers.vary,/Accept-Encoding/);assert.match(res.headers.vary,/User-Agent/);assert.match(res.headers.vary,/Sec-CH-UA-Mobile/);assert.match(res.headers.vary,/Cookie/);assert.match(res.headers.vary,/Save-Data/);
     const input=res.headers['content-encoding']==='br'?res.pipe(createBrotliDecompress()):res.headers['content-encoding']==='gzip'?res.pipe(createGunzip()):res;
     let text='',first=true;input.on('error',reject);input.on('data',chunk=>{text+=chunk.toString();if(first){first=false;assert.equal(text,head);release();}});input.on('end',()=>{assert.equal(text,head+tail);resolve();});
    });req.on('error',reject);req.setTimeout(2000,()=>req.destroy(Error('Head was not flushed before public data')));
