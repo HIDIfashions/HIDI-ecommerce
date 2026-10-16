@@ -24,6 +24,7 @@ function apply(){
  const next=location.pathname.match(/^\/products\/([^/]+)\/?$/)?.[1]||'';
  if(next!==slug){slug=next;product=cache.get(next)||null;failed='';}
  if(!slug)return;
+ const shell=document.querySelector('[data-hidi-react-pdp]');if(shell&&shell.dataset.hidiHydrated!=='true')return;
  // The tighter first-photo frame leaves the original file and inspection dialog intact.
  const first=document.querySelector('.pdp-gallery .pdp-image');if(first&&reviewedPortraitPhoto(first.querySelector('img')?.getAttribute('src'))&&!first.hasAttribute('data-hidi-portrait'))first.dataset.hidiPortrait='true';
  if(!product){if(loading!==slug&&failed!==slug){const target=slug;loading=target;void fetch('/api/store/products/'+target,{credentials:'same-origin',cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Product unavailable');const data=await r.json();cache.set(target,data);if(slug===target)product=data;}).catch(()=>{failed=target;}).finally(()=>{loading='';schedule();});}return;}
@@ -37,5 +38,5 @@ function apply(){
 }
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;apply();});}
 new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true});
-window.addEventListener('popstate',schedule);window.addEventListener('pageshow',schedule);
+window.addEventListener('hidi:product-ready',schedule);window.addEventListener('popstate',schedule);window.addEventListener('pageshow',schedule);
 if(document.readyState==='complete')schedule();else window.addEventListener('load',schedule,{once:true});

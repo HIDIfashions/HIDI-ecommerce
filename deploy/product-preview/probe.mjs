@@ -7,13 +7,13 @@ export async function probe(base,output){
  await mkdir(output,{recursive:true});const cases=[];const catalogueResponse=await fetch(base+'/api/store/products');assert.equal(catalogueResponse.status,200);const catalogue=await catalogueResponse.json();assert(catalogue.length>0);const product=catalogue.find(p=>/royal blue/i.test(p.name))||catalogue[0];
  for(const engine of (process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',')){
  const browser=await playwright[engine].launch({headless:true});try{for(const width of [375,1440]){
- const context=await browser.newContext({viewport:{width,height:1000}}),page=await context.newPage(),errors=[],escaped=[];let fixtureWrites=0;
+ const context=await browser.newContext({viewport:{width,height:1000},reducedMotion:'reduce'}),page=await context.newPage(),errors=[],escaped=[];let fixtureWrites=0;
  const pendingApi=new Set();let lastApiActivity=Date.now();
  const critical=request=>['fetch','xhr'].includes(request.resourceType())&&new URL(request.url()).pathname.includes('/api/store/');
  page.on('request',request=>{if(critical(request)){pendingApi.add(request);lastApiActivity=Date.now();}});
  for(const event of ['requestfinished','requestfailed'])page.on(event,request=>{if(pendingApi.delete(request))lastApiActivity=Date.now();});
  const settleApp=async()=>{const start=Date.now();while(Date.now()-start<30000){if(pendingApi.size===0&&Date.now()-lastApiActivity>=600&&Date.now()-start>=600)return;await new Promise(done=>setTimeout(done,50));}throw Error('Application API requests did not settle: '+[...pendingApi].map(r=>new URL(r.url()).pathname).join(', '));};
- page.on('pageerror',e=>{if(!e.message.includes('Minified React error #418'))errors.push(e.message);});page.on('dialog',d=>d.accept());
+ page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const records=new Map(Array.from({length:23},(_,i)=>{const p=make(i);return [p.id,p];}));
  await page.route('**/*',async route=>{const req=route.request(),url=new URL(req.url()),path=url.pathname,method=req.method();const send=(status,value)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(value)});
  if(url.origin===base&&path.startsWith('/api/admin/products')){
@@ -25,7 +25,7 @@ export async function probe(base,output){
  if(isBlockedTelemetry(method,url.href,base))return route.fulfill({status:204,body:''});
  if(url.origin===base&&method==='POST'&&/\/checkout\/(?:offers\/)?quote$/.test(path))return send(400,{message:'Select a dress and size to request a quote.'});
  if(!['GET','HEAD','OPTIONS'].includes(method)){escaped.push(method+' '+path);return send(403,{message:'Read-only live regression'});}
- if(url.origin!==base&&!path.match(/\.(?:jpg|jpeg|png|webp|svg|avif)$/i))return route.fulfill({status:204,body:''});
+ if(url.origin!==base&&!path.match(/\.(?:jpg|jpeg|png|webp|svg|avif)$/i)){if(req.resourceType()==='script')return route.fulfill({status:200,contentType:'application/javascript',body:''});if(req.resourceType()==='stylesheet')return route.fulfill({status:200,contentType:'text/css',body:''});return route.fulfill({status:204,body:''});}
  return route.continue();});
  try{
  await page.goto(base+'/admin/product-preview');await page.getByText('23 dresses',{exact:true}).waitFor();assert.equal(await page.locator('.dress-row').count(),20);await page.locator('#next').click();await page.getByText('Page 2 of 2').waitFor();await page.locator('[data-id="preview-fixture-22"]').click();await page.locator('#copy-name').waitFor();
@@ -36,11 +36,11 @@ export async function probe(base,output){
  await page.route('**/api/admin/products/preview-fixture-22',route=>route.request().method()==='PATCH'?route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({message:'Please sign in again.'})}):route.fallback());await page.locator('#copy-care').fill('Retain expired-session draft');await page.locator('#save').click();await page.locator('#auth').waitFor({state:'visible'});assert.equal(await page.locator('#copy-care').inputValue(),'Retain expired-session draft');await page.locator('#reset').click();
  await page.locator('#device').selectOption('desktop');await page.locator('#framing').selectOption('original');assert.equal(await page.locator('#preview').getAttribute('data-framing'),'original');await page.locator('#framing').selectOption('portrait');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await page.screenshot({path:output+'/'+engine+'-'+width+'-editor.png',fullPage:true});
- await page.goto(base+'/products/'+encodeURIComponent(product.slug));await page.locator('.pdp-gallery [data-hidi-portrait]').waitFor();await page.locator('[data-hidi-copy="description"]').waitFor();const frame=page.locator('.pdp-gallery [data-hidi-portrait]').first();await page.waitForFunction(()=>{const image=document.querySelector('.pdp-gallery [data-hidi-portrait] img');return image?.complete&&image.naturalWidth>0;});const box=await frame.boundingBox();assert(Math.abs(box.width/box.height-.75)<.015,'Primary photo uses a 3:4 frame');assert.equal(await frame.locator('img').evaluate(i=>getComputedStyle(i).objectFit),'cover');
- await frame.click();await page.locator('[role="dialog"]').waitFor();assert.equal(await page.locator('[role="dialog"] img').first().evaluate(i=>getComputedStyle(i).objectFit),'contain');await page.keyboard.press('Escape');
+ await page.goto(base+'/products/'+encodeURIComponent(product.slug));await page.locator('.pdp-gallery [data-hidi-portrait]').waitFor();await page.locator('[data-hidi-copy="description"]').waitFor();await settleApp();const frame=page.locator('.pdp-gallery [data-hidi-portrait]').first();await page.waitForFunction(()=>{const image=document.querySelector('.pdp-gallery [data-hidi-portrait] img');return image?.complete&&image.naturalWidth>0;});const box=await frame.boundingBox();assert(Math.abs(box.width/box.height-.75)<.015,'Primary photo uses a 3:4 frame');await page.waitForFunction(()=>{const image=document.querySelector('.pdp-gallery [data-hidi-portrait] img');return image?.isConnected&&getComputedStyle(image).getPropertyValue('object-fit')==='cover';});
+ await frame.click();await page.locator('[role="dialog"]').waitFor();assert.equal(await page.locator('[role="dialog"] img').first().evaluate(i=>getComputedStyle(i).getPropertyValue('object-fit')),'contain');await page.keyboard.press('Escape');
  await page.screenshot({path:output+'/'+engine+'-'+width+'-product.png',fullPage:true});
  await settleApp();
- await page.goto(base+'/collections/all');await settleApp();await page.locator('h3 a').filter({hasText:product.name}).first().click();await page.waitForURL(base+'/products/'+encodeURIComponent(product.slug));await page.locator('[data-hidi-copy=description]').waitFor();await settleApp();
+ await page.goto(base+'/collections/all');await settleApp();await page.locator('h3 a').filter({hasText:product.name}).first().focus();await page.keyboard.press('Enter');await page.waitForURL(base+'/products/'+encodeURIComponent(product.slug));await page.locator('[data-hidi-copy=description]').waitFor();await settleApp();
  for(const path of ['/collections/all','/cart','/checkout','/account','/wishlist']){const response=await page.goto(base+path);assert(response.status()<400,path+' available');await settleApp();}
  if(errors.length)console.error('PRODUCT_PREVIEW_PAGE_ERRORS',JSON.stringify({engine,width,url:page.url(),errors}));assert.deepEqual(escaped,[]);assert.deepEqual(errors,[]);console.log('PRODUCT_PREVIEW_CASE',JSON.stringify({engine,width,passed:true}));cases.push({engine,width,passed:true,editorSaveAndReload:true,conflictsRetainDraft:true,portraitFrame:true,fullOriginalInspection:true,collectionToProductNavigation:true,retainedCommerce:true});
  }finally{await context.close();}
