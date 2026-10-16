@@ -16,6 +16,7 @@ export async function probe(base,output){
  if(path==='/api/admin/products'&&method==='GET'){const q=url.searchParams.get('q')||'',items=[...records.values()].filter(p=>!q||p.name.includes(q)),page=Number(url.searchParams.get('page')||1);return send(200,{items:items.slice((page-1)*20,page*20),total:items.length,page,pageSize:20});}
  const record=records.get(id);if(!record)return send(404,{});if(method==='GET')return send(200,record);
  if(method==='PATCH'){const body=req.postDataJSON();assert.equal(body.expectedUpdatedAt,record.updatedAt);for(const key of ['status','variants','images','pricePaise','stock'])assert.equal(body[key],undefined);assert.equal(body.categoryId,'retain-category');assert.deepEqual(body.collectionIds,['retain-collection']);fixtureWrites++;const next={...record,...body,updatedAt:new Date(Date.parse(record.updatedAt)+1).toISOString()};records.set(id,next);return send(200,next);}}
+ if(url.origin===base&&method==='GET'&&/\/carts\/[^/]+$/.test(path))return send(200,{id:'preview-empty-cart',sessionId:'preview-fixture',items:[],itemCount:0,subtotalPaise:0,shippingPaise:0,discountPaise:0,totalPaise:0});
  if(isBlockedTelemetry(method,url.href,base))return route.fulfill({status:204,body:''});
  if(url.origin===base&&method==='POST'&&/\/checkout\/(?:offers\/)?quote$/.test(path))return send(400,{message:'Select a dress and size to request a quote.'});
  if(!['GET','HEAD','OPTIONS'].includes(method)){escaped.push(method+' '+path);return send(403,{message:'Read-only live regression'});}
@@ -34,7 +35,7 @@ export async function probe(base,output){
  await frame.click();await page.locator('[role="dialog"]').waitFor();assert.equal(await page.locator('[role="dialog"] img').first().evaluate(i=>getComputedStyle(i).objectFit),'contain');await page.keyboard.press('Escape');
  await page.screenshot({path:output+'/'+engine+'-'+width+'-product.png',fullPage:true});
  for(const path of ['/collections/all','/cart','/checkout','/account','/wishlist']){const response=await page.goto(base+path);assert(response.status()<400,path+' available');}
- assert.deepEqual(escaped,[]);assert.deepEqual(errors,[]);cases.push({engine,width,passed:true,editorSaveAndReload:true,conflictsRetainDraft:true,portraitFrame:true,fullOriginalInspection:true,retainedCommerce:true});
+ assert.deepEqual(escaped,[]);assert.deepEqual(errors,[]);console.log('PRODUCT_PREVIEW_CASE',JSON.stringify({engine,width,passed:true}));cases.push({engine,width,passed:true,editorSaveAndReload:true,conflictsRetainDraft:true,portraitFrame:true,fullOriginalInspection:true,retainedCommerce:true});
  }finally{await context.close();}
  }}finally{await browser.close();}
  }
