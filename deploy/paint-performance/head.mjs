@@ -73,12 +73,12 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   if(completeHead&&row&&typeof row.critical==='string'&&!/<\/style/i.test(row.critical)&&row.sha256===createHash('sha256').update(css).digest('hex')){
    deferred++;
    const full=href+(href.includes('?')?'&':'?')+'hidi_full='+row.sha256.slice(0,16);
-   const link=tag.replace(/\bhref=["'][^"']+["']/i,'href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true">');
+   const link=tag.replace(/\bhref=["'][^"']+["']/i,'data-hidi-full-href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true">');
    return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+row.critical+'</style>'+link;
   }
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
   });
-  if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=Promise.all([...document.querySelectorAll("link[data-hidi-deferred-style]")].map(link=>new Promise(resolve=>{const done=()=>{link.media="all";resolve();};if(link.sheet)done();else{link.addEventListener("load",done,{once:true});link.addEventListener("error",done,{once:true});}})));</script></head>');
+  if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=new Promise(resolve=>{let started=false;window.__HidiLoadFullCss=()=>{if(started)return;started=true;Promise.all([...document.querySelectorAll("link[data-hidi-deferred-style]")].map(link=>new Promise(done=>{const ready=()=>{link.media="all";done();};link.addEventListener("load",ready,{once:true});link.addEventListener("error",ready,{once:true});link.href=link.dataset.hidiFullHref;if(link.sheet)ready();}))).then(resolve);};const fallback=()=>{if(document.readyState!=="loading"&&!document.querySelector("video[data-hidi-first-hero]"))window.__HidiLoadFullCss();};document.addEventListener("readystatechange",fallback);fallback();});</script></head>');
   if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,'');
   return html;
  };

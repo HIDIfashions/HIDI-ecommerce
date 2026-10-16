@@ -1,6 +1,7 @@
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
 # Immutable poster preloads keep HTML small; cold and returning requests must share the exact image URL.
 # Production-host SEO assertions run on the pinned public fixture; loopback probes retain preview behavior.
+# Poster bytes paint before deferred data/styles; fast fresh HTML is coalesced with a bounded streaming fallback.
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:

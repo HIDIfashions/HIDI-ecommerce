@@ -8,8 +8,22 @@
         .finally(() => clearTimeout(timeout)).catch(() => null);
     };
     window.__HidiHeroEarly = read('/api/hidi/hero-config');
-    window.__HidiLandingEarly = read('/api/hidi/landing-media-config');
-    window.__HidiCatalogueEarly = read('/api/store/products');
+    const pending = [];
+    const later = path => new Promise(resolve => pending.push(() => resolve(read(path))));
+    window.__HidiLandingEarly = later('/api/hidi/landing-media-config');
+    window.__HidiCatalogueEarly = later('/api/store/products');
+    let started = false;
+    window.__HidiStartHomeReads = () => {
+      if (started) return;
+      started = true; clearTimeout(deadline);
+      for (const start of pending) start();
+    };
+    const deadline = setTimeout(window.__HidiStartHomeReads, 1500);
+    if (typeof document !== 'undefined') {
+      const fallback = () => { if (document.readyState !== 'loading' && !document.querySelector('video[data-hidi-first-hero]')) window.__HidiStartHomeReads(); };
+      document.addEventListener('readystatechange', fallback);
+      fallback();
+    }
   } catch { /* The normal component request remains the fallback. */ }
 })();
 
@@ -18,10 +32,11 @@
 (() => {
   if (location.pathname !== '/') return;
   window.__HidiWaitForPosterPaint = video => {
-    if (!video?.poster || document.visibilityState === 'hidden') return Promise.resolve();
+    const release = () => { window.__HidiStartHomeReads?.(); window.__HidiLoadFullCss?.(); };
+    if (!video?.poster || document.visibilityState === 'hidden') { release(); return Promise.resolve(); }
     return new Promise(resolve => {
       let settled = false;
-      const finish = () => { if (settled) return; settled = true; clearTimeout(timer); resolve(); };
+      const finish = () => { if (settled) return; settled = true; clearTimeout(timer); release(); resolve(); };
       const timer = setTimeout(finish, 1200);
       try {
         const image = new Image();
