@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {loadProducts,buildFeed} from './feed.mjs';
+import {isBlockedTelemetry} from '../button-states/request-policy.mjs';
 
 export async function probe(base,out,{products,preview=false}={}) {
   await mkdir(out,{recursive:true});
@@ -37,7 +38,7 @@ export async function probe(base,out,{products,preview=false}={}) {
         const q=route.request(),url=new URL(q.url());
         if(q.resourceType()==='script'&&/(googletagmanager|google-analytics|cloudflareinsights)/.test(url.hostname))return route.fulfill({status:200,contentType:'application/javascript',body:''});
         if(!['GET','HEAD'].includes(q.method())) {
-          if(!/(google-analytics|analytics.google|cloudflareinsights)/.test(url.hostname)&&url.pathname!='/api/admin/session')writes.push({method:q.method(),path:url.pathname});
+          if(!isBlockedTelemetry(q.method(),q.url(),base)&&!/(google-analytics|analytics.google|cloudflareinsights)/.test(url.hostname)&&url.pathname!='/api/admin/session')writes.push({method:q.method(),path:url.pathname});
           return route.abort();
         }
         if(q.resourceType()==='media')return route.abort();
