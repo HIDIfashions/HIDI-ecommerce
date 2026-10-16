@@ -34,7 +34,8 @@ export async function probe(base,output,{baseline,landing}={}){
    let page,stage='';
    const pending=new Map();
    const fresh=async(path,observed=true)=>{const p=await context.newPage();p.setDefaultTimeout(45000);const reads=new Set();pending.set(p,reads);p.on('request',r=>{const path=new URL(r.url()).pathname;if(path.startsWith('/api/store/')||path==='/api/admin/session'||path==='/api/hidi/offers')reads.add(r);});for(const event of ['requestfinished','requestfailed'])p.on(event,r=>reads.delete(r));if(observed)p.on('pageerror',e=>errors.push({engine,width,stage:path,message:e.message}));await navigate(p,(observed?base:baseline)+path,gatewayRetries);return p;};
-   const finish=async p=>{let quiet=0;for(let elapsed=0;elapsed<30000;elapsed+=50){await new Promise(r=>setTimeout(r,50));quiet=pending.get(p).size?0:quiet+50;if(quiet>=300){p.removeAllListeners('pageerror');await p.close();return;}}assert.fail('Commerce reads did not settle: '+[...pending.get(p)].map(r=>r.url()).join(', '));};
+   const settle=async p=>{let quiet=0;for(let elapsed=0;elapsed<30000;elapsed+=50){await new Promise(r=>setTimeout(r,50));quiet=pending.get(p).size?0:quiet+50;if(quiet>=500)return;}assert.fail('Commerce reads did not settle: '+[...pending.get(p)].map(r=>r.url()).join(', '));};
+   const finish=async p=>{await settle(p);p.removeAllListeners('pageerror');await p.close();};
    const measure=async(p,path)=>{
     await p.locator('.site-header').waitFor();
     await p.waitForFunction(()=>{const img=document.querySelector('#site-header .campaign-brand img,.site-header[data-editorial-header] .wordmark img');return img?.complete&&img.naturalWidth>0;});
@@ -60,7 +61,7 @@ export async function probe(base,output,{baseline,landing}={}){
      if(path==='/collections/all'){
       await page.locator('main article').first().waitFor();await page.locator('[data-hidi-collection-hydrated="true"]').waitFor({state:'attached'});assert.equal(await page.locator('.hidi-collection-intro').count(),0);assert.equal(await page.locator('.collection-header h1').textContent(),'All Products');
       productPath=new URL(await page.locator('main article h3 a').first().getAttribute('href'),base).pathname;
-      if(baseline){const prior=await fresh(path,false);await prior.locator('main article').first().waitFor();assert.deepEqual(await metadata(page),await metadata(prior));assert.deepEqual(await footer(page),await footer(prior),'Footer changed');const old=await prior.locator('.wordmark').boundingBox();const ratio=shapes[path].logoWidth/old.width;assert(ratio>=.75&&ratio<=.8,'Logo reduction outside20–25%');await prior.close();}
+      if(baseline){const prior=await fresh(path,false);await prior.locator('[data-hidi-collection-hydrated="true"]').waitFor({state:'attached'});await settle(page);await settle(prior);assert.deepEqual(await metadata(page),await metadata(prior));assert.deepEqual(await footer(page),await footer(prior),'Footer changed');const old=await prior.locator('.wordmark').boundingBox();const ratio=shapes[path].logoWidth/old.width;assert(ratio>=.75&&ratio<=.8,'Logo reduction outside20–25%');await finish(prior);}
       if(width<=1000){
        const menu=page.getByRole('button',{name:'Open menu',exact:true});await menu.click();const dialog=page.getByRole('dialog',{name:'Mobile navigation'});await dialog.waitFor();
        await page.waitForFunction(()=>{const h=document.querySelector('.site-header').getBoundingClientRect(),d=document.querySelector('#mobile-navigation').getBoundingClientRect();return Math.abs(h.bottom-d.top)<=2;});

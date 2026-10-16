@@ -2,6 +2,7 @@
 :root { --hidi-header-height: 85px; }
 .site-header[data-editorial-header] .header-inner { height: 84px; }
 .site-header[data-editorial-header] .wordmark { width: 136px; height: 71px; }
+body:has(.checkout-page) .site-header[data-editorial-header] .wordmark { grid-column: 1 / -1; justify-self: start; }
 @media (min-width: 1001px) {
   .site-header[data-editorial-header] .header-inner { grid-template-columns: 136px minmax(0, 1fr) auto; }
 }
