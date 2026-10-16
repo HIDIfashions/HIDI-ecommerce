@@ -7,6 +7,8 @@ const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),ma
 const baseline=mode==='baseline',rows=[];
 const request=(path,headers={})=>new Promise((resolve,reject)=>{const u=new URL(path,base);(u.protocol==='https:'?getHttps:get)(u,{headers},res=>{const chunks=[];res.on('data',c=>chunks.push(c));res.on('end',()=>resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks)}));}).on('error',reject);});
 if(!baseline){
+ const patch=JSON.parse(await readFile(OUT+'/patch.json','utf8'));
+ if(patch.seoHomeDiscoveryPreserved){const initial=(await request('/')).body.toString();assert(initial.includes('data-hidi-home-discovery'),'Current SEO discovery must remain in initial HTML');assert(initial.includes('href="/guides"'),'Current buying guide link must remain discoverable');assert.equal((initial.match(/<h1\b/gi)||[]).length,1,'Native hero and discovery must retain one primary heading');}
  const report=JSON.parse(await readFile(OUT+'/patch.json','utf8'));
  const originalPricing=await request('/pricing-assets/storefront.mjs',{'accept-encoding':'identity'});assert.equal(originalPricing.status,200);assert.equal(createHash('sha256').update(originalPricing.body).digest('hex'),report.globalPricingSourceSha256,'Global commerce pricing script must stay byte-identical');
  const encodedAsset=JSON.parse(await readFile(OUT+'/static-encoding-quality.json','utf8'));

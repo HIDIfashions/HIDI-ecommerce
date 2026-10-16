@@ -8,6 +8,9 @@ hrefs.push('/pricing-assets/styles.css','/offers-assets/offers.css');
 const template=await readFile(new URL('./hero-template.html',import.meta.url),'utf8');
 html=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<link\b[^>]*>/gi,'').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,'');
 html=html.replace(/(<header\b[^>]*data-hidi-first-header[^>]*>[\s\S]*?<\/header>)/i,tag=>tag+'<main id="main" tabindex="-1">'+template+'</main>');
+if((await readFile(base+'/server.mjs','utf8')).includes('html = addHomeDiscovery(optimizeHomeHead(html));')){
+ const {addHomeDiscovery}=await import(pathToFileURL(base+'/seo-document/discovery.mjs').href);html=addHomeDiscovery(html);
+}
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});const page=await browser.newPage();
 await page.route('**/*',r=>r.abort());await page.setContent(html);
 const styles={};
