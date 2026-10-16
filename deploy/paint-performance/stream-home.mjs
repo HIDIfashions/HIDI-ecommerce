@@ -1,4 +1,3 @@
-import {preparePosterHead} from './inline-poster.mjs';
 import {createBrotliCompress,createGzip,constants} from 'node:zlib';
 import {prepareHeaders} from '../performance/delivery.mjs';
 import {renderInitialHome} from './announcement.mjs';
@@ -6,7 +5,6 @@ import {renderInitialHome} from './announcement.mjs';
 // Flush only the unchanged head while fresh public data is read. The complete
 // body arrives together, so neither a stale hero nor a provisional offer paints.
 export async function streamInitialHome(request,response,headers,html,render=renderInitialHome){
- html=preparePosterHead(html,request);
  const match=/<\/head\s*>/i.exec(html);
  if(!match)throw Error('Homepage head missing');
  const cut=match.index+match[0].length,head=html.slice(0,cut),tail=html.slice(cut);

@@ -23,7 +23,7 @@ export async function verifyInitialCss(pw,base,out,mode){
     await page.waitForFunction(()=>document.querySelector('video[data-hidi-first-hero]')&&(Boolean(window.__HidiFullCssReady)||document.querySelector('style[data-hidi-inline-css*="index-"]')));
     await page.evaluate(()=>window.__HidiAvifSupport);
     await page.waitForFunction(()=>Boolean(document.querySelector('video[data-hidi-first-hero]')?.poster));
-    if(engine==='chromium')assert((await page.locator('video[data-hidi-first-hero]').getAttribute('poster')).startsWith('data:image/avif;base64,'),'Supported mobile and desktop must use their exact inline poster');
+    if(engine==='chromium')assert.match(await page.locator('video[data-hidi-first-hero]').getAttribute('poster'),/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/,'Supported mobile and desktop must use the preloaded immutable AVIF');
     await page.evaluate(async()=>{const image=new Image();image.src=document.querySelector('video[data-hidi-first-hero]').poster;await image.decode();if(image.naturalWidth<1000)throw Error('Native poster must decode at its original resolution');});
     await page.waitForTimeout(1000);
     await page.evaluate(()=>document.querySelector('#main').focus({preventScroll:true}));
