@@ -34,8 +34,9 @@ export async function runRefinementChecks({browser,engine,scenario,until,product
   assert.equal(await box.locator('.delivery-checked-pin').count(),0);assert(await input.evaluate(e=>e.readOnly));assert.equal(await box.getByRole('button',{name:'Check delivery PIN code',exact:true}).count(),0);
   for(const width of [390,1440]){await page.setViewportSize({width,height:900});await box.screenshot({path:resolve(output,engine+'-delivery-single-row-'+width+'.png')});}
   await box.getByRole('button',{name:'Change',exact:true}).click();await until(()=>input.evaluate(e=>e===document.activeElement),'PIN focus restored');
-  payload={serviceable:true,cod:false,estimatedDeliveryDate:'2020-01-01',estimatedTransitDays:1};await check.click();await box.getByText('Estimated delivery in 1 day after dispatch').waitFor();await box.getByText('Pay on delivery is unavailable for this PIN.').waitFor();
+  payload={serviceable:true,cod:true,estimatedDeliveryDate:'2020-01-01',estimatedTransitDays:1};await check.click();await box.getByText('Estimated delivery in 1 day after dispatch').waitFor();await box.getByText('Pay on delivery available',{exact:true}).waitFor();
   for(const width of [390,1440]){await page.setViewportSize({width,height:900});await box.screenshot({path:resolve(output,engine+'-delivery-transit-'+width+'.png')});}
+  await box.getByRole('button',{name:'Change',exact:true}).click();payload={serviceable:true,cod:false,estimatedTransitDays:1};await check.click();await box.getByText('Pay on delivery is unavailable for this PIN.').waitFor();
   await box.getByRole('button',{name:'Change',exact:true}).click();payload={serviceable:true,cod:true,estimatedTransitDays:null};await check.click();await box.getByText('The courier has not supplied an arrival estimate yet.').waitFor();
   await box.getByRole('button',{name:'Change',exact:true}).click();await input.fill('500001');assert.equal(await box.getByText('Online payment available',{exact:true}).count(),0);
   payload={serviceable:false};await check.click();await box.getByText('Delivery is currently unavailable to 500001.').waitFor();
