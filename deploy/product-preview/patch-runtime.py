@@ -21,7 +21,8 @@ def patch_runtime(base,overlay):
  server=(base/'server.mjs').read_text()
  loader="\n  if ((pathname.startsWith('/admin') || pathname.startsWith('/products/')) && !html.includes('data-hidi-product-copy-loader')) html = html.replace(/<\\/head>/i, '<link rel=\"stylesheet\" href=\"/admin-tools-assets/product-copy-storefront.css\"><script type=\"module\" data-hidi-product-copy-loader src=\"/admin-tools-assets/product-copy-storefront.mjs\"></script></head>');"
  server=once(server,'function injectOffers(html, pathname) {','function injectOffers(html, pathname) {'+loader)
- server=once(server,'function injectStorefrontLayerFix(html) {','function injectStorefrontLayerFix(html, pathname) {'+loader)
+ next_loader=loader.replace("(pathname.startsWith('/admin') || pathname.startsWith('/products/')) && ",'')
+ server=once(server,'function injectStorefrontLayerFix(html) {','function injectStorefrontLayerFix(html, pathname) {'+next_loader)
  server=once(server,'injectStorefrontLayerFix(html);','injectStorefrontLayerFix(html, pathname);')
  files['server.mjs']=server
  for name in ASSETS:files['admin-tools/'+name]=(HERE.parent/'admin-tools'/name).read_text()
