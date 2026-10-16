@@ -79,7 +79,8 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           const path='/collections/'+slug;
           page=await fresh(path);
           assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
-          await page.getByRole('heading',{level:1,name:currentHeadings[slug],exact:true}).waitFor();
+          await page.locator('h1').waitFor({state:'attached'});
+          assert.equal((await page.locator('h1').textContent()).trim(),currentHeadings[slug]);
           await page.locator('main article').first().waitFor();
           await page.waitForLoadState('load',{timeout:60000});
           assert.equal(await page.locator('h1').count(),1);
@@ -92,7 +93,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           
           await settleReads(page);const expected=await products(page);assert(expected.length>0);
           if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
-          if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();await prior.waitForLoadState('load');await settleReads(prior);assert.deepEqual(expected,await products(prior),'Product selection changed');
+          if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();await prior.waitForLoadState('load');await settleReads(prior);assert.equal(await page.locator('h1').isVisible(),await prior.locator('h1').isVisible(),'Collection heading visibility changed');assert.deepEqual(expected,await products(prior),'Product selection changed');
           assert.deepEqual(await cardFacts(page),await cardFacts(prior),'Product card facts or prices changed');await finish(prior);}
           if(width<700){
             const trigger=page.getByRole('button',{name:/Filter.*Sort/i});
