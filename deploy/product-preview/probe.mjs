@@ -34,8 +34,10 @@ export async function probe(base,output){
  await page.goto(base+'/products/'+encodeURIComponent(product.slug));await page.locator('.pdp-gallery [data-hidi-portrait]').waitFor();await page.locator('[data-hidi-copy="description"]').waitFor();const frame=page.locator('.pdp-gallery [data-hidi-portrait]').first();const box=await frame.boundingBox();assert(Math.abs(box.width/box.height-.75)<.015,'Primary photo uses a 3:4 frame');assert.equal(await frame.locator('img').evaluate(i=>getComputedStyle(i).objectFit),'cover');
  await frame.click();await page.locator('[role="dialog"]').waitFor();assert.equal(await page.locator('[role="dialog"] img').first().evaluate(i=>getComputedStyle(i).objectFit),'contain');await page.keyboard.press('Escape');
  await page.screenshot({path:output+'/'+engine+'-'+width+'-product.png',fullPage:true});
- for(const path of ['/collections/all','/cart','/checkout','/account','/wishlist']){const response=await page.goto(base+path);assert(response.status()<400,path+' available');}
- assert.deepEqual(escaped,[]);assert.deepEqual(errors,[]);console.log('PRODUCT_PREVIEW_CASE',JSON.stringify({engine,width,passed:true}));cases.push({engine,width,passed:true,editorSaveAndReload:true,conflictsRetainDraft:true,portraitFrame:true,fullOriginalInspection:true,retainedCommerce:true});
+ await page.waitForLoadState('networkidle');
+ await page.goto(base+'/collections/all');await page.waitForLoadState('networkidle');await page.locator('h3 a').filter({hasText:product.name}).first().click();await page.waitForURL(base+'/products/'+encodeURIComponent(product.slug));await page.locator('[data-hidi-copy=description]').waitFor();await page.waitForLoadState('networkidle');
+ for(const path of ['/collections/all','/cart','/checkout','/account','/wishlist']){const response=await page.goto(base+path);assert(response.status()<400,path+' available');await page.waitForLoadState('networkidle');}
+ if(errors.length)console.error('PRODUCT_PREVIEW_PAGE_ERRORS',JSON.stringify({engine,width,url:page.url(),errors}));assert.deepEqual(escaped,[]);assert.deepEqual(errors,[]);console.log('PRODUCT_PREVIEW_CASE',JSON.stringify({engine,width,passed:true}));cases.push({engine,width,passed:true,editorSaveAndReload:true,conflictsRetainDraft:true,portraitFrame:true,fullOriginalInspection:true,collectionToProductNavigation:true,retainedCommerce:true});
  }finally{await context.close();}
  }}finally{await browser.close();}
  }
