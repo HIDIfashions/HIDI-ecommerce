@@ -29,9 +29,15 @@ def patch_web(base,overlay,poster):
     text=once(text,'const [manualPlayback, setManualPlayback] = HidiHeroReact.useState(false);','const [manualPlayback, setManualPlayback] = HidiHeroReact.useState(() => soundEnabled);')
     logo=(base/'dist/assets/images/hidi-logo.png').read_bytes();assert len(logo)<=32768
     text=once(text,'src:Tt("images/hidi-logo.png"),fetchPriority:"high"','src:'+json.dumps('data:image/png;base64,'+base64.b64encode(logo).decode())+',fetchPriority:"high"')
+    start=text.index('    setVideoAllowed(false);\n    let idleId = null;')
+    end=text.index('  }, [showBundled, heroConfigStatus, mobile, reduced]);',start)
+    expected=(HERE/'video-delay.txt').read_text()
+    text=once(text,expected,'    setVideoAllowed(true);\n')
+    text='if (location.pathname === "/" && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));\n'+text
     name='assets/index-'+hashlib.sha256(text.encode()).hexdigest()[:16]+'.js'
     assert html.count('/'+old)==2,'Expected app and preload references'
     html=html.replace('/'+old,'/'+name)
+    html=once(html,'<link rel="modulepreload" fetchpriority="high"','<link rel="modulepreload" fetchpriority="low"')
     posters=re.findall(r'<link rel="preload" as="image" fetchpriority="high" media="[^"]+" href="/media-performance/assets/[^"]+">',html);assert len(posters)==2
     for hint in posters:html=once(html,hint,'')
     for row in poster['report']:

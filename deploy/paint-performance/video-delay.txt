@@ -1,0 +1,16 @@
+    setVideoAllowed(false);
+    let idleId = null;
+    const delay = mobile ? 300 : 1200;
+    const timer = window.setTimeout(() => {
+      if (typeof window.requestIdleCallback === "function") {
+        idleId = window.requestIdleCallback(() => setVideoAllowed(true), { timeout: 900 });
+      } else {
+        setVideoAllowed(true);
+      }
+    }, delay);
+    return () => {
+      window.clearTimeout(timer);
+      if (idleId !== null && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      }
+    };

@@ -47,7 +47,7 @@ jobs:
           echo "CANDIDATE_WEB=acrhidiprod0927.azurecr.io/hidi-web:paint-performance-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
       - name: Measure current mobile and desktop performance
         run: node deploy/paint-performance/lighthouse.mjs before
-      - name: Compose current hero and offer in the initial public HTML
+      - name: Compose early native hero, immediate preferred playback and poster priority
         run: python3 deploy/paint-performance/release.py compose
       - name: Verify candidate bundle, design, media and compression
         run: node deploy/paint-performance/candidate.mjs
