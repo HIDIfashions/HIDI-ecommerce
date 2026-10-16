@@ -27,6 +27,7 @@ jobs:
         run: |
           node --test deploy/pricing/model.test.mjs deploy/pricing/handler.test.mjs tests/button-request-policy.test.mjs tests/product-copy.test.mjs tests/admin-quick-tools.test.mjs tests/admin-product-bulk.test.mjs tests/bulk-publication.test.mjs tests/product-upload-model.test.mjs tests/product-upload-engine.test.mjs
           python3 deploy/checkout-hydration/test_patch.py
+          python3 deploy/checkout-hydration/test_source_gate.py
           python3 -m py_compile deploy/checkout-hydration/release.py deploy/checkout-hydration/patch-runtime.py
           for file in deploy/admin-tools/product-copy*.mjs deploy/admin-tools/product-preview.mjs deploy/checkout-hydration/*.mjs deploy/pricing/storefront.mjs; do node --check "$file"; done
       - name: Install exact-manifest backup tools and three browsers
