@@ -49,7 +49,7 @@ export function DeliveryCheck() {
       <div className="delivery-pin-entry">
         <input ref={pinInput} aria-label="Delivery PIN code" placeholder="Enter PIN code" inputMode="numeric" maxLength={6}
           value={pin} disabled={busy} readOnly={Boolean(result)} onChange={(event) => { setPin(event.target.value.replace(/\D/g, "")); setMessage(""); setResult(null); }} />
-        {result ? <button type="button" onClick={() => { setResult(null); requestAnimationFrame(() => pinInput.current?.focus()); }}>Change</button> : <button type="submit" disabled={busy} aria-label="Check delivery PIN code">{busy ? "Checking…" : "Check"}</button>}
+        {result ? <button type="button" onClick={(event) => { event.preventDefault(); setResult(null); requestAnimationFrame(() => pinInput.current?.focus()); }}>Change</button> : <button type="submit" disabled={busy} aria-label="Check delivery PIN code">{busy ? "Checking…" : "Check"}</button>}
       </div>
     </form>
     <div role="status" aria-live="polite" className="delivery-result">
