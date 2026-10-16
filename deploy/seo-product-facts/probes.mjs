@@ -54,9 +54,13 @@ export async function probe(base,output,options={}){
     // Navigate through the real collection and its product link to test RSC/client assets.
     p=await fresh('native collection-to-product navigation');
     await p.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});await p.locator('main article').first().waitFor();
+    await p.waitForFunction(()=>document.querySelector('.collection-page')?.dataset.hidiCollectionHydrated==='true',null,{timeout:60000});
     const productLink=p.locator('main article h3 a[href="'+path+'"]').first();
-    await productLink.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
-    await productLink.click({position:{x:8,y:8}});
+    // The inline title can be wider than its ellipsis-clipped card in WebKit.
+    // Click the visible heading box so the real pointer lands on its link.
+    const visibleTitle=productLink.locator('..');
+    await visibleTitle.evaluate(node=>node.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));
+    await visibleTitle.click();
     await p.waitForURL('**'+path,{waitUntil:'domcontentloaded'});await summary().getByText('Included pieces',{exact:true}).waitFor();
     await p.waitForFunction(()=>document.querySelector('[data-hidi-react-pdp]')?.dataset.hidiHydrated==='true',null,{timeout:60000});
     assert.equal(normalizeText(await summary().innerText()),before);
