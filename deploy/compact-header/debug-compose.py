@@ -16,3 +16,7 @@ tag='header-debug:local'
 subprocess.run(['docker','build','--pull=false','-t',tag,str(folder)],check=True)
 release.save('patch.json',plan)
 release.save('web-preservation.json',{'baseImage':image,'candidateTag':tag,'debugOnly':True})
+# The production diagnostic wrapper is focused; this reviewed branch expands
+# only local tests, retaining the exact canonical full matrix and assertions.
+(here/'probes-full.mjs').write_bytes((here/'probes.mjs').read_bytes())
+subprocess.run(['node','/tmp/header-debug/node_modules/playwright/cli.js','install','--with-deps','firefox','webkit'],check=True)

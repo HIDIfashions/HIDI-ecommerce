@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {execFileSync} from 'node:child_process';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
-import {probe} from './probes.mjs';
+import {probe} from './probes-full.mjs';
 import {baselinePrivateProof} from './baseline.mjs';
 import {resolve} from 'node:path';
 
