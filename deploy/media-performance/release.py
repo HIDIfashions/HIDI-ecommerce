@@ -1,4 +1,4 @@
-import importlib.util,json,os,re,subprocess,time
+import importlib.util,json,os,re,subprocess,time,urllib.request
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
 def load(name,path):
@@ -12,8 +12,19 @@ def save(name,value): (OUT/name).write_text(json.dumps(value,indent=2))
 def selections():
     return {key:json.loads(cloud.get(path)) for key,path in [('hero','/api/hidi/hero-config'),('landing','/api/hidi/landing-media-config')]}
 def capture():
+    for attempt in range(180):
+        request=urllib.request.Request('https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/runs?per_page=100',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+        runs=json.load(urllib.request.urlopen(request))['workflow_runs'];busy=[]
+        for run in runs:
+            if str(run['id'])==os.environ['GITHUB_RUN_ID'] or run['status'] not in ['in_progress','pending','queued']:continue
+            path=Path(run['path'].split('@')[0])
+            if path.is_file() and 'group: hidi-hero-guarded-release' in path.read_text():busy.append(run['name'])
+        if not busy:break
+        if attempt==0 or attempt%6==0:print('Waiting for existing production deployments: '+', '.join(sorted(set(busy))),flush=True)
+        time.sleep(10)
+    else:raise AssertionError('Production has not become idle; no live change attempted')
     photo.capture();photo.backup()
-    (PRIVATE/'selections.json').write_text(json.dumps(selections()))
+    selected=selections();(PRIVATE/'selections.json').write_text(json.dumps(selected));save('published-selections.json',selected)
     (PRIVATE/'catalogue.json').write_bytes(cloud.get('/api/store/products'))
 def compose():
     photo.require_backups();photo.unchanged(photo.states())
@@ -61,6 +72,13 @@ def apply():
         if current['image']==image and current['latest']=='hidi-web--'+suffix and current['settingsHash']==before['hidi-web']['settingsHash']:
             rollback='mediaperfrollback'+os.environ['GITHUB_RUN_ID'];cloud.write_image(data,before['hidi-web']['image'],rollback);wait(before['hidi-web']['image'],rollback,current);save('rollback.json',{'restored':True})
         raise
+def deploy_capture():
+    expected=json.loads((OUT/'before.json').read_text())
+    selected=json.loads((OUT/'published-selections.json').read_text())
+    photo.capture()
+    assert photo.states()==expected,'Production changed after candidate verification; stop without replacing it'
+    assert selections()==selected,'Selected media changed after candidate verification'
+    (PRIVATE/'selections.json').write_text(json.dumps(selected))
 if __name__=='__main__':
     import sys
     globals()[sys.argv[1]]()
