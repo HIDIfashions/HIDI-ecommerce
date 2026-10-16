@@ -15,7 +15,7 @@ export async function verifyInitialCss(pw,base,out,mode){
       return route.fulfill({response,body:html});
      }
      if(/\/assets\/index-[^/]+\.js$/.test(url.pathname))return route.abort();
-     if(/\/assets\/index-[^/]+\.css$/.test(url.pathname))await gate;
+     if(/\.css$/.test(url.pathname))await gate;
      return route.continue();
     });
     await page.goto(base+'/',{waitUntil:'domcontentloaded'});
@@ -39,6 +39,7 @@ export async function verifyInitialCss(pw,base,out,mode){
      await new Promise((resolve,reject)=>{link.onload=resolve;link.onerror=()=>reject(Error('Original CSS unavailable'));inline.before(link);});
      inline.remove();
     });await page.waitForTimeout(100);
+    assert(await page.evaluate(()=>[...document.querySelectorAll('link[data-hidi-deferred-style]')].every(link=>Boolean(link.sheet)&&link.media==='all')),'Every original deferred stylesheet must actually load');
     assert.deepEqual(await snapshot(),initial,'Initial header/hero CSS must match the complete stylesheet at '+engine+'/'+width);
     await page.screenshot({path:out+'/'+mode+'/initial-css-'+engine+'-'+width+'.png'});
     rows.push({engine,width,passed:true});console.log('PASS initial CSS '+mode+' '+engine+' '+width);

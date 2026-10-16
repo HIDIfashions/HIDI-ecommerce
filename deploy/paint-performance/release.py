@@ -11,6 +11,10 @@ OUT.mkdir(parents=True,exist_ok=True);photo.PRIVATE,photo.EVIDENCE=PRIVATE,OUT
 def save(name,value): (OUT/name).write_text(json.dumps(value,indent=2))
 def selections():
     return {key:json.loads(cloud.get(path)) for key,path in [('hero','/api/hidi/hero-config'),('landing','/api/hidi/landing-media-config')]}
+
+def analytics():
+    value=json.loads(cloud.get('/api/hidi/analytics-config'))
+    return {key:value.get(key) for key in ['enabled','ga4MeasurementId','metaPixelId']}
 def capture():
     # Read-only preparation may overlap other testing; exact-state guards reject any changed live image.
     photo.capture();photo.backup()
@@ -23,6 +27,7 @@ def capture():
             'ingress':{key:ingress.get(key) for key in ['targetPort','external','transport','allowInsecure']}}
     save('runtime-resources.json',resources)
     selected=selections();(PRIVATE/'selections.json').write_text(json.dumps(selected));save('published-selections.json',selected)
+    (PRIVATE/'analytics.json').write_text(json.dumps(analytics()))
     (PRIVATE/'catalogue.json').write_bytes(cloud.get('/api/store/products'))
 def compose():
     photo.require_backups();photo.unchanged(photo.states())
@@ -30,10 +35,10 @@ def compose():
     image=photo.states()['hidi-web']['image'];images.extract(image,base)
     icons=patch.build_icons(base,overlay);save('icon-quality.json',icons)
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True)
-    poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);(overlay/'poster-build.json').unlink()
-    # Deliver native-screen CSS first and exact complete sheets later in the same HTML response.
+    poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);save('head-assets-quality.json',poster['headAssets']);(overlay/'poster-build.json').unlink()
+    # Native-screen CSS paints immediately; exact complete sheets load independently at low priority.
     subprocess.run(['node',str(HERE/'critical-css.mjs'),str(base),str(overlay)],check=True)
-    save('critical-css-quality.json',{'strategy':'same-response','allSourceCssPreserved':True,'styles':json.loads((overlay/'paint-performance/critical-css.json').read_text())['styles']})
+    save('critical-css-quality.json',{'strategy':'critical-inline-full-external','allSourceCssPreserved':True,'styles':json.loads((overlay/'paint-performance/critical-css.json').read_text())['styles']})
     report=patch.patch_web(base,overlay,poster,icons);manifest=report.pop('manifest')
     subprocess.run(['node',str(HERE/'precompress.mjs'),str(overlay),report['bundle'],str(OUT/'static-encoding-quality.json')],check=True)
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
@@ -59,13 +64,14 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','network-fixture.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1
         assert row['device']!='mobile' or row['lcp']<2200
     assert selections()==json.loads((PRIVATE/'selections.json').read_text()),'Published media changed during preparation'
+    assert analytics()==json.loads((PRIVATE/'analytics.json').read_text()),'Analytics configuration changed during preparation'
     image=os.environ['WEB_IMAGE'];assert re.fullmatch(re.escape(images.REGISTRY+'/hidi-web@sha256:')+r'[a-f0-9]{64}',image)
     protected=photo.public_state();suffix='paintperf'+os.environ['GITHUB_RUN_ID']+'a'+os.environ.get('GITHUB_RUN_ATTEMPT','1')
     def interrupted(signum,frame):
@@ -80,6 +86,7 @@ def apply():
         subprocess.run(['node',str(HERE.parent/'checkout-hydration/probe.mjs'),'https://hidiindia.com',str(OUT/'checkout-live')],check=True,timeout=900,env={**os.environ,'HIDI_BROWSER_ENGINES':'chromium,firefox,webkit','HIDI_LOCAL_OVERLAY':'0'})
         subprocess.run(['node',str(HERE/'lighthouse.mjs'),'after'],check=True,timeout=600)
         assert photo.public_state()==protected,'Published configuration changed'
+        assert analytics()==json.loads((PRIVATE/'analytics.json').read_text()),'Analytics configuration changed'
         assert cloud.snapshot(cloud.app('hidi-api'))==before['hidi-api'],'API changed independently'
         assert cloud.snapshot(cloud.app('hidi-web'))==state
         save('after.json',{'passed':True,'web':state,'apiUnchanged':True,'settingsPreserved':True,'publishedSelectionsPreserved':True,'databaseAndBlobWrites':False})
@@ -95,6 +102,7 @@ def deploy_capture():
     assert photo.states()==expected,'Production changed after candidate verification; stop without replacing it'
     assert selections()==selected,'Selected media changed after candidate verification'
     (PRIVATE/'selections.json').write_text(json.dumps(selected))
+    (PRIVATE/'analytics.json').write_text(json.dumps(analytics()))
 if __name__=='__main__':
     import sys
     globals()[sys.argv[1]]()

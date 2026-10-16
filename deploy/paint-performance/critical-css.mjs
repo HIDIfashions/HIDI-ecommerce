@@ -15,6 +15,8 @@ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});const
 await page.route('**/*',r=>r.abort());await page.setContent(html);
 const styles={};
 try{for(const href of new Set(hrefs)){
+ // Independently running offer/countdown scripts can insert these elements before React.
+ if(['/offers-assets/offers.css','/hidi-launch-countdown-20261011.css'].includes(new URL(href,'https://hidiindia.com/').pathname))continue;
  const url=new URL(href,'https://hidiindia.com/'),special={'/pricing-assets/styles.css':'pricing/styles.css','/offers-assets/offers.css':'offers/offers.css'};
  let input;try{input=await readFile(resolve(base,special[url.pathname]||'dist'+url.pathname),'utf8');}catch{continue;}
  if(input.length>160000||/@import\b/i.test(input)||/<\/style/i.test(input))continue;

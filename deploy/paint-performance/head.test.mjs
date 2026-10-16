@@ -1,4 +1,16 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHash} from 'node:crypto';import {createHomeHead} from './head.mjs';
+
+test('prepared logo and SEO assets require matching source and immutable content hashes',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-head-assets-')),root=join(app,'dist'),hash=value=>createHash('sha256').update(value).digest('hex');
+ try{for(const folder of ['assets/images','media-performance/assets'])mkdirSync(join(root,folder),{recursive:true});mkdirSync(join(app,'paint-performance'));
+ const original=Buffer.from('reviewed-original-logo'),optimized=Buffer.from('same-reviewed-pixels'),code='window.__hidiSeo="original";',logo='/media-performance/assets/logo-'+hash(optimized).slice(0,16)+'.png',seo='/assets/home-seo-'+hash(code).slice(0,16)+'.js';
+ writeFileSync(join(root,'assets/images/hidi-logo.png'),original);writeFileSync(join(root,logo),optimized);writeFileSync(join(root,seo),code);writeFileSync(join(app,'paint-performance/head-assets.json'),JSON.stringify({logo:{url:logo,sourceSha256:hash(original),sha256:hash(optimized)},seo:{url:seo,sha256:hash(code)}}));
+ const html='<head><script data-hidi-seo-identity="1">'+code+'</script><link rel="preload" as="image" fetchpriority="high" href="/assets/images/hidi-logo.png"></head><body><img src="/assets/images/hidi-logo.png"></body>';
+ let output=createHomeHead(root,app)(html);assert(output.includes('defer src="'+seo+'"'));assert(!output.includes(code));assert(output.includes('data:image/png;base64,'+optimized.toString('base64')));assert(output.includes('fetchpriority="low"'));
+ writeFileSync(join(root,seo),'corrupt');writeFileSync(join(root,logo),'corrupt');output=createHomeHead(root,app)(html);assert(output.includes(code));assert(output.includes('data:image/png;base64,'+original.toString('base64')));
+ const changed=html.replace(code,'window.__hidiSeo="updated";');assert(createHomeHead(root,app)(changed).includes('window.__hidiSeo="updated";'));
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
 test('public CSS retains cascade order, markers and asset URL resolution; remote/imported/conditional styles remain links',()=>{
  const root=mkdtempSync(join(tmpdir(),'hidi-head-'));
  try{
@@ -55,7 +67,7 @@ test('critical styles retain their full sheet and cascade position; changed CSS 
   const css='header{color:red}footer{color:blue}',critical='header{color:red}';writeFileSync(join(root,'assets/index-test.css'),css);
   const metadata={styles:{'/assets/index-test.css':{sha256:createHash('sha256').update(css).digest('hex'),critical}}};writeFileSync(join(app,'paint-performance/critical-css.json'),JSON.stringify(metadata));
   const html='<head><link rel="stylesheet" href="/assets/index-test.css" /><style>header{padding:2px}</style></head><body><header>Same design</header></body>';
-  const result=createHomeHead(root,app)(html);assert(result.includes('>'+critical+'</style>'));assert(!result.includes('rel="stylesheet"'));assert(result.includes('window.__HidiFullCssReady'));assert(result.indexOf('>'+critical+'</style>')<result.indexOf('padding:2px'));assert(result.includes('>'+css+'</template>'));assert(result.indexOf('<template')>result.indexOf('</header>'));assert(result.includes('requestAnimationFrame'));
+  const result=createHomeHead(root,app)(html);assert(result.includes('>'+critical+'</style>'));assert(result.includes('rel="stylesheet"'));assert(result.includes('window.__HidiFullCssReady'));assert(result.indexOf('>'+critical+'</style>')<result.indexOf('padding:2px'));assert(result.includes('media="print"'));assert(result.includes('fetchpriority="low"'));assert(result.includes('hidi_full='+metadata.styles['/assets/index-test.css'].sha256.slice(0,16)));assert(!result.includes('<template'));assert(!result.includes('footer{color:blue}'));
   writeFileSync(join(root,'assets/index-test.css'),'header{color:green}footer{color:purple}');const fresh=createHomeHead(root,app)(html);assert(fresh.includes('color:purple'));assert(!fresh.includes('data-hidi-deferred-style'));assert(!fresh.includes('__HidiFullCssReady'));
  }finally{rmSync(app,{recursive:true,force:true});}
 });
