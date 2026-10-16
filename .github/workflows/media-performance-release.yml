@@ -1,4 +1,5 @@
 name: Guarded homepage media and compression release
+# Queue after the current commerce release and capture its completed live image.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -8,6 +9,7 @@ permissions:
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
+  queue: max
   cancel-in-progress: false
 jobs:
   release:
