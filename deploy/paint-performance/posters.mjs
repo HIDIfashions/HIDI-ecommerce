@@ -29,7 +29,9 @@ for(const item of Object.values(manifest.videos))for(const kind of ['mobile','de
  await writeFile(join(output,name),selected.encoded);variant.avifPoster='/media-performance/assets/'+name;
  report.push({kind,original:variant.poster,url:variant.avifPoster,originalBytes:input.length,bytes:selected.encoded.length,quality:selected.quality,ssim:selected.ssim});
 }
+const {encodeMobileVideo}=await import('./video.mjs');
+const videoReport=await encodeMobileVideo(base,overlay,manifest);
 const probe=await sharp({create:{width:2,height:2,channels:3,background:'#ffffff'}}).avif().toBuffer();
-await writeFile(join(overlay,'poster-build.json'),JSON.stringify({manifest,report,probe:probe.toString('base64')}));
+await writeFile(join(overlay,'poster-build.json'),JSON.stringify({manifest,report,videoReport,probe:probe.toString('base64')}));
 for(const kind of ['mobile','desktop'])for(const suffix of ['reference','decoded'])await (await import('node:fs/promises')).unlink(join(overlay,kind+'-'+suffix+'.png'));
 console.log(JSON.stringify(report));

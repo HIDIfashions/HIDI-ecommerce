@@ -21,7 +21,7 @@ def compose():
     folder=PRIVATE/'web';folder.mkdir();base=folder/'base-app';overlay=folder/'overlay';candidate=folder/'candidate-app'
     image=photo.states()['hidi-web']['image'];images.extract(image,base)
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True)
-    poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);(overlay/'poster-build.json').unlink()
+    poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);(overlay/'poster-build.json').unlink()
     report=patch.patch_web(base,overlay,poster);manifest=report.pop('manifest')
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
     save('patch.json',report);save('manifest.json',manifest)
@@ -43,7 +43,7 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1
