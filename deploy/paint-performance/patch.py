@@ -4,6 +4,13 @@ HERE=Path(__file__).resolve().parent
 def once(text,before,after):
     assert text.count(before)==1,'Unexpected current anchor: '+before[:100]
     return text.replace(before,after,1)
+
+def reviewed_home_hook(runtime):
+    plain='    if (pathname === "/") html = optimizeHomeHead(html);'
+    discovery='    if (pathname === "/") html = addHomeDiscovery(optimizeHomeHead(html));'
+    counts=[runtime.count(plain),runtime.count(discovery)]
+    assert counts in ([1,0],[0,1]),'Homepage wrapper changed; stop before composing'
+    return (discovery,True) if counts[1] else (plain,False)
 def build_icons(base,overlay):
     html=(base/'dist/index.html').read_text()
     tags=re.findall(r'<link\b[^>]*rel=["\'](?:shortcut icon|icon)["\'][^>]*>',html,re.I)
@@ -88,7 +95,8 @@ def patch_web(base,overlay,poster,icons=None):
     html=once(html,viewport,viewport+'\n'+'\n'.join(posters)+'\n<script data-hidi-early-hero="true">'+(HERE/'early-hero.js').read_text().replace('__AVIF_PROBE__',poster['probe'])+'</script>')
     runtime=(base/'server.mjs').read_text()
     runtime=once(runtime,'(?:webp|mp4)$','(?:webp|avif|png|mp4)$')
-    runtime=once(runtime,'    if (pathname === "/") html = optimizeHomeHead(html);','''    if (pathname === "/") {
+    home_hook,has_discovery=reviewed_home_hook(runtime)
+    runtime=once(runtime,home_hook,'''    if (pathname === "/") {
       html = optimizeHomeHead(html);
       response.setHeader("Vary", "Accept, User-Agent, Sec-CH-UA-Mobile, Cookie, Save-Data");
       if (request.method === "GET") {
@@ -119,8 +127,12 @@ def patch_web(base,overlay,poster,icons=None):
     pricing=once(pricing,'async function refresh(){',"async function refresh(){\n  if(location.pathname!=='/'){await import('/pricing-assets/storefront.mjs');return;}")
     pricing_name='assets/home-pricing-'+hashlib.sha256(pricing.encode()).hexdigest()[:16]+'.js'
     pricing_metadata={'url':'/'+pricing_name,'sourceSha256':hashlib.sha256((base/'pricing/storefront.mjs').read_text().encode()).hexdigest(),'homeSha256':hashlib.sha256(pricing.encode()).hexdigest()}
-    files={'paint-performance/static-encoding.mjs':(HERE/'static-encoding.mjs').read_text(),'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'dist/'+pricing_name:pricing,'paint-performance/home-pricing.json':json.dumps(pricing_metadata),'paint-performance/announcement.mjs':(HERE/'announcement.mjs').read_text(),'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
+    initial_home=(HERE/'announcement.mjs').read_text()
+    if has_discovery:
+        assert (base/'seo-document/discovery.mjs').is_file(),'Preserved discovery renderer missing'
+        initial_home='import {addHomeDiscovery} from "../seo-document/discovery.mjs";\n'+once(initial_home,' return renderHero(await renderAnnouncement(html,async()=>products),hero,{request});',' return addHomeDiscovery(renderHero(await renderAnnouncement(html,async()=>products),hero,{request}));')
+    files={'paint-performance/static-encoding.mjs':(HERE/'static-encoding.mjs').read_text(),'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'dist/'+pricing_name:pricing,'paint-performance/home-pricing.json':json.dumps(pricing_metadata),'paint-performance/announcement.mjs':initial_home,'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
     files['paint-performance/stream-home.mjs']=(HERE/'stream-home.mjs').read_text()
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)
-    return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'homePricingBundle':pricing_name,'globalPricingSourceSha256':hashlib.sha256((base/'pricing/storefront.mjs').read_bytes()).hexdigest(),'pricingPresentationAndHydrationPreserved':True,'pricingPresentationSha256':hashlib.sha256(price_presentation.encode()).hexdigest(),'pricingCalculationsSha256':hashlib.sha256(price_calculations.encode()).hexdigest(),'manifest':manifest}
+    return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'seoHomeDiscoveryPreserved':has_discovery,'homePricingBundle':pricing_name,'globalPricingSourceSha256':hashlib.sha256((base/'pricing/storefront.mjs').read_bytes()).hexdigest(),'pricingPresentationAndHydrationPreserved':True,'pricingPresentationSha256':hashlib.sha256(price_presentation.encode()).hexdigest(),'pricingCalculationsSha256':hashlib.sha256(price_calculations.encode()).hexdigest(),'manifest':manifest}
