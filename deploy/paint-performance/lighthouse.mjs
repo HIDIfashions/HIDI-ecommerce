@@ -19,8 +19,10 @@ for(const device of ['mobile','desktop']){
 await writeFile(out+'/'+mode+'.json',JSON.stringify(rows,null,2));
 if(mode==='candidate'){
  const before=JSON.parse(await readFile(out+'/before.json','utf8'));
+ const network=JSON.parse(await readFile('evidence/paint-performance/network-fixture.json','utf8'));
+ if(!network.passed||network.host!=='127.0.0.1'||network.port!==3190||network.roundTripDelayMs!==250||network.mtu!==1500||network.otherPortsDelayed!==false)throw Error('Candidate must retain the isolated delayed HTTP2 connection fixture');
  const matched=rows.every(row=>{const baseline=before.find(item=>item.device===row.device);return baseline?.samples.every(sample=>sample.protocol==='h2')&&row.samples.every(sample=>sample.protocol==='h2'&&JSON.stringify(sample.profile)===JSON.stringify(baseline.profile));});
- await writeFile('evidence/paint-performance/protocol-comparison.json',JSON.stringify({passed:matched,live:before.map(row=>({device:row.device,protocol:row.protocol})),staging:rows.map(row=>({device:row.device,protocol:row.protocol})),sameLighthouseThrottling:matched}));
+ await writeFile('evidence/paint-performance/protocol-comparison.json',JSON.stringify({passed:matched,live:before.map(row=>({device:row.device,protocol:row.protocol})),staging:rows.map(row=>({device:row.device,protocol:row.protocol})),sameLighthouseThrottling:matched,stagingRoundTripDelayMs:network.roundTripDelayMs,stagingMtu:network.mtu}));
  if(!matched)throw Error('Staging must match the observed live HTTP/2 protocol and device throttling settings');
  for(const r of rows){if(r.score<93||r.device==='mobile'&&r.lcp>=2200||r.cls>.1)throw Error('Candidate lacks required performance headroom: '+JSON.stringify(r));}
 }
