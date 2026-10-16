@@ -3,6 +3,7 @@ import {BadRequestException,ConflictException,UnauthorizedException} from '@nest
 import { shippingQuote } from './shipping-policy.js';
 export const normalizedChoice=input=>{
  const value=input??{kind:'NONE'};
+ if(value?.kind==='PERCENT15')throw new BadRequestException('Additional checkout percentage discounts are disabled. Product prices are as displayed.');
  if(!value||typeof value!=='object'||Array.isArray(value)||!['NONE','PERCENT15','DRESS1'].includes(value.kind))throw new BadRequestException('Choose one supported HIDI offer');
  if(value.kind==='NONE')return {kind:'NONE'};
  if(!Number.isSafeInteger(value.version)||value.version<1)throw new BadRequestException('Refresh the offer before checkout');
