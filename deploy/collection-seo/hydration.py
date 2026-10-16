@@ -19,11 +19,14 @@ def changes(base):
     replacements={oldhash:newhash};originals={p:p.read_text() for p in root.rglob('*') if p.is_file() and p.suffix in ['.js','.json'] and p!=path}
     # The webpack mapping is content-addressed as well, so cached runtimes stay valid.
     runtimes=[p for p in (root/'static/chunks').glob('webpack-*.js') if oldhash in p.read_text()]
-    assert len(runtimes)==1,'One collection chunk loader mapping required'
-    runtime=runtimes[0];previous=originals.pop(runtime);updated=previous.replace(oldhash,newhash)
-    runtimehash=re.search(r'webpack-([0-9a-f]{16})\.js$',runtime.name).group(1);nextHash=hashlib.sha256(updated.encode()).hexdigest()[:16]
-    replacements[runtimehash]=nextHash
-    files[runtime.with_name('webpack-'+nextHash+'.js').relative_to(base).as_posix()]=updated.encode()
+    assert len(runtimes)<=1,'Ambiguous collection chunk loader mapping'
+    # Initial chunks are supplied by the RSC client-reference manifest; only
+    # lazy chunks also have a webpack URL mapping.
+    if runtimes:
+        runtime=runtimes[0];previous=originals.pop(runtime);updated=previous.replace(oldhash,newhash)
+        runtimehash=re.search(r'webpack-([0-9a-f]{16})\.js$',runtime.name).group(1);nextHash=hashlib.sha256(updated.encode()).hexdigest()[:16]
+        replacements[runtimehash]=nextHash
+        files[runtime.with_name('webpack-'+nextHash+'.js').relative_to(base).as_posix()]=updated.encode()
     for p,previous in originals.items():
         updated=previous
         for old,new in replacements.items():updated=updated.replace(old,new)
