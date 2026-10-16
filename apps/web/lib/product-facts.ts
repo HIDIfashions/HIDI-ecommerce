@@ -1,10 +1,16 @@
 import type { ApiProduct } from "./api";
 const text = (value?: string | null) => value?.trim() || null;
-/** Read explicitly labelled catalogue facts; never infer set contents from a photo or title. */
+/** Read explicit catalogue statements; never infer contents from a photo or title. */
 export function productFacts(product: ApiProduct) {
   const description = [product.description, product.shortDescription].filter(Boolean).join("\n");
   const label = (name: string) => text(description.match(new RegExp("(?:^|\\n)\\s*" + name + "\\s*:\\s*([^\\n]+)", "i"))?.[1]);
-  return { fabric: text(product.fabric), care: text(product.care), includes: label("Includes"), fit: label("Fit"), lining: label("Lining"), model: label("Model") };
+  const statedSet = description.split(/\r?\n/).map(line => line.trim()).find(line =>
+    /^(?:2|3)\s*[- ]\s*piece\s+set\b/i.test(line) &&
+    /\bkurta\b/i.test(line) && /\b(?:pants?|bottom|trousers?)\b/i.test(line) &&
+    (/^3/.test(line) ? /\bdupatta\b/i.test(line) : !/\bdupatta\b/i.test(line)) &&
+    !/\b(?:not|excluding|without|optional|may|or)\b/i.test(line)
+  );
+  return { fabric: text(product.fabric), care: text(product.care), includes: label("Includes") || text(statedSet), fit: label("Fit"), lining: label("Lining"), model: label("Model") };
 }
 export function productContentGaps(product: ApiProduct): string[] {
   const facts = productFacts(product), gaps: string[] = [];
