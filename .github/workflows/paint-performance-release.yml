@@ -1,5 +1,6 @@
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
+  workflow_dispatch: {}
   push:
     branches: [migration/azure-sql-blob]
     paths: [.github/workflows/paint-performance-release.yml]
@@ -65,6 +66,7 @@ jobs:
           retention-days: 30
           overwrite: true
   deploy:
+    if: github.event_name == 'push'
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 45
