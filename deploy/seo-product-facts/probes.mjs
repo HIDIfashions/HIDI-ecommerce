@@ -29,7 +29,8 @@ export async function probe(base,output,options={}){
     await p.waitForFunction(()=>document.querySelector('[data-hidi-react-pdp]')?.dataset.hidiHydrated==='true',null,{timeout:60000});
     assert(!((await summary.innerText()).includes('not specified')),'Client hydration must not restore contradiction');
     const medium=p.getByRole('button',{name:'M',exact:true});await medium.click();assert.equal(await medium.getAttribute('aria-pressed'),'true');
-    const before=await summary.innerText();
+    const normalizeText=value=>value.replace(/\s+/g,' ').trim();
+    const before=normalizeText(await summary.innerText());
     await p.screenshot({path:`${output}/${engine}-${width}-included-pieces.png`,fullPage:false});
     // Navigate through the real collection and its product link to test RSC/client assets.
     await p.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});await p.locator('main article').first().waitFor();
@@ -37,7 +38,8 @@ export async function probe(base,output,options={}){
     await productLink.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
     await productLink.click({position:{x:8,y:8}});
     await p.waitForURL('**'+path,{waitUntil:'domcontentloaded'});await summary.getByText('Included pieces',{exact:true}).waitFor();
-    assert.equal(await summary.innerText(),before);
+    await p.waitForFunction(()=>document.querySelector('[data-hidi-react-pdp]')?.dataset.hidiHydrated==='true',null,{timeout:60000});
+    assert.equal(normalizeText(await summary.innerText()),before);
     for(const [slug,statement] of [
      ['navy-blue-embroidered-kurta-set-with-dupatta','Embroidered Kurta Set with Bottom and Dupatta'],
      ['hidi-060-purple-embroidered-kurta-set-with-dupatta','Kurta Set With Bottom And Dupatta']
