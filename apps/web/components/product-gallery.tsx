@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
 import { CatalogImage } from "./catalog-image";
 import styles from "./product-gallery.module.css";
+import { reviewedPortraitPhoto } from "@/lib/product-photo-framing.mjs";
 import { focusFirst, trapFocus } from "@/lib/focus-management";
 import { useImageZoom } from "./use-image-zoom";
 
@@ -103,8 +104,8 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
           <button
             key={image.id ?? `${image.url}-${index}`}
             type="button"
-            className={`pdp-image product-art ${index === 0 ? styles.portraitFrame : ""}`}
-            data-hidi-portrait={index === 0 ? "true" : undefined}
+            className={`pdp-image product-art ${index === 0 && reviewedPortraitPhoto(image.url) ? styles.portraitFrame : ""}`}
+            data-hidi-portrait={index === 0 && reviewedPortraitPhoto(image.url) ? "true" : undefined}
             onClick={(event) => open(index, event.currentTarget)}
             aria-label={`Inspect ${image.alt || `${productName} image ${index + 1}`}`}
             title="Click to inspect stitching and details"

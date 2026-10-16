@@ -1,7 +1,7 @@
 """Add reviewed copy editor and bounded storefront enhancement to the current runtime."""
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
-ASSETS=['product-copy.mjs','product-preview.mjs','product-preview.css','product-preview.html','product-copy-storefront.mjs','product-copy-storefront.css']
+ASSETS=['product-photo-framing.mjs','product-copy.mjs','product-preview.mjs','product-preview.css','product-preview.html','product-copy-storefront.mjs','product-copy-storefront.css']
 def once(text,anchor,new):
  assert text.count(anchor)==1,'One retained anchor required: '+anchor
  return text.replace(anchor,new,1)
@@ -19,8 +19,10 @@ def patch_runtime(base,overlay):
  page=(base/'admin-tools/product-quick-fill.html').read_text()
  files['admin-tools/product-quick-fill.html']=once(page,'<h1>Product Quick Fill</h1>','<h1>Product Quick Fill</h1><p><a href=\"/admin/product-preview\">Preview and edit every dress →</a></p>')
  server=(base/'server.mjs').read_text()
- loader="\n  if (!html.includes('data-hidi-product-copy-loader')) html = html.replace(/<\\/head>/i, '<link rel=\"stylesheet\" href=\"/admin-tools-assets/product-copy-storefront.css\"><script type=\"module\" data-hidi-product-copy-loader src=\"/admin-tools-assets/product-copy-storefront.mjs\"></script></head>');"
- for hook in ['function injectOffers(html, pathname) {','function injectStorefrontLayerFix(html) {']:server=once(server,hook,hook+loader)
+ loader="\n  if ((pathname.startsWith('/admin') || pathname.startsWith('/products/')) && !html.includes('data-hidi-product-copy-loader')) html = html.replace(/<\\/head>/i, '<link rel=\"stylesheet\" href=\"/admin-tools-assets/product-copy-storefront.css\"><script type=\"module\" data-hidi-product-copy-loader src=\"/admin-tools-assets/product-copy-storefront.mjs\"></script></head>');"
+ server=once(server,'function injectOffers(html, pathname) {','function injectOffers(html, pathname) {'+loader)
+ server=once(server,'function injectStorefrontLayerFix(html) {','function injectStorefrontLayerFix(html, pathname) {'+loader)
+ server=once(server,'injectStorefrontLayerFix(html);','injectStorefrontLayerFix(html, pathname);')
  files['server.mjs']=server
  for name in ASSETS:files['admin-tools/'+name]=(HERE.parent/'admin-tools'/name).read_text()
  for name,text in files.items():

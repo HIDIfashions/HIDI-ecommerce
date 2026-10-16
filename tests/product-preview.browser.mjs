@@ -25,5 +25,3 @@ for(const [engine,browserType] of Object.entries({chromium,firefox,webkit}).filt
  }finally{await browser.close();}
 }
 await writeFile(output+'/browser-results.json',JSON.stringify(results,null,2));console.log(JSON.stringify(results));
-
-

@@ -1,11 +1,12 @@
 import {renderProductCopy,narrativeCopy} from './product-copy.mjs';
+import {reviewedPortraitPhoto} from './product-photo-framing.mjs';
 let queued=false,slug='',product=null,loading='',failed='';
 const cache=new Map();
 function copy(source,key,text){
  if(!source)return;
  source.dataset.hidiCopySource=key;
  let panel=source.parentElement.querySelector('[data-hidi-copy="'+key+'"]');
- if(!panel){panel=document.createElement('div');panel.dataset.hidiCopy=key;panel.className='hidi-formatted-copy';source.after(panel);}
+ if(!panel){panel=document.createElement('div');panel.dataset.hidiCopy=key;panel.className='hidi-formatted-copy '+source.className;source.after(panel);}
  const value=String(text??'');if(panel.dataset.copyText!==value){panel.innerHTML=renderProductCopy(value);panel.dataset.copyText=value;}
 }
 function adminLinks(){
@@ -24,7 +25,7 @@ function apply(){
  if(next!==slug){slug=next;product=cache.get(next)||null;failed='';}
  if(!slug)return;
  // The tighter first-photo frame leaves the original file and inspection dialog intact.
- const first=document.querySelector('.pdp-gallery .pdp-image');if(first&&!first.hasAttribute('data-hidi-portrait'))first.dataset.hidiPortrait='true';
+ const first=document.querySelector('.pdp-gallery .pdp-image');if(first&&reviewedPortraitPhoto(first.querySelector('img')?.getAttribute('src'))&&!first.hasAttribute('data-hidi-portrait'))first.dataset.hidiPortrait='true';
  if(!product){if(loading!==slug&&failed!==slug){const target=slug;loading=target;void fetch('/api/store/products/'+target,{credentials:'same-origin',cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Product unavailable');const data=await r.json();cache.set(target,data);if(slug===target)product=data;}).catch(()=>{failed=target;}).finally(()=>{loading='';schedule();});}return;}
  copy(document.querySelector('.pdp-subtitle'),'short',product.shortDescription);
  copy(document.querySelector('.pdp-description'),'description',narrativeCopy(product.description));
