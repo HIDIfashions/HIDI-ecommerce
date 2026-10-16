@@ -103,7 +103,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
 
   return (
     <div className="pdp-purchase">
-      <p className="pdp-selected-detail">{color}{selected ? ` · Size ${selected.size} · SKU ${selected.sku}` : " · Select a size below"}</p>
+      <p className={styles.selectionSummary} aria-hidden="true">{color}{selected ? ` · Size ${selected.size} · SKU ${selected.sku}` : " · Select a size below"}</p>
       {colors.length > 1 && <>
         <div className="size-row-title"><strong>Colour</strong></div>
         <div className="colour-options">

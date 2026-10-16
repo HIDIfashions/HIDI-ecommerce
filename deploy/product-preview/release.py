@@ -33,9 +33,10 @@ def compose():
  report['baseImage']=before['hidi-web']['image'];save('web-preservation.json',report);photo.unchanged(before)
 def seal():
  photo.unchanged(photo.states());manifest={}
- for name in ['patch.json','web-preservation.json','candidate/report.json']:
+ for name in ['patch.json','web-preservation.json','candidate/baseline-private.json','candidate/report.json']:
   assert read(name)['passed'],name;manifest[name]=g.sha256_file(E/name)
- report=read('candidate/report.json');assert report['productionWrites']==0 and len(report['cases'])==6
+ proof=read('candidate/baseline-private.json');assert proof['unchangedBaseline'] and proof['liveWrites']==0 and sorted(issue['path'] for issue in proof['issues'])==['/cart','/checkout']
+ report=read('candidate/report.json');assert report['baselinePrivateProofVerified'] and report['newRuntimeErrors']==[] and report['productionWrites']==0 and len(report['cases'])==6
  assert {(r['engine'],r['width']) for r in report['cases']}=={(e,w) for e in ['chromium','firefox','webkit'] for w in [375,1440]}
  save('sealed.json',{'passed':True,'sourceSha':os.environ['GITHUB_SHA'],'imageId':g.image_id(tag()),'manifest':manifest})
 def publish():
