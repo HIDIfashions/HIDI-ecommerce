@@ -55,7 +55,7 @@ def seal():
   assert read(name)['passed'] is True,name;manifest[name]=hashlib.sha256((E/name).read_bytes()).hexdigest()
  report=read('candidate/report.json');assert len(report['results'])==6 and report['productionWrites']==0
  assert {(r['engine'],r['width']) for r in report['results']}=={(e,w) for e in ['chromium','firefox','webkit'] for w in [390,1440]}
- assert all(r['automaticSellingPrice'] and r['invalidPercentBlocked'] and r['zeroDiscountProductMrp'] and r['productSelectionRefresh'] for r in report['results'])
+ assert all(r['dressLevelPricing'] and r['automaticSellingPrice'] and r['invalidPercentBlocked'] and r['zeroDiscountProductMrp'] and r['productSelectionRefresh'] for r in report['results'])
  api=read('api-checkout.json');assert api['extraPercentRejected'] and api['privateDressEligibilityVerified'] and api['actualControllerPathVerified']
  save('sealed.json',{'passed':True,'manifest':manifest,'images':{app:guard.image_id(tag(app)) for app in ['api','web']},'sourceSha':os.environ['GITHUB_SHA']})
 
