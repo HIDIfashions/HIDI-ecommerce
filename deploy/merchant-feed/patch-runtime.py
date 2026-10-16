@@ -6,7 +6,12 @@ HERE=Path(__file__).resolve().parent
 def patch_runtime(base,overlay):
     base,overlay=Path(base),Path(overlay)
     source=(base/'server.mjs').read_text()
-    assert hashlib.sha256(source.encode()).hexdigest()=='c5e26ae2eb31ab5ae3d959e722308926f658cc096c6d8240c731a99b3c8143b3','Runtime changed after inspection; inspect before patching'
+    # Second hash is the inspected runtime after the successful 38849893393
+    # storefront release: only its reviewed stylesheet reference differs.
+    assert hashlib.sha256(source.encode()).hexdigest() in {
+        'c5e26ae2eb31ab5ae3d959e722308926f658cc096c6d8240c731a99b3c8143b3',
+        'b49ce1a4b17c71573517f12b2e48597ee9e3483e2c77082e69f63686e5c8bdc4',
+    },'Runtime changed after inspection; inspect before patching'
     changes=[
       ('import { createSeoSitemap } from "./seo-discovery/sitemap.mjs";', 'import { createSeoSitemap } from "./seo-discovery/sitemap.mjs";\nimport { createMerchantFeed } from "./merchant-feed/feed.mjs";'),
       ('const sendSeoSitemap = createSeoSitemap({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });', 'const sendSeoSitemap = createSeoSitemap({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });\nconst sendMerchantFeed = createMerchantFeed({ catalogueUrl: seoCatalogueBase + "/products", isProductionRequest });'),
