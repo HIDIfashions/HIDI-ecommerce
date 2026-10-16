@@ -26,6 +26,11 @@ function apply(){
     const message=privatePage?'Your product prices already include 15% off. No additional percentage discount is applied at checkout.':'15% off across HIDI · Prices already reduced · No code needed';
     if(bar.textContent!==message)bar.textContent=message;
     bar.toggleAttribute('data-hidi-price-note',privatePage);
+    // Checkout's fixed header occupies the banner's normal top position.
+    // Move only our own banner into the existing content clearance.
+    const header=document.querySelector('header');
+    const offset=location.pathname==='/checkout'&&header&&getComputedStyle(header).position==='fixed'?Math.ceil(header.getBoundingClientRect().height):0;
+    const transform=offset?'translateY('+offset+'px)':'';if(bar.style.transform!==transform)bar.style.transform=transform;
   }else removeCampaign();
   // Compare only an explicit MRP and selling price rendered together. Variant
   // changes trigger this observer again; ranges never inherit another size's MRP.
@@ -61,4 +66,4 @@ async function refresh(){
 }
 let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;if(lastPath!==location.pathname){lastPath=location.pathname;ready=false;refresh();}apply();});}).observe(document.documentElement,{subtree:true,childList:true,characterData:true});
 window.addEventListener('hidi:product-ready',apply);window.addEventListener('hidi:collection-ready',apply);
-window.addEventListener('pageshow',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});setInterval(()=>{if(!document.hidden)refresh();},60000);refresh();
+window.addEventListener('resize',apply);window.addEventListener('pageshow',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});setInterval(()=>{if(!document.hidden)refresh();},60000);refresh();

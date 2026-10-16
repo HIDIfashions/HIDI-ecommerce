@@ -1,6 +1,6 @@
 # Checkout hydration repair
 
-The existing pricing module inserted its discount explanation into React-owned `<main>` before delayed React startup. This altered the expected server HTML on both `/cart` and `/checkout`, causing React #418 and recovery. The explanation now replaces the campaign message within the pricing module's existing external banner on these routes. Prices, discounts, offers, checkout calculations, sessions and payments are unchanged.
+The existing pricing module inserted its discount explanation into React-owned `<main>` before delayed React startup. This altered the expected server HTML on both `/cart` and `/checkout`, causing React #418 and recovery. The explanation now replaces the campaign message within the pricing module's existing external banner on these routes. Its own banner clears the fixed checkout header within the existing page spacing; geometry checks prevent overlap with the checkout heading. Prices, discounts, offers, checkout calculations, sessions and payments are unchanged.
 
 The runtime overlay modifies exactly `pricing/storefront.mjs`. A normalized baseline hash rejects independent pricing changes; protected-file, image-layer and configuration checks preserve all other application files, including product preview, collection cleanup and header changes. The release captures a fresh exact-image backup and uses the existing conditional deployment and owned rollback guards.
 
