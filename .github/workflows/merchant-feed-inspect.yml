@@ -6,9 +6,6 @@ on:
 permissions:
   contents: read
   id-token: write
-concurrency:
-  group: hidi-hero-guarded-release
-  cancel-in-progress: false
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -34,6 +31,7 @@ jobs:
           root=pathlib.Path('/tmp/merchant-inspect');images.extract(states['hidi-web']['image'],root)
           (out/'before.json').write_text(json.dumps(states,indent=2))
           (out/'server.mjs').write_bytes((root/'server.mjs').read_bytes())
+          (out/'images.mjs').write_bytes((root/'product-images/images.mjs').read_bytes())
           print(json.dumps(states,indent=2))
           PYCODE
       - uses: actions/upload-artifact@v4
