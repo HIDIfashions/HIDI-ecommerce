@@ -1,5 +1,6 @@
 (() => {
   const tools = [
+    { key: 'product-preview', label: 'Product Preview & Edit', href: '/admin/product-preview', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/>', marker: 'hidiProductPreview' },
     { key: 'skn-photos', label: 'SKN Photo Upload', href: '/admin/product-photos', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>', marker: 'hidiSknPhotos' },
     { key: 'media', label: 'Media Upload', href: '/admin/landing-media', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>', marker: 'hidiMediaLink' },
     { key: 'packing', label: 'Packing Scanner', href: '/admin/packing-scanner', icon: '<path d="M4 7V4h3m10 0h3v3M4 17v3h3m10 0h3v-3M7 8v8m3-8v8m4-8v8m3-8v8"/>', marker: 'hidiPackingLink' },

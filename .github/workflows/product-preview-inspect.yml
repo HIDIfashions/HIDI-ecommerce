@@ -1,0 +1,49 @@
+name: Inspect current runtime for approved product preview release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/product-preview-inspect.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Read current runtime and ready image state
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 - <<'PYCODE'
+          import importlib.util,json,pathlib,os,tarfile
+          def load(name,path):
+            s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
+          cloud=load('cloud','deploy/privacy-policy/rollout.py');cloud.API_VERSION='2025-07-01'
+          images=load('images','deploy/compose-msg91-images.py')
+          out=pathlib.Path('evidence/product-preview-inspection');out.mkdir(parents=True)
+          states={name:cloud.snapshot(cloud.app(name)) for name in ['hidi-web','hidi-api']}
+          for state in states.values():cloud.ready(state)
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'product-preview-inspection'
+          images.extract(states['hidi-web']['image'],root)
+          with tarfile.open(out/'runtime.tar.gz','w:gz') as archive:
+            for name in ['server.mjs','admin-tools','apps/web/.next/server/app/products/[slug]/page.js']:
+              file=root/name
+              if file.exists():archive.add(file,arcname=name)
+          (out/'before.json').write_text(json.dumps(states,indent=2))
+          print('Read-only production inspection complete')
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: product-preview-inspection-${{ github.run_id }}
+          path: evidence/product-preview-inspection
+          retention-days: 30

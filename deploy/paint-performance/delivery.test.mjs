@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {brotliDecompressSync,gunzipSync} from 'node:zlib';import {Writable} from 'node:stream';import {sendCachedHome} from './delivery.mjs';
+function call(body,encoding,extra={}){return new Promise(resolve=>{const chunks=[];const response=new Writable({write(chunk,_,done){chunks.push(chunk);done();}});response.removeHeader=()=>{};response.writeHead=(status,headers)=>{response.status=status;response.headers=headers;};response.on('finish',()=>resolve({...response,bytes:Buffer.concat(chunks)}));sendCachedHome({method:'GET',headers:{'accept-encoding':encoding}},response,200,{'content-type':'text/html','cache-control':'no-cache',etag:'"source"',...extra},Buffer.from(body));});}
+test('cached public encodings preserve body, validators, negotiation and updated content',async()=>{
+ for(const encoding of ['br','gzip']){for(const text of ['first'.repeat(1000),'second'.repeat(1000),'first'.repeat(1000)]){const r=await call(text,encoding);assert.equal((encoding==='br'?brotliDecompressSync(r.bytes):gunzipSync(r.bytes)).toString(),text);assert.equal(r.headers.etag,'W/"source"');assert.match(r.headers.vary,/Accept-Encoding/);assert.equal(r.headers['cache-control'],'no-cache');assert.equal(r.headers['content-length'],r.bytes.length);}}
+});
+test('identity and no-transform responses keep the unencoded representation',async()=>{
+ for(const [accept,extra] of [['identity',{}],['br',{'cache-control':'no-cache, no-transform'}]]){const r=await call('exact source',accept,extra);assert.equal(r.bytes.toString(),'exact source');assert(!r.headers['content-encoding']);assert.equal(r.headers.etag,'"source"');}
+});

@@ -35,3 +35,28 @@ Create requests carry a stable request UUID so a network retry can return the al
 ## Not included in this release
 
 Bulk catalogue import, image deletion/reordering, new collection creation, tax/invoicing fields, advanced staff roles, and a persisted browser draft cache are not implemented. These are not required for the create-product → receive-stock workflow. Photos still depend on the previous upload feature and its storage configuration.
+
+
+## Product Preview & Edit
+
+Open `/admin/product-preview`, or use **Preview & edit text** on a product row or product editor. The catalogue is paginated and searchable across published, draft and archived products. Existing Quick Fill and bulk import remain available.
+
+Choose a dress to load its saved name, short description, description, material and care. The preview updates as text changes; photo thumbnails switch between the product and SKU photographs. Mobile and desktop layout modes show the formatted copy with existing prices, colours and sizes. Included pieces, fit, lining and model notes continue to use the existing labelled description lines (`Includes:`, `Fit:`, `Lining:`, `Model:`).
+
+Formatting supports paragraphs, line breaks, `**bold**`, `*italic*`, `# Heading`, `- bullets` and `1. numbered lists`. HTML and links are escaped. The admin and storefront use identical restricted renderer code, verified by a parity test. Arbitrary fonts, colours and raw HTML are intentionally outside this formatting format.
+
+**Save product text** explicitly writes the five copy fields and retains category and collection assignments, with the existing `expectedUpdatedAt` concurrency guard. Prices, SKUs, stock, photographs and publication state are omitted from this request. A conflict or expired session retains the draft for review. Switching products and leaving the page warn about unsaved changes. Saving text on an ACTIVE product changes its published copy immediately after this feature is deployed; it is not a separate content publishing workflow.
+
+For local review, run `node deploy/product-preview/preview.mjs` from the repository root and open `http://127.0.0.1:4318/admin/product-preview`. This sandbox loads the 54-product saved storefront catalogue from `../seo-preparation/merchant-products-detail.json`. If unavailable, it falls back to the 69-product supplier snapshot and its local photographs. It does not represent current production data. Edits are stored only in process memory and disappear when the sandbox restarts. The sandbox module is for local review only and must not be deployed as the production API.
+
+Validation commands:
+
+```sh
+node --test tests/product-copy.test.mjs tests/admin-quick-tools.test.mjs tests/admin-product-bulk.test.mjs tests/bulk-publication.test.mjs tests/product-upload-model.test.mjs tests/product-upload-engine.test.mjs
+node --import ./apps/api/node_modules/tsx/dist/loader.mjs --test tests/admin-rbac.test.ts tests/product-skn-collections.test.ts tests/product-skn-main-photo.test.ts
+node tests/product-preview.browser.mjs
+```
+
+The browser script defaults to Chromium. Set `HIDI_BROWSER_ENGINES=chromium,firefox,webkit` on a host where all three engines can launch. It exercises 320, 375, 768 and 1440px viewports. Browser evidence is written under `evidence/product-preview/`.
+
+Deployment is pending owner preview and approval. The production candidate needs the rebuilt Next web application (copy renderer, formatted PDP content, colour placement, admin editor/list links) and these admin-tool assets together: `handler.mjs`, `navigation.js`, `product-quick-fill.html`, `product-preview.html`, `product-preview.css`, `product-preview.mjs`, `product-copy.mjs`. Retain the remaining existing admin assets. No database migration is required. Do not run an older release-specific patch or deploy the sandbox. Capture a fresh production baseline and prepare a guarded candidate with rollback before deployment.

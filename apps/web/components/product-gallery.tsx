@@ -103,7 +103,8 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
           <button
             key={image.id ?? `${image.url}-${index}`}
             type="button"
-            className="pdp-image product-art"
+            className={`pdp-image product-art ${index === 0 ? styles.portraitFrame : ""}`}
+            data-hidi-portrait={index === 0 ? "true" : undefined}
             onClick={(event) => open(index, event.currentTarget)}
             aria-label={`Inspect ${image.alt || `${productName} image ${index + 1}`}`}
             title="Click to inspect stitching and details"

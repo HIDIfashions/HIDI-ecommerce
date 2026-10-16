@@ -281,7 +281,7 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
   if (productId && !product) return <div><p className={styles.error} role="alert">{error ?? "Product could not be loaded."}</p><Link href="/admin/products">Back to products</Link></div>;
 
   return <div className={styles.editor}>
-    <div className={styles.editorHeading}><div><p className={styles.eyebrow}>HIDI PRODUCT WORKSPACE</p><h1>{product ? product.name : "Create new product"}</h1><p>{product ? "Edit catalogue details without changing your warehouse quantities." : "Add a design once. Generate its colour-and-size SKUs automatically."}</p></div><span className={styles.badge} data-status={product?.status ?? "DRAFT"}>{product?.status ?? "NEW DRAFT"}</span></div>
+    <div className={styles.editorHeading}><div><p className={styles.eyebrow}>HIDI PRODUCT WORKSPACE</p><h1>{product ? product.name : "Create new product"}</h1>{product && <a href={`/admin/product-preview?product=${encodeURIComponent(product.id)}`}>Preview & edit formatted text →</a>}<p>{product ? "Edit catalogue details without changing your warehouse quantities." : "Add a design once. Generate its colour-and-size SKUs automatically."}</p></div><span className={styles.badge} data-status={product?.status ?? "DRAFT"}>{product?.status ?? "NEW DRAFT"}</span></div>
     {error && <div className={styles.error} role="alert">{error}<br /><small>Nothing here requires resetting or seeding the database.</small></div>}
     {message && <div className={styles.success} role="status">{message}</div>}
 

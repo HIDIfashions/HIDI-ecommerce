@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { ProductCopy } from "./product-copy";
 import { ChevronDown, ClipboardList, Shirt, SquareCheckBig, Truck, CircleCheck, PackageCheck, RefreshCw, ArrowUpRight } from "lucide-react";
 import type { ApiProduct } from "@/lib/api";
 import { productFacts } from "@/lib/product-facts";
@@ -9,8 +10,8 @@ export function ProductInfoAccordion({ product }: { product: ApiProduct }) {
   const facts = productFacts(product), { color } = useProductSelection(product);
   const sections = [
     { title: "Material & Care", icon: Shirt, content: <>
-      <p><strong>Fabric:</strong> {facts.fabric || "Fabric information is not published for this style yet."}</p>
-      <p><strong>Care:</strong> {facts.care || "Follow the care label attached to the garment."}</p>
+      <div><strong>Fabric:</strong><ProductCopy text={facts.fabric || "Fabric information is not published for this style yet."} /></div>
+      <div><strong>Care:</strong><ProductCopy text={facts.care || "Follow the care label attached to the garment."} /></div>
     </> },
     { title: "Specifications", icon: SquareCheckBig, content: <>
       {color && <p><strong>Colour:</strong> {color}</p>}
