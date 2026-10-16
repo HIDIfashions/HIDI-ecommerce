@@ -30,8 +30,17 @@ for(const engine of ['chromium','firefox','webkit']){
    const context=await browser.newContext({viewport:{width,height:920}});const page=await context.newPage();
    await page.route('**/*',route=>!['GET','HEAD'].includes(route.request().method())||route.request().resourceType()==='image'||new URL(route.request().url()).origin!==new URL(base).origin?route.abort():route.continue());
    await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded',timeout:90000});
-   await page.getByRole('button',{name:width<1000?/^Filter & Sort/:/^Filter(?: \(\d+\))?$/}).first().click();
-   const dialog=page.getByRole('dialog',{name:'Product filters',exact:true});await dialog.waitFor();
+   const trigger=page.getByRole('button',{name:width<1000?/^Filter & Sort/:/^Filter(?: \(\d+\))?$/}).first();
+   await trigger.waitFor();
+   // SSR buttons exist before React attaches their handlers on a cold visit.
+   await page.waitForFunction(button=>{const key=Object.keys(button).find(k=>k.startsWith('__reactProps$'));return key&&typeof button[key]?.onClick==='function';},await trigger.elementHandle());
+   const dialog=page.getByRole('dialog',{name:'Product filters',exact:true});
+   for(let attempt=0;attempt<3;attempt++){
+    if(await dialog.isVisible())break;
+    await trigger.click();
+    try{await dialog.waitFor({timeout:3000});break;}catch(error){if(attempt===2)throw error;}
+   }
+   await dialog.waitFor();
    const values=await assess(page);
    await dialog.screenshot({path:out+'/'+engine+'-'+width+'-drawer.png'});
    // Exercise every actual colour selection and compare its availability count.
