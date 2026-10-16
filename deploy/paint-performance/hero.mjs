@@ -7,7 +7,9 @@ export function renderHero(html,selection,options){
   const template=options?.template||readFileSync(new URL('./hero-template.html',import.meta.url),'utf8');
   const first=selection.items?.length?selection.items[0]:selection;
   if(first.type!=='video')return html;
-  const path=new URL(first.url,'https://hidiindia.com').pathname,variant=data[path];if(!variant)return html;
+  const url=new URL(first.url,'https://hidiindia.com');
+  if(!['http:','https:'].includes(url.protocol)||!['hidiindia.com','www.hidiindia.com'].includes(url.hostname))return html;
+  const variant=data[url.pathname];if(!variant)return html;
   const position=value=>typeof value==='string'&&/^[\w%.+ -]{1,80}$/.test(value)?attribute(value):'50% 50%';
   const hero=template.replace('__DESKTOP__',position(first.desktopPosition)).replace('__MOBILE__',position(first.mobilePosition));
   const choose=JSON.stringify(variant).replaceAll('<','\\u003c');

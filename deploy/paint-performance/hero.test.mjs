@@ -4,6 +4,6 @@ test('initial native hero uses only the current supported public video selection
  const videos={'/selected.mp4':{mobile:{poster:'/small.webp',avifPoster:'/small.avif'},desktop:{poster:'/large.webp',avifPoster:'/large.avif'}}};
  const selection={active:true,type:'video',url:'/selected.mp4',desktopPosition:'40% 60%',mobilePosition:'20% 80%'};
  const result=renderHero(html,selection,{videos});assert(result.includes('<main id="main" tabindex="-1">'));assert(result.includes('video data-hidi-first-hero'));assert(result.includes('--hero-position-desktop: 40% 60%'));assert(result.includes('--hero-position-mobile: 20% 80%'));assert(result.includes('/small.avif'));assert(result.includes('video.poster='));assert(!result.includes('src="/selected.mp4"'));
- for(const value of [null,{...selection,active:false},{...selection,type:'image'},{...selection,url:'/new.mp4'}])assert.equal(renderHero(html,value,{videos}),html);
+ for(const value of [null,{...selection,active:false},{...selection,type:'image'},{...selection,url:'/new.mp4'},{...selection,url:'https://outside.example/selected.mp4'}])assert.equal(renderHero(html,value,{videos}),html);
  const escaped=renderHero(html,{...selection,mobilePosition:'\"><script>alert(1)</script>'},{videos});assert(!escaped.includes('alert(1)'));
 });
