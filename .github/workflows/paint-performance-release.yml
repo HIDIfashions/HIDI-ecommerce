@@ -1,4 +1,5 @@
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
+# Live release requires quality, preservation, browser and three-run Lighthouse gates.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
   workflow_dispatch: {}
