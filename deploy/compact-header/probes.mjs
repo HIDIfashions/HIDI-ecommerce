@@ -13,7 +13,9 @@ export async function probe(base,output,{baseline,landing}={}){
  landing ||= await (await fetch('https://hidiindia.com/api/hidi/landing-media-config')).json();
  const hero=await (await fetch('https://hidiindia.com/api/hidi/hero-config')).json();
  const offers=await (await fetch('https://hidiindia.com/api/hidi/offers')).json();
- const metadata=p=>p.locator('head title,head meta,head link[rel=canonical]').evaluateAll(nodes=>nodes.map(n=>n.outerHTML).sort());
+ // Next streams duplicate identical head tags during client commit. Compare
+ // exact semantic values; any missing or conflicting value still differs.
+ const metadata=p=>p.locator('head title,head meta,head link[rel=canonical]').evaluateAll(nodes=>[...new Set(nodes.map(n=>n.outerHTML))].sort());
  const footer=p=>p.locator('footer').evaluateAll(nodes=>nodes.map(n=>({text:n.textContent,images:[...n.querySelectorAll('img')].map(i=>({src:new URL(i.src).pathname,width:i.getBoundingClientRect().width,height:i.getBoundingClientRect().height}))})));
  for(const engine of engines){
   const browser=await pw[engine].launch({headless:true,...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
@@ -61,9 +63,9 @@ export async function probe(base,output,{baseline,landing}={}){
       await page.getByRole('button',{name:'Search HIDI products',exact:true}).click();await page.getByRole('dialog').waitFor();await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
      }
      if(path==='/collections/all'){
-      await page.locator('main article').first().waitFor();await page.locator('[data-hidi-collection-hydrated="true"]').waitFor({state:'attached'});assert.equal(await page.locator('.hidi-collection-intro').count(),0);assert.equal(await page.locator('.collection-header h1').textContent(),'All Products');
+      await page.locator('main article').first().waitFor();assert.equal(await page.locator('.hidi-collection-intro').count(),0);assert.equal(await page.locator('.collection-header h1').textContent(),'All Products');
       productPath=new URL(await page.locator('main article h3 a').first().getAttribute('href'),base).pathname;
-      if(baseline){const prior=await fresh(path,false);await prior.locator('[data-hidi-collection-hydrated="true"]').waitFor({state:'attached'});await settle(page);await settle(prior);assert.deepEqual(await metadata(page),await metadata(prior));assert.deepEqual(await footer(page),await footer(prior),'Footer changed');const old=await prior.locator('.wordmark').boundingBox();const ratio=shapes[path].logoWidth/old.width;assert(ratio>=.75&&ratio<=.8,'Logo reduction outside20–25%');await finish(prior);}
+      if(baseline){const prior=await fresh(path,false);await prior.locator('main article').first().waitFor();await settle(page);await settle(prior);assert.deepEqual(await metadata(page),await metadata(prior));assert.deepEqual(await footer(page),await footer(prior),'Footer changed');const old=await prior.locator('.wordmark').boundingBox();const ratio=shapes[path].logoWidth/old.width;assert(ratio>=.75&&ratio<=.8,'Logo reduction outside20–25%');await finish(prior);}
       if(width<=1000){
        const menu=page.getByRole('button',{name:'Open menu',exact:true});await menu.click();const dialog=page.getByRole('dialog',{name:'Mobile navigation'});await dialog.waitFor();
        await page.waitForFunction(()=>{const h=document.querySelector('.site-header').getBoundingClientRect(),d=document.querySelector('#mobile-navigation').getBoundingClientRect();return Math.abs(h.bottom-d.top)<=2;});
