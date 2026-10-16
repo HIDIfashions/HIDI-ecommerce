@@ -66,7 +66,7 @@ jobs:
   deploy:
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     concurrency:
       group: hidi-hero-guarded-release
       queue: max
@@ -83,6 +83,8 @@ jobs:
         with: {node-version: 24}
       - name: Install live verification tools
         run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
           npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
@@ -92,7 +94,18 @@ jobs:
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Reject concurrent changes, deploy web only and verify live
         run: |
-          python3 deploy/media-performance/release.py deploy_capture
+          az acr login --name acrhidiprod0927 --only-show-errors
+          export CANDIDATE_WEB="acrhidiprod0927.azurecr.io/hidi-web:media-performance-${GITHUB_RUN_ID}"
+          if ! python3 deploy/media-performance/release.py deploy_capture; then
+            echo "Production advanced while preparing; rebuild and repeat every check under the deployment lock."
+            python3 deploy/media-performance/release.py capture
+            node deploy/media-performance/lighthouse.mjs before
+            python3 deploy/media-performance/release.py compose
+            node deploy/media-performance/candidate.mjs
+            docker push "$CANDIDATE_WEB"
+            digest="$(az acr repository show --name acrhidiprod0927 --image "hidi-web:media-performance-${GITHUB_RUN_ID}" --query digest -o tsv --only-show-errors)"
+            export WEB_IMAGE="acrhidiprod0927.azurecr.io/hidi-web@$digest"
+          fi
           python3 deploy/media-performance/release.py apply
       - uses: actions/upload-artifact@v4
         if: always()
