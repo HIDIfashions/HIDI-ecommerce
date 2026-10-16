@@ -26,8 +26,13 @@ def patch_web(base,overlay):
     html=html.replace('/'+old,'/'+name)
     posters=re.findall(r'<link rel="preload" as="image" fetchpriority="high" media="[^"]+" href="/media-performance/assets/[^"]+">',html);assert len(posters)==2
     for poster in posters:html=once(html,poster,'')
-    html=once(html,'<meta charset="UTF-8" />','<meta charset="UTF-8" />\n'+'\n'.join(posters)+'\n<script data-hidi-early-hero="true">'+(HERE/'early-hero.js').read_text()+'</script>')
-    files={'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text()}
+    viewport='<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
+    html=once(html,viewport,viewport+'\n'+'\n'.join(posters)+'\n<script data-hidi-early-hero="true">'+(HERE/'early-hero.js').read_text()+'</script>')
+    runtime=(base/'server.mjs').read_text()
+    runtime='import { sendCachedHome } from "./paint-performance/delivery.mjs";\n'+runtime
+    anchor='    return sendBuffer(request, response, 200, response.getHeaders(), body);'
+    runtime=once(runtime,anchor,'    return pathname === "/" ? sendCachedHome(request, response, 200, response.getHeaders(), body) : sendBuffer(request, response, 200, response.getHeaders(), body);')
+    files={'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)
     return {'passed':True,'bundle':name,'originalBundle':old,'allowedFiles':list(files),'cssUnchanged':True,'manifest':manifest}
