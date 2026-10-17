@@ -65,6 +65,22 @@ def publish(overlay,report,manifest,private,out):
     except urllib.error.HTTPError as error:
         code=error.code;error.close()
         if code!=404:raise
+    if all(history.get(path)==digest for path,digest in current.items()):
+        # Immutable publication is idempotent. Revalidate every current byte and
+        # delivery header before reusing it; do not retrieve a token or rewrite history.
+        checks=[];total=0
+        for path,digest in current.items():
+            data,headers=get(origin+path)
+            assert sha(data)==digest,'Existing immutable mirror bytes changed'
+            assert 'immutable' in headers.get('Cache-Control','') and headers.get('Access-Control-Allow-Origin')=='*'
+            expected='video/mp4' if path.endswith('.mp4') else 'image/avif' if path.endswith('.avif') else 'javascript'
+            assert expected in headers.get('Content-Type','')
+            total+=len(data);assert total<LIMIT
+            checks.append({'path':path,'sha256':digest,'bytes':len(data),'mime':headers.get('Content-Type')})
+        proof={'passed':True,'bootOnce':True,'origin':origin,'files':current,'sku':'Free','resource':NAME,'checks':checks,'retainedPreviousFiles':len(history),'totalPublicBytes':total,'dnsChanged':False,'existingAppsChanged':False,'reusedPublication':True,'historyRetainedWithoutRewrite':True}
+        (overlay/'paint-performance/asset-mirror.json').write_text(json.dumps(proof))
+        (out/'asset-mirror.json').write_text(json.dumps(proof,indent=2))
+        return proof
     package=private/'asset-site';package.mkdir()
     total=0
     for path,digest in history.items():

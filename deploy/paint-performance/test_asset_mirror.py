@@ -4,6 +4,27 @@ from pathlib import Path
 spec=importlib.util.spec_from_file_location('asset_mirror',Path(__file__).with_name('asset-mirror.py'));module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
 class InventoryTests(unittest.TestCase):
+    def test_exact_existing_publication_reuses_only_revalidated_bytes_without_secrets_or_deploy(self):
+        for corrupt in [False,True]:
+            with self.subTest(corrupt=corrupt),tempfile.TemporaryDirectory() as folder:
+                root=Path(folder);overlay=root/'overlay';private=root/'private';out=root/'out'
+                for path in [overlay/'paint-performance',private,out]:path.mkdir(parents=True)
+                data={}
+                for prefix,suffix,body in [('/assets/index-','.js',b'if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}'),('/media-performance/assets/poster-','.avif',b'picture'),('/media-performance/assets/hero-av1-','-1280.mp4',b'video')]:
+                    path=prefix+module.sha(body)[:16]+suffix;data[path]=body;target=overlay/'dist'/path.lstrip('/');target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(body)
+                main=next(path for path in data if path.endswith('.js'));variant={'avifPoster':next(path for path in data if path.endswith('.avif')),'av1Url':next(path for path in data if path.endswith('.mp4'))}
+                host='hidi-test.3.azurestaticapps.net';site={'sku':{'name':'Free','tier':'Free'},'tags':{'hidi-owner':module.OWNER,'hidi-purpose':'immutable-assets'},'defaultHostname':host}
+                def fetch(url):
+                    path=url.removeprefix('https://'+host)
+                    if path=='/asset-manifest.json':return json.dumps({'files':{p:module.sha(b) for p,b in data.items()}}).encode(),{}
+                    return (b'tampered' if corrupt else data[path]),{'Cache-Control':'public,immutable','Access-Control-Allow-Origin':'*','Content-Type':'javascript' if path.endswith('.js') else 'image/avif' if path.endswith('.avif') else 'video/mp4'}
+                with patch.object(module,'az',return_value=site) as azure,patch.object(module,'get',fetch),patch.object(module.subprocess,'run') as deploy:
+                    if corrupt:
+                        with self.assertRaisesRegex(AssertionError,'bytes changed'):module.publish(overlay,{'bundle':main.lstrip('/')},{'videos':{'/original.mp4':{'mobile':variant,'desktop':variant}}},private,out)
+                    else:
+                        proof=module.publish(overlay,{'bundle':main.lstrip('/')},{'videos':{'/original.mp4':{'mobile':variant,'desktop':variant}}},private,out)
+                        self.assertTrue(proof['reusedPublication']);self.assertTrue(proof['historyRetainedWithoutRewrite']);self.assertEqual(len(proof['checks']),3)
+                    azure.assert_called_once_with('staticwebapp','show','-g',module.GROUP,'-n',module.NAME);deploy.assert_not_called();self.assertFalse((private/'asset-site').exists())
     def test_only_content_addressed_public_files_are_eligible(self):
         digest='a'*64
         module.validate_files({'/assets/index-'+digest[:16]+'.js':digest,'/media-performance/assets/poster-'+digest[:16]+'.avif':digest})
