@@ -53,7 +53,7 @@ def patch_web(base,overlay,poster,icons=None):
     text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
     text=once(text,'      onCanPlay: revealLiveVideo,\n      onError: () => setFailedSource(liveHero.url),','      onCanPlay: revealLiveVideo,\n      onError: (event) => HidiMediaVideoFallback(event, liveHero.url, () => setFailedSource(liveHero.url)),')
     text=once(text,original_manifest,'const HidiMediaManifest='+json.dumps(manifest,separators=(',',':'))+';')
-    text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; const poster = window.__HidiAvifEnabled && variant.avifPoster ? variant.avifPoster : variant.poster; return window.__HidiMirrorPoster?.(poster) || poster;')
+    text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; const poster = window.__HidiAvifEnabled && variant.avifPoster ? (window.__HidiAvifPoster?.(variant) || variant.avifPoster) : variant.poster; return window.__HidiMirrorPoster?.(poster) || poster;')
     text=once(text,'const value = await response.json();','const value = await response.json();\n        window.__HidiAvifEnabled = await window.__HidiAvifSupport || false;')
     anchor='''        const response = await fetch("/api/hidi/hero-config", {
           cache: "no-store",
@@ -96,6 +96,19 @@ def patch_web(base,overlay,poster,icons=None):
     for row in poster['report']:
         posters=[hint.replace(row['original'],row['url']) for hint in posters]
     posters=[hint.replace('as="image"','as="image" type="image/avif"') for hint in posters]
+    # Narrow low-density phones receive a fully resolved 768px poster; all other
+    # devices keep the existing 1280/1920px assets. Media ranges are disjoint.
+    mobile=next(iter(manifest['videos'].values()))['mobile']
+    if mobile.get('avifPosterSmall'):
+        original=next(hint for hint in posters if mobile['avifPoster'] in hint)
+        assert 'media="(max-width: 700px)"' in original
+        posters.remove(original)
+        for media,url in [
+            ('(max-width: 432px) and (max-resolution: 1.75dppx)',mobile['avifPosterSmall']),
+            ('(width > 432px) and (width <= 700px)',mobile['avifPoster']),
+            ('(width <= 432px) and (resolution > 1.75dppx)',mobile['avifPoster'])]:
+            posters.append(original.replace('media="(max-width: 700px)"','media="'+media+'"').replace(mobile['avifPoster'],url))
+
     for index,tag in enumerate(icons['originalTags']):html=once(html,tag,icons['markup'] if index==0 else '')
     viewport='<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
     html=once(html,viewport,viewport+'\n'+'\n'.join(posters)+'\n<script data-hidi-early-hero="true">'+(HERE/'early-hero.js').read_text().replace('__AVIF_PROBE__',poster['probe'])+'</script>')
@@ -145,7 +158,7 @@ def patch_web(base,overlay,poster,icons=None):
     files={'paint-performance/static-encoding.mjs':(HERE/'static-encoding.mjs').read_text(),'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'dist/'+pricing_name:pricing,'paint-performance/home-pricing.json':json.dumps(pricing_metadata),'paint-performance/announcement.mjs':initial_home,'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
     files['paint-performance/stream-home.mjs']=(HERE/'stream-home.mjs').read_text()
     files['paint-performance/critical-poster.mjs']=(HERE/'critical-poster.mjs').read_text()
-    for asset_name in ['asset-mirror.mjs','asset-mirror-client.js']:
+    for asset_name in ['asset-mirror.mjs','asset-mirror-client.js','app-start.js']:
         files['paint-performance/'+asset_name]=(HERE/asset_name).read_text()
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)

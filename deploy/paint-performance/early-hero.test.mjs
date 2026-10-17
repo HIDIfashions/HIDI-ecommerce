@@ -1,5 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {runInNewContext} from 'node:vm';
 const code=readFileSync(new URL('./early-hero.js',import.meta.url),'utf8');
+test('only phone screens fully covered by 768 physical pixels use the smaller poster',()=>{
+ for(const small of [true,false]){const context={window:{},location:{pathname:'/'},AbortController,fetch:async()=>null,setTimeout:()=>1,clearTimeout:()=>{},matchMedia:query=>{assert.equal(query,'(max-width: 432px) and (max-resolution: 1.75dppx)');return {matches:small};},Image:class{set src(value){}}};runInNewContext(code,context);assert.equal(context.window.__HidiAvifPoster({avifPoster:'/full.avif',avifPosterSmall:'/small.avif'}),small?'/small.avif':'/full.avif');assert.equal(context.window.__HidiAvifPoster({avifPoster:'/full.avif'}),'/full.avif');}
+});
 test('hero stays fresh while catalogue and below-fold media wait for the poster, with bounded fallback',async()=>{
  let calls=0,cleared=0;const context={window:{},location:{pathname:'/'},AbortController,setTimeout:()=>1,clearTimeout:()=>cleared++,fetch:async(url,options)=>{calls++;assert(['/api/hidi/hero-config','/api/hidi/landing-media-config','/api/store/products'].includes(url));assert.equal(options.cache,'no-store');assert(options.signal);return {ok:true};}};
  runInNewContext(code,context);assert.equal(calls,1);assert((await context.window.__HidiHeroEarly).ok);context.window.__HidiStartHomeReads();context.window.__HidiStartHomeReads();assert.equal(calls,3);assert((await context.window.__HidiLandingEarly).ok);assert((await context.window.__HidiCatalogueEarly).ok);assert.equal(cleared,4);

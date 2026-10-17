@@ -3,6 +3,7 @@ import {resolve,sep} from 'node:path';
 import {createHash} from 'node:crypto';
 import {normalizeMirror} from '../paint-performance/asset-mirror.mjs';
 const mirrorClient=readFileSync(new URL('../paint-performance/asset-mirror-client.js',import.meta.url),'utf8');
+const appStart=readFileSync(new URL('../paint-performance/app-start.js',import.meta.url),'utf8');
 
 // Inline the existing public CSS in the same cascade position. Resolve from the
 // current image, so later image overlays cannot leave stale style contents.
@@ -65,7 +66,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    if(/\brel=["']modulepreload["']/.test(tag)&&[...inlineBundles].some(path=>tag.includes('href="'+path+'"')))return '';
    return tag;
   });
-  if(logoData)html=html.replace(/(<img\b[^>]*\bsrc=["'])(?:\.\/|\/)assets\/images\/hidi-logo\.png(["'])/gi,(_,start,end)=>start+logoData+end);
+  if(logoData)html=html.replace(/(<img\b[^>]*\bsrc=["'])(?:\.\/|\/)assets\/images\/hidi-logo\.png(["'])/gi,(_,start,end)=>start+(logoUrl||logoData)+end);
   html=html.replace(/<script\b([^>]*data-hidi-seo-identity=["']1["'][^>]*)>([\s\S]*?)<\/script>/i,(tag,attrs,code)=>seoBytes&&assets.seo.sha256===createHash('sha256').update(code).digest('hex')&&!/(?:^|\s)(?:src|async|integrity)\b/i.test(attrs)?'<script'+attrs+' defer src="'+assets.seo.url+'"></script>':tag);
   let deferred=0;const completeHead=/<\/head>/i.test(html);
   html=html.replace(/<link\b[^>]*>/gi,tag=>{
@@ -88,11 +89,20 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    const integrity=url=>'sha256-'+Buffer.from(mirror.files[url],'hex').toString('base64');
    html=html.replace(/<link\b[^>]*>/gi,tag=>tag.replace(/\bhref=["']([^"']+)["']/i,(whole,url)=>Object.hasOwn(mirror.files,url)?'href="'+mirror.origin+url+'"'+(url.endsWith('.js')?' integrity="'+integrity(url)+'"'+(/\bcrossorigin\b/i.test(tag)?'':' crossorigin="anonymous"'):''):whole));
    html=html.replace(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*><\/script>/gi,(tag,url)=>Object.hasOwn(mirror.files,url)&&url.endsWith('.js')?tag.replace('src="'+url+'"','src="'+mirror.origin+url+'" integrity="'+integrity(url)+'" data-hidi-mirror-app="'+url+'" onerror="window.__HidiAppFallback()"'):tag);
+   // Desktop retains its early preload. Mobile lets the native poster paint
+   // before starting the application transfer; integrity and origin recovery remain.
+   html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/gi,tag=>{
+    const href=tag.match(/\bhref=["']([^"']+)["']/i)?.[1];if(!href?.startsWith(mirror.origin+'/assets/'))return tag;
+    const path=new URL(href).pathname;if(!Object.hasOwn(mirror.files,path))return tag;
+    return '<script data-hidi-desktop-preload="true">if(!matchMedia("(max-width: 700px)").matches){const link=document.createElement("link");link.rel="modulepreload";link.crossOrigin="anonymous";link.integrity='+JSON.stringify(integrity(path))+';link.fetchPriority="low";link.href='+JSON.stringify(href)+';document.head.append(link);}</script>';
+   });
+   html=html.replace(/<script\b[^>]*data-hidi-mirror-app=["'][^"']+["'][^>]*><\/script>/gi,tag=>tag.replace(/type=["']module["']/,'type="application/x-hidi-queued-module"').replace(/\bsrc=/,'data-hidi-queued-src='));
+   html=html.replace(/<\/body>/i,'<script data-hidi-app-start="true">'+appStart+'</script></body>');
    const client=mirrorClient.replace('__HIDI_ASSET_MIRROR__',JSON.stringify({origin:mirror.origin,files:Object.fromEntries(Object.keys(mirror.files).map(path=>[path,true]))}));
    const marker=/<meta\b[^>]*charset\s*=/i.test(html)?/<meta\b[^>]*charset\s*=[^>]*>/i:/<head\b[^>]*>/i;
    html=html.replace(marker,tag=>tag+'<link rel="preconnect" href="'+mirror.origin+'" crossorigin><script data-hidi-asset-mirror="true">'+client+'</script>');
    // Styles use the original connection, separately from the mirrored poster.
-   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-mirror-css="true">window.__HidiLoadFullCss();</script></head>');
+   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-mirror-css="true">if(!matchMedia("(max-width: 700px)").matches)window.__HidiLoadFullCss();</script></head>');
   }
   return html;
  };

@@ -12,8 +12,7 @@ const js=await readFile(join(base,'dist',ref),'utf8');
 const manifest=JSON.parse(js.match(/^const HidiMediaManifest=(.*);$/m)[1]);
 const output=join(overlay,'dist/media-performance/assets');await mkdir(output,{recursive:true});
 const report=[];
-for(const item of Object.values(manifest.videos))for(const kind of ['mobile','desktop']){
- const variant=item[kind],input=await readFile(join(base,'dist',variant.poster));
+async function encodePoster(input,kind,original,referenceWidth=null,sourceBytes=input.length){
  const reference=join(overlay,kind+'-reference.png');await sharp(input).png().toFile(reference);
  let selected;
  for(const quality of Array.from({length:31},(_,index)=>60+index)){
@@ -22,17 +21,27 @@ for(const item of Object.values(manifest.videos))for(const kind of ['mobile','de
   const result=spawnSync(process.env.HIDI_LOCAL_FFMPEG || 'ffmpeg',['-hide_banner','-nostdin','-filter_threads','1','-i',reference,'-i',decoded,'-lavfi','ssim','-an','-f','null','-'],{encoding:'utf8'});
   if(result.status!==0)throw Error(result.stderr);
   const ssim=Number([...result.stderr.matchAll(/All:([0-9.]+)/g)].at(-1)?.[1]);
-  if(ssim>=.985){if(encoded.length>=input.length)throw Error('No quality-preserving savings');selected={encoded,quality,ssim};break;}
+  if(ssim>=.985){if(encoded.length>=sourceBytes)throw Error('No quality-preserving savings');selected={encoded,quality,ssim};break;}
  }
  if(!selected)throw Error('AVIF quality gate failed');
  const name='poster-'+createHash('sha256').update(selected.encoded).digest('hex').slice(0,16)+'.avif';
- await writeFile(join(output,name),selected.encoded);variant.avifPoster='/media-performance/assets/'+name;
- report.push({kind,original:variant.poster,url:variant.avifPoster,originalBytes:input.length,bytes:selected.encoded.length,quality:selected.quality,ssim:selected.ssim});
+ await writeFile(join(output,name),selected.encoded);const url='/media-performance/assets/'+name,info=await sharp(selected.encoded).metadata();
+ report.push({kind,original,url,originalBytes:sourceBytes,referenceBytes:input.length,bytes:selected.encoded.length,quality:selected.quality,ssim:selected.ssim,width:info.width,height:info.height,referenceWidth,originalPreserved:true});
+ for(const suffix of ['reference','decoded'])await (await import('node:fs/promises')).unlink(join(overlay,kind+'-'+suffix+'.png'));
+ return url;
+}
+for(const item of Object.values(manifest.videos))for(const kind of ['mobile','desktop']){
+ const variant=item[kind],input=await readFile(join(base,'dist',variant.poster));
+ variant.avifPoster=await encodePoster(input,kind,variant.poster);
+ if(kind==='mobile'){
+  const info=await sharp(input).metadata();if(info.width<768)throw Error('Small poster must never upscale');
+  const small=await sharp(input).resize({width:768,withoutEnlargement:true}).png().toBuffer();
+  variant.avifPosterSmall=await encodePoster(small,'mobile-small',variant.poster,768,input.length);
+ }
 }
 const {encodeHeroVideos}=await import('./video.mjs');
 const videoReport=await encodeHeroVideos(base,overlay,manifest);
 const {buildHeadAssets}=await import('./head-assets.mjs');const headAssets=await buildHeadAssets(base,overlay,sharp);
 const probe=await sharp({create:{width:2,height:2,channels:3,background:'#ffffff'}}).avif().toBuffer();
 await writeFile(join(overlay,'poster-build.json'),JSON.stringify({manifest,report,videoReport,headAssets,probe:probe.toString('base64')}));
-for(const kind of ['mobile','desktop'])for(const suffix of ['reference','decoded'])await (await import('node:fs/promises')).unlink(join(overlay,kind+'-'+suffix+'.png'));
 console.log(JSON.stringify(report));

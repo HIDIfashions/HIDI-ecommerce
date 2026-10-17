@@ -53,6 +53,9 @@
 
 (() => {
   if (location.pathname !== '/') return;
+  // A 768px image covers every physical pixel in this phone/DPR tier.
+  // Higher density and larger displays retain the original full-size poster.
+  window.__HidiAvifPoster = variant => variant.avifPosterSmall && matchMedia('(max-width: 432px) and (max-resolution: 1.75dppx)').matches ? variant.avifPosterSmall : variant.avifPoster;
   window.__HidiAvifSupport = new Promise(resolve => {
     try {
       const image = new Image();

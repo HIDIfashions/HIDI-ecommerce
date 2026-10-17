@@ -54,7 +54,7 @@ jobs:
           python3 deploy/paint-performance/test_icons.py
           python3 deploy/paint-performance/test_hook.py
           python3 deploy/paint-performance/test_asset_mirror.py
-          node --test deploy/paint-performance/asset-mirror.test.mjs
+          node --test deploy/paint-performance/asset-mirror.test.mjs deploy/paint-performance/app-start.test.mjs
           node --test deploy/paint-performance/critical-poster.test.mjs deploy/paint-performance/reuse-video.test.mjs deploy/paint-performance/head-assets.test.mjs deploy/paint-performance/audit-parity.test.mjs deploy/paint-performance/network-fixture.test.mjs deploy/paint-performance/summary.test.mjs deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/stream-home.test.mjs deploy/paint-performance/poster-delivery.test.mjs deploy/paint-performance/announcement.test.mjs deploy/paint-performance/hero.test.mjs deploy/paint-performance/hero-initial.test.mjs deploy/paint-performance/video-client.test.mjs deploy/paint-performance/static-encoding.test.mjs
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg openssl iproute2
@@ -84,6 +84,19 @@ jobs:
         with:
           name: paint-prepared-${{ github.run_id }}
           path: evidence/paint-performance
+          retention-days: 30
+          overwrite: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paint-summary-prepared-${{ github.run_id }}
+          path: |
+            evidence/paint-performance/*.json
+            evidence/paint-performance/lighthouse/before.json
+            evidence/paint-performance/lighthouse/candidate.json
+            evidence/paint-performance/checkout-candidate/report.json
+            evidence/paint-performance/candidate/chromium-390.png
+            evidence/paint-performance/candidate/chromium-1440.png
           retention-days: 30
           overwrite: true
   deploy:
@@ -132,5 +145,18 @@ jobs:
         with:
           name: paint-live-${{ github.run_id }}
           path: evidence/paint-performance
+          retention-days: 30
+          overwrite: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paint-summary-live-${{ github.run_id }}
+          path: |
+            evidence/paint-performance/*.json
+            evidence/paint-performance/lighthouse/before.json
+            evidence/paint-performance/lighthouse/after.json
+            evidence/paint-performance/checkout-live/report.json
+            evidence/paint-performance/live/chromium-390.png
+            evidence/paint-performance/live/chromium-1440.png
           retention-days: 30
           overwrite: true

@@ -53,6 +53,7 @@ def publish(overlay,report,manifest,private,out):
     for variants in manifest['videos'].values():
         for kind in ['mobile','desktop']:
             paths.extend([variants[kind]['avifPoster'],variants[kind]['av1Url']])
+            if variants[kind].get('avifPosterSmall'):paths.append(variants[kind]['avifPosterSmall'])
     for path in set(paths):
         assert ASSET.fullmatch(path)
         source=(overlay/'dist'/path.lstrip('/'));data=source.read_bytes()
