@@ -11,6 +11,15 @@ def reviewed_home_hook(runtime):
     counts=[runtime.count(plain),runtime.count(discovery)]
     assert counts in ([1,0],[0,1]),'Homepage wrapper changed; stop before composing'
     return (discovery,True) if counts[1] else (plain,False)
+
+def with_poster_positions(text):
+    # The reviewed live bundle has one poster property and two shared visibility
+    # expressions (video and image branches). Require all three exact contexts.
+    call='HidiMediaPoster(liveHero.url)'
+    assert text.count(call)==3,'Current poster call inventory changed'
+    assert text.count('poster: '+call+',')==1,'Current poster property changed'
+    assert text.count('liveHero.type === "video" && '+call)==2,'Current visibility branches changed'
+    return text.replace(call,'HidiMediaPoster(liveHero.url,liveHero.mobilePosition)')
 def build_icons(base,overlay):
     html=(base/'dist/index.html').read_text()
     tags=re.findall(r'<link\b[^>]*rel=["\'](?:shortcut icon|icon)["\'][^>]*>',html,re.I)
@@ -52,8 +61,7 @@ def patch_web(base,overlay,poster,icons=None):
     original_video=(HERE.parent/'media-performance/client.js').read_text().split('function HidiMediaVideo(value) {',1)[1].split('function HidiMediaPoster',1)[0]
     text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
     text=once(text,'function HidiMediaPoster(value) {','function HidiMediaPoster(value,position) {')
-    assert text.count('HidiMediaPoster(liveHero.url)')==2
-    text=text.replace('HidiMediaPoster(liveHero.url)','HidiMediaPoster(liveHero.url,liveHero.mobilePosition)')
+    text=with_poster_positions(text)
     text=once(text,'      onCanPlay: revealLiveVideo,\n      onError: () => setFailedSource(liveHero.url),','      onCanPlay: revealLiveVideo,\n      onError: (event) => HidiMediaVideoFallback(event, liveHero.url, () => setFailedSource(liveHero.url)),')
     text=once(text,original_manifest,'const HidiMediaManifest='+json.dumps(manifest,separators=(',',':'))+';')
     text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; const poster = window.__HidiAvifEnabled && variant.avifPoster ? (window.__HidiAvifPoster?.(variant,position) || variant.avifPoster) : variant.poster; return window.__HidiMirrorPoster?.(poster) || poster;')
