@@ -9,13 +9,13 @@ export function encodeExperimentResponse(original,html,acceptEncoding=''){
  headers['content-length']=body.length;return {headers,body};
 }
 export function transformPaintExperiment(html,variant,mirror,options={}){
- if(['inline-mobile','inline-mobile-aux'].includes(variant)){
+ if(['inline-mobile','inline-mobile-aux','inline-both'].includes(variant)){
   html=transformPaintExperiment(html,variant==='inline-mobile-aux'?'aux-after-poster':'mobile-poster-origin',mirror);
-  if(!options.isMobile)return html;
-  const row=options.inlinePoster;if(!row||!Object.hasOwn(mirror.files,row.path)||!row.url.startsWith('data:image/avif;base64,'))throw Error('Verified inline poster required');
+  if(!options.isMobile&&variant!=='inline-both')return html;
+  const row=!options.isMobile&&variant==='inline-both'?options.desktopInlinePoster:options.inlinePoster;if(!row||!Object.hasOwn(mirror.files,row.path)||!row.url.startsWith('data:image/avif;base64,'))throw Error('Verified inline poster required');
   const anchor='const url=matchMedia("(max-width: 700px)").matches?path:window.__HidiAssetUrl(path);';
   if(!html.includes(anchor))throw Error('Origin poster anchor changed');
-  html=html.replaceAll('href="'+row.path+'"','href="'+row.url+'"');
+  html=html.replaceAll('href="'+row.path+'"','href="'+row.url+'"').replaceAll('href="'+mirror.origin+row.path+'"','href="'+row.url+'"');
   return html.replace(anchor,'const inline='+JSON.stringify(row)+';const url=path===inline.path?inline.url:matchMedia("(max-width: 700px)").matches?path:window.__HidiAssetUrl(path);');
  }
  if(['desktop-poster-first','aux-after-poster'].includes(variant)){

@@ -2,8 +2,9 @@ import {transformPaintExperiment,encodeExperimentResponse} from './paint-experim
 import {readMirrorProof} from './asset-mirror.mjs';
 import {copyFile} from 'node:fs/promises';
 if(process.env.GITHUB_WORKFLOW!=='Read-only candidate paint experiments')throw Error('Diagnostic runner requires its isolated non-deploying workflow');
-let experiment='control';let inlinePoster;const mirror=await readMirrorProof('evidence/paint-performance');if(!mirror)throw Error('Verified mirror proof required');
+let experiment='control';let inlinePoster,desktopInlinePoster;const mirror=await readMirrorProof('evidence/paint-performance');if(!mirror)throw Error('Verified mirror proof required');
 const posterManifest=JSON.parse(await readFile('evidence/paint-performance/manifest.json','utf8'));const posterPath=Object.values(posterManifest.videos)[0].mobile.avifPosterSmall;const posterResponse=await fetch(mirror.origin+posterPath);if(!posterResponse.ok)throw Error('Inline poster source unavailable');const posterBytes=Buffer.from(await posterResponse.arrayBuffer());if(createHash('sha256').update(posterBytes).digest('hex')!==mirror.files[posterPath])throw Error('Inline poster hash mismatch');inlinePoster={path:posterPath,url:'data:image/avif;base64,'+posterBytes.toString('base64')};
+const desktopPath=Object.values(posterManifest.videos)[0].desktop.avifPoster;const desktopResponse=await fetch(mirror.origin+desktopPath);if(!desktopResponse.ok)throw Error('Desktop inline source unavailable');const desktopBytes=Buffer.from(await desktopResponse.arrayBuffer());if(createHash('sha256').update(desktopBytes).digest('hex')!==mirror.files[desktopPath])throw Error('Desktop poster hash mismatch');desktopInlinePoster={path:desktopPath,url:'data:image/avif;base64,'+desktopBytes.toString('base64')};
 import {createH2Fixture} from './h2-fixture.mjs';
 import {installFixtureDelay} from './network-fixture.mjs';
 import assert from 'node:assert/strict';import {createHash} from 'node:crypto';import {createServer,request as httpRequest} from 'node:http';import {readFile,writeFile,stat,mkdir} from 'node:fs/promises';import {createReadStream} from 'node:fs';import {spawn,execFileSync} from 'node:child_process';import {pathToFileURL} from 'node:url';
@@ -19,7 +20,7 @@ const gateway=createServer(async(req,res)=>{try{
  if(sources[p]){const source=sources[p],size=(await stat(source.file)).size;let start=0,end=size-1,status=200;const match=/^bytes=(\d+)-(\d*)$/.exec(req.headers.range||'');if(match){start=Number(match[1]);end=match[2]?Math.min(end,Number(match[2])):end;status=206;res.setHeader('content-range',`bytes ${start}-${end}/${size}`);}res.writeHead(status,{'content-type':source.type,'content-length':end-start+1,'accept-ranges':'bytes'});if(req.method==='HEAD')return res.end();return createReadStream(source.file,{start,end}).pipe(res);}
  const next=httpRequest({hostname:'127.0.0.1',port:3186,path:req.url,method:req.method,headers:{...req.headers,...(p==='/'?{'accept-encoding':'identity'}:{})}},incoming=>{
  if(p!=='/'){res.writeHead(incoming.statusCode,incoming.headers);return incoming.pipe(res);}
- const parts=[];incoming.on('data',part=>parts.push(part));incoming.on('end',()=>{if(incoming.headers['content-encoding'])throw Error('Diagnostic document must use identity encoding upstream');const html=transformPaintExperiment(Buffer.concat(parts).toString(),experiment,mirror,{inlinePoster,isMobile:/Mobile|Android/i.test(req.headers['user-agent']||'')});const {headers,body}=encodeExperimentResponse(incoming.headers,html,String(req.headers['accept-encoding']||''));res.writeHead(incoming.statusCode,headers);res.end(body);});
+ const parts=[];incoming.on('data',part=>parts.push(part));incoming.on('end',()=>{if(incoming.headers['content-encoding'])throw Error('Diagnostic document must use identity encoding upstream');const html=transformPaintExperiment(Buffer.concat(parts).toString(),experiment,mirror,{inlinePoster,desktopInlinePoster,isMobile:/Mobile|Android/i.test(req.headers['user-agent']||'')});const {headers,body}=encodeExperimentResponse(incoming.headers,html,String(req.headers['accept-encoding']||''));res.writeHead(incoming.statusCode,headers);res.end(body);});
 });next.on('error',()=>{res.writeHead(502);res.end();});req.pipe(next);
 }catch{res.writeHead(500);res.end();}});
 await new Promise(done=>gateway.listen(3188,'0.0.0.0',done));
@@ -32,7 +33,7 @@ let restore;
 try{
  let ready=false;for(let i=0;i<90;i++){try{if((await fetch('http://127.0.0.1:3186/health')).ok){ready=true;break;}}catch{}await new Promise(done=>setTimeout(done,1000));}assert(ready);
  restore=await installFixtureDelay();
- for(const variant of ['mobile-poster-origin','aux-after-poster','inline-mobile','inline-mobile-aux']){
+ for(const variant of ['mobile-poster-origin','aux-after-poster','inline-mobile','inline-mobile-aux','inline-both']){
   experiment=variant;const dir=output+'/experiments/'+variant;await mkdir(dir,{recursive:true});
   const html=await(await fetch('http://127.0.0.1:3188/',{headers:{'accept-encoding':'identity'}})).text();await writeFile(dir+'/document.html',html);
   const child=spawn(process.execPath,['deploy/paint-performance/lighthouse.mjs','candidate'],{stdio:'inherit',env:{...process.env,HIDI_AUDIT_URL:h2.url,HIDI_AUDIT_SPKI:h2.spki}});const exitCode=await new Promise(done=>child.on('exit',done));
