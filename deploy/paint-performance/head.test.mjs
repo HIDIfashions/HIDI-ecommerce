@@ -71,6 +71,11 @@ test('critical styles retain their full sheet and cascade position; changed CSS 
   const metadata={styles:{'/assets/index-test.css':{sha256:createHash('sha256').update(css).digest('hex'),critical}}};writeFileSync(join(app,'paint-performance/critical-css.json'),JSON.stringify(metadata));
   const html='<head><link rel="stylesheet" href="/assets/index-test.css" /><style>header{padding:2px}</style></head><body><header>Same design</header></body>';
   const result=createHomeHead(root,app)(html);assert(result.includes('>'+critical+'</style>'));assert(result.includes('rel="stylesheet"'));assert(result.includes('window.__HidiFullCssReady'));assert(result.indexOf('>'+critical+'</style>')<result.indexOf('padding:2px'));assert(result.includes('media="print"'));assert(result.includes('fetchpriority="low"'));assert(result.includes('hidi_full='+metadata.styles['/assets/index-test.css'].sha256.slice(0,16)));assert(!result.includes('<template'));assert(!result.includes('footer{color:blue}'));
+  const application='<link rel="modulepreload" fetchpriority="low" href="/assets/index-123abc.js"><script type="module" crossorigin src="/assets/index-123abc.js"></script>';
+  const prioritized=createHomeHead(root,app)(html.replace('</head>',application+'</head>'));
+  assert(prioritized.includes('<template data-hidi-home-app>'+application.split('<script')[0]+'</template>'));
+  assert(prioritized.includes('<template data-hidi-home-app><script type="module" crossorigin src="/assets/index-123abc.js"></script></template>'));
+  assert(prioritized.includes('data-hidi-app-priority="true"'));assert(prioritized.includes('window.__HidiLoadHomeApp = start'));
   writeFileSync(join(root,'assets/index-test.css'),'header{color:green}footer{color:purple}');const fresh=createHomeHead(root,app)(html);assert(fresh.includes('color:purple'));assert(!fresh.includes('data-hidi-deferred-style'));assert(!fresh.includes('__HidiFullCssReady'));
  }finally{rmSync(app,{recursive:true,force:true});}
 });

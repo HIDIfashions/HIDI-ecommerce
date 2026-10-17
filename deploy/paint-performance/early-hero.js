@@ -32,7 +32,7 @@
 (() => {
   if (location.pathname !== '/') return;
   window.__HidiWaitForPosterPaint = video => {
-    const release = () => { window.__HidiStartHomeReads?.(); window.__HidiLoadFullCss?.(); };
+    const release = () => { window.__HidiStartHomeReads?.(); window.__HidiLoadFullCss?.(); window.__HidiLoadHomeApp?.(); };
     if (!video?.poster || document.visibilityState === 'hidden') { release(); return Promise.resolve(); }
     return new Promise(resolve => {
       let settled = false;

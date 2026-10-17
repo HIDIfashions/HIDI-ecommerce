@@ -1,6 +1,7 @@
 import {readFileSync,realpathSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
 import {createHash} from 'node:crypto';
+const homeAppLoader=readFileSync(new URL('./home-app.js',import.meta.url),'utf8');
 
 // Inline the existing public CSS in the same cascade position. Resolve from the
 // current image, so later image overlays cannot leave stale style contents.
@@ -81,6 +82,16 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   });
   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=new Promise(resolve=>{let started=false;window.__HidiLoadFullCss=()=>{if(started)return;started=true;Promise.all([...document.querySelectorAll("link[data-hidi-deferred-style]")].map(link=>new Promise(done=>{const ready=()=>{link.media="all";done();};link.addEventListener("load",ready,{once:true});link.addEventListener("error",ready,{once:true});link.href=link.dataset.hidiFullHref;if(link.sheet)ready();}))).then(resolve);};const fallback=()=>{if(document.readyState!=="loading"&&!document.querySelector("video[data-hidi-first-hero]"))window.__HidiLoadFullCss();};document.addEventListener("readystatechange",fallback);fallback();});</script></head>');
   if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,tag=>logoUrl?tag.replace(/\bhref=["'][^"']+["']/i,'href="'+logoUrl+'"'):'');
+  if(deferred&&completeHead){
+   const app=/<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']\/assets\/index-[a-f0-9]+\.js["'])[^>]*><\/script>/gi;
+   const matches=[...html.matchAll(app)];
+   if(matches.length===1&&!/\b(?:async|integrity)\b/i.test(matches[0][0])){
+    const source=/\bsrc=["']([^"']+)["']/.exec(matches[0][0])[1];
+    html=html.replace(app,tag=>'<template data-hidi-home-app>'+tag+'</template>');
+    html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/gi,tag=>tag.includes('href="'+source+'"')?'<template data-hidi-home-app>'+tag+'</template>':tag);
+    html=html.replace(/<\/head>/i,'<script data-hidi-app-priority="true">'+homeAppLoader+'</script></head>');
+   }
+  }
   return html;
  };
 }
