@@ -94,3 +94,4 @@ jobs:
           path: evidence
           retention-days: 90
           if-no-files-found: ignore
+# SMS module installation requested with all notification sending disabled (2026-10-17).
