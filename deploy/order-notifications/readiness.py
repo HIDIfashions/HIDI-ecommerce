@@ -71,7 +71,8 @@ def main():
         assert all(type(v) is bool for v in report['msg91'].values()) and all(type(v) is bool for v in report['queueCapabilities'].values())
         for name, old in states.items(): assert cloud.snapshot(cloud.app(name)) == cloud.snapshot(old), 'Live state changed during preflight'
         evidence = Path('evidence/order-notifications'); evidence.mkdir(parents=True, exist_ok=True)
-        safe = {k: report[k] for k in ['readOnly', *fields, 'msg91', 'queueCapabilities']}
+        assert all(type(v) is bool for v in report['sms'].values())
+        safe = {k: report[k] for k in ['readOnly', *fields, 'msg91', 'queueCapabilities', 'sms']}
         safe['states'] = {name: cloud.snapshot(value) for name, value in states.items()}
         (evidence / 'readiness.json').write_text(json.dumps(safe, indent=2))
         print(json.dumps({k:v for k,v in safe.items() if k != 'states'}))
