@@ -2,7 +2,9 @@ import {spawn} from 'node:child_process';import {readFile,writeFile,mkdir,open} 
 import {existsSync} from 'node:fs';
 import {summarizeTrials} from './summary.mjs';
 import {externalScriptUrls,isPinnedFixtureResponse,requireHealthyAudit} from './audit-parity.mjs';
+import {readMirrorProof} from './asset-mirror.mjs';
 const mode=process.argv[2],out=resolve('evidence/paint-performance/lighthouse');await mkdir(out,{recursive:true});
+const mirror=mode==='before'?null:await readMirrorProof(resolve('evidence/paint-performance'));
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),rows=[],fixtureConnections=[];
 const chromeFlags=['--headless','--no-sandbox','--disable-dev-shm-usage'];
 if(mode==='candidate'){const url=new URL(process.env.HIDI_AUDIT_URL);if(url.href!=='https://hidiindia.com/'||!/^[A-Za-z0-9+/]{43}=$/.test(process.env.HIDI_AUDIT_SPKI||''))throw Error('Candidate requires the production identity on its pinned local HTTP/2 fixture');chromeFlags.push('--host-resolver-rules="MAP hidiindia.com 127.0.0.1:3190"','--ignore-certificate-errors-spki-list='+process.env.HIDI_AUDIT_SPKI);}
@@ -13,9 +15,9 @@ for(const device of ['mobile','desktop']){
  const child=spawn(process.execPath,[cli,process.env.HIDI_AUDIT_URL||'https://hidiindia.com/','--only-categories=performance','--output=json','--output=html','--output-path='+prefix,'--max-wait-for-load=45000','--chrome-flags='+chromeFlags.join(' '),'--quiet',...(['candidate','after'].includes(mode)&&trial===1?['--save-assets']:[]),...(device==='desktop'?['--preset=desktop']:[])],{env:{...process.env,CHROME_PATH:chrome},stdio:['ignore',log.fd,log.fd]});
  const code=await new Promise(done=>child.on('exit',done));await log.close();if(code!==0)throw Error('Lighthouse failed for '+device+'; inspect bounded log');
  const report=JSON.parse(await readFile(prefix+'.report.json','utf8'));if(report.runtimeError)throw Error(report.runtimeError.message);
- requireHealthyAudit(report.audits['network-requests'].details.items);
+ requireHealthyAudit(report.audits['network-requests'].details.items,mirror);
  if(mode==='candidate'&&trial===1){const events=JSON.parse(await readFile(prefix+'-0.devtoolslog.json','utf8'));const response=events.find(event=>event.method==='Network.responseReceived'&&event.params.type==='Document'&&event.params.response.url==='https://hidiindia.com/')?.params.response;if(!isPinnedFixtureResponse(response))throw Error('Candidate origin must connect to 127.0.0.1:3190, never the live website');fixtureConnections.push({device,url:response.url,address:response.remoteIPAddress,port:response.remotePort});}
- const a=report.audits,protocol=a['network-requests'].details.items.find(item=>item.resourceType==='Document')?.protocol;samples.push({device,protocol,externalScripts:externalScriptUrls(a['network-requests'].details.items),networkDiagnostics:a.diagnostics.details.items[0],profile:{formFactor:report.configSettings.formFactor,throttlingMethod:report.configSettings.throttlingMethod,throttling:report.configSettings.throttling,screenEmulation:report.configSettings.screenEmulation},score:Math.round(report.categories.performance.score*100),lcp:a['largest-contentful-paint'].numericValue,blocking:a['total-blocking-time'].numericValue,cls:a['cumulative-layout-shift'].numericValue,bytes:a['total-byte-weight'].numericValue,warnings:report.runWarnings});
+ const a=report.audits,protocol=a['network-requests'].details.items.find(item=>item.resourceType==='Document')?.protocol;samples.push({device,protocol,externalScripts:externalScriptUrls(a['network-requests'].details.items,mirror),networkDiagnostics:a.diagnostics.details.items[0],profile:{formFactor:report.configSettings.formFactor,throttlingMethod:report.configSettings.throttlingMethod,throttling:report.configSettings.throttling,screenEmulation:report.configSettings.screenEmulation},score:Math.round(report.categories.performance.score*100),lcp:a['largest-contentful-paint'].numericValue,blocking:a['total-blocking-time'].numericValue,cls:a['cumulative-layout-shift'].numericValue,bytes:a['total-byte-weight'].numericValue,warnings:report.runWarnings});
  }
  rows.push(summarizeTrials(samples));
 }

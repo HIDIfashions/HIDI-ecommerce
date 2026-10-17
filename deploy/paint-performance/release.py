@@ -6,6 +6,7 @@ def load(name,path):
 photo=load('media_photo',HERE.parent/'photo-upload/release.py');cloud,images=photo.cloud,photo.images
 cloud.BASE='https://hidiindia.com'
 preserve=load('media_preserve',HERE.parent/'product-skn/release.py');patch=load('media_patch',HERE/'patch.py')
+mirror=load('asset_mirror',HERE/'asset-mirror.py')
 PRIVATE=Path(os.environ['RUNNER_TEMP'])/'hidi-paint-private';OUT=Path('evidence/paint-performance')
 OUT.mkdir(parents=True,exist_ok=True);photo.PRIVATE,photo.EVIDENCE=PRIVATE,OUT
 def save(name,value): (OUT/name).write_text(json.dumps(value,indent=2))
@@ -51,10 +52,11 @@ def compose():
     save('critical-css-quality.json',{'strategy':'critical-inline-full-external','allSourceCssPreserved':True,'styles':json.loads((overlay/'paint-performance/critical-css.json').read_text())['styles']})
     report=patch.patch_web(base,overlay,poster,icons);manifest=report.pop('manifest')
     subprocess.run(['node',str(HERE/'precompress.mjs'),str(overlay),report['bundle'],str(OUT/'static-encoding-quality.json')],check=True)
+    for file in overlay.rglob('*'):
+        if file.is_file() and file.suffix in ('.js','.mjs'):subprocess.run(['node','--check',str(file)],check=True)
+    mirror.publish(overlay,report,manifest,folder,OUT)
     report['allowedFiles']=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
     save('patch.json',report);save('manifest.json',manifest)
-    for name in report['allowedFiles']:
-        if name.endswith(('.js','.mjs')):subprocess.run(['node','--check',str(overlay/name)],check=True)
     tag=os.environ['CANDIDATE_WEB'];assert re.fullmatch(re.escape(images.REGISTRY+'/hidi-web:paint-performance-')+r'\d+',tag)
     (folder/'Dockerfile').write_text('FROM '+image+'\nCOPY --chown=node:node overlay/ /app/\n')
     subprocess.run(['docker','build','--pull=false','-t',tag,str(folder)],check=True);images.extract(tag,candidate)
@@ -74,9 +76,11 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json','media-cache.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json','media-cache.json','asset-mirror.json','mirror-fallback-candidate.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
+    recovery=json.loads((OUT/'mirror-fallback-candidate.json').read_text());assert recovery['passed'] and len(recovery['cases'])==16 and recovery['writes']==0 and recovery['integrityRecovery']
+    mirror.verify(json.loads((OUT/'asset-mirror.json').read_text()))
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1
         assert row['device']!='mobile' or row['lcp']<2200

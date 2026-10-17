@@ -1,7 +1,8 @@
 import {readFileSync,realpathSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
 import {createHash} from 'node:crypto';
-const homeAppLoader=readFileSync(new URL('./home-app.js',import.meta.url),'utf8');
+import {normalizeMirror} from '../paint-performance/asset-mirror.mjs';
+const mirrorClient=readFileSync(new URL('../paint-performance/asset-mirror-client.js',import.meta.url),'utf8');
 
 // Inline the existing public CSS in the same cascade position. Resolve from the
 // current image, so later image overlays cannot leave stale style contents.
@@ -9,6 +10,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
  const cache=new Map();
  const assets=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/head-assets.json'),'utf8'));}catch{return {};}})();
  function verifiedAsset(row,pattern){try{if(!row||!pattern.test(row.url)||!row.url.includes(row.sha256.slice(0,16)))return null;const file=realpathSync(resolve(root,'.'+row.url));if(!file.startsWith(realpathSync(root)+sep))return null;const bytes=readFileSync(file);return createHash('sha256').update(bytes).digest('hex')===row.sha256?bytes:null;}catch{return null;}}
+ const mirror=(()=>{try{const value=normalizeMirror(JSON.parse(readFileSync(resolve(appRoot,'paint-performance/asset-mirror.json'),'utf8')));if(!value)return null;for(const [url,sha256] of Object.entries(value.files)){const bytes=verifiedAsset({url,sha256},/^\//);if(!bytes||url.endsWith('.js')&&!bytes.toString().startsWith('if (!window.__HidiAppStarted) {'))return null;}return value;}catch{return null;}})();
  const seoBytes=verifiedAsset(assets.seo,/^\/assets\/home-seo-[a-f0-9]{16}\.js$/);
  const criticalStyles=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/critical-css.json'),'utf8')).styles||{};}catch{return {};}})();
  const iconMarkup=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/icons.json'),'utf8'));const source=realpathSync(resolve(appRoot,data.sourceFile));if(!source.startsWith(realpathSync(appRoot)+sep))return null;const hash=createHash('sha256').update(readFileSync(source)).digest('hex');return hash===data.originalSha256&&typeof data.markup==='string'?data.markup:null;}catch{return null;}})();
@@ -63,7 +65,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    if(/\brel=["']modulepreload["']/.test(tag)&&[...inlineBundles].some(path=>tag.includes('href="'+path+'"')))return '';
    return tag;
   });
-  if(logoData)html=html.replace(/(<img\b[^>]*\bsrc=["'])(?:\.\/|\/)assets\/images\/hidi-logo\.png(["'])/gi,(_,start,end)=>start+(logoUrl||logoData)+end);
+  if(logoData)html=html.replace(/(<img\b[^>]*\bsrc=["'])(?:\.\/|\/)assets\/images\/hidi-logo\.png(["'])/gi,(_,start,end)=>start+logoData+end);
   html=html.replace(/<script\b([^>]*data-hidi-seo-identity=["']1["'][^>]*)>([\s\S]*?)<\/script>/i,(tag,attrs,code)=>seoBytes&&assets.seo.sha256===createHash('sha256').update(code).digest('hex')&&!/(?:^|\s)(?:src|async|integrity)\b/i.test(attrs)?'<script'+attrs+' defer src="'+assets.seo.url+'"></script>':tag);
   let deferred=0;const completeHead=/<\/head>/i.test(html);
   html=html.replace(/<link\b[^>]*>/gi,tag=>{
@@ -81,16 +83,16 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
   });
   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=new Promise(resolve=>{let started=false;window.__HidiLoadFullCss=()=>{if(started)return;started=true;Promise.all([...document.querySelectorAll("link[data-hidi-deferred-style]")].map(link=>new Promise(done=>{const ready=()=>{link.media="all";done();};link.addEventListener("load",ready,{once:true});link.addEventListener("error",ready,{once:true});link.href=link.dataset.hidiFullHref;if(link.sheet)ready();}))).then(resolve);};const fallback=()=>{if(document.readyState!=="loading"&&!document.querySelector("video[data-hidi-first-hero]"))window.__HidiLoadFullCss();};document.addEventListener("readystatechange",fallback);fallback();});</script></head>');
-  if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,tag=>logoUrl?tag.replace(/\bhref=["'][^"']+["']/i,'href="'+logoUrl+'"'):'');
-  if(deferred&&completeHead){
-   const app=/<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']\/assets\/index-[a-f0-9]+\.js["'])[^>]*><\/script>/gi;
-   const matches=[...html.matchAll(app)];
-   if(matches.length===1&&!/\b(?:async|integrity)\b/i.test(matches[0][0])){
-    const source=/\bsrc=["']([^"']+)["']/.exec(matches[0][0])[1];
-    html=html.replace(app,tag=>'<template data-hidi-home-app>'+tag+'</template>');
-    html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/gi,tag=>tag.includes('href="'+source+'"')?'<template data-hidi-home-app>'+tag+'</template>':tag);
-    html=html.replace(/<\/head>/i,'<script data-hidi-app-priority="true">'+homeAppLoader+'</script></head>');
-   }
+  if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,tag=>logoUrl?tag.replace(/\bhref=["'][^"']+["']/i,'href="'+logoUrl+'"').replace(/\bfetchpriority=["'][^"']+["']/i,'fetchpriority="low"'):'');
+  if(mirror&&completeHead){
+   const integrity=url=>'sha256-'+Buffer.from(mirror.files[url],'hex').toString('base64');
+   html=html.replace(/<link\b[^>]*>/gi,tag=>tag.replace(/\bhref=["']([^"']+)["']/i,(whole,url)=>Object.hasOwn(mirror.files,url)?'href="'+mirror.origin+url+'"'+(url.endsWith('.js')?' integrity="'+integrity(url)+'"'+(/\bcrossorigin\b/i.test(tag)?'':' crossorigin="anonymous"'):''):whole));
+   html=html.replace(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*><\/script>/gi,(tag,url)=>Object.hasOwn(mirror.files,url)&&url.endsWith('.js')?tag.replace('src="'+url+'"','src="'+mirror.origin+url+'" integrity="'+integrity(url)+'" data-hidi-mirror-app="'+url+'" onerror="window.__HidiAppFallback()"'):tag);
+   const client=mirrorClient.replace('__HIDI_ASSET_MIRROR__',JSON.stringify({origin:mirror.origin,files:Object.fromEntries(Object.keys(mirror.files).map(path=>[path,true]))}));
+   const marker=/<meta\b[^>]*charset\s*=/i.test(html)?/<meta\b[^>]*charset\s*=[^>]*>/i:/<head\b[^>]*>/i;
+   html=html.replace(marker,tag=>tag+'<link rel="preconnect" href="'+mirror.origin+'" crossorigin><script data-hidi-asset-mirror="true">'+client+'</script>');
+   // Styles use the original connection, separately from the mirrored poster.
+   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-mirror-css="true">window.__HidiLoadFullCss();</script></head>');
   }
   return html;
  };

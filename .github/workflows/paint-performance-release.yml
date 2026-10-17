@@ -1,8 +1,7 @@
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
-# Immutable poster and pixel-identical logo URLs keep HTML small and share browser cache across native and React headers.
-# Application download follows native poster paint, with missing-markup and bounded recovery paths.
+# An isolated Free static asset mirror retains old immutable files and same-origin recovery; DNS and existing services remain unchanged.
 # Production-host SEO assertions run on the pinned public fixture; loopback probes retain preview behavior.
-# Poster bytes paint before deferred data/styles; fast fresh HTML is coalesced with a bounded streaming fallback.
+# The native poster paints before React handoff; fast fresh HTML is coalesced with a bounded streaming fallback.
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
@@ -41,11 +40,12 @@ jobs:
           google-chrome --version
           python3 deploy/paint-performance/test_icons.py
           python3 deploy/paint-performance/test_hook.py
-          node --test deploy/paint-performance/home-app.test.mjs
+          python3 deploy/paint-performance/test_asset_mirror.py
+          node --test deploy/paint-performance/asset-mirror.test.mjs
           node --test deploy/paint-performance/critical-poster.test.mjs deploy/paint-performance/reuse-video.test.mjs deploy/paint-performance/head-assets.test.mjs deploy/paint-performance/audit-parity.test.mjs deploy/paint-performance/network-fixture.test.mjs deploy/paint-performance/summary.test.mjs deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/stream-home.test.mjs deploy/paint-performance/poster-delivery.test.mjs deploy/paint-performance/announcement.test.mjs deploy/paint-performance/hero.test.mjs deploy/paint-performance/hero-initial.test.mjs deploy/paint-performance/video-client.test.mjs deploy/paint-performance/static-encoding.test.mjs
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg openssl iproute2
-          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 @azure/static-web-apps-cli@2.0.10
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
@@ -61,7 +61,7 @@ jobs:
           echo "CANDIDATE_WEB=acrhidiprod0927.azurecr.io/hidi-web:paint-performance-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
       - name: Measure current mobile and desktop performance
         run: node deploy/paint-performance/lighthouse.mjs before
-      - name: Compose early native hero, immediate preferred playback and poster priority
+      - name: Compose candidate and publish verified immutable asset mirror
         run: python3 deploy/paint-performance/release.py compose
       - name: Verify candidate bundle, design, media and compression
         run: node deploy/paint-performance/candidate.mjs

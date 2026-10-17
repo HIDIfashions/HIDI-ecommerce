@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
+import {readMirrorProof,isMirrorAsset} from './asset-mirror.mjs';
 export async function verifyInitialCss(pw,base,out,mode){
- const rows=[];
+ const rows=[],mirror=await readMirrorProof(out);
  for(const engine of ['chromium','webkit']){
   const browser=await pw[engine].launch({headless:true});
   try{for(const width of [320,390,768,1440]){
@@ -8,7 +9,7 @@ export async function verifyInitialCss(pw,base,out,mode){
    let release;const gate=new Promise(resolve=>release=resolve);
    try{
     await page.route('**/*',async route=>{const req=route.request(),url=new URL(req.url());
-     if(url.origin!==new URL(base).origin||!['GET','HEAD'].includes(req.method()))return route.abort();
+     if(url.origin!==new URL(base).origin&&!isMirrorAsset(url.href,mirror)||!['GET','HEAD'].includes(req.method()))return route.abort();
      if(url.pathname==='/'){
       const response=await route.fetch();let html=await response.text();
       html=html.replace(/<script data-hidi-full-css-activate="true">[\s\S]*?<\/script>/,'');
@@ -23,7 +24,7 @@ export async function verifyInitialCss(pw,base,out,mode){
     await page.waitForFunction(()=>document.querySelector('video[data-hidi-first-hero]')&&(Boolean(window.__HidiFullCssReady)||document.querySelector('style[data-hidi-inline-css*="index-"]')));
     await page.evaluate(()=>window.__HidiAvifSupport);
     await page.waitForFunction(()=>Boolean(document.querySelector('video[data-hidi-first-hero]')?.poster));
-    if(engine==='chromium')assert.match(await page.locator('video[data-hidi-first-hero]').getAttribute('poster'),/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/,'Supported mobile and desktop must use the preloaded immutable AVIF');
+    if(engine==='chromium')assert.match(new URL(await page.locator('video[data-hidi-first-hero]').getAttribute('poster'),base).pathname,/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/,'Supported mobile and desktop must use the preloaded immutable AVIF');
     await page.evaluate(async()=>{const image=new Image();image.src=document.querySelector('video[data-hidi-first-hero]').poster;await image.decode();if(image.naturalWidth<1000)throw Error('Native poster must decode at its original resolution');});
     await page.waitForTimeout(1000);
     await page.evaluate(()=>document.querySelector('#main').focus({preventScroll:true}));

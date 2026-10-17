@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';import {writeFile,mkdir} from 'node:fs/promises';import {existsSync} from 'node:fs';
+import {readMirrorProof,isMirrorAsset} from './asset-mirror.mjs';
 export async function verifyPosterCache(pw,base,out,mode){
  await mkdir(out+'/'+mode,{recursive:true});
+ const mirror=await readMirrorProof(out);
  const browser=await pw.chromium.launch({headless:true,...(existsSync('/usr/bin/google-chrome')?{executablePath:'/usr/bin/google-chrome'}:{})}),rows=[];
  try{for(const mobile of [true,false]){
   const context=await browser.newContext({viewport:{width:mobile?390:1440,height:900},...(mobile?{userAgent:'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36'}:{})}),page=await context.newPage(),errors=[];
@@ -9,7 +11,7 @@ export async function verifyPosterCache(pw,base,out,mode){
   // CDP interception preserves the HTTP cache; Playwright routing disables it.
   await cdp.send('Fetch.enable',{patterns:[{urlPattern:'*',requestStage:'Request'}]});
   cdp.on('Fetch.requestPaused',event=>{
-   const req=event.request,url=new URL(req.url),allowed=['GET','HEAD'].includes(req.method)&&(url.origin===new URL(base).origin||['data:','blob:'].includes(url.protocol));
+   const req=event.request,url=new URL(req.url),allowed=['GET','HEAD'].includes(req.method)&&(url.origin===new URL(base).origin||isMirrorAsset(url.href,mirror)||['data:','blob:'].includes(url.protocol));
    void cdp.send(allowed?'Fetch.continueRequest':'Fetch.failRequest',allowed?{requestId:event.requestId}:{requestId:event.requestId,errorReason:'Aborted'}).catch(()=>{});
   });
   const requests=new Map(),responses=new Map();let returning=false,reused=false,logoReused=false,expected,expectedLogo;
@@ -22,7 +24,7 @@ export async function verifyPosterCache(pw,base,out,mode){
    expected=await page.evaluate(()=>new URL(document.querySelector('video.hero-live-media').poster,location.href).href);
    const cold=responses.get(expected);assert(cold&&cold.status===200);assert.match(cold.mimeType,/image\/avif/);assert.match(String(Object.entries(cold.headers).find(([key])=>key.toLowerCase()==='cache-control')?.[1]),/immutable/);
    assert.equal([...requests.values()].filter(url=>url===expected).length,1,'Preload, native hero and React must reuse one cold poster request');
-   expectedLogo=await page.locator('#site-header .campaign-brand img').evaluate(image=>image.currentSrc||image.src);assert.match(expectedLogo,/\/media-performance\/assets\/logo-[a-f0-9]{16}\.png$/);const coldLogo=responses.get(expectedLogo);assert(coldLogo&&coldLogo.status===200);assert.match(coldLogo.mimeType,/image\/png/);assert.match(String(Object.entries(coldLogo.headers).find(([key])=>key.toLowerCase()==='cache-control')?.[1]),/immutable/);assert.equal([...requests.values()].filter(url=>url===expectedLogo).length,1,'Native and React logos must reuse one pixel-identical image request');returning=true;
+   expectedLogo=await page.locator('#site-header .campaign-brand img').evaluate(image=>image.currentSrc||image.src);assert.match(expectedLogo,/\/media-performance\/assets\/logo-[a-f0-9]{16}\.png$/);const coldLogo=responses.get(expectedLogo);assert(coldLogo&&coldLogo.status===200);assert.match(coldLogo.mimeType,/image\/png/);assert.match(String(Object.entries(coldLogo.headers).find(([key])=>key.toLowerCase()==='cache-control')?.[1]),/immutable/);assert.equal([...requests.values()].filter(url=>url===expectedLogo).length,1,'Preload and React logo must reuse one pixel-identical image request');returning=true;
    await page.goto(base+'/?cache-return',{waitUntil:'domcontentloaded'});
    await page.waitForFunction(()=>{const video=document.querySelector('video.hero-live-media');return !document.querySelector('video[data-hidi-first-hero]')&&Boolean(video?.poster)&&video.readyState>=2;});
    const poster=await page.locator('video.hero-live-media').getAttribute('poster');assert(!poster.startsWith('data:'));assert.equal(new URL(poster,base).href,expected);

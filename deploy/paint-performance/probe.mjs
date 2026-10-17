@@ -1,10 +1,13 @@
 import {verifyPosterCache} from './cache-probe.mjs';
 import {verifyInitialCss} from './critical-probe.mjs';
+import {readMirrorProof,isMirrorAsset} from './asset-mirror.mjs';
+import {verifyMirrorFallback} from './mirror-fallback-probe.mjs';
 import assert from 'node:assert/strict';import {readFile,writeFile,mkdir} from 'node:fs/promises';import {pathToFileURL} from 'node:url';import {get} from 'node:http';import {get as getHttps} from 'node:https';import {brotliDecompressSync,gunzipSync} from 'node:zlib';
 import {existsSync} from 'node:fs';import {createHash} from 'node:crypto';
 const [base,mode='live']=process.argv.slice(2),OUT='evidence/paint-performance';await mkdir(OUT+'/'+mode,{recursive:true});
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),manifest=JSON.parse(await readFile(OUT+'/manifest.json','utf8'));
 const baseline=mode==='baseline',rows=[];
+const mirror=baseline?null:await readMirrorProof(OUT);
 const request=(path,headers={})=>new Promise((resolve,reject)=>{const u=new URL(path,base);(u.protocol==='https:'?getHttps:get)(u,{headers},res=>{const chunks=[];res.on('data',c=>chunks.push(c));res.on('end',()=>resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks)}));}).on('error',reject);});
 if(!baseline){
  const patch=JSON.parse(await readFile(OUT+'/patch.json','utf8'));
@@ -18,7 +21,7 @@ if(!baseline){
  const home=await request('/');assert(!/rel="shortcut icon"[^>]*href="[^"]+\.ico/.test(home.body.toString()),'Browser tab should use the exact sized PNG frame');assert(home.body.toString().includes('data-hidi-first-header'));assert(home.body.toString().includes('data-hidi-first-hero="true"'),'Current supported hero must be present in initial HTML');assert(home.body.toString().includes('data-hidi-inline-css'));assert(home.body.toString().includes('src="/'+report.bundle+'"'));assert(home.body.toString().includes('rel="modulepreload"'));assert(home.body.toString().includes('data-hidi-inline-script="/config.js"'));assert(home.body.toString().includes('data-hidi-early-hero'));
  const headAssets=JSON.parse(await readFile(OUT+'/head-assets-quality.json','utf8'));
  for(const asset of [headAssets.logo,headAssets.seo].filter(Boolean)){const r=await request(asset.url,{'accept-encoding':'identity'});assert.equal(r.status,200);assert.equal(createHash('sha256').update(r.body).digest('hex'),asset.sha256,'Prepared head assets must retain their reviewed bytes');assert.match(r.headers['content-type'],asset===headAssets.logo?/image\/png/:/(?:java|ecma)script/);}
- const nativeLogo=home.body.toString().match(/<img\b[^>]*src="([^"]+)"[^>]*alt="HIDI/);assert(nativeLogo);assert.equal(nativeLogo[1],headAssets.logo.url,'Native logo must reuse the pixel-identical cacheable PNG');
+ const nativeLogo=home.body.toString().match(/<img\b[^>]*src="data:image\/png;base64,([A-Za-z0-9+/=]+)"[^>]*alt="HIDI/);assert(nativeLogo);assert.equal(createHash('sha256').update(Buffer.from(nativeLogo[1],'base64')).digest('hex'),headAssets.logo.sha256,'Native logo must contain the exact pixel-identical PNG bytes');
  // The wrapper injects identity metadata only for its production host. The
  // separate pinned public-host fixture always requires this exact asset.
  if(headAssets.seo&&(!['127.0.0.1','localhost'].includes(new URL(base).hostname)||home.body.toString().includes('data-hidi-seo-identity')))assert(home.body.toString().includes('defer src="'+headAssets.seo.url+'"'),'Exact SEO code must load independently of HTML');
@@ -42,7 +45,7 @@ for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
   const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<700,reducedMotion:engine==='chromium'?'no-preference':'reduce'}),page=await context.newPage();page.setDefaultTimeout(45000);
   const errors=[],network=[],media=[];let transferred=0;page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{network.push(r.url());if(r.resourceType()==='media')media.push(r.url());});
   if(engine==='chromium'){const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');cdp.on('Network.loadingFinished',e=>transferred+=e.encodedDataLength);}
-  await page.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin||!['GET','HEAD'].includes(r.method()))return route.abort();return route.continue();});
+  await page.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin&&!isMirrorAsset(u.href,mirror)||!['GET','HEAD'].includes(r.method()))return route.abort();return route.continue();});
   await page.addInitScript(()=>{window.__lcp=0;window.__cls=0;try{new PerformanceObserver(l=>window.__lcp=l.getEntries().at(-1).startTime).observe({type:'largest-contentful-paint',buffered:true});new PerformanceObserver(l=>l.getEntries().forEach(e=>{if(!e.hadRecentInput)window.__cls+=e.value;})).observe({type:'layout-shift',buffered:true});}catch{}});
   try{
    assert.equal((await page.goto(base+'/',{waitUntil:'domcontentloaded'})).status(),200);
@@ -87,7 +90,7 @@ if(!baseline&&mode==='candidate'){
   if(scenario==='data-saving')await page.addInitScript(()=>{if(navigator.connection)Object.defineProperty(navigator.connection,'saveData',{get:()=>true});});
   let catalogueReads=0;page.on('request',r=>{if(new URL(r.url()).pathname==='/api/store/products')catalogueReads++;});
   let releaseInitial;const initialGate=new Promise(resolve=>{releaseInitial=resolve;});
-  await page.route('**/*',async route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin||!['GET','HEAD'].includes(r.method()))return route.abort();if(scenario==='initial-selection'&&u.pathname==='/api/hidi/hero-config'){const response=await route.fetch();const value=await response.json();value.mobilePosition='35% 65%';if(value.items?.length)value.items[0].mobilePosition='35% 65%';await initialGate;return route.fulfill({response,json:value});}if(scenario==='codec-failure'&&u.pathname.includes('/hero-av1-'))return route.fulfill({status:500,body:'Controlled codec fallback test'});return route.continue();});
+  await page.route('**/*',async route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin&&!isMirrorAsset(u.href,mirror)||!['GET','HEAD'].includes(r.method()))return route.abort();if(scenario==='initial-selection'&&u.pathname==='/api/hidi/hero-config'){const response=await route.fetch();const value=await response.json();value.mobilePosition='35% 65%';if(value.items?.length)value.items[0].mobilePosition='35% 65%';await initialGate;return route.fulfill({response,json:value});}if(scenario==='codec-failure'&&u.pathname.includes('/hero-av1-'))return route.fulfill({status:500,body:'Controlled codec fallback test'});return route.continue();});
   await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.querySelector('.hero-media')?.dataset.heroConfigStatus==='uploaded'&&!document.querySelector('video[data-hidi-first-hero]'));
   if(scenario==='initial-selection'){assert.equal(await page.evaluate(()=>window.__HidiHeroInitial),null,'Initial snapshot must be cleared after first mount');assert(await page.locator('video.hero-live-media').getAttribute('poster'));releaseInitial();await page.waitForFunction(()=>document.querySelector('video.hero-live-media')?.style.getPropertyValue('--hero-position-mobile')==='35% 65%');await page.waitForLoadState('load');assert.equal(catalogueReads,1);for(const resume of ['pageshow','visibility']){const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/store/products');await page.evaluate(type=>{if(type==='pageshow')dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));else document.dispatchEvent(new Event('visibilitychange'));},resume);await response;await page.waitForTimeout(100);}assert.equal(catalogueReads,3,'Returning to the page and becoming visible must still read fresh prices');}
   if(['codec-failure','unsupported'].includes(scenario)){
@@ -100,6 +103,6 @@ if(!baseline&&mode==='candidate'){
  await writeFile(OUT+'/fallback-safety.json',JSON.stringify({passed:true,codecFailure:true,unsupportedCodec:true,reducedMotion:true,dataSaving:true,manualSound:true,initialSelectionReuse:true,freshSelectionUpdate:true,catalogueRequestReuse:true,catalogueResumeFreshness:true}));
  console.log('PASS: codec recovery, original MP4 fallback, reduced-motion, data saving, explicit sound playback, initial hero reuse and fresh selection updates');
 }
-if(!baseline){await verifyInitialCss(pw,base,OUT,mode);await verifyPosterCache(pw,base,OUT,mode);}
+if(!baseline){await verifyInitialCss(pw,base,OUT,mode);await verifyPosterCache(pw,base,OUT,mode);await verifyMirrorFallback(pw,base,OUT,mode);}
 await writeFile(OUT+'/'+mode+'.json',JSON.stringify({passed:true,results:rows},null,2));
 console.log('PASS: '+mode+' homepage, poster, responsive photographs, sound controls, media ranges, compression and layout; '+rows.length+' browser/viewport cases');
