@@ -1,6 +1,7 @@
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
 # An isolated Free static asset mirror retains old immutable files and same-origin recovery; DNS and existing services remain unchanged.
 # Production-host SEO assertions run on the pinned public fixture; loopback probes retain preview behavior.
+# Candidate verification requires the exact content-verified mirrored application URL.
 # The native poster paints before React handoff; fast fresh HTML is coalesced with a bounded streaming fallback.
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
