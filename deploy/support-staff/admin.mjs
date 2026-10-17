@@ -12,6 +12,7 @@ async function api(path, method='GET', body) {
   if(!response.ok)throw new Error(data.message || 'Unable to complete this action. Please retry.');
   return data;
 }
+setInterval(()=>{if(actor)void api('/api/admin/session','PUT').catch(()=>error(new Error('Your session expired. Use Staff sign in to continue.')));},40*60*1000);
 async function action(work) {
   if(busy)return;busy=true;document.querySelectorAll('button').forEach(button=>button.disabled=true);$('error').hidden=true;
   try { await work(); } catch(caught) { error(caught); }
