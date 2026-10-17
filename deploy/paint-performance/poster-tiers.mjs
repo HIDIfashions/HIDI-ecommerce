@@ -8,7 +8,7 @@ export async function verifyPosterTiers(pw,html,manifest,out,mode){
   try{await page.route('**/*',route=>route.request().url()==='http://poster-tier.fixture/'?route.fulfill({contentType:'text/html',body:'<head>'+hints+'<script>'+early+'</script></head><body></body>'}):route.abort());await page.goto('http://poster-tier.fixture/',{waitUntil:'domcontentloaded'});
    const result=await page.evaluate(variants=>({matching:[...document.querySelectorAll('link[rel="preload"]')].filter(link=>matchMedia(link.media||'all').matches).map(link=>new URL(link.href).pathname),selected:window.__HidiAvifPoster(innerWidth<=700?variants.mobile:variants.desktop)}),variants);
    const small=width<=432&&dpr<=1.75,expected=width>700?variants.desktop.avifPoster:small?variants.mobile.avifPosterSmall:variants.mobile.avifPoster;
-   assert.deepEqual(result.matching,[expected]);assert.equal(result.selected,expected);if(small)assert(width*dpr<=768,'Smaller poster must never undersample the screen');
+   assert.deepEqual(result.matching,[expected],'Responsive preload at '+width+'px / DPR '+dpr);assert.equal(result.selected,expected);if(small)assert(width*dpr<=768,'Smaller poster must never undersample the screen');
    cases.push({width,dpr,expected,passed:true,matchingPreloads:1,fullPhysicalResolution:true});
   }finally{await context.close();}
  }}finally{await browser.close();}

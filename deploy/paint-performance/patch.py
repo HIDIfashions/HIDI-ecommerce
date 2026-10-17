@@ -105,8 +105,7 @@ def patch_web(base,overlay,poster,icons=None):
         posters.remove(original)
         for media,url in [
             ('(max-width: 432px) and (max-resolution: 1.75dppx)',mobile['avifPosterSmall']),
-            ('(width > 432px) and (width <= 700px)',mobile['avifPoster']),
-            ('(width <= 432px) and (resolution > 1.75dppx)',mobile['avifPoster'])]:
+            ('(max-width: 700px) and (not ((max-width: 432px) and (max-resolution: 1.75dppx)))',mobile['avifPoster'])]:
             posters.append(original.replace('media="(max-width: 700px)"','media="'+media+'"').replace(mobile['avifPoster'],url))
 
     for index,tag in enumerate(icons['originalTags']):html=once(html,tag,icons['markup'] if index==0 else '')
