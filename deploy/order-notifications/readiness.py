@@ -38,7 +38,7 @@ def main():
     packed = base64.b64encode(gzip.compress((ROOT / 'order-notifications/readiness.mjs').read_bytes(), mtime=0)).decode()
     lines = ['node --input-type=commonjs - ' + shlex.quote(database) + " <<'HIDI_ORDER_READINESS_NODE'", 'const packed=[']
     lines += [json.dumps(packed[i:i+1800]) + ',' for i in range(0, len(packed), 1800)]
-    lines += ["].join('');", 'const moduleBytes=require("node:zlib").gunzipSync(Buffer.from(packed,"base64"));', 'import("data:text/javascript;base64,"+moduleBytes.toString("base64")).then(m=>m.run(process.argv[2])).catch(()=>{console.log("HIDI_ORDER_READINESS_FAILED::{} ");process.exitCode=1;});', 'HIDI_ORDER_READINESS_NODE', 'exit']
+    lines += ["].join('');", 'const moduleBytes=require("node:zlib").gunzipSync(Buffer.from(packed,"base64"));', 'import("data:text/javascript;base64,"+moduleBytes.toString("base64")).then(m=>m.run(process.argv[2])).catch(e=>{console.log("HIDI_ORDER_READINESS_FAILED::"+JSON.stringify({name:String(e.name).slice(0,60),code:String(e.code).slice(0,60),message:String(e.message).replace(/eyJ[A-Za-z0-9_.-]+/g,"[redacted]").slice(0,250)}));process.exitCode=1;});', 'HIDI_ORDER_READINESS_NODE', 'exit']
     assert all(len(line.encode()) < 2000 for line in lines)
     command = '\n'.join(lines) + '\n'
     master, slave = pty.openpty()
@@ -63,6 +63,12 @@ def main():
                 report = terminal.complete_marker(plain, 'HIDI_ORDER_READINESS')
                 if report is not None or terminal.complete_marker(plain, 'HIDI_ORDER_READINESS_FAILED') is not None: break
             if process.poll() is not None: break
+        if report is None:
+            plain = terminal.terminal_text(output.decode(errors='replace'))
+            failure = terminal.complete_marker(plain, 'HIDI_ORDER_READINESS_FAILED')
+            if failure: print(json.dumps({'privateReadinessFailure':failure}))
+            else:
+                print(json.dumps({'consoleExitCode':process.poll(),'consoleDiagnostics':[line[:300] for line in plain.splitlines() if re.search(r'ERROR|Error|failed|Failed|Connected|connected|Session',line) and len(line)<500][-8:]}))
         assert report is not None, 'Private order readiness incomplete; no live images changed'
         assert report.get('readOnly') is True
         fields = ['apiModuleInstalled','queueTableExists','notificationWorkerEnabled','activationCutoffConfigured','whatsappEnabled']
