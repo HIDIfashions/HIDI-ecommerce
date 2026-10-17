@@ -6,3 +6,7 @@ test('diagnostic variants isolate connection reuse and application fetch order w
  const first=transformPaintExperiment(html,'poster-first',{origin});assert(!first.includes('rel="modulepreload"'));assert(first.includes('data-hidi-queued-src="'+origin+'/assets/index-123.js"'));assert(first.includes('integrity="sha256-original"'));assert(first.includes('onerror="window.__HidiAppFallback()"'));assert(first.includes('window.__HidiNativePosterReady'));assert(first.includes('setTimeout(start,1200)'));assert(first.includes('Original contents'));
  assert.throws(()=>transformPaintExperiment(html,'other',{origin}));assert.throws(()=>transformPaintExperiment('<body></body>','poster-first',{origin}));
 });
+test('external logo comparison reuses the exact preloaded file without changing other image bytes or markup',()=>{
+ const logo='/media-performance/assets/logo-0123456789abcdef.png',input='<head><link rel="preload" href="'+logo+'"></head><body><img width="265" src="data:image/png;base64,YWJj" alt="HIDI India"></body>';
+ const output=transformPaintExperiment(input,'external-logo',{origin});assert(output.includes('src="'+logo+'"'));assert(output.includes('width="265"'));assert(output.includes('alt="HIDI India"'));assert(!output.includes('data:image/png'));assert.throws(()=>transformPaintExperiment('<head></head>','external-logo',{origin}));
+});

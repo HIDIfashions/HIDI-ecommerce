@@ -1,3 +1,4 @@
+# Compare exact external logo bytes as well as poster connection and application request ordering.
 name: Read-only candidate paint experiments
 on:
   push:

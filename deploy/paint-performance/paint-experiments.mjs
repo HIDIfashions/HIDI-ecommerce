@@ -1,8 +1,14 @@
 // Read-only fixture transformations. These are never copied into the web image.
 export function transformPaintExperiment(html,variant,mirror){
- if(!['control','poster-origin','poster-first','poster-origin-first'].includes(variant))throw Error('Unknown diagnostic variant');
+ if(!['control','poster-origin','poster-first','poster-origin-first','external-logo','external-logo+poster-first','external-logo+poster-origin-first'].includes(variant))throw Error('Unknown diagnostic variant');
  if(variant==='control')return html;
- if(variant.startsWith('poster-origin')){
+ if(variant.includes('external-logo')){
+  const logo=html.match(/<link\b[^>]*href=["'](\/media-performance\/assets\/logo-[a-f0-9]{16}\.png)["']/i)?.[1];
+  if(!logo)throw Error('Exact optimized logo preload missing');
+  let found=0;html=html.replace(/(<img\b[^>]*\bsrc=["'])data:image\/png;base64,[A-Za-z0-9+/=]+(["'][^>]*\balt=["']HIDI[^>]*>)/gi,(_,start,end)=>{found++;return start+logo+end;});
+  if(found!==1)throw Error('Expected one embedded native logo');
+ }
+ if(variant.includes('poster-origin')){
   html=html.replaceAll(mirror.origin+'/media-performance/assets/poster-','/media-performance/assets/poster-');
   const anchor='const url=window.__HidiAssetUrl(path);';
   if(!html.includes(anchor))throw Error('Poster loader anchor changed');
