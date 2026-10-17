@@ -20,7 +20,7 @@ export class OrderNotificationStore {
           FROM [dbo].[Order] o JOIN [dbo].[OrderAuditEvent] a ON a.[orderId]=o.[id]
           WHERE a.[eventType]='ORDER_CONFIRMED' AND a.[toStatus]='CONFIRMED' AND a.[createdAt]>=${startAt}
             AND o.[status] IN ('CONFIRMED','PACKED','SHIPPED','DELIVERED')
-            AND (${channel}='EMAIL' OR EXISTS (SELECT 1 FROM [dbo].[RetentionProfile] consent WHERE consent.[userId]=o.[userId]
+            AND (${channel} IN ('EMAIL','SMS') OR EXISTS (SELECT 1 FROM [dbo].[RetentionProfile] consent WHERE consent.[userId]=o.[userId]
               AND consent.[whatsappOptIn]=1 AND consent.[phoneVerifiedAt] IS NOT NULL
               AND consent.[consentVersion]=${RETENTION_CONSENT_VERSION}))
             AND EXISTS (SELECT 1 FROM [dbo].[Payment] p WHERE p.[orderId]=o.[id] AND p.[status]='CAPTURED')

@@ -8,10 +8,16 @@ export function notificationConfig() {
   const value = process.env.ORDER_NOTIFICATIONS_START_AT || "";
   const startAt = new Date(value);
   const valid = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value) && Number.isFinite(startAt.getTime());
+  const smsValue = process.env.ORDER_SMS_START_AT || "";
+  const smsStartAt = new Date(smsValue);
+  const smsValid = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(smsValue)
+    && Number.isFinite(smsStartAt.getTime());
   const channels: NotificationChannel[] = [];
   if (process.env.ORDER_EMAIL_ENABLED !== "false") channels.push("EMAIL");
   if (process.env.ORDER_WHATSAPP_ENABLED === "true") channels.push("WHATSAPP");
-  return { enabled: enabled && valid && channels.length > 0, startAt: valid ? startAt : null, channels };
+  if (process.env.ORDER_SMS_ENABLED === "true" && smsValid) channels.push("SMS");
+  return { enabled: enabled && valid && channels.length > 0, startAt: valid ? startAt : null,
+    smsStartAt: smsValid ? smsStartAt : null, channels };
 }
 @Injectable()
 export class OrderNotificationService implements OnModuleInit, OnModuleDestroy {
@@ -34,7 +40,11 @@ export class OrderNotificationService implements OnModuleInit, OnModuleDestroy {
     this.running = true;
     let processed = 0;
     try {
-      for (const channel of config.channels) await this.store.enqueue(channel, config.startAt);
+      for (const channel of config.channels) {
+        const cutoff = channel === "SMS" && config.smsStartAt && config.smsStartAt > config.startAt
+          ? config.smsStartAt : config.startAt;
+        await this.store.enqueue(channel, cutoff);
+      }
       await this.store.recover();
       for (let i = 0; i < 5 && !this.stopped; i++) {
         const job = await this.store.claim(randomUUID());
@@ -49,6 +59,9 @@ export class OrderNotificationService implements OnModuleInit, OnModuleDestroy {
     } finally { this.running = false; }
   }
   private async process(job: NotificationJob) {
+    if (job.channel === "SMS" && process.env.ORDER_SMS_PROVIDER_VERIFIED !== "true") {
+      await this.store.finish(job, "WAITING_CONFIG", "SMS_PROVIDER_NOT_VERIFIED", null, 300); return;
+    }
     const order = await this.store.order(job.orderId);
     if (!order || !NOTIFIABLE_STATES.includes(order.status) || order.currency !== "INR") {
       await this.store.finish(job, "SKIPPED", "ORDER_NO_LONGER_ELIGIBLE"); return;
@@ -77,6 +90,13 @@ export class OrderNotificationService implements OnModuleInit, OnModuleDestroy {
         await this.store.finish(job, "SKIPPED", "WHATSAPP_RECIPIENT_CHANGED"); return;
       }
     }
+    if (job.channel === "SMS") {
+      const recipients = prepared.body.recipients as Array<{ mobiles?: string }> | undefined;
+      if (prepared.provider !== "MSG91_SMS" || !Array.isArray(recipients) || recipients.length !== 1
+        || recipients[0]?.mobiles !== recipient(order, "SMS")) {
+        await this.store.finish(job, "SKIPPED", "SMS_RECIPIENT_CHANGED"); return;
+      }
+    }
     const payload = job.payload || JSON.stringify(prepared);
     if (!await this.store.beginSend(job, prepared.provider, payload)) return;
     const result = await this.sender.send(job.id, prepared);
@@ -86,8 +106,9 @@ export class OrderNotificationService implements OnModuleInit, OnModuleDestroy {
   async status() {
     const config = notificationConfig();
     const schemaReady = await this.store.schemaReady();
-    return { enabled: config.enabled, schemaReady, startAt: config.startAt?.toISOString() ?? null, channels: config.channels,
-      providerCredentials: { email: this.sender.configured("RESEND"), whatsapp: this.sender.configured("MSG91") },
+    return { enabled: config.enabled, schemaReady, startAt: config.startAt?.toISOString() ?? null,
+      smsStartAt: config.smsStartAt?.toISOString() ?? null, channels: config.channels,
+      providerCredentials: { email: this.sender.configured("RESEND"), whatsapp: this.sender.configured("MSG91"), sms: this.sender.configured("MSG91_SMS") },
       counts: schemaReady ? await this.store.summary() : [] };
   }
 }

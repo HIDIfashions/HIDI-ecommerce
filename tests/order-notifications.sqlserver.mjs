@@ -102,4 +102,17 @@ try {
   await store.enqueue('WHATSAPP',start);
   assert.deepEqual((await pool.request().query("SELECT orderId FROM dbo.OrderNotificationOutbox WHERE channel='WHATSAPP'")).recordset,[{orderId:'paid'}]);
   console.log('PASS: WhatsApp queues only existing opted-in customers; email remains independent');
+  const savedRows = (await pool.request().query('SELECT id,channel,status FROM dbo.OrderNotificationOutbox ORDER BY id')).recordset;
+  await pool.request().batch(await readFile(new URL('../apps/api/prisma/migrations-sqlserver/20261017090000_order_sms_notifications/migration.sql', import.meta.url), 'utf8'));
+  assert.deepEqual((await pool.request().query('SELECT id,channel,status FROM dbo.OrderNotificationOutbox ORDER BY id')).recordset, savedRows);
+  const attempts = await Promise.allSettled(Array.from({length: 5}, () => store.enqueue('SMS',start)));
+  assert.ok(attempts.some(result => result.status === 'fulfilled'));
+  assert.deepEqual((await pool.request().query("SELECT orderId FROM dbo.OrderNotificationOutbox WHERE channel='SMS' ORDER BY orderId")).recordset,
+    [{orderId:'paid'}, {orderId:'wallet'}]);
+  await pool.request().query("UPDATE dbo.OrderNotificationOutbox SET status='SENDING',provider='MSG91_SMS',leaseUntil=DATEADD(MINUTE,-3,SYSUTCDATETIME()),firstAttemptAt=SYSUTCDATETIME() WHERE channel='SMS'");
+  await store.recover();
+  assert.equal((await pool.request().query("SELECT COUNT(*) AS n FROM dbo.OrderNotificationOutbox WHERE channel='SMS' AND status='UNKNOWN'")).recordset[0].n,2);
+  assert.deepEqual((await pool.request().query('SELECT id,status FROM dbo.[Order] ORDER BY id')).recordset,
+    fixtures.map(([id,status]) => ({id,status})).sort((a,b) => a.id.localeCompare(b.id)));
+  console.log('PASS: SMS migration preserves rows, excludes unpaid/history, queues guests without marketing opt-in, deduplicates and stops uncertain sends');
 } finally { await pool.close(); }

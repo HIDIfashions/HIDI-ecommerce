@@ -1,4 +1,4 @@
-export type NotificationChannel = "EMAIL" | "WHATSAPP";
+export type NotificationChannel = "EMAIL" | "WHATSAPP" | "SMS";
 export type NotificationOrder = {
   id: string; orderNumber: string; status: string; currency: string;
   customerEmail: string | null; customerPhone: string; shippingAddress: unknown; whatsappOptIn?: boolean;
