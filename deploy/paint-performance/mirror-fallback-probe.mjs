@@ -1,14 +1,16 @@
 import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
 import {readMirrorProof,isMirrorAsset} from './asset-mirror.mjs';
+import {existsSync} from 'node:fs';
 import {createSlowDocumentProxy} from './slow-document-proxy.mjs';
 export async function verifyMirrorFallback(pw,base,out,mode){
  const mirror=await readMirrorProof(out);if(!mirror)return;
  const rows=[],slow=await createSlowDocumentProxy(base);
  try{for(const engine of ['chromium','webkit']){
-  const browser=await pw[engine].launch({headless:true});
+  const browser=await pw[engine].launch({headless:true,...(engine==='chromium'&&existsSync('/usr/bin/google-chrome')?{executablePath:'/usr/bin/google-chrome'}:{})});
   try{for(const width of [390,1440])for(const scenario of ['offline','late-main','media-offline','tampered-main','slow-document']){
    const targetBase=scenario==='slow-document'?slow.url:base;
    const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'}),page=await context.newPage(),errors=[],reads=[];
+   const requests=[];page.on('requestfailed',request=>requests.push({url:request.url(),error:request.failure()}));
    page.on('pageerror',error=>errors.push(error.message));page.on('request',request=>{if(new URL(request.url()).pathname==='/api/store/products')reads.push(request.url());});
    try{
     await page.route('**/*',async route=>{
@@ -33,6 +35,10 @@ export async function verifyMirrorFallback(pw,base,out,mode){
     assert(!result.tampered,'Subresource integrity must block modified mirrored code');
     if(['offline','media-offline'].includes(scenario)){assert.equal(new URL(result.poster).origin,new URL(base).origin);assert.equal(new URL(result.src).origin,new URL(base).origin);}
     rows.push({engine,width,scenario,passed:true,oneApplication:true,oneCatalogueRead:true});console.log('PASS mirror recovery '+mode+' '+engine+' '+width+' '+scenario);
+   }catch(error){
+    const stem=out+'/mirror-'+mode+'-'+engine+'-'+width+'-'+scenario+'-failure';
+    const state=await page.evaluate(()=>{const video=document.querySelector('video.hero-live-media');const probe=document.createElement('video');return {started:window.__HidiAppStarted,heroStatus:document.querySelector('.hero-media')?.dataset.heroConfigStatus,video:video?{src:video.src,currentSrc:video.currentSrc,readyState:video.readyState,networkState:video.networkState,paused:video.paused,autoplay:video.autoplay,error:video.error?.message,html:video.outerHTML}:null,codecs:{h264:probe.canPlayType('video/mp4; codecs="avc1.42E01E,mp4a.40.2"'),av1:probe.canPlayType('video/mp4; codecs="av01.0.05M.08,mp4a.40.2"')}};}).catch(()=>null);
+    await writeFile(stem+'.json',JSON.stringify({error:String(error),engine,width,scenario,errors,reads,requests,state},null,2));await writeFile(stem+'.html',await page.content());await page.screenshot({path:stem+'.png'}).catch(()=>{});throw error;
    }finally{await context.close();}
   }}finally{await browser.close();}
  }}finally{slow.close();}

@@ -1,3 +1,4 @@
+# Media recovery uses the same installed Chromium codec build as the other video checks; fallback gates remain strict.
 # Asset publication addresses only the approved pre-provisioned site; no resource-group listing or creation.
 # Provider registration and site-scoped IAM are provisioned by the Azure owner.
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
