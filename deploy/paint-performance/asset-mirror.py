@@ -19,6 +19,23 @@ def validate_files(files):
         assert ASSET.fullmatch(path) and re.fullmatch('[a-f0-9]{64}',digest) and digest[:16] in path,'Mirror assets must be content-addressed public files'
 
 def az(*args):return json.loads(subprocess.check_output(['az',*args,'--only-show-errors','-o','json'],text=True))
+def preflight():
+    """Read-only access/ownership check; never provision or request deployment secrets."""
+    try:
+        site=az('staticwebapp','show','-g',GROUP,'-n',NAME)
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(
+            'Asset mirror is unavailable to the deployment identity. An Azure owner must '
+            'provision/verify the isolated Free hidi-performance-assets site in rg-hidi-prod '
+            'and grant access scoped to that site. No deployment or asset publication was attempted.'
+        ) from error
+    assert site['sku']['name']=='Free' and site['sku']['tier']=='Free','Refuse a paid asset site'
+    assert site.get('tags',{}).get('hidi-owner')==OWNER and site.get('tags',{}).get('hidi-purpose')=='immutable-assets','Refuse an unrelated asset site'
+    assert not site.get('repositoryUrl'),'Refuse a source-controlled asset site'
+    assert re.fullmatch(r'[a-z0-9-]+(?:\.\d+)?\.azurestaticapps\.net',site['defaultHostname'])
+    return {'passed':True,'resource':NAME,'group':GROUP,'sku':'Free','readOnly':True,
+            'secretsRead':False,'productionChanges':False}
+
 def get(url):
     request=urllib.request.Request(url,headers={'Accept-Encoding':'identity','Cache-Control':'no-cache'})
     with urllib.request.urlopen(request,timeout=45) as response:return response.read(),response.headers
@@ -98,3 +115,8 @@ def verify(proof):
     for path,digest in proof['files'].items():
         data,headers=get(proof['origin']+path)
         assert sha(data)==digest and 'immutable' in headers.get('Cache-Control','') and headers.get('Access-Control-Allow-Origin')=='*','Mirror changed after preparation'
+
+if __name__=='__main__':
+    import sys
+    assert sys.argv[1:]==['preflight'],'Only read-only preflight is available directly'
+    print(json.dumps(preflight()))

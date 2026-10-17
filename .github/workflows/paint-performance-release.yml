@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: 24}
-      - name: Verify protocol safety and install media/browser tooling
+      - name: Verify protocol safety
         run: |
           google-chrome --version
           python3 deploy/paint-performance/test_icons.py
@@ -44,15 +44,19 @@ jobs:
           python3 deploy/paint-performance/test_asset_mirror.py
           node --test deploy/paint-performance/asset-mirror.test.mjs
           node --test deploy/paint-performance/critical-poster.test.mjs deploy/paint-performance/reuse-video.test.mjs deploy/paint-performance/head-assets.test.mjs deploy/paint-performance/audit-parity.test.mjs deploy/paint-performance/network-fixture.test.mjs deploy/paint-performance/summary.test.mjs deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/stream-home.test.mjs deploy/paint-performance/poster-delivery.test.mjs deploy/paint-performance/announcement.test.mjs deploy/paint-performance/hero.test.mjs deploy/paint-performance/hero-initial.test.mjs deploy/paint-performance/video-client.test.mjs deploy/paint-performance/static-encoding.test.mjs
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg openssl iproute2
-          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 @azure/static-web-apps-cli@2.0.10
-          node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Verify isolated asset-site access before build or publication
+        run: python3 deploy/paint-performance/asset-mirror.py preflight
+      - name: Install media and browser tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg openssl iproute2
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 @azure/static-web-apps-cli@2.0.10
+          node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - name: Capture stable production and fresh rollback copies
         env:
           GH_TOKEN: ${{ github.token }}

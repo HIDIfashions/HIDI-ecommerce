@@ -13,6 +13,26 @@ class InventoryTests(unittest.TestCase):
         for proof in [{'passed':True,'bootOnce':True,'sku':'Standard','dnsChanged':False,'existingAppsChanged':False},{'passed':True,'bootOnce':True,'sku':'Free','dnsChanged':True,'existingAppsChanged':False}]:
             with self.assertRaises(AssertionError):module.verify(proof)
 
+    def test_preflight_checks_ownership_without_secrets_or_mutations(self):
+        site={'sku':{'name':'Free','tier':'Free'},'tags':{'hidi-owner':module.OWNER,'hidi-purpose':'immutable-assets'},'defaultHostname':'hidi-test.3.azurestaticapps.net'}
+        with patch.object(module,'az',return_value=site) as azure:
+            proof=module.preflight()
+        azure.assert_called_once_with('staticwebapp','show','-g',module.GROUP,'-n',module.NAME)
+        self.assertTrue(proof['readOnly']);self.assertFalse(proof['secretsRead']);self.assertFalse(proof['productionChanges'])
+
+    def test_preflight_refuses_missing_access_without_attempting_creation(self):
+        error=module.subprocess.CalledProcessError(1,['az','staticwebapp','show'])
+        with patch.object(module,'az',side_effect=error) as azure:
+            with self.assertRaisesRegex(RuntimeError,'No deployment or asset publication'):
+                module.preflight()
+        self.assertEqual(azure.call_count,1)
+
+    def test_preflight_refuses_paid_or_unrelated_resources(self):
+        base={'sku':{'name':'Free','tier':'Free'},'tags':{'hidi-owner':module.OWNER,'hidi-purpose':'immutable-assets'},'defaultHostname':'hidi-test.3.azurestaticapps.net'}
+        for change in [{'sku':{'name':'Standard','tier':'Standard'}},{'tags':{}},{'repositoryUrl':'https://github.com/another/site'}]:
+            with self.subTest(change=change),patch.object(module,'az',return_value={**base,**change}):
+                with self.assertRaises(AssertionError):module.preflight()
+
     def test_publication_retains_old_bytes_and_never_requests_a_paid_plan(self):
         for existing in [True,False]:
             with self.subTest(existing=existing),tempfile.TemporaryDirectory() as folder:
