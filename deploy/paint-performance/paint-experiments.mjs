@@ -9,8 +9,13 @@ export function encodeExperimentResponse(original,html,acceptEncoding=''){
  headers['content-length']=body.length;return {headers,body};
 }
 export function transformPaintExperiment(html,variant,mirror){
- if(!['control','poster-origin','poster-first','poster-origin-first','external-logo','external-logo+poster-first','external-logo+poster-origin-first'].includes(variant))throw Error('Unknown diagnostic variant');
+ if(!['control','warm-poster','poster-origin','poster-first','poster-origin-first','external-logo','external-logo+poster-first','external-logo+poster-origin-first'].includes(variant))throw Error('Unknown diagnostic variant');
  if(variant==='control')return html;
+ if(variant==='warm-poster'){
+  const hint='<link rel="preconnect" href="'+mirror.origin+'" crossorigin>';
+  if(!html.includes(hint))throw Error('Expected anonymous module preconnect');
+  return html.replace(hint,'<link rel="preconnect" href="'+mirror.origin+'">'+hint);
+ }
  if(variant.includes('external-logo')){
   const logo=html.match(/<link\b[^>]*href=["'](\/media-performance\/assets\/logo-[a-f0-9]{16}\.png)["']/i)?.[1];
   if(!logo)throw Error('Exact optimized logo preload missing');

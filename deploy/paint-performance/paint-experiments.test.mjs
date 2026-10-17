@@ -31,3 +31,7 @@ test('rewritten fixture responses never combine transfer encoding and length, an
  }
  assert.equal(original['transfer-encoding'],'chunked');
 });
+test('poster connection comparison retains anonymous module hint and adds the image credential mode only',()=>{
+ const hint='<link rel="preconnect" href="'+origin+'" crossorigin>',input='<head>'+hint+'</head><body>Same pixels</body>';
+ assert.equal(transformPaintExperiment(input,'warm-poster',{origin}),'<head><link rel="preconnect" href="'+origin+'">'+hint+'</head><body>Same pixels</body>');
+});

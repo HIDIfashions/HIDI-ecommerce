@@ -25,27 +25,23 @@ await new Promise(done=>gateway.listen(3188,'0.0.0.0',done));
 const tls=work+'/fixture-tls';await mkdir(tls,{recursive:true,mode:0o700});
 execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',tls+'/key.pem','-out',tls+'/cert.pem','-days','1','-subj','/CN=localhost','-addext','subjectAltName=DNS:localhost,DNS:hidiindia.com,IP:127.0.0.1'],{stdio:'ignore'});
 const h2=await createH2Fixture({key:await readFile(tls+'/key.pem'),cert:await readFile(tls+'/cert.pem'),port:3190,targetPort:3188,productionIdentity:true});
-async function verifyPublicFixture(){
- const {chromium}=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),browser=await chromium.launch({headless:true,args:['--no-sandbox','--host-resolver-rules=MAP hidiindia.com 127.0.0.1:3190','--ignore-certificate-errors-spki-list='+h2.spki]});
- try{const page=await browser.newPage(),response=await page.goto(h2.url,{waitUntil:'domcontentloaded'});assert.equal(response.status(),200);const html=await response.text(),assets=JSON.parse(await readFile('evidence/paint-performance/head-assets-quality.json','utf8'));
-  assert(html.includes('data-hidi-first-hero="true"'));assert(html.includes('data-hidi-price-announcement="true"'));if(assets.seo)assert(html.includes('defer src="'+assets.seo.url+'"'));
-  const logo=html.match(/<img\b[^>]*src="data:image\/png;base64,([A-Za-z0-9+/=]+)"[^>]*alt="HIDI/);assert(logo);assert.equal(createHash('sha256').update(Buffer.from(logo[1],'base64')).digest('hex'),assets.logo.sha256);
-  const reads=await page.evaluate(async()=>Promise.all(['/api/store/products','/api/hidi/hero-config','/api/hidi/landing-media-config','/api/hidi/analytics-config','/api/hidi/offers'].map(async path=>{const r=await fetch(path,{cache:'no-store'}),data=await r.json();return {path,status:r.status,catalogueValid:path!=='/api/store/products'||Array.isArray(data)&&data.length>0};})));
-  assert(reads.every(row=>row.status===200&&row.catalogueValid),'Production-host fixture must serve real captured public data');await writeFile('evidence/paint-performance/public-fixture-health.json',JSON.stringify({passed:true,nativeHero:true,nativePriceBar:true,exactHeadAssets:true,reads}));
- }finally{await browser.close();}
-}
-
 const output='evidence/paint-performance';const results=[];
 execFileSync('docker',['run','-d','--name','hidi-paint-experiment','--network','host','-e','PORT=3186','-e','ALLOW_PUBLIC_DOMAIN=true','-e','API_URL=http://127.0.0.1:4107/v1','-e','INTERNAL_API_URL=http://127.0.0.1:4107/v1','-e','HIDI_PUBLIC_READ_ORIGIN=http://127.0.0.1:3188',process.env.CANDIDATE_WEB],{stdio:'inherit'});
 let restore;
 try{
  let ready=false;for(let i=0;i<90;i++){try{if((await fetch('http://127.0.0.1:3186/health')).ok){ready=true;break;}}catch{}await new Promise(done=>setTimeout(done,1000));}assert(ready);
  restore=await installFixtureDelay();
- for(const variant of ['control','poster-origin','poster-first','poster-origin-first','external-logo','external-logo+poster-first','external-logo+poster-origin-first']){
+ for(const variant of ['control','warm-poster']){
   experiment=variant;const dir=output+'/experiments/'+variant;await mkdir(dir,{recursive:true});
   const html=await(await fetch('http://127.0.0.1:3188/',{headers:{'accept-encoding':'identity'}})).text();await writeFile(dir+'/document.html',html);
   const child=spawn(process.execPath,['deploy/paint-performance/lighthouse.mjs','candidate'],{stdio:'inherit',env:{...process.env,HIDI_AUDIT_URL:h2.url,HIDI_AUDIT_SPKI:h2.spki}});const exitCode=await new Promise(done=>child.on('exit',done));
   const rows=JSON.parse(await readFile(output+'/lighthouse/candidate.json','utf8'));results.push({variant,exitCode,results:rows});
+  for(const device of ['mobile','desktop']){
+   const events=JSON.parse(await readFile(output+'/lighthouse/candidate-'+device+'-1-0.devtoolslog.json','utf8'));
+   const connections=events.filter(event=>event.method==='Network.responseReceived'&&event.params.response.url.startsWith(mirror.origin)).map(event=>{const r=event.params.response;return {url:r.url,connectionId:r.connectionId,connectionReused:r.connectionReused,timing:r.timing};});
+   await writeFile(dir+'/'+device+'-connections.json',JSON.stringify(connections,null,2));
+  }
+
   for(const file of ['candidate.json','candidate-mobile-1.report.json','candidate-desktop-1.report.json'])await copyFile(output+'/lighthouse/'+file,dir+'/'+file);
   console.log('EXPERIMENT_RESULT',JSON.stringify({variant,exitCode,results:rows.map(({device,score,lcp,cls,bytes})=>({device,score,lcp,cls,bytes}))}));
  }
