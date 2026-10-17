@@ -24,7 +24,7 @@ def app_state(name):
     assert name in {'hidi-api', 'hidi-web'}
     return cloud.azure('rest', '--method', 'get', '--url', 'https://management.azure.com/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod/providers/Microsoft.App/containerApps/' + name + '?api-version=2025-07-01')
 cloud.app = app_state
-def main():
+def main(migration_verified=False):
     private = Path(os.environ['RUNNER_TEMP']) / 'hidi-order-readiness-private'
     private.mkdir(exist_ok=True); private.chmod(0o700)
     states = {}
@@ -38,7 +38,8 @@ def main():
     packed = base64.b64encode(gzip.compress((ROOT / 'order-notifications/readiness.mjs').read_bytes(), mtime=0)).decode()
     lines = ['node --input-type=commonjs - ' + shlex.quote(database) + " <<'HIDI_ORDER_READINESS_NODE'", 'const packed=[']
     lines += [json.dumps(packed[i:i+1800]) + ',' for i in range(0, len(packed), 1800)]
-    lines += ["].join('');", 'const moduleBytes=require("node:zlib").gunzipSync(Buffer.from(packed,"base64"));', 'import("data:text/javascript;base64,"+moduleBytes.toString("base64")).then(m=>m.run(process.argv[2])).catch(e=>{console.log("HIDI_ORDER_READINESS_FAILED::"+JSON.stringify({name:String(e.name).slice(0,60),code:String(e.code).slice(0,60),message:String(e.message).replace(/eyJ[A-Za-z0-9_.-]+/g,"[redacted]").slice(0,250)}));process.exitCode=1;});', 'HIDI_ORDER_READINESS_NODE', 'exit']
+    invocation = 'm.run(process.argv[2],'+json.dumps(migration_verified)+')'
+    lines += ["].join('');", 'const moduleBytes=require("node:zlib").gunzipSync(Buffer.from(packed,"base64"));', 'import("data:text/javascript;base64,"+moduleBytes.toString("base64")).then(m=>'+invocation+').catch(e=>{console.log("HIDI_ORDER_READINESS_FAILED::"+JSON.stringify({name:String(e.name).slice(0,60),code:String(e.code).slice(0,60),message:String(e.message).replace(/eyJ[A-Za-z0-9_.-]+/g,"[redacted]").slice(0,250)}));process.exitCode=1;});', 'HIDI_ORDER_READINESS_NODE', 'exit']
     assert all(len(line.encode()) < 2000 for line in lines)
     command = '\n'.join(lines) + '\n'
     master, slave = pty.openpty()
