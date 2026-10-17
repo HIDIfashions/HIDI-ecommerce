@@ -1,3 +1,4 @@
+# Match seven reviewed auxiliary scripts exactly; compare mobile-only identical inline poster bytes.
 # Compare reviewed auxiliary scheduling and desktop poster-first handoff, without deployment.
 # Serialize fresh-baseline comparisons with other guarded production releases.
 # Compare mobile poster connection reuse with the same freshly quality-validated AV1 recipe.

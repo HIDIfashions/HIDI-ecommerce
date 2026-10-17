@@ -8,7 +8,16 @@ export function encodeExperimentResponse(original,html,acceptEncoding=''){
  else if(acceptEncoding.includes('gzip')){body=gzipSync(body,{level:9});headers['content-encoding']='gzip';}
  headers['content-length']=body.length;return {headers,body};
 }
-export function transformPaintExperiment(html,variant,mirror){
+export function transformPaintExperiment(html,variant,mirror,options={}){
+ if(['inline-mobile','inline-mobile-aux'].includes(variant)){
+  html=transformPaintExperiment(html,variant==='inline-mobile-aux'?'aux-after-poster':'mobile-poster-origin',mirror);
+  if(!options.isMobile)return html;
+  const row=options.inlinePoster;if(!row||!Object.hasOwn(mirror.files,row.path)||!row.url.startsWith('data:image/avif;base64,'))throw Error('Verified inline poster required');
+  const anchor='const url=matchMedia("(max-width: 700px)").matches?path:window.__HidiAssetUrl(path);';
+  if(!html.includes(anchor))throw Error('Origin poster anchor changed');
+  html=html.replaceAll('href="'+row.path+'"','href="'+row.url+'"');
+  return html.replace(anchor,'const inline='+JSON.stringify(row)+';const url=path===inline.path?inline.url:matchMedia("(max-width: 700px)").matches?path:window.__HidiAssetUrl(path);');
+ }
  if(['desktop-poster-first','aux-after-poster'].includes(variant)){
   html=transformPaintExperiment(html,'mobile-poster-origin',mirror);
   let count=0;html=html.replace(/<script data-hidi-desktop-preload="true">[\s\S]*?<\/script>/g,()=>{count++;return '';});
@@ -16,7 +25,8 @@ export function transformPaintExperiment(html,variant,mirror){
   if(count!==1||!html.includes(early))throw Error('Desktop scheduling anchors changed');
   html=html.replace(early,"if(!document.querySelector('video[data-hidi-first-hero]'))");
   if(variant==='aux-after-poster'){
-   let scripts=0;html=html.replace(/<script\b[^>]*\bdefer\b[^>]*\bsrc="[^"]+"[^>]*><\/script>/g,tag=>{scripts++;return tag.replace(' src=',' data-hidi-aux-src=').replace('<script ','<script type="application/x-hidi-queued-aux" ');});
+   const reviewed=new Set(['/app-coming-soon-c471a1b693c0383d.js','/hidi-launch-countdown-20261011.js','/hidi-analytics.js','/performance/rum.js','/offers-assets/admin-link.js','/offers-assets/storefront.js','/privacy-policy-assets/links.js']);
+   let scripts=0;html=html.replace(/<script\b[^>]*\bdefer\b[^>]*\bsrc="[^"]+"[^>]*><\/script>/g,tag=>{const src=tag.match(/\bsrc="([^"]+)"/)[1];if(!reviewed.has(new URL(src,'https://hidiindia.com').pathname))return tag;scripts++;return tag.replace(' src=',' data-hidi-aux-src=').replace('<script ','<script type="application/x-hidi-queued-aux" ');});
    if(scripts!==7)throw Error('Expected exactly seven reviewed classic scripts, got '+scripts);
    const boot=`<script data-hidi-aux-start="true">(()=>{let started=false;const start=()=>{if(started)return;started=true;for(const original of document.querySelectorAll('script[data-hidi-aux-src]')){const script=document.createElement('script');for(const attribute of original.attributes)if(!['type','data-hidi-aux-src'].includes(attribute.name))script.setAttribute(attribute.name,attribute.value);script.async=false;script.src=original.dataset.hidiAuxSrc;document.head.append(script);}};Promise.resolve(window.__HidiAvifSupport).then(()=>window.__HidiNativePosterReady).then(start,start);setTimeout(start,1200);})();</script>`;
    html=html.replace('</body>',boot+'</body>');
