@@ -35,3 +35,8 @@ test('poster connection comparison retains anonymous module hint and adds the im
  const hint='<link rel="preconnect" href="'+origin+'" crossorigin>',input='<head>'+hint+'</head><body>Same pixels</body>';
  assert.equal(transformPaintExperiment(input,'warm-poster',{origin}),'<head><link rel="preconnect" href="'+origin+'">'+hint+'</head><body>Same pixels</body>');
 });
+test('mobile origin comparison changes only matching mobile hints and retains desktop asset delivery',()=>{
+ const mobile='<link rel="preload" type="image/avif" media="(max-width: 432px) and (min-height: 760px)" href="'+origin+'/media-performance/assets/poster-small.avif">',desktop='<link rel="preload" type="image/avif" media="(min-width: 701px)" href="'+origin+'/media-performance/assets/poster-desktop.avif">';
+ const output=transformPaintExperiment('<head>'+mobile+desktop+'<script>const url=window.__HidiAssetUrl(path);</script></head>','mobile-poster-origin',{origin});
+ assert(output.includes('href="/media-performance/assets/poster-small.avif"'));assert(output.includes(desktop));assert(output.includes('matchMedia("(max-width: 700px)").matches?path:window.__HidiAssetUrl(path)'));
+});

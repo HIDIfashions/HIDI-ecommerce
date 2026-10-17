@@ -1,3 +1,4 @@
+# Compare mobile poster connection reuse with the same freshly quality-validated AV1 recipe.
 # Compare the poster/image credential-mode preconnect with the accepted control.
 # Rewritten diagnostic responses remove hop-by-hop framing and retain real compressed bytes.
 # Compare exact external logo bytes as well as poster connection and application request ordering.

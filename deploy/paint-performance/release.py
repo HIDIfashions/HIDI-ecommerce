@@ -36,15 +36,10 @@ def compose():
     folder=PRIVATE/'web';folder.mkdir();base=folder/'base-app';overlay=folder/'overlay';candidate=folder/'candidate-app'
     image=photo.states()['hidi-web']['image'];images.extract(image,base)
     icons=patch.build_icons(base,overlay);save('icon-quality.json',icons)
-    # Reuse only independently revalidated encoded video bytes. The runtime and
-    # every original still come exclusively from the current accepted image.
-    media_cache_image=images.REGISTRY+'/hidi-web@sha256:68f0998ba3eb335bfa868862622b9177073d428b25d29d6d4da650398badd480'
-    media_cache=folder/'media-cache';media_env={**os.environ}
-    try:
-        images.extract(media_cache_image,media_cache);media_env['HIDI_MEDIA_REUSE_DIR']=str(media_cache)
-        save('media-cache.json',{'passed':True,'available':True,'encodedVideosOnly':True,'image':media_cache_image,'currentRuntimeImage':image,'allQualityChecksRetained':True})
-    except subprocess.CalledProcessError:
-        save('media-cache.json',{'passed':True,'available':False,'encodedVideosOnly':True,'currentRuntimeImage':image,'allQualityChecksRetained':True})
+    # This recipe is encoded from current originals. Older cached AV1 files used
+    # a different speed/quality policy and must not silently substitute for it.
+    media_env={**os.environ}
+    save('media-cache.json',{'passed':True,'available':False,'encodedVideosOnly':True,'currentRuntimeImage':image,'reason':'New AV1 recipe requires fresh encoding and full quality validation'})
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True,env=media_env)
     poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);save('head-assets-quality.json',poster['headAssets']);(overlay/'poster-build.json').unlink()
     # Native-screen CSS paints immediately; exact complete sheets load independently at low priority.

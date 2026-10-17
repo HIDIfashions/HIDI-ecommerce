@@ -9,12 +9,17 @@ export function encodeExperimentResponse(original,html,acceptEncoding=''){
  headers['content-length']=body.length;return {headers,body};
 }
 export function transformPaintExperiment(html,variant,mirror){
- if(!['control','warm-poster','poster-origin','poster-first','poster-origin-first','external-logo','external-logo+poster-first','external-logo+poster-origin-first'].includes(variant))throw Error('Unknown diagnostic variant');
+ if(!['control','warm-poster','mobile-poster-origin','poster-origin','poster-first','poster-origin-first','external-logo','external-logo+poster-first','external-logo+poster-origin-first'].includes(variant))throw Error('Unknown diagnostic variant');
  if(variant==='control')return html;
  if(variant==='warm-poster'){
   const hint='<link rel="preconnect" href="'+mirror.origin+'" crossorigin>';
   if(!html.includes(hint))throw Error('Expected anonymous module preconnect');
   return html.replace(hint,'<link rel="preconnect" href="'+mirror.origin+'">'+hint);
+ }
+ if(variant==='mobile-poster-origin'){
+  html=html.replace(/<link\b[^>]*type="image\/avif"[^>]*>/gi,tag=>tag.includes('media="(min-width: 701px)"')?tag:tag.replace(mirror.origin+'/media-performance/assets/poster-','/media-performance/assets/poster-'));
+  const anchor='const url=window.__HidiAssetUrl(path);';if(!html.includes(anchor))throw Error('Poster loader anchor changed');
+  return html.replace(anchor,'const url=matchMedia("(max-width: 700px)").matches?path:window.__HidiAssetUrl(path);');
  }
  if(variant.includes('external-logo')){
   const logo=html.match(/<link\b[^>]*href=["'](\/media-performance\/assets\/logo-[a-f0-9]{16}\.png)["']/i)?.[1];
