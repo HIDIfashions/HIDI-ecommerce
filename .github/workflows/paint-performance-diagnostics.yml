@@ -37,3 +37,12 @@ jobs:
               rows=a['network-requests']['details']['items']
               print('NETWORK',json.dumps([{k:r.get(k) for k in ['url','resourceType','priority','startTime','endTime','transferSize','resourceSize','statusCode']} for r in rows]))
           PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compact-performance-diagnostics
+          path: |
+            reports/lighthouse/*mobile-1.report.json
+            reports/lighthouse/*desktop-1.report.json
+            reports/lighthouse/candidate.json
+            reports/lighthouse/before.json
+          retention-days: 7
