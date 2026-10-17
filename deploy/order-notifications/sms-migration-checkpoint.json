@@ -1,0 +1,9 @@
+{
+  "database": "hidi-sql-validation",
+  "execution": "job-hidi-validation-crrus6h",
+  "completedUtc": "2026-10-17T07:31:25Z",
+  "smsConstraintVerified": true,
+  "runtimeDmlOnly": true,
+  "smsMigrationChecksum": "4e38f2680f1f70a743e8641521e6d5880b39bac6dc563b804fa758c458843988",
+  "originalAdministratorRestored": true
+}

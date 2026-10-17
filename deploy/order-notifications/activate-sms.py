@@ -44,7 +44,10 @@ def wait_ready(suffix):
     raise AssertionError('SMS revision did not become ready')
 
 def report():
-    readiness.main()
+    checkpoint = json.loads((HERE/'sms-migration-checkpoint.json').read_text())
+    assert checkpoint['database']=='hidi-sql-validation' and checkpoint['execution']=='job-hidi-validation-crrus6h' and checkpoint['smsConstraintVerified'] is True
+    assert checkpoint['smsMigrationChecksum']=='4e38f2680f1f70a743e8641521e6d5880b39bac6dc563b804fa758c458843988'
+    readiness.main(migration_verified=True)
     return json.loads(Path('evidence/order-notifications/readiness.json').read_text())
 
 def main():

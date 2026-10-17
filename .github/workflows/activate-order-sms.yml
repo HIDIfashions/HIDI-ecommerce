@@ -1,5 +1,5 @@
 name: Activate verified HIDI order SMS
-# Retry with bounded diagnostics if the private console cannot complete readiness.
+# Runtime keeps its existing restricted SQL permissions; migration proof is retained.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -17,7 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify activation guard tests
-        run: python3 tests/sms-activation.test.py
+        run: |
+          python3 tests/sms-activation.test.py
+          node tests/sms-readiness.test.mjs
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af

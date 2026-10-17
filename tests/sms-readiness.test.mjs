@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {smsConstraintReady} from '../deploy/order-notifications/readiness.mjs';
+const hidden={definition:null,is_disabled:false,is_not_trusted:false};
+assert.equal(smsConstraintReady(hidden,false),false);
+assert.equal(smsConstraintReady(hidden,true),true);
+assert.equal(smsConstraintReady({...hidden,is_disabled:true},true),false);
+assert.equal(smsConstraintReady({...hidden,is_not_trusted:true},true),false);
+assert.equal(smsConstraintReady(null,true),false);
+assert.equal(smsConstraintReady({...hidden,definition:"channel IN ('EMAIL','WHATSAPP')"},true),false);
+assert.equal(smsConstraintReady({...hidden,definition:"channel IN ('EMAIL','WHATSAPP','SMS')"},false),true);
+console.log('SMS readiness respects hidden metadata and rejects absent, disabled, untrusted or incompatible constraints');
