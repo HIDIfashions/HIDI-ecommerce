@@ -1,23 +1,28 @@
 (() => {
- const mirror=__HIDI_ASSET_MIRROR__,failed=new Set(),watched=new Set();
+ const mirror=__HIDI_ASSET_MIRROR__,failed=new Set(),watched=new Set(),chosen=new Map();
  const supported=path=>Object.hasOwn(mirror.files,path);
  window.__HidiAssetUrl=path=>supported(path)&&!failed.has(path)?mirror.origin+path:path;
  window.__HidiMirrorPoster=path=>{
-  const url=window.__HidiAssetUrl(path);
-  if(url===path||watched.has(path))return url;
-  watched.add(path);
-  const image=new Image();let timer,done=false;
-  const fallback=()=>{
-   if(done)return;done=true;clearTimeout(timer);failed.add(path);
-   for(const video of document.querySelectorAll('video'))if(video.poster===url)video.poster=path;
+  const primary=supported(path)&&(mirror.inlinePosters?.[path]||mirror.originPosters?.includes(path))&&matchMedia('(max-width: 700px)').matches?(mirror.inlinePosters?.[path]||(mirror.originPosters?.includes(path)?path:window.__HidiAssetUrl(path))):window.__HidiAssetUrl(path);
+  const url=chosen.get(path)||primary;
+  if(!supported(path)||watched.has(path))return url;
+  watched.add(path);chosen.set(path,url);
+  const watch=(current,recover)=>{
+   const image=new Image();let timer,done=false;
+   const ready=()=>{if(done)return;done=true;clearTimeout(timer);};
+   const fallback=()=>{
+    if(done)return;done=true;clearTimeout(timer);
+    if(!recover)return;
+    const next=current===path?mirror.origin+path:path;
+    if(current!==path)failed.add(path);
+    chosen.set(path,next);
+    for(const video of document.querySelectorAll('video'))if(video.poster===current||video.getAttribute?.('poster')===current)video.poster=next;
+    watch(next,false);
+   };
+   image.onload=ready;image.onerror=fallback;
+   timer=setTimeout(()=>image.complete&&image.naturalWidth>0?ready():fallback(),1500);image.src=current;
   };
-  const ready=()=>{if(done)return;done=true;clearTimeout(timer);};
-  image.onload=ready;
-  image.onerror=fallback;
-  // Retain the detached image until settlement, including cached completions
-  // where a browser may have already queued its load event.
-  timer=setTimeout(()=>image.complete&&image.naturalWidth>0?ready():fallback(),1500);image.src=url;
-  return url;
+  watch(url,true);return url;
  };
  window.__HidiMirrorVideoFallback=(video,path)=>{
   if(!supported(path)||video.currentSrc!==mirror.origin+path&&video.src!==mirror.origin+path)return false;

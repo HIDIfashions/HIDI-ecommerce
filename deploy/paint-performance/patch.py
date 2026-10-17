@@ -119,6 +119,16 @@ def patch_web(base,overlay,poster,icons=None):
             ('(max-width: 700px) and (not ((max-width: 432px) and (min-height: 760px)))',mobile['avifPoster'])]:
             posters.append(original.replace('media="(max-width: 700px)"','media="'+media+'"').replace(mobile['avifPoster'],url))
 
+    desktop=next(iter(manifest['videos'].values()))['desktop']
+    if desktop.get('avifPosterSmall'):
+        original=next(hint for hint in posters if desktop['avifPoster'] in hint)
+        assert 'media="(min-width: 701px)"' in original
+        posters.remove(original)
+        for media,url in [
+            ('(min-width: 701px) and (max-aspect-ratio: 40/27)',desktop['avifPosterSmall']),
+            ('(min-width: 701px) and (not (max-aspect-ratio: 40/27))',desktop['avifPoster'])]:
+            posters.append(original.replace('media="(min-width: 701px)"','media="'+media+'"').replace(desktop['avifPoster'],url))
+
     for index,tag in enumerate(icons['originalTags']):html=once(html,tag,icons['markup'] if index==0 else '')
     viewport='<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
     html=once(html,viewport,viewport+'\n'+'\n'.join(posters)+'\n<script data-hidi-early-hero="true">'+(HERE/'early-hero.js').read_text().replace('__AVIF_PROBE__',poster['probe'])+'</script>')
@@ -126,7 +136,7 @@ def patch_web(base,overlay,poster,icons=None):
     runtime=once(runtime,'(?:webp|mp4)$','(?:webp|avif|png|mp4)$')
     home_hook,has_discovery=reviewed_home_hook(runtime)
     runtime=once(runtime,home_hook,'''    if (pathname === "/") {
-      html = optimizeHomeHead(html);
+      html = optimizeHomeHead(html, request);
       response.setHeader("Vary", "Accept, User-Agent, Sec-CH-UA-Mobile, Cookie, Save-Data");
       if (request.method === "GET") {
         const headers = applySecurityHeaders({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" }, request, pathname);

@@ -1,6 +1,19 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHash} from 'node:crypto';import {createHomeHead} from './head.mjs';
 import {runInNewContext} from 'node:vm';
 
+test('only verified mobile poster preloads use origin while desktop keeps its immutable mirror',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-origin-poster-')),root=join(app,'dist'),bytes=Buffer.from('exact encoded poster'),sha=createHash('sha256').update(bytes).digest('hex'),path='/media-performance/assets/poster-'+sha.slice(0,16)+'.avif',origin='https://hidi-test.azurestaticapps.net';
+ try{
+  mkdirSync(join(root,'media-performance/assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));writeFileSync(join(root,path),bytes);
+  writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin,files:{[path]:sha}}));
+  writeFileSync(join(app,'paint-performance/initial-hero.json'),JSON.stringify({'/selected.mp4':{mobile:{avifPoster:path,avifPosterSmall:path,posterCrop:{width:512,height:720,sourceWidth:1280,sourceHeight:720}},desktop:{avifPoster:path}}}));
+  const mobile='<link rel="preload" type="image/avif" media="(max-width: 700px)" href="'+path+'">',desktop='<link rel="preload" type="image/avif" media="(min-width: 701px)" href="'+path+'">',html='<head>'+mobile+desktop+'</head><body></body>',result=createHomeHead(root,app)(html);
+  assert(result.includes(mobile));assert(result.includes(desktop.replace('href="'+path,'href="'+origin+path)));assert(result.includes('"originPosters":["'+path+'"]'));
+  const mobileHtml=createHomeHead(root,app)(html,{headers:{'user-agent':'Android Mobile'}}),data='data:image/avif;base64,'+bytes.toString('base64');assert(mobileHtml.includes('href="'+data+'"'));assert(mobileHtml.includes('"inlinePosters":{"'+path+'":"'+data+'"}'));assert(!result.includes(data));
+  writeFileSync(join(root,path),'corrupt');assert.equal(createHomeHead(root,app)(html),html);
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
 test('only byte-verified boot-once entries use the asset mirror, with original-origin recovery',()=>{
  const app=mkdtempSync(join(tmpdir(),'hidi-mirror-head-')),root=join(app,'dist'),code='if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}';
  try{mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));const sha=createHash('sha256').update(code).digest('hex'),url='/assets/index-'+sha.slice(0,16)+'.js',origin='https://hidi-test.azurestaticapps.net';writeFileSync(join(root,url),code);writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin,files:{[url]:sha}}));

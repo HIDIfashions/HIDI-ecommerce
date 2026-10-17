@@ -1,3 +1,4 @@
+import {inlinePosterPath} from './poster-reference.mjs';
 import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
 import {readMirrorProof,isMirrorAsset} from './asset-mirror.mjs';
 export async function verifyInitialCss(pw,base,out,mode){
@@ -24,7 +25,7 @@ export async function verifyInitialCss(pw,base,out,mode){
     await page.waitForFunction(()=>document.querySelector('video[data-hidi-first-hero]')&&(Boolean(window.__HidiFullCssReady)||document.querySelector('style[data-hidi-inline-css*="index-"]')));
     await page.evaluate(()=>window.__HidiAvifSupport);
     await page.waitForFunction(()=>Boolean(document.querySelector('video[data-hidi-first-hero]')?.poster));
-    if(engine==='chromium')assert.match(new URL(await page.locator('video[data-hidi-first-hero]').getAttribute('poster'),base).pathname,/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/,'Supported mobile and desktop must use the preloaded immutable AVIF');
+    if(engine==='chromium'){const poster=await page.locator('video[data-hidi-first-hero]').getAttribute('poster');if(poster.startsWith('data:'))assert(inlinePosterPath(poster,mirror),'Inline poster must match a verified immutable AVIF hash');else assert.match(new URL(poster,base).pathname,/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/,'Supported browsers must use the verified AVIF');}
     await page.evaluate(async()=>{const image=new Image();image.src=document.querySelector('video[data-hidi-first-hero]').poster;await image.decode();if(image.naturalWidth===512){const video=document.querySelector('video[data-hidi-first-hero]'),rect=video.getBoundingClientRect();if(image.naturalHeight!==720||rect.width/rect.height>512/720||getComputedStyle(video).objectPosition!=='50% 50%')throw Error('Portrait poster must retain the original centred visible field');}else if(image.naturalWidth<1000)throw Error('Wide poster must retain its original resolution');});
     await page.waitForTimeout(1000);
     await page.evaluate(()=>document.querySelector('#main').focus({preventScroll:true}));

@@ -3,6 +3,7 @@ import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
 import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {posterQualityStart} from './poster-quality-start.mjs';
 const base=resolve(process.argv[2]),overlay=resolve(process.argv[3]);
 const require=createRequire(join(base,'apps/web/server.js'));
 const sharp=process.env.HIDI_LOCAL_SHARP ? require(process.env.HIDI_LOCAL_SHARP) : require('next/dist/server/image-optimizer.js').getSharp(1,false);
@@ -12,10 +13,11 @@ const js=await readFile(join(base,'dist',ref),'utf8');
 const manifest=JSON.parse(js.match(/^const HidiMediaManifest=(.*);$/m)[1]);
 const output=join(overlay,'dist/media-performance/assets');await mkdir(output,{recursive:true});
 const report=[];
-async function encodePoster(input,kind,original,referenceWidth=null,sourceBytes=input.length){
+async function encodePoster(input,kind,original,referenceWidth=null,sourceBytes=input.length,startAt=60){
  const reference=join(overlay,kind+'-reference.png');await sharp(input).png().toFile(reference);
  let selected;
- for(const quality of Array.from({length:31},(_,index)=>60+index)){
+ const startQuality=Math.max(startAt,posterQualityStart(input));
+ for(const quality of Array.from({length:91-startQuality},(_,index)=>startQuality+index)){
   const encoded=await sharp(input).avif({quality,effort:6,chromaSubsampling:'4:2:0'}).toBuffer();
   const decoded=join(overlay,kind+'-decoded.png');await sharp(encoded).png().toFile(decoded);
   const result=spawnSync(process.env.HIDI_LOCAL_FFMPEG || 'ffmpeg',['-hide_banner','-nostdin','-filter_threads','1','-i',reference,'-i',decoded,'-lavfi','ssim','-an','-f','null','-'],{encoding:'utf8'});
@@ -42,6 +44,16 @@ for(const item of Object.values(manifest.videos))for(const kind of ['mobile','de
   variant.avifPosterSmall=await encodePoster(small,'mobile-crop',variant.poster,512,input.length);
   variant.posterCrop=crop;report.at(-1).crop=crop;report.at(-1).sourcePixelsRetained=true;
  }
+ if(kind==='desktop'){
+  const info=await sharp(input).metadata();if(info.width!==1920||info.height!==1080)throw Error('Desktop crop requires reviewed landscape dimensions');
+  const crop={left:160,top:0,width:1600,height:1080,sourceWidth:1920,sourceHeight:1080};
+  const small=await sharp(input).extract({left:crop.left,top:0,width:crop.width,height:crop.height}).png().toBuffer();
+  const pixels=await sharp(input).extract({left:crop.left,top:0,width:crop.width,height:crop.height}).ensureAlpha().raw().toBuffer();
+  if(!pixels.equals(await sharp(small).ensureAlpha().raw().toBuffer()))throw Error('Desktop crop changed source pixels');
+  variant.avifPosterSmall=await encodePoster(small,'desktop-crop',variant.poster,1600,input.length,74);
+  variant.posterCrop=crop;report.at(-1).crop=crop;report.at(-1).sourcePixelsRetained=true;
+ }
+
 }
 const {encodeHeroVideos}=await import('./video.mjs');
 const videoReport=await encodeHeroVideos(base,overlay,manifest);

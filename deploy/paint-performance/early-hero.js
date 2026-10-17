@@ -57,7 +57,7 @@
   window.__HidiAvifPoster = (variant,position='50% 50%') => {
     const crop=variant.posterCrop,video=document.querySelector('video.hero-live-media'),rect=video?.getBoundingClientRect();
     const centred=String(position||'50% 50%').trim().replace(/\s+/g,' ')==='50% 50%';
-    return variant.avifPosterSmall&&crop&&centred&&matchMedia('(max-width: 432px) and (min-height: 760px)').matches&&rect?.height>0&&rect.width/rect.height<=crop.width/crop.height ? variant.avifPosterSmall : variant.avifPoster;
+    return variant.avifPosterSmall&&crop&&centred&&matchMedia(crop?.sourceWidth===1920?'(min-width: 701px) and (max-aspect-ratio: 40/27)':'(max-width: 432px) and (min-height: 760px)').matches&&rect?.height>0&&rect.width/rect.height<=crop.width/crop.height ? variant.avifPosterSmall : variant.avifPoster;
   };
   window.__HidiAvifSupport = new Promise(resolve => {
     try {

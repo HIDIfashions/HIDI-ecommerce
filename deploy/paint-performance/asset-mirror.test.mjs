@@ -15,6 +15,20 @@ test('a completed cached poster does not fall back while its load event is queue
  const timers=[],window={},video={poster:origin+path},context={window,Set,Object,Image:class{complete=true;naturalWidth=1280;},setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout:()=>{},document:{querySelectorAll:()=>[video]}};
  runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify(proof)),context);assert.equal(window.__HidiMirrorPoster(path),origin+path);timers.at(-1)();assert.equal(video.poster,origin+path);assert.equal(window.__HidiAssetUrl(path),origin+path);
 });
+test('verified mobile origin posters recover to the identical mirror once, including React poster reads',()=>{
+ const images=[],video={poster:'https://hidiindia.com'+path,getAttribute:()=>path},window={},timers=[];
+ const context={window,Set,Map,Object,matchMedia:()=>({matches:true}),Image:class{constructor(){images.push(this);}},setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout:()=>{},document:{querySelectorAll:()=>[video]}};
+ runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify({...proof,originPosters:[path]})),context);
+ assert.equal(window.__HidiMirrorPoster(path),path);assert.equal(images.length,1);images[0].onerror();assert.equal(video.poster,origin+path);assert.equal(window.__HidiMirrorPoster(path),origin+path);assert.equal(images.length,2);images[1].onerror();for(const timer of timers.slice(1))timer();assert.equal(images.length,2);assert.equal(window.__HidiMirrorPoster(path),origin+path);
+});
+test('desktop keeps mirrored poster delivery even when the same path is enabled for mobile origin',()=>{
+ const images=[],window={},context={window,Set,Map,Object,matchMedia:()=>({matches:false}),Image:class{constructor(){images.push(this);}},setTimeout:()=>1,clearTimeout:()=>{},document:{querySelectorAll:()=>[]}};
+ runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify({...proof,originPosters:[path]})),context);assert.equal(window.__HidiMirrorPoster(path),origin+path);assert.equal(images[0].src,origin+path);
+});
+test('mobile inline bytes remain identical across hero handoff and recover to origin on decode error',()=>{
+ const value='data:image/avif;base64,YWJj',images=[],window={},video={poster:value},context={window,Set,Map,Object,matchMedia:()=>({matches:true}),Image:class{constructor(){images.push(this);}},setTimeout:()=>1,clearTimeout:()=>{},document:{querySelectorAll:()=>[video]}};
+ runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify({...proof,inlinePosters:{[path]:value}})),context);assert.equal(window.__HidiMirrorPoster(path),value);assert.equal(window.__HidiMirrorPoster(path),value);assert.equal(images.length,1);images[0].onerror();assert.equal(video.poster,path);assert.equal(window.__HidiMirrorPoster(path),path);assert.equal(images.length,2);
+});
 
 test('application recovery waits for streamed markup and configuration to finish parsing',()=>{
  const window={},scripts=[],listeners={},document={readyState:'loading',addEventListener:(name,fn)=>listeners[name]=fn,removeEventListener:name=>delete listeners[name],querySelector:()=>({dataset:{hidiMirrorApp:main},integrity:'sha256-test'}),createElement:()=>({}),head:{append:script=>scripts.push(script)}};

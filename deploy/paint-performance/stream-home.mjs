@@ -14,7 +14,7 @@ export async function streamInitialHome(request,response,headers,html,render=ren
  const started=performance.now();let deadline;
  const early=await Promise.race([rendered.then(body=>({body})),new Promise(resolve=>{deadline=setTimeout(()=>resolve(null),80);})]);clearTimeout(deadline);
  response.removeHeader('Content-Length');response.removeHeader('ETag');
- if(early&&Buffer.byteLength(head+early.body)<=65536){
+ if(early&&Buffer.byteLength(head+early.body)<=131072){
   clean['server-timing']=[clean['server-timing'],'home-render;dur='+(performance.now()-started).toFixed(1)+';desc="coalesced"'].filter(Boolean).join(', ');
   return sendCachedHome(request,response,200,clean,Buffer.from(head+early.body));
  }
