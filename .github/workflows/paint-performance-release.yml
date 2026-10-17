@@ -1,4 +1,4 @@
-# Fresh CRF38 AV1 must pass the unchanged SSIM/audio/frame gates before any live deployment.
+# Desktop SSIM-tuned AV1 must pass unchanged SSIM/audio/frame gates; mobile retains verified CRF38 bytes.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
 # Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.
@@ -33,7 +33,7 @@ env:
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 90
     concurrency:
       group: hidi-home-paint-prepare
       queue: max
