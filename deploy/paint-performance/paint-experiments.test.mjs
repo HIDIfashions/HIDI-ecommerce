@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {transformPaintExperiment} from './paint-experiments.mjs';
+const origin='https://hidi-test.azurestaticapps.net',html='<head><link rel="preload" href="'+origin+'/media-performance/assets/poster-123.avif"><link rel="modulepreload" href="'+origin+'/assets/index-123.js"><script>const url=window.__HidiAssetUrl(path);</script><script type="module" crossorigin="anonymous" integrity="sha256-original" src="'+origin+'/assets/index-123.js" data-hidi-mirror-app="/assets/index-123.js" onerror="window.__HidiAppFallback()"></script></head><body>Original contents</body>';
+test('diagnostic variants isolate connection reuse and application fetch order without altering content or integrity',()=>{
+ assert.equal(transformPaintExperiment(html,'control',{origin}),html);
+ const local=transformPaintExperiment(html,'poster-origin',{origin});assert(local.includes('href="/media-performance/assets/poster-123.avif"'));assert(local.includes('src="'+origin+'/assets/index-123.js"'));assert(local.includes('path.endsWith(".avif")?path:'));
+ const first=transformPaintExperiment(html,'poster-first',{origin});assert(!first.includes('rel="modulepreload"'));assert(first.includes('data-hidi-queued-src="'+origin+'/assets/index-123.js"'));assert(first.includes('integrity="sha256-original"'));assert(first.includes('onerror="window.__HidiAppFallback()"'));assert(first.includes('window.__HidiNativePosterReady'));assert(first.includes('setTimeout(start,1200)'));assert(first.includes('Original contents'));
+ assert.throws(()=>transformPaintExperiment(html,'other',{origin}));assert.throws(()=>transformPaintExperiment('<body></body>','poster-first',{origin}));
+});
