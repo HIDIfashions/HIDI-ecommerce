@@ -1,0 +1,17 @@
+{
+  "Name": "HIDI Performance Asset Publisher",
+  "IsCustom": true,
+  "Description": "Create and update the HIDI static asset service and read its deployment token. No existing Container App, API, database, DNS or IAM permissions.",
+  "Actions": [
+    "Microsoft.Web/staticSites/read",
+    "Microsoft.Web/staticSites/write",
+    "Microsoft.Web/staticSites/listSecrets/action",
+    "Microsoft.Resources/subscriptions/resourceGroups/read"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod"
+  ]
+}
