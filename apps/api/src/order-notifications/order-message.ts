@@ -2,6 +2,7 @@ export type NotificationChannel = "EMAIL" | "WHATSAPP";
 export type NotificationOrder = {
   id: string; orderNumber: string; status: string; currency: string;
   customerEmail: string | null; customerPhone: string; shippingAddress: unknown; whatsappOptIn?: boolean;
+  paymentKind: "PAID" | "COD" | null;
   subtotalPaise: number; discountPaise: number; shippingPaise: number; taxPaise: number;
   totalPaise: number; walletAppliedPaise: number;
   items: Array<{ id: string; productName: string; size: string; color: string; quantity: number; totalPaise: number }>;
@@ -14,7 +15,7 @@ export function orderAddress(order: NotificationOrder): Record<string, unknown> 
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   } catch { return {}; }
 }
-export function recipient(order: NotificationOrder, channel: NotificationChannel): string | null {
+export function recipient(order: Pick<NotificationOrder, "customerEmail" | "customerPhone">, channel: NotificationChannel): string | null {
   if (channel === "EMAIL") {
     const value = (order.customerEmail ?? "").trim();
     return value.length <= 254 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value) ? value : null;
@@ -28,6 +29,7 @@ export function escapeHtml(value: string): string {
 }
 export function money(paise: number): string { return `INR ${(paise / 100).toFixed(2)}`; }
 export function orderMessage(order: NotificationOrder) {
+  const cod = order.paymentKind === "COD";
   const a = orderAddress(order);
   const name = clean(a.firstName) || "there";
   const items = [...order.items].sort((a, b) => a.id.localeCompare(b.id)).map(item =>
@@ -40,11 +42,11 @@ export function orderMessage(order: NotificationOrder) {
   const totals = [
     `Subtotal: ${money(order.subtotalPaise)}`, `Discount: ${money(order.discountPaise)}`,
     `Shipping: ${money(order.shippingPaise)}`, `Tax: ${money(order.taxPaise)}`,
-    `Total paid: ${money(order.totalPaise)}`,
-    ...(order.walletAppliedPaise > 0 ? [`HIDI wallet: ${money(order.walletAppliedPaise)}`, `Payment gateway: ${money(order.totalPaise - order.walletAppliedPaise)}`] : []),
+    `${cod ? "Amount payable on delivery" : "Total paid"}: ${money(order.totalPaise)}`,
+    ...(!cod && order.walletAppliedPaise > 0 ? [`HIDI wallet: ${money(order.walletAppliedPaise)}`, `Payment gateway: ${money(order.totalPaise - order.walletAppliedPaise)}`] : []),
   ];
   const lines = [`Hi ${name},`, "", `Your HIDI order ${clean(order.orderNumber)} is confirmed.`,
-    "We have received your payment.", "", ...items, "", ...totals, "", `Delivery address: ${address}`,
+    cod ? "Payment method: Cash on delivery. Payment is due on delivery." : "We have received your payment.", "", ...items, "", ...totals, "", `Delivery address: ${address}`,
     "", "We will update you when your order is dispatched.", "Thank you for shopping with HIDI."];
   return {
     subject: `HIDI order ${clean(order.orderNumber)} confirmed`, text: lines.join("\n"),

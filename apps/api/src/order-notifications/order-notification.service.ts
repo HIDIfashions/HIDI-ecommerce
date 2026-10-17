@@ -50,7 +50,7 @@ export class OrderNotificationService implements OnModuleInit, OnModuleDestroy {
   }
   private async process(job: NotificationJob) {
     const order = await this.store.order(job.orderId);
-    if (!order || !NOTIFIABLE_STATES.includes(order.status) || order.currency !== "INR") {
+    if (!order || !order.paymentKind || !NOTIFIABLE_STATES.includes(order.status) || order.currency !== "INR" || (job.channel === "EMAIL" && order.paymentKind !== "PAID")) {
       await this.store.finish(job, "SKIPPED", "ORDER_NO_LONGER_ELIGIBLE"); return;
     }
     if (job.channel === "WHATSAPP" && !order.whatsappOptIn) {
@@ -70,6 +70,9 @@ export class OrderNotificationService implements OnModuleInit, OnModuleDestroy {
     } catch { await this.store.finish(job, "FAILED", "PAYLOAD_INVALID"); return; }
     if (!prepared || !this.sender.configured(prepared.provider)) {
       await this.store.finish(job, "WAITING_CONFIG", "PROVIDER_NOT_CONFIGURED", null, 300); return;
+    }
+    if ((prepared.paymentKind ?? "PAID") !== order.paymentKind) {
+      await this.store.finish(job, "SKIPPED", "PAYMENT_STATE_CHANGED"); return;
     }
     if (job.channel === "WHATSAPP") {
       const to = (prepared.body.payload as any)?.template?.to_and_components?.[0]?.to;

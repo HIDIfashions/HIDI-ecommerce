@@ -23,7 +23,8 @@ export class OrderNotificationStore {
             AND (${channel}='EMAIL' OR EXISTS (SELECT 1 FROM [dbo].[RetentionProfile] consent WHERE consent.[userId]=o.[userId]
               AND consent.[whatsappOptIn]=1 AND consent.[phoneVerifiedAt] IS NOT NULL
               AND consent.[consentVersion]=${RETENTION_CONSENT_VERSION}))
-            AND EXISTS (SELECT 1 FROM [dbo].[Payment] p WHERE p.[orderId]=o.[id] AND p.[status]='CAPTURED')
+            AND EXISTS (SELECT 1 FROM [dbo].[Payment] p WHERE p.[orderId]=o.[id] AND (p.[status]='CAPTURED'
+              OR (${channel}='WHATSAPP' AND p.[provider]='COD' AND p.[status]='CREATED' AND p.[amountPaise]=o.[totalPaise])))
             AND NOT EXISTS (SELECT 1 FROM [dbo].[OrderNotificationOutbox] n WITH (UPDLOCK,HOLDLOCK)
               WHERE n.[orderId]=o.[id] AND n.[channel]=${channel})
           GROUP BY o.[id] ORDER BY MIN(a.[createdAt]), o.[id]) eligible`;
@@ -54,14 +55,16 @@ export class OrderNotificationStore {
   }
   async order(id: string): Promise<NotificationOrder | null> {
     const order = await this.prisma.order.findUnique({ where: { id }, include: {
-      items: true, user: { select: { retentionProfile: { select: {
+      items: true, payments: { select: { provider: true, status: true, amountPaise: true } }, user: { select: { retentionProfile: { select: {
         whatsappOptIn: true, verifiedPhone: true, phoneVerifiedAt: true, consentVersion: true,
       } } } },
     } });
     if (!order) return null;
     const consent = order.user?.retentionProfile;
     const to = recipient(order, "WHATSAPP");
-    return { ...order, whatsappOptIn: Boolean(consent?.whatsappOptIn && consent.phoneVerifiedAt
+    const paymentKind = order.payments.some(p => p.status === "CAPTURED") ? "PAID"
+      : order.payments.some(p => p.provider === "COD" && p.status === "CREATED" && p.amountPaise === order.totalPaise) ? "COD" : null;
+    return { ...order, paymentKind, whatsappOptIn: Boolean(consent?.whatsappOptIn && consent.phoneVerifiedAt
       && consent.consentVersion === RETENTION_CONSENT_VERSION && to
       && consent.verifiedPhone?.replace(/\D/g, "") === to) };
   }

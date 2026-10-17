@@ -20,7 +20,7 @@ const order: NotificationOrder = {
   customerEmail: "customer@example.com", customerPhone: "9876543210",
   shippingAddress: JSON.stringify({ firstName: "Customer", line1: "12 Test Road", city: "Chennai", state: "TN", postalCode: "600001" }),
   subtotalPaise: 100000, discountPaise: 10000, shippingPaise: 5000, taxPaise: 0,
-  totalPaise: 95000, walletAppliedPaise: 5000,
+  totalPaise: 95000, walletAppliedPaise: 5000, paymentKind: "PAID",
   items: [{ id: "item-1", productName: "Shirt", size: "L", color: "Blue", quantity: 1, totalPaise: 90000 }],
 };
 function fixture(options: { order?: NotificationOrder | null; attempts?: number; payload?: string; firstAttemptAt?: Date; failBegin?: boolean } = {}) {
@@ -154,7 +154,7 @@ test("WhatsApp consent must be verified, current and match the order recipient",
     [{ ...consent, phoneVerifiedAt: null }, false], [{ ...consent, consentVersion: "old" }, false],
     [{ ...consent, whatsappOptIn: false }, false], [null, false],
   ] as const) {
-    const db: any = { order: { findUnique: async () => ({ ...order, user: { retentionProfile: profile } }) } };
+    const db: any = { order: { findUnique: async () => ({ ...order, payments: [{provider:"RAZORPAY",status:"CAPTURED",amountPaise:order.totalPaise}], user: { retentionProfile: profile } }) } };
     assert.equal((await new OrderNotificationStore(db).order(order.id))?.whatsappOptIn, expected);
   }
 });
@@ -170,4 +170,43 @@ test("a queued WhatsApp retry cannot send to a previous phone number", async () 
   f.job.channel = "WHATSAPP";
   await f.service.runOnce();
   assert.equal(f.sends, 0); assert.equal(f.states[0][1], "WHATSAPP_RECIPIENT_CHANGED");
+});
+
+test("COD confirmation states payment is due and does not reuse the prepaid template", () => {
+  const cod: NotificationOrder = {...order, paymentKind:"COD",walletAppliedPaise:0};
+  const message = orderMessage(cod);
+  assert.ok(message.text.includes("Amount payable on delivery: INR 950.00"));
+  assert.equal(message.text.includes("received your payment"),false);
+  assert.equal(message.text.includes("Total paid"),false);
+  process.env.MSG91_AUTHKEY="fixture";process.env.MSG91_WHATSAPP_INTEGRATED_NUMBER="919999999999";
+  process.env.MSG91_ORDER_TEMPLATE_NAMESPACE="fixture";process.env.MSG91_ORDER_TEMPLATE_NAME="prepaid";
+  const sender = new OrderNotificationSender();
+  assert.equal(sender.prepare(cod,"WHATSAPP"),null);
+  assert.equal(sender.prepare(cod,"EMAIL"),null);
+  process.env.MSG91_COD_ORDER_TEMPLATE_NAME="cod_confirmed";
+  const prepared=sender.prepare(cod,"WHATSAPP")!;
+  assert.equal((prepared.body.payload as any).template.name,"cod_confirmed");
+  assert.equal(prepared.paymentKind,"COD");
+});
+test("a queued COD payload cannot say payment is due after payment has been captured",async()=>{
+  process.env.ORDER_WHATSAPP_ENABLED="true";process.env.MSG91_AUTHKEY="fixture";
+  const payload=JSON.stringify({provider:"MSG91",paymentKind:"COD",body:{payload:{template:{to_and_components:[{to:["919876543210"]}]}}}});
+  const f=fixture({payload,order:{...order,whatsappOptIn:true}});f.job.channel="WHATSAPP";
+  await f.service.runOnce();assert.equal(f.sends,0);assert.equal(f.states[0][1],"PAYMENT_STATE_CHANGED");
+});
+test("a payment that ceased to be eligible is rejected before provider submission",async()=>{
+  const f=fixture({order:{...order,paymentKind:null}});await f.service.runOnce();
+  assert.equal(f.sends,0);assert.equal(f.states[0][0],"SKIPPED");
+});
+test("current payment records distinguish COD, captured and unpaid orders",async()=>{
+  for(const [payments,expected] of [
+    [[{provider:"COD",status:"CREATED",amountPaise:95000}],"COD"],
+    [[{provider:"RAZORPAY",status:"CREATED",amountPaise:95000}],null],
+    [[{provider:"COD",status:"FAILED",amountPaise:95000}],null],
+    [[{provider:"COD",status:"CREATED",amountPaise:100}],null],
+    [[{provider:"COD",status:"CAPTURED",amountPaise:95000}],"PAID"],
+  ] as const){
+    const db:any={order:{findUnique:async()=>({...order,payments,user:null})}};
+    assert.equal((await new OrderNotificationStore(db).order(order.id))?.paymentKind,expected);
+  }
 });
