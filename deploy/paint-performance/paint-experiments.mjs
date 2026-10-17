@@ -9,6 +9,20 @@ export function encodeExperimentResponse(original,html,acceptEncoding=''){
  headers['content-length']=body.length;return {headers,body};
 }
 export function transformPaintExperiment(html,variant,mirror){
+ if(['desktop-poster-first','aux-after-poster'].includes(variant)){
+  html=transformPaintExperiment(html,'mobile-poster-origin',mirror);
+  let count=0;html=html.replace(/<script data-hidi-desktop-preload="true">[\s\S]*?<\/script>/g,()=>{count++;return '';});
+  const early="if(!matchMedia('(max-width: 700px)').matches||!document.querySelector('video[data-hidi-first-hero]'))";
+  if(count!==1||!html.includes(early))throw Error('Desktop scheduling anchors changed');
+  html=html.replace(early,"if(!document.querySelector('video[data-hidi-first-hero]'))");
+  if(variant==='aux-after-poster'){
+   let scripts=0;html=html.replace(/<script\b[^>]*\bdefer\b[^>]*\bsrc="[^"]+"[^>]*><\/script>/g,tag=>{scripts++;return tag.replace(' src=',' data-hidi-aux-src=').replace('<script ','<script type="application/x-hidi-queued-aux" ');});
+   if(scripts!==7)throw Error('Expected exactly seven reviewed classic scripts, got '+scripts);
+   const boot=`<script data-hidi-aux-start="true">(()=>{let started=false;const start=()=>{if(started)return;started=true;for(const original of document.querySelectorAll('script[data-hidi-aux-src]')){const script=document.createElement('script');for(const attribute of original.attributes)if(!['type','data-hidi-aux-src'].includes(attribute.name))script.setAttribute(attribute.name,attribute.value);script.async=false;script.src=original.dataset.hidiAuxSrc;document.head.append(script);}};Promise.resolve(window.__HidiAvifSupport).then(()=>window.__HidiNativePosterReady).then(start,start);setTimeout(start,1200);})();</script>`;
+   html=html.replace('</body>',boot+'</body>');
+  }
+  return html;
+ }
  if(!['control','warm-poster','mobile-poster-origin','poster-origin','poster-first','poster-origin-first','external-logo','external-logo+poster-first','external-logo+poster-origin-first'].includes(variant))throw Error('Unknown diagnostic variant');
  if(variant==='control')return html;
  if(variant==='warm-poster'){

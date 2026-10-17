@@ -40,3 +40,8 @@ test('mobile origin comparison changes only matching mobile hints and retains de
  const output=transformPaintExperiment('<head>'+mobile+desktop+'<script>const url=window.__HidiAssetUrl(path);</script></head>','mobile-poster-origin',{origin});
  assert(output.includes('href="/media-performance/assets/poster-small.avif"'));assert(output.includes(desktop));assert(output.includes('matchMedia("(max-width: 700px)").matches?path:window.__HidiAssetUrl(path)'));
 });
+test('poster-first scheduling keeps every classic script URL, attributes and bounded start',()=>{
+ const input=html.replace('</head>','<script data-hidi-desktop-preload="true">desktop preload</script></head>').replace('</body>',"<script>if(!matchMedia('(max-width: 700px)').matches||!document.querySelector('video[data-hidi-first-hero]')){start();return;}</script>"+Array.from({length:7},(_,i)=>'<script defer data-original="'+i+'" src="/reviewed-'+i+'.js"></script>').join('')+'</body>');
+ const desktop=transformPaintExperiment(input,'desktop-poster-first',{origin});assert(!desktop.includes('desktop preload'));assert(desktop.includes("if(!document.querySelector('video[data-hidi-first-hero]'))"));assert(desktop.includes('src="/reviewed-0.js"'));
+ const output=transformPaintExperiment(input,'aux-after-poster',{origin});for(let i=0;i<7;i++)assert(output.includes('data-original="'+i+'" data-hidi-aux-src="/reviewed-'+i+'.js"'));assert(output.includes('script.async=false'));assert(output.includes('setTimeout(start,1200)'));assert(output.includes('integrity="sha256-original"'));assert.throws(()=>transformPaintExperiment(input.replace('/reviewed-0.js','/reviewed-0.js').replace(' defer data-original="0"',' data-original="0"'),'aux-after-poster',{origin}));
+});
