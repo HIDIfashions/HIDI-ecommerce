@@ -9,6 +9,11 @@ export function encodeExperimentResponse(original,html,acceptEncoding=''){
  headers['content-length']=body.length;return {headers,body};
 }
 export function transformPaintExperiment(html,variant,mirror,options={}){
+ if(variant==='desktop-preview'){
+  if(options.isMobile)return html;
+  const url=options.desktopPreview;if(typeof url!=='string'||!url.startsWith('data:image/avif;base64,')||url.length>2048)throw Error('Bounded verified desktop preview required');
+  return html.replace('</head>','<style data-hidi-preview-experiment="true">@media(min-width:701px){video[data-hidi-first-hero]{background-image:url("'+url+'");background-size:cover;background-position:var(--hero-position-desktop,50% 50%);}}</style></head>');
+ }
  if(['inline-mobile','inline-mobile-aux','inline-both'].includes(variant)){
   html=transformPaintExperiment(html,variant==='inline-mobile-aux'?'aux-after-poster':'mobile-poster-origin',mirror);
   if(!options.isMobile&&variant!=='inline-both')return html;
