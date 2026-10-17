@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 const ITEMS = [
   { label: "Orders", href: "/admin/orders" },
+  { label: "Support", href: "/admin/support" },
   { label: "Products", href: "/admin/products" },
   { label: "Price Tags", href: "/admin/products/price-tags" },
   { label: "Imports", href: "/admin/import" },

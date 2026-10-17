@@ -11,6 +11,7 @@ export const useAdminStaff = () => useContext(Session);
 const links = [
   { href: '/admin', name: 'Overview', icon: LayoutDashboard, group: 'Workspace', order: true },
   { href: '/admin/orders', name: 'Orders', icon: ShoppingBag, group: 'Workspace', order: true },
+  { href: '/admin/support', name: 'Support', icon: Users, group: 'Workspace', order: true },
   { href: '/admin/deliveries', name: 'Deliveries', icon: Truck, group: 'Workspace', order: true },
   { href: '/admin/returns', name: 'Returns & exchanges', icon: RotateCcw, group: 'Workspace', order: true },
   { href: '/admin/reports', name: 'Sales & reports', icon: BarChart3, group: 'Workspace', order: true },

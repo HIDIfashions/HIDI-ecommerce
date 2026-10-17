@@ -8,6 +8,7 @@ import { CartsModule } from "./carts/carts.module.js";
 import { CheckoutModule } from "./checkout/checkout.module.js";
 import { PaymentsModule } from "./payments/payments.module.js";
 import { AdminModule } from "./admin/admin.module.js";
+import { AdminSupportModule } from "./admin/admin-support.module.js";
 import { ReviewsModule } from "./reviews/reviews.module.js";
 import { RetentionModule } from "./retention/retention.module.js";
 import { RewardsModule } from "./rewards/rewards.module.js";
@@ -18,7 +19,7 @@ import { MarketingModule } from "./marketing/marketing.module.js";
 import { OrderNotificationModule } from "./order-notifications/order-notification.module.js";
 
 @Module({
-  imports: [PrismaModule, AuthModule, AccountModule, ProductsModule, CartsModule, CheckoutModule, PaymentsModule, AdminModule, ReviewsModule, RetentionModule, RewardsModule, WalletModule, WhatsAppModule, MarketingModule, OrderNotificationModule],
+  imports: [AdminSupportModule, PrismaModule, AuthModule, AccountModule, ProductsModule, CartsModule, CheckoutModule, PaymentsModule, AdminModule, ReviewsModule, RetentionModule, RewardsModule, WalletModule, WhatsAppModule, MarketingModule, OrderNotificationModule],
   controllers: [HealthController],
 })
 export class AppModule {}
