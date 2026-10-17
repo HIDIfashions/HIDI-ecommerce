@@ -3,8 +3,11 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {isBlockedTelemetry} from '../button-states/request-policy.mjs';
 import {navigate} from '../collection-cleanup/navigation.mjs';
+import {readMirrorProof,isMirrorAsset} from '../paint-performance/asset-mirror.mjs';
 const pw=await import(process.env.HIDI_PLAYWRIGHT_MODULE?pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href:'playwright');
 export async function probe(base,output,{overlay=false,publicConfig,engines=process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit'}={}){
+ const mirror=process.env.HIDI_ASSET_MIRROR_PROOF_DIR?await readMirrorProof(process.env.HIDI_ASSET_MIRROR_PROOF_DIR):null;
+ if(process.env.HIDI_ASSET_MIRROR_PROOF_DIR)assert(mirror,'Explicit mirror proof must exist and validate');
  await mkdir(output,{recursive:true});const cases=[],writes=[],gatewayRetries=[],errors=[];
  for(const engine of engines.split(',')){const browser=await pw[engine].launch({headless:true});try{for(const width of [375,1440])for(const delayed of [false,true])for(const entry of ['/cart','/checkout']){
   const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage();let release;const gate=new Promise(done=>release=done);let released=!delayed;
@@ -18,6 +21,8 @@ export async function probe(base,output,{overlay=false,publicConfig,engines=proc
    if(overlay&&url.origin===base&&path==='/pricing-assets/storefront.mjs')return route.fulfill({contentType:'application/javascript',body:await readFile(new URL('../pricing/storefront.mjs',import.meta.url),'utf8')});
    if(!['GET','HEAD','OPTIONS'].includes(req.method())){if(isBlockedTelemetry(req.method(),req.url(),base))return route.fulfill({status:204,body:''});writes.push({method:req.method(),path});return route.fulfill({status:403,contentType:'application/json',body:'{}'});}
    if(url.origin===base&&/^\/api\/store\/carts\//.test(path))return route.fulfill({contentType:'application/json',body:JSON.stringify({items:[],itemCount:0,subtotalPaise:0,totalPaise:0})});
+   // Keep real application bytes and browser SRI for the exact verified mirror asset.
+   if(req.resourceType()==='script'&&isMirrorAsset(req.url(),mirror))return route.continue();
    if(req.resourceType()==='script'&&url.origin!==base)return route.fulfill({contentType:'application/javascript',body:''});
    if(['image','media'].includes(req.resourceType()))return route.abort();
    if(!released&&req.resourceType()==='script'&&url.origin===base&&path.startsWith('/_next/static/chunks/'))await gate;

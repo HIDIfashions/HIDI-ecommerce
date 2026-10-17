@@ -97,7 +97,7 @@ def apply():
         for path in ['/health','/healthz','/api/store/health/ready','/','/collections/all','/cart','/checkout','/account','/admin','/admin/hero-media','/admin/landing-media']:
             cloud.get(path)
         subprocess.run(['node',str(HERE/'probe.mjs'),'https://hidiindia.com','live'],check=True,timeout=600)
-        subprocess.run(['node',str(HERE.parent/'checkout-hydration/probe.mjs'),'https://hidiindia.com',str(OUT/'checkout-live')],check=True,timeout=900,env={**os.environ,'HIDI_BROWSER_ENGINES':'chromium,firefox,webkit','HIDI_LOCAL_OVERLAY':'0'})
+        subprocess.run(['node',str(HERE.parent/'checkout-hydration/probe.mjs'),'https://hidiindia.com',str(OUT/'checkout-live')],check=True,timeout=900,env={**os.environ,'HIDI_BROWSER_ENGINES':'chromium,firefox,webkit','HIDI_LOCAL_OVERLAY':'0','HIDI_ASSET_MIRROR_PROOF_DIR':str(OUT)})
         subprocess.run(['node',str(HERE/'lighthouse.mjs'),'after'],check=True,timeout=600)
         assert photo.public_state()==protected,'Published configuration changed'
         assert analytics()==json.loads((PRIVATE/'analytics.json').read_text()),'Analytics configuration changed'
