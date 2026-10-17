@@ -25,9 +25,17 @@
   if(video.autoplay)video.play().catch(()=>{});
   return true;
  };
- let fallbackStarted=false;
+ let fallbackStarted=false,waitingForParser=false;
  window.__HidiAppFallback=()=>{
   if(fallbackStarted||window.__HidiAppStarted)return;
+  if(document.readyState==='loading'){
+   if(!waitingForParser){
+    waitingForParser=true;
+    const ready=()=>{if(document.readyState==='loading')return;document.removeEventListener('readystatechange',ready);window.__HidiAppFallback();};
+    document.addEventListener('readystatechange',ready);
+   }
+   return;
+  }
   const original=document.querySelector('script[data-hidi-mirror-app]');
   if(!original)return;
   fallbackStarted=true;

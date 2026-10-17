@@ -15,3 +15,9 @@ test('a completed cached poster does not fall back while its load event is queue
  const timers=[],window={},video={poster:origin+path},context={window,Set,Object,Image:class{complete=true;naturalWidth=1280;},setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout:()=>{},document:{querySelectorAll:()=>[video]}};
  runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify(proof)),context);assert.equal(window.__HidiMirrorPoster(path),origin+path);timers.at(-1)();assert.equal(video.poster,origin+path);assert.equal(window.__HidiAssetUrl(path),origin+path);
 });
+
+test('application recovery waits for streamed markup and configuration to finish parsing',()=>{
+ const window={},scripts=[],listeners={},document={readyState:'loading',addEventListener:(name,fn)=>listeners[name]=fn,removeEventListener:name=>delete listeners[name],querySelector:()=>({dataset:{hidiMirrorApp:main},integrity:'sha256-test'}),createElement:()=>({}),head:{append:script=>scripts.push(script)}};
+ runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify(proof)),{window,Set,Object,document,setTimeout:()=>1,clearTimeout:()=>{}});
+ window.__HidiAppFallback();window.__HidiAppFallback();assert.equal(scripts.length,0);assert.equal(Object.keys(listeners).length,1);document.readyState='interactive';listeners.readystatechange();assert.equal(scripts.length,1);assert.equal(scripts[0].integrity,'sha256-test');assert.equal(Object.keys(listeners).length,0);window.__HidiAppFallback();assert.equal(scripts.length,1);
+});
