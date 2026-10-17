@@ -1,3 +1,4 @@
+# Serialize fresh-baseline comparisons with other guarded production releases.
 # Compare mobile poster connection reuse with the same freshly quality-validated AV1 recipe.
 # Compare the poster/image credential-mode preconnect with the accepted control.
 # Rewritten diagnostic responses remove hop-by-hop framing and retain real compressed bytes.
@@ -7,6 +8,10 @@ on:
   push:
     branches: [migration/azure-sql-blob]
     paths: [.github/workflows/paint-performance-experiments.yml]
+concurrency:
+  group: hidi-hero-guarded-release
+  queue: max
+  cancel-in-progress: false
 permissions:
   contents: read
   actions: read
@@ -65,4 +70,7 @@ jobs:
             evidence/paint-performance/lighthouse/before.json
             evidence/paint-performance/before.json
             evidence/paint-performance/preservation.json
+            evidence/paint-performance/video-quality.json
+            evidence/paint-performance/poster-quality.json
+            evidence/paint-performance/media-cache.json
           retention-days: 14

@@ -39,7 +39,7 @@ def compose():
     # This recipe is encoded from current originals. Older cached AV1 files used
     # a different speed/quality policy and must not silently substitute for it.
     media_env={**os.environ}
-    save('media-cache.json',{'passed':True,'available':False,'encodedVideosOnly':True,'currentRuntimeImage':image,'reason':'New AV1 recipe requires fresh encoding and full quality validation'})
+    save('media-cache.json',{'passed':True,'available':False,'encodedVideosOnly':True,'currentRuntimeImage':image,'reason':'Pinned current-recipe immutable bytes may be reused; full quality validation always runs'})
     subprocess.run(['node',str(HERE/'posters.mjs'),str(base),str(overlay)],check=True,env=media_env)
     poster=json.loads((overlay/'poster-build.json').read_text());save('poster-quality.json',poster['report']);save('video-quality.json',poster['videoReport']);save('head-assets-quality.json',poster['headAssets']);(overlay/'poster-build.json').unlink()
     # Native-screen CSS paints immediately; exact complete sheets load independently at low priority.
