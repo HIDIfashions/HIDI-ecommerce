@@ -51,9 +51,12 @@ def patch_web(base,overlay,poster,icons=None):
     text=once(text,'function Tt(a){return','function Tt(a){if(a==="images/hidi-logo.png")return '+json.dumps(logo['url'])+';return')
     original_video=(HERE.parent/'media-performance/client.js').read_text().split('function HidiMediaVideo(value) {',1)[1].split('function HidiMediaPoster',1)[0]
     text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
+    text=once(text,'function HidiMediaPoster(value) {','function HidiMediaPoster(value,position) {')
+    assert text.count('HidiMediaPoster(liveHero.url)')==2
+    text=text.replace('HidiMediaPoster(liveHero.url)','HidiMediaPoster(liveHero.url,liveHero.mobilePosition)')
     text=once(text,'      onCanPlay: revealLiveVideo,\n      onError: () => setFailedSource(liveHero.url),','      onCanPlay: revealLiveVideo,\n      onError: (event) => HidiMediaVideoFallback(event, liveHero.url, () => setFailedSource(liveHero.url)),')
     text=once(text,original_manifest,'const HidiMediaManifest='+json.dumps(manifest,separators=(',',':'))+';')
-    text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; const poster = window.__HidiAvifEnabled && variant.avifPoster ? (window.__HidiAvifPoster?.(variant) || variant.avifPoster) : variant.poster; return window.__HidiMirrorPoster?.(poster) || poster;')
+    text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; const poster = window.__HidiAvifEnabled && variant.avifPoster ? (window.__HidiAvifPoster?.(variant,position) || variant.avifPoster) : variant.poster; return window.__HidiMirrorPoster?.(poster) || poster;')
     text=once(text,'const value = await response.json();','const value = await response.json();\n        window.__HidiAvifEnabled = await window.__HidiAvifSupport || false;')
     anchor='''        const response = await fetch("/api/hidi/hero-config", {
           cache: "no-store",
@@ -96,16 +99,16 @@ def patch_web(base,overlay,poster,icons=None):
     for row in poster['report']:
         posters=[hint.replace(row['original'],row['url']) for hint in posters]
     posters=[hint.replace('as="image"','as="image" type="image/avif"') for hint in posters]
-    # Narrow low-density phones receive a fully resolved 768px poster; all other
-    # devices keep the existing 1280/1920px assets. Media ranges are disjoint.
+    # Tall phones can use a pixel-preserving centre crop; other shapes keep the wide frame.
+    # The runtime additionally checks the actual fitted rectangle and current focal position.
     mobile=next(iter(manifest['videos'].values()))['mobile']
     if mobile.get('avifPosterSmall'):
         original=next(hint for hint in posters if mobile['avifPoster'] in hint)
         assert 'media="(max-width: 700px)"' in original
         posters.remove(original)
         for media,url in [
-            ('(max-width: 432px) and (max-resolution: 1.75dppx)',mobile['avifPosterSmall']),
-            ('(max-width: 700px) and (not ((max-width: 432px) and (max-resolution: 1.75dppx)))',mobile['avifPoster'])]:
+            ('(max-width: 432px) and (min-height: 760px)',mobile['avifPosterSmall']),
+            ('(max-width: 700px) and (not ((max-width: 432px) and (min-height: 760px)))',mobile['avifPoster'])]:
             posters.append(original.replace('media="(max-width: 700px)"','media="'+media+'"').replace(mobile['avifPoster'],url))
 
     for index,tag in enumerate(icons['originalTags']):html=once(html,tag,icons['markup'] if index==0 else '')

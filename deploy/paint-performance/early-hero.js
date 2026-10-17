@@ -53,9 +53,12 @@
 
 (() => {
   if (location.pathname !== '/') return;
-  // A 768px image covers every physical pixel in this phone/DPR tier.
-  // Higher density and larger displays retain the original full-size poster.
-  window.__HidiAvifPoster = variant => variant.avifPosterSmall && matchMedia('(max-width: 432px) and (max-resolution: 1.75dppx)').matches ? variant.avifPosterSmall : variant.avifPoster;
+  // Preserve source pixels: only off-screen sides of a centred wide frame are removed.
+  window.__HidiAvifPoster = (variant,position='50% 50%') => {
+    const crop=variant.posterCrop,video=document.querySelector('video.hero-live-media'),rect=video?.getBoundingClientRect();
+    const centred=String(position||'50% 50%').trim().replace(/\s+/g,' ')==='50% 50%';
+    return variant.avifPosterSmall&&crop&&centred&&matchMedia('(max-width: 432px) and (min-height: 760px)').matches&&rect?.height>0&&rect.width/rect.height<=crop.width/crop.height ? variant.avifPosterSmall : variant.avifPoster;
+  };
   window.__HidiAvifSupport = new Promise(resolve => {
     try {
       const image = new Image();

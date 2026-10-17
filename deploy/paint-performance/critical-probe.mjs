@@ -25,7 +25,7 @@ export async function verifyInitialCss(pw,base,out,mode){
     await page.evaluate(()=>window.__HidiAvifSupport);
     await page.waitForFunction(()=>Boolean(document.querySelector('video[data-hidi-first-hero]')?.poster));
     if(engine==='chromium')assert.match(new URL(await page.locator('video[data-hidi-first-hero]').getAttribute('poster'),base).pathname,/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/,'Supported mobile and desktop must use the preloaded immutable AVIF');
-    await page.evaluate(async()=>{const image=new Image();image.src=document.querySelector('video[data-hidi-first-hero]').poster;await image.decode();if(image.naturalWidth<1000)throw Error('Native poster must decode at its original resolution');});
+    await page.evaluate(async()=>{const image=new Image();image.src=document.querySelector('video[data-hidi-first-hero]').poster;await image.decode();if(image.naturalWidth===512){const video=document.querySelector('video[data-hidi-first-hero]'),rect=video.getBoundingClientRect();if(image.naturalHeight!==720||rect.width/rect.height>512/720||getComputedStyle(video).objectPosition!=='50% 50%')throw Error('Portrait poster must retain the original centred visible field');}else if(image.naturalWidth<1000)throw Error('Wide poster must retain its original resolution');});
     await page.waitForTimeout(1000);
     await page.evaluate(()=>document.querySelector('#main').focus({preventScroll:true}));
     const snapshot=()=>page.evaluate(()=>[document.body,...document.querySelectorAll('#root,#root *,body>.hidi-price-announcement')].filter(el=>!['SCRIPT','STYLE','LINK'].includes(el.tagName)).map(el=>{

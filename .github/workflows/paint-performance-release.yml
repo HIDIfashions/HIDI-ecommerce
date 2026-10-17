@@ -1,4 +1,5 @@
-# Responsive poster preloads use disjoint media conditions verified in a real browser.
+# Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
+# Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.
 # Checkout fixtures retain real mirrored application bytes and enforce browser integrity checks.
 # Media recovery uses the same installed Chromium codec build as the other video checks; fallback gates remain strict.
 # Asset publication addresses only the approved pre-provisioned site; no resource-group listing or creation.

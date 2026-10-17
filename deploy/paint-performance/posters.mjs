@@ -34,9 +34,13 @@ for(const item of Object.values(manifest.videos))for(const kind of ['mobile','de
  const variant=item[kind],input=await readFile(join(base,'dist',variant.poster));
  variant.avifPoster=await encodePoster(input,kind,variant.poster);
  if(kind==='mobile'){
-  const info=await sharp(input).metadata();if(info.width<768)throw Error('Small poster must never upscale');
-  const small=await sharp(input).resize({width:768,withoutEnlargement:true}).png().toBuffer();
-  variant.avifPosterSmall=await encodePoster(small,'mobile-small',variant.poster,768,input.length);
+  const info=await sharp(input).metadata();if(info.width!==1280||info.height!==720)throw Error('Portrait crop requires the reviewed landscape frame');
+  const crop={left:384,top:0,width:512,height:720,sourceWidth:1280,sourceHeight:720};
+  const small=await sharp(input).extract({left:crop.left,top:crop.top,width:crop.width,height:crop.height}).png().toBuffer();
+  const originalPixels=await sharp(input).extract({left:crop.left,top:crop.top,width:crop.width,height:crop.height}).ensureAlpha().raw().toBuffer();
+  if(!originalPixels.equals(await sharp(small).ensureAlpha().raw().toBuffer()))throw Error('Portrait extraction must preserve every source pixel');
+  variant.avifPosterSmall=await encodePoster(small,'mobile-crop',variant.poster,512,input.length);
+  variant.posterCrop=crop;report.at(-1).crop=crop;report.at(-1).sourcePixelsRetained=true;
  }
 }
 const {encodeHeroVideos}=await import('./video.mjs');
