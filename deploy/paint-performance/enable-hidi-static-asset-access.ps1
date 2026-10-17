@@ -32,7 +32,9 @@ $hidiAccount = Invoke-HidiAz @('account','show','--subscription',$hidiSubscripti
 if ($hidiAccount.id -ne $hidiSubscription -or $hidiAccount.tenantId -ne $hidiTenant) { throw 'Unexpected subscription or tenant; stopping.' }
 $hidiProvider = Invoke-HidiAz @('provider','show','--namespace','Microsoft.Web','--subscription',$hidiSubscription)
 if ($hidiProvider.registrationState -ne 'Registered') {
-    throw "A subscription administrator must first register Microsoft.Web: az provider register --namespace Microsoft.Web --subscription $hidiSubscription --wait"
+    $null = Invoke-HidiAz @('provider','register','--namespace','Microsoft.Web','--subscription',$hidiSubscription,'--wait')
+    $hidiProvider = Invoke-HidiAz @('provider','show','--namespace','Microsoft.Web','--subscription',$hidiSubscription)
+    if ($hidiProvider.registrationState -ne 'Registered') { throw 'Microsoft.Web registration did not complete; stopping.' }
 }
 $hidiExisting = @(Invoke-HidiAz @('role','definition','list','--name',$hidiDefinition.Name,'--scope',$hidiScope,'--subscription',$hidiSubscription))
 if ($hidiExisting.Count -eq 0) {
