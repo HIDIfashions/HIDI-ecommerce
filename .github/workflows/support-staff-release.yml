@@ -7,11 +7,8 @@ on:
 permissions:
   contents: read
   id-token: write
-concurrency:
-  group: hidi-hero-guarded-release
-  cancel-in-progress: false
 jobs:
-  test-and-release:
+  verify-source:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -30,7 +27,7 @@ jobs:
       - name: Compile and verify API authentication, roles and support workflow
         run: |
           pnpm --filter @hidi/api build
-          pnpm --filter @hidi/api exec node --import tsx --test ../../tests/admin-rbac.test.ts ../../tests/admin-email-otp.test.ts ../../tests/admin-support.test.ts
+          pnpm --filter @hidi/api test:customer-experience
           python3 -m py_compile deploy/support-staff/patch.py deploy/support-staff/release.py deploy/support-staff/live.py
           for name in deploy/support-staff/*.mjs; do node --check "$name"; done
       - name: Install exact backup tools and three browser engines
@@ -40,6 +37,36 @@ jobs:
           node /tmp/hidi-support-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - name: Verify isolated desktop and mobile support and staff screens
         run: node deploy/support-staff/candidate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: support-compiled-${{ github.sha }}
+          path: apps/api/dist/admin/admin-support*.js
+          if-no-files-found: error
+          retention-days: 7
+  test-and-release:
+    needs: verify-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: hidi-hero-guarded-release
+      cancel-in-progress: false
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-support-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-support-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - uses: actions/download-artifact@v4
+        with:
+          name: support-compiled-${{ github.sha }}
+          path: apps/api/dist/admin
+      - name: Install exact backup tools and candidate browser engines
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y skopeo
+          npm install --prefix /tmp/hidi-support-browser --no-save playwright@1.62.1
+          node /tmp/hidi-support-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
