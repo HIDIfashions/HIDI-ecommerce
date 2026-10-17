@@ -36,7 +36,7 @@ let restore;
 try{
  let ready=false;for(let i=0;i<90;i++){try{if((await fetch('http://127.0.0.1:3186/health')).ok){ready=true;break;}}catch{}await new Promise(done=>setTimeout(done,1000));}assert(ready);
  restore=await installFixtureDelay();
- for(const variant of ['control','desktop-preview']){
+ for(const variant of ['control','native-image']){
   experiment=variant;const dir=output+'/experiments/'+variant;await mkdir(dir,{recursive:true});
   const html=await(await fetch('http://127.0.0.1:3188/',{headers:{'accept-encoding':'identity'}})).text();await writeFile(dir+'/document.html',html);
   const child=spawn(process.execPath,['deploy/paint-performance/lighthouse.mjs','candidate'],{stdio:'inherit',env:{...process.env,HIDI_AUDIT_URL:h2.url,HIDI_AUDIT_SPKI:h2.spki}});const exitCode=await new Promise(done=>child.on('exit',done));

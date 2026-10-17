@@ -1,3 +1,4 @@
+# Compare the exact full-quality native image with video-poster painting; no preview or lower-resolution image.
 # Compare desktop progressive preview with unchanged full-quality final LCP media; export actual LCP trace events.
 # Also compare per-device inline AVIF bytes, individually hash-verified before the test.
 # Match seven reviewed auxiliary scripts exactly; compare mobile-only identical inline poster bytes.

@@ -9,6 +9,13 @@ export function encodeExperimentResponse(original,html,acceptEncoding=''){
  headers['content-length']=body.length;return {headers,body};
 }
 export function transformPaintExperiment(html,variant,mirror,options={}){
+ if(variant==='native-image'){
+  let count=0;html=html.replace(/<video\b([^>]*data-hidi-first-hero="true"[^>]*)><\/video>/g,(_,attrs)=>{count++;return '<img'+attrs.replace(/\s(?:loop|playsinline)\b/g,'').replace(/\spreload="[^"]*"/g,'')+' alt="" decoding="async">';});
+  if(count!==1)throw Error('Expected one native hero element');
+  html=html.replaceAll('video[data-hidi-first-hero]','[data-hidi-first-hero]').replaceAll("document.querySelector('video.hero-live-media')","document.querySelector('.hero-live-media')");
+  const anchor='video.poster=window.__HidiMirrorPoster?.(poster)||poster;';if(!html.includes(anchor))throw Error('Native poster setup changed');
+  return html.replace(anchor,anchor+'video.src=video.poster;');
+ }
  if(variant==='desktop-preview'){
   if(options.isMobile)return html;
   const url=options.desktopPreview;if(typeof url!=='string'||!url.startsWith('data:image/avif;base64,')||url.length>2048)throw Error('Bounded verified desktop preview required');
