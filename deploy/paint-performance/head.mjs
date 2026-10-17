@@ -43,7 +43,9 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   cache.set(href,result);return result;
  }
  return (html,request={headers:{}})=>{
-  const inline=inlinePoster&&(/Mobile|Android/i.test(request.headers?.['user-agent']||'')||request.headers?.['sec-ch-ua-mobile']==='?1')?inlinePoster:null;
+  const mobile=/Mobile|Android/i.test(request.headers?.['user-agent']||'')||request.headers?.['sec-ch-ua-mobile']==='?1';
+  const desktopCss=Boolean(request.headers?.['user-agent'])&&!mobile;
+  const inline=inlinePoster&&mobile?inlinePoster:null;
   const posterHints=[...html.matchAll(/<link\b[^>]*rel=["']preload["'][^>]*type=["']image\/avif["'][^>]*>/gi)];
   if(posterHints.length&&/<\/head>/i.test(html)){
    const modules=[];html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*fetchpriority=["']low["'][^>]*>/gi,tag=>{modules.push(tag);return '';});
@@ -78,7 +80,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   const css=cssFor(href);if(css===null)return tag;
   const data=[...tag.matchAll(/\s(data-[\w-]+)(?:=["']([^"']*)["'])?/g)].map(m=>' '+m[1]+'="'+(m[2]||'')+'"').join('');
   const row=criticalStyles[new URL(href,'https://hidiindia.com/').pathname];
-  if(completeHead&&row&&typeof row.critical==='string'&&!/<\/style/i.test(row.critical)&&row.sha256===createHash('sha256').update(css).digest('hex')){
+  if(!desktopCss&&completeHead&&row&&typeof row.critical==='string'&&!/<\/style/i.test(row.critical)&&row.sha256===createHash('sha256').update(css).digest('hex')){
    deferred++;
    const full=href+(href.includes('?')?'&':'?')+'hidi_full='+row.sha256.slice(0,16);
    const link=tag.replace(/\bhref=["'][^"']+["']/i,'data-hidi-full-href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true">');
