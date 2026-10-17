@@ -68,13 +68,13 @@ for (const input of [null, [], "staff@example.test", {}, { email: 1 }, { email: 
   });
 }
 
-test("active staff are checked first; email is normalised and provider signup is disabled", async () => {
+test("only eligible staff can provision an email identity; email is normalised", async () => {
   const f = fixture({ id: "staff-1", email: "staff@example.test", role: "CATALOG", active: true });
   try {
     assert.deepEqual(await f.service.requestEmailCode({ email: " STAFF@EXAMPLE.TEST " }), { email: "staff@example.test", retryAfterSeconds: 60 });
     assert.deepEqual(f.lookups, ["staff@example.test"]);
     assert.equal(f.requests.length, 1);
-    assert.deepEqual(JSON.parse(String(f.requests[0].options.body)), { email: "staff@example.test", create_user: false });
+    assert.deepEqual(JSON.parse(String(f.requests[0].options.body)), { email: "staff@example.test", create_user: true });
     assert.equal(f.requests[0].options.redirect, "error");
   } finally { f.restore(); }
 });

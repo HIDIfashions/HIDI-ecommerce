@@ -4,6 +4,8 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./order-detail.module.css";
 import { AdminReturnRequests, type AdminReturnRequest } from "./admin-return-requests";
+import { AdminSupport } from "./admin-support";
+import { useAdminStaff } from "@/components/admin/admin-workspace";
 
 type Address = {
   firstName?: string;
@@ -159,6 +161,8 @@ function auditDetail(event: NonNullable<AdminOrder["auditEvents"]>[number]) {
 
 export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string }) {
   const [order, setOrder] = useState<AdminOrder | null>(null);
+  const role = useAdminStaff()?.role;
+  const canManage = role === "OWNER" || role === "OPERATIONS";
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [savingShipment, setSavingShipment] = useState(false);
@@ -370,7 +374,10 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
             </div>
           </section>
 
+          <AdminSupport orderNumber={order.orderNumber} role={role} />
+
           <AdminReturnRequests
+            canManage={canManage}
             orderNumber={order.orderNumber}
             requests={order.returns ?? []}
             items={order.items}
@@ -420,7 +427,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               ))}
             </div>
 
-            {order.status === "PACKED" && !order.shipment?.awb && (
+            {canManage && order.status === "PACKED" && !order.shipment?.awb && (
               <div className={styles.shippingForm}>
                 <div className={styles.shippingHeader}>
                   <div>
@@ -439,7 +446,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               </div>
             )}
 
-            {order.status === "PACKED" && !order.shipment?.awb && (
+            {canManage && order.status === "PACKED" && !order.shipment?.awb && (
               <form className={styles.shippingForm} onSubmit={saveShipment}>
                 <div className={styles.shippingHeader}>
                   <div>
@@ -481,8 +488,8 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               </div>
             )}
 
-            {next === "DELIVERED" && order.payment?.provider === "COD" && order.payment.status === "CREATED" && <label><input type="checkbox" checked={codCollected} onChange={(event) => setCodCollected(event.target.checked)} /> I confirm the full COD amount of {money(order.totalPaise)} was collected.</label>}
-            {next ? (
+            {canManage && next === "DELIVERED" && order.payment?.provider === "COD" && order.payment.status === "CREATED" && <label><input type="checkbox" checked={codCollected} onChange={(event) => setCodCollected(event.target.checked)} /> I confirm the full COD amount of {money(order.totalPaise)} was collected.</label>}
+            {canManage && (next ? (
               <button
                 className={styles.primaryAction}
                 type="button"
@@ -494,7 +501,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
               </button>
             ) : (
               <div className={styles.complete}>Fulfilment complete</div>
-            )}
+            ))}
           </section>
 
           <section className={styles.card}>

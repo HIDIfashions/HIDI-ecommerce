@@ -297,7 +297,8 @@
 }
 
 .shippingForm input,
-.shippingForm select {
+.shippingForm select,
+.shippingForm textarea {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--line);
@@ -308,9 +309,12 @@
 }
 
 .shippingForm input:focus,
-.shippingForm select:focus {
+.shippingForm select:focus,
+.shippingForm textarea:focus {
   border-color: var(--ink);
 }
+
+.shippingForm textarea { min-height: 96px; padding: 10px 11px; resize: vertical; font: inherit; }
 
 .shipmentHint {
   margin: 0 !important;

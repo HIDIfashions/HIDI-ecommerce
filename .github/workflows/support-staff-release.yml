@@ -1,0 +1,81 @@
+name: Support staff rules and protected primary Owner release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [deploy/support-staff/**, .github/workflows/support-staff-release.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  test-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=fixture;password=fixture;encrypt=true
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-support-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-support-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Install unchanged dependencies and generate existing SQL client
+        run: pnpm install --frozen-lockfile && pnpm db:generate
+      - name: Compile and verify API authentication, roles and support workflow
+        run: |
+          pnpm --filter @hidi/api build
+          pnpm --filter @hidi/api exec node --import tsx --test ../../tests/admin-rbac.test.ts ../../tests/admin-email-otp.test.ts ../../tests/admin-support.test.ts
+          python3 -m py_compile deploy/support-staff/patch.py deploy/support-staff/release.py deploy/support-staff/live.py
+          for name in deploy/support-staff/*.mjs; do node --check "$name"; done
+      - name: Install exact backup tools and three browser engines
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y skopeo
+          npm install --prefix /tmp/hidi-support-browser --no-save playwright@1.62.1
+          node /tmp/hidi-support-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Verify isolated desktop and mobile support and staff screens
+        run: node deploy/support-staff/candidate.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Read current Owner configuration without sending email
+        run: python3 deploy/support-staff/live.py inspect
+      - name: Back up fresh live images and compose only the reviewed support additions
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/support-staff/release.py capture
+          python3 deploy/support-staff/release.py compose
+          echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-support-private/api/candidate-app" >> "$GITHUB_ENV"
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-support-private/web/candidate-app" >> "$GITHUB_ENV"
+      - name: Verify actual compiled candidate and exact retained web runtime before deployment
+        run: |
+          node deploy/support-staff/api-test.mjs
+          node deploy/support-staff/candidate.mjs
+          python3 deploy/support-staff/release.py seal
+      - name: Publish only the tested candidate image digests
+        run: python3 deploy/support-staff/release.py publish
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Protect designated Owner, release images, and verify live database with test rollback
+        id: apply
+        timeout-minutes: 20
+        run: python3 deploy/support-staff/release.py apply
+      - name: Recover an interrupted owned release
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        run: python3 deploy/support-staff/release.py recover
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: support-staff-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/support-staff
+          retention-days: 30

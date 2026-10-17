@@ -38,10 +38,20 @@ The browser never receives the database password, service-role key, or legacy ad
 | --- | --- | --- | --- | --- | --- | --- |
 | OWNER | Read/write | Write | Read/write | Read/write | Read/write | Yes |
 | OPERATIONS | Read/write | Write | Read/write | Read | Read/write | No |
-| SUPPORT | Read | No write | Read | Read | Read | No |
+| SUPPORT | Read; support notes/tags/follow-ups | Request Owner approval only | Read | Read | Read | No |
 | CATALOG | No order access | No | Read | Read/write | No | No |
 
 The API is the authority. Hiding a button in the UI is never treated as authorization.
+
+## Support workflow
+
+The designated primary Owner / super admin is `fashionshidi@gmail.com`. This account cannot be disabled or demoted. Owner-created staff membership permits first-login email identity provisioning through the eligible OTP endpoint; unknown or disabled emails never reach provider delivery. Admin user IDs are individual email addresses.
+
+Open **Admin → Support** to see open follow-ups and pending approval requests across orders. Each order has an internal support panel for append-only notes, issue tags (up to 10), and a dated follow-up with Open, In progress or Done status. Updates preserve staff identity, timestamp and prior values in the existing order audit table; no database migration is required.
+
+Support can submit immutable requests for refunds, cancellations, compensation and order changes, including an exact description, reason and optional amount. Only an OWNER can approve or reject a request, with a required decision reason. A unique audit event key allows only one decision even during concurrent reviews. Approval does not execute payments, credits, cancellations or order changes, and never grants Support direct write access. The Owner carries out the approved action separately through the relevant existing workflow; requests for actions without an existing execution workflow remain manual.
+
+Support cannot modify order status, shipments, packing, returns/refunds, inventory, catalog or staff, even after approval. Existing Operations permissions remain unchanged. Support records are available only through guarded admin endpoints and are not added to customer responses. The new permissions are `support:write` (Owner, Operations, Support) and `support:approve` (Owner only).
 
 ## First owner bootstrap
 
