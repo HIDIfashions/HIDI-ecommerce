@@ -1,3 +1,4 @@
+# Asset publication addresses only the approved pre-provisioned site; no resource-group listing or creation.
 # Provider registration and site-scoped IAM are provisioned by the Azure owner.
 # Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
 # An isolated Free static asset mirror retains old immutable files and same-origin recovery; DNS and existing services remain unchanged.

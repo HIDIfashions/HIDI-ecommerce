@@ -41,10 +41,7 @@ def get(url):
     with urllib.request.urlopen(request,timeout=45) as response:return response.read(),response.headers
 
 def publish(overlay,report,manifest,private,out):
-    rows=az('staticwebapp','list','-g',GROUP)
-    matches=[row for row in rows if row['name']==NAME];assert len(matches)<=1
-    if not matches:
-        az('staticwebapp','create','-g',GROUP,'-n',NAME,'--sku','Free','--location','eastasia','--tags','hidi-owner='+OWNER,'hidi-purpose=immutable-assets')
+    # Exact resource reads work with the approved site-only role. No group listing or creation.
     site=az('staticwebapp','show','-g',GROUP,'-n',NAME)
     assert site['sku']['name']=='Free' and site['sku']['tier']=='Free','Never create or upgrade to a paid plan'
     assert site.get('tags',{}).get('hidi-owner')==OWNER and site.get('tags',{}).get('hidi-purpose')=='immutable-assets','Refuse to alter another static site'
@@ -64,10 +61,10 @@ def publish(overlay,report,manifest,private,out):
         files[path]=sha(data)
     validate_files(files)
     current=dict(files);history={}
-    if matches:
-        try:history=json.loads(get(origin+'/asset-manifest.json')[0])['files'];validate_files(history)
-        except urllib.error.HTTPError as error:
-            if error.code!=404:raise
+    try:history=json.loads(get(origin+'/asset-manifest.json')[0])['files'];validate_files(history)
+    except urllib.error.HTTPError as error:
+        code=error.code;error.close()
+        if code!=404:raise
     package=private/'asset-site';package.mkdir()
     total=0
     for path,digest in history.items():

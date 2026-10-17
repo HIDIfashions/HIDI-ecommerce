@@ -33,7 +33,7 @@ class InventoryTests(unittest.TestCase):
             with self.subTest(change=change),patch.object(module,'az',return_value={**base,**change}):
                 with self.assertRaises(AssertionError):module.preflight()
 
-    def test_publication_retains_old_bytes_and_never_requests_a_paid_plan(self):
+    def test_site_scoped_publication_retains_old_bytes_without_group_listing_or_creation(self):
         for existing in [True,False]:
             with self.subTest(existing=existing),tempfile.TemporaryDirectory() as folder:
                 root=Path(folder);overlay=root/'overlay';private=root/'private';out=root/'out'
@@ -49,15 +49,14 @@ class InventoryTests(unittest.TestCase):
                 site={'name':module.NAME,'sku':{'name':'Free','tier':'Free'},'tags':{'hidi-owner':module.OWNER,'hidi-purpose':'immutable-assets'},'defaultHostname':host}
                 def azure(*args):
                     calls.append(args)
-                    if args[:2]==('staticwebapp','list'):return [site] if existing else []
                     if args[:2]==('staticwebapp','show'):return site
-                    if args[:2]==('staticwebapp','create'):
-                        self.assertEqual(args[args.index('--sku')+1],'Free');self.assertNotIn('--source',args);return site
                     if args[:3]==('staticwebapp','secrets','list'):return {'properties':{'apiKey':token}}
                     raise AssertionError('Unexpected Azure mutation '+repr(args))
                 def fetch(url):
                     path=url.removeprefix('https://'+host)
-                    if path=='/asset-manifest.json':return json.dumps({'files':history}).encode(),{}
+                    if path=='/asset-manifest.json':
+                        if not existing:raise module.urllib.error.HTTPError(url,404,'Not found',{},None)
+                        return json.dumps({'files':history}).encode(),{}
                     body=(private/'asset-site'/path.lstrip('/')).read_bytes() if published else old if path==oldpath else data[path]
                     kind='javascript' if path.endswith('.js') else 'image/avif' if path.endswith('.avif') else 'video/mp4'
                     return body,{'Cache-Control':'public,immutable','Access-Control-Allow-Origin':'*','Content-Type':kind}
@@ -70,6 +69,6 @@ class InventoryTests(unittest.TestCase):
                 final=json.loads((private/'asset-site/asset-manifest.json').read_text())['files']
                 self.assertEqual(set(final),set(data)|set(history))
                 if existing:self.assertEqual((private/'asset-site'/oldpath.lstrip('/')).read_bytes(),old)
-                self.assertTrue(all(args[0]=='staticwebapp' and args[1] in ['list','show','create','secrets'] for args in calls))
+                self.assertTrue(all(args[0]=='staticwebapp' and args[1] in ['show','secrets'] for args in calls))
 
 if __name__=='__main__':unittest.main()
