@@ -47,3 +47,14 @@ test('application recovery waits for streamed markup and configuration to finish
  runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify(proof)),{window,Set,Object,document,setTimeout:()=>1,clearTimeout:()=>{}});
  window.__HidiAppFallback();window.__HidiAppFallback();assert.equal(scripts.length,0);assert.equal(Object.keys(listeners).length,1);document.readyState='interactive';listeners.readystatechange();assert.equal(scripts.length,1);assert.equal(scripts[0].integrity,'sha256-test');assert.equal(Object.keys(listeners).length,0);window.__HidiAppFallback();assert.equal(scripts.length,1);
 });
+
+
+test('verified desktop origin posters reuse HIDI and recover to exact edge bytes once without affecting mobile selection',()=>{
+ for(const mobile of [false,true]){
+  const images=[],video={poster:'https://hidiindia.com'+path,getAttribute:()=>path},window={};
+  const context={window,Set,Map,Object,matchMedia:()=>({matches:mobile}),Image:class{constructor(){images.push(this);}},setTimeout:()=>1,clearTimeout:()=>{},document:{querySelectorAll:()=>[video]}};
+  runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify({...proof,edgeOrigin,edgeFiles:proof.files,desktopOriginPosters:[path]})),context);
+  if(mobile){assert.equal(window.__HidiMirrorPoster(path),edgeOrigin+path);continue;}
+  assert.equal(window.__HidiMirrorPoster(path),path);images[0].onerror();assert.equal(video.poster,edgeOrigin+path);assert.equal(window.__HidiMirrorPoster(path),edgeOrigin+path);images[1].onerror();assert.equal(images.length,2);
+ }
+});

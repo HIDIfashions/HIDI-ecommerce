@@ -10,6 +10,7 @@ test('only verified mobile poster preloads use origin while desktop keeps its im
   const mobile='<link rel="preload" type="image/avif" media="(max-width: 700px)" href="'+path+'">',desktop='<link rel="preload" type="image/avif" media="(min-width: 701px)" href="'+path+'">',html='<head>'+mobile+desktop+'</head><body></body>',result=createHomeHead(root,app)(html);
   assert(result.includes(mobile));assert(result.includes(desktop.replace('href="'+path,'href="'+origin+path)));assert(result.includes('"originPosters":["'+path+'"]'));
   const mobileHtml=createHomeHead(root,app)(html,{headers:{'user-agent':'Android Mobile'}}),data='data:image/avif;base64,'+bytes.toString('base64');assert(mobileHtml.includes('href="'+data+'"'));assert(mobileHtml.includes('"inlinePosters":{"'+path+'":"'+data+'"}'));assert(!result.includes(data));
+  const desktopHtml=createHomeHead(root,app)(html,{headers:{'user-agent':'Mozilla/5.0 Chrome/141.0'}});assert(desktopHtml.includes(desktop));assert(desktopHtml.includes('"desktopOriginPosters":["'+path+'"]'));assert(!desktopHtml.includes(desktop.replace('href="'+path,'href="'+origin+path)));
   writeFileSync(join(root,path),'corrupt');assert.equal(createHomeHead(root,app)(html),html);
  }finally{rmSync(app,{recursive:true,force:true});}
 });
