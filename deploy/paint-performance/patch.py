@@ -1,4 +1,4 @@
-import hashlib,json,re,struct
+import hashlib,json,re,struct,subprocess
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
 def once(text,before,after):
@@ -84,7 +84,7 @@ def patch_web(base,overlay,poster,icons=None):
         ('const [heroAutoPlay, setHeroAutoPlay] = HidiHeroReact.useState(true);','const [heroAutoPlay, setHeroAutoPlay] = HidiHeroReact.useState(() => initialHero?.autoPlay ?? true);'),
         ('const [heroInterval, setHeroInterval] = HidiHeroReact.useState(6);','const [heroInterval, setHeroInterval] = HidiHeroReact.useState(() => initialHero?.interval || 6);'),
         ('const [heroConfigStatus, setHeroConfigStatus] = HidiHeroReact.useState("loading");','const [heroConfigStatus, setHeroConfigStatus] = HidiHeroReact.useState(() => initialHero ? "uploaded" : "loading");'),
-        ('const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(false);','const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(() => Boolean(initialHero) && mobile && !reduced && !HidiHeroSaveData());')
+        ('const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(false);','const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(() => Boolean(initialHero) && !reduced && !HidiHeroSaveData());')
     ]:text=once(text,before,after)
     text=once(text,'const G=await fetch("/api/hidi/landing-media-config",{cache:"no-store",signal:C.signal});','const HidiLandingEarly=window.__HidiLandingEarly;window.__HidiLandingEarly=null;const G=await HidiLandingEarly||await fetch("/api/hidi/landing-media-config",{cache:"no-store",signal:C.signal});')
     text=once(text,'const [soundEnabled, setSoundEnabled] = HidiHeroReact.useState(false);','const [soundEnabled, setSoundEnabled] = HidiHeroReact.useState(() => { const enabled = window.__HidiHeroSoundIntent === true; window.__HidiHeroSoundIntent = false; return enabled; });')
@@ -94,16 +94,11 @@ def patch_web(base,overlay,poster,icons=None):
     start=text.index('    setVideoAllowed(false);\n    let idleId = null;')
     end=text.index('  }, [showBundled, heroConfigStatus, mobile, reduced]);',start)
     expected=(HERE/'video-delay.txt').read_text()
-    text=once(text,expected,'''    if (!mobile && !showBundled && typeof window.__HidiWaitForPosterPaint === "function") {
-      let current = true;
-      Promise.resolve(window.__HidiWaitForPosterPaint(liveVideoRef.current)).then(() => { if (current) setVideoAllowed(true); });
-      return () => { current = false; };
-    }
-    setVideoAllowed(true);
-''')
+    text=once(text,expected,'    setVideoAllowed(true);\n')
     text='if (location.pathname === "/" && window.__HidiFullCssReady) await window.__HidiFullCssReady;\nif (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && matchMedia("(max-width: 700px)").matches && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await (window.__HidiNativePosterReady || new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))));\n'+text
     assert not re.search(r'\bimport\s*\(|import\.meta|(?:^|[;}])\s*(?:import\s+|export\s*[{*])',text,re.M),'Mirror entry must remain self-contained'
     text='if (!window.__HidiAppStarted) {\nwindow.__HidiAppStarted = true;\n'+text+'\n}\n'
+    text=subprocess.run(['node',str(HERE/'minify-entry.mjs')],input=text,text=True,capture_output=True,check=True).stdout
     name='assets/index-'+hashlib.sha256(text.encode()).hexdigest()[:16]+'.js'
     assert html.count('/'+old)==2,'Expected app and preload references'
     html=html.replace('/'+old,'/'+name)

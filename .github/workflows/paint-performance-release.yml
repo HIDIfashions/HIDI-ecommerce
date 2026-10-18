@@ -1,4 +1,4 @@
-# Desktop autoplay follows the real poster paint with bounded recovery and immediate manual play; all release gates remain mandatory.
+# Conservative application minification retains startup guard, function names and all release gates; autoplay remains unchanged.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
 # Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.
@@ -62,7 +62,7 @@ jobs:
           node --test deploy/paint-performance/*.test.mjs
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg openssl iproute2
-          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 @azure/static-web-apps-cli@2.0.10
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 terser@5.44.0 @azure/static-web-apps-cli@2.0.10
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - name: Capture stable production and fresh rollback copies
         env:
@@ -124,7 +124,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg openssl iproute2
-          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 terser@5.44.0
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
