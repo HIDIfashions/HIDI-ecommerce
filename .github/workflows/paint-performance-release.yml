@@ -1,4 +1,4 @@
-# Desktop verified CSS plus SSIM-tuned AV1; mobile CSS/CRF38 remain exact, with frame timestamps/audio/fidelity required.
+# Desktop fresh collection reads begin early; verified CSS/video retain all mobile ordering and fidelity gates.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
 # Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.
@@ -98,6 +98,8 @@ jobs:
             evidence/paint-performance/*.json
             evidence/paint-performance/lighthouse/before.json
             evidence/paint-performance/lighthouse/candidate.json
+            evidence/paint-performance/lighthouse/candidate-mobile-1.report.json
+            evidence/paint-performance/lighthouse/candidate-desktop-1.report.json
             evidence/paint-performance/checkout-candidate/report.json
             evidence/paint-performance/candidate/chromium-390.png
             evidence/paint-performance/candidate/chromium-1440.png
@@ -159,6 +161,8 @@ jobs:
             evidence/paint-performance/*.json
             evidence/paint-performance/lighthouse/before.json
             evidence/paint-performance/lighthouse/after.json
+            evidence/paint-performance/lighthouse/after-mobile-1.report.json
+            evidence/paint-performance/lighthouse/after-desktop-1.report.json
             evidence/paint-performance/checkout-live/report.json
             evidence/paint-performance/live/chromium-390.png
             evidence/paint-performance/live/chromium-1440.png

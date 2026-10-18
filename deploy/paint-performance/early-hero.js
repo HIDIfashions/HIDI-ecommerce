@@ -19,6 +19,10 @@
       for (const start of pending) start();
     };
     const deadline = setTimeout(window.__HidiStartHomeReads, 1500);
+    // Desktop's poster uses its independent immutable connection. Start fresh
+    // collection data now so browsing is ready when the application mounts.
+    // Phones retain the poster-first network order.
+    if (typeof matchMedia === 'function' && !matchMedia('(max-width: 700px)').matches) window.__HidiStartHomeReads();
     if (typeof document !== 'undefined') {
       const fallback = () => { if (document.readyState !== 'loading' && !document.querySelector('video[data-hidi-first-hero]')) window.__HidiStartHomeReads(); };
       document.addEventListener('readystatechange', fallback);

@@ -1,5 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {runInNewContext} from 'node:vm';
 const code=readFileSync(new URL('./early-hero.js',import.meta.url),'utf8');
+test('desktop starts each fresh public read once while phones retain poster-first data loading',async()=>{
+ for(const mobile of [true,false]){
+  const calls=[],context={window:{},location:{pathname:'/'},AbortController,setTimeout:()=>1,clearTimeout:()=>{},matchMedia:query=>{assert.equal(query,'(max-width: 700px)');return {matches:mobile};},fetch:async(url,options)=>{calls.push(url);assert.equal(options.cache,'no-store');assert(options.signal);return {ok:true,url};}};
+  runInNewContext(code,context);assert.equal(calls.length,mobile?1:3);context.window.__HidiStartHomeReads();context.window.__HidiStartHomeReads();assert.equal(calls.length,3);assert.equal(new Set(calls).size,3);assert.equal((await context.window.__HidiCatalogueEarly).url,'/api/store/products');
+ }
+});
 test('portrait crop retains framing only for centred tall phone rectangles; focal or shape changes use the full frame',()=>{
  for(const eligible of [true,false]){let rect={width:390,height:900};const context={window:{},location:{pathname:'/'},document:{querySelector:()=>({getBoundingClientRect:()=>rect})},AbortController,fetch:async()=>null,setTimeout:()=>1,clearTimeout:()=>{},matchMedia:query=>{assert.equal(query,'(max-width: 432px) and (min-height: 760px)');return {matches:eligible};},Image:class{set src(value){}}};runInNewContext(code,context);
  const variant={avifPoster:'/full.avif',avifPosterSmall:'/portrait.avif',posterCrop:{width:512,height:720}};
