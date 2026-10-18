@@ -104,14 +104,14 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/gi,tag=>{
     const href=tag.match(/\bhref=["']([^"']+)["']/i)?.[1];if(!href||!Object.keys(mirror.files).some(path=>path.endsWith('.js')&&mirrorAssetUrl(path,mirror)===href))return tag;
     const path=new URL(href).pathname;if(!Object.hasOwn(mirror.files,path))return tag;
-    return '<script data-hidi-desktop-preload="true">if(!matchMedia("(max-width: 700px)").matches){const link=document.createElement("link");link.rel="modulepreload";link.crossOrigin="anonymous";link.integrity='+JSON.stringify(integrity(path))+';link.fetchPriority="low";link.href='+JSON.stringify(href)+';document.head.append(link);}</script>';
+    return '<script data-hidi-desktop-preload="true">if(!matchMedia("(max-width: 700px)").matches){const link=document.createElement("link");link.rel="modulepreload";link.crossOrigin="anonymous";link.integrity='+JSON.stringify(integrity(path))+';link.fetchPriority="high";link.href='+JSON.stringify(href)+';document.head.append(link);}</script>';
    });
    html=html.replace(/<script\b[^>]*data-hidi-mirror-app=["'][^"']+["'][^>]*><\/script>/gi,tag=>tag.replace(/type=["']module["']/,'type="application/x-hidi-queued-module"').replace(/\bsrc=/,'data-hidi-queued-src='));
    html=html.replace(/<\/body>/i,'<script data-hidi-app-start="true">'+appStart+'</script></body>');
    const client=mirrorClient.replace('__HIDI_ASSET_MIRROR__',JSON.stringify({origin:mirror.origin,edgeOrigin:mirror.edgeOrigin,edgeFiles:mirror.edgeFiles?Object.fromEntries(Object.keys(mirror.edgeFiles).map(path=>[path,true])):undefined,originPosters,inlinePosters:inline?{[inline.path]:inline.url}:{},files:Object.fromEntries(Object.keys(mirror.files).map(path=>[path,true]))}));
    const marker=/<meta\b[^>]*charset\s*=/i.test(html)?/<meta\b[^>]*charset\s*=[^>]*>/i:/<head\b[^>]*>/i;
    const activeOrigin=mirrorAssetUrl(Object.keys(mirror.files).find(path=>path.endsWith('.js'))||'',mirror);const connectionOrigin=activeOrigin.startsWith('https://')?new URL(activeOrigin).origin:mirror.origin;
-   html=html.replace(marker,tag=>tag+'<link rel="preconnect" href="'+connectionOrigin+'" crossorigin><script data-hidi-asset-mirror="true">'+client+'</script>');
+   html=html.replace(marker,tag=>tag+'<link rel="preconnect" href="'+connectionOrigin+'" crossorigin>'+(desktopStyle?'<link rel="preconnect" href="'+connectionOrigin+'">':'')+'<script data-hidi-asset-mirror="true">'+client+'</script>');
    // Styles use the original connection, separately from the mirrored poster.
    if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-mirror-css="true">if(!matchMedia("(max-width: 700px)").matches)window.__HidiLoadFullCss();</script></head>');
   }
