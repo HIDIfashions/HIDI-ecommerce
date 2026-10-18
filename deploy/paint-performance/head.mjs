@@ -88,7 +88,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    const mirrored=desktopStyle&&mirror&&asset?.sourceSha256===row.sha256&&mirror.files[asset.url]===asset.sha256&&verifiedAsset(asset,/^\/assets\/style-[a-f0-9]{16}\.css$/);
    const full=mirrored?mirrorAssetUrl(asset.url,mirror):original;
    const recovery=mirrored?' data-hidi-origin-href="'+original.replaceAll('&','&amp;')+'" integrity="sha256-'+Buffer.from(asset.sha256,'hex').toString('base64')+'" crossorigin="anonymous"':'';
-   const link=tag.replace(/\bhref=["'][^"']+["']/i,'data-hidi-full-href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true"'+recovery+'>');
+   const link=tag.replace(/\bhref=["'][^"']+["']/i,'data-hidi-full-href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="'+(desktopStyle?'high':'low')+'" data-hidi-deferred-style="true"'+recovery+'>');
    return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+row.critical+'</style>'+link;
   }
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';

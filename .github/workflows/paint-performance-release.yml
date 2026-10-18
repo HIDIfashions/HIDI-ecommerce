@@ -1,4 +1,4 @@
-# Exact selected asset URL is required by the candidate and live probes; all release gates remain mandatory.
+# Desktop avoids duplicate poster paint serialization and prioritizes required full CSS; all release gates remain mandatory.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
 # Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.
