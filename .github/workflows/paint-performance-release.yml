@@ -1,4 +1,4 @@
-# Desktop app preload is critical and both asset connection modes are hinted; all release gates remain mandatory.
+# Desktop autoplay follows the real poster paint with bounded recovery and immediate manual play; all release gates remain mandatory.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
 # Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.
