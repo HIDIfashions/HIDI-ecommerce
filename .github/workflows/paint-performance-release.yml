@@ -1,4 +1,4 @@
-# Desktop keeps complete original CSS in its fresh HTML; phones retain critical CSS and verified CRF38 AV1.
+# Desktop full CSS uses verified immutable assets with SRI and origin recovery; mobile CSS and validated CRF38 AV1 are preserved.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
 # Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.

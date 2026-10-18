@@ -46,6 +46,7 @@ def compose():
     subprocess.run(['node',str(HERE/'critical-css.mjs'),str(base),str(overlay)],check=True)
     save('critical-css-quality.json',{'strategy':'critical-inline-full-external','allSourceCssPreserved':True,'styles':json.loads((overlay/'paint-performance/critical-css.json').read_text())['styles']})
     report=patch.patch_web(base,overlay,poster,icons);manifest=report.pop('manifest')
+    subprocess.run(['node',str(HERE/'build-styles.mjs'),str(base),str(overlay)],check=True)
     subprocess.run(['node',str(HERE/'precompress.mjs'),str(overlay),report['bundle'],str(OUT/'static-encoding-quality.json')],check=True)
     for file in overlay.rglob('*'):
         if file.is_file() and file.suffix in ('.js','.mjs'):subprocess.run(['node','--check',str(file)],check=True)
@@ -74,7 +75,7 @@ def apply():
     for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','poster-tiers-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json','media-cache.json','asset-mirror.json','mirror-fallback-candidate.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
-    recovery=json.loads((OUT/'mirror-fallback-candidate.json').read_text());assert recovery['passed'] and len(recovery['cases'])==24 and recovery['writes']==0 and recovery['integrityRecovery'] and recovery['streamedDocumentRecovery']
+    recovery=json.loads((OUT/'mirror-fallback-candidate.json').read_text());assert recovery['passed'] and len(recovery['cases'])==28 and recovery['writes']==0 and recovery['integrityRecovery'] and recovery['streamedDocumentRecovery'] and recovery['stylesheetIntegrityRecovery']
     mirror.verify(json.loads((OUT/'asset-mirror.json').read_text()))
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1

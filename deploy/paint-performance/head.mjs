@@ -2,8 +2,10 @@ import {readFileSync,realpathSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
 import {createHash} from 'node:crypto';
 import {normalizeMirror} from '../paint-performance/asset-mirror.mjs';
+import {normalizeStyleUrls} from '../paint-performance/style-urls.mjs';
 const mirrorClient=readFileSync(new URL('../paint-performance/asset-mirror-client.js',import.meta.url),'utf8');
 const appStart=readFileSync(new URL('../paint-performance/app-start.js',import.meta.url),'utf8');
+const fullCssClient=readFileSync(new URL('../paint-performance/full-css-client.js',import.meta.url),'utf8');
 
 // Inline the existing public CSS in the same cascade position. Resolve from the
 // current image, so later image overlays cannot leave stale style contents.
@@ -16,6 +18,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
  const inlinePoster=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/initial-hero.json'),'utf8')),variant=Object.values(data)[0]?.mobile,path=variant?.avifPosterSmall,crop=variant?.posterCrop;if(!mirror||!path||crop?.width!==512||crop?.height!==720||crop?.sourceWidth!==1280||crop?.sourceHeight!==720||!Object.hasOwn(mirror.files,path))return null;const bytes=verifiedAsset({url:path,sha256:mirror.files[path]},/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/);return bytes&&bytes.length<=49152?{path,url:'data:image/avif;base64,'+bytes.toString('base64')}:null;}catch{return null;}})();
  const seoBytes=verifiedAsset(assets.seo,/^\/assets\/home-seo-[a-f0-9]{16}\.js$/);
  const criticalStyles=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/critical-css.json'),'utf8')).styles||{};}catch{return {};}})();
+ const styleAssets=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/style-assets.json'),'utf8')).styles||{};}catch{return {};}})();
  const iconMarkup=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/icons.json'),'utf8'));const source=realpathSync(resolve(appRoot,data.sourceFile));if(!source.startsWith(realpathSync(appRoot)+sep))return null;const hash=createHash('sha256').update(readFileSync(source)).digest('hex');return hash===data.originalSha256&&typeof data.markup==='string'?data.markup:null;}catch{return null;}})();
  const homePricing=(()=>{try{
   const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/home-pricing.json'),'utf8'));
@@ -38,14 +41,13 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    if(!file.startsWith(realpathSync(folder)+sep))return null;
    const original=readFileSync(file,'utf8');
    if(original.length>160000||/@import\b/i.test(original)||/<\/style/i.test(original))return null;
-   result=original.replace(/url\(\s*(['"]?)([^'"\s)]+)\1\s*\)/gi,(whole,quote,value)=>/^(?:data:|https?:|\/|#)/i.test(value)?whole:'url('+JSON.stringify(new URL(value,url).pathname)+')');
+   result=normalizeStyleUrls(original,href);
   }catch{}
   cache.set(href,result);return result;
  }
  return (html,request={headers:{}})=>{
-  const mobile=/Mobile|Android/i.test(request.headers?.['user-agent']||'')||request.headers?.['sec-ch-ua-mobile']==='?1';
-  const desktopCss=Boolean(request.headers?.['user-agent'])&&!mobile;
-  const inline=inlinePoster&&mobile?inlinePoster:null;
+  const desktopStyle=Boolean(request.headers?.['user-agent'])&&!/Mobile|Android/i.test(request.headers['user-agent'])&&request.headers?.['sec-ch-ua-mobile']!=='?1';
+  const inline=inlinePoster&&(/Mobile|Android/i.test(request.headers?.['user-agent']||'')||request.headers?.['sec-ch-ua-mobile']==='?1')?inlinePoster:null;
   const posterHints=[...html.matchAll(/<link\b[^>]*rel=["']preload["'][^>]*type=["']image\/avif["'][^>]*>/gi)];
   if(posterHints.length&&/<\/head>/i.test(html)){
    const modules=[];html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*fetchpriority=["']low["'][^>]*>/gi,tag=>{modules.push(tag);return '';});
@@ -80,15 +82,18 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   const css=cssFor(href);if(css===null)return tag;
   const data=[...tag.matchAll(/\s(data-[\w-]+)(?:=["']([^"']*)["'])?/g)].map(m=>' '+m[1]+'="'+(m[2]||'')+'"').join('');
   const row=criticalStyles[new URL(href,'https://hidiindia.com/').pathname];
-  if(!desktopCss&&completeHead&&row&&typeof row.critical==='string'&&!/<\/style/i.test(row.critical)&&row.sha256===createHash('sha256').update(css).digest('hex')){
+  if(completeHead&&row&&typeof row.critical==='string'&&!/<\/style/i.test(row.critical)&&row.sha256===createHash('sha256').update(css).digest('hex')){
    deferred++;
-   const full=href+(href.includes('?')?'&':'?')+'hidi_full='+row.sha256.slice(0,16);
-   const link=tag.replace(/\bhref=["'][^"']+["']/i,'data-hidi-full-href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true">');
+   const original=href+(href.includes('?')?'&':'?')+'hidi_full='+row.sha256.slice(0,16),asset=styleAssets[new URL(href,'https://hidiindia.com/').pathname];
+   const mirrored=desktopStyle&&mirror&&asset?.sourceSha256===row.sha256&&mirror.files[asset.url]===asset.sha256&&verifiedAsset(asset,/^\/assets\/style-[a-f0-9]{16}\.css$/);
+   const full=mirrored?mirror.origin+asset.url:original;
+   const recovery=mirrored?' data-hidi-origin-href="'+original.replaceAll('&','&amp;')+'" integrity="sha256-'+Buffer.from(asset.sha256,'hex').toString('base64')+'" crossorigin="anonymous"':'';
+   const link=tag.replace(/\bhref=["'][^"']+["']/i,'data-hidi-full-href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true"'+recovery+'>');
    return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+row.critical+'</style>'+link;
   }
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
   });
-  if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">window.__HidiFullCssReady=new Promise(resolve=>{let started=false;window.__HidiLoadFullCss=()=>{if(started)return;started=true;Promise.all([...document.querySelectorAll("link[data-hidi-deferred-style]")].map(link=>new Promise(done=>{const ready=()=>{link.media="all";done();};link.addEventListener("load",ready,{once:true});link.addEventListener("error",ready,{once:true});link.href=link.dataset.hidiFullHref;if(link.sheet)ready();}))).then(resolve);};const fallback=()=>{if(document.readyState!=="loading"&&!document.querySelector("video[data-hidi-first-hero]"))window.__HidiLoadFullCss();};document.addEventListener("readystatechange",fallback);fallback();});</script></head>');
+  if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">'+fullCssClient+'</script></head>');
   if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,tag=>logoUrl?tag.replace(/\bhref=["'][^"']+["']/i,'href="'+logoUrl+'"').replace(/\bfetchpriority=["'][^"']+["']/i,'fetchpriority="low"'):'');
   if(mirror&&completeHead){
    const integrity=url=>'sha256-'+Buffer.from(mirror.files[url],'hex').toString('base64');

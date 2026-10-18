@@ -1,5 +1,5 @@
 import {readFile} from 'node:fs/promises';
-const asset=/^\/(?:assets\/index-[a-f0-9]{16}\.js|media-performance\/assets\/(?:poster-[a-f0-9]{16}\.avif|hero-av1-[a-f0-9]{16}-\d+\.mp4))$/;
+const asset=/^\/(?:assets\/(?:index-[a-f0-9]{16}\.js|style-[a-f0-9]{16}\.css)|media-performance\/assets\/(?:poster-[a-f0-9]{16}\.avif|hero-av1-[a-f0-9]{16}-\d+\.mp4))$/;
 export function normalizeMirror(value){
  if(value?.passed!==true||value.bootOnce!==true||!/^https:\/\/[a-z0-9-]+(?:\.\d+)?\.azurestaticapps\.net$/.test(value.origin||'')||!value.files||typeof value.files!=='object')return null;
  const rows=Object.entries(value.files);if(!rows.length||rows.length>128||rows.some(([path,sha])=>!asset.test(path)||!/^[a-f0-9]{64}$/.test(sha)||!path.includes(sha.slice(0,16))))return null;

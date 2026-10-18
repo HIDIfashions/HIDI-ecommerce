@@ -10,20 +10,20 @@ class InventoryTests(unittest.TestCase):
                 root=Path(folder);overlay=root/'overlay';private=root/'private';out=root/'out'
                 for path in [overlay/'paint-performance',private,out]:path.mkdir(parents=True)
                 data={}
-                for prefix,suffix,body in [('/assets/index-','.js',b'if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}'),('/media-performance/assets/poster-','.avif',b'picture'),('/media-performance/assets/hero-av1-','-1280.mp4',b'video')]:
+                for prefix,suffix,body in [('/assets/index-','.js',b'if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}'),('/media-performance/assets/poster-','.avif',b'picture'),('/assets/style-','.css',b'header{color:red}'),('/media-performance/assets/hero-av1-','-1280.mp4',b'video')]:
                     path=prefix+module.sha(body)[:16]+suffix;data[path]=body;target=overlay/'dist'/path.lstrip('/');target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(body)
-                main=next(path for path in data if path.endswith('.js'));variant={'avifPoster':next(path for path in data if path.endswith('.avif')),'av1Url':next(path for path in data if path.endswith('.mp4'))}
+                style=next(path for path in data if path.endswith('.css'));(overlay/'paint-performance/style-assets.json').write_text(json.dumps({'styles':{'/original.css':{'url':style,'sha256':module.sha(data[style])}}}));main=next(path for path in data if path.endswith('.js'));variant={'avifPoster':next(path for path in data if path.endswith('.avif')),'av1Url':next(path for path in data if path.endswith('.mp4'))}
                 host='hidi-test.3.azurestaticapps.net';site={'sku':{'name':'Free','tier':'Free'},'tags':{'hidi-owner':module.OWNER,'hidi-purpose':'immutable-assets'},'defaultHostname':host}
                 def fetch(url):
                     path=url.removeprefix('https://'+host)
                     if path=='/asset-manifest.json':return json.dumps({'files':{p:module.sha(b) for p,b in data.items()}}).encode(),{}
-                    return (b'tampered' if corrupt else data[path]),{'Cache-Control':'public,immutable','Access-Control-Allow-Origin':'*','Content-Type':'javascript' if path.endswith('.js') else 'image/avif' if path.endswith('.avif') else 'video/mp4'}
+                    return (b'tampered' if corrupt else data[path]),{'Cache-Control':'public,immutable','Access-Control-Allow-Origin':'*','Content-Type':'javascript' if path.endswith('.js') else 'image/avif' if path.endswith('.avif') else 'text/css' if path.endswith('.css') else 'video/mp4'}
                 with patch.object(module,'az',return_value=site) as azure,patch.object(module,'get',fetch),patch.object(module.subprocess,'run') as deploy:
                     if corrupt:
                         with self.assertRaisesRegex(AssertionError,'bytes changed'):module.publish(overlay,{'bundle':main.lstrip('/')},{'videos':{'/original.mp4':{'mobile':variant,'desktop':variant}}},private,out)
                     else:
                         proof=module.publish(overlay,{'bundle':main.lstrip('/')},{'videos':{'/original.mp4':{'mobile':variant,'desktop':variant}}},private,out)
-                        self.assertTrue(proof['reusedPublication']);self.assertTrue(proof['historyRetainedWithoutRewrite']);self.assertEqual(len(proof['checks']),3)
+                        self.assertTrue(proof['reusedPublication']);self.assertTrue(proof['historyRetainedWithoutRewrite']);self.assertEqual(len(proof['checks']),4)
                     azure.assert_called_once_with('staticwebapp','show','-g',module.GROUP,'-n',module.NAME);deploy.assert_not_called();self.assertFalse((private/'asset-site').exists())
     def test_only_content_addressed_public_files_are_eligible(self):
         digest='a'*64
@@ -61,9 +61,9 @@ class InventoryTests(unittest.TestCase):
                 for path in [overlay/'paint-performance',private,out]:path.mkdir(parents=True)
                 entry=b'if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}'
                 data={}
-                for prefix,suffix,body in [('/assets/index-','.js',entry),('/media-performance/assets/poster-','.avif',b'validated-picture'),('/media-performance/assets/hero-av1-','-1280.mp4',b'validated-video')]:
+                for prefix,suffix,body in [('/assets/index-','.js',entry),('/media-performance/assets/poster-','.avif',b'validated-picture'),('/assets/style-','.css',b'header{color:blue}'),('/media-performance/assets/hero-av1-','-1280.mp4',b'validated-video')]:
                     path=prefix+module.sha(body)[:16]+suffix;data[path]=body;target=overlay/'dist'/path.lstrip('/');target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(body)
-                main=next(path for path in data if path.endswith('.js'));poster=next(path for path in data if path.endswith('.avif'));video=next(path for path in data if path.endswith('.mp4'))
+                style=next(path for path in data if path.endswith('.css'));(overlay/'paint-performance/style-assets.json').write_text(json.dumps({'styles':{'/original.css':{'url':style,'sha256':module.sha(data[style])}}}));main=next(path for path in data if path.endswith('.js'));poster=next(path for path in data if path.endswith('.avif'));video=next(path for path in data if path.endswith('.mp4'))
                 old=b'if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;/*older*/}'
                 oldpath='/assets/index-'+module.sha(old)[:16]+'.js';history={oldpath:module.sha(old)} if existing else {}
                 host='hidi-test.3.azurestaticapps.net';calls=[];published=[];token='fake-unit-token-'*6
@@ -79,7 +79,7 @@ class InventoryTests(unittest.TestCase):
                         if not existing:raise module.urllib.error.HTTPError(url,404,'Not found',{},None)
                         return json.dumps({'files':history}).encode(),{}
                     body=(private/'asset-site'/path.lstrip('/')).read_bytes() if published else old if path==oldpath else data[path]
-                    kind='javascript' if path.endswith('.js') else 'image/avif' if path.endswith('.avif') else 'video/mp4'
+                    kind='javascript' if path.endswith('.js') else 'image/avif' if path.endswith('.avif') else 'text/css' if path.endswith('.css') else 'video/mp4'
                     return body,{'Cache-Control':'public,immutable','Access-Control-Allow-Origin':'*','Content-Type':kind}
                 def deploy(args,**kwargs):
                     self.assertNotIn(token,args);self.assertEqual(kwargs['env']['SWA_CLI_DEPLOYMENT_TOKEN'],token);self.assertIn('--no-use-keychain',args);published.append(True)

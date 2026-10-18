@@ -10,7 +10,7 @@ from pathlib import Path
 NAME='hidi-performance-assets'
 GROUP='rg-hidi-prod'
 OWNER='paint-performance-release'
-ASSET=re.compile(r'^/(?:assets/index-[a-f0-9]{16}\.js|media-performance/assets/(?:poster-[a-f0-9]{16}\.avif|hero-av1-[a-f0-9]{16}-\d+\.mp4))$')
+ASSET=re.compile(r'^/(?:assets/(?:index-[a-f0-9]{16}\.js|style-[a-f0-9]{16}\.css)|media-performance/assets/(?:poster-[a-f0-9]{16}\.avif|hero-av1-[a-f0-9]{16}-\d+\.mp4))$')
 LIMIT=100*1024*1024
 def sha(data):return hashlib.sha256(data).hexdigest()
 def validate_files(files):
@@ -50,6 +50,12 @@ def publish(overlay,report,manifest,private,out):
     origin='https://'+host
     files={}
     paths=['/'+report['bundle']]
+    style_manifest=overlay/'paint-performance/style-assets.json'
+    if style_manifest.exists():
+        for row in json.loads(style_manifest.read_text())['styles'].values():
+            assert re.fullmatch(r'/assets/style-[a-f0-9]{16}\.css',row['url'])
+            assert sha((overlay/'dist'/row['url'].lstrip('/')).read_bytes())==row['sha256'],'Generated CSS bytes changed'
+            paths.append(row['url'])
     for variants in manifest['videos'].values():
         for kind in ['mobile','desktop']:
             paths.extend([variants[kind]['avifPoster'],variants[kind]['av1Url']])
@@ -74,7 +80,7 @@ def publish(overlay,report,manifest,private,out):
             data,headers=get(origin+path)
             assert sha(data)==digest,'Existing immutable mirror bytes changed'
             assert 'immutable' in headers.get('Cache-Control','') and headers.get('Access-Control-Allow-Origin')=='*'
-            expected='video/mp4' if path.endswith('.mp4') else 'image/avif' if path.endswith('.avif') else 'javascript'
+            expected='video/mp4' if path.endswith('.mp4') else 'image/avif' if path.endswith('.avif') else 'text/css' if path.endswith('.css') else 'javascript'
             assert expected in headers.get('Content-Type','')
             total+=len(data);assert total<LIMIT
             checks.append({'path':path,'sha256':digest,'bytes':len(data),'mime':headers.get('Content-Type')})
@@ -99,7 +105,7 @@ def publish(overlay,report,manifest,private,out):
     immutable={'Cache-Control':'public,max-age=31536000,immutable'}
     config={'routes':[{'route':'/asset-manifest.json','headers':{'Cache-Control':'no-store'}},{'route':'/assets/*','headers':immutable},{'route':'/media-performance/assets/*','headers':immutable}],
         'globalHeaders':{'Access-Control-Allow-Origin':'*','X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex'},
-        'mimeTypes':{'.avif':'image/avif','.mp4':'video/mp4','.js':'text/javascript'}}
+        'mimeTypes':{'.avif':'image/avif','.mp4':'video/mp4','.js':'text/javascript','.css':'text/css'}}
     (package/'staticwebapp.config.json').write_text(json.dumps(config))
     token=az('staticwebapp','secrets','list','-g',GROUP,'-n',NAME)['properties']['apiKey'];assert isinstance(token,str) and len(token)>40
     print('::add-mask::'+token,flush=True)
@@ -112,7 +118,7 @@ def publish(overlay,report,manifest,private,out):
             try:
                 data,headers=get(origin+path);assert sha(data)==digest,'Published mirror hash mismatch'
                 assert 'immutable' in headers.get('Cache-Control','') and headers.get('Access-Control-Allow-Origin')=='*'
-                expected='video/mp4' if path.endswith('.mp4') else 'image/avif' if path.endswith('.avif') else 'javascript'
+                expected='video/mp4' if path.endswith('.mp4') else 'image/avif' if path.endswith('.avif') else 'text/css' if path.endswith('.css') else 'javascript'
                 assert expected in headers.get('Content-Type','')
                 checks.append({'path':path,'sha256':digest,'bytes':len(data),'mime':headers.get('Content-Type')});break
             except (urllib.error.URLError,AssertionError) as error:last=error;time.sleep(5)
@@ -129,6 +135,7 @@ def verify(proof):
     for path,digest in proof['files'].items():
         data,headers=get(proof['origin']+path)
         assert sha(data)==digest and 'immutable' in headers.get('Cache-Control','') and headers.get('Access-Control-Allow-Origin')=='*','Mirror changed after preparation'
+        if path.endswith('.css'):assert 'text/css' in headers.get('Content-Type',''),'Verified stylesheet MIME changed'
 
 if __name__=='__main__':
     import sys

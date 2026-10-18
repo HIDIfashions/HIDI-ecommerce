@@ -178,7 +178,7 @@ def patch_web(base,overlay,poster,icons=None):
     files={'paint-performance/static-encoding.mjs':(HERE/'static-encoding.mjs').read_text(),'paint-performance/icons.json':json.dumps(icons),'paint-performance/initial-hero.json':json.dumps(manifest['videos']),'paint-performance/hero.mjs':(HERE/'hero.mjs').read_text(),'paint-performance/hero-template.html':(HERE/'hero-template.html').read_text(),'dist/'+pricing_name:pricing,'paint-performance/home-pricing.json':json.dumps(pricing_metadata),'paint-performance/announcement.mjs':initial_home,'dist/index.html':html,'dist/'+name:text,'lcp-performance/head.mjs':(HERE/'head.mjs').read_text(),'server.mjs':runtime,'paint-performance/delivery.mjs':(HERE/'delivery.mjs').read_text()}
     files['paint-performance/stream-home.mjs']=(HERE/'stream-home.mjs').read_text()
     files['paint-performance/critical-poster.mjs']=(HERE/'critical-poster.mjs').read_text()
-    for asset_name in ['asset-mirror.mjs','asset-mirror-client.js','app-start.js']:
+    for asset_name in ['asset-mirror.mjs','asset-mirror-client.js','app-start.js','style-urls.mjs','full-css-client.js']:
         files['paint-performance/'+asset_name]=(HERE/asset_name).read_text()
     for key,value in files.items():
         target=overlay/key;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)
