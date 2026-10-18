@@ -4,6 +4,7 @@ const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 // Exact originals and immutable bytes from run 39019085728. The builder still
 // independently checks every frame, audio, duration, SSIM and savings gate.
 export const encodingRecipe={encoder:'libaom-av1',crf:38,cpuUsed:4,audio:'copy',frames:'passthrough'};
+export const desktopEncodingRecipe={encoder:'libaom-av1',crf:41,cpuUsed:3,tune:'ssim',audio:'copy',frames:'passthrough'};
 const cachedRecipe=encodingRecipe;
 const rows={
  a0480a593165481d0a05f35c2cda7c66fbf1c591206b02249ce83cfab45d5202:['8774287eb27ac5cdbd1b8f8aebadaa5319227400e930abd6e2d01b87082ff535',1280],
