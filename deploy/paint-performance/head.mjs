@@ -1,7 +1,7 @@
 import {readFileSync,realpathSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
 import {createHash} from 'node:crypto';
-import {normalizeMirror} from '../paint-performance/asset-mirror.mjs';
+import {normalizeMirror,mirrorAssetUrl} from '../paint-performance/asset-mirror.mjs';
 import {normalizeStyleUrls} from '../paint-performance/style-urls.mjs';
 const mirrorClient=readFileSync(new URL('../paint-performance/asset-mirror-client.js',import.meta.url),'utf8');
 const appStart=readFileSync(new URL('../paint-performance/app-start.js',import.meta.url),'utf8');
@@ -86,7 +86,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    deferred++;
    const original=href+(href.includes('?')?'&':'?')+'hidi_full='+row.sha256.slice(0,16),asset=styleAssets[new URL(href,'https://hidiindia.com/').pathname];
    const mirrored=desktopStyle&&mirror&&asset?.sourceSha256===row.sha256&&mirror.files[asset.url]===asset.sha256&&verifiedAsset(asset,/^\/assets\/style-[a-f0-9]{16}\.css$/);
-   const full=mirrored?mirror.origin+asset.url:original;
+   const full=mirrored?mirrorAssetUrl(asset.url,mirror):original;
    const recovery=mirrored?' data-hidi-origin-href="'+original.replaceAll('&','&amp;')+'" integrity="sha256-'+Buffer.from(asset.sha256,'hex').toString('base64')+'" crossorigin="anonymous"':'';
    const link=tag.replace(/\bhref=["'][^"']+["']/i,'data-hidi-full-href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true"'+recovery+'>');
    return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+row.critical+'</style>'+link;
@@ -97,20 +97,21 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,tag=>logoUrl?tag.replace(/\bhref=["'][^"']+["']/i,'href="'+logoUrl+'"').replace(/\bfetchpriority=["'][^"']+["']/i,'fetchpriority="low"'):'');
   if(mirror&&completeHead){
    const integrity=url=>'sha256-'+Buffer.from(mirror.files[url],'hex').toString('base64');
-   html=html.replace(/<link\b[^>]*>/gi,tag=>tag.replace(/\bhref=["']([^"']+)["']/i,(whole,url)=>inline?.path===url?'href="'+inline.url+'"':Object.hasOwn(mirror.files,url)&&!(originPosters.includes(url)&&!tag.includes('media="(min-width: 701px)"'))?'href="'+mirror.origin+url+'"'+(url.endsWith('.js')?' integrity="'+integrity(url)+'"'+(/\bcrossorigin\b/i.test(tag)?'':' crossorigin="anonymous"'):''):whole));
-   html=html.replace(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*><\/script>/gi,(tag,url)=>Object.hasOwn(mirror.files,url)&&url.endsWith('.js')?tag.replace('src="'+url+'"','src="'+mirror.origin+url+'" integrity="'+integrity(url)+'" data-hidi-mirror-app="'+url+'" onerror="window.__HidiAppFallback()"'):tag);
+   html=html.replace(/<link\b[^>]*>/gi,tag=>tag.replace(/\bhref=["']([^"']+)["']/i,(whole,url)=>inline?.path===url?'href="'+inline.url+'"':Object.hasOwn(mirror.files,url)&&!(originPosters.includes(url)&&!tag.includes('media="(min-width: 701px)"'))?'href="'+mirrorAssetUrl(url,mirror)+'"'+(url.endsWith('.js')?' integrity="'+integrity(url)+'"'+(/\bcrossorigin\b/i.test(tag)?'':' crossorigin="anonymous"'):''):whole));
+   html=html.replace(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*><\/script>/gi,(tag,url)=>Object.hasOwn(mirror.files,url)&&url.endsWith('.js')?tag.replace('src="'+url+'"','src="'+mirrorAssetUrl(url,mirror)+'" integrity="'+integrity(url)+'" data-hidi-mirror-app="'+url+'" onerror="window.__HidiAppFallback()"'):tag);
    // Desktop retains its early preload. Mobile lets the native poster paint
    // before starting the application transfer; integrity and origin recovery remain.
    html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/gi,tag=>{
-    const href=tag.match(/\bhref=["']([^"']+)["']/i)?.[1];if(!href?.startsWith(mirror.origin+'/assets/'))return tag;
+    const href=tag.match(/\bhref=["']([^"']+)["']/i)?.[1];if(!href||!Object.keys(mirror.files).some(path=>path.endsWith('.js')&&mirrorAssetUrl(path,mirror)===href))return tag;
     const path=new URL(href).pathname;if(!Object.hasOwn(mirror.files,path))return tag;
     return '<script data-hidi-desktop-preload="true">if(!matchMedia("(max-width: 700px)").matches){const link=document.createElement("link");link.rel="modulepreload";link.crossOrigin="anonymous";link.integrity='+JSON.stringify(integrity(path))+';link.fetchPriority="low";link.href='+JSON.stringify(href)+';document.head.append(link);}</script>';
    });
    html=html.replace(/<script\b[^>]*data-hidi-mirror-app=["'][^"']+["'][^>]*><\/script>/gi,tag=>tag.replace(/type=["']module["']/,'type="application/x-hidi-queued-module"').replace(/\bsrc=/,'data-hidi-queued-src='));
    html=html.replace(/<\/body>/i,'<script data-hidi-app-start="true">'+appStart+'</script></body>');
-   const client=mirrorClient.replace('__HIDI_ASSET_MIRROR__',JSON.stringify({origin:mirror.origin,originPosters,inlinePosters:inline?{[inline.path]:inline.url}:{},files:Object.fromEntries(Object.keys(mirror.files).map(path=>[path,true]))}));
+   const client=mirrorClient.replace('__HIDI_ASSET_MIRROR__',JSON.stringify({origin:mirror.origin,edgeOrigin:mirror.edgeOrigin,edgeFiles:mirror.edgeFiles?Object.fromEntries(Object.keys(mirror.edgeFiles).map(path=>[path,true])):undefined,originPosters,inlinePosters:inline?{[inline.path]:inline.url}:{},files:Object.fromEntries(Object.keys(mirror.files).map(path=>[path,true]))}));
    const marker=/<meta\b[^>]*charset\s*=/i.test(html)?/<meta\b[^>]*charset\s*=[^>]*>/i:/<head\b[^>]*>/i;
-   html=html.replace(marker,tag=>tag+'<link rel="preconnect" href="'+mirror.origin+'" crossorigin><script data-hidi-asset-mirror="true">'+client+'</script>');
+   const activeOrigin=mirrorAssetUrl(Object.keys(mirror.files).find(path=>path.endsWith('.js'))||'',mirror);const connectionOrigin=activeOrigin.startsWith('https://')?new URL(activeOrigin).origin:mirror.origin;
+   html=html.replace(marker,tag=>tag+'<link rel="preconnect" href="'+connectionOrigin+'" crossorigin><script data-hidi-asset-mirror="true">'+client+'</script>');
    // Styles use the original connection, separately from the mirrored poster.
    if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-mirror-css="true">if(!matchMedia("(max-width: 700px)").matches)window.__HidiLoadFullCss();</script></head>');
   }

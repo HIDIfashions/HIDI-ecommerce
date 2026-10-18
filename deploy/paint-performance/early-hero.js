@@ -19,10 +19,6 @@
       for (const start of pending) start();
     };
     const deadline = setTimeout(window.__HidiStartHomeReads, 1500);
-    // Desktop's poster uses its independent immutable connection. Start fresh
-    // collection data now so browsing is ready when the application mounts.
-    // Phones retain the poster-first network order.
-    if (typeof matchMedia === 'function' && !matchMedia('(max-width: 700px)').matches) window.__HidiStartHomeReads();
     if (typeof document !== 'undefined') {
       const fallback = () => { if (document.readyState !== 'loading' && !document.querySelector('video[data-hidi-first-hero]')) window.__HidiStartHomeReads(); };
       document.addEventListener('readystatechange', fallback);
@@ -39,9 +35,18 @@
     const release = () => { window.__HidiStartHomeReads?.(); window.__HidiLoadFullCss?.(); };
     if (!video?.poster || document.visibilityState === 'hidden') { release(); return Promise.resolve(); }
     return new Promise(resolve => {
-      let settled = false;
-      const finish = () => { if (settled) return; settled = true; clearTimeout(timer); release(); resolve(); };
+      let settled = false, observer = null;
+      const finish = () => { if (settled) return; settled = true; clearTimeout(timer); observer?.disconnect(); release(); resolve(); };
       const timer = setTimeout(finish, 1200);
+      // When supported, a real native-poster paint is stronger evidence than
+      // waiting an extra frame. Phones and unsupported engines keep the exact
+      // decode + double-frame fallback; the deadline is unchanged.
+      try {
+        if (typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('largest-contentful-paint') && typeof matchMedia === 'function' && !matchMedia('(max-width: 700px)').matches) {
+          observer = new PerformanceObserver(list => { if (list.getEntries().some(entry => entry.element === video)) finish(); });
+          observer.observe({ type: 'largest-contentful-paint', buffered: true });
+        }
+      } catch { observer = null; }
       try {
         const image = new Image();
         image.src = video.poster;

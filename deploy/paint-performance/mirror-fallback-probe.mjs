@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
-import {readMirrorProof,isMirrorAsset} from './asset-mirror.mjs';
+import {readMirrorProof,isMirrorAsset,mirrorAssetUrl} from './asset-mirror.mjs';
 import {existsSync} from 'node:fs';
 import {createSlowDocumentProxy} from './slow-document-proxy.mjs';
 export async function verifyMirrorFallback(pw,base,out,mode){
@@ -7,7 +7,7 @@ export async function verifyMirrorFallback(pw,base,out,mode){
  const rows=[],slow=await createSlowDocumentProxy(base);
  try{for(const engine of ['chromium','webkit']){
   const browser=await pw[engine].launch({headless:true,...(engine==='chromium'&&existsSync('/usr/bin/google-chrome')?{executablePath:'/usr/bin/google-chrome'}:{})});
-  try{for(const width of [390,1440])for(const scenario of ['offline','late-main','media-offline','tampered-main','slow-document','origin-media-offline','tampered-style']){
+  try{for(const width of [390,1440])for(const scenario of ['offline','late-main','media-offline','tampered-main','slow-document','origin-media-offline','tampered-style','edge-offline']){
    const targetBase=scenario==='slow-document'?slow.url:base;
    const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'}),page=await context.newPage(),errors=[],reads=[];
    let tamperedStyles=0;const requests=[];page.on('requestfailed',request=>requests.push({url:request.url(),error:request.failure()}));
@@ -18,6 +18,7 @@ export async function verifyMirrorFallback(pw,base,out,mode){
      if(!['GET','HEAD'].includes(request.method())||url.origin!==new URL(targetBase).origin&&!isMirrorAsset(url.href,mirror))return route.abort();
      if(scenario==='origin-media-offline'&&url.origin===new URL(targetBase).origin&&url.pathname.endsWith('.avif')&&Object.hasOwn(mirror.files,url.pathname))return route.abort();
      if(isMirrorAsset(url.href,mirror)){
+      if(scenario==='edge-offline'&&url.origin===mirror.edgeOrigin)return route.abort();
       if(scenario==='tampered-style'&&url.pathname.endsWith('.css')){tamperedStyles++;return route.fulfill({status:200,headers:{'content-type':'text/css','access-control-allow-origin':'*'},body:'body{display:none!important}'});}
       if(scenario==='slow-document'&&url.pathname.endsWith('.js'))return route.abort();
       if(scenario==='tampered-main'&&url.pathname.endsWith('.js'))return route.fulfill({status:200,headers:{'content-type':'text/javascript','access-control-allow-origin':'*'},body:'window.__HidiMirrorTampered=true;'});
@@ -41,7 +42,10 @@ export async function verifyMirrorFallback(pw,base,out,mode){
      assert(styles.length>0&&styles.every(link=>new URL(link.href).origin===new URL(base).origin&&!link.integrity&&link.loaded&&link.media==='all'),'SRI failure must load the original complete CSS before application startup');
     }
     if(['offline','media-offline'].includes(scenario)){assert.equal(new URL(result.poster).origin,new URL(base).origin);assert.equal(new URL(result.src).origin,new URL(base).origin);}
-    if(scenario==='origin-media-offline')assert.equal(new URL(result.poster).origin,mirror.origin,'Original poster failure must recover to verified mirrored bytes');
+    if(scenario==='origin-media-offline'){const path=new URL(result.poster).pathname;assert.equal(new URL(result.poster).origin,new URL(mirrorAssetUrl(path,mirror)).origin,'Original poster failure must recover to verified mirrored bytes');}
+    if(scenario==='edge-offline'){
+     for(const resource of [result.poster,result.src]){const url=new URL(resource);assert.notEqual(url.origin,mirror.edgeOrigin);if(Object.hasOwn(mirror.edgeFiles||{},url.pathname))assert.equal(url.origin,new URL(base).origin,'Edge failure must recover to original local bytes');}
+    }
     rows.push({engine,width,scenario,passed:true,oneApplication:true,oneCatalogueRead:true});console.log('PASS mirror recovery '+mode+' '+engine+' '+width+' '+scenario);
    }catch(error){
     const stem=out+'/mirror-'+mode+'-'+engine+'-'+width+'-'+scenario+'-failure';
@@ -50,5 +54,5 @@ export async function verifyMirrorFallback(pw,base,out,mode){
    }finally{await context.close();}
   }}finally{await browser.close();}
  }}finally{slow.close();}
- assert.equal(rows.length,28);await writeFile(out+'/mirror-fallback-'+mode+'.json',JSON.stringify({passed:true,cases:rows,writes:0,originRecovery:true,mirrorRecovery:true,lateModuleBootOnce:true,integrityRecovery:true,streamedDocumentRecovery:true,stylesheetIntegrityRecovery:true}));
+ assert.equal(rows.length,32);await writeFile(out+'/mirror-fallback-'+mode+'.json',JSON.stringify({passed:true,cases:rows,writes:0,originRecovery:true,mirrorRecovery:true,lateModuleBootOnce:true,integrityRecovery:true,streamedDocumentRecovery:true,stylesheetIntegrityRecovery:true,edgeOriginRecovery:true}));
 }

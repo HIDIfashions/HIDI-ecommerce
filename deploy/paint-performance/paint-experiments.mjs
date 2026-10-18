@@ -12,7 +12,7 @@ export function transformPaintExperiment(html,variant,mirror,options={}){
  if(variant==='cloudflare-posters'){
   const origin=options.posterOrigin;if(origin!=='https://hidi-performance-posters.pages.dev')throw Error('Unexpected poster CDN');
   html=html.replaceAll(mirror.origin+'/media-performance/assets/poster-',origin+'/media-performance/assets/poster-');
-  const anchor='window.__HidiAssetUrl=path=>supported(path)&&!failed.has(path)?mirror.origin+path:path;';
+  const anchor='window.__HidiAssetUrl=path=>supported(path)&&!failed.has(path)?assetOrigin(path)+path:path;';
   if(!html.includes(anchor))throw Error('Verified asset URL helper changed');
   html=html.replace(anchor,'window.__HidiAssetUrl=path=>supported(path)&&!failed.has(path)?(path.endsWith(".avif")?'+JSON.stringify(origin)+':mirror.origin)+path:path;');
   if(!options.isMobile){const hint='<link rel="preconnect" href="'+mirror.origin+'" crossorigin>';if(!html.includes(hint))throw Error('Application preconnect missing');html=html.replace(hint,'<link rel="preconnect" href="'+origin+'">'+hint);}

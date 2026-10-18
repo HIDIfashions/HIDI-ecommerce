@@ -75,7 +75,7 @@ def apply():
     for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','poster-tiers-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json','media-cache.json','asset-mirror.json','mirror-fallback-candidate.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
-    recovery=json.loads((OUT/'mirror-fallback-candidate.json').read_text());assert recovery['passed'] and len(recovery['cases'])==28 and recovery['writes']==0 and recovery['integrityRecovery'] and recovery['streamedDocumentRecovery'] and recovery['stylesheetIntegrityRecovery']
+    recovery=json.loads((OUT/'mirror-fallback-candidate.json').read_text());assert recovery['passed'] and len(recovery['cases'])==32 and recovery['writes']==0 and recovery['integrityRecovery'] and recovery['streamedDocumentRecovery'] and recovery['stylesheetIntegrityRecovery'] and recovery['edgeOriginRecovery']
     mirror.verify(json.loads((OUT/'asset-mirror.json').read_text()))
     for row in json.loads((OUT/'lighthouse/candidate.json').read_text()):
         assert row['score']>=93 and row['cls']<=.1

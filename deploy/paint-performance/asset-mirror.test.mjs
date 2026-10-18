@@ -1,5 +1,17 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {runInNewContext} from 'node:vm';import {normalizeMirror,isMirrorAsset} from './asset-mirror.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {runInNewContext} from 'node:vm';import {normalizeMirror,isMirrorAsset,mirrorAssetUrl} from './asset-mirror.mjs';
 const sha='a'.repeat(64),path='/media-performance/assets/poster-'+sha.slice(0,16)+'.avif',main='/assets/index-'+sha.slice(0,16)+'.js',mp4='/media-performance/assets/hero-av1-'+sha.slice(0,16)+'-1280.mp4',origin='https://hidi-test.azurestaticapps.net',proof={passed:true,bootOnce:true,origin,files:{[path]:sha,[main]:sha,[mp4]:sha}};
+const edgeOrigin='https://hidi-performance-posters.pages.dev';
+test('only identical current assets on the exact owned edge host are eligible; future hashes keep Azure delivery',()=>{
+ const value={...proof,edgeOrigin,edgeFiles:{[main]:sha}},mirror=normalizeMirror(value);assert(mirror);assert.equal(mirrorAssetUrl(main,mirror),edgeOrigin+main);assert.equal(mirrorAssetUrl(path,mirror),origin+path);assert(isMirrorAsset(edgeOrigin+main,mirror));
+ for(const url of [edgeOrigin+path,edgeOrigin+main+'?x',edgeOrigin+'/api/store/products','https://other.pages.dev'+main])assert(!isMirrorAsset(url,mirror));
+ for(const change of [{edgeOrigin:'https://other.pages.dev'},{edgeFiles:{[main]:'b'.repeat(64)}},{edgeFiles:{'/config.js':sha}},{edgeFiles:{}}])assert.equal(normalizeMirror({...value,...change}),null);
+});
+test('edge poster and video failures recover to original HIDI bytes without looping',()=>{
+ const images=[],window={},video={poster:edgeOrigin+path},context={window,Set,Map,Object,Image:class{constructor(){images.push(this);}},setTimeout:()=>1,clearTimeout:()=>{},document:{querySelectorAll:()=>[video]}};
+ runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify({...proof,edgeOrigin,edgeFiles:proof.files})),context);
+ assert.equal(window.__HidiAssetUrl(main),edgeOrigin+main);assert.equal(window.__HidiMirrorPoster(path),edgeOrigin+path);images[0].onerror();assert.equal(video.poster,path);assert.equal(window.__HidiMirrorPoster(path),path);images[1].onerror();assert.equal(images.length,2);
+ let loaded=0;const movie={src:edgeOrigin+mp4,load:()=>loaded++};assert(window.__HidiMirrorVideoFallback(movie,mp4));assert.equal(movie.src,mp4);assert.equal(loaded,1);assert(!window.__HidiMirrorVideoFallback(movie,mp4));
+});
 test('only verified immutable assets on the exact HTTPS mirror are first-party',()=>{const mirror=normalizeMirror(proof);assert(mirror);assert(isMirrorAsset(origin+path,mirror));for(const url of [origin+path+'?x',origin+path+'#x',origin+'/api/store/products','https://other.azurestaticapps.net'+path,'https://evil.example'+path])assert(!isMirrorAsset(url,mirror));for(const value of [{...proof,bootOnce:false},{...proof,origin:'http://hidi-test.azurestaticapps.net'},{...proof,files:{'/config.js':sha}},{...proof,files:{[path]:'b'.repeat(64)}}])assert.equal(normalizeMirror(value),null);});
 test('poster, video and application return to the original origin on mirror failure',()=>{
  const timers=[],images=[],scripts=[],video={poster:origin+path},app={dataset:{hidiMirrorApp:main}};

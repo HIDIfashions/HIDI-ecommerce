@@ -40,6 +40,29 @@ def get(url):
     request=urllib.request.Request(url,headers={'Accept-Encoding':'identity','Cache-Control':'no-cache'})
     with urllib.request.urlopen(request,timeout=45) as response:return response.read(),response.headers
 
+def verify_edge(proof):
+    if 'edgeOrigin' not in proof and 'edgeFiles' not in proof:return
+    assert proof.get('edgeOrigin')=='https://hidi-performance-posters.pages.dev','Unexpected edge host'
+    files=proof.get('edgeFiles');assert isinstance(files,dict) and files,'Missing verified edge files';validate_files(files)
+    for path,digest in files.items():
+        assert proof['files'].get(path)==digest,'Edge content must match current immutable files'
+        request=urllib.request.Request(proof['edgeOrigin']+path,headers={'Accept-Encoding':'identity','User-Agent':'HIDI-Performance-Validation/1.0 (+https://hidiindia.com)'})
+        with urllib.request.urlopen(request,timeout=45) as response:data=response.read();headers=response.headers
+        assert sha(data)==digest,'Edge asset bytes changed'
+        expected='video/mp4' if path.endswith('.mp4') else 'image/avif' if path.endswith('.avif') else 'text/css' if path.endswith('.css') else 'javascript'
+        assert expected in headers.get('Content-Type','') and 'immutable' in headers.get('Cache-Control','') and headers.get('Access-Control-Allow-Origin')=='*','Edge delivery headers changed'
+        if path.endswith('.avif'):assert 'noindex' not in headers.get('X-Robots-Tag','').lower()
+
+def attach_edge(proof):
+    config=Path(__file__).with_name('edge-assets.json')
+    if config.exists():
+        source=json.loads(config.read_text());validate_files(source['files']);assert source['origin']=='https://hidi-performance-posters.pages.dev'
+        files={path:digest for path,digest in source['files'].items() if proof['files'].get(path)==digest}
+        # A new app/style/media hash absent from this public deployment stays on
+        # Azure. Never reuse an older file or invent availability on the edge.
+        if files:proof.update(edgeOrigin=source['origin'],edgeFiles=files);verify_edge(proof)
+    return proof
+
 def publish(overlay,report,manifest,private,out):
     # Exact resource reads work with the approved site-only role. No group listing or creation.
     site=az('staticwebapp','show','-g',GROUP,'-n',NAME)
@@ -85,6 +108,7 @@ def publish(overlay,report,manifest,private,out):
             total+=len(data);assert total<LIMIT
             checks.append({'path':path,'sha256':digest,'bytes':len(data),'mime':headers.get('Content-Type')})
         proof={'passed':True,'bootOnce':True,'origin':origin,'files':current,'sku':'Free','resource':NAME,'checks':checks,'retainedPreviousFiles':len(history),'totalPublicBytes':total,'dnsChanged':False,'existingAppsChanged':False,'reusedPublication':True,'historyRetainedWithoutRewrite':True}
+        attach_edge(proof)
         (overlay/'paint-performance/asset-mirror.json').write_text(json.dumps(proof))
         (out/'asset-mirror.json').write_text(json.dumps(proof,indent=2))
         return proof
@@ -124,6 +148,7 @@ def publish(overlay,report,manifest,private,out):
             except (urllib.error.URLError,AssertionError) as error:last=error;time.sleep(5)
         else:raise AssertionError('Mirror publication did not become healthy: '+path) from last
     proof={'passed':True,'bootOnce':True,'origin':origin,'files':current,'sku':'Free','resource':NAME,'checks':checks,'retainedPreviousFiles':len(history),'totalPublicBytes':total,'dnsChanged':False,'existingAppsChanged':False}
+    attach_edge(proof)
     (overlay/'paint-performance/asset-mirror.json').write_text(json.dumps(proof))
     (out/'asset-mirror.json').write_text(json.dumps(proof,indent=2))
     return proof
@@ -132,6 +157,7 @@ def verify(proof):
     assert proof['passed'] and proof['bootOnce'] and proof['sku']=='Free' and not proof['dnsChanged'] and not proof['existingAppsChanged']
     assert re.fullmatch(r'https://[a-z0-9-]+(?:\.\d+)?\.azurestaticapps\.net',proof['origin'])
     validate_files(proof['files'])
+    verify_edge(proof)
     for path,digest in proof['files'].items():
         data,headers=get(proof['origin']+path)
         assert sha(data)==digest and 'immutable' in headers.get('Cache-Control','') and headers.get('Access-Control-Allow-Origin')=='*','Mirror changed after preparation'

@@ -4,6 +4,27 @@ from pathlib import Path
 spec=importlib.util.spec_from_file_location('asset_mirror',Path(__file__).with_name('asset-mirror.py'));module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
 class InventoryTests(unittest.TestCase):
+    def test_edge_delivery_rejects_changed_bytes_headers_and_unregistered_files(self):
+        body=b'public tested code';digest=module.sha(body);path='/assets/index-'+digest[:16]+'.js';proof={'edgeOrigin':'https://hidi-performance-posters.pages.dev','edgeFiles':{path:digest},'files':{path:digest}}
+        headers={'Content-Type':'text/javascript','Cache-Control':'public,immutable','Access-Control-Allow-Origin':'*'}
+        for change in [{},{'body':b'tampered'},{'headers':{**headers,'Access-Control-Allow-Origin':'null'}},{'headers':{**headers,'Content-Type':'text/html'}}]:
+            response=unittest.mock.MagicMock();response.__enter__.return_value=response;response.read.return_value=change.get('body',body);response.headers=change.get('headers',headers)
+            with self.subTest(change=change),patch.object(module.urllib.request,'urlopen',return_value=response) as fetch:
+                if change:
+                    with self.assertRaises(AssertionError):module.verify_edge(proof)
+                else:
+                    module.verify_edge(proof);request=fetch.call_args.args[0];self.assertIn('HIDI-Performance-Validation',request.get_header('User-agent'))
+        for invalid in [{**proof,'edgeOrigin':'https://other.pages.dev'},{**proof,'edgeFiles':{path:'a'*64}},{**proof,'edgeFiles':{'/api/store/products':digest}}]:
+            with patch.object(module.urllib.request,'urlopen') as fetch:
+                with self.assertRaises(AssertionError):module.verify_edge(invalid)
+                fetch.assert_not_called()
+    def test_new_asset_hashes_not_deployed_on_edge_keep_the_verified_azure_path(self):
+        old=module.sha(b'old');fresh=module.sha(b'fresh');oldpath='/assets/index-'+old[:16]+'.js';newpath='/assets/index-'+fresh[:16]+'.js'
+        config=unittest.mock.MagicMock();config.exists.return_value=True;config.read_text.return_value=json.dumps({'origin':'https://hidi-performance-posters.pages.dev','files':{oldpath:old}})
+        with patch.object(module,'Path') as location,patch.object(module,'verify_edge') as verify:
+            location.return_value.with_name.return_value=config
+            proof=module.attach_edge({'files':{newpath:fresh}});self.assertNotIn('edgeOrigin',proof);verify.assert_not_called()
+            proof=module.attach_edge({'files':{oldpath:old,newpath:fresh}});self.assertEqual(proof['edgeFiles'],{oldpath:old});verify.assert_called_once_with(proof)
     def test_exact_existing_publication_reuses_only_revalidated_bytes_without_secrets_or_deploy(self):
         for corrupt in [False,True]:
             with self.subTest(corrupt=corrupt),tempfile.TemporaryDirectory() as folder:
