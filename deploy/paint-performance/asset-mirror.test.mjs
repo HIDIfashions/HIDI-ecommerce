@@ -41,6 +41,10 @@ test('mobile inline bytes remain identical across hero handoff and recover to or
  const value='data:image/avif;base64,YWJj',images=[],window={},video={poster:value},context={window,Set,Map,Object,matchMedia:()=>({matches:true}),Image:class{constructor(){images.push(this);}},setTimeout:()=>1,clearTimeout:()=>{},document:{querySelectorAll:()=>[video]}};
  runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify({...proof,inlinePosters:{[path]:value}})),context);assert.equal(window.__HidiMirrorPoster(path),value);assert.equal(window.__HidiMirrorPoster(path),value);assert.equal(images.length,1);images[0].onerror();assert.equal(video.poster,path);assert.equal(window.__HidiMirrorPoster(path),path);assert.equal(images.length,2);
 });
+test('desktop inline bytes remain identical across hero handoff and recover to origin on decode error',()=>{
+ const value='data:image/avif;base64,YWJj',images=[],window={},video={poster:value},context={window,Set,Map,Object,matchMedia:()=>({matches:false}),Image:class{constructor(){images.push(this);}},setTimeout:()=>1,clearTimeout:()=>{},document:{querySelectorAll:()=>[video]}};
+ runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify({...proof,inlinePosters:{[path]:value}})),context);assert.equal(window.__HidiMirrorPoster(path),value);assert.equal(images.length,1);images[0].onerror();assert.equal(video.poster,path);assert.equal(window.__HidiMirrorPoster(path),path);assert.equal(images.length,2);
+});
 
 test('application recovery waits for streamed markup and configuration to finish parsing',()=>{
  const window={},scripts=[],listeners={},document={readyState:'loading',addEventListener:(name,fn)=>listeners[name]=fn,removeEventListener:name=>delete listeners[name],querySelector:()=>({dataset:{hidiMirrorApp:main},integrity:'sha256-test'}),createElement:()=>({}),head:{append:script=>scripts.push(script)}};

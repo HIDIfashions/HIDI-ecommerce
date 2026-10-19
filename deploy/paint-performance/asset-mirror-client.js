@@ -4,7 +4,8 @@
  const assetOrigin=path=>mirror.edgeOrigin&&Object.hasOwn(mirror.edgeFiles||{},path)?mirror.edgeOrigin:mirror.origin;
  window.__HidiAssetUrl=path=>supported(path)&&!failed.has(path)?assetOrigin(path)+path:path;
  window.__HidiMirrorPoster=path=>{
-  const primary=supported(path)&&(mirror.inlinePosters?.[path]||mirror.originPosters?.includes(path))&&matchMedia('(max-width: 700px)').matches?(mirror.inlinePosters?.[path]||(mirror.originPosters?.includes(path)?path:window.__HidiAssetUrl(path))):window.__HidiAssetUrl(path);
+  const inline=mirror.inlinePosters?.[path];
+  const primary=supported(path)&&(inline||(mirror.originPosters?.includes(path)&&matchMedia('(max-width: 700px)').matches))?(inline||(mirror.originPosters?.includes(path)?path:window.__HidiAssetUrl(path))):window.__HidiAssetUrl(path);
   const url=chosen.get(path)||primary;
   if(!supported(path)||watched.has(path))return url;
   watched.add(path);chosen.set(path,url);

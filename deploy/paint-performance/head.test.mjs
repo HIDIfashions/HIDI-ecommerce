@@ -14,6 +14,10 @@ test('only verified mobile poster preloads use origin while desktop keeps its im
   writeFileSync(join(root,path),'corrupt');assert.equal(createHomeHead(root,app)(html),html);
  }finally{rmSync(app,{recursive:true,force:true});}
 });
+test('only the reviewed desktop crop may inline on the fitted desktop viewport',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-desktop-poster-')),root=join(app,'dist'),bytes=Buffer.from('exact encoded desktop poster'),sha=createHash('sha256').update(bytes).digest('hex'),path='/media-performance/assets/poster-'+sha.slice(0,16)+'.avif',origin='https://hidi-test.azurestaticapps.net';
+ try{mkdirSync(join(root,'media-performance/assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));writeFileSync(join(root,path),bytes);writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin,files:{[path]:sha}}));writeFileSync(join(app,'paint-performance/initial-hero.json'),JSON.stringify({'/selected.mp4':{mobile:{avifPoster:path},desktop:{avifPoster:path,avifPosterSmall:path,posterCrop:{width:1600,height:1080,sourceWidth:1920,sourceHeight:1080}}}}));const html='<head><link rel="preload" type="image/avif" media="(min-width: 701px)" href="'+path+'"></head><body></body>',data='data:image/avif;base64,'+bytes.toString('base64'),result=createHomeHead(root,app)(html,{headers:{'user-agent':'Mozilla/5.0'}});assert(result.includes('href="'+data+'"'));assert(result.includes('"inlinePosters":{"'+path+'":"'+data+'"}'));}finally{rmSync(app,{recursive:true,force:true});}
+});
 
 test('only byte-verified boot-once entries use the asset mirror, with original-origin recovery',()=>{
  const app=mkdtempSync(join(tmpdir(),'hidi-mirror-head-')),root=join(app,'dist'),code='if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}';
