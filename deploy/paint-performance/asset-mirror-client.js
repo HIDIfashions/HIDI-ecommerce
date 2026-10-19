@@ -47,5 +47,10 @@
   fallbackStarted=true;
   const script=document.createElement('script');script.type='module';script.crossOrigin='anonymous';script.integrity=original.integrity;script.src=original.dataset.hidiMirrorApp;document.head.append(script);
  };
- setTimeout(window.__HidiAppFallback,1500);
+ // Desktop intentionally fetches the verified application at Low priority so
+ // the native poster can win the first paint. Give that request enough time to
+ // finish before starting the original-origin recovery; errors still recover
+ // immediately through the queued module's onerror handler.
+ const fallbackDelay=typeof matchMedia==='function'&&!matchMedia('(max-width: 700px)').matches?3000:1500;
+ setTimeout(window.__HidiAppFallback,fallbackDelay);
 })();

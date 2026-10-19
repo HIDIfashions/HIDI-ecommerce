@@ -47,3 +47,8 @@ test('application recovery waits for streamed markup and configuration to finish
  runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify(proof)),{window,Set,Object,document,setTimeout:()=>1,clearTimeout:()=>{}});
  window.__HidiAppFallback();window.__HidiAppFallback();assert.equal(scripts.length,0);assert.equal(Object.keys(listeners).length,1);document.readyState='interactive';listeners.readystatechange();assert.equal(scripts.length,1);assert.equal(scripts[0].integrity,'sha256-test');assert.equal(Object.keys(listeners).length,0);window.__HidiAppFallback();assert.equal(scripts.length,1);
 });
+test('desktop low-priority application gets a bounded recovery window while phones retain the strict fallback deadline',()=>{
+ const timers=[],window={},document={readyState:'interactive',querySelector:()=>({dataset:{hidiMirrorApp:main}}),createElement:()=>({}),head:{append:()=>{}}},context={window,Set,Object,document,matchMedia:query=>({matches:query.includes('max-width')}),setTimeout:(fn,ms)=>{timers.push(ms);return timers.length;},clearTimeout:()=>{}};
+ runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify(proof)),context);assert.equal(timers.at(-1),1500);
+ const desktopTimers=[],desktopContext={...context,window:{},matchMedia:()=>({matches:false}),setTimeout:(fn,ms)=>{desktopTimers.push(ms);return desktopTimers.length;}};runInNewContext(readFileSync(new URL('./asset-mirror-client.js',import.meta.url),'utf8').replace('__HIDI_ASSET_MIRROR__',JSON.stringify(proof)),desktopContext);assert.equal(desktopTimers.at(-1),3000);
+});
