@@ -12,9 +12,10 @@ function HidiMediaPoster(value) {
 function HidiMediaImageProps(props) {
   const item = HidiMediaManifest.images[HidiMediaPath(props.src)];
   if (!item) return props;
+  const landingCard = Boolean(props["data-landing-media-slot"]);
   return { ...props, src: item.variants.find(v => v.width >= 960)?.url || item.variants.at(-1).url,
     srcSet: item.variants.map(v => v.url + " " + v.width + "w").join(", "),
-    sizes: props.sizes || "(max-width: 700px) 100vw, (max-width: 1100px) 60vw, 50vw",
+    sizes: props.sizes || (landingCard ? "(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 25vw" : "(max-width: 700px) 100vw, (max-width: 1100px) 60vw, 50vw"),
     "data-hidi-original-src": props.src };
 }
 function HidiMediaImage(props) {
