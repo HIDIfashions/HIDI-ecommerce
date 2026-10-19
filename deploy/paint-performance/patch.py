@@ -108,7 +108,10 @@ def patch_web(base,overlay,poster,icons=None):
     text='if (location.pathname === "/" && window.__HidiFullCssReady) await window.__HidiFullCssReady;\nif (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && (matchMedia("(max-width: 700px)").matches || HidiCanRetainNativeHero()) && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await (window.__HidiNativePosterReady || new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))));\n'+text
     assert not re.search(r'\bimport\s*\(|import\.meta|(?:^|[;}])\s*(?:import\s+|export\s*[{*])',text,re.M),'Mirror entry must remain self-contained'
     text='if (!window.__HidiAppStarted) {\nwindow.__HidiAppStarted = true;\n'+text+'\n}\n'
-    text=subprocess.run(['node',str(HERE/'minify-entry.mjs')],input=text,text=True,capture_output=True,check=True).stdout
+    result=subprocess.run(['node',str(HERE/'minify-entry.mjs')],input=text,text=True,capture_output=True)
+    if result.returncode:
+        raise RuntimeError('Application minification failed: '+(result.stderr or result.stdout).strip())
+    text=result.stdout
     name='assets/index-'+hashlib.sha256(text.encode()).hexdigest()[:16]+'.js'
     assert html.count('/'+old)==2,'Expected app and preload references'
     html=html.replace('/'+old,'/'+name)
