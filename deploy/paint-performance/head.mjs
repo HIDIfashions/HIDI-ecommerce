@@ -16,6 +16,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
  const mirror=(()=>{try{const value=normalizeMirror(JSON.parse(readFileSync(resolve(appRoot,'paint-performance/asset-mirror.json'),'utf8')));if(!value)return null;for(const [url,sha256] of Object.entries(value.files)){const bytes=verifiedAsset({url,sha256},/^\//);if(!bytes||url.endsWith('.js')&&!bytes.toString().startsWith('if (!window.__HidiAppStarted) {'))return null;}return value;}catch{return null;}})();
  const originPosters=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/initial-hero.json'),'utf8'));return [...new Set(Object.values(data).flatMap(item=>[item.mobile?.avifPoster,item.mobile?.avifPosterSmall]).filter(path=>path?.endsWith('.avif')&&mirror&&Object.hasOwn(mirror.files,path)))];}catch{return [];}})();
  const inlinePoster=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/initial-hero.json'),'utf8')),variant=Object.values(data)[0]?.mobile,path=variant?.avifPosterSmall,crop=variant?.posterCrop;if(!mirror||!path||crop?.width!==512||crop?.height!==720||crop?.sourceWidth!==1280||crop?.sourceHeight!==720||!Object.hasOwn(mirror.files,path))return null;const bytes=verifiedAsset({url:path,sha256:mirror.files[path]},/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/);return bytes&&bytes.length<=49152?{path,url:'data:image/avif;base64,'+bytes.toString('base64')}:null;}catch{return null;}})();
+ const inlineDesktopPoster=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/initial-hero.json'),'utf8')),variant=Object.values(data)[0]?.desktop,path=variant?.avifPosterSmall,crop=variant?.posterCrop;if(!mirror||!path||crop?.width!==1600||crop?.height!==1080||crop?.sourceWidth!==1920||crop?.sourceHeight!==1080||!Object.hasOwn(mirror.files,path))return null;const bytes=verifiedAsset({url:path,sha256:mirror.files[path]},/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/);return bytes&&bytes.length<=131072?{path,url:'data:image/avif;base64,'+bytes.toString('base64')}:null;}catch{return null;}})();
  const seoBytes=verifiedAsset(assets.seo,/^\/assets\/home-seo-[a-f0-9]{16}\.js$/);
  const countdownUrl=(()=>{try{
   const row=assets.countdown;if(!row||row.sourceFile!=='dist/hidi-launch-countdown-20261011.js'||!/^\/assets\/home-countdown-[a-f0-9]{16}\.js$/.test(row.url)||row.sourceSha256!=='9f32ea5cc3f76cff81a7b5a6537d5437b161a73dd9b6df9328e285e578ac4195')return null;
@@ -53,7 +54,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
  }
  return (html,request={headers:{}})=>{
   const desktopStyle=Boolean(request.headers?.['user-agent'])&&!/Mobile|Android/i.test(request.headers['user-agent'])&&request.headers?.['sec-ch-ua-mobile']!=='?1';
-  const inline=inlinePoster&&(/Mobile|Android/i.test(request.headers?.['user-agent']||'')||request.headers?.['sec-ch-ua-mobile']==='?1')?inlinePoster:null;
+  const inline=desktopStyle?inlineDesktopPoster:(inlinePoster&&(/Mobile|Android/i.test(request.headers?.['user-agent']||'')||request.headers?.['sec-ch-ua-mobile']==='?1')?inlinePoster:null);
   const posterHints=[...html.matchAll(/<link\b[^>]*rel=["']preload["'][^>]*type=["']image\/avif["'][^>]*>/gi)];
   if(posterHints.length&&/<\/head>/i.test(html)){
    const modules=[];html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*fetchpriority=["']low["'][^>]*>/gi,tag=>{modules.push(tag);return '';});
@@ -106,14 +107,12 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    const integrity=url=>'sha256-'+Buffer.from(mirror.files[url],'hex').toString('base64');
    html=html.replace(/<link\b[^>]*>/gi,tag=>tag.replace(/\bhref=["']([^"']+)["']/i,(whole,url)=>inline?.path===url?'href="'+inline.url+'"':Object.hasOwn(mirror.files,url)&&!(originPosters.includes(url)&&!tag.includes('media="(min-width: 701px)"'))?'href="'+mirrorAssetUrl(url,mirror)+'"'+(url.endsWith('.js')?' integrity="'+integrity(url)+'"'+(/\bcrossorigin\b/i.test(tag)?'':' crossorigin="anonymous"'):''):whole));
    html=html.replace(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*><\/script>/gi,(tag,url)=>Object.hasOwn(mirror.files,url)&&url.endsWith('.js')?tag.replace('src="'+url+'"','src="'+mirrorAssetUrl(url,mirror)+'" integrity="'+integrity(url)+'" data-hidi-mirror-app="'+url+'" onerror="window.__HidiAppFallback()"'):tag);
-   // The queued module is injected once by app-start.js at Low priority. Do
-   // not start a competing parser fetch for the same app while the poster is
-   // establishing its connection; this preserves one request and more headroom
-   // for desktop first paint.
+   // Keep the hint module-native so Chromium can coalesce it with the queued
+   // module request while preserving the desktop Low-priority hint.
    html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/gi,tag=>{
     const href=tag.match(/\bhref=["']([^"']+)["']/i)?.[1];if(!href||!Object.keys(mirror.files).some(path=>path.endsWith('.js')&&mirrorAssetUrl(path,mirror)===href))return tag;
     const path=new URL(href).pathname;if(!Object.hasOwn(mirror.files,path))return tag;
-    return '';
+    return '<link rel="modulepreload" media="(min-width: 701px)" fetchpriority="low" data-hidi-desktop-preload="true" href="'+href+'" integrity="'+integrity(path)+'" crossorigin="anonymous">';
    });
    html=html.replace(/<script\b[^>]*data-hidi-mirror-app=["'][^"']+["'][^>]*><\/script>/gi,tag=>tag.replace(/type=["']module["']/,'type="application/x-hidi-queued-module"').replace(/\bsrc=/,'data-hidi-queued-src='));
    html=html.replace(/<\/body>/i,'<script data-hidi-app-start="true">'+appStart+'</script></body>');
