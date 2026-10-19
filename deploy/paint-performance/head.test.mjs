@@ -2,6 +2,23 @@ import test from 'node:test';import assert from 'node:assert/strict';import {mkd
 import {runInNewContext} from 'node:vm';
 import {readFileSync} from 'node:fs';
 
+test('split desktop poster and application hosts warm their own connections without changing media bytes',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-split-preconnect-')),root=join(app,'dist'),hash=value=>createHash('sha256').update(value).digest('hex');
+ const js='if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}',poster=Buffer.from('verified poster'),scriptPath='/assets/index-'+hash(js).slice(0,16)+'.js',posterPath='/media-performance/assets/poster-'+hash(poster).slice(0,16)+'.avif',origin='https://hidi-test.azurestaticapps.net',edgeOrigin='https://hidi-performance-posters.pages.dev';
+ try{
+  mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(root,'media-performance/assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));
+  writeFileSync(join(root,scriptPath),js);writeFileSync(join(root,posterPath),poster);
+  const files={[scriptPath]:hash(js),[posterPath]:hash(poster)},writeMirror=edgeFiles=>writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin,edgeOrigin,files,edgeFiles}));
+  writeMirror({[posterPath]:hash(poster)});
+  const html='<head><meta charset="utf-8"><link rel="preload" as="image" type="image/avif" media="(min-width: 701px)" href="'+posterPath+'"><script type="module" src="'+scriptPath+'"></script></head><body></body>',desktop={headers:{'user-agent':'Desktop browser'}};
+  const output=createHomeHead(root,app)(html,desktop),hint='<link rel="preconnect" href="'+edgeOrigin+'">';
+  assert(output.includes(hint));assert(output.indexOf(hint)<output.indexOf('rel="preload"'));assert(output.includes('<link rel="preconnect" href="'+origin+'" crossorigin>'));assert(output.includes('href="'+edgeOrigin+posterPath+'"'));
+  assert(!createHomeHead(root,app)(html,{headers:{'user-agent':'Android Mobile'}}).includes(hint));
+  writeMirror(files);assert.equal(createHomeHead(root,app)(html,desktop).split(hint).length,2,'Same image and app origin must not receive duplicate credentialed hints');
+  writeFileSync(join(root,posterPath),'corrupt');assert.equal(createHomeHead(root,app)(html,desktop),html,'Unverified mirror must retain original delivery');
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
 test('only verified mobile poster preloads use origin while desktop keeps its immutable mirror',()=>{
  const app=mkdtempSync(join(tmpdir(),'hidi-origin-poster-')),root=join(app,'dist'),bytes=Buffer.from('exact encoded poster'),sha=createHash('sha256').update(bytes).digest('hex'),path='/media-performance/assets/poster-'+sha.slice(0,16)+'.avif',origin='https://hidi-test.azurestaticapps.net';
  try{
