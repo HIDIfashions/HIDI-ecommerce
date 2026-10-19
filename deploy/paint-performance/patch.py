@@ -25,6 +25,9 @@ def with_landing_card_sizes(text):
     before='    sizes: props.sizes || "(max-width: 700px) 100vw, (max-width: 1100px) 60vw, 50vw",'
     after='    sizes: props.sizes || (props["data-landing-media-slot"] ? "(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 25vw" : "(max-width: 700px) 100vw, (max-width: 1100px) 60vw, 50vw"),'
     return once(text,before,after)
+
+def with_deferred_media_margin(text):
+    return once(text,'rootMargin: "350px"','rootMargin: "150px"')
 def build_icons(base,overlay):
     html=(base/'dist/index.html').read_text()
     tags=re.findall(r'<link\b[^>]*rel=["\'](?:shortcut icon|icon)["\'][^>]*>',html,re.I)
@@ -66,6 +69,7 @@ def patch_web(base,overlay,poster,icons=None):
     original_video=(HERE.parent/'media-performance/client.js').read_text().split('function HidiMediaVideo(value) {',1)[1].split('function HidiMediaPoster',1)[0]
     text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
     text=with_landing_card_sizes(text)
+    text=with_deferred_media_margin(text)
     text=once(text,'function HidiMediaPoster(value) {','function HidiMediaPoster(value,position) {')
     text=with_poster_positions(text)
     text=once(text,'    "video",\n    {\n      key: liveHero.url,','    HidiNativeHeroCache ? HidiRetainedHeroVideo : "video",\n    {\n      ...(HidiNativeHeroCache ? { hidiSourceKey: liveHero.url } : {}),\n      key: liveHero.url,')

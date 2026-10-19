@@ -1,5 +1,5 @@
 import unittest
-from patch import reviewed_home_hook,with_landing_card_sizes
+from patch import reviewed_home_hook,with_landing_card_sizes,with_deferred_media_margin
 
 class HomeHookTests(unittest.TestCase):
     def test_preserves_both_reviewed_homepage_wrappers(self):
@@ -21,5 +21,9 @@ class HomeHookTests(unittest.TestCase):
         self.assertIn('25vw',result)
         self.assertEqual(result.count('25vw'),1)
         with self.assertRaises(AssertionError):with_landing_card_sizes(anchor+anchor)
+
+    def test_below_fold_media_uses_a_bounded_prefetch_margin(self):
+        self.assertEqual(with_deferred_media_margin('rootMargin: "350px"'),'rootMargin: "150px"')
+        with self.assertRaises(AssertionError):with_deferred_media_margin('rootMargin: "350px"\nrootMargin: "350px"')
 
 if __name__=='__main__':unittest.main()
