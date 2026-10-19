@@ -46,11 +46,15 @@ for(const item of Object.values(manifest.videos))for(const kind of ['mobile','de
  }
  if(kind==='desktop'){
   const info=await sharp(input).metadata();if(info.width!==1920||info.height!==1080)throw Error('Desktop crop requires reviewed landscape dimensions');
-  const crop={left:160,top:0,width:1600,height:1080,sourceWidth:1920,sourceHeight:1080};
-  const small=await sharp(input).extract({left:crop.left,top:0,width:crop.width,height:crop.height}).png().toBuffer();
-  const pixels=await sharp(input).extract({left:crop.left,top:0,width:crop.width,height:crop.height}).ensureAlpha().raw().toBuffer();
+  // The tall desktop tier is selected at the Lighthouse desktop viewport
+  // (1350×940) and renders at roughly one CSS pixel per source pixel. Keep
+  // the centered visible field without sending a 1600×1080 image to a
+  // 1393×940 render. Wider desktop viewports continue to use the full tier.
+  const crop={left:240,top:54,width:1440,height:972,sourceWidth:1920,sourceHeight:1080};
+  const small=await sharp(input).extract({left:crop.left,top:crop.top,width:crop.width,height:crop.height}).png().toBuffer();
+  const pixels=await sharp(input).extract({left:crop.left,top:crop.top,width:crop.width,height:crop.height}).ensureAlpha().raw().toBuffer();
   if(!pixels.equals(await sharp(small).ensureAlpha().raw().toBuffer()))throw Error('Desktop crop changed source pixels');
-  variant.avifPosterSmall=await encodePoster(small,'desktop-crop',variant.poster,1600,input.length,74);
+  variant.avifPosterSmall=await encodePoster(small,'desktop-crop',variant.poster,1440,input.length,74);
   variant.posterCrop=crop;report.at(-1).crop=crop;report.at(-1).sourcePixelsRetained=true;
  }
 
