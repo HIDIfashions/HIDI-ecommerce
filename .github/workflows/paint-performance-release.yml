@@ -14,6 +14,7 @@
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 # Desktop app modulepreload is parsed at Low priority and fresh complete CSS waits for native poster paint; priority is asserted from CDP.
 # Desktop mirror recovery allows the Low-priority request a bounded 3s window; origin errors still recover immediately.
+# WebKit's known ResizeObserver layout diagnostic is filtered only in the recovery probe; application errors remain fatal.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
   workflow_dispatch: {}
