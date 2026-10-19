@@ -28,6 +28,28 @@ def with_landing_card_sizes(text):
 
 def with_deferred_media_margin(text):
     return once(text,'rootMargin: "350px"','rootMargin: "150px"')
+
+REVIEWED_VIDEO_GUARD = '''    if ((!showBundled && heroConfigStatus !== "uploaded") || reduced || HidiHeroSaveData()) {
+      setVideoAllowed(false);
+      return void 0;
+    }
+'''
+
+DESKTOP_VIDEO_AFTER_PAINT = '''    const nativePosterPaint = window.__HidiNativePosterPaint;
+    const retainedVideo = liveVideoRef.current;
+    if (!mobile && HidiNativeHeroCache && retainedVideo &&
+        nativePosterPaint?.video === retainedVideo &&
+        nativePosterPaint.poster === retainedVideo.poster &&
+        Number.isFinite(nativePosterPaint.renderTime) && nativePosterPaint.renderTime > 0) {
+      setVideoAllowed(true);
+      return void 0;
+    }
+'''
+
+def with_painted_desktop_video(text):
+    delay=(HERE/'video-delay.txt').read_text()
+    expected=REVIEWED_VIDEO_GUARD+delay
+    return once(text,expected,REVIEWED_VIDEO_GUARD+DESKTOP_VIDEO_AFTER_PAINT+delay)
 def build_icons(base,overlay):
     html=(base/'dist/index.html').read_text()
     tags=re.findall(r'<link\b[^>]*rel=["\'](?:shortcut icon|icon)["\'][^>]*>',html,re.I)
@@ -105,10 +127,7 @@ def patch_web(base,overlay,poster,icons=None):
     text=once(text,'const [manualPlayback, setManualPlayback] = HidiHeroReact.useState(false);','const [manualPlayback, setManualPlayback] = HidiHeroReact.useState(() => soundEnabled);')
     text=once(text,'    return () => video.pause();\n  }, [liveHero?.url, videoAllowed, reduced, sequence.paused, heroVisible, pageVisible, dialogOpen, soundEnabled, manualPlayback]);','  }, [liveHero?.url, videoAllowed, reduced, sequence.paused, heroVisible, pageVisible, dialogOpen, soundEnabled, manualPlayback]);\n  HidiHeroReact.useEffect(() => {\n    const video = liveVideoRef.current;\n    return () => video?.pause();\n  }, [liveHero?.url]);')
     text=once(text,'  const toggleSound = async () => {\n    const video = liveVideoRef.current;\n    if (!video) return;\n    if (!video.getAttribute("src")) { video.src = HidiMediaVideo(liveHero.url); video.load(); }\n    const enabled = !soundEnabled;\n    setManualPlayback(true);\n    video.muted = !enabled;\n    setSoundEnabled(enabled);\n    try {\n      await video.play();\n    } catch {\n      video.muted = true;\n      setSoundEnabled(false);\n      video.play().catch(() => {\n      });\n    }\n  };\n','  const toggleSound = () => {\n    if (!liveVideoRef.current) return;\n    setManualPlayback(true);\n    setSoundEnabled(enabled => !enabled);\n  };\n')
-    start=text.index('    setVideoAllowed(false);\n    let idleId = null;')
-    end=text.index('  }, [showBundled, heroConfigStatus, mobile, reduced]);',start)
-    expected=(HERE/'video-delay.txt').read_text()
-    assert expected in text,'Reviewed video delay changed; stop before enabling hero media' 
+    text=with_painted_desktop_video(text)
     text='if (location.pathname === "/" && window.__HidiFullCssReady) await window.__HidiFullCssReady;\nif (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && (matchMedia("(max-width: 700px)").matches || HidiCanRetainNativeHero()) && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await (window.__HidiNativePosterReady || new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))));\n'+text
     assert not re.search(r'\bimport\s*\(|import\.meta|(?:^|[;}])\s*(?:import\s+|export\s*[{*])',text,re.M),'Mirror entry must remain self-contained'
     text='if (!window.__HidiAppStarted) {\nwindow.__HidiAppStarted = true;\n'+text+'\n}\n'

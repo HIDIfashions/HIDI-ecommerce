@@ -32,6 +32,7 @@
 (() => {
   if (location.pathname !== '/') return;
   window.__HidiWaitForPosterPaint = video => {
+    window.__HidiNativePosterPaint = null;
     const release = () => { window.__HidiStartHomeReads?.(); window.__HidiLoadFullCss?.(); };
     if (!video?.poster || document.visibilityState === 'hidden') { release(); return Promise.resolve(); }
     return new Promise(resolve => {
@@ -43,7 +44,21 @@
       // decode + double-frame fallback; the deadline is unchanged.
       try {
         if (typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('largest-contentful-paint') && typeof matchMedia === 'function' && !matchMedia('(max-width: 700px)').matches) {
-          observer = new PerformanceObserver(list => { if (list.getEntries().some(entry => entry.element === video)) finish(); });
+          observer = new PerformanceObserver(list => {
+            if (settled) return;
+            for (const entry of list.getEntries()) {
+              if (entry.element !== video) continue;
+              // A bounded handoff is not proof of paint. Only this native
+              // poster's positive render timestamp can accelerate its video.
+              if (video.isConnected && video.matches?.('video[data-hidi-first-hero]') &&
+                  Number.isFinite(entry.renderTime) && entry.renderTime > 0 &&
+                  entry.url === video.poster) {
+                window.__HidiNativePosterPaint = { video, poster: video.poster, renderTime: entry.renderTime };
+              }
+              finish();
+              break;
+            }
+          });
           observer.observe({ type: 'largest-contentful-paint', buffered: true });
           // The video decodes its poster itself. A second Image decoder competes
           // with that paint and is unnecessary when the paint is observable.

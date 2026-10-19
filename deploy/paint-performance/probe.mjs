@@ -10,6 +10,102 @@ const [base,mode='live']=process.argv.slice(2),OUT='evidence/paint-performance';
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),manifest=JSON.parse(await readFile(OUT+'/manifest.json','utf8'));
 const baseline=mode==='baseline',rows=[];
 const mirror=baseline?null:await readMirrorProof(OUT);
+// Independent evidence: do not use the application's poster-ready promise or
+// success marker to prove the native frame painted before the video request.
+async function observeNativePoster(page){
+ await page.addInitScript(()=>{
+  const capture=()=>{
+   const video=window.__HidiProbeNativeVideo||document.querySelector('video[data-hidi-first-hero]');
+   if(!video)return;
+   window.__HidiProbeNativeVideo=video;
+   if(video.poster&&!window.__HidiProbeNativePoster){window.__HidiProbeNativePoster=video.poster;mutation.disconnect();}
+  };
+  const mutation=new MutationObserver(capture);mutation.observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:['poster']});capture();
+  try{new PerformanceObserver(list=>{
+   for(const entry of list.getEntries())if(!window.__HidiProbeNativePaint&&entry.element===window.__HidiProbeNativeVideo&&entry.url===window.__HidiProbeNativePoster&&Number.isFinite(entry.renderTime)&&entry.renderTime>0){
+    window.__HidiProbeNativePaint={renderTime:entry.renderTime,poster:entry.url,observedAt:performance.now()};
+   }
+  }).observe({type:'largest-contentful-paint',buffered:true});}catch{}
+ });
+}
+async function assertDesktopPosterBeforeVideo(page,label){
+ await page.waitForFunction(()=>{
+  const video=document.querySelector('video.hero-live-media');
+  return video?.readyState>=2&&performance.getEntriesByType('resource').some(entry=>entry.name===video.currentSrc);
+ });
+ const proof=await page.evaluate(()=>{
+  const video=document.querySelector('video.hero-live-media'),resources=performance.getEntriesByType('resource');
+  const media=resources.filter(entry=>entry.name===video.currentSrc).sort((a,b)=>a.startTime-b.startTime)[0];
+  return {nativeSeen:Boolean(window.__HidiProbeNativeVideo),sameNode:video===window.__HidiProbeNativeVideo,paint:window.__HidiProbeNativePaint||null,poster:video.poster,media:{url:media.name,startTime:media.startTime},styles:[...document.querySelectorAll('link[data-hidi-deferred-style]')].map(link=>{
+   const resource=resources.filter(entry=>entry.name===link.href).sort((a,b)=>b.responseEnd-a.responseEnd)[0];
+   return {url:link.href,applied:link.media==='all'&&Boolean(link.sheet),responseEnd:resource?.responseEnd??null};
+  })};
+ });
+ assert(proof.nativeSeen&&proof.sameNode,label+': the actual native video must survive hydration');
+ assert(proof.paint?.renderTime>0,label+': an independent native-poster LCP with a positive renderTime is required');
+ assert.equal(proof.paint.poster,proof.poster,label+': the painted poster must match the retained video');
+ assert(proof.media.startTime>=proof.paint.renderTime,label+': video download must start after actual native poster paint on the same browser clock');
+ assert(proof.styles.length>0&&proof.styles.every(style=>style.applied&&style.responseEnd>0&&style.responseEnd<=proof.media.startTime),label+': every complete stylesheet must finish before automatic video download');
+ return proof;
+}
+async function verifyDesktopVideoSafety(browser){
+ const results=[];
+ for(const scenario of ['full-css-held','reduced-motion','data-saving']){
+  const context=await browser.newContext({viewport:{width:1440,height:900},reducedMotion:scenario==='reduced-motion'?'reduce':'no-preference'}),page=await context.newPage();page.setDefaultTimeout(45000);
+  const media=[],heldCss=[],errors=[];let releaseCss;
+  const cssGate=new Promise(resolve=>releaseCss=resolve);
+  page.on('request',req=>{if(req.resourceType()==='media')media.push(req.url());});page.on('pageerror',error=>errors.push(error.message));
+  await observeNativePoster(page);
+  if(scenario==='data-saving')await page.addInitScript(()=>{
+   if(navigator.connection)Object.defineProperty(navigator.connection,'saveData',{get:()=>true});
+   else Object.defineProperty(navigator,'connection',{value:{saveData:true}});
+  });
+  try{
+   await page.route('**/*',async route=>{
+    const req=route.request(),url=new URL(req.url());
+    if(url.origin!==new URL(base).origin&&!isMirrorAsset(url.href,mirror)||!['GET','HEAD'].includes(req.method()))return route.abort();
+    if(scenario==='full-css-held'&&url.pathname.endsWith('.css')){heldCss.push(url.href);await cssGate;}
+    return route.continue();
+   });
+   assert.equal((await page.goto(base+'/',{waitUntil:'commit'})).status(),200);
+   await page.waitForFunction(()=>window.__HidiAppStarted&&window.__HidiProbeNativePaint?.renderTime>0);
+   assert(await page.evaluate(()=>typeof document.body.moveBefore==='function'),'Desktop safety probe requires Chromium native-node retention support');
+   if(scenario==='full-css-held'){
+    await page.waitForFunction(()=>[...document.querySelectorAll('link[data-hidi-deferred-style]')].some(link=>Boolean(link.href)));
+    // Cross the normal desktop delay and mirror CSS recovery deadline while
+    // both original and mirrored complete styles remain held at the network.
+    await page.waitForTimeout(1800);
+    const held=await page.evaluate(()=>({native:document.querySelector('video[data-hidi-first-hero]')===window.__HidiProbeNativeVideo,src:document.querySelector('video.hero-live-media')?.getAttribute('src'),pending:[...document.querySelectorAll('link[data-hidi-deferred-style]')].some(link=>!link.sheet||link.media!=='all')}));
+    assert(heldCss.length>0&&held.pending,'Held CSS scenario must have an actual pending complete stylesheet');
+    assert(held.native,'Hydration must retain the native poster while complete CSS is held');
+    assert.equal(held.src,null,'Desktop video must have no source while complete CSS is held');
+    assert.deepEqual(media,[],'Desktop video must not download before complete CSS is released');
+    releaseCss();
+   }
+   await page.waitForFunction(()=>document.querySelector('.hero-media')?.dataset.heroConfigStatus==='uploaded'&&!document.querySelector('video[data-hidi-first-hero]'));
+   let manualAt=null;
+   if(scenario!=='full-css-held'){
+    assert(await page.evaluate(kind=>kind==='reduced-motion'?matchMedia('(prefers-reduced-motion: reduce)').matches:navigator.connection?.saveData===true,scenario),'Requested desktop preference must be active');
+    await page.waitForTimeout(1500);
+    assert.equal(await page.locator('video.hero-live-media').getAttribute('src'),null,'Desktop '+scenario+' must prevent automatic video downloads');
+    assert.deepEqual(media,[],'Desktop '+scenario+' must issue no automatic media request');
+    manualAt=await page.evaluate(()=>performance.now());
+    await page.getByRole('button',{name:'Turn video sound on'}).click();
+    await page.waitForFunction(()=>{const video=document.querySelector('video.hero-live-media');return video?.readyState>=2&&!video.muted&&!video.paused;});
+   }else await page.waitForFunction(()=>{const video=document.querySelector('video.hero-live-media');return video?.readyState>=2&&!video.paused&&video.currentTime>0;});
+   const paint=await assertDesktopPosterBeforeVideo(page,'Desktop '+scenario);
+   if(manualAt!==null){assert(paint.media.startTime>=manualAt,'Preference override may download video only after explicit user interaction');await page.getByRole('button',{name:'Mute video sound'}).click();await page.waitForFunction(()=>document.querySelector('video.hero-live-media').muted);}
+   assert.deepEqual(errors,[]);
+   results.push({scenario,passed:true,heldCss,manualAt,media,paint});
+  }catch(error){
+   await page.screenshot({path:OUT+'/'+mode+'/desktop-'+scenario+'-failure.png'}).catch(()=>{});
+   await writeFile(OUT+'/'+mode+'/desktop-'+scenario+'-failure.json',JSON.stringify({error:String(error),media,heldCss,errors}));throw error;
+  }finally{releaseCss();await context.close();}
+ }
+ await writeFile(OUT+'/desktop-video-safety-'+mode+'.json',JSON.stringify({passed:true,results},null,2));
+ console.log('PASS: desktop video waits for actual native poster paint and complete CSS; reduced-motion/data-saving require explicit playback');
+ return results;
+}
 const request=(path,headers={})=>new Promise((resolve,reject)=>{const u=new URL(path,base);(u.protocol==='https:'?getHttps:get)(u,{headers},res=>{const chunks=[];res.on('data',c=>chunks.push(c));res.on('end',()=>resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks)}));}).on('error',reject);});
 if(!baseline){
  const patch=JSON.parse(await readFile(OUT+'/patch.json','utf8'));
@@ -50,7 +146,7 @@ for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
   const errors=[],network=[],media=[],appPriorities=[];let transferred=0;page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{network.push(r.url());if(r.resourceType()==='media')media.push(r.url());});
   if(engine==='chromium'){const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');cdp.on('Network.loadingFinished',e=>transferred+=e.encodedDataLength);cdp.on('Network.requestWillBeSent',e=>{try{const u=new URL(e.request.url);if(u.pathname.includes('/assets/index-')&&u.pathname.endsWith('.js'))appPriorities.push({url:e.request.url,initialPriority:e.request.initialPriority||null});}catch{}});}
   await page.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin&&!isMirrorAsset(u.href,mirror)||!['GET','HEAD'].includes(r.method()))return route.abort();return route.continue();});
-  if(!baseline)await page.addInitScript(()=>{const observer=new MutationObserver(()=>{const video=document.querySelector('video[data-hidi-first-hero]');if(video){window.__HidiProbeNativeVideo=video;observer.disconnect();}});observer.observe(document,{childList:true,subtree:true});});
+  if(!baseline)await observeNativePoster(page);
   await page.addInitScript(()=>{window.__lcp=0;window.__cls=0;try{new PerformanceObserver(l=>window.__lcp=l.getEntries().at(-1).startTime).observe({type:'largest-contentful-paint',buffered:true});new PerformanceObserver(l=>l.getEntries().forEach(e=>{if(!e.hadRecentInput)window.__cls+=e.value;})).observe({type:'layout-shift',buffered:true});}catch{}});
   try{
    assert.equal((await page.goto(base+'/',{waitUntil:'domcontentloaded'})).status(),200);
@@ -64,7 +160,7 @@ for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
    const initial=await page.evaluate(()=>({lcp:window.__lcp,cls:window.__cls,retentionEligible:!matchMedia('(max-width: 700px)').matches&&typeof document.body.moveBefore==='function',retainedNativeVideo:window.__HidiProbeNativeVideo===document.querySelector('video.hero-live-media'),video:{src:document.querySelector('video.hero-live-media').currentSrc,poster:document.querySelector('video.hero-live-media').poster,width:document.querySelector('video.hero-live-media').videoWidth},overflow:document.documentElement.scrollWidth>innerWidth+1}));
    const initialBytes=transferred,initialRequests=[...network];if(!baseline){const scope=JSON.parse(await readFile(OUT+'/patch.json','utf8'));assert(!initialRequests.some(u=>new URL(u).pathname==='/pricing-assets/storefront.mjs'),'Home must use its scoped loader without replacing the global commerce script');assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/'+scope.homePricingBundle).length,1);}if(!baseline)assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/api/store/products').length,1,'One fresh initial catalogue request must be reused by the offer script');if(!baseline&&engine==='chromium')assert(!initialRequests.some(u=>new URL(u).pathname.endsWith('.ico')),'Normal browser tab must use the exact small PNG frame');if(!baseline&&engine==='chromium'){assert(!initialRequests.some(u=>u.includes(width<=700?'poster-1920.webp':'poster-1280.webp')),'Only the matching responsive poster should download');}assert(!initial.overflow);if(!baseline){assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/api/hidi/hero-config').length,1,'Early hero request must be reused');assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/api/hidi/landing-media-config').length,1,'Early landing selection must be reused');assert(!initialRequests.some(u=>new URL(u).pathname==='/config.js'),'Config must not block on another request');assert.equal(initialRequests.filter(u=>u.includes('/assets/index-')&&u.endsWith('.js')).length,1,'App preload and module should reuse one request');assert(!initialRequests.some(u=>u.includes('/ananya-portraits/')),'Off-screen original portraits must not download');}
    if(!baseline){assert(initial.video.poster.includes('/media-performance/assets/')||inlinePosterPath(initial.video.poster,mirror),'Poster must be a verified external or exact inline asset'); if(engine==='chromium'){assert(initial.video.poster.endsWith('.avif')||inlinePosterPath(initial.video.poster,mirror));const expectedVariant=Object.values(manifest.videos)[0][width<=700?'mobile':'desktop'];const smallTier=await page.evaluate(()=>{const video=document.querySelector('video.hero-live-media'),rect=video.getBoundingClientRect();const mobile=matchMedia('(max-width: 700px)').matches;return (mobile?matchMedia('(max-width: 432px) and (min-height: 760px)').matches:matchMedia('(min-width: 701px) and (max-aspect-ratio: 40/27)').matches)&&getComputedStyle(video).objectPosition==='50% 50%'&&rect.width/rect.height<=(mobile?512/720:1600/1080);});const expected=smallTier&&expectedVariant.avifPosterSmall?expectedVariant.avifPosterSmall:expectedVariant.avifPoster;const inline=inlinePosterPath(initial.video.poster,mirror);assert.equal(inline||new URL(initial.video.poster,base).pathname,expected);assert.equal(initialRequests.filter(u=>new URL(u).pathname===expected).length,inline?0:1,'Inline bytes need no request; external preload and both hero renderers must reuse one request');const wrong=Object.values(manifest.videos)[0][width<=700?'desktop':'mobile'].avifPoster;assert(!initialRequests.some(u=>new URL(u).pathname===wrong),'Only matching AVIF poster should download');assert(!initialRequests.some(u=>/poster-.*\.webp/.test(u)),'Modern browser should avoid duplicate WebP poster');}if(engine==='chromium'){assert(initial.video.src.includes('/media-performance/assets/'));assert.equal(initial.video.width,width<=700?1280:1920);assert.equal(new URL(initial.video.src).pathname,Object.values(manifest.videos)[0][width<=700?'mobile':'desktop'].av1Url,'Responsive AV1 must decode successfully');assert(initialBytes<(width<=700?7:11)*1024*1024,'Initial transfer budget');}assert(!media.some(u=>u.includes('/api/hidi/hero-asset/')),'Original video should not be downloaded');}
-   if(!baseline&&engine==='chromium'&&width>700){assert.equal(appPriorities.length,1,'Desktop application must have one network request');assert.equal(appPriorities[0].initialPriority,'Low','Desktop application preload must be observed at Low priority');}
+   if(!baseline&&engine==='chromium'&&width>700){assert.equal(appPriorities.length,1,'Desktop application must have one network request');assert.equal(appPriorities[0].initialPriority,'Low','Desktop application preload must be observed at Low priority');if(initial.retentionEligible)initial.desktopPaint=await assertDesktopPosterBeforeVideo(page,'Chromium '+width);}
    const sound=page.getByRole('button',{name:'Turn video sound on'});await sound.waitFor();
    if(engine==='chromium'){
     await sound.click();await page.waitForFunction(()=>!document.querySelector('video.hero-live-media').muted);await page.getByRole('button',{name:'Mute video sound'}).click();await page.waitForFunction(()=>document.querySelector('video.hero-live-media').muted);
@@ -107,7 +203,7 @@ if(!baseline&&mode==='candidate'){
   }else if(['reduced-motion','data-saving'].includes(scenario)){await page.waitForTimeout(1500);assert.equal(await page.locator('video.hero-live-media').evaluate(v=>v.getAttribute('src')),null,'Motion and data preferences must prevent automatic video downloads');}
   await page.getByRole('button',{name:'Turn video sound on'}).click();await page.waitForFunction(()=>{const v=document.querySelector('video.hero-live-media');return v?.readyState>=2&&!v.muted;});
   await context.close();
- }}finally{await browser.close();}
+ }await verifyDesktopVideoSafety(browser);}finally{await browser.close();}
  await writeFile(OUT+'/fallback-safety.json',JSON.stringify({passed:true,codecFailure:true,unsupportedCodec:true,reducedMotion:true,dataSaving:true,manualSound:true,initialSelectionReuse:true,freshSelectionUpdate:true,catalogueRequestReuse:true,catalogueResumeFreshness:true}));
  console.log('PASS: codec recovery, original MP4 fallback, reduced-motion, data saving, explicit sound playback, initial hero reuse and fresh selection updates');
 }

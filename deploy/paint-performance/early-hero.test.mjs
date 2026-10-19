@@ -1,16 +1,35 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {runInNewContext} from 'node:vm';
 const code=readFileSync(new URL('./early-hero.js',import.meta.url),'utf8');
 test('desktop handoff can follow a confirmed native-poster paint, never another element paint',async()=>{
- let callback,decode,disconnected=0,next=0,settled=false;const timers=new Map(),video={poster:'/poster.avif'},window={};
+ let callback,decode,disconnected=0,next=0,settled=false;const timers=new Map(),video={poster:'https://hidi.example/poster.avif',isConnected:true,matches:selector=>selector==='video[data-hidi-first-hero]'},window={};
  class Observer{static supportedEntryTypes=['largest-contentful-paint'];constructor(fn){callback=fn;}observe(options){assert.equal(options.type,'largest-contentful-paint');assert(options.buffered);}disconnect(){disconnected++;}}
  const context={window,PerformanceObserver:Observer,location:{pathname:'/'},document:{visibilityState:'visible',readyState:'loading',querySelector:()=>video,addEventListener:()=>{}},AbortController,fetch:async()=>null,matchMedia:()=>({matches:false}),setTimeout:(fn,ms)=>{timers.set(++next,{fn,ms});return next;},clearTimeout:id=>timers.delete(id),requestAnimationFrame:()=>{},Image:class{naturalWidth=2;set src(value){if(value.startsWith('data:'))queueMicrotask(()=>this.onload());}decode(){return new Promise(resolve=>decode=resolve);}}};runInNewContext(code,context);
- const ready=window.__HidiWaitForPosterPaint(video).then(()=>settled=true);callback({getEntries:()=>[{element:{}}]});await Promise.resolve();assert(!settled);assert.equal(decode,undefined,'Observable video poster must not compete with a second Image decoder');callback({getEntries:()=>[{element:video}]});await ready;assert(settled);assert.equal(disconnected,1);assert(![...timers.values()].some(timer=>timer.ms===1200));
+ const ready=window.__HidiWaitForPosterPaint(video).then(()=>settled=true);callback({getEntries:()=>[{element:{},url:video.poster,renderTime:100}]});await Promise.resolve();assert(!settled);assert.equal(window.__HidiNativePosterPaint,null);assert.equal(decode,undefined,'Observable video poster must not compete with a second Image decoder');callback({getEntries:()=>[{element:video,url:video.poster,renderTime:120}]});await ready;assert(settled);assert.equal(window.__HidiNativePosterPaint.video,video);assert.equal(window.__HidiNativePosterPaint.poster,video.poster);assert.equal(window.__HidiNativePosterPaint.renderTime,120);assert.equal(disconnected,1);assert(![...timers.values()].some(timer=>timer.ms===1200));
 });
 test('an observed desktop poster that never paints still releases at the original deadline',async()=>{
- let disconnected=0,next=0,settled=false;const timers=new Map(),video={poster:'/unavailable.avif'},window={};
- class Observer{static supportedEntryTypes=['largest-contentful-paint'];observe(){}disconnect(){disconnected++;}}
+ let callback,disconnected=0,next=0,settled=false;const timers=new Map(),video={poster:'/unavailable.avif',isConnected:true,matches:()=>true},window={};
+ class Observer{static supportedEntryTypes=['largest-contentful-paint'];constructor(fn){callback=fn;}observe(){}disconnect(){disconnected++;}}
  const context={window,PerformanceObserver:Observer,location:{pathname:'/'},document:{visibilityState:'visible',readyState:'loading',querySelector:()=>video,addEventListener:()=>{}},AbortController,fetch:async()=>null,matchMedia:()=>({matches:false}),setTimeout:(fn,ms)=>{timers.set(++next,{fn,ms});return next;},clearTimeout:id=>timers.delete(id),requestAnimationFrame:()=>assert.fail('Observable desktop poster must wait for its own paint'),Image:class{set src(value){if(value.startsWith('data:'))queueMicrotask(()=>this.onload());}naturalWidth=2;decode(){assert.fail('Duplicate decoder must not run');}}};runInNewContext(code,context);
- const ready=window.__HidiWaitForPosterPaint(video).then(()=>settled=true);await Promise.resolve();assert(!settled);[...timers.values()].find(timer=>timer.ms===1200).fn();await ready;assert(settled);assert.equal(disconnected,1);
+ const ready=window.__HidiWaitForPosterPaint(video).then(()=>settled=true);await Promise.resolve();assert(!settled);[...timers.values()].find(timer=>timer.ms===1200).fn();await ready;assert(settled);assert.equal(disconnected,1);assert.equal(window.__HidiNativePosterPaint,null);callback({getEntries:()=>[{element:video,url:video.poster,renderTime:1300}]});assert.equal(window.__HidiNativePosterPaint,null,'A queued observer callback after the deadline cannot mark the fallback as a successful paint');
+});
+
+test('only a connected native video with matching poster URL and positive render time gets a paint marker',async()=>{
+ for(const options of [{renderTime:0},{renderTime:undefined},{renderTime:-1},{renderTime:Infinity},{url:'/different.avif'},{connected:false},{native:false}]){
+  let callback;const window={},video={poster:'https://hidi.example/poster.avif',isConnected:options.connected!==false,matches:()=>options.native!==false};
+  class Observer{static supportedEntryTypes=['largest-contentful-paint'];constructor(fn){callback=fn;}observe(){}disconnect(){}}
+  runInNewContext(code,{window,PerformanceObserver:Observer,location:{pathname:'/'},document:{visibilityState:'visible',readyState:'loading',querySelector:()=>video,addEventListener:()=>{}},AbortController,fetch:async()=>null,matchMedia:()=>({matches:false}),setTimeout:()=>1,clearTimeout:()=>{},Image:class{set src(value){}}});
+  window.__HidiNativePosterPaint={video,poster:video.poster,renderTime:10};
+  const ready=window.__HidiWaitForPosterPaint(video);assert.equal(window.__HidiNativePosterPaint,null);
+  callback({getEntries:()=>[{element:video,url:options.url??video.poster,renderTime:Object.hasOwn(options,'renderTime')?options.renderTime:100}]});await ready;assert.equal(window.__HidiNativePosterPaint,null,JSON.stringify(options));
+ }
+});
+
+test('hidden, missing and decode-error fallbacks release without a success marker',async()=>{
+ for(const reason of ['hidden','missing','decode-error']){
+  const window={},document={visibilityState:reason==='hidden'?'hidden':'visible',readyState:'loading',querySelector:()=>null,addEventListener:()=>{}},video=reason==='missing'?null:{poster:'/poster.avif',isConnected:true,matches:()=>true};
+  runInNewContext(code,{window,location:{pathname:'/'},document,AbortController,fetch:async()=>null,matchMedia:()=>({matches:true}),setTimeout:()=>1,clearTimeout:()=>{},Image:class{set src(value){}decode(){return Promise.reject(Error('Controlled unavailable poster'));}}});
+  window.__HidiNativePosterPaint={video,poster:'/old.avif',renderTime:1};await window.__HidiWaitForPosterPaint(video);assert.equal(window.__HidiNativePosterPaint,null,reason);
+ }
 });
 
 test('portrait crop retains framing only for centred tall phone rectangles; focal or shape changes use the full frame',()=>{

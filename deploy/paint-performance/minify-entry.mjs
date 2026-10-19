@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 let source='';process.stdin.setEncoding('utf8');for await(const chunk of process.stdin)source+=chunk;source=source.replace(/\r\n/g,'\n');
 const prefix='if (!window.__HidiAppStarted) {\n',suffix='\n}\n';
 assert(source.startsWith(prefix)&&source.endsWith(suffix),'Application startup guard changed');
-assert.equal(createHash('sha256').update(source).digest('hex'),'3ddee23717c0b09a41e2774d49b004ecfefc43a37dbfda3bf96c2560f4a87d28','Reviewed hero application changed; stop before retaining DOM state');
+assert.equal(createHash('sha256').update(source).digest('hex'),'34833acdb7ab615060c123de29ed5196e7086681d66ab61119490f16ccbd0f60','Reviewed hero application changed; stop before retaining DOM state');
 const {minify}=await import(pathToFileURL(process.env.HIDI_TERSER_MODULE||'/tmp/media-tools/node_modules/terser/main.js').href);
 const anchor='const mc=document.getElementById("root");';
 assert.equal(source.split(anchor).length,2,'Current root entry changed');
