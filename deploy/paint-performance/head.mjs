@@ -12,6 +12,7 @@ const fullCssClient=readFileSync(new URL('../paint-performance/full-css-client.j
 export function createHomeHead(root,appRoot=resolve(root,'..')) {
  const cache=new Map();
  const assets=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/head-assets.json'),'utf8'));}catch{return {};}})();
+ const desktopPreview=(()=>{try{const value=assets.desktopPreview;return typeof value==='string'&&/^data:image\/avif;base64,[A-Za-z0-9+/]+={0,2}$/.test(value)&&value.length<=2048?value:null;}catch{return null;}})();
  function verifiedAsset(row,pattern){try{if(!row||!pattern.test(row.url)||!row.url.includes(row.sha256.slice(0,16)))return null;const file=realpathSync(resolve(root,'.'+row.url));if(!file.startsWith(realpathSync(root)+sep))return null;const bytes=readFileSync(file);return createHash('sha256').update(bytes).digest('hex')===row.sha256?bytes:null;}catch{return null;}}
  const mirror=(()=>{try{const value=normalizeMirror(JSON.parse(readFileSync(resolve(appRoot,'paint-performance/asset-mirror.json'),'utf8')));if(!value)return null;for(const [url,sha256] of Object.entries(value.files)){const bytes=verifiedAsset({url,sha256},/^\//);if(!bytes||url.endsWith('.js')&&!bytes.toString().startsWith('if (!window.__HidiAppStarted) {'))return null;}return value;}catch{return null;}})();
  const originPosters=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/initial-hero.json'),'utf8'));return [...new Set(Object.values(data).flatMap(item=>[item.mobile?.avifPoster,item.mobile?.avifPosterSmall]).filter(path=>path?.endsWith('.avif')&&mirror&&Object.hasOwn(mirror.files,path)))];}catch{return [];}})();
@@ -101,6 +102,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+css+'</style>';
   });
   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-full-css="true">'+fullCssClient+'</script></head>');
+  if(desktopStyle&&/image\/avif/i.test(request.headers?.accept||'')&&desktopPreview&&completeHead)html=html.replace(/<video\b([^>]*data-hidi-first-hero=["'][^"']+["'][^>]*)>/i,(tag,attrs)=>/\bposter=/.test(attrs)?tag:'<video'+attrs+' poster="'+desktopPreview+'">');
   if(logoData)html=html.replace(/<link\b[^>]*rel=["']preload["'][^>]*href=["'](?:\.\/|\/)assets\/images\/hidi-logo\.png["'][^>]*>/gi,tag=>logoUrl?tag.replace(/\bhref=["'][^"']+["']/i,'href="'+logoUrl+'"').replace(/\bfetchpriority=["'][^"']+["']/i,'fetchpriority="low"'):'');
   if(mirror&&completeHead){
    const integrity=url=>'sha256-'+Buffer.from(mirror.files[url],'hex').toString('base64');

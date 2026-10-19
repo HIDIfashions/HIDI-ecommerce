@@ -12,7 +12,7 @@ const ref=html.match(/<script type="module" crossorigin src="([^"]+)"/)[1].repla
 const js=await readFile(join(base,'dist',ref),'utf8');
 const manifest=JSON.parse(js.match(/^const HidiMediaManifest=(.*);$/m)[1]);
 const output=join(overlay,'dist/media-performance/assets');await mkdir(output,{recursive:true});
-const report=[];
+const report=[];let desktopPreview=null;
 async function encodePoster(input,kind,original,referenceWidth=null,sourceBytes=input.length,startAt=60){
  const reference=join(overlay,kind+'-reference.png');await sharp(input).png().toFile(reference);
  let selected;
@@ -52,12 +52,15 @@ for(const item of Object.values(manifest.videos))for(const kind of ['mobile','de
   if(!pixels.equals(await sharp(small).ensureAlpha().raw().toBuffer()))throw Error('Desktop crop changed source pixels');
   variant.avifPosterSmall=await encodePoster(small,'desktop-crop',variant.poster,1600,input.length,74);
   variant.posterCrop=crop;report.at(-1).crop=crop;report.at(-1).sourcePixelsRetained=true;
+  const preview=await sharp(input).resize({width:32}).avif({quality:50,effort:6}).toBuffer();
+  if(preview.length>1024)throw Error('Desktop preview must stay below1KB');
+  desktopPreview='data:image/avif;base64,'+preview.toString('base64');
  }
 
 }
 const {encodeHeroVideos}=await import('./video.mjs');
 const videoReport=await encodeHeroVideos(base,overlay,manifest);
-const {buildHeadAssets}=await import('./head-assets.mjs');const headAssets=await buildHeadAssets(base,overlay,sharp);
+const {buildHeadAssets}=await import('./head-assets.mjs');const headAssets=await buildHeadAssets(base,overlay,sharp,{desktopPreview});
 const probe=await sharp({create:{width:2,height:2,channels:3,background:'#ffffff'}}).avif().toBuffer();
 await writeFile(join(overlay,'poster-build.json'),JSON.stringify({manifest,report,videoReport,headAssets,probe:probe.toString('base64')}));
 console.log(JSON.stringify(report));
