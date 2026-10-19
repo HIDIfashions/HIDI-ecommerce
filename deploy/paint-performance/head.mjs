@@ -106,12 +106,12 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    const integrity=url=>'sha256-'+Buffer.from(mirror.files[url],'hex').toString('base64');
    html=html.replace(/<link\b[^>]*>/gi,tag=>tag.replace(/\bhref=["']([^"']+)["']/i,(whole,url)=>inline?.path===url?'href="'+inline.url+'"':Object.hasOwn(mirror.files,url)&&!(originPosters.includes(url)&&!tag.includes('media="(min-width: 701px)"'))?'href="'+mirrorAssetUrl(url,mirror)+'"'+(url.endsWith('.js')?' integrity="'+integrity(url)+'"'+(/\bcrossorigin\b/i.test(tag)?'':' crossorigin="anonymous"'):''):whole));
    html=html.replace(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*><\/script>/gi,(tag,url)=>Object.hasOwn(mirror.files,url)&&url.endsWith('.js')?tag.replace('src="'+url+'"','src="'+mirrorAssetUrl(url,mirror)+'" integrity="'+integrity(url)+'" data-hidi-mirror-app="'+url+'" onerror="window.__HidiAppFallback()"'):tag);
-   // Keep the hint module-native so Chromium can coalesce it with the queued
-   // module request while preserving the desktop Low-priority hint.
+   // Keep a parsed desktop-only script preload so Chromium can coalesce it with
+   // the queued module request while preserving the desktop Low-priority hint.
    html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/gi,tag=>{
     const href=tag.match(/\bhref=["']([^"']+)["']/i)?.[1];if(!href||!Object.keys(mirror.files).some(path=>path.endsWith('.js')&&mirrorAssetUrl(path,mirror)===href))return tag;
     const path=new URL(href).pathname;if(!Object.hasOwn(mirror.files,path))return tag;
-    return '<link rel="modulepreload" media="(min-width: 701px)" fetchpriority="low" data-hidi-desktop-preload="true" href="'+href+'" integrity="'+integrity(path)+'" crossorigin="anonymous">';
+    return '<link rel="preload" as="script" media="(min-width: 701px)" fetchpriority="low" data-hidi-desktop-preload="true" href="'+href+'" integrity="'+integrity(path)+'" crossorigin="anonymous">';
    });
    html=html.replace(/<script\b[^>]*data-hidi-mirror-app=["'][^"']+["'][^>]*><\/script>/gi,tag=>tag.replace(/type=["']module["']/,'type="application/x-hidi-queued-module"').replace(/\bsrc=/,'data-hidi-queued-src='));
    html=html.replace(/<\/body>/i,'<script data-hidi-app-start="true">'+appStart+'</script></body>');
