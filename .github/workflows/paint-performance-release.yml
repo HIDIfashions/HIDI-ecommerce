@@ -1,4 +1,4 @@
-# Visible sections remain immediate; truly off-screen sections follow the first hero paint with a 100ms deadline.
+# Retain the painted native desktop video through React handoff when state-preserving moves are supported; all gates remain required.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
 # Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.

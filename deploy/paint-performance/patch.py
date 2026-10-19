@@ -62,6 +62,7 @@ def patch_web(base,overlay,poster,icons=None):
     text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
     text=once(text,'function HidiMediaPoster(value) {','function HidiMediaPoster(value,position) {')
     text=with_poster_positions(text)
+    text=once(text,'    "video",\n    {\n      key: liveHero.url,','    HidiRetainedHeroVideo,\n    {\n      hidiSourceKey: liveHero.url,\n      key: liveHero.url,')
     text=once(text,'      onCanPlay: revealLiveVideo,\n      onError: () => setFailedSource(liveHero.url),','      onCanPlay: revealLiveVideo,\n      onError: (event) => HidiMediaVideoFallback(event, liveHero.url, () => setFailedSource(liveHero.url)),')
     text=once(text,original_manifest,'const HidiMediaManifest='+json.dumps(manifest,separators=(',',':'))+';')
     text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; const poster = window.__HidiAvifEnabled && variant.avifPoster ? (window.__HidiAvifPoster?.(variant,position) || variant.avifPoster) : variant.poster; return window.__HidiMirrorPoster?.(poster) || poster;')
@@ -95,7 +96,7 @@ def patch_web(base,overlay,poster,icons=None):
     end=text.index('  }, [showBundled, heroConfigStatus, mobile, reduced]);',start)
     expected=(HERE/'video-delay.txt').read_text()
     text=once(text,expected,'    setVideoAllowed(true);\n')
-    text='if (location.pathname === "/" && window.__HidiFullCssReady) await window.__HidiFullCssReady;\nif (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && matchMedia("(max-width: 700px)").matches && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await (window.__HidiNativePosterReady || new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))));\n'+text
+    text='if (location.pathname === "/" && window.__HidiFullCssReady) await window.__HidiFullCssReady;\nif (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && (matchMedia("(max-width: 700px)").matches || HidiCanRetainNativeHero()) && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await (window.__HidiNativePosterReady || new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))));\n'+text
     assert not re.search(r'\bimport\s*\(|import\.meta|(?:^|[;}])\s*(?:import\s+|export\s*[{*])',text,re.M),'Mirror entry must remain self-contained'
     text='if (!window.__HidiAppStarted) {\nwindow.__HidiAppStarted = true;\n'+text+'\n}\n'
     text=subprocess.run(['node',str(HERE/'minify-entry.mjs')],input=text,text=True,capture_output=True,check=True).stdout
