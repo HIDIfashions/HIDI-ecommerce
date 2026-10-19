@@ -1,4 +1,4 @@
-# Retain the painted native desktop video through React handoff when state-preserving moves are supported; all gates remain required.
+# Wait for the reported native desktop poster paint before retaining its video; ordinary mobile React path and all gates remain required.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
 # Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.

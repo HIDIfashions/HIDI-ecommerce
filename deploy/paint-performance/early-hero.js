@@ -45,6 +45,9 @@
         if (typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('largest-contentful-paint') && typeof matchMedia === 'function' && !matchMedia('(max-width: 700px)').matches) {
           observer = new PerformanceObserver(list => { if (list.getEntries().some(entry => entry.element === video)) finish(); });
           observer.observe({ type: 'largest-contentful-paint', buffered: true });
+          // The video decodes its poster itself. A second Image decoder competes
+          // with that paint and is unnecessary when the paint is observable.
+          return;
         }
       } catch { observer = null; }
       try {

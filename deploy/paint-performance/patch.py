@@ -62,7 +62,10 @@ def patch_web(base,overlay,poster,icons=None):
     text=once(text,'function HidiMediaVideo(value) {'+original_video,(HERE/'video-client.js').read_text())
     text=once(text,'function HidiMediaPoster(value) {','function HidiMediaPoster(value,position) {')
     text=with_poster_positions(text)
-    text=once(text,'    "video",\n    {\n      key: liveHero.url,','    HidiRetainedHeroVideo,\n    {\n      hidiSourceKey: liveHero.url,\n      key: liveHero.url,')
+    text=once(text,'    "video",\n    {\n      key: liveHero.url,','    HidiNativeHeroCache ? HidiRetainedHeroVideo : "video",\n    {\n      ...(HidiNativeHeroCache ? { hidiSourceKey: liveHero.url } : {}),\n      key: liveHero.url,')
+    # ResizeObserver supplies its initial dimensions before paint. Avoid forcing
+    # the same layout synchronously inside React; preserve the old-browser path.
+    text=once(text,'return Jn?.observe(ne),window.addEventListener("resize",se),se(),S.current=', 'return Jn?.observe(ne),window.addEventListener("resize",se),Jn||se(),S.current=')
     text=once(text,'      onCanPlay: revealLiveVideo,\n      onError: () => setFailedSource(liveHero.url),','      onCanPlay: revealLiveVideo,\n      onError: (event) => HidiMediaVideoFallback(event, liveHero.url, () => setFailedSource(liveHero.url)),')
     text=once(text,original_manifest,'const HidiMediaManifest='+json.dumps(manifest,separators=(',',':'))+';')
     text=once(text,'return item ? (matchMedia("(max-width: 700px)").matches ? item.mobile.poster : item.desktop.poster) : undefined;', 'if (!item) return undefined; const variant = matchMedia("(max-width: 700px)").matches ? item.mobile : item.desktop; const poster = window.__HidiAvifEnabled && variant.avifPoster ? (window.__HidiAvifPoster?.(variant,position) || variant.avifPoster) : variant.poster; return window.__HidiMirrorPoster?.(poster) || poster;')
