@@ -19,3 +19,9 @@ test('a stalled poster has one bounded application start; native markup absence 
   if(native){assert.equal(appended.length,0);timers[0].fn();timers[0].fn();}assert.equal(appended.length,1);
  }
 });
+test('desktop waits for the verified module preload before executing the queued application',async()=>{
+ const appended=[],timers=[],events={};const original={dataset:{hidiQueuedSrc:'/app.js'},attributes:[]};
+ const window={},preload={addEventListener:(name,fn)=>events[name]=fn},document={querySelector:selector=>selector.includes('queued')?original:preload,createElement:()=>({}),head:{append:item=>appended.push(item)}};
+ runInNewContext(code,{window,document,Promise,matchMedia:()=>({matches:false}),setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length-1;},clearTimeout:()=>{}});
+ assert.equal(appended.length,0);assert.equal(timers[0].ms,1500);events.load();assert.equal(appended.length,1);assert.equal(appended[0].src,'/app.js');
+});

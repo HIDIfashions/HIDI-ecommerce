@@ -12,7 +12,7 @@ export async function streamInitialHome(request,response,headers,html,render=ren
  const rendered=Promise.resolve().then(()=>render(tail,request)).catch(()=>tail);
  const clean={...headers,vary:[headers.vary,'Accept','User-Agent','Sec-CH-UA-Mobile','Cookie','Save-Data'].filter(Boolean).join(', ')};delete clean['content-length'];delete clean.etag;
  const started=performance.now();let deadline;
- const early=await Promise.race([rendered.then(body=>({body})),new Promise(resolve=>{deadline=setTimeout(()=>resolve(null),80);})]);clearTimeout(deadline);
+ const early=await Promise.race([rendered.then(body=>({body})),new Promise(resolve=>{deadline=setTimeout(()=>resolve(null),0);})]);clearTimeout(deadline);
  response.removeHeader('Content-Length');response.removeHeader('ETag');
  if(early&&Buffer.byteLength(head+early.body)<=131072){
   clean['server-timing']=[clean['server-timing'],'home-render;dur='+(performance.now()-started).toFixed(1)+';desc="coalesced"'].filter(Boolean).join(', ');
