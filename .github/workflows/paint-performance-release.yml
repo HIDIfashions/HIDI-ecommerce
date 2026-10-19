@@ -1,4 +1,4 @@
-# Desktop poster reuses the original HIDI connection with identical verified mirror recovery; every release gate remains mandatory.
+# Visible sections remain immediate; truly off-screen sections follow the first hero paint with a 100ms deadline.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
 # Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.
@@ -124,7 +124,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg openssl iproute2
-          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 terser@5.44.0
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 terser@5.44.0 @azure/static-web-apps-cli@2.0.10
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
