@@ -11,6 +11,9 @@ export async function streamInitialHome(request,response,headers,html,render=ren
  const cut=match.index+match[0].length,head=html.slice(0,cut),tail=html.slice(cut);
  const rendered=Promise.resolve().then(()=>render(tail,request)).catch(()=>tail);
  const clean={...headers,vary:[headers.vary,'Accept','User-Agent','Sec-CH-UA-Mobile','Cookie','Save-Data'].filter(Boolean).join(', ')};delete clean['content-length'];delete clean.etag;
+ const attr=(tag,name)=>tag.match(new RegExp('\\b'+name+'=[\"\\\']([^\"\\\']+)[\"\\\']','i'))?.[1];
+ const links=[...head.matchAll(/<link\b[^>]*rel=[\"']preload[\"'][^>]*as=[\"']image[\"'][^>]*>/gi)].map(match=>{const tag=match[0],href=attr(tag,'href');if(!href)return '';const parts=['<'+href+'>','rel=preload','as=image'];for(const key of ['type','media','fetchpriority']){const value=attr(tag,key);if(value)parts.push(key+'=\"'+value+'\"');}return parts.join('; ');}).filter(Boolean);
+ if(links.length)clean.link=[clean.link,links.join(', ')].filter(Boolean).join(', ');
  const started=performance.now();let deadline;
  const early=await Promise.race([rendered.then(body=>({body})),new Promise(resolve=>{deadline=setTimeout(()=>resolve(null),80);})]);clearTimeout(deadline);
  response.removeHeader('Content-Length');response.removeHeader('ETag');
