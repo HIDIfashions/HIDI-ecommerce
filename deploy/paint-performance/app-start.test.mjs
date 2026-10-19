@@ -10,7 +10,7 @@ test('mobile application waits for native paint without losing integrity or reco
   await new Promise(setImmediate);assert.equal(appended.length,mobile?0:1);
   avifReady(true);await new Promise(setImmediate);assert.equal(appended.length,mobile?0:1);posterReady();await new Promise(setImmediate);assert.equal(appended.length,1);
   if(mobile){timers[0].fn();assert.equal(appended.length,1);assert.equal(timers[0].ms,1200);}
-  assert.equal(appended[0].type,'module');assert.equal(appended[0].src,original.dataset.hidiQueuedSrc);assert.equal(appended[0].integrity,'sha256-reviewed');assert.equal(appended[0].onerror,'window.__HidiAppFallback()');assert.equal(appended[0]['data-hidi-mirror-app'],'/assets/index.js');
+  assert.equal(appended[0].type,'module');assert.equal(appended[0].src,original.dataset.hidiQueuedSrc);assert.equal(appended[0].integrity,'sha256-reviewed');assert.equal(appended[0].onerror,'window.__HidiAppFallback()');assert.equal(appended[0]['data-hidi-mirror-app'],'/assets/index.js');assert.equal(appended[0].fetchPriority,mobile?undefined:'low');
  }
 });
 test('a stalled poster has one bounded application start; native markup absence never delays startup',async()=>{

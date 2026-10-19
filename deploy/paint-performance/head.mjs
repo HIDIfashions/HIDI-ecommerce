@@ -17,6 +17,12 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
  const originPosters=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/initial-hero.json'),'utf8'));return [...new Set(Object.values(data).flatMap(item=>[item.mobile?.avifPoster,item.mobile?.avifPosterSmall]).filter(path=>path?.endsWith('.avif')&&mirror&&Object.hasOwn(mirror.files,path)))];}catch{return [];}})();
  const inlinePoster=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/initial-hero.json'),'utf8')),variant=Object.values(data)[0]?.mobile,path=variant?.avifPosterSmall,crop=variant?.posterCrop;if(!mirror||!path||crop?.width!==512||crop?.height!==720||crop?.sourceWidth!==1280||crop?.sourceHeight!==720||!Object.hasOwn(mirror.files,path))return null;const bytes=verifiedAsset({url:path,sha256:mirror.files[path]},/^\/media-performance\/assets\/poster-[a-f0-9]{16}\.avif$/);return bytes&&bytes.length<=49152?{path,url:'data:image/avif;base64,'+bytes.toString('base64')}:null;}catch{return null;}})();
  const seoBytes=verifiedAsset(assets.seo,/^\/assets\/home-seo-[a-f0-9]{16}\.js$/);
+ const countdownUrl=(()=>{try{
+  const row=assets.countdown;if(!row||row.sourceFile!=='dist/hidi-launch-countdown-20261011.js'||!/^\/assets\/home-countdown-[a-f0-9]{16}\.js$/.test(row.url)||row.sourceSha256!=='9f32ea5cc3f76cff81a7b5a6537d5437b161a73dd9b6df9328e285e578ac4195')return null;
+  const source=readFileSync(resolve(root,'hidi-launch-countdown-20261011.js')).toString().replace(/\r\n/g,'\n');
+  if(createHash('sha256').update(source).digest('hex')!==row.sourceSha256)return null;
+  return verifiedAsset(row,/^\/assets\/home-countdown-[a-f0-9]{16}\.js$/)?row.url:null;
+ }catch{return null;}})();
  const criticalStyles=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/critical-css.json'),'utf8')).styles||{};}catch{return {};}})();
  const styleAssets=(()=>{try{return JSON.parse(readFileSync(resolve(appRoot,'paint-performance/style-assets.json'),'utf8')).styles||{};}catch{return {};}})();
  const iconMarkup=(()=>{try{const data=JSON.parse(readFileSync(resolve(appRoot,'paint-performance/icons.json'),'utf8'));const source=realpathSync(resolve(appRoot,data.sourceFile));if(!source.startsWith(realpathSync(appRoot)+sep))return null;const hash=createHash('sha256').update(readFileSync(source)).digest('hex');return hash===data.originalSha256&&typeof data.markup==='string'?data.markup:null;}catch{return null;}})();
@@ -69,6 +75,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
     return '<script '+before+after+' data-hidi-inline-script="'+url.pathname+'">'+code+'</script>';
    }catch{return tag;}
   });
+  if(countdownUrl)html=html.replace(/<script\b([^>]*)\bsrc=["'](?:\.?\/)?hidi-launch-countdown-20261011\.js["']([^>]*)><\/script>/i,(tag,before,after)=>'<script'+before+'src="'+countdownUrl+'"'+after+'></script>');
   html=html.replace(/<link\b[^>]*>/gi,tag=>{
    if(/\brel=["']modulepreload["']/.test(tag)&&[...inlineBundles].some(path=>tag.includes('href="'+path+'"')))return '';
    return tag;
@@ -99,12 +106,12 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    const integrity=url=>'sha256-'+Buffer.from(mirror.files[url],'hex').toString('base64');
    html=html.replace(/<link\b[^>]*>/gi,tag=>tag.replace(/\bhref=["']([^"']+)["']/i,(whole,url)=>inline?.path===url?'href="'+inline.url+'"':Object.hasOwn(mirror.files,url)&&!(originPosters.includes(url)&&!tag.includes('media="(min-width: 701px)"'))?'href="'+mirrorAssetUrl(url,mirror)+'"'+(url.endsWith('.js')?' integrity="'+integrity(url)+'"'+(/\bcrossorigin\b/i.test(tag)?'':' crossorigin="anonymous"'):''):whole));
    html=html.replace(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*><\/script>/gi,(tag,url)=>Object.hasOwn(mirror.files,url)&&url.endsWith('.js')?tag.replace('src="'+url+'"','src="'+mirrorAssetUrl(url,mirror)+'" integrity="'+integrity(url)+'" data-hidi-mirror-app="'+url+'" onerror="window.__HidiAppFallback()"'):tag);
-   // Desktop retains its early preload. Mobile lets the native poster paint
-   // before starting the application transfer; integrity and origin recovery remain.
+   // A parsed low-priority script preload is honored by Chromium. Dynamic
+   // modulepreload injection ignores the low hint and competes with the poster.
    html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/gi,tag=>{
     const href=tag.match(/\bhref=["']([^"']+)["']/i)?.[1];if(!href||!Object.keys(mirror.files).some(path=>path.endsWith('.js')&&mirrorAssetUrl(path,mirror)===href))return tag;
     const path=new URL(href).pathname;if(!Object.hasOwn(mirror.files,path))return tag;
-    return '<script data-hidi-desktop-preload="true">if(!matchMedia("(max-width: 700px)").matches){const link=document.createElement("link");link.rel="modulepreload";link.crossOrigin="anonymous";link.integrity='+JSON.stringify(integrity(path))+';link.fetchPriority="high";link.href='+JSON.stringify(href)+';document.head.append(link);}</script>';
+    return '<link rel="preload" as="script" media="(min-width: 701px)" fetchpriority="low" data-hidi-desktop-preload="true" href="'+href+'" integrity="'+integrity(path)+'" crossorigin="anonymous">';
    });
    html=html.replace(/<script\b[^>]*data-hidi-mirror-app=["'][^"']+["'][^>]*><\/script>/gi,tag=>tag.replace(/type=["']module["']/,'type="application/x-hidi-queued-module"').replace(/\bsrc=/,'data-hidi-queued-src='));
    html=html.replace(/<\/body>/i,'<script data-hidi-app-start="true">'+appStart+'</script></body>');
@@ -112,8 +119,9 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    const marker=/<meta\b[^>]*charset\s*=/i.test(html)?/<meta\b[^>]*charset\s*=[^>]*>/i:/<head\b[^>]*>/i;
    const activeOrigin=mirrorAssetUrl(Object.keys(mirror.files).find(path=>path.endsWith('.js'))||'',mirror);const connectionOrigin=activeOrigin.startsWith('https://')?new URL(activeOrigin).origin:mirror.origin;
    html=html.replace(marker,tag=>tag+'<link rel="preconnect" href="'+connectionOrigin+'" crossorigin>'+(desktopStyle?'<link rel="preconnect" href="'+connectionOrigin+'">':'')+'<script data-hidi-asset-mirror="true">'+client+'</script>');
-   // Styles use the original connection, separately from the mirrored poster.
-   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-mirror-css="true">if(!matchMedia("(max-width: 700px)").matches)window.__HidiLoadFullCss();</script></head>');
+   // Fresh supported desktop loads the complete sheets after the native poster
+   // paints. Hash/back/scroll/hidden states keep the eager safety path.
+   if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-mirror-css="true">(()=>{const desktop=!matchMedia("(max-width: 700px)").matches,navigation=typeof performance!=="undefined"&&performance.getEntriesByType?.("navigation")?.[0]?.type,eligible=desktop&&typeof Element!=="undefined"&&typeof Element.prototype.moveBefore==="function"&&typeof PerformanceObserver!=="undefined"&&PerformanceObserver.supportedEntryTypes?.includes("largest-contentful-paint")&&!location.hash&&scrollY<=0&&document.visibilityState!=="hidden"&&navigation!=="back_forward";const load=()=>window.__HidiLoadFullCss?.();if(!eligible){load();return;}addEventListener("pageshow",event=>{if(event.persisted||scrollY>0)load();},{once:true});addEventListener("scroll",()=>{if(scrollY>0)load();},{once:true,passive:true});addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")load();},{once:true});})();</script></head>');
   }
   return html;
  };

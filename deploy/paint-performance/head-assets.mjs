@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';import {readFile,writeFile,mkdir} from 'node:fs/promises';import {join} from 'node:path';import {createHash} from 'node:crypto';
 import {existsSync} from 'node:fs';import {pathToFileURL} from 'node:url';
 import {indexedPng} from './indexed-png.mjs';
+import {buildCountdownAsset} from './countdown-source.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function readSeoScript(base){
  const module=join(base,'seo-discovery/metadata.mjs');
@@ -8,6 +9,7 @@ export async function readSeoScript(base){
  return (await readFile(join(base,'dist/index.html'),'utf8')).replace(/\r\n/g,'\n');
 }
 export async function buildHeadAssets(base,overlay,sharp){
+ const countdown=await buildCountdownAsset(base,overlay);
  const source=await readFile(join(base,'dist/assets/images/hidi-logo.png')),info=await sharp(source).metadata(),pixels=await sharp(source).ensureAlpha().raw().toBuffer();let encoded=source;
  const chunks=[];for(let offset=8;offset<source.length;){const length=source.readUInt32BE(offset);chunks.push(source.subarray(offset+4,offset+8).toString());offset+=12+length;}
  const plainPng=chunks.every(type=>['IHDR','IDAT','IEND'].includes(type));
@@ -20,6 +22,6 @@ export async function buildHeadAssets(base,overlay,sharp){
  const html=await readSeoScript(base),match=html.match(/<script\b([^>]*data-hidi-seo-identity=["']1["'][^>]*)>([\s\S]*?)<\/script>/i);let seo=null;
  if(match&&!/(?:^|\s)(?:src|async|integrity)\b/i.test(match[1])&&!/\btype=["']module["']/i.test(match[1])){const code=match[2],sha256=hash(code),url='/assets/home-seo-'+sha256.slice(0,16)+'.js';await mkdir(join(overlay,'dist/assets'),{recursive:true});await writeFile(join(overlay,'dist',url),code);seo={url,sha256,sourceCodeUnchanged:true,bytes:Buffer.byteLength(code)};}
  if(existsSync(join(base,'seo-discovery/metadata.mjs')))assert(seo,'The current runtime SEO script must be preserved as an exact external asset');
- await mkdir(join(overlay,'paint-performance'),{recursive:true});await writeFile(join(overlay,'paint-performance/head-assets.json'),JSON.stringify({logo,seo}));
- return {passed:true,logo,seo};
+ await mkdir(join(overlay,'paint-performance'),{recursive:true});await writeFile(join(overlay,'paint-performance/head-assets.json'),JSON.stringify({logo,seo,countdown}));
+ return {passed:true,logo,seo,countdown};
 }
