@@ -54,7 +54,8 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
  }
  return (html,request={headers:{}})=>{
   const desktopStyle=Boolean(request.headers?.['user-agent'])&&!/Mobile|Android/i.test(request.headers['user-agent'])&&request.headers?.['sec-ch-ua-mobile']!=='?1';
-  const inline=inlinePosters[desktopStyle?'desktop':'mobile']&&((desktopStyle)||/Mobile|Android/i.test(request.headers?.['user-agent']||'')||request.headers?.['sec-ch-ua-mobile']==='?1')?inlinePosters[desktopStyle?'desktop':'mobile']:null;
+  const mobileHint=request.headers?.['sec-ch-ua-mobile'];
+  const inline=inlinePosters[desktopStyle?'desktop':'mobile']&&((desktopStyle&&mobileHint==='?0')||(!desktopStyle&&(mobileHint==='?1'||/Mobile|Android/i.test(request.headers?.['user-agent']||''))))?inlinePosters[desktopStyle?'desktop':'mobile']:null;
   const posterHints=[...html.matchAll(/<link\b[^>]*rel=["']preload["'][^>]*type=["']image\/avif["'][^>]*>/gi)];
   if(posterHints.length&&/<\/head>/i.test(html)){
    const modules=[];html=html.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*fetchpriority=["']low["'][^>]*>/gi,tag=>{modules.push(tag);return '';});
