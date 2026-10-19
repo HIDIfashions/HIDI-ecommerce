@@ -12,7 +12,7 @@
 # Candidate verification requires the exact content-verified mirrored application URL.
 # The native poster paints before React handoff; fast fresh HTML is coalesced with a bounded streaming fallback.
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
-# Desktop app modulepreload remains request-deduplicated at Low priority; AVIF-capable desktops may use a bounded verified native-poster preview until the full poster is selected, and deferred styles remain Low priority.
+# Desktop app modulepreload remains request-deduplicated at Low priority while the portrait poster remains an external verified asset; deferred styles are also Low priority so they cannot compete with the hero paint.
 # Desktop mirror recovery allows the Low-priority request a bounded 3s window; origin errors still recover immediately.
 # WebKit's known ResizeObserver layout diagnostic is filtered only in the recovery probe; application errors remain fatal.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
