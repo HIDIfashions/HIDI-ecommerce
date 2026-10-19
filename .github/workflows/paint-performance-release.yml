@@ -12,6 +12,7 @@
 # Candidate verification requires the exact content-verified mirrored application URL.
 # The native poster paints before React handoff; fast fresh HTML is coalesced with a bounded streaming fallback.
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
+# Desktop app preload is parsed at Low priority and fresh complete CSS waits for native poster paint; priority is asserted from CDP.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
   workflow_dispatch: {}
