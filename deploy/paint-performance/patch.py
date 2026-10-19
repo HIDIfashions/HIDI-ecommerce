@@ -98,7 +98,7 @@ def patch_web(base,overlay,poster,icons=None):
         ('const [heroAutoPlay, setHeroAutoPlay] = HidiHeroReact.useState(true);','const [heroAutoPlay, setHeroAutoPlay] = HidiHeroReact.useState(() => initialHero?.autoPlay ?? true);'),
         ('const [heroInterval, setHeroInterval] = HidiHeroReact.useState(6);','const [heroInterval, setHeroInterval] = HidiHeroReact.useState(() => initialHero?.interval || 6);'),
         ('const [heroConfigStatus, setHeroConfigStatus] = HidiHeroReact.useState("loading");','const [heroConfigStatus, setHeroConfigStatus] = HidiHeroReact.useState(() => initialHero ? "uploaded" : "loading");'),
-        ('const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(false);','const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(() => Boolean(initialHero) && !reduced && !HidiHeroSaveData());')
+        ('const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(false);','const [videoAllowed, setVideoAllowed] = HidiHeroReact.useState(false);')
     ]:text=once(text,before,after)
     text=once(text,'const G=await fetch("/api/hidi/landing-media-config",{cache:"no-store",signal:C.signal});','const HidiLandingEarly=window.__HidiLandingEarly;window.__HidiLandingEarly=null;const G=await HidiLandingEarly||await fetch("/api/hidi/landing-media-config",{cache:"no-store",signal:C.signal});')
     text=once(text,'const [soundEnabled, setSoundEnabled] = HidiHeroReact.useState(false);','const [soundEnabled, setSoundEnabled] = HidiHeroReact.useState(() => { const enabled = window.__HidiHeroSoundIntent === true; window.__HidiHeroSoundIntent = false; return enabled; });')
@@ -108,7 +108,7 @@ def patch_web(base,overlay,poster,icons=None):
     start=text.index('    setVideoAllowed(false);\n    let idleId = null;')
     end=text.index('  }, [showBundled, heroConfigStatus, mobile, reduced]);',start)
     expected=(HERE/'video-delay.txt').read_text()
-    text=once(text,expected,'    setVideoAllowed(true);\n')
+    assert expected in text,'Reviewed video delay changed; stop before enabling hero media' 
     text='if (location.pathname === "/" && window.__HidiFullCssReady) await window.__HidiFullCssReady;\nif (location.pathname === "/" && window.__HidiHeroInitial) window.__HidiAvifEnabled = Boolean(await window.__HidiAvifSupport);\nif (location.pathname === "/" && (matchMedia("(max-width: 700px)").matches || HidiCanRetainNativeHero()) && document.visibilityState !== "hidden" && document.querySelector("video[data-hidi-first-hero]")) await (window.__HidiNativePosterReady || new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))));\n'+text
     assert not re.search(r'\bimport\s*\(|import\.meta|(?:^|[;}])\s*(?:import\s+|export\s*[{*])',text,re.M),'Mirror entry must remain self-contained'
     text='if (!window.__HidiAppStarted) {\nwindow.__HidiAppStarted = true;\n'+text+'\n}\n'
