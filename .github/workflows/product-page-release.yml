@@ -1,5 +1,6 @@
 name: Isolated product page release
 on:
+  workflow_dispatch:
   push:
     branches: [migration/azure-sql-blob]
     paths: [deploy/product-page/**, .github/workflows/product-page-release.yml]
