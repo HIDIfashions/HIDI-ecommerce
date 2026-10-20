@@ -3,14 +3,14 @@ import {resolve} from 'node:path';
 export async function runRefinementChecks({browser,engine,scenario,until,products,output,base,settleFixtureNetwork}) {
  const productPath='/products/'+products[0].slug;
  const phone={viewport:{width:390,height:844},hasTouch:true,startPath:productPath};
- await scenario(browser,engine,'REFINE-FIT','PDP size pills, deselection, unavailable sizes and purchase colours match quick shop',async page=>{
+ await scenario(browser,engine,'REFINE-FIT','PDP size buttons, deselection, unavailable sizes and brand purchase action',async page=>{
   const fit=page.locator('.pdp-purchase'),sizes=fit.locator('.sizes');await sizes.waitFor();
   assert(await sizes.getByRole('button',{name:'L — unavailable',exact:true}).isDisabled());
   const size=sizes.getByRole('button',{name:'M',exact:true});await size.click();
   assert.equal(await size.getAttribute('aria-pressed'),'true');
-  assert.equal(await size.evaluate(e=>getComputedStyle(e).borderRadius),'999px');
+  assert.equal(await size.evaluate(e=>getComputedStyle(e).borderRadius),'3px');
   const add=page.locator('[aria-label="Purchase actions"]').getByRole('button',{name:'Add to Cart',exact:true});
-  assert.equal(await add.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(232, 216, 196)');
+  assert.equal(await add.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(89, 29, 32)');
   assert.equal(await add.locator('svg').count(),1);
   await size.click();assert(await add.isDisabled());
  },{startPath:productPath});

@@ -55,7 +55,7 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
   for(const product of products.slice(0,3)){
    await settleFixtureNetwork(page,{prefetchOnly:true});
    if(new URL(page.url()).pathname!=='/products/'+product.slug)await navigate(page,'/products/'+product.slug);const section=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await section.waitFor();
-   await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor();assert(await section.evaluate(e=>e.open));assert.match(await section.innerText(),/Free Shipping[\s\S]*₹0\.00 on every order[\s\S]*Easy Returns[\s\S]*7 days[\s\S]*Exchanges/);
+   await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor();assert.equal(await section.evaluate(e=>e.open),false);await section.locator('summary').click();assert(await section.evaluate(e=>e.open));assert.match(await section.innerText(),/Free Shipping[\s\S]*₹0\.00 on every order[\s\S]*Easy Returns[\s\S]*7 days[\s\S]*Exchanges/);
    await settleFixtureNetwork(page,{prefetchOnly:true});
    const link=section.getByRole('link',{name:/View Shipping, Returns & Exchange Policy/});await link.click();await until(()=>page.evaluate(()=>location.pathname==='/returns'&&location.hash==='#shipping-returns-exchange'),'policy route and anchor');assert.match(await page.locator('#shipping-returns-exchange').innerText(),/₹0\.00/);
   }
