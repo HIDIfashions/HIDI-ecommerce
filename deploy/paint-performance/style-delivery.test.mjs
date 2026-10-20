@@ -28,6 +28,25 @@ test('desktop stylesheet delivery requires current CSS and matching immutable by
   writeFileSync(join(root,url),encoded);writeFileSync(join(root,'assets/index-old.css'),css+'footer{color:green}');const changed=createHomeHead(root,app)(html,desktop);assert(!changed.includes('data-hidi-origin-href'));assert(changed.includes('color:green'));
  }finally{rmSync(app,{recursive:true,force:true});}
 });
+test('desktop anonymous CSS preconnects follow actual verified style origins and deduplicate the app connection',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-css-preconnect-')),root=join(app,'dist'),origin='https://hidi-test.azurestaticapps.net',edgeOrigin='https://hidi-performance-posters.pages.dev';
+ const js='if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}',scriptPath='/assets/index-'+hash(js).slice(0,16)+'.js',desktop={headers:{'user-agent':'Desktop browser'}};
+ try{
+  mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));writeFileSync(join(root,scriptPath),js);
+  const files={[scriptPath]:hash(js)},critical={},styles={};
+  for(const name of ['a','b','unused']){const href='/assets/'+name+'.css',css='.'+name+'{color:red}',sha256=hash(css),url='/assets/style-'+sha256.slice(0,16)+'.css';writeFileSync(join(root,href),css);writeFileSync(join(root,url),css);files[url]=sha256;critical[href]={sha256,critical:css};styles[href]={sourceSha256:sha256,url,sha256};}
+  const writeStyles=()=>writeFileSync(join(app,'paint-performance/style-assets.json'),JSON.stringify({styles})),writeMirror=edgeFiles=>writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin,edgeOrigin,files,edgeFiles}));
+  writeFileSync(join(app,'paint-performance/critical-css.json'),JSON.stringify({styles:critical}));writeStyles();
+  const cssFiles=Object.fromEntries(Object.entries(files).filter(([path])=>path.endsWith('.css')));writeMirror(cssFiles);
+  const html='<head><meta charset="utf-8"><link rel="modulepreload" href="'+scriptPath+'"><link rel="stylesheet" href="/assets/a.css"><link rel="stylesheet" href="/assets/b.css"><script type="module" src="'+scriptPath+'"></script></head><body></body>',hint='<link rel="preconnect" href="'+edgeOrigin+'" crossorigin>',appHint='<link rel="preconnect" href="'+origin+'" crossorigin>';
+  const output=createHomeHead(root,app)(html,desktop);assert.equal(output.split(hint).length,2,'All actual sheets sharing one CSS origin need one anonymous hint');assert.equal(output.split(appHint).length,2);assert(output.indexOf(hint)<output.indexOf('rel="modulepreload"'));assert(output.includes('data-hidi-full-href="'+edgeOrigin+styles['/assets/a.css'].url+'"'));assert(output.includes('media="print" fetchpriority="low" data-hidi-deferred-style="true"'));
+  for(const headers of [{},{'user-agent':'Android Mobile'},{'user-agent':'Desktop browser','sec-ch-ua-mobile':'?1'}])assert(!createHomeHead(root,app)(html,{headers}).includes(hint),'Phones and unknown clients retain their original CSS delivery');
+  writeMirror(files);assert.equal(createHomeHead(root,app)(html,desktop).split(hint).length,2,'A shared app/CSS origin needs only the existing anonymous app hint');
+  writeMirror({[styles['/assets/unused.css'].url]:styles['/assets/unused.css'].sha256});const unused=createHomeHead(root,app)(html,desktop);assert(!unused.includes(hint),'A verified but unused CSS asset must not create a hint');assert.equal(unused.split(appHint).length,2);
+  writeMirror(cssFiles);for(const name of ['a','b'])styles['/assets/'+name+'.css'].sourceSha256='0'.repeat(64);writeStyles();const stale=createHomeHead(root,app)(html,desktop);assert(!stale.includes(hint),'Stale style source metadata must not create a CSS hint');assert(stale.includes('data-hidi-full-href="/assets/a.css?hidi_full='));
+  for(const name of ['a','b'])styles['/assets/'+name+'.css'].sourceSha256=critical['/assets/'+name+'.css'].sha256;writeStyles();writeFileSync(join(root,styles['/assets/a.css'].url),'tampered');assert(!createHomeHead(root,app)(html,desktop).includes(hint),'Tampered mirrored bytes must not create a CSS hint');
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
 for(const scenario of ['success','error','stalled'])test('full CSS '+scenario+' retains cascade link and recovers only once',async()=>{
  const events={},timers=[],removed=[],link={dataset:{hidiFullHref:'https://hidi-test.azurestaticapps.net/assets/style-aaaaaaaaaaaaaaaa.css',hidiOriginHref:'/assets/original.css'},media:'print',addEventListener:(name,fn)=>events[name]=fn,removeAttribute:name=>removed.push(name)},window={};
  runInNewContext(readFileSync(new URL('./full-css-client.js',import.meta.url),'utf8'),{window,Promise,document:{readyState:'loading',querySelectorAll:()=>[link],addEventListener:()=>{}},setTimeout:fn=>{timers.push(fn);return 1;},clearTimeout:()=>{}});

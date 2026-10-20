@@ -82,7 +82,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   });
   if(logoData)html=html.replace(/(<img\b[^>]*\bsrc=["'])(?:\.\/|\/)assets\/images\/hidi-logo\.png(["'])/gi,(_,start,end)=>start+(logoUrl||logoData)+end);
   html=html.replace(/<script\b([^>]*data-hidi-seo-identity=["']1["'][^>]*)>([\s\S]*?)<\/script>/i,(tag,attrs,code)=>seoBytes&&assets.seo.sha256===createHash('sha256').update(code).digest('hex')&&!/(?:^|\s)(?:src|async|integrity)\b/i.test(attrs)?'<script'+attrs+' defer src="'+assets.seo.url+'"></script>':tag);
-  let deferred=0;const completeHead=/<\/head>/i.test(html);
+  let deferred=0;const completeHead=/<\/head>/i.test(html),styleOrigins=new Set();
   html=html.replace(/<link\b[^>]*>/gi,tag=>{
   if(!/\brel=["']stylesheet["']/i.test(tag)||/\b(?:media|disabled|integrity)\s*=/i.test(tag))return tag;
   const href=/\bhref=["']([^"']+)["']/i.exec(tag)?.[1];if(!href)return tag;
@@ -94,6 +94,7 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    const original=href+(href.includes('?')?'&':'?')+'hidi_full='+row.sha256.slice(0,16),asset=styleAssets[new URL(href,'https://hidiindia.com/').pathname];
    const mirrored=desktopStyle&&mirror&&asset?.sourceSha256===row.sha256&&mirror.files[asset.url]===asset.sha256&&verifiedAsset(asset,/^\/assets\/style-[a-f0-9]{16}\.css$/);
    const full=mirrored?mirrorAssetUrl(asset.url,mirror):original;
+   if(mirrored)styleOrigins.add(new URL(full).origin);
    const recovery=mirrored?' data-hidi-origin-href="'+original.replaceAll('&','&amp;')+'" integrity="sha256-'+Buffer.from(asset.sha256,'hex').toString('base64')+'" crossorigin="anonymous"':'';
    const link=tag.replace(/\bhref=["'][^"']+["']/i,'data-hidi-full-href="'+full.replaceAll('&','&amp;')+'"').replace(/\/?>$/,' media="print" fetchpriority="low" data-hidi-deferred-style="true"'+recovery+'>');
    return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'"'+data+'>'+row.critical+'</style>'+link;
@@ -123,7 +124,11 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
    const posterOrigins=new Set(desktopStyle?posterHints.filter(hint=>hint[0].includes('min-width: 701px')).map(hint=>hint[0].match(/\bhref=["']([^"']+)["']/i)?.[1]).filter(path=>path&&Object.hasOwn(mirror.files,path)).map(path=>new URL(mirrorAssetUrl(path,mirror)).origin):[]);
    posterOrigins.delete(connectionOrigin);
    const posterConnections=[...posterOrigins].map(origin=>'<link rel="preconnect" href="'+origin+'">').join('');
-   html=html.replace(marker,tag=>tag+posterConnections+'<link rel="preconnect" href="'+connectionOrigin+'" crossorigin>'+(desktopStyle?'<link rel="preconnect" href="'+connectionOrigin+'">':'')+'<script data-hidi-asset-mirror="true">'+client+'</script>');
+   // Complete desktop CSS uses anonymous CORS, independently of the poster's
+   // connection. Only styles selected above after byte/source verification count.
+   styleOrigins.delete(connectionOrigin);
+   const styleConnections=[...styleOrigins].map(origin=>'<link rel="preconnect" href="'+origin+'" crossorigin>').join('');
+   html=html.replace(marker,tag=>tag+posterConnections+'<link rel="preconnect" href="'+connectionOrigin+'" crossorigin>'+styleConnections+(desktopStyle?'<link rel="preconnect" href="'+connectionOrigin+'">':'')+'<script data-hidi-asset-mirror="true">'+client+'</script>');
    // Fresh supported desktop loads the complete sheets after the native poster
    // paints. Hash/back/scroll/hidden states keep the eager safety path.
    if(deferred)html=html.replace(/<\/head>/i,'<script data-hidi-mirror-css="true">(()=>{const desktop=!matchMedia("(max-width: 700px)").matches,navigation=typeof performance!=="undefined"&&performance.getEntriesByType?.("navigation")?.[0]?.type,eligible=desktop&&typeof Element!=="undefined"&&typeof Element.prototype.moveBefore==="function"&&typeof PerformanceObserver!=="undefined"&&PerformanceObserver.supportedEntryTypes?.includes("largest-contentful-paint")&&!location.hash&&scrollY<=0&&document.visibilityState!=="hidden"&&navigation!=="back_forward";const load=()=>window.__HidiLoadFullCss?.();if(!eligible){load();return;}addEventListener("pageshow",event=>{if(event.persisted||scrollY>0)load();},{once:true});addEventListener("scroll",()=>{if(scrollY>0)load();},{once:true,passive:true});addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")load();},{once:true});})();</script></head>');
