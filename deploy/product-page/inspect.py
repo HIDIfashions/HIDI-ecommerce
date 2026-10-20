@@ -21,6 +21,13 @@ out.mkdir(parents=True, exist_ok=True)
 paths = ['apps/web/.next/server', 'apps/web/.next/static',
          'apps/web/.next/build-manifest.json', 'apps/web/.next/app-build-manifest.json',
          'apps/web/.next/BUILD_ID', 'apps/web/package.json']
+(out / 'layout.json').write_text(json.dumps([
+    {'path': p.relative_to(base).as_posix(), 'link': str(p.readlink()) if p.is_symlink() else None}
+    for p in base.rglob('*') if len(p.relative_to(base).parts) <= 4
+    and 'node_modules' not in p.parts and p.name not in {'.env', '.env.local', '.env.production'}
+], indent=2))
+paths += ['.next/server', '.next/static', '.next/build-manifest.json',
+          '.next/app-build-manifest.json', '.next/BUILD_ID']
 for name in paths:
     source = base / name
     if source.is_dir():
