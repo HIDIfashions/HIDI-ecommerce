@@ -28,7 +28,7 @@ def compose():
     subprocess.run(['node',str(HERE/'patch.mjs'),str(base),str(overlay)],check=True)
     subprocess.run(['node',str(HERE/'verify-patch.mjs'),str(base),str(overlay)],check=True)
     subprocess.run(['node',str(HERE/'verify-render.mjs'),str(base),str(overlay)],check=True)
-    plan=read('patch.json');assert len(plan['allowedFiles'])==(2 if plan.get('kind')=='compact-mobile-css' else 4)
+    plan=read('patch.json');assert len(plan['allowedFiles'])==(2 if plan.get('kind') in ['compact-mobile-css','product-style-refresh'] else 4)
     assert all(n.startswith('apps/web/.next/') for n in plan['allowedFiles'])
     for name in plan['allowedFiles']:
         if name.endswith('.js'):subprocess.run(['node','--check',str(overlay/name)],check=True)

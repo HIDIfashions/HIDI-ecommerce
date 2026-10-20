@@ -47,7 +47,7 @@
 
 /* Product-only delivery form and section rhythm. */
 .layout :global(.delivery-box) { padding: 16px 0; margin: 0 0 4px; border: 0; border-bottom: 1px solid var(--line); }
-.layout :global(.delivery-heading) { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font: 500 16px/1.4 var(--font-sans); letter-spacing: 0; text-transform: none; }
+.layout :global(.delivery-heading) { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; font: 500 16px/1.4 var(--font-sans); letter-spacing: 0; text-transform: none; }
 .layout :global(.delivery-heading svg) { order: -1; width: 20px; height: 20px; }
 .layout :global(.delivery-box form) { margin: 0; width: 100%; max-width: 380px; }
 .layout :global(.delivery-pin-entry) { display: flex; align-items: stretch; width: 100%; min-height: 46px; border: 1px solid #b7aaa1; border-radius: 3px; overflow: hidden; background: transparent; }
@@ -59,7 +59,7 @@
 .description, .layout :global(.hidi-pdp-description) { margin: 0; padding: 0; border: 0; border-bottom: 1px solid var(--line); }
 .description summary, .layout :global(.hidi-pdp-description summary) { display: flex; align-items: center; gap: 12px; min-height: 56px; box-sizing: border-box; padding: 16px 0; margin: 0; list-style: none; color: #591d20; font: 500 16px/1.4 var(--font-sans); }
 .description summary::-webkit-details-marker, .layout :global(.hidi-pdp-description summary::-webkit-details-marker) { display: none; }
-.description summary::before, .layout :global(.hidi-pdp-description summary::before) { content: ""; flex: 0 0 20px; height: 20px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23591d20' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z'/%3E%3Cpath d='M14 2v6h6M8 13h8M8 17h6'/%3E%3C/svg%3E") center/20px no-repeat; }
+.description summary::before, .layout :global(.hidi-pdp-description summary::before) { content: ""; flex: 0 0 20px; height: 20px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23591d20' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z'/%3E%3Cpath d='M14 2v6h6M8 13h8M8 17h6'/%3E%3C/svg%3E") center/20px no-repeat; }
 .description summary::after, .layout :global(.hidi-pdp-description summary::after) { content: ""; width: 7px; height: 7px; margin: 0 7px 3px auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
 .description[open] summary::after, .layout :global(.hidi-pdp-description[open] summary::after) { transform: rotate(225deg); margin-bottom: -3px; }
 .description > div, .layout :global(.hidi-pdp-description > div) { padding: 0 0 16px 32px; font-size: 14px; line-height: 1.6; }

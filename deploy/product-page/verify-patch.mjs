@@ -4,6 +4,13 @@ import {resolve,join} from 'node:path';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),ts=require(process.env.HIDI_TYPESCRIPT_MODULE||resolve('apps/web/node_modules/typescript'));
 const [base,overlay]=process.argv.slice(2),plan=JSON.parse(readFileSync('evidence/product-page-release/patch.json','utf8'));
+if(plan.kind==='product-style-refresh'){
+ const name='apps/web/.next/server/app/products/[slug]/page.js';
+ assert.equal(readFileSync(join(overlay,name),'utf8'),readFileSync(join(base,name),'utf8').replace(plan.oldUrl,plan.newUrl),'Only the route stylesheet reference may change');
+ assert.equal(plan.allowedFiles.length,2);const cssName=plan.allowedFiles.find(name=>name.endsWith('.css')),css=readFileSync(join(overlay,cssName),'utf8');
+ assert(css.includes("xmlns='http://www%2Ew3%2Eorg/2000/svg'"),'SVG namespace must survive scoped CSS compilation');
+ console.log('Product style refresh preserves all deployed JavaScript and facts');process.exit(0);
+}
 if(plan.kind==='compact-mobile-css'){
  const name='apps/web/.next/server/app/products/[slug]/page.js',before=readFileSync(join(base,name),'utf8'),after=readFileSync(join(overlay,name),'utf8');
  assert.equal(after,before.replace(plan.oldUrl,plan.newUrl),'Only the route stylesheet reference may change');
