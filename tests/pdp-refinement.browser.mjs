@@ -22,7 +22,9 @@ try { for (const width of [1440,1280,768,390,320]) {
   const base=process.env.PDP_BASE_URL||'http://localhost:3117';
   await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});
   await page.waitForLoadState('networkidle',{timeout:30000});
-  await page.locator('a[href="/products/hidi-019-fuchsia-pink-floral-printed-kurta-set-with-pants"]').first().click();
+  // Use the real title link, rather than the card's overlaid image/quick-view hit area.
+  await page.locator('h3 a[href="/products/hidi-019-fuchsia-pink-floral-printed-kurta-set-with-pants"]').first().focus();
+  await page.keyboard.press('Enter');
   await page.getByRole('heading',{level:1,name:'Fuchsia Pink Kurta Set with Straight Pants'}).waitFor();
   await page.locator('[data-hidi-hydrated="true"]').waitFor();
   await page.waitForLoadState('networkidle',{timeout:30000});
