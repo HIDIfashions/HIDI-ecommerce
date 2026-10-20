@@ -17,11 +17,15 @@ try { for (const width of [1440,1280,768,390,320]) {
  catch(error){await writeFile(new URL('functional-failure-'+engine+'-'+width+'.html',dir),await page.content());await page.screenshot({path:fileURLToPath(new URL('functional-failure-'+engine+'-'+width+'.png',dir)),fullPage:true});throw error;}
  await page.locator('[data-hidi-hydrated="true"]').waitFor();
  if(process.env.HIDI_VERIFY_COLLECTION_NAVIGATION==='1'){
+  // Let the retained header's initial prefetches finish before leaving its document.
+  await page.waitForLoadState('networkidle',{timeout:30000});
   const base=process.env.PDP_BASE_URL||'http://localhost:3117';
   await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});
+  await page.waitForLoadState('networkidle',{timeout:30000});
   await page.locator('a[href="/products/hidi-019-fuchsia-pink-floral-printed-kurta-set-with-pants"]').first().click();
   await page.getByRole('heading',{level:1,name:'Fuchsia Pink Kurta Set with Straight Pants'}).waitFor();
   await page.locator('[data-hidi-hydrated="true"]').waitFor();
+  await page.waitForLoadState('networkidle',{timeout:30000});
  }
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No horizontal overflow at '+width);
  assert.equal(await page.getByText('Model information',{exact:true}).count(),0);
