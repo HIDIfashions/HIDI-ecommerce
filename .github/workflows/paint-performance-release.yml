@@ -1,4 +1,4 @@
-# Prepare the verified desktop CSS connection hint; loader safety and every performance, shopping and preservation gate remain required.
+# Complete the previously loader-blocked post-paint CSS priority check; initial-frame, performance, shopping and preservation gates remain required.
 # Wait for the reported native desktop poster paint before retaining its video; ordinary mobile React path and all gates remain required.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
@@ -13,7 +13,7 @@
 # Candidate verification requires the exact content-verified mirrored application URL.
 # The native poster paints before React handoff; fast fresh HTML is coalesced with a bounded streaming fallback.
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
-# Desktop app modulepreload remains request-deduplicated at Low priority and the queued app waits for it before executing; the portrait poster remains an external verified asset and deferred styles are also Low priority so they cannot compete with the hero paint.
+# Desktop app modulepreload stays request-deduplicated and Low; full CSS gains priority only after verified native poster paint, retaining Low on fallback paths.
 # Desktop mirror recovery allows the Low-priority request a bounded 3s window; origin errors still recover immediately.
 # WebKit's known ResizeObserver layout diagnostic is filtered only in the recovery probe; application errors remain fatal.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
@@ -68,6 +68,7 @@ jobs:
           sudo apt-get install -y ffmpeg openssl iproute2
           npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 terser@5.44.0 @azure/static-web-apps-cli@2.0.10
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+          HIDI_FIRST_FRAME_ENGINES=chromium,firefox,webkit node deploy/paint-performance/first-frame-fixtures.mjs evidence/paint-performance/first-frame-fixtures
       - name: Capture stable production and fresh rollback copies
         env:
           GH_TOKEN: ${{ github.token }}

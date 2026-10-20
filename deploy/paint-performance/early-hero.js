@@ -27,8 +27,7 @@
   } catch { /* The normal component request remains the fallback. */ }
 })();
 
-// Keep the native poster visible for a paint before React takes over the hero.
-// Decode completion drives the handoff; a deadline retains interactivity on error.
+// Native paint controls handoff; the bounded fallback preserves interactivity.
 (() => {
   if (location.pathname !== '/') return;
   window.__HidiWaitForPosterPaint = video => {
@@ -39,17 +38,12 @@
       let settled = false, observer = null;
       const finish = () => { if (settled) return; settled = true; clearTimeout(timer); observer?.disconnect(); release(); resolve(); };
       const timer = setTimeout(finish, 1200);
-      // When supported, a real native-poster paint is stronger evidence than
-      // waiting an extra frame. Phones and unsupported engines keep the exact
-      // decode + double-frame fallback; the deadline is unchanged.
       try {
         if (typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('largest-contentful-paint') && typeof matchMedia === 'function' && !matchMedia('(max-width: 700px)').matches) {
           observer = new PerformanceObserver(list => {
             if (settled) return;
             for (const entry of list.getEntries()) {
               if (entry.element !== video) continue;
-              // A bounded handoff is not proof of paint. Only this native
-              // poster's positive render timestamp can accelerate its video.
               if (video.isConnected && video.matches?.('video[data-hidi-first-hero]') &&
                   Number.isFinite(entry.renderTime) && entry.renderTime > 0 &&
                   entry.url === video.poster) {
@@ -60,8 +54,6 @@
             }
           });
           observer.observe({ type: 'largest-contentful-paint', buffered: true });
-          // The video decodes its poster itself. A second Image decoder competes
-          // with that paint and is unnecessary when the paint is observable.
           return;
         }
       } catch { observer = null; }
@@ -80,7 +72,6 @@
 
 (() => {
   if (location.pathname !== '/') return;
-  // Preserve source pixels: only off-screen sides of a centred wide frame are removed.
   window.__HidiAvifPoster = (variant,position='50% 50%') => {
     const crop=variant.posterCrop,video=document.querySelector('video.hero-live-media'),rect=video?.getBoundingClientRect();
     const centred=String(position||'50% 50%').trim().replace(/\s+/g,' ')==='50% 50%';

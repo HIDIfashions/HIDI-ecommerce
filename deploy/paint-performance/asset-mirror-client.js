@@ -67,9 +67,6 @@
   if(primaryStarted||fallbackStarted||window.__HidiAppStarted)return false;
   primaryStarted=true;clearPendingRecovery();armRecovery();return true;
  };
- // Keep a bounded head failsafe if the queued startup never runs. Once it does,
- // its own bounded poster/preload wait owns the queued phase. Measure the same
- // load deadline from actual dispatch, after that wait.
- // A recovery that already claimed startup prevents a later primary request.
+ // Queued startup owns its wait; recovery deadlines begin at dispatch.
  armRecovery();
 })();
