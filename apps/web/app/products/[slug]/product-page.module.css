@@ -40,7 +40,7 @@
 }
 /* Retained overlays may add their own price badge and selection copy.
    The PDP already renders one discount and an accessible selection announcement. */
-:global(.product-page) :global([data-hidi-selection-copy]),
-:global(.product-page) :global(.pdp-price) :global([data-hidi-price-badge]),
-:global(.product-page) :global(.pdp-price) :global([data-hidi-selling-label]) { display: none !important; }
-:global(.product-page) :global(.hidi-pdp-gallery-controls) { display: none !important; }
+.layout :global([data-hidi-selection-copy]),
+.layout :global(.pdp-price) :global([data-hidi-price-badge]),
+.layout :global(.pdp-price) :global([data-hidi-selling-label]) { display: none !important; }
+.layout :global(.hidi-pdp-gallery-controls) { display: none !important; }
