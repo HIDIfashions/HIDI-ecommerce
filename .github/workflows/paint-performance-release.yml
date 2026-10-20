@@ -15,6 +15,7 @@
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 # Desktop app modulepreload stays request-deduplicated and Low; full CSS gains priority only after verified native poster paint, retaining Low on fallback paths.
 # Desktop application execution waits for both that preload and verified poster paint under the existing bounded fallback.
+# Release evidence records the retained startup source separately from its reviewed two-file replacement.
 # Desktop mirror recovery allows the Low-priority request a bounded 3s window; origin errors still recover immediately.
 # WebKit's known ResizeObserver layout diagnostic is filtered only in the recovery probe; application errors remain fatal.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
