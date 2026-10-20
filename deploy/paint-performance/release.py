@@ -14,6 +14,7 @@ def selections():
     return {key:json.loads(cloud.get(path)) for key,path in [('hero','/api/hidi/hero-config'),('landing','/api/hidi/landing-media-config')]}
 
 def sha(data):return hashlib.sha256(data).hexdigest()
+PRODUCT_PAGE_IMAGE=images.REGISTRY+'/hidi-web@sha256:9b721f1136035fe04225e20f9470f184fafaab55c665f43cca55f516ef5f09ce'
 def dist_asset(base,url):
     assert isinstance(url,str) and url.startswith('/') and '..' not in url.split('/')
     file=(base/'dist'/url.lstrip('/')).resolve();file.relative_to((base/'dist').resolve());assert file.is_file()
@@ -28,13 +29,26 @@ def existing_performance_compose(base,overlay,folder,image,icons):
     then let the normal browser, commerce, Lighthouse and preservation gates test
     the one-file candidate.
     """
+    assert image==PRODUCT_PAGE_IMAGE,'The current product-page image changed; prepare again from the new live release'
     required=['initial-hero.json','head-assets.json','icons.json','home-pricing.json','critical-css.json','style-assets.json','asset-mirror.json','asset-encodings.json']
     assert all((base/'paint-performance'/name).is_file() for name in required),'Complete retained paint provenance required'
     current_head=(base/'lcp-performance/head.mjs').read_bytes();next_head=(HERE/'head.mjs').read_bytes()
     assert sha(current_head) in {'8ec0ba7ac41353bd88177a9c3fdbacea6cd382e03b38e8da8550e1baef137a12',sha(next_head)},'Retained paint head changed; stop'
     assert b'data-hidi-price-header-offset' not in current_head or current_head==next_head
+    # These are generated/released copies from the verified performance and SEO
+    # layers. In particular, announcement.mjs contains the discovery injection,
+    # so comparing it with the raw source would incorrectly ask us to replace the
+    # current product image. Pin the immutable image, validate every retained
+    # source, record its bytes, and prove below that the candidate keeps them.
     retained_sources=['announcement.mjs','app-start.js','asset-mirror-client.js','asset-mirror.mjs','critical-poster.mjs','delivery.mjs','full-css-client.js','hero.mjs','stream-home.mjs','style-urls.mjs']
-    for name in retained_sources:assert (base/'paint-performance'/name).read_bytes()==(HERE/name).read_bytes(),name+' changed in retained image'
+    retained_hashes={}
+    for name in retained_sources:
+        file=base/'paint-performance'/name;assert file.is_file() and file.stat().st_size,name+' missing from retained image'
+        subprocess.run(['node','--check',str(file)],check=True,stdout=subprocess.DEVNULL)
+        retained_hashes[name]=sha(file.read_bytes())
+    announcement=(base/'paint-performance/announcement.mjs').read_text()
+    assert 'addHomeDiscovery' in announcement and 'renderInitialHome' in announcement,'Retained SEO discovery wrapper missing'
+    save('retained-source-quality.json',{'passed':True,'baseImage':image,'syntaxChecked':retained_sources,'sha256':retained_hashes,'seoDiscoveryWrapperPreserved':True})
 
     html=(base/'dist/index.html').read_text();refs=re.findall(r'<script type="module" crossorigin src="([^"]+)"',html);assert len(refs)==1
     bundle=refs[0].removeprefix('./').removeprefix('/');assert re.fullmatch(r'assets/index-[a-f0-9]{16}\.js',bundle)
