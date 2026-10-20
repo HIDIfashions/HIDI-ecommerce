@@ -18,7 +18,7 @@ if(retainedServer.includes('function HidiDetails(product)')){
  const urls=[...new Set(retainedServer.match(/\/_next\/static\/css\/hidi-product-page-[a-f0-9]{16}\.css/g))];assert.equal(urls.length,1);
  const oldUrl=urls[0],oldCssName='apps/web/.next/'+oldUrl.slice('/_next/'.length),oldCss=readFileSync(join(base,oldCssName),'utf8');
  assert.equal(oldCss.split('clamp(180px, 28svh, 240px)').length-1,2,'Short gallery baseline changed; review before release');
- const cssText=oldCss.split('clamp(180px, 28svh, 240px)').join('clamp(180px, 24svh, 200px)')+'\n@media(max-width:620px){.product-page .apps_web_components_add_to_cart_module_css_selectionSummary{display:none!important}}\n';
+ const cssText=oldCss.split('clamp(180px, 28svh, 240px)').join('clamp(180px, 24svh, 200px)')+'\n@media(max-width:620px){.product-page .apps_web_components_add_to_cart_module_css_selectionSummary{display:none!important}}\n.product-page .hidi-pdp-gallery-controls{display:none!important}\n';
  const newCssName='apps/web/.next/static/css/hidi-product-page-'+sha(cssText).slice(0,16)+'.css',newUrl='/_next/'+newCssName.split('/.next/')[1];
  assert.equal(retainedServer.split(oldUrl).length-1,1);
  const files={[retainedServerName]:retainedServer.replace(oldUrl,newUrl),[newCssName]:cssText};

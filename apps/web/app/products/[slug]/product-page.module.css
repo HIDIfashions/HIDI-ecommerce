@@ -43,3 +43,4 @@
 :global(.product-page) :global([data-hidi-selection-copy]),
 :global(.product-page) :global(.pdp-price) :global([data-hidi-price-badge]),
 :global(.product-page) :global(.pdp-price) :global([data-hidi-selling-label]) { display: none !important; }
+:global(.product-page) :global(.hidi-pdp-gallery-controls) { display: none !important; }
