@@ -1,4 +1,4 @@
-import importlib.util,json,os,re,signal,subprocess,time,urllib.request
+import hashlib,importlib.util,json,os,re,shutil,signal,subprocess,time,urllib.request
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
 def load(name,path):
@@ -12,6 +12,87 @@ OUT.mkdir(parents=True,exist_ok=True);photo.PRIVATE,photo.EVIDENCE=PRIVATE,OUT
 def save(name,value): (OUT/name).write_text(json.dumps(value,indent=2))
 def selections():
     return {key:json.loads(cloud.get(path)) for key,path in [('hero','/api/hidi/hero-config'),('landing','/api/hidi/landing-media-config')]}
+
+def sha(data):return hashlib.sha256(data).hexdigest()
+def dist_asset(base,url):
+    assert isinstance(url,str) and url.startswith('/') and '..' not in url.split('/')
+    file=(base/'dist'/url.lstrip('/')).resolve();file.relative_to((base/'dist').resolve());assert file.is_file()
+    return file
+
+def existing_performance_compose(base,overlay,folder,image,icons):
+    """Layer only the reviewed head change over an already verified paint image.
+
+    Product-page releases intentionally retain the complete paint image. Rebuilding
+    its already transformed/minified application would replace unrelated product
+    work. Revalidate every retained provenance record and immutable byte instead,
+    then let the normal browser, commerce, Lighthouse and preservation gates test
+    the one-file candidate.
+    """
+    required=['initial-hero.json','head-assets.json','icons.json','home-pricing.json','critical-css.json','style-assets.json','asset-mirror.json','asset-encodings.json']
+    assert all((base/'paint-performance'/name).is_file() for name in required),'Complete retained paint provenance required'
+    current_head=(base/'lcp-performance/head.mjs').read_bytes();next_head=(HERE/'head.mjs').read_bytes()
+    assert sha(current_head) in {'8ec0ba7ac41353bd88177a9c3fdbacea6cd382e03b38e8da8550e1baef137a12',sha(next_head)},'Retained paint head changed; stop'
+    assert b'data-hidi-price-header-offset' not in current_head or current_head==next_head
+    retained_sources=['announcement.mjs','app-start.js','asset-mirror-client.js','asset-mirror.mjs','critical-poster.mjs','delivery.mjs','full-css-client.js','hero.mjs','stream-home.mjs','style-urls.mjs']
+    for name in retained_sources:assert (base/'paint-performance'/name).read_bytes()==(HERE/name).read_bytes(),name+' changed in retained image'
+
+    html=(base/'dist/index.html').read_text();refs=re.findall(r'<script type="module" crossorigin src="([^"]+)"',html);assert len(refs)==1
+    bundle=refs[0].removeprefix('./').removeprefix('/');assert re.fullmatch(r'assets/index-[a-f0-9]{16}\.js',bundle)
+    bundle_file=(base/'dist'/bundle);bundle_hash=sha(bundle_file.read_bytes());assert bundle_hash[:16] in bundle
+    videos=json.loads((base/'paint-performance/initial-hero.json').read_text());assert isinstance(videos,dict) and len(videos)==1
+    manifest={'videos':videos}
+    retained_media=[]
+    for variants in videos.values():
+        for kind in ['mobile','desktop']:
+            row=variants[kind]
+            for key in ['poster','url']:dist_asset(base,'/'+row[key].lstrip('/'))
+            for key,pattern in [('avifPoster',r'/media-performance/assets/poster-([a-f0-9]{16})\.avif'),('av1Url',r'/media-performance/assets/hero-av1-([a-f0-9]{16})-\d+\.mp4')]:
+                match=re.fullmatch(pattern,row[key]);assert match;file=dist_asset(base,row[key]);assert sha(file.read_bytes()).startswith(match[1]);retained_media.append(row[key])
+            if row.get('avifPosterSmall'):
+                match=re.fullmatch(r'/media-performance/assets/poster-([a-f0-9]{16})\.avif',row['avifPosterSmall']);assert match
+                file=dist_asset(base,row['avifPosterSmall']);assert sha(file.read_bytes()).startswith(match[1]);retained_media.append(row['avifPosterSmall'])
+
+    head_assets=json.loads((base/'paint-performance/head-assets.json').read_text());assert set(head_assets)=={'logo','seo','countdown'}
+    for row in head_assets.values():
+        if row:assert sha(dist_asset(base,row['url']).read_bytes())==row['sha256'] and row['sha256'][:16] in row['url']
+    logo=head_assets['logo'];assert sha((base/'dist/assets/images/hidi-logo.png').read_bytes())==logo['sourceSha256'] and logo['allRgbaPixelsIdentical'] is True
+    countdown=head_assets['countdown'];source=(base/countdown['sourceFile']).read_text().replace('\r\n','\n').encode();assert sha(source)==countdown['sourceSha256']
+    save('head-assets-quality.json',{'passed':True,**head_assets,'reusedFromCurrentImage':True})
+
+    home_pricing=json.loads((base/'paint-performance/home-pricing.json').read_text());pricing=(base/'pricing/storefront.mjs').read_text()
+    assert pricing==(HERE.parent/'pricing/storefront.mjs').read_text() and sha(pricing.encode())==home_pricing['sourceSha256']
+    assert sha(dist_asset(base,home_pricing['url']).read_text().encode())==home_pricing['homeSha256']
+
+    encodings=json.loads((base/'paint-performance/asset-encodings.json').read_text());assert len(encodings.get('entries',[]))==1
+    encoded=encodings['entries'][0];assert encoded['url']=='/'+bundle and encoded['sha256']==bundle_hash and encoded['bytes']==bundle_file.stat().st_size
+    for encoding,row in encoded['encodings'].items():
+        assert encoding in ['br','gzip'] and re.fullmatch(r'encodings/[a-f0-9]{64}\.(?:br|gzip)',row['file'])
+        file=(base/'paint-performance'/row['file']).resolve();file.relative_to((base/'paint-performance/encodings').resolve());data=file.read_bytes()
+        assert len(data)==row['bytes'] and sha(data)==row['sha256']
+    save('static-encoding-quality.json',{'passed':True,'buildTimeCompression':True,'decodedBytesIdentical':True,'reusedFromCurrentImage':True,**encoded})
+
+    styles=json.loads((base/'paint-performance/style-assets.json').read_text());assert styles.get('styles')
+    existing_mirror=json.loads((base/'paint-performance/asset-mirror.json').read_text());mirror.verify(existing_mirror)
+    assert existing_mirror['files'].get('/'+bundle)==bundle_hash
+    for path,digest in existing_mirror['files'].items():assert sha(dist_asset(base,path).read_bytes())==digest and digest[:16] in path
+    mirror_overlay=folder/'mirror-check';(mirror_overlay/'paint-performance').mkdir(parents=True)
+    shutil.copyfile(base/'paint-performance/style-assets.json',mirror_overlay/'paint-performance/style-assets.json')
+    for path in existing_mirror['files']:
+        target=mirror_overlay/'dist'/path.lstrip('/');target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(dist_asset(base,path),target)
+    report={'passed':True,'bundle':bundle,'originalBundle':bundle,'cssUnchanged':True,'seoHomeDiscoveryPreserved':(base/'seo-document/discovery.mjs').is_file(),'homePricingBundle':home_pricing['url'].lstrip('/'),'globalPricingSourceSha256':sha((base/'pricing/storefront.mjs').read_bytes()),'pricingPresentationAndHydrationPreserved':True,'reusedCurrentPerformanceImage':True}
+    published=mirror.publish(mirror_overlay,report,manifest,folder,OUT);assert published['files']==existing_mirror['files'] and published['origin']==existing_mirror['origin']
+    assert published.get('edgeOrigin')==existing_mirror.get('edgeOrigin') and published.get('edgeFiles')==existing_mirror.get('edgeFiles')
+    shutil.rmtree(mirror_overlay)
+
+    critical=json.loads((base/'paint-performance/critical-css.json').read_text());assert critical.get('styles')
+    save('critical-css-quality.json',{'passed':True,'strategy':'retained-verified-critical-inline-full-external','allSourceCssPreserved':True,'styles':critical['styles']})
+    save('poster-quality.json',{'passed':True,'reusedFromCurrentImage':True,'verifiedAssets':sorted(set(retained_media))})
+    save('video-quality.json',{'passed':True,'reusedFromCurrentImage':True,'verifiedAssets':sorted(path for path in retained_media if path.endswith('.mp4'))})
+    save('media-cache.json',{'passed':True,'available':True,'encodedVideosOnly':True,'currentRuntimeImage':image,'reusedFromCurrentImage':True,'reason':'Every retained immutable media byte and public mirror response was revalidated'})
+    save('manifest.json',manifest);save('icon-quality.json',icons)
+    target=overlay/'lcp-performance/head.mjs';target.parent.mkdir(parents=True);target.write_bytes(next_head)
+    report['allowedFiles']=['lcp-performance/head.mjs'];save('patch.json',report)
+    return report
 
 def analytics():
     value=json.loads(cloud.get('/api/hidi/analytics-config'))
@@ -35,6 +116,20 @@ def compose():
     photo.require_backups();photo.unchanged(photo.states())
     folder=PRIVATE/'web';folder.mkdir();base=folder/'base-app';overlay=folder/'overlay';candidate=folder/'candidate-app'
     image=photo.states()['hidi-web']['image'];images.extract(image,base)
+    icon_check=folder/'icon-check';icons=patch.build_icons(base,icon_check);shutil.rmtree(icon_check)
+    if (base/'paint-performance/initial-hero.json').is_file():
+        report=existing_performance_compose(base,overlay,folder,image,icons)
+        for file in overlay.rglob('*'):
+            if file.is_file() and file.suffix in ('.js','.mjs'):subprocess.run(['node','--check',str(file)],check=True)
+        tag=os.environ['CANDIDATE_WEB'];assert re.fullmatch(re.escape(images.REGISTRY+'/hidi-web:paint-performance-')+r'\d+',tag)
+        (folder/'Dockerfile').write_text('FROM '+image+'\nCOPY --chown=node:node overlay/ /app/\n')
+        subprocess.run(['docker','build','--pull=false','-t',tag,str(folder)],check=True);images.extract(tag,candidate)
+        proof=preserve.verify(base,candidate,overlay,set(report['allowedFiles']),json.loads(images.docker('image','inspect',image,tag)))
+        assert proof['changedFiles']==['lcp-performance/head.mjs'] and all((candidate/p).read_bytes()==(base/p).read_bytes() for p in images.fingerprints(base) if p.endswith('.css'))
+        proof.update({'allExistingCssIdentical':True,'originalUploadsPreserved':True,'nextStorefrontIdentical':True,'currentProductPagePreserved':True})
+        assert (candidate/'pricing/storefront.mjs').read_bytes()==(base/'pricing/storefront.mjs').read_bytes()
+        save('commerce-preservation.json',{'passed':True,'allPricingAndNextFilesByteIdentical':True,'homepageLoaderOnly':True,'currentProductPagePreserved':True,'globalPricingSourceSha256':report['globalPricingSourceSha256']})
+        save('preservation.json',proof);photo.unchanged(photo.states());return
     icons=patch.build_icons(base,overlay);save('icon-quality.json',icons)
     # This recipe is encoded from current originals. Older cached AV1 files used
     # a different speed/quality policy and must not silently substitute for it.
