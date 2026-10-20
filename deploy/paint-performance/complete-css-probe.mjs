@@ -3,6 +3,23 @@ import {readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 const main='/assets/index-yOknTVcM.css',observations=new WeakMap(),proofs=new Map(),results=[];
 const hash=text=>createHash('sha256').update(text).digest('hex');
+export function assertCssSourceCoverage(snapshot,paths,desktop){
+ const sourceOrder=[];let previous=null;
+ for(const position of snapshot.sourcePositions){
+  const source=position.rawSource?new URL(position.rawSource,snapshot.documentUrl).pathname:null;
+  // Only the actual adjacent critical STYLE/full LINK pair represents one
+  // cascade slot. A moved/duplicate LINK or an intervening node cannot collapse.
+  const samePair=position.kind==='external'&&position.adjacentPrevious&&previous?.kind==='critical'&&previous.source===source;
+  if(paths.includes(source)&&!samePair)sourceOrder.push(source);
+  previous={...position,source};
+ }
+ snapshot.sourceOrder=sourceOrder;
+ assert.deepEqual(sourceOrder,paths,'All eight source cascade positions must retain their captured order');
+ const expectedInline=desktop?paths.filter(path=>path!==main):[];
+ assert.deepEqual(snapshot.inline.map(row=>row.source).sort(),expectedInline.slice().sort(),'Selected desktop response must contain exactly the seven full inline sources; mobile retains external delivery');
+ assert.deepEqual([...snapshot.inline,...snapshot.external].map(row=>row.source).sort(),paths.slice().sort(),'Every complete CSS source must be covered exactly once');
+ assert.equal(snapshot.external.length,desktop?1:8);assert(snapshot.external.some(row=>row.source===main),'The main stylesheet must remain a real external sheet');
+}
 async function sourceProof(out){
  if(!proofs.has(out)){
   const bytes=await readFile(out+'/critical-css-quality.json'),source=JSON.parse(bytes);
@@ -40,22 +57,18 @@ export async function assertCompleteCss(page,out,{group,label,phase='applied',me
   const resources=performance.getEntriesByType('resource');
   const inline=[...document.querySelectorAll('style[data-hidi-complete-css="true"]')].map(node=>{
    const text=node.textContent,seen=(window.__HidiProbeCompleteCss||[]).find(row=>row.node===node&&row.text===text);
-   return {source:node.dataset.hidiInlineCss,claimedHash:node.dataset.hidiSourceSha256,text,applied:Boolean(node.sheet)&&!node.sheet.disabled,rules:node.sheet?.cssRules.length||0,observedText:seen?.text,appliedAt:seen?.appliedAt??null};
+   return {source:new URL(node.dataset.hidiInlineCss,location.href).pathname,claimedHash:node.dataset.hidiSourceSha256,text,applied:Boolean(node.sheet)&&!node.sheet.disabled,rules:node.sheet?.cssRules.length||0,observedText:seen?.text,appliedAt:seen?.appliedAt??null};
   });
   const external=[...document.querySelectorAll('link[data-hidi-deferred-style]')].map(node=>{
    const original=node.dataset.hidiOriginHref||node.dataset.hidiFullHref,source=new URL(original,location.href).pathname;
    const resource=resources.filter(row=>row.name===node.href).sort((a,b)=>b.responseEnd-a.responseEnd)[0];
    return {source,url:node.href,fullUrl:new URL(node.dataset.hidiFullHref,location.href).href,applied:Boolean(node.sheet)&&node.media==='all',sheet:Boolean(node.sheet),media:node.media,responseEnd:resource?.responseEnd??null};
   });
-  const sourceOrder=[...document.querySelectorAll('style[data-hidi-inline-css]')].filter(node=>paths.includes(node.dataset.hidiInlineCss)).map(node=>node.dataset.hidiInlineCss);
-  return {inline,external,sourceOrder};
+  const cssNodes=[...document.querySelectorAll('style,link[rel="stylesheet"]')];
+  const sourcePositions=cssNodes.map((node,index)=>({rawSource:node.tagName==='STYLE'?node.dataset.hidiInlineCss||null:node.dataset.hidiOriginHref||node.dataset.hidiFullHref||null,kind:node.tagName==='STYLE'?(node.dataset.hidiCompleteCss==='true'?'complete-inline':'critical'):(node.hasAttribute('data-hidi-deferred-style')?'external':'other'),adjacentPrevious:Boolean(index&&cssNodes[index-1].nextElementSibling===node)}));
+  return {inline,external,documentUrl:location.href,sourcePositions};
  },Object.keys(proof.styles));
- assert.deepEqual(snapshot.sourceOrder,Object.keys(proof.styles),'All eight source cascade positions must retain their captured order');
- const expectedInline=desktop?Object.keys(proof.styles).filter(path=>path!==main):[];
- assert.deepEqual(snapshot.inline.map(row=>row.source).sort(),expectedInline.slice().sort(),'Selected desktop response must contain exactly the seven full inline sources; mobile retains external delivery');
- const covered=[...snapshot.inline,...snapshot.external].map(row=>row.source);
- assert.deepEqual(covered.slice().sort(),Object.keys(proof.styles).sort(),'Every complete CSS source must be covered exactly once');
- assert.equal(snapshot.external.length,desktop?1:8);assert(snapshot.external.some(row=>row.source===main),'The main stylesheet must remain a real external sheet');
+ assertCssSourceCoverage(snapshot,Object.keys(proof.styles),desktop);
  for(const row of snapshot.inline){
   const source=proof.styles[row.source];assert.equal(hash(row.text),source.sha256,'Full inline text must equal captured original CSS: '+row.source);assert.equal(hash(row.observedText||''),source.sha256,'Independently observed applied text must equal original CSS');assert.equal(row.claimedHash,source.sha256);
   assert(row.applied&&row.rules>0&&row.appliedAt>0,'Full inline CSS must have a real stylesheet and observed application time');
