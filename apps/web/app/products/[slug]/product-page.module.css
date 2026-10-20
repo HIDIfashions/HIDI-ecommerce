@@ -31,8 +31,9 @@
 .layout :global(button:focus-visible), .layout :global(a:focus-visible), .description summary:focus-visible { outline: 2px solid #591d20; outline-offset: 4px; }
 @media (max-width: 1000px) and (min-width: 761px) { .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; } }
 @media (max-width: 760px) {
-  .layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .layout :global(.pdp-info) { padding: 0; }
+  .layout :global(.pdp-info > .eyebrow) { display: none; }
   .layout :global(.pdp-title-row h1) { font-size: 25px; }
   .layout :global(.pdp-price) { margin: 16px 0 8px; padding-bottom: 16px; }
   .services { gap: 6px 14px; }

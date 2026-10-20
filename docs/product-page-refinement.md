@@ -33,3 +33,11 @@ Verified garment measurements and genuine model height/worn size are not availab
 ## Design assessment
 
 The original review gave Libas 8.7/10. My provisional local assessment of this refinement is information 8.5, UI 8.8 and layout 9.0 (8.8 overall). These are subjective design scores using the original criteria, not usability research or a conversion guarantee. Verified sizing information and final production integration are still needed before claiming the live page exceeds Libas.
+
+## Compact mobile gallery follow-up
+
+The mobile gallery (up to 760px) now places 44px-wide thumbnail buttons beside a 180–240px-high, viewport-responsive image. The full image remains contained and the existing zoom viewer is retained. The category eyebrow is omitted on mobile to bring purchase information closer. Desktop and tablet rules are unchanged; no catalogue facts, loaders or deployment files were edited.
+
+At 390×844, the price starts at 520px instead of approximately 795px with the previous mobile styling; sizes occupy 689–735px, above the sticky bar at 776px. At 375×812, sizes end at 726px, above the bar at 744px. At 320×568, the price is visible initially but sizes still require scrolling; the sticky Select size action takes users to them. These are measurements for the reviewed fuchsia product, not promises for every title or variant configuration.
+
+Verified at 320×568, 375×812, 390×844, 430×932, 768×900 and 1440×900, with no horizontal overflow. The existing five-width interaction suite also passed, including thumbnails, zoom, size selection, mocked cart and delivery. Local photo previews and measurements are in `evidence/product-page/compact-mobile-*.png` and `compact-gallery-results.json`. No deployment was performed.
