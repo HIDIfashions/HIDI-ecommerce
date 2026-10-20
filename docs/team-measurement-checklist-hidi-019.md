@@ -113,14 +113,18 @@ Long Kurta and Ankle Length are qualitative descriptions, not numeric measuremen
 
 Original product workbook: Excel GK 1 (8).xlsx, Sheet1 rows 661–692. Source row references and conflicts are recorded in `product-data-audit.md` and `product-data-audit.json`. No physical numeric measurements were available in that audit. This checklist does not authorize estimated values or certify that its pending tasks are complete.
 
-## Local release verification — 20 October 2026
+## Release verification — 20 October 2026
 
-- Checklist contains no numeric garment measurements; all four size columns await verified readings.
-- Product information/copy tests: 16 passed.
-- Chromium and WebKit: five widths each (320, 390, 768, 1280 and 1440 px) passed the product facts, size selection, single purchase action, gallery/zoom, missing-measurement message, intercepted cart request and delivery checks. No horizontal overflow or uncaught page errors were recorded.
-- Browser tests use a local catalogue fixture, substitute images and intercepted purchase/delivery requests. They do not prove production checkout or live delivery availability.
-- Firefox was attempted but its executable failed to launch (`spawn UNKNOWN`); Firefox is not verified by this run.
-- The preceding product-page revision passed TypeScript and the production build. This checklist revision changes documentation and the browser test harness only.
-- SEO/performance release 39378661630 completed successfully. Its branch revision `4d8c43263eafa1c7c95b9167d811763b6d795872` is merged into this worktree in `4b1e930`. Copy formatting and selection announcements from that release were retained when resolving product-component conflicts.
-- Post-integration verification: TypeScript, production build, 16 unit tests and all 10 Chromium/WebKit browser-width cases passed again. Firefox still fails to launch (`spawn UNKNOWN`). The local fixture produces a duplicate recommendation-key warning because it supplies one product; this is not a live-catalogue verification.
-- Deployment remains pending an isolated product-page release path and guarded candidate/live verification. Existing deployment files and shared loading scripts have no product-branch changes relative to the completed release.
+Product-page code is deployed and verified. Physical measurements and the unresolved specification tasks above remain pending; deployment does not approve missing product facts.
+
+- Initial product-page release: https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/39390133445
+- Final mobile CSS follow-up: https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/39392381762
+- The completed SEO/performance release was integrated before deployment. Fresh immutable images were captured and backed up; exact-state guards, byte-level preservation checks and owned rollback protected the release.
+- Final follow-up changed only the product route's stylesheet reference and one new immutable CSS file. All 4,024 unrelated files, product JavaScript, product facts, API image and runtime settings were preserved.
+- Sixteen product-information, copy and sharing tests passed. The current source production build and TypeScript checks passed after scoping overlay rules to the local product layout.
+- Candidate and live browser verification each passed 24 cases: Chromium, Firefox and WebKit at five standard widths plus 390×844, 375×812 and 320×568 phone viewports. Cart writes and delivery responses were intercepted; no test orders or reservations were created.
+- Real product photographs loaded on desktop and mobile. Local live checks also confirmed thumbnail changes, zoom, one sticky action and no horizontal overflow.
+- At 390×844, initial size buttons ended at 718.17 px and the sticky bar began at 776.22 px. At 375×812, the corresponding positions were 732.55 px and 744.22 px. At 320×568 a short scroll is required; Select size brings the controls clear of the sticky action.
+- Read-only post-release SEO checks passed: 69 sitemap pages, 238 images, 242 feed offers across 54 product groups, valid sampled metadata and preserved robots restrictions.
+- The broader Azure source/build/browser regression job also passed: https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/39394081555/job/118532364664 . All three engines were verified on the Linux candidate and live release runners.
+- No numeric garment measurements were added. Source conflicts remain open until the team supplies evidence and approves each size record.
