@@ -1,25 +1,17 @@
 "use client";
 import Link from "next/link";
 import { ProductCopy } from "./product-copy";
-import { ChevronDown, ClipboardList, Shirt, SquareCheckBig, Truck, CircleCheck, PackageCheck, RefreshCw, ArrowUpRight } from "lucide-react";
+import { ChevronDown, ClipboardList, Shirt, Truck, CircleCheck, PackageCheck, RefreshCw, ArrowUpRight } from "lucide-react";
 import type { ApiProduct } from "@/lib/api";
 import { pdpInformation, type ProductSpecification } from "@/lib/pdp-information";
-import { useProductSelection } from "@/lib/use-product-selection";
 import styles from "./product-info-accordion.module.css";
 export function ProductInfoAccordion({ product, specifications = [] }: { product: ApiProduct; specifications?: ProductSpecification[] }) {
-  const facts = pdpInformation(product, specifications), { color } = useProductSelection(product);
+  const facts = pdpInformation(product, specifications);
   const sections = [
     { title: "Material & Care", icon: Shirt, content: <>
       <div><strong>Fabric:</strong><ProductCopy text={facts.fabric || "Fabric information is not published for this style yet."} /></div>
-      <div><strong>Care:</strong><ProductCopy text={facts.care || "Follow the care label attached to the garment."} /></div>
-    </> },
-    { title: "Specifications", icon: SquareCheckBig, content: <>
-      {color && <p><strong>Colour:</strong> {color}</p>}
-      <div><strong>Included pieces:</strong><ProductCopy text={facts.includes || "Not specified. Do not infer included items from photography."} /></div>
-      {facts.fit && <div><strong>Fit:</strong><ProductCopy text={facts.fit} /></div>}
       {facts.lining && <div><strong>Lining:</strong><ProductCopy text={facts.lining} /></div>}
-      {facts.model && <div><strong>Model:</strong><ProductCopy text={facts.model} /></div>}
-      {facts.specifications.map(({ label, value }) => <div key={label}><strong>{label}:</strong><ProductCopy text={value} /></div>)}
+      <div><strong>Care:</strong><ProductCopy text={facts.care || "Follow the care label attached to the garment."} /></div>
     </> },
     { title: "Shipping & Returns", icon: Truck, content: <>
       <div className={styles.policyRows}>

@@ -16,3 +16,6 @@
 .facts dt { font-size: 12px; margin-bottom: 4px; }
 .facts dd { font-size: 14px; line-height: 1.5; }
 @media(max-width: 360px) { .facts { grid-template-columns: 1fr; } }
+
+.heading { display: flex; align-items: center; gap: 12px; color: #591d20; }
+.heading svg { flex: 0 0 auto; }

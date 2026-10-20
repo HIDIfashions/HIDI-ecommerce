@@ -162,14 +162,14 @@
 .thumbnails button:focus-visible { outline: 2px solid #591d20; outline-offset: 3px; }
 .galleryLayout .gallery { display: block; overflow: hidden; min-width: 0; }
 .galleryLayout .gallery .hiddenImage { display: none !important; }
-.galleryLayout .gallery .activeImage { display: block; min-height: 0; height: min(740px, calc(100svh - 230px)); aspect-ratio: 3/4; grid-column: auto; }
+.galleryLayout .gallery .activeImage { display: block; min-height: 0; height: min(820px, calc(100svh - 170px)); aspect-ratio: 3/4; grid-column: auto; }
 .galleryLayout .gallery .activeImage img { object-fit: contain !important; }
 .galleryHint { grid-column: 2; margin: -2px 0 0; display: flex; justify-content: space-between; font-size: 11px; color: #75695f; }
 @media (max-width: 760px) {
- .galleryLayout { grid-template-columns: 48px minmax(0, 1fr); gap: 8px 12px; }
- .galleryLayout .gallery { grid-column: 2; grid-row: 1; width: 100%; }
- .galleryLayout .gallery .activeImage { width: 100%; height: clamp(180px, 24svh, 200px) !important; aspect-ratio: auto; max-height: none; }
- .thumbnails { grid-column: 1; grid-row: 1; flex-direction: column; max-height: clamp(180px, 24svh, 200px); overflow-y: auto; gap: 6px; padding: 2px; }
- .thumbnails button { flex: 0 0 54px; width: 44px; min-height: 54px; }
- .galleryHint { grid-column: 2; }
+ .galleryLayout { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+ .galleryLayout .gallery { grid-column: 1; grid-row: 1; width: 100%; margin: 0; padding: 0; }
+ .galleryLayout .gallery .activeImage { width: 100% !important; min-width: 0; height: clamp(340px, 54svh, 480px) !important; aspect-ratio: auto; max-height: none; }
+ .thumbnails { grid-column: 1; grid-row: 2; flex-direction: row; overflow-x: auto; gap: 8px; padding: 2px; }
+ .thumbnails button { flex: 0 0 44px; width: 44px; height: 58px; min-height: 58px; }
+ .galleryHint { grid-column: 1; }
 }

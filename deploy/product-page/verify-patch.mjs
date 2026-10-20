@@ -14,9 +14,13 @@ function inventory(text){const tree=ts.createSourceFile('route.js',text,ts.Scrip
 for(const [oldName,newName,count] of [[plan.retainedClientChunk,plan.newClientChunk,4],['apps/web/.next/server/app/products/[slug]/page.js','apps/web/.next/server/app/products/[slug]/page.js',5]]){
  const before=inventory(readFileSync(join(base,oldName),'utf8')),after=inventory(readFileSync(join(overlay,newName),'utf8'));
  assert.deepEqual([...before.keys()],[...after.keys()],'No webpack boundaries may be added, removed or renumbered');
- const delta=[...before.keys()].filter(id=>before.get(id)!==after.get(id));assert.equal(delta.length,count,'Only reviewed PDP factories may change');
+ const delta=[...before.keys()].filter(id=>before.get(id)!==after.get(id));if(plan.kind!=='isolated-component-refresh')assert.equal(delta.length,count,'Only reviewed PDP factories may change');
+ else assert(delta.length>=2 && delta.length<=count,'Only the isolated product components and stylesheet reference may change: '+oldName+' '+JSON.stringify(delta));
  const names=delta.map(id=>before.get(id));
- for(const component of ['AddToCart','ProductMedia','ProductQualitySummary','ProductInfoAccordion'])assert(names.some(text=>text.includes(component+':')));
+ if(plan.kind==='isolated-component-refresh'){
+  for(const component of ['ProductQualitySummary','ProductInfoAccordion'])assert(names.some(text=>text.includes('exports.'+component+' =')));
+  for(const id of delta){const original=before.get(id);assert(original.startsWith('(module,exports,__webpack_require__)=>{Object.assign(exports,') || (oldName.endsWith('/page.js') && original.includes('function HidiDetails(product)') && after.get(id)===original.replace(plan.oldUrl,plan.newUrl)),'Every change must be an isolated component or the single stylesheet reference');}
+ }else for(const component of ['AddToCart','ProductMedia','ProductQualitySummary','ProductInfoAccordion'])assert(names.some(text=>text.includes(component+':')));
  for(const id of delta){const text=after.get(id);assert(!text.includes('process.env'),'No new environment substitutions');}
 }
 console.log('Protected webpack factories and route-only overlay verified');

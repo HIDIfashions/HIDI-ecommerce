@@ -14,17 +14,6 @@ const sha=s=>createHash('sha256').update(s).digest('hex');
 // A follow-up CSS release preserves every deployed product factory and fact.
 const retainedServerName='apps/web/.next/server/app/products/[slug]/page.js';
 const retainedServer=readFileSync(join(base,retainedServerName),'utf8');
-if(retainedServer.includes('function HidiDetails(product)')){
- const urls=[...new Set(retainedServer.match(/\/_next\/static\/css\/hidi-product-page-[a-f0-9]{16}\.css/g))];assert.equal(urls.length,1);
- const oldUrl=urls[0],oldCssName='apps/web/.next/'+oldUrl.slice('/_next/'.length),oldCss=readFileSync(join(base,oldCssName),'utf8');
- assert.equal(oldCss.split('clamp(180px, 28svh, 240px)').length-1,2,'Short gallery baseline changed; review before release');
- const cssText=oldCss.split('clamp(180px, 28svh, 240px)').join('clamp(180px, 24svh, 200px)')+'\n@media(max-width:620px){.product-page .apps_web_components_add_to_cart_module_css_selectionSummary{display:none!important}}\n.product-page .hidi-pdp-gallery-controls{display:none!important}\n';
- const newCssName='apps/web/.next/static/css/hidi-product-page-'+sha(cssText).slice(0,16)+'.css',newUrl='/_next/'+newCssName.split('/.next/')[1];
- assert.equal(retainedServer.split(oldUrl).length-1,1);
- const files={[retainedServerName]:retainedServer.replace(oldUrl,newUrl),[newCssName]:cssText};
- for(const [name,text] of Object.entries(files)){const file=join(overlay,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);}
- mkdirSync('evidence/product-page-release',{recursive:true});writeFileSync('evidence/product-page-release/patch.json',JSON.stringify({passed:true,kind:'compact-mobile-css',allowedFiles:Object.keys(files).sort(),oldCssName,newCssName,oldUrl,newUrl,originalFrameworkFactoriesPreserved:true,productJavaScriptPreserved:true,productFactsPreserved:true,oldAssetsRetained:true},null,2));exit(0);
-}
 const styles=new Map(),css=[];
 function cssModule(path){if(styles.has(path))return styles.get(path);let text=readFileSync(path,'utf8'),map={};
  text=text.replace(/:global\(([^)]+)\)/g,(_,selector)=>selector.replace(/\./g,'@@GLOBAL@@'));
@@ -67,6 +56,33 @@ function replaceFactories(text,kind){const tree=ts.createSourceFile('retained.js
  }ts.forEachChild(n,walk);}walk(tree);
  assert.deepEqual(found.sort(),Object.keys(components).sort(),'Retained product component inventory changed: '+kind);
  for(const edit of edits.sort((a,b)=>b.start-a.start))text=text.slice(0,edit.start)+edit.value+text.slice(edit.end);return text;
+}
+// Update only the previously isolated component boundaries; retain the deployed page factory.
+if(retainedServer.includes('function HidiDetails(product)')){
+ const urls=[...new Set(retainedServer.match(/\/_next\/static\/css\/hidi-product-page-[a-f0-9]{16}\.css/g))];assert.equal(urls.length,1);
+ const oldUrl=urls[0],manifestName='apps/web/.next/server/app/products/[slug]/page_client-reference-manifest.js',manifest=readFileSync(join(base,manifestName),'utf8');
+ const active=readdirSync(join(base,'apps/web/.next/static/chunks/app/products/[slug]')).filter(name=>name.endsWith('.js')&&manifest.includes(name));assert.equal(active.length,1);
+ const clientName='apps/web/.next/static/chunks/app/products/[slug]/'+active[0];
+ function refresh(text,kind){const tree=ts.createSourceFile('retained.js',text,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS),edits=[],found=[];
+  function walk(n){if(ts.isPropertyAssignment(n)&&/^\d+$/.test(n.name.getText(tree))&&ts.isArrowFunction(n.initializer)){
+   const value=n.initializer.getText(tree);
+   if(value.startsWith('(module,exports,__webpack_require__)=>{Object.assign(exports,')){
+    const names=Object.keys(components).filter(name=>value.includes('exports.'+name+' ='));assert.equal(names.length,1,'Known isolated component required');
+    const name=names[0];found.push(name);edits.push({start:n.initializer.pos,end:n.initializer.end,value:'(module,exports,__webpack_require__)=>{Object.assign(exports,'+bundle('apps/web/components/'+components[name],kind)+');}'});return;
+   }
+  }ts.forEachChild(n,walk);}walk(tree);assert.deepEqual(found.sort(),Object.keys(components).sort());
+  for(const edit of edits.sort((a,b)=>b.start-a.start))text=text.slice(0,edit.start)+edit.value+text.slice(edit.end);return text;
+ }
+ const client=refresh(readFileSync(join(base,clientName),'utf8'),'client');let server=refresh(retainedServer,'server');
+ cssModule(resolve('apps/web/app/products/[slug]/product-page.module.css'));
+ css.push('.hidi-pdp-includes{font-size:14px;color:#75695f;margin:0 0 14px}.hidi-pdp-services{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;padding:12px 0;border-bottom:1px solid #dfd3c6}.hidi-pdp-services a{color:#591d20}.hidi-pdp-description{border-block:1px solid #dfd3c6;padding:14px 0;font-size:14px;line-height:1.7}.hidi-pdp-description summary{cursor:pointer;font-weight:600}');
+ const cssText=css.join('\n'),newCssName='apps/web/.next/static/css/hidi-product-page-'+sha(cssText).slice(0,16)+'.css',newUrl='/_next/'+newCssName.split('/.next/')[1];
+ assert.equal(server.split(oldUrl).length-1,1);server=server.replace(oldUrl,newUrl);
+ const newClientName=clientName.replace(/-[a-f0-9]{16}\.js$/,'-'+sha(client).slice(0,16)+'.js');assert.notEqual(clientName,newClientName);
+ const urlName=name=>name.split('/.next/')[1].replace('[slug]','%5Bslug%5D');assert(manifest.includes(urlName(clientName)));
+ const files={[retainedServerName]:server,[newClientName]:client,[newCssName]:cssText,[manifestName]:manifest.split(urlName(clientName)).join(urlName(newClientName))};
+ for(const [name,text] of Object.entries(files)){const file=join(overlay,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);}
+ mkdirSync('evidence/product-page-release',{recursive:true});writeFileSync('evidence/product-page-release/patch.json',JSON.stringify({passed:true,kind:'isolated-component-refresh',allowedFiles:Object.keys(files).sort(),retainedClientChunk:clientName,newClientChunk:newClientName,oldUrl,newUrl,oldAssetsRetained:true,sourceSha:process.env.GITHUB_SHA||null},null,2));exit(0);
 }
 const serverName='apps/web/.next/server/app/products/[slug]/page.js';
 let server=readFileSync(join(base,serverName),'utf8');

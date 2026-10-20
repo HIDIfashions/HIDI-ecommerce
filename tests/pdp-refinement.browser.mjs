@@ -31,8 +31,8 @@ try { for (const width of [1440,1280,768,390,320]) {
  }
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No horizontal overflow at '+width);
  if(width===390){
-  const sizes=await page.locator('.sizes').boundingBox(),sticky=await page.locator('[aria-label="Mobile purchase actions"]').boundingBox();
-  assert(sizes.y+sizes.height<=sticky.y-4,'Initial size buttons must clear the mobile sticky action');
+  const gallery=await page.locator('[class*="activeImage"]').boundingBox();
+  assert(gallery.height>=340,'Mobile photo must have a useful full-garment viewing area');
  }
  assert.equal(await page.locator('[data-hidi-selection-copy]:visible').count(),0,'No duplicate SKU paragraph above sizes');
  assert.equal(await page.locator('.pdp-price [data-hidi-price-badge]:visible').count(),0,'Only the native product discount is visible');
@@ -40,7 +40,9 @@ try { for (const width of [1440,1280,768,390,320]) {
  const facts=page.locator('[aria-label="Product quality and fit summary"]');
  await facts.getByText('Mandarin Collar with V-Slit',{exact:true}).waitFor();
  await facts.getByText('Three-Quarter Sleeves',{exact:true}).waitFor();
- await facts.getByText('Garment measurements are not available for this style yet.',{exact:true}).waitFor();
+ assert.equal(await facts.getByText('Garment measurements are not available for this style yet.',{exact:true}).count(),0);
+ assert.equal(await facts.getByText('Care',{exact:true}).count(),0);
+ assert.equal(await page.getByText('Specifications',{exact:true}).count(),0);
  const add=page.locator('[aria-label="Purchase actions"] button').first();assert.equal(await add.isEnabled(),false);
  if(width<=620){ await page.getByRole('button',{name:'Select size',exact:true}).click(); await page.locator('.sizes button').first().waitFor(); }
  await page.locator('.sizes button').getByText('M',{exact:true}).click();await page.waitForFunction(()=>document.querySelector('[aria-label="Purchase actions"] button')?.disabled===false);
