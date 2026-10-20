@@ -356,4 +356,5 @@
  .mobileActions { grid-template-columns: 1fr; }
 }
 .selectionSummary{margin:0 0 16px;color:var(--ink-muted,#74635c);font-size:14px;line-height:1.6}
+@media (max-width: 620px) { .selectionSummary { display: none; } }
 

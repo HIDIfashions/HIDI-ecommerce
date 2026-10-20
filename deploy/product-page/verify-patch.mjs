@@ -4,6 +4,12 @@ import {resolve,join} from 'node:path';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),ts=require(process.env.HIDI_TYPESCRIPT_MODULE||resolve('apps/web/node_modules/typescript'));
 const [base,overlay]=process.argv.slice(2),plan=JSON.parse(readFileSync('evidence/product-page-release/patch.json','utf8'));
+if(plan.kind==='compact-mobile-css'){
+ const name='apps/web/.next/server/app/products/[slug]/page.js',before=readFileSync(join(base,name),'utf8'),after=readFileSync(join(overlay,name),'utf8');
+ assert.equal(after,before.replace(plan.oldUrl,plan.newUrl),'Only the route stylesheet reference may change');
+ const css=readFileSync(join(overlay,plan.newCssName),'utf8');assert(css.includes('clamp(180px, 24svh, 200px)'));
+ assert.equal(plan.allowedFiles.length,2);console.log('CSS-only route update preserves all product factories and facts');process.exit(0);
+}
 function inventory(text){const tree=ts.createSourceFile('route.js',text,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS),modules=new Map();function walk(n){if(ts.isPropertyAssignment(n)&&/^\d+$/.test(n.name.getText(tree))&&ts.isArrowFunction(n.initializer)){modules.set(n.name.getText(tree),n.initializer.getText(tree));return;}ts.forEachChild(n,walk);}walk(tree);return modules;}
 for(const [oldName,newName,count] of [[plan.retainedClientChunk,plan.newClientChunk,4],['apps/web/.next/server/app/products/[slug]/page.js','apps/web/.next/server/app/products/[slug]/page.js',5]]){
  const before=inventory(readFileSync(join(base,oldName),'utf8')),after=inventory(readFileSync(join(overlay,newName),'utf8'));

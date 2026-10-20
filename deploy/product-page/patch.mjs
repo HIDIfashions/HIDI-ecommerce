@@ -5,11 +5,26 @@ import {readFileSync,writeFileSync,mkdirSync,existsSync,readdirSync} from 'node:
 import {resolve,dirname,relative,join} from 'node:path';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
+import {exit} from 'node:process';
 const require=createRequire(import.meta.url),root=resolve('.');
 const ts=require(process.env.HIDI_TYPESCRIPT_MODULE||resolve('apps/web/node_modules/typescript'));
 const lucide=process.env.HIDI_LUCIDE_ROOT||resolve('apps/web/node_modules/lucide-react');
 const [baseArg,overlayArg]=process.argv.slice(2),base=resolve(baseArg),overlay=resolve(overlayArg);
 const sha=s=>createHash('sha256').update(s).digest('hex');
+// A follow-up CSS release preserves every deployed product factory and fact.
+const retainedServerName='apps/web/.next/server/app/products/[slug]/page.js';
+const retainedServer=readFileSync(join(base,retainedServerName),'utf8');
+if(retainedServer.includes('function HidiDetails(product)')){
+ const urls=[...new Set(retainedServer.match(/\/_next\/static\/css\/hidi-product-page-[a-f0-9]{16}\.css/g))];assert.equal(urls.length,1);
+ const oldUrl=urls[0],oldCssName='apps/web/.next/'+oldUrl.slice('/_next/'.length),oldCss=readFileSync(join(base,oldCssName),'utf8');
+ assert.equal(oldCss.split('clamp(180px, 28svh, 240px)').length-1,2,'Short gallery baseline changed; review before release');
+ const cssText=oldCss.split('clamp(180px, 28svh, 240px)').join('clamp(180px, 24svh, 200px)')+'\n@media(max-width:620px){.product-page .apps_web_components_add_to_cart_module_css_selectionSummary{display:none!important}}\n';
+ const newCssName='apps/web/.next/static/css/hidi-product-page-'+sha(cssText).slice(0,16)+'.css',newUrl='/_next/'+newCssName.split('/.next/')[1];
+ assert.equal(retainedServer.split(oldUrl).length-1,1);
+ const files={[retainedServerName]:retainedServer.replace(oldUrl,newUrl),[newCssName]:cssText};
+ for(const [name,text] of Object.entries(files)){const file=join(overlay,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);}
+ mkdirSync('evidence/product-page-release',{recursive:true});writeFileSync('evidence/product-page-release/patch.json',JSON.stringify({passed:true,kind:'compact-mobile-css',allowedFiles:Object.keys(files).sort(),oldCssName,newCssName,oldUrl,newUrl,originalFrameworkFactoriesPreserved:true,productJavaScriptPreserved:true,productFactsPreserved:true,oldAssetsRetained:true},null,2));exit(0);
+}
 const styles=new Map(),css=[];
 function cssModule(path){if(styles.has(path))return styles.get(path);let text=readFileSync(path,'utf8'),map={};
  text=text.replace(/:global\(([^)]+)\)/g,(_,selector)=>selector.replace(/\./g,'@@GLOBAL@@'));

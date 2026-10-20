@@ -168,8 +168,8 @@
 @media (max-width: 760px) {
  .galleryLayout { grid-template-columns: 48px minmax(0, 1fr); gap: 8px 12px; }
  .galleryLayout .gallery { grid-column: 2; grid-row: 1; width: 100%; }
- .galleryLayout .gallery .activeImage { width: 100%; height: clamp(180px, 28svh, 240px) !important; aspect-ratio: auto; max-height: none; }
- .thumbnails { grid-column: 1; grid-row: 1; flex-direction: column; max-height: clamp(180px, 28svh, 240px); overflow-y: auto; gap: 6px; padding: 2px; }
+ .galleryLayout .gallery .activeImage { width: 100%; height: clamp(180px, 24svh, 200px) !important; aspect-ratio: auto; max-height: none; }
+ .thumbnails { grid-column: 1; grid-row: 1; flex-direction: column; max-height: clamp(180px, 24svh, 200px); overflow-y: auto; gap: 6px; padding: 2px; }
  .thumbnails button { flex: 0 0 54px; width: 44px; min-height: 54px; }
  .galleryHint { grid-column: 2; }
 }
