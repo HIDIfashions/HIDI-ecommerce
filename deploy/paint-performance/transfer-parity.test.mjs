@@ -6,6 +6,24 @@ test('transfer tracking separates variable media buffering from page delivery by
  tracker.requestStarted({requestId:'video',type:'Media'});tracker.loadingFinished({requestId:'video',encodedDataLength:1250000});
  tracker.requestStarted({requestId:'script',type:'Script'});tracker.loadingFinished({requestId:'script',encodedDataLength:86000});
  assert.deepEqual(tracker.snapshot(),{totalBytes:1350000,nonMediaBytes:100000,mediaBytes:1250000});
+ assert.equal(tracker.settlement().pendingNonMedia,0);
+});
+
+test('failed requests leave the non-media transfer tracker settled',()=>{
+ let now=10;const tracker=createTransferTracker(()=>now);
+ tracker.requestStarted({requestId:'blocked-analytics',type:'Script'});
+ tracker.requestStarted({requestId:'video',type:'Media'});
+ assert.equal(tracker.settlement().pendingNonMedia,1);
+ now=20;
+ tracker.loadingFailed({requestId:'blocked-analytics'});
+ assert.deepEqual(tracker.settlement(),{pendingNonMedia:0,lastNonMediaActivity:20});
+ now=30;
+ tracker.requestStarted({requestId:'late-style',type:'Stylesheet'});
+ assert.deepEqual(tracker.settlement(),{pendingNonMedia:1,lastNonMediaActivity:30});
+ tracker.loadingFinished({requestId:'late-style',encodedDataLength:500});
+ assert.deepEqual(tracker.settlement(),{pendingNonMedia:0,lastNonMediaActivity:30});
+ tracker.loadingFinished({requestId:'late-style',encodedDataLength:500});
+ assert.deepEqual(tracker.snapshot(),{totalBytes:500,nonMediaBytes:500,mediaBytes:0});
 });
 
 test('transfer parity keeps the two-percent non-media ceiling and exact media identity',()=>{
