@@ -3,11 +3,11 @@ import Link from "next/link";
 import { ProductCopy } from "./product-copy";
 import { ChevronDown, ClipboardList, Shirt, SquareCheckBig, Truck, CircleCheck, PackageCheck, RefreshCw, ArrowUpRight } from "lucide-react";
 import type { ApiProduct } from "@/lib/api";
-import { pdpInformation } from "@/lib/pdp-information";
+import { pdpInformation, type ProductSpecification } from "@/lib/pdp-information";
 import { useProductSelection } from "@/lib/use-product-selection";
 import styles from "./product-info-accordion.module.css";
-export function ProductInfoAccordion({ product }: { product: ApiProduct }) {
-  const facts = pdpInformation(product), { color } = useProductSelection(product);
+export function ProductInfoAccordion({ product, specifications = [] }: { product: ApiProduct; specifications?: ProductSpecification[] }) {
+  const facts = pdpInformation(product, specifications), { color } = useProductSelection(product);
   const sections = [
     { title: "Material & Care", icon: Shirt, content: <>
       <div><strong>Fabric:</strong><ProductCopy text={facts.fabric || "Fabric information is not published for this style yet."} /></div>
@@ -19,6 +19,7 @@ export function ProductInfoAccordion({ product }: { product: ApiProduct }) {
       {facts.fit && <p><strong>Fit:</strong> {facts.fit}</p>}
       {facts.lining && <p><strong>Lining:</strong> {facts.lining}</p>}
       {facts.model && <p><strong>Model:</strong> {facts.model}</p>}
+      {facts.specifications.map(({ label, value }) => <p key={label}><strong>{label}:</strong> {value}</p>)}
     </> },
     { title: "Shipping & Returns", icon: Truck, content: <>
       <div className={styles.policyRows}>

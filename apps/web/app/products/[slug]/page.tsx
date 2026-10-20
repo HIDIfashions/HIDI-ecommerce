@@ -17,6 +17,7 @@ import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 import { productOffers } from "@/lib/seo";
 import { ProductCopy } from "@/components/product-copy";
 import { pdpInformation } from "@/lib/pdp-information";
+import { reviewedPdpSpecifications } from "@/lib/pdp-source-specifications";
 import styles from "./product-page.module.css";
 import { DeliveryCheck } from "@/components/delivery-check";
 import { ProductPageShell } from "@/components/product-page-shell";
@@ -99,7 +100,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       ?? { slug: "all", name: "All Products" };
   })();
 
-  const information = pdpInformation(product);
+  const information = pdpInformation(product, reviewedPdpSpecifications(product));
   const canonicalUrl = absoluteUrl(`/products/${encodeURIComponent(product.slug)}`);
   const schemaImages = product.images
     .filter((image) => Boolean(image.url))
@@ -170,9 +171,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <AddToCart key={product.id} product={product} />
         <div className={styles.services}><span>Free shipping</span><span>7-day returns on eligible items</span><Link href="/returns">View policy</Link></div>
         <DeliveryCheck />
-        <ProductQualitySummary product={product} />
+        <ProductQualitySummary product={product} specifications={information.specifications} />
         {information.narrative && <details className={styles.description}><summary>Product description</summary><div><ProductCopy text={information.narrative} /></div></details>}
-        <ProductInfoAccordion product={product} />
+        <ProductInfoAccordion product={product} specifications={information.specifications} />
         <ProductContactActions product={product} />
       </aside>
     </div>

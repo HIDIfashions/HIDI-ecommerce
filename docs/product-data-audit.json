@@ -1,0 +1,2220 @@
+{
+  "summary": {
+    "auditedOn": "2026-10-20",
+    "publishedProducts": 54,
+    "variants": 247,
+    "productsWithUniqueSourceMatch": 26,
+    "productsWithConfirmedSpecifications": 26,
+    "variantsWithAnyMeasurement": 0,
+    "sourceWorkbook": "Excel GK 1 (8).xlsx",
+    "sourceWorkbookSha256": "d54cc2fd8cd83c82c70a46b2b706d924e88c31c70c5d24c88c93b091a7ea55d2",
+    "sourceEntries": 69,
+    "duplicateSourceCodes": [
+      "HIDI_040"
+    ],
+    "verificationScope": "Explicit original workbook entries cross-checked by unique style code. No physical garment measurement verification or image inference."
+  },
+  "products": [
+    {
+      "id": "pm_959d7ec1ef7a4cca8545f34276d27ed6",
+      "slug": "kur-036-women-s-wine-purple-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "KUR_036"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet2",
+        "startRow": 157,
+        "endRow": 197
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck with Front Slit",
+          "sheet": "Sheet2",
+          "row": 173
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet2",
+          "row": 175
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet2",
+          "row": 177
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet2",
+          "row": 185
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override"
+      ]
+    },
+    {
+      "id": "pm_2c5b7a72906244719f1a6757b139ee9a",
+      "slug": "hidi-054-red-embroidered-kurta-with-pants",
+      "styleCodes": [
+        "HIDI_054"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 1960,
+        "endRow": 1988
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Mandarin Collar",
+          "sheet": "Sheet1",
+          "row": 1975
+        },
+        {
+          "label": "Sleeves",
+          "value": "Sleeveless",
+          "sheet": "Sheet1",
+          "row": 1977
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 1978
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_dbbf5e0d96af4a78b2ca18aecd167b52",
+      "slug": "hidi-023-royal-blue-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_023"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 796,
+        "endRow": 834
+      },
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "V-Neck with Embroidered Detailing",
+          "sheet": "Sheet1",
+          "row": 812
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 814
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 817
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 824
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_1d28ea6220c94fc6a2d6fd9ea2889b9c",
+      "slug": "hidi-019-fuchsia-pink-floral-printed-kurta-set-with-pants",
+      "styleCodes": [
+        "HIDI_019"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 661,
+        "endRow": 692
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Mandarin Collar with V-Slit",
+          "sheet": "Sheet1",
+          "row": 677
+        },
+        {
+          "label": "Front detail",
+          "value": "Decorative Button Detailing",
+          "sheet": "Sheet1",
+          "row": 678
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 679
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 681
+        },
+        {
+          "label": "Side detail",
+          "value": "Side Slits",
+          "sheet": "Sheet1",
+          "row": 683
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 689
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing",
+        "Fit: live summary Relaxed Fit; workbook Straight-Fit Kurta / Comfortable Fit pants; no fit override",
+        "Pattern: workbook print versus live narrative embroidery; no technique claim"
+      ]
+    },
+    {
+      "id": "pm_79bac85abd0b46008895122fd409cd92",
+      "slug": "hidi-009-black-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_009"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 283,
+        "endRow": 315
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Deep V-Neck",
+          "sheet": "Sheet1",
+          "row": 298
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 300
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 302
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_fc1224074e534454a14c455f05faea8f",
+      "slug": "kur-021-women-s-sage-green-printed-anarkali-kurta-set-with-dupatta",
+      "styleCodes": [
+        "KUR_021"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet2",
+        "startRow": 41,
+        "endRow": 79
+      },
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet2",
+          "row": 57
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet2",
+          "row": 59
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet2",
+          "row": 60
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet2",
+          "row": 68
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": []
+    },
+    {
+      "id": "pm_71b90cd352fa412e92b1be4e55b3c858",
+      "slug": "kur-008-women-s-light-orchid-pink-floral-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "KUR_008"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet2",
+        "startRow": 3,
+        "endRow": 40
+      },
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet2",
+          "row": 19
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet2",
+          "row": 22
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet2",
+          "row": 29
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": []
+    },
+    {
+      "id": "pm_b567b6bacbcb4441965b4a9d1604b02f",
+      "slug": "hidi-060-purple-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_060"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 2170,
+        "endRow": 2207
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Square Neck",
+          "sheet": "Sheet1",
+          "row": 2186
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 2187
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 2189
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 2196
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": []
+    },
+    {
+      "id": "pm_c0237bf99af84fcba5608506b2b40e51",
+      "slug": "hidi-059-red-white-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_059"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 2133,
+        "endRow": 2169
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck with Embroidered Detailing",
+          "sheet": "Sheet1",
+          "row": 2149
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 2150
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 2152
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 2159
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_e38d82f6932441f2a08615a9051492be",
+      "slug": "hidi-058-pink-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_058"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 2096,
+        "endRow": 2132
+      },
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet1",
+          "row": 2112
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 2113
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 2115
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 2122
+        },
+        {
+          "label": "Lining",
+          "value": "Included",
+          "sheet": "Sheet1",
+          "row": 2104,
+          "sourceValue": "Premium Mul Cotton with Lining"
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_459f9eef3c974dca9877eea0b90b5c0e",
+      "slug": "hidi-057-brown-floral-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_057"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 2058,
+        "endRow": 2095
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Notched V-Neck",
+          "sheet": "Sheet1",
+          "row": 2074
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 2075
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 2078
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 2085
+        },
+        {
+          "label": "Lining",
+          "value": "Included",
+          "sheet": "Sheet1",
+          "row": 2066,
+          "sourceValue": "Premium Pure Mul Cotton with Lining"
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_69c8128394f5473ba6f7460866f30c93",
+      "slug": "hidi-056-white-purple-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_056"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 2020,
+        "endRow": 2057
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet1",
+          "row": 2036
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 2037
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 2040
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 2047
+        },
+        {
+          "label": "Lining",
+          "value": "Included",
+          "sheet": "Sheet1",
+          "row": 2028,
+          "sourceValue": "Premium Pure Mul Cotton with Lining"
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_49fb3345872f40028bdc4608e9277578",
+      "slug": "hidi-055-pink-flair-waistcoat-set",
+      "styleCodes": [
+        "HIDI_055"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 1989,
+        "endRow": 2019
+      },
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "V-Neck",
+          "sheet": "Sheet1",
+          "row": 2005
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Lining: conflicting explicit values; not added",
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_eefeea525b4649b688fb693d12fc07fb",
+      "slug": "hidi-045-magenta-floral-embroidered-anarkali-suit-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_045"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 1650,
+        "endRow": 1688
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "V-Neck",
+          "sheet": "Sheet1",
+          "row": 1666
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 1668
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 1670
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 1678
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_7d79ab1b48e042a99213da9f3eccdaeb",
+      "slug": "hidi-044-ivory-floral-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_044"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 1614,
+        "endRow": 1649
+      },
+      "variantCount": 8,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck With Embroidery Work",
+          "sheet": "Sheet1",
+          "row": 1629
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 1630
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 1633
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 1640
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_606c9309943844e3838b74aa9c712eba",
+      "slug": "hidi-043-dusty-pink-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_043"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 1577,
+        "endRow": 1613
+      },
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 1593
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 1596
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 1603
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_b52eb84a5f8d46748d2390b0cc22d879",
+      "slug": "hidi-041-lavender-kurta-set-with-printed-dupatta",
+      "styleCodes": [
+        "HIDI_041"
+      ],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_9fc77d6d32374f778237d523feb680ad",
+      "slug": "hidi-031-wine-purple-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_031"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 1108,
+        "endRow": 1144
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet1",
+          "row": 1124
+        },
+        {
+          "label": "Front detail",
+          "value": "Intricate Cream-Coloured Embroidery on the Neckline and Front Panel",
+          "sheet": "Sheet1",
+          "row": 1125
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 1126
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 1127
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 1134
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_abc605e80c574c6eaa52a3c24f1c105a",
+      "slug": "hidi-027-chocolate-brown-floral-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_027"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 952,
+        "endRow": 990
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet1",
+          "row": 968
+        },
+        {
+          "label": "Front detail",
+          "value": "Turquoise Blue and Multicolour Floral Embroidery",
+          "sheet": "Sheet1",
+          "row": 969
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 970
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 972
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 980
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_b0bb0f9b982a4e0fa77ead6d9013ca6d",
+      "slug": "hidi-018-olive-green-floral-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_018"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 618,
+        "endRow": 660
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet1",
+          "row": 634
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 636
+        },
+        {
+          "label": "Side detail",
+          "value": "Floral Embroidered Border",
+          "sheet": "Sheet1",
+          "row": 638
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 640
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 647
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_74be493434f44d93a681b663caea03b7",
+      "slug": "hidi-039-rust-orange-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_039"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 1416,
+        "endRow": 1456
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "V-Neck",
+          "sheet": "Sheet1",
+          "row": 1432
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 1434
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 1436
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 1444
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_f86fd904e6334f8189445094c12304ca",
+      "slug": "hidi-038-baby-pink-embroidered-anarkali-suit-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_038"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 1377,
+        "endRow": 1415
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet1",
+          "row": 1393
+        },
+        {
+          "label": "Front detail",
+          "value": "Blue Embroidered Geometric Pattern on the Yoke",
+          "sheet": "Sheet1",
+          "row": 1394
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 1395
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 1397
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 1405
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_fc43c98510c14f2583469944f4639a3b",
+      "slug": "hidi-015-olive-green-floral-embroidered-anarkali-suit-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_015"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 501,
+        "endRow": 538
+      },
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet1",
+          "row": 517
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 519
+        },
+        {
+          "label": "Top length",
+          "value": "Long Anarkali Kurta",
+          "sheet": "Sheet1",
+          "row": 522
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 529
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_f1e1fb4235344aaeb05b9a20eefb02cd",
+      "slug": "hidi-011-chocolate-brown-printed-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_011"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 353,
+        "endRow": 390
+      },
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet1",
+          "row": 368
+        },
+        {
+          "label": "Sleeves",
+          "value": "Sleeveless",
+          "sheet": "Sheet1",
+          "row": 370
+        },
+        {
+          "label": "Top length",
+          "value": "Knee-Length Kurta",
+          "sheet": "Sheet1",
+          "row": 373
+        },
+        {
+          "label": "Bottom length",
+          "value": "Ankle Length",
+          "sheet": "Sheet1",
+          "row": 380
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_06aca36db66c47eab14323a78277a605",
+      "slug": "hidi-007-teal-blue-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_007"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 214,
+        "endRow": 251
+      },
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck",
+          "sheet": "Sheet1",
+          "row": 229
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 231
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 234
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 241
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_720f62516a8b4038b9789f26900f3617",
+      "slug": "hidi-006-lilac-pink-floral-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_006"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 177,
+        "endRow": 213
+      },
+      "variantCount": 8,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "Round Neck with Embroidered Detailing",
+          "sheet": "Sheet1",
+          "row": 193
+        },
+        {
+          "label": "Sleeves",
+          "value": "Three-Quarter Sleeves",
+          "sheet": "Sheet1",
+          "row": 194
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 197
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 204
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_7a9e0542dd6c44119966d4f071dada0c",
+      "slug": "hidi-005-pista-green-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [
+        "HIDI_005"
+      ],
+      "sourceMatch": {
+        "sheet": "Sheet1",
+        "startRow": 140,
+        "endRow": 176
+      },
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [
+        {
+          "label": "Neckline",
+          "value": "V-Neck",
+          "sheet": "Sheet1",
+          "row": 156
+        },
+        {
+          "label": "Top length",
+          "value": "Long Kurta",
+          "sheet": "Sheet1",
+          "row": 160
+        },
+        {
+          "label": "Bottom length",
+          "value": "Full Length",
+          "sheet": "Sheet1",
+          "row": 167
+        }
+      ],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "Fabric wording differs between source workbook and live catalogue; no fabric override",
+        "Fit wording differs between workbook garment sections and live summary; no fit override",
+        "Model field contains product contents rather than model sizing"
+      ]
+    },
+    {
+      "id": "pm_306e8bc5a9d04997931467c5437b84d9",
+      "slug": "pink-floral-printed-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 8,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_477914d276004dfb97d91ad6c357f1cd",
+      "slug": "olive-green-swan-floral-printed-shirt-style-kurta-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_726b966d11044bfbb19d09feb0a99c1d",
+      "slug": "yellow-floral-printed-anarkali-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_69655d7b65a34e57b1d19978f4d19d2b",
+      "slug": "rust-orange-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_f41c718102a9477dbdda036224458c5f",
+      "slug": "white-printed-sleeveless-kurti-with-palazzo-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_d3c8f94a5efc4f05969833718f55242c",
+      "slug": "cream-embroidered-kurta-pant-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_86c4f36fdd7b4b09943d5e142b3b6a73",
+      "slug": "olive-green-embroidered-anarkali-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_71cf4d605ec34c89a6427ea588730114",
+      "slug": "lavender-embroidered-kurta-set-with-pants",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_53c38e69afe040ed927de7e695c6146a",
+      "slug": "grey-printed-sleeveless-kurti-with-palazzo-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_44abad024c8946a18b5c8db3fb54d720",
+      "slug": "pink-designer-embroidered-suit-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_cb5ff549dfa04d91822077a4e3d53f74",
+      "slug": "pastel-yellow-handwork-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_4f7ced6d372e4384a0d342dddc3879a4",
+      "slug": "golden-yellow-designer-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_70d9506c584143a4b8e220812635705f",
+      "slug": "cream-floral-embroidered-kurta-pant-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_d7222723f66f4365b0b0190314c3c213",
+      "slug": "orange-embroidered-cotton-coord-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_6861b98f78ef414e8b586016bfdb42b0",
+      "slug": "cream-floral-printed-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_86cd50bd06004cb89f0c4fde053b4f46",
+      "slug": "navy-blue-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_899f1028f42e404397433214f74e86db",
+      "slug": "black-floral-embroidered-anarkali-suit-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_c3ae4cfb56ca46e087aa97b47837ca8d",
+      "slug": "cream-floral-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_4a8cb279abfc44d0b87fc3d3d027f593",
+      "slug": "aashi-sky-blue-floral-kurta-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_0cbc2818edfe406cbd67c383f8b9841c",
+      "slug": "roshni-magenta-floral-anarkali-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_f0f5accf14954c22a49a8a95f2a6b641",
+      "slug": "nila-navy-floral-kurta-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_35e4edc34b824a69ac3f299aee79dfdc",
+      "slug": "avni-off-white-embroidered-kurta-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_eaafc76e7bf6489194728553eb0d773a",
+      "slug": "kiara-coral-pink-anarkali-set",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 4,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_a5da571c273a44e2b7e009146a99e17b",
+      "slug": "women-s-chocolate-brown-printed-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_71da377d9de94caa840af0be8baa60e3",
+      "slug": "women-s-black-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 5,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_090eaa9ea9d34af9a7259b34308f62b0",
+      "slug": "women-s-red-multicolour-floral-printed-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 6,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    },
+    {
+      "id": "pm_b3b7e84fbd0b4d94b951119586ae9519",
+      "slug": "women-s-cream-floral-embroidered-kurta-set-with-dupatta",
+      "styleCodes": [],
+      "sourceMatch": null,
+      "variantCount": 3,
+      "variantsWithAnyMeasurement": 0,
+      "confirmedSpecifications": [],
+      "missingOrIncomplete": [
+        "bustMm",
+        "waistMm",
+        "hipMm",
+        "shoulderMm",
+        "sleeveLengthMm",
+        "garmentLengthMm",
+        "model height and worn size",
+        "lining confirmation",
+        "pocket confirmation",
+        "waistband confirmation",
+        "fibre composition percentages"
+      ],
+      "issues": [
+        "No unique source-code match; no workbook specifications added"
+      ]
+    }
+  ]
+}
