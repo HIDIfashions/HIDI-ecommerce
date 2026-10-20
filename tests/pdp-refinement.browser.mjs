@@ -28,6 +28,12 @@ try { for (const width of [1440,1280,768,390,320]) {
   await page.waitForLoadState('networkidle',{timeout:30000});
  }
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No horizontal overflow at '+width);
+ if(width===390){
+  const sizes=await page.locator('.sizes').boundingBox(),sticky=await page.locator('[aria-label="Mobile purchase actions"]').boundingBox();
+  assert(sizes.y+sizes.height<=sticky.y-4,'Initial size buttons must clear the mobile sticky action');
+ }
+ assert.equal(await page.locator('[data-hidi-selection-copy]:visible').count(),0,'No duplicate SKU paragraph above sizes');
+ assert.equal(await page.locator('.pdp-price [data-hidi-price-badge]:visible').count(),0,'Only the native product discount is visible');
  assert.equal(await page.getByText('Model information',{exact:true}).count(),0);
  const facts=page.locator('[aria-label="Product quality and fit summary"]');
  await facts.getByText('Mandarin Collar with V-Slit',{exact:true}).waitFor();

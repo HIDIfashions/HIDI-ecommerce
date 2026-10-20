@@ -38,3 +38,8 @@
   .layout :global(.pdp-price) { margin: 16px 0 8px; padding-bottom: 16px; }
   .services { gap: 6px 14px; }
 }
+/* Retained overlays may add their own price badge and selection copy.
+   The PDP already renders one discount and an accessible selection announcement. */
+:global(.product-page) :global([data-hidi-selection-copy]),
+:global(.product-page) :global(.pdp-price) :global([data-hidi-price-badge]),
+:global(.product-page) :global(.pdp-price) :global([data-hidi-selling-label]) { display: none !important; }
