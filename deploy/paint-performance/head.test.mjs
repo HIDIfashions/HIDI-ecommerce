@@ -2,6 +2,20 @@ import test from 'node:test';import assert from 'node:assert/strict';import {mkd
 import {runInNewContext} from 'node:vm';
 import {readFileSync} from 'node:fs';
 
+test('homepage price bar receives one scoped pre-paint header offset without changing other documents',()=>{
+ const root=mkdtempSync(join(tmpdir(),'hidi-price-header-'));
+ try{
+  const input='<html><head><meta charset="utf-8"></head><body><div id="root"><header id="site-header" class="site-header campaign-header" data-hidi-first-header="true"></header></div></body></html>';
+  const transform=createHomeHead(root),result=transform(input),second=transform(result);
+  assert.equal((result.match(/data-hidi-price-header-offset/g)||[]).length,1);
+  assert(result.includes('body>.hidi-price-announcement~#root #site-header.campaign-header{position:sticky;margin-bottom:-72px}'));
+  assert(result.includes('@media(max-width:700px){body>.hidi-price-announcement~#root #site-header.campaign-header{margin-bottom:-58px}}'));
+  assert.equal((second.match(/data-hidi-price-header-offset/g)||[]).length,1,'Repeated transforms must not duplicate the layout rule');
+  const unrelated='<html><head></head><body><header id="site-header"></header></body></html>';
+  assert.equal(transform(unrelated),unrelated,'Only the native homepage campaign header receives the rule');
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
 test('split desktop poster and application hosts warm their own connections without changing media bytes',()=>{
  const app=mkdtempSync(join(tmpdir(),'hidi-split-preconnect-')),root=join(app,'dist'),hash=value=>createHash('sha256').update(value).digest('hex');
  const js='if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}',poster=Buffer.from('verified poster'),scriptPath='/assets/index-'+hash(js).slice(0,16)+'.js',posterPath='/media-performance/assets/poster-'+hash(poster).slice(0,16)+'.avif',origin='https://hidi-test.azurestaticapps.net',edgeOrigin='https://hidi-performance-posters.pages.dev';

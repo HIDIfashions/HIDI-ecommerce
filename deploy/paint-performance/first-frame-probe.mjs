@@ -29,11 +29,12 @@ export async function observeFirstFrames(page){
    if(stopped)return;
    report.sampledFrames++;
    const headerElement=document.querySelector('header[data-hidi-first-header],header.site-header,#site-header');
+   const announcementElement=document.querySelector('body > [data-hidi-price-announcement]');
    const heroElement=document.querySelector('section.hero');
    const videoElement=heroElement?.querySelector('video');
    const discoveryElement=document.querySelector('[data-hidi-home-discovery]');
    const nativeElement=document.querySelector('video[data-hidi-first-hero]');
-   const body=inspect(document.body),root=inspect(document.querySelector('#root')),header=inspect(headerElement),hero=inspect(heroElement),video=inspect(videoElement),discovery=inspect(discoveryElement);
+   const body=inspect(document.body),root=inspect(document.querySelector('#root')),announcement=inspect(announcementElement),header=inspect(headerElement),hero=inspect(heroElement),video=inspect(videoElement),discovery=inspect(discoveryElement);
    const content=Boolean(heroElement||discoveryElement||(document.body&&document.readyState!=='loading'));
    if(!content){report.emptyLoadingFrames++;}
    else{
@@ -43,6 +44,12 @@ export async function observeFirstFrames(page){
     const geometry=Boolean(header?.visible&&header.inViewport&&hero?.visible&&hero.inViewport&&video?.visible&&video.inViewport);
     if(geometry)report.validGeometryFrames++;
     if(body?.concealed||root?.concealed)note('page-concealed',at);
+    if(announcement){
+     if(!announcement.visible||!announcement.inViewport)note('announcement-concealed-or-zero-geometry',at);
+     const vertical=Math.min(announcement.rect.bottom,header?.rect.bottom??-Infinity)-Math.max(announcement.rect.y,header?.rect.y??Infinity);
+     const horizontal=Math.min(announcement.rect.x+announcement.rect.width,(header?.rect.x??0)+(header?.rect.width??0))-Math.max(announcement.rect.x,header?.rect.x??Infinity);
+     if(vertical>1&&horizontal>1)note('announcement-header-overlap',at);
+    }
     if(!header?.visible||!header.inViewport)note('header-missing-or-zero-geometry',at);
     if(!hero?.visible||!hero.inViewport||!video?.visible||!video.inViewport)note('hero-missing-or-zero-geometry',at);
     if(discovery){
@@ -52,7 +59,7 @@ export async function observeFirstFrames(page){
     }
     const poster=videoElement?.getAttribute('poster');
     const posterReference=poster?.startsWith('data:')?poster.slice(0,poster.indexOf(','))+'[length='+poster.length+']':poster;
-    const frame={at,readyState:document.readyState,viewport:{width:innerWidth,height:innerHeight},body,root,header,hero,video,discovery,discoveryText:discoveryElement?.textContent.trim().slice(0,240)||null,nativeHero:native,videoState:videoElement?{poster:posterReference,readyState:videoElement.readyState,videoWidth:videoElement.videoWidth}:null};
+    const frame={at,readyState:document.readyState,viewport:{width:innerWidth,height:innerHeight},body,root,announcement,header,hero,video,discovery,discoveryText:discoveryElement?.textContent.trim().slice(0,240)||null,nativeHero:native,videoState:videoElement?{poster:posterReference,readyState:videoElement.readyState,videoWidth:videoElement.videoWidth}:null};
     const signature=JSON.stringify({...frame,at:0});
     // Check every rAF, but retain transitions and periodic evidence to bound JSON.
     if(signature!==lastSignature||at-lastStoredAt>=500){
