@@ -29,6 +29,7 @@ function bundle(entry,kind){const external=kind==='server'?{'react':19159,'react
    const imports=[...text.matchAll(/import\s*\{([^}]+)\}\s*from\s*["']lucide-react["']/g)].flatMap(m=>m[1].split(',').map(s=>s.trim()).filter(Boolean));
    return '({'+imports.map(symbol=>{const filename=symbol.replace(/([a-z0-9])([A-Z])/g,'$1-$2').toLowerCase();return JSON.stringify(symbol)+':localRequire('+add(join(lucide,'dist/esm/icons',filename+'.mjs'))+').default';}).join(',')+'})';
   }
+  if(name==='next/link'||name==='next/image')return '((m)=>({__esModule:true,default:m.default??m}))(__webpack_require__('+external[name]+'))';
   if(name in external)return '__webpack_require__('+external[name]+')';
   assert(name.startsWith('.')||name.startsWith('@/'),'Unexpected external dependency '+name);
   const resolved=resolveFile(path,name);
