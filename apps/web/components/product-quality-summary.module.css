@@ -29,3 +29,12 @@
 .facts > div { padding: 10px 0; }
 .facts dt { margin: 0 0 5px; font-size: 12px; line-height: 1.4; }
 .facts dd, .facts dd p { margin: 0; font-size: 14px; line-height: 1.5; }
+
+/* Native disclosure matches the adjacent product information accordions. */
+.wrap { border-bottom: 1px solid var(--line); }
+.heading { min-height: 56px; padding: 16px 0; box-sizing: border-box; cursor: pointer; list-style: none; }
+.heading::-webkit-details-marker { display: none; }
+.heading:focus-visible { outline: 2px solid #591d20; outline-offset: 4px; }
+.heading .chevron { margin-left: auto; }
+.wrap[open] .chevron { transform: rotate(180deg); }
+.wrap[open] .facts { padding-bottom: 12px; }

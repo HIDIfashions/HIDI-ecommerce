@@ -186,3 +186,10 @@
  .thumbnails button { flex-basis: 44px; width: 44px; height: 44px; min-height: 44px; aspect-ratio: 1; }
  .galleryHint { display: none; }
 }
+
+/* Fuller mobile photographs without cropping the outfit. */
+@media (max-width: 760px) {
+ :global(.product-page) .galleryLayout { width: calc(100% + 24px); margin-inline: -12px; gap: 4px; }
+ :global(.product-page) .galleryLayout .gallery .activeImage { height: clamp(340px, 58svh, 522px) !important; }
+ :global(.product-page) .galleryLayout .thumbnails { padding: 2px 12px; }
+}

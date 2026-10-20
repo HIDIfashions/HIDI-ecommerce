@@ -63,3 +63,13 @@
 .description summary::after, .layout :global(.hidi-pdp-description summary::after) { content: ""; width: 7px; height: 7px; margin: 0 7px 3px auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
 .description[open] summary::after, .layout :global(.hidi-pdp-description[open] summary::after) { transform: rotate(225deg); margin-bottom: -3px; }
 .description > div, .layout :global(.hidi-pdp-description > div) { padding: 0 0 16px 32px; font-size: 14px; line-height: 1.6; }
+
+/* Keep the wider photograph close to the product title on small screens. */
+@media (max-width: 760px) {
+ :global(.product-page.product-page):has(> .layout) { padding-top: 0; }
+ :global(.product-page) .layout { row-gap: 4px; }
+ :global(.product-page) .layout :global(.pdp-info) { padding: 0 !important; margin-top: 0; }
+ .layout :global(.pdp-title-row) { margin-top: 0; }
+ .includes { margin-top: 4px; }
+ .layout :global(.pdp-price) { margin-top: 12px; padding-bottom: 12px; }
+}

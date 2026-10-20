@@ -40,8 +40,13 @@ try { for (const width of [1440,1280,768,390,320]) {
  assert.equal(await page.locator('.pdp-price [data-hidi-price-badge]:visible').count(),0,'Only the native product discount is visible');
  assert.equal(await page.getByText('Model information',{exact:true}).count(),0);
  const facts=page.locator('[aria-label="Product quality and fit summary"]');
+ assert.equal(await facts.evaluate(el=>el.tagName),'DETAILS');
+ assert.equal(await facts.getAttribute('open'),null,'Product details starts collapsed');
+ const detailsToggle=facts.locator('summary');await detailsToggle.focus();await page.keyboard.press('Enter');
  await facts.getByText('Mandarin Collar with V-Slit',{exact:true}).waitFor();
  await facts.getByText('Three-Quarter Sleeves',{exact:true}).waitFor();
+ await detailsToggle.click();assert.equal(await facts.getAttribute('open'),null,'Product details can collapse again');
+ await detailsToggle.click();
  assert.equal(await facts.getByText('Garment measurements are not available for this style yet.',{exact:true}).count(),0);
  assert.equal(await facts.getByText('Care',{exact:true}).count(),0);
  assert.equal(await page.getByText('Specifications',{exact:true}).count(),0);
