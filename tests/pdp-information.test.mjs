@@ -43,3 +43,11 @@ test('lining additions require an explicit source statement and do not assert fi
   assert.equal(record.specifications.some(s=>/composition|percent/i.test(s.label)),false);
  }
 });
+
+ test('display titles shorten published wording without changing catalogue names',()=>{
+  const name='2 Piece Embroidered Sleeveless Kurta Set & Bottom Straight Pants';
+  const product={...sample,slug:'hidi-054-red-embroidered-kurta-with-pants',name,variants:sample.variants.map(v=>({...v,color:'Red'}))};
+  assert.equal(baseInformation(product).title,'Red Embroidered Sleeveless Kurta Set');assert.equal(baseInformation(product).fit,null);assert.equal(baseInformation(product).includes,'Kurta + straight pants · 2 pieces');assert.equal(product.name,name);
+  assert.equal(baseInformation({...product,slug:'other-style'}).title,'Embroidered Sleeveless Kurta Set with Straight Pants');
+  assert.equal(baseInformation({...product,name:'New product name'}).title,'New product name');
+ });

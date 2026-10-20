@@ -173,3 +173,16 @@
  .thumbnails button { flex: 0 0 44px; width: 44px; height: 58px; min-height: 58px; }
  .galleryHint { grid-column: 1; }
 }
+
+/* Keep the outfit beside the product information as the desktop page scrolls. */
+@media (min-width: 761px) {
+ .galleryLayout { position: sticky; top: var(--pdp-gallery-top, 150px); align-self: start; }
+ .galleryLayout .gallery .activeImage { height: min(820px, calc(100svh - var(--pdp-gallery-top, 150px) - 40px)); }
+}
+.galleryCounter { pointer-events: none; }
+@media (max-width: 760px) {
+ .galleryLayout { gap: 6px; }
+ .thumbnails { gap: 6px; }
+ .thumbnails button { flex-basis: 44px; width: 44px; height: 44px; min-height: 44px; aspect-ratio: 1; }
+ .galleryHint { display: none; }
+}

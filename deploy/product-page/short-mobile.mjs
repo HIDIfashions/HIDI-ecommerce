@@ -14,8 +14,9 @@ for(const engine of (process.env.HIDI_BROWSER_ENGINES || 'chromium,firefox,webki
   let sizes=await page.locator('.sizes').boundingBox(),sticky=await page.locator('[aria-label="Mobile purchase actions"]').boundingBox();
   assert(sticky.y>=0 && sticky.y+sticky.height<=height+1,'Sticky purchase action remains visible alongside the larger gallery');
   assert(await page.getByRole('button',{name:'Buy Now',exact:true}).isEnabled());await page.getByRole('button',{name:'Add to Cart',exact:true}).click();
-  sizes=await page.locator('.sizes').boundingBox();sticky=await page.locator('[aria-label="Mobile purchase actions"]').boundingBox();
-  assert(sizes.y+sizes.height<=sticky.y-4,'Size selection scrolls clear of the purchase bar');
+  const picker=page.getByRole('dialog',{name:'Choose your size',exact:true});await picker.waitFor();
+  const box=await picker.boundingBox();assert(box.y>=0&&box.y+box.height<=height,'Size picker fits the phone viewport');
+  await page.keyboard.press('Escape');await picker.waitFor({state:'hidden'});
   await page.locator('.sizes button').getByText('M',{exact:true}).click();assert.equal(await page.getByRole('button',{name:'Add to Cart',exact:true}).count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
   await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`evidence/product-page-release/${mode}-${engine}-${width}x${height}.png`});cases.push({engine,width,height,passed:true,stickyClear:true});console.log('SHORT_MOBILE',JSON.stringify(cases.at(-1)));await page.close();

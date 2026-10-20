@@ -26,6 +26,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const { zoom, pan, dragging, reset: resetView, zoomIn, zoomOut, handlers } = useImageZoom(direction => direction === 1 ? next() : previous());
+  const galleryRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -98,9 +99,29 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
     };
   }, [selectedIndex, images.length]);
 
+  useEffect(() => {
+    const gallery = galleryRef.current;
+    if (!gallery) return;
+    let frame = 0, lastTop = -1;
+    const measure = () => {
+      frame = 0;
+      const header = document.querySelector(".site-header");
+      const top = Math.max(0, header?.getBoundingClientRect().bottom ?? 128) + 16;
+      if (top !== lastTop) { gallery.style.setProperty("--pdp-gallery-top", `${top}px`); lastTop = top; }
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    const header = document.querySelector(".site-header");
+    const observer = new ResizeObserver(schedule);
+    if (header) observer.observe(header);
+    measure();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule); window.removeEventListener("resize", schedule); };
+  }, []);
+
   return (
     <>
-      <div className={styles.galleryLayout}>
+      <div ref={galleryRef} className={styles.galleryLayout}>
       <div className={styles.thumbnails} role="group" aria-label="Product photographs">
         {images.map((image, index) => <button key={image.id ?? index} type="button" aria-label={`View product image ${index + 1}`} aria-pressed={activeIndex === index} onClick={() => setActiveIndex(index)}>
           <CatalogImage src={image.url} alt={image.alt || productName} sizes="72px" />
@@ -137,6 +158,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
               fallbackLabel={`Image ${index + 1} · HIDI product photography`}
             />
             <span
+              className={styles.galleryCounter}
               aria-hidden="true"
               style={{
                 position: "absolute",

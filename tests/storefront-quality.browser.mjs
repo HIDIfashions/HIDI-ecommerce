@@ -35,7 +35,7 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
  await run('QUAL-04','Size guide units, missing measurements, related-product navigation and sold-out controls',async page=>{
   await pdp(page);assert(await size(page,'L — unavailable').isDisabled());await page.getByRole('button',{name:'Size & fit guide',exact:true}).click();const guide=page.getByRole('region',{name:'HIDI size and fit guide'});
   assert.match(await guide.innerText(),/110/);assert.match(await guide.innerText(),/112/);await guide.getByRole('button',{name:'in',exact:true}).click();assert.match(await guide.innerText(),/43\.3/);assert.match(await guide.innerText(),/44\.1/);await guide.getByRole('button',{name:'cm',exact:true}).click();assert.match(await guide.innerText(),/finished-garment/);
-  await page.locator('.colour-options').getByRole('button',{name:'Wine',exact:true}).click();assert.match(await guide.innerText(),/not published/);assert.equal(await guide.getByRole('table').count(),0);
+  await page.locator('.colour-options').getByRole('button',{name:'Wine',exact:true}).click();assert.match(await guide.innerText(),/awaiting confirmation/);assert.equal(await guide.getByRole('table').count(),0);
   await page.locator(`.pdp-related a[href="${productPath(4)}"]`).first().click();await page.waitForURL(url=>url.pathname===productPath(4));await pdp(page,4);
   assert(await actions(page).getByRole('button',{name:'Add to Cart',exact:true}).isDisabled());assert(await size(page,'M — unavailable').isDisabled());
  });

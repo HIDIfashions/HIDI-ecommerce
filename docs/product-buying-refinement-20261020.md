@@ -1,0 +1,14 @@
+# Product-page buying and layout refinement — 20 October 2026
+
+Work is isolated to the existing product worktree. Shared loading scripts, existing deployment workflows, product records, API, database and SEO metadata are unchanged.
+
+1. Desktop balance: product gallery stays alongside the information column, with its offset measured from the existing header. It releases at the end of the product grid. Images remain contained; no image or garment facts were created.
+2. Mobile gallery controls: retained the large 340–480px photo frame, reduced thumbnail height to a 44px touch target and removed the duplicate counter/zoom-hint row on mobile.
+3. Mobile readability: both sticky purchase labels now use 12px text while retaining 46px action height, the price and both purchase choices.
+4. Product titles: conservative cleanup of published catalogue wording plus a source-name/colour-guarded Red Embroidered Sleeveless Kurta Set title. Piece contents are shown separately. Catalogue names, structured data and SEO metadata stay unchanged.
+5. Buying flow: native accessible size picker retains Add to Cart or Buy Now intent. No size is preselected. Each option shows the actual variant price. Choosing an available size executes the original action once with that variant ID and quantity 1. Cancelling or Escape writes nothing and restores focus. Busy and sold-out protections remain. The modal locks background scrolling and uses the browser top layer above the sticky action.
+6. Fit guidance: improved unit-aware, finished-garment measuring instructions and contact help. Existing verified dimensions, if present, still render with cm/in controls. No competitor measurement values, model sizing or care instructions are presented as HIDI facts. Actual fuchsia/red dimensions remain pending HIDI measurements and sign-off. Red's disputed fit wording is withheld. Team checklists cover both sets and source conflicts.
+
+Local evidence: 17 data/copy/sharing tests, TypeScript, optimized webpack build, five Chromium widths, three short-phone cases, sticky geometry checks and six real-photo red/fuchsia previews. Main browser regressions now exercise both picker intentions through explicit size selection, intercepted exact-SKU cart writes, zero-write cancellation, focus restoration and checkout navigation without orders/payment. All three engines are checked again by the isolated candidate/live release gates.
+
+The release refreshes only the product component boundaries, its scoped CSS, client reference and page presentation helper. The helper initializer is normalized and hashed separately so that all surrounding metadata/schema/page expressions remain byte-identical, apart from the existing stylesheet reference. Preview evidence stays untracked under evidence/product-page/next-refinement/.

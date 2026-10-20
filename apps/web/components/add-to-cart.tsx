@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { type ApiProduct } from "@/lib/api";
 import { WishlistButton } from "@/components/wishlist-button";
 import Link from "next/link";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, X } from "lucide-react";
 import { addCatalogueVariant, CatalogCartError } from "@/lib/catalog-cart";
 import { cardPrice, money, compareSizes } from "@/lib/product-card-utils";
 import { PRODUCT_VARIANT_EVENT, publishProductSelection, type ProductVariantSelection } from "@/lib/product-sharing";
 import styles from "./add-to-cart.module.css";
+import { pdpInformation } from "@/lib/pdp-information";
 
 export { PRODUCT_VARIANT_EVENT } from "@/lib/product-sharing";
 
@@ -43,7 +44,8 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   const [variantId, setVariantId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [sizeRequired, setSizeRequired] = useState(false);
+  const [pickerIntent, setPickerIntent] = useState<"bag" | "checkout" | null>(null);
+  const pickerRef = useRef<HTMLDialogElement>(null);
   const [unavailable, setUnavailable] = useState<string[]>([]);
   const writing = useRef(false);
   const selected = sizes.find(v => v.id === variantId && v.available > 0 && !unavailable.includes(v.id));
@@ -68,7 +70,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
 
   function selectVariant(variant: ApiProduct["variants"][number]) {
     if (writing.current || variant.available < 1 || unavailable.includes(variant.id) || !product.inStock) return;
-    setError(""); setSizeRequired(false);
+    setError("");
     const deselecting = variant.id === variantId;
     setVariantId(deselecting ? "" : variant.id);
     setMessage("");
@@ -85,25 +87,33 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   );
   const hasVerifiedFit = visibleFitMeasurements.length > 0;
 
-  function focusSizeSelection() {
-    const group = document.getElementById(fitHelpId + "-sizes");
-    group?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
-    group?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
-  }
+  useEffect(() => {
+    const dialog = pickerRef.current;
+    if (!dialog) return;
+    const previousOverflow = document.body.style.overflow;
+    if (pickerIntent) document.body.style.overflow = "hidden";
+    if (pickerIntent && !dialog.open) {
+      dialog.showModal();
+      dialog.querySelector<HTMLButtonElement>("[data-size-choice]:not(:disabled)")?.focus();
+    } else if (!pickerIntent && dialog.open) dialog.close();
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [pickerIntent]);
 
-  async function add(destination: "bag" | "checkout" = "bag") {
+  async function add(destination: "bag" | "checkout" = "bag", requestedVariant?: ApiProduct["variants"][number]) {
     if (writing.current || !product.inStock) return;
-    if (!selected) { setSizeRequired(true); focusSizeSelection(); return; }
+    const choice = requestedVariant ?? selected;
+    if (!choice) { setError(""); setPickerIntent(destination); return; }
+    if (choice.color !== color || choice.available < 1 || unavailable.includes(choice.id)) return;
     writing.current = true;
-    setBusyAction(destination === "checkout" ? "buy" : "add"); setMessage(""); setError(""); setSizeRequired(false);
+    setBusyAction(destination === "checkout" ? "buy" : "add"); setMessage(""); setError("");
     try {
-      await addCatalogueVariant(selected.id);
+      await addCatalogueVariant(choice.id);
       if (destination === "checkout") router.push("/checkout");
-      else setMessage(`Size ${selected.size} · ${selected.color} added to your bag.`);
+      else setMessage(`Size ${choice.size} · ${choice.color} added to your bag.`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "We couldn’t confirm the update. Check your bag before trying again.");
       if (cause instanceof CatalogCartError && cause.refreshCatalogue) {
-        setUnavailable(current => [...current, selected.id]); setVariantId("");
+        setUnavailable(current => [...current, choice.id]); setVariantId("");
         publishProductSelection({ slug: product.slug, variantId: "", color }); router.refresh();
       }
     } finally { writing.current = false; setBusyAction(null); }
@@ -117,7 +127,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
         <div className="colour-options">
           {colors.map((value) => <button key={value} type="button" disabled={busyAction !== null} aria-pressed={value === color} className={value === color ? "selected" : ""} onClick={() => {
             if (writing.current || value === color) return;
-            setError(""); setSizeRequired(false);
+            setError("");
             setColor(value);
             setVariantId("");
             setMessage("");
@@ -174,13 +184,23 @@ export function AddToCart({ product }: { product: ApiProduct }) {
             </>
           ) : (
             <div className={styles.fitPending}>
-              <strong>Verified measurements are not published for this style yet.</strong>
-              <p>HIDI will not estimate garment measurements. Compare a similar garment you own with the measurements when available. Size labels alone do not confirm fit.</p>
+              <strong>Size measurements are awaiting confirmation.</strong>
+              <p>For help choosing a size, compare a garment that fits you well and contact HIDI with your preferred fit.</p>
             </div>
           )}
+          <div className={styles.fitAdvice}>
+            <h3>How to compare your fit</h3>
+            <ol>
+              <li>Lay a similar, well-fitting garment flat without stretching it.</li>
+              <li>Measure chest, waist and hip widths across the garment. Double each flat width when comparing a full circumference.</li>
+              <li>Measure shoulder, sleeve and garment length directly; do not double these lengths.</li>
+              <li>Compare measurements in the same units. Body measurements and finished-garment measurements are different.</li>
+            </ol>
+            <Link href="/contact">Ask HIDI about fit</Link>
+          </div>
         </section>
       )}
-      <div className="sizes" id={fitHelpId + "-sizes"} role="group" aria-label="Select size" aria-describedby={sizeRequired ? fitHelpId + "-size-prompt" : undefined}>
+      <div className="sizes" id={fitHelpId + "-sizes"} role="group" aria-label="Select size">
         {sizes.map((variant) => (
           <button
             key={variant.id}
@@ -215,9 +235,27 @@ export function AddToCart({ product }: { product: ApiProduct }) {
       <p className={styles.helper}>
         {!product.inStock ? "This piece is currently sold out." : !variantId ? "Select a size to continue." : ""}
       </p>
-      {sizeRequired && <p id={fitHelpId + "-size-prompt"} className={styles.sizePrompt} role="alert">Please select an available size to continue.</p>}
       <p className="inline-message pdp-add-message" role="status" aria-live="polite">{message}</p>
       {error && <p className="inline-message" role="alert">{error} <Link href="/cart">Review your bag</Link></p>}
+
+      <dialog ref={pickerRef} className={styles.sizePicker} aria-labelledby={fitHelpId + "-picker-title"}
+        onCancel={() => setPickerIntent(null)} onClick={event => { if (event.target === event.currentTarget) setPickerIntent(null); }}>
+        <div className={styles.pickerHeading}>
+          <h2 id={fitHelpId + "-picker-title"}>Choose your size</h2>
+          <button type="button" aria-label="Close size picker" onClick={() => setPickerIntent(null)}><X size={20} aria-hidden="true" /></button>
+        </div>
+        <p className={styles.pickerProduct}>{pdpInformation(product).title}</p>
+        <p className={styles.pickerIntent}>{pickerIntent === "checkout" ? "Select a size to continue to checkout." : "Select a size to add this item to your bag."}</p>
+        <div className={styles.pickerSizes} role="group" aria-label="Available sizes">
+          {sizes.map(variant => <button key={variant.id} type="button" data-size-choice={variant.size}
+            disabled={busyAction !== null || !product.inStock || variant.available < 1 || unavailable.includes(variant.id)}
+            aria-label={`${variant.size}, ${money(variant.pricePaise)}${variant.available < 1 || unavailable.includes(variant.id) ? ", unavailable" : ""}`}
+            onClick={() => { const destination = pickerIntent; if (!destination) return; selectVariant(variant); setPickerIntent(null); void add(destination, variant); }}>
+            <strong>{variant.size}</strong><small>{money(variant.pricePaise)}</small>
+          </button>)}
+        </div>
+        <p className={styles.pickerHelp}>Choose your size before continuing. No size is selected automatically.</p>
+      </dialog>
 
       <div className={styles.mobileBar} aria-label="Mobile purchase actions">
         <div className={styles.mobilePrice}>

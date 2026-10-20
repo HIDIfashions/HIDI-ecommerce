@@ -128,3 +128,8 @@ Product-page code is deployed and verified. Physical measurements and the unreso
 - Read-only post-release SEO checks passed: 69 sitemap pages, 238 images, 242 feed offers across 54 product groups, valid sampled metadata and preserved robots restrictions.
 - The broader Azure source/build/browser regression job also passed: https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/39394081555/job/118532364664 . All three engines were verified on the Linux candidate and live release runners.
 - No numeric garment measurements were added. Source conflicts remain open until the team supplies evidence and approves each size record.
+
+
+## Fit-guide reference boundary
+
+Libas is a layout reference for clear top/bottom groups, unit controls and model-size placement. Its dimensions, model details and care instructions are not evidence about HIDI_019. All Pending entries remain pending until HIDI garments/supplier records are measured and signed off. The public guide provides neutral measuring instructions without a borrowed chart.

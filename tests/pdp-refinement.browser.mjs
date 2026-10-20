@@ -34,6 +34,8 @@ try { for (const width of [1440,1280,768,390,320]) {
   const gallery=await page.locator('[class*="activeImage"]').boundingBox();
   assert(gallery.height>=340,'Mobile photo must have a useful full-garment viewing area');
  }
+ if(width>=1000){await page.evaluate(()=>scrollTo(0,320));await page.waitForFunction(()=>{const g=document.querySelector('[class*="galleryLayout"]')?.getBoundingClientRect(),h=document.querySelector('.site-header')?.getBoundingClientRect();return g&&h&&g.top>=h.bottom+12&&g.bottom<=innerHeight+1});await page.evaluate(()=>scrollTo(0,0));}
+ if(width<=620){assert.equal(await page.locator('[class*="galleryHint"]').isVisible(),false);assert.equal(await page.getByRole('button',{name:'Buy Now',exact:true}).evaluate(el=>getComputedStyle(el).fontSize),'12px');}
  assert.equal(await page.locator('[data-hidi-selection-copy]:visible').count(),0,'No duplicate SKU paragraph above sizes');
  assert.equal(await page.locator('.pdp-price [data-hidi-price-badge]:visible').count(),0,'Only the native product discount is visible');
  assert.equal(await page.getByText('Model information',{exact:true}).count(),0);
@@ -46,13 +48,13 @@ try { for (const width of [1440,1280,768,390,320]) {
  for(const name of ['Material & Care','Shipping & Returns','Photography & Colour']){const section=page.locator('details').filter({has:page.locator('summary').getByText(name,{exact:true})});const box=await section.boundingBox();assert(box.height>=52&&box.height<=60,'Closed section spacing must match its heading row');}
  const add=page.locator('[aria-label="Purchase actions"] button').first();assert.equal(await add.isEnabled(),true);
  let missingSizeWrites=0;const watch=request=>{if(request.method()==='POST' && /\/carts\/.+\/items/.test(request.url()))missingSizeWrites++;};page.on('request',watch);
- for(const name of ['Add to Cart','Buy Now']){const action=page.getByRole('button',{name,exact:true});assert.equal(await action.count(),1);assert(await action.isEnabled());await action.click();await page.getByRole('alert').getByText('Please select an available size to continue.',{exact:true}).waitFor();}
+ for(const name of ['Add to Cart','Buy Now']){const action=page.getByRole('button',{name,exact:true});assert.equal(await action.count(),1);assert(await action.isEnabled());await action.click();const picker=page.getByRole('dialog',{name:'Choose your size',exact:true});await picker.waitFor();assert.equal(await picker.locator('[aria-pressed="true"]').count(),0);await page.keyboard.press('Escape');await picker.waitFor({state:'hidden'});assert(await action.evaluate(el=>document.activeElement===el),'Closing the picker restores focus to its purchase action');}
  assert.equal(missingSizeWrites,0,'No cart write without an explicit size');page.off('request',watch);
  await page.locator('.sizes button').first().waitFor();
  await page.locator('.sizes button').getByText('M',{exact:true}).click();await page.waitForFunction(()=>document.querySelector('[aria-label="Purchase actions"] button')?.disabled===false);
  await page.getByRole('button',{name:'View product image 2',exact:true}).click();assert.equal(await page.getByRole('button',{name:'View product image 2',exact:true}).getAttribute('aria-pressed'),'true');
  await page.locator('.pdp-gallery button:visible').click();await page.getByRole('dialog',{name:/detailed image viewer/}).waitFor();await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog',{name:/detailed image viewer/}).count(),0);
- await page.getByRole('button',{name:'Size & fit guide',exact:true}).click();await page.getByText('Verified measurements are not published for this style yet.').waitFor();await page.getByRole('button',{name:'Size & fit guide',exact:true}).click();
+ await page.getByRole('button',{name:'Size & fit guide',exact:true}).click();await page.getByText('Size measurements are awaiting confirmation.').waitFor();await page.getByRole('button',{name:'Size & fit guide',exact:true}).click();
  let cartWrites=0;
  await page.route('**/api/store/carts/**/items',async route=>{cartWrites++;const body=route.request().postDataJSON();assert.equal(body.quantity,1);assert.equal(body.variantId,'cmv9ouyv800q701evm5pi8gav');await route.fulfill({json:{itemCount:1}});});
  const visibleAdd=page.getByRole('button',{name:'Add to Cart',exact:true});
@@ -62,7 +64,19 @@ try { for (const width of [1440,1280,768,390,320]) {
  const pin=page.getByRole('textbox',{name:'Delivery PIN code'}),check=page.getByRole('button',{name:'Check delivery PIN code'});const pinBox=await pin.boundingBox(),checkBox=await check.boundingBox();assert(Math.abs(pinBox.height-checkBox.height)<=1,'PIN entry and Check button align');assert(pinBox.width+checkBox.width<=382,'PIN form stays compact');
  await pin.fill('560001');await page.getByRole('button',{name:'Check delivery PIN code'}).click();await page.getByText('Pay on delivery available',{exact:true}).waitFor();
  await page.getByRole('button',{name:'View product image 1',exact:true}).click();await page.locator('.pdp-gallery img:visible').evaluate(im=>im.decode());await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:fileURLToPath(new URL('functional-'+engine+'-'+width+'.png',dir)),fullPage:true});await page.screenshot({path:fileURLToPath(new URL('functional-viewport-'+engine+'-'+width+'.png',dir))});
- const box=await visibleAdd.boundingBox(); results.push({engine,width,purchaseButtonBottom:box.y+box.height,overflow:false,errors});assert.deepEqual(errors,[]);await context.close();
+ const box=await visibleAdd.boundingBox();
+ // The picker remembers the purchase intent and submits the explicitly chosen SKU once.
+ for(const name of ['Add to Cart','Buy Now']){
+  await page.locator('.sizes button').getByText('M',{exact:true}).click();
+  const before=cartWrites;await page.getByRole('button',{name,exact:true}).click();
+  const picker=page.getByRole('dialog',{name:'Choose your size',exact:true});await picker.waitFor();
+  await picker.getByText(name==='Buy Now'?'Select a size to continue to checkout.':'Select a size to add this item to your bag.',{exact:true}).waitFor();
+  if(name==='Buy Now')await page.route('**/api/store/carts/*',route=>route.fulfill({json:{items:[],subtotalPaise:0,totalPaise:0,shippingPaise:0}}));
+  await picker.locator('[data-size-choice="M"]').click();await picker.waitFor({state:'hidden'});
+  if(name==='Buy Now')await page.waitForURL('**/checkout');else await page.getByRole('status').getByText('Size M · Fuchsia Pink added to your bag.',{exact:true}).waitFor();
+  assert.equal(cartWrites,before+1,'Picker must write the exact SKU only once');
+ }
+ results.push({engine,width,purchaseButtonBottom:box.y+box.height,overflow:false,errors});assert.deepEqual(errors,[]);await context.close();
  }} finally {await browser.close();}
 }
 await writeFile(new URL('functional-results.json',dir),JSON.stringify(results,null,2));console.log(JSON.stringify(results));
