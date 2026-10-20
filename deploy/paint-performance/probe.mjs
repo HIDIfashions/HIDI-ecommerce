@@ -60,7 +60,7 @@ async function observeNativePoster(page){
   const mutation=new MutationObserver(capture);mutation.observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:['poster']});capture();
   try{new PerformanceObserver(list=>{
    for(const entry of list.getEntries())if(!window.__HidiProbeNativePaint&&entry.element===window.__HidiProbeNativeVideo&&entry.url===window.__HidiProbeNativePoster&&Number.isFinite(entry.renderTime)&&entry.renderTime>0){
-    window.__HidiProbeNativePaint={renderTime:entry.renderTime,poster:entry.url,observedAt:performance.now()};
+    window.__HidiProbeNativePaint={renderTime:entry.renderTime,poster:entry.url,observedAt:performance.now(),appStarted:Boolean(window.__HidiAppStarted)};
    }
   }).observe({type:'largest-contentful-paint',buffered:true});}catch{}
  });
@@ -81,6 +81,7 @@ async function assertDesktopPosterBeforeVideo(page,label){
  assert(proof.nativeSeen&&proof.sameNode,label+': the actual native video must survive hydration');
  assert(proof.paint?.renderTime>0,label+': an independent native-poster LCP with a positive renderTime is required');
  assert.equal(proof.paint.poster,proof.poster,label+': the painted poster must match the retained video');
+ assert.equal(proof.paint.appStarted,false,label+': application execution must begin after the independently observed native poster paint');
  assert(proof.media.startTime>=proof.paint.renderTime,label+': video download must start after actual native poster paint on the same browser clock');
  assert(proof.styles.length>0&&proof.styles.every(style=>style.applied&&style.responseEnd>0&&style.responseEnd<=proof.media.startTime),label+': every complete stylesheet must finish before automatic video download');
  assert(proof.styles.every(style=>style.priority==='high'&&style.startTime>=proof.paint.renderTime),label+': promoted desktop CSS must start only after independently observed native poster paint');

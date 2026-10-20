@@ -9,11 +9,12 @@ const path='/assets/index-reviewed.js',origin='https://hidi-test.azurestaticapps
 const flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
 
 function fixture({mobile=true,readyState='interactive',native=true,primary='success',fetchMs=600,markup=true}={}){
- let now=0,nextId=1,resolvePoster,mounts=0;
+ let now=0,nextId=1,resolvePosterPromise,mounts=0;
  const jobs=new Map(),events={},requests=[],preloadEvents={};
  const setTimeout=(fn,ms)=>{const id=nextId++;jobs.set(id,{fn,at:now+ms,ms});return id;};
  const clearTimeout=id=>jobs.delete(id);
- const window={__HidiAvifSupport:Promise.resolve(true),__HidiNativePosterReady:new Promise(resolve=>resolvePoster=resolve),__HidiFullCssReady:new Promise(()=>{})};
+ const nativeVideo={poster:'/poster.avif',isConnected:true,matches:selector=>selector==='video[data-hidi-first-hero]'};
+ const window={__HidiAvifSupport:Promise.resolve(true),__HidiNativePosterReady:new Promise(resolve=>resolvePosterPromise=resolve),__HidiFullCssReady:new Promise(()=>{})};
  const original={dataset:{hidiQueuedSrc:origin+path,hidiMirrorApp:path},integrity:'sha256-reviewed',attributes:[
   {name:'type',value:'application/x-hidi-queued-module'},{name:'data-hidi-queued-src',value:origin+path},
   {name:'integrity',value:'sha256-reviewed'},{name:'crossorigin',value:'anonymous'},
@@ -24,7 +25,7 @@ function fixture({mobile=true,readyState='interactive',native=true,primary='succ
   querySelector(selector){
    if(selector.includes('script'))return !markup&&selector.includes('queued')?null:original;
    if(selector.includes('desktop-preload'))return {addEventListener:(name,fn)=>preloadEvents[name]=fn};
-   return native?{}:null;
+   return native?nativeVideo:null;
   },
   querySelectorAll:()=>[],
   addEventListener:(name,fn)=>events[name]=fn,
@@ -41,6 +42,11 @@ function fixture({mobile=true,readyState='interactive',native=true,primary='succ
  runInNewContext(mirrorSource.replace('__HIDI_ASSET_MIRROR__',JSON.stringify({origin,files:{[path]:true}})),context);
  const headCallback=[...jobs.values()][0].fn;
  const start=()=>runInNewContext(appSource,context);
+ const resolvePoster=(verified=true)=>{
+  if(verified)window.__HidiNativePosterPaint={video:nativeVideo,poster:nativeVideo.poster,renderTime:Math.max(1,now)};
+  else delete window.__HidiNativePosterPaint;
+  resolvePosterPromise();
+ };
  const advance=async target=>{
   await flush();
   while(true){
@@ -71,10 +77,18 @@ test('stalled mobile primary recovers 1500ms after dispatch and repeated claims 
 });
 
 test('desktop retains its preload wait and 3000ms deadline measured from primary dispatch',async()=>{
- const f=fixture({mobile:false,primary:'stall'});f.start();await f.advance(1200);f.preloadEvents.load();
+ const f=fixture({mobile:false,primary:'stall'});f.start();await f.advance(900);f.resolvePoster();await flush();
+ assert.equal(f.requests.length,0);await f.advance(1200);f.preloadEvents.load();
  assert.deepEqual(f.requests.map(r=>[r.at,r.url]),[[1200,origin+path]]);
  await f.advance(4199);assert.equal(f.requests.length,1);
  await f.advance(4200);assert.equal(f.requests[1].url,path);assert.equal(f.requests[1].at,4200);
+});
+
+test('desktop readiness without a matching paint marker waits for the bounded release and starts once',async()=>{
+ const f=fixture({mobile:false,primary:'stall'});f.start();f.preloadEvents.load();f.resolvePoster(false);await flush();
+ await f.advance(1499);assert.equal(f.requests.length,0);
+ await f.advance(1500);assert.deepEqual(f.requests.map(r=>[r.at,r.url]),[[1500,origin+path]]);
+ f.preloadEvents.load();await flush();assert.equal(f.requests.length,1);
 });
 
 test('queued mobile and desktop startup remain bounded when their paint or preload never finishes',async()=>{

@@ -1,4 +1,4 @@
-# Release the verified product-image header overlay after the same-point settled transfer comparison; all budgets remain unchanged.
+# Release the verified product-image header and startup overlay after the same-point settled transfer comparison; all budgets remain unchanged.
 # Wait for the reported native desktop poster paint before retaining its video; ordinary mobile React path and all gates remain required.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
@@ -14,6 +14,7 @@
 # The native poster paints before React handoff; fast fresh HTML is coalesced with a bounded streaming fallback.
 # Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
 # Desktop app modulepreload stays request-deduplicated and Low; full CSS gains priority only after verified native poster paint, retaining Low on fallback paths.
+# Desktop application execution waits for both that preload and verified poster paint under the existing bounded fallback.
 # Desktop mirror recovery allows the Low-priority request a bounded 3s window; origin errors still recover immediately.
 # WebKit's known ResizeObserver layout diagnostic is filtered only in the recovery probe; application errors remain fatal.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release

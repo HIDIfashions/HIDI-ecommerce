@@ -21,7 +21,7 @@ def dist_asset(base,url):
     return file
 
 def existing_performance_compose(base,overlay,folder,image,icons):
-    """Layer only the reviewed head change over an already verified paint image.
+    """Layer the reviewed head and app-start changes over a verified paint image.
 
     Product-page releases intentionally retain the complete paint image. Rebuilding
     its already transformed/minified application would replace unrelated product
@@ -35,6 +35,8 @@ def existing_performance_compose(base,overlay,folder,image,icons):
     current_head=(base/'lcp-performance/head.mjs').read_bytes();next_head=(HERE/'head.mjs').read_bytes()
     assert sha(current_head) in {'8ec0ba7ac41353bd88177a9c3fdbacea6cd382e03b38e8da8550e1baef137a12',sha(next_head)},'Retained paint head changed; stop'
     assert b'data-hidi-price-header-offset' not in current_head or current_head==next_head
+    current_app_start=(base/'paint-performance/app-start.js').read_bytes();next_app_start=(HERE/'app-start.js').read_bytes()
+    assert sha(current_app_start)=='b01a4cf119f1f1ad2c45f323cb3dfc0721c813749f714e55b43fe0188b1a2d9b','Retained application start helper changed; stop'
     # These are generated/released copies from the verified performance and SEO
     # layers. In particular, announcement.mjs contains the discovery injection,
     # so comparing it with the raw source would incorrectly ask us to replace the
@@ -105,7 +107,8 @@ def existing_performance_compose(base,overlay,folder,image,icons):
     save('media-cache.json',{'passed':True,'available':True,'encodedVideosOnly':True,'currentRuntimeImage':image,'reusedFromCurrentImage':True,'reason':'Every retained immutable media byte and public mirror response was revalidated'})
     save('manifest.json',manifest);save('icon-quality.json',icons)
     target=overlay/'lcp-performance/head.mjs';target.parent.mkdir(parents=True);target.write_bytes(next_head)
-    report['allowedFiles']=['lcp-performance/head.mjs'];save('patch.json',report)
+    target=overlay/'paint-performance/app-start.js';target.parent.mkdir(parents=True);target.write_bytes(next_app_start)
+    report['allowedFiles']=['lcp-performance/head.mjs','paint-performance/app-start.js'];save('patch.json',report)
     return report
 
 def analytics():
@@ -139,7 +142,7 @@ def compose():
         (folder/'Dockerfile').write_text('FROM '+image+'\nCOPY --chown=node:node overlay/ /app/\n')
         subprocess.run(['docker','build','--pull=false','-t',tag,str(folder)],check=True);images.extract(tag,candidate)
         proof=preserve.verify(base,candidate,overlay,set(report['allowedFiles']),json.loads(images.docker('image','inspect',image,tag)))
-        assert proof['changedFiles']==['lcp-performance/head.mjs'] and all((candidate/p).read_bytes()==(base/p).read_bytes() for p in images.fingerprints(base) if p.endswith('.css'))
+        assert proof['changedFiles']==['lcp-performance/head.mjs','paint-performance/app-start.js'] and all((candidate/p).read_bytes()==(base/p).read_bytes() for p in images.fingerprints(base) if p.endswith('.css'))
         proof.update({'allExistingCssIdentical':True,'originalUploadsPreserved':True,'nextStorefrontIdentical':True,'currentProductPagePreserved':True})
         assert (candidate/'pricing/storefront.mjs').read_bytes()==(base/'pricing/storefront.mjs').read_bytes()
         save('commerce-preservation.json',{'passed':True,'allPricingAndNextFilesByteIdentical':True,'homepageLoaderOnly':True,'currentProductPagePreserved':True,'globalPricingSourceSha256':report['globalPricingSourceSha256']})
@@ -183,7 +186,7 @@ def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
     for name in ['preservation.json','candidate.json','visual-comparison.json','transfer-comparison.json','fallback-safety.json','desktop-video-safety-candidate.json','loader-safety-candidate.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','retained-source-quality.json','header-layout-candidate.json','initial-css-candidate.json','poster-cache-candidate.json','poster-tiers-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json','media-cache.json','asset-mirror.json','mirror-fallback-candidate.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
-    preservation=json.loads((OUT/'preservation.json').read_text());assert preservation['changedFiles']==['lcp-performance/head.mjs'] and preservation['allowedFiles']==['lcp-performance/head.mjs'] and preservation['unrelatedFilesIdentical']>=4034 and preservation['currentProductPagePreserved'] and preservation['nextStorefrontIdentical'] and preservation['allExistingCssIdentical']
+    preservation=json.loads((OUT/'preservation.json').read_text());assert preservation['changedFiles']==['lcp-performance/head.mjs','paint-performance/app-start.js'] and preservation['allowedFiles']==['lcp-performance/head.mjs','paint-performance/app-start.js'] and preservation['unrelatedFilesIdentical']>=4033 and preservation['currentProductPagePreserved'] and preservation['nextStorefrontIdentical'] and preservation['allExistingCssIdentical']
     commerce=json.loads((OUT/'commerce-preservation.json').read_text());assert commerce['allPricingAndNextFilesByteIdentical'] and commerce['currentProductPagePreserved']
     retained=json.loads((OUT/'retained-source-quality.json').read_text());assert retained['baseImage']==PRODUCT_PAGE_IMAGE and retained['seoDiscoveryWrapperPreserved']
     loader=json.loads((OUT/'loader-safety-candidate.json').read_text());assert len(loader['results'])==21 and all(row['passed'] for row in loader['results']) and all(sum(row['engine']==engine for row in loader['results'])==7 for engine in ['chromium','firefox','webkit'])
