@@ -6,12 +6,15 @@ import {resolve} from 'node:path';
 import {observeFirstFrames,finishFirstFrames,assertFirstFrames} from './first-frame-probe.mjs';
 
 const poster='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+const announcement='<aside class="hidi-price-announcement" data-hidi-price-announcement="true">Verified offer</aside>';
 const header='<header data-hidi-first-header class="site-header">HIDI</header>';
 const hero='<section class="hero"><div class="hero-media"><video data-hidi-first-hero class="hero-live-media" poster="'+poster+'"></video></div><h1>HIDI Indian wear</h1></section>';
 const seo='<section data-hidi-home-discovery><h2>Explore HIDI kurta sets</h2><a href="/collections/all">All kurta sets</a></section>';
 const css='html,body{margin:0}header{position:fixed;top:0;left:0;width:100%;height:56px;z-index:2;background:#321;color:white}.hero{position:relative;height:100vh;width:100%;background:#6a4b32}.hero-media,video{position:absolute;inset:0;width:100%;height:100%}h1{position:absolute;top:80px;color:white}[data-hidi-home-discovery]{padding:24px;color:#602124;background:#fffdf8}';
 const cases=[
  {name:'native-hero-before-below-fold-seo',html:header+hero+seo,pass:true},
+ {name:'announcement-stacked-before-header',beforeRoot:announcement,html:header+hero+seo,extra:'.hidi-price-announcement{height:38px;background:#35261d}.site-header{position:sticky;margin-bottom:-56px}',pass:true},
+ {name:'announcement-overlaps-header',beforeRoot:announcement,html:header+hero+seo,extra:'.hidi-price-announcement{height:38px;background:#35261d}',pass:false,violation:'announcement-header-overlap'},
  {name:'text-then-hero',html:header+seo,script:'setTimeout(()=>document.querySelector("#root").innerHTML='+JSON.stringify(header+hero+seo)+',250)',pass:false,violation:'text-only-discovery-frame'},
  {name:'missing-hero',html:header+seo,pass:false,violation:'hero-missing-or-zero-geometry'},
  {name:'empty-body',html:'',pass:false,violation:'hero-missing-or-zero-geometry'},
@@ -31,7 +34,7 @@ export async function verifyFirstFrameFixtures(pw,out,{engines=['chromium','webk
   res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});
   res.write('<!doctype html><html><head><meta charset="utf-8"><style>'+css+(item.extra||'')+'</style></head>');
   if(item.delay)await new Promise(resolve=>setTimeout(resolve,item.delay));
-  res.end('<body><div id="root">'+item.html+'</div><script>'+(item.script||'')+'</script></body></html>');
+  res.end('<body>'+(item.beforeRoot||'')+'<div id="root">'+item.html+'</div><script>'+(item.script||'')+'</script></body></html>');
  });
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
  try{for(const engine of engines){

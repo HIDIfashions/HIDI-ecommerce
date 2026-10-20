@@ -22,3 +22,6 @@ test('concealed page, absent geometry or truncated evidence cannot pass',()=>{
  assert.throws(()=>assertFirstFrames({...observed(),overflow:true}),/limit exceeded/);
  assert.throws(()=>assertFirstFrames({...observed(),violations:[{code:'page-concealed',firstAt:16}]}),/page-concealed/);
 });
+test('a transient announcement and header intersection cannot be hidden by the settled frame',()=>{
+ assert.throws(()=>assertFirstFrames({...observed(),violations:[{code:'announcement-header-overlap',firstAt:8,lastAt:24,frames:2}]}),/announcement-header-overlap/);
+});

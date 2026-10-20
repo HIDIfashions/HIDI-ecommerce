@@ -6,6 +6,7 @@ import {normalizeStyleUrls} from '../paint-performance/style-urls.mjs';
 const mirrorClient=readFileSync(new URL('../paint-performance/asset-mirror-client.js',import.meta.url),'utf8');
 const appStart=readFileSync(new URL('../paint-performance/app-start.js',import.meta.url),'utf8');
 const fullCssClient=readFileSync(new URL('../paint-performance/full-css-client.js',import.meta.url),'utf8');
+const priceHeaderLayout='<style data-hidi-price-header-offset>body>.hidi-price-announcement~#root #site-header.campaign-header{position:sticky;margin-bottom:-72px}@media(max-width:700px){body>.hidi-price-announcement~#root #site-header.campaign-header{margin-bottom:-58px}}</style>';
 
 // Inline the existing public CSS in the same cascade position. Resolve from the
 // current image, so later image overlays cannot leave stale style contents.
@@ -52,6 +53,11 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   cache.set(href,result);return result;
  }
  return (html,request={headers:{}})=>{
+  // The validated price bar is a normal-flow sibling before #root. Keep the
+  // homepage header directly below it, then let the header stick at the top as
+  // the bar scrolls away. The negative margin preserves the current hero/LCP
+  // document position. This is inert when the catalogue cannot show the bar.
+  if(/\bdata-hidi-first-header\b/.test(html)&&!html.includes('data-hidi-price-header-offset'))html=html.replace(/<\/head>/i,priceHeaderLayout+'</head>');
   const desktopStyle=Boolean(request.headers?.['user-agent'])&&!/Mobile|Android/i.test(request.headers['user-agent'])&&request.headers?.['sec-ch-ua-mobile']!=='?1';
   const inline=inlinePoster&&(/Mobile|Android/i.test(request.headers?.['user-agent']||'')||request.headers?.['sec-ch-ua-mobile']==='?1')?inlinePoster:null;
   const posterHints=[...html.matchAll(/<link\b[^>]*rel=["']preload["'][^>]*type=["']image\/avif["'][^>]*>/gi)];
