@@ -27,7 +27,7 @@ def existing_performance_compose(base,overlay,folder,image,icons):
     its already transformed/minified application would replace unrelated product
     work. Revalidate every retained provenance record and immutable byte instead,
     then let the normal browser, commerce, Lighthouse and preservation gates test
-    the one-file candidate.
+    the two-file candidate.
     """
     assert image==PRODUCT_PAGE_IMAGE,'The current product-page image changed; prepare again from the new live release'
     required=['initial-hero.json','head-assets.json','icons.json','home-pricing.json','critical-css.json','style-assets.json','asset-mirror.json','asset-encodings.json']
@@ -42,7 +42,7 @@ def existing_performance_compose(base,overlay,folder,image,icons):
     # so comparing it with the raw source would incorrectly ask us to replace the
     # current product image. Pin the immutable image, validate every retained
     # source, record its bytes, and prove below that the candidate keeps them.
-    retained_sources=['announcement.mjs','app-start.js','asset-mirror-client.js','asset-mirror.mjs','critical-poster.mjs','delivery.mjs','full-css-client.js','hero.mjs','stream-home.mjs','style-urls.mjs']
+    retained_sources=['announcement.mjs','asset-mirror-client.js','asset-mirror.mjs','critical-poster.mjs','delivery.mjs','full-css-client.js','hero.mjs','stream-home.mjs','style-urls.mjs']
     retained_hashes={}
     for name in retained_sources:
         file=base/'paint-performance'/name;assert file.is_file() and file.stat().st_size,name+' missing from retained image'
@@ -50,7 +50,10 @@ def existing_performance_compose(base,overlay,folder,image,icons):
         retained_hashes[name]=sha(file.read_bytes())
     announcement=(base/'paint-performance/announcement.mjs').read_text()
     assert 'addHomeDiscovery' in announcement and 'renderInitialHome' in announcement,'Retained SEO discovery wrapper missing'
-    save('retained-source-quality.json',{'passed':True,'baseImage':image,'syntaxChecked':retained_sources,'sha256':retained_hashes,'seoDiscoveryWrapperPreserved':True})
+    subprocess.run(['node','--check',str(HERE/'app-start.js')],check=True,stdout=subprocess.DEVNULL)
+    save('retained-source-quality.json',{'passed':True,'baseImage':image,'syntaxChecked':retained_sources,
+        'sha256':retained_hashes,'replacedSources':{'app-start.js':{'baseSha256':sha(current_app_start),'candidateSha256':sha(next_app_start),'syntaxChecked':True}},
+        'seoDiscoveryWrapperPreserved':True})
 
     html=(base/'dist/index.html').read_text();refs=re.findall(r'<script type="module" crossorigin src="([^"]+)"',html);assert len(refs)==1
     bundle=refs[0].removeprefix('./').removeprefix('/');assert re.fullmatch(r'assets/index-[a-f0-9]{16}\.js',bundle)
@@ -189,6 +192,7 @@ def apply():
     preservation=json.loads((OUT/'preservation.json').read_text());assert preservation['changedFiles']==['lcp-performance/head.mjs','paint-performance/app-start.js'] and preservation['allowedFiles']==['lcp-performance/head.mjs','paint-performance/app-start.js'] and preservation['unrelatedFilesIdentical']>=4033 and preservation['currentProductPagePreserved'] and preservation['nextStorefrontIdentical'] and preservation['allExistingCssIdentical']
     commerce=json.loads((OUT/'commerce-preservation.json').read_text());assert commerce['allPricingAndNextFilesByteIdentical'] and commerce['currentProductPagePreserved']
     retained=json.loads((OUT/'retained-source-quality.json').read_text());assert retained['baseImage']==PRODUCT_PAGE_IMAGE and retained['seoDiscoveryWrapperPreserved']
+    replaced=retained['replacedSources']['app-start.js'];assert replaced['baseSha256']=='b01a4cf119f1f1ad2c45f323cb3dfc0721c813749f714e55b43fe0188b1a2d9b' and replaced['candidateSha256']==sha((HERE/'app-start.js').read_bytes()) and replaced['syntaxChecked']
     loader=json.loads((OUT/'loader-safety-candidate.json').read_text());assert len(loader['results'])==21 and all(row['passed'] for row in loader['results']) and all(sum(row['engine']==engine for row in loader['results'])==7 for engine in ['chromium','firefox','webkit'])
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
     layout=json.loads((OUT/'header-layout-candidate.json').read_text());assert layout['passed'] and layout['expected']=={'chromium':[320,390,768,1001,1440],'firefox':[390,1440],'webkit':[390,1440]} and len(layout['results'])==9 and all(row['headerLayout']['passed'] for row in layout['results']) and len(layout['campaignOffCleanup'])==3 and all(row['passed'] and row['announcementCount']==0 for row in layout['campaignOffCleanup'])
