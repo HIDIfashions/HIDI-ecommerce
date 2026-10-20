@@ -10,24 +10,63 @@ concurrency:
   group: hidi-hero-guarded-release
   cancel-in-progress: false
 jobs:
-  inspect-current-route:
+  verify-and-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-pdp-builder/node_modules/playwright/index.mjs
+      HIDI_TYPESCRIPT_MODULE: /tmp/hidi-pdp-builder/node_modules/typescript/lib/typescript.js
+      HIDI_LUCIDE_ROOT: /tmp/hidi-pdp-builder/node_modules/lucide-react
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-pdp-browsers
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Install isolated compilation, backup and browser tooling
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y skopeo
+          npm install --prefix /tmp/hidi-pdp-builder --no-save typescript@5.9.3 lucide-react@1.46.0 playwright@1.62.1
+          node /tmp/hidi-pdp-builder/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Check product copy and release syntax
+        run: |
+          node --test tests/pdp-information.test.mjs tests/product-copy.test.mjs apps/web/lib/product-sharing.test.mjs
+          node --check deploy/product-page/patch.mjs
+          node --check deploy/product-page/candidate.mjs
+          python3 -m py_compile deploy/product-page/release.py
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Inspect current immutable product route without production writes
+      - name: Back up current image and compose the four-file product overlay
         run: |
           az acr login --name acrhidiprod0927 --only-show-errors
-          python3 deploy/product-page/inspect.py
+          python3 deploy/product-page/release.py capture
+          python3 deploy/product-page/release.py compose
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-product-page-private/web/candidate-app" >> "$GITHUB_ENV"
+      - name: Verify actual retained candidate across three browsers and five widths
+        run: |
+          node deploy/product-page/candidate.mjs
+          python3 deploy/product-page/release.py seal
+      - name: Publish tested immutable candidate
+        run: python3 deploy/product-page/release.py publish
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Deploy with exact-state guard and live checks
+        id: apply
+        timeout-minutes: 25
+        run: timeout --signal=TERM --kill-after=10m 20m python3 deploy/product-page/release.py apply
+      - name: Recover an interrupted owned rollout
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        run: python3 deploy/product-page/release.py recover
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: product-page-inspection-${{ github.run_id }}
-          path: evidence/product-page-release/inspection
-          include-hidden-files: true
-          retention-days: 7
+          name: product-page-release-${{ github.run_id }}
+          path: |
+            evidence/product-page-release
+            evidence/product-page/functional-*.png
+          retention-days: 30

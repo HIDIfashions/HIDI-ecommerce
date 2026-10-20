@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
-import { chromium, firefox, webkit } from 'playwright';
+import { pathToFileURL } from 'node:url';
+const { chromium, firefox, webkit } = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
 import { mkdir, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const dir = new URL('../evidence/product-page/', import.meta.url); await mkdir(dir, {recursive:true}); const results=[];
@@ -10,9 +11,17 @@ try { for (const width of [1440,1280,768,390,320]) {
    // Functional tests use a local image, so they never depend on private media credentials.
    await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="#eadbd0"/><text x="100" y="400" font-size="32">Product photograph fixture</text></svg>'});
  });page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',route=>!['GET','HEAD','OPTIONS'].includes(route.request().method())?route.fulfill({status:204,body:''}):route.fallback());
  await page.goto((process.env.PDP_BASE_URL || 'http://localhost:3117')+'/products/hidi-019-fuchsia-pink-floral-printed-kurta-set-with-pants',{waitUntil:'domcontentloaded',timeout:180000});
  await page.getByRole('heading',{level:1,name:'Fuchsia Pink Kurta Set with Straight Pants'}).waitFor();
  await page.locator('[data-hidi-hydrated="true"]').waitFor();
+ if(process.env.HIDI_VERIFY_COLLECTION_NAVIGATION==='1'){
+  const base=process.env.PDP_BASE_URL||'http://localhost:3117';
+  await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});
+  await page.locator('a[href="/products/hidi-019-fuchsia-pink-floral-printed-kurta-set-with-pants"]').first().click();
+  await page.getByRole('heading',{level:1,name:'Fuchsia Pink Kurta Set with Straight Pants'}).waitFor();
+  await page.locator('[data-hidi-hydrated="true"]').waitFor();
+ }
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No horizontal overflow at '+width);
  assert.equal(await page.getByText('Model information',{exact:true}).count(),0);
  const facts=page.locator('[aria-label="Product quality and fit summary"]');

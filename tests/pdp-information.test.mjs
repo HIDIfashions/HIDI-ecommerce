@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import ts from '../apps/web/node_modules/typescript/lib/typescript.js';
+import { pathToFileURL } from 'node:url';
+const { default: ts } = await import(process.env.HIDI_TYPESCRIPT_MODULE ? pathToFileURL(process.env.HIDI_TYPESCRIPT_MODULE).href : '../apps/web/node_modules/typescript/lib/typescript.js');
 const read = path => readFile(new URL(path,import.meta.url),'utf8');
 const compile = code => ts.transpileModule(code,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
 const url = code => 'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
