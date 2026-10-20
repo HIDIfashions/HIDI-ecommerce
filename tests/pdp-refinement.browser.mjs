@@ -10,10 +10,11 @@ try { for (const width of [1440,1280,768,390,320]) {
  const context=await browser.newContext({viewport:{width,height:900}});const page=await context.newPage();const errors=[];await page.route('**/_next/image**', async route => {
    // Functional tests use a local image, so they never depend on private media credentials.
    await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="#eadbd0"/><text x="100" y="400" font-size="32">Product photograph fixture</text></svg>'});
- });page.on('pageerror',e=>errors.push(e.message));
+ });page.on('pageerror',e=>{errors.push(e.message);console.error('PDP_RUNTIME_ERROR',engine,width,e.message);});
  await page.route('**/*',route=>!['GET','HEAD','OPTIONS'].includes(route.request().method())?route.fulfill({status:204,body:''}):route.fallback());
  await page.goto((process.env.PDP_BASE_URL || 'http://localhost:3117')+'/products/hidi-019-fuchsia-pink-floral-printed-kurta-set-with-pants',{waitUntil:'domcontentloaded',timeout:180000});
- await page.getByRole('heading',{level:1,name:'Fuchsia Pink Kurta Set with Straight Pants'}).waitFor();
+ try { await page.getByRole('heading',{level:1,name:'Fuchsia Pink Kurta Set with Straight Pants'}).waitFor(); }
+ catch(error){await writeFile(new URL('functional-failure-'+engine+'-'+width+'.html',dir),await page.content());await page.screenshot({path:fileURLToPath(new URL('functional-failure-'+engine+'-'+width+'.png',dir)),fullPage:true});throw error;}
  await page.locator('[data-hidi-hydrated="true"]').waitFor();
  if(process.env.HIDI_VERIFY_COLLECTION_NAVIGATION==='1'){
   const base=process.env.PDP_BASE_URL||'http://localhost:3117';

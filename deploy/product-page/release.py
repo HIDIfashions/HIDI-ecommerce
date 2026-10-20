@@ -27,6 +27,7 @@ def compose():
     images.extract(before['hidi-web']['image'],base)
     subprocess.run(['node',str(HERE/'patch.mjs'),str(base),str(overlay)],check=True)
     subprocess.run(['node',str(HERE/'verify-patch.mjs'),str(base),str(overlay)],check=True)
+    subprocess.run(['node',str(HERE/'verify-render.mjs'),str(base),str(overlay)],check=True)
     plan=read('patch.json');assert len(plan['allowedFiles'])==4
     assert all(n.startswith('apps/web/.next/') for n in plan['allowedFiles'])
     for name in plan['allowedFiles']:
