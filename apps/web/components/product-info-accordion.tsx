@@ -3,11 +3,11 @@ import Link from "next/link";
 import { ProductCopy } from "./product-copy";
 import { ChevronDown, ClipboardList, Shirt, SquareCheckBig, Truck, CircleCheck, PackageCheck, RefreshCw, ArrowUpRight } from "lucide-react";
 import type { ApiProduct } from "@/lib/api";
-import { productFacts } from "@/lib/product-facts";
+import { pdpInformation } from "@/lib/pdp-information";
 import { useProductSelection } from "@/lib/use-product-selection";
 import styles from "./product-info-accordion.module.css";
 export function ProductInfoAccordion({ product }: { product: ApiProduct }) {
-  const facts = productFacts(product), { color } = useProductSelection(product);
+  const facts = pdpInformation(product), { color } = useProductSelection(product);
   const sections = [
     { title: "Material & Care", icon: Shirt, content: <>
       <div><strong>Fabric:</strong><ProductCopy text={facts.fabric || "Fabric information is not published for this style yet."} /></div>
@@ -30,7 +30,7 @@ export function ProductInfoAccordion({ product }: { product: ApiProduct }) {
     </> },
     { title: "Photography & Colour", icon: ClipboardList, content: <p>Photographic lighting and screen settings may affect how colours appear. Use the listed product information and garment care label alongside the images.</p> },
   ];
-  return <div className={styles.wrap}>{sections.map(({ title, icon: Icon, content }) => <details className={styles.section} key={title} open={title === "Shipping & Returns"}>
+  return <div className={styles.wrap}>{sections.map(({ title, icon: Icon, content }) => <details className={styles.section} key={title} >
     <summary className={styles.summary}><span className={styles.titleWrap}><Icon size={22} strokeWidth={1.5} aria-hidden="true" /><span>{title}</span></span><ChevronDown className={styles.chevron} size={21} strokeWidth={1.5} aria-hidden="true" /></summary>
     <div className={styles.content}>{content}</div>
   </details>)}</div>;

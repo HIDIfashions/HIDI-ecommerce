@@ -83,6 +83,12 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   );
   const hasVerifiedFit = visibleFitMeasurements.length > 0;
 
+  function focusSizeSelection() {
+    const group = document.getElementById(fitHelpId + "-sizes");
+    group?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
+    group?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
+  }
+
   async function add(destination: "bag" | "checkout" = "bag") {
     if (writing.current || !product.inStock) return;
     if (!selected) { setError("Please select an available size."); return; }
@@ -118,7 +124,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
         </div>
       </>}
       <div className="size-row-title">
-        <strong>HIDI Fit</strong>
+        <strong>Select size</strong>
         <button type="button" aria-expanded={fitHelp} aria-controls={fitHelpId} onClick={() => setFitHelp((value) => !value)}>
           Size &amp; fit guide
         </button>
@@ -172,7 +178,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           )}
         </section>
       )}
-      <div className="sizes">
+      <div className="sizes" id={fitHelpId + "-sizes"} role="group" aria-label="Select size">
         {sizes.map((variant) => (
           <button
             key={variant.id}
@@ -222,10 +228,10 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           <button
             className={styles.mobileAdd}
             type="button"
-            disabled={busyAction !== null || !product.inStock || !selected}
-            onClick={() => void add("bag")}
+            disabled={busyAction !== null || !product.inStock}
+            onClick={() => { if (!selected) focusSizeSelection(); else void add("bag"); }}
           >
-            <ShoppingBag size={17} aria-hidden="true" />{busyAction === "add" ? "Adding…" : "Add to Cart"}
+            <ShoppingBag size={17} aria-hidden="true" />{busyAction === "add" ? "Adding…" : !product.inStock ? "Sold out" : !selected ? "Select size" : "Add to Cart"}
           </button>
           <button
             className={styles.mobileBuy}

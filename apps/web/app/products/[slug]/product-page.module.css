@@ -1,0 +1,39 @@
+:global(.product-page):has(> .layout) { padding-top: 28px; }
+:global(.product-page):has(> .layout) > :global(.breadcrumbs) { margin-bottom: 22px; font-size: 12px; }
+.layout { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: clamp(28px, 4vw, 64px); }
+.layout :global(.pdp-info) { padding: 0; position: static; min-width: 0; }
+.layout :global(.pdp-info > .eyebrow) { font-size: 11px; letter-spacing: .12em; margin: 0 0 10px; }
+.layout :global(.pdp-title-row) { gap: 16px; align-items: start; }
+.layout :global(.pdp-title-row h1) { font: 500 clamp(24px, 2.2vw, 32px)/1.25 var(--font-sans); letter-spacing: -.025em; margin: 0; color: #591d20; }
+.layout :global(.pdp-title-row .wishlist-button-compact) { flex: 0 0 44px; box-shadow: none; }
+.includes { margin: 10px 0 0; font-size: 14px; color: #675c53; line-height: 1.6; }
+.rating { display: inline-flex; gap: 7px; align-items: center; margin-top: 10px; font-size: 13px; text-underline-offset: 4px; }
+.rating > span:first-child { color: #915b22; }
+.layout :global(.pdp-price) { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; margin: 20px 0; padding: 0 0 20px; border-bottom: 1px solid var(--line); font: 600 25px/1.25 var(--font-sans); }
+.layout :global(.pdp-mrp) { font-size: 14px; font-weight: 400; color: #766a61; }
+.layout :global(.pdp-price .pdp-discount) { margin: 0; color: #591d20; background: #eee3d3; padding: 4px 7px; font-size: 11px; font-weight: 600; }
+.layout :global(.pdp-tax-note) { flex-basis: 100%; font-size: 12px; color: #766a61; font-weight: 400; }
+.layout :global(.size-row-title) { margin: 12px 0; display: flex; align-items: center; justify-content: space-between; }
+.layout :global(.pdp-purchase .size-row-title > strong) { text-transform: none; font-size: 14px; letter-spacing: 0; }
+.layout :global(.size-row-title button) { min-height: 44px; font-size: 13px; text-decoration: underline; text-underline-offset: 4px; }
+.layout :global(.sizes) { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; scroll-margin: 150px; }
+.layout :global(.pdp-purchase .sizes button) { min-width: 52px; min-height: 46px; border: 1px solid #b7aaa1; border-radius: 3px; font-size: 14px; }
+.layout :global(.sizes button.selected) { background: #591d20; border-color: #591d20; color: #fff8ef; }
+.layout :global(.sizes button:disabled) { text-decoration: line-through; background: #f0ebe7; color: #958a82; }
+.layout :global(.pdp-selected-detail) { font-size: 13px; margin: 0 0 8px; }
+.layout :global(.pdp-add-message:empty) { display: none; }
+.services { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 13px 0 18px; font-size: 12px; line-height: 1.5; color: #66584e; }
+.services a { text-decoration: underline; text-underline-offset: 3px; }
+.layout :global(.delivery-box) { margin: 0 0 22px; padding: 16px; background: transparent; border: 1px solid var(--line); }
+.description { border-bottom: 1px solid var(--line); }
+.description summary { padding: 18px 0; cursor: pointer; font-size: 15px; color: #591d20; }
+.description > div { font-size: 14px; color: #675c53; line-height: 1.7; padding-bottom: 16px; }
+.layout :global(button:focus-visible), .layout :global(a:focus-visible), .description summary:focus-visible { outline: 2px solid #591d20; outline-offset: 4px; }
+@media (max-width: 1000px) and (min-width: 761px) { .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; } }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .layout :global(.pdp-info) { padding: 0; }
+  .layout :global(.pdp-title-row h1) { font-size: 25px; }
+  .layout :global(.pdp-price) { margin: 16px 0 8px; padding-bottom: 16px; }
+  .services { gap: 6px 14px; }
+}

@@ -23,6 +23,7 @@ type ProductGalleryProps = {
 };
 
 export function ProductGallery({ productName, images }: ProductGalleryProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const { zoom, pan, dragging, reset: resetView, zoomIn, zoomOut, handlers } = useImageZoom(direction => direction === 1 ? next() : previous());
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -99,12 +100,18 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
 
   return (
     <>
-      <div className="pdp-gallery">
+      <div className={styles.galleryLayout}>
+      <div className={styles.thumbnails} role="group" aria-label="Product photographs">
+        {images.map((image, index) => <button key={image.id ?? index} type="button" aria-label={`View product image ${index + 1}`} aria-pressed={activeIndex === index} onClick={() => setActiveIndex(index)}>
+          <CatalogImage src={image.url} alt={image.alt || productName} sizes="72px" />
+        </button>)}
+      </div>
+      <div className={`pdp-gallery ${styles.gallery}`}>
         {images.map((image, index) => (
           <button
             key={image.id ?? `${image.url}-${index}`}
             type="button"
-            className={`pdp-image product-art ${index === 0 && reviewedPortraitPhoto(image.url) ? styles.portraitFrame : ""}`}
+            className={`pdp-image product-art ${index === activeIndex ? styles.activeImage : styles.hiddenImage} ${index === 0 && reviewedPortraitPhoto(image.url) ? styles.portraitFrame : ""}`}
             data-hidi-portrait={index === 0 && reviewedPortraitPhoto(image.url) ? "true" : undefined}
             onClick={(event) => open(index, event.currentTarget)}
             aria-label={`Inspect ${image.alt || `${productName} image ${index + 1}`}`}
@@ -125,7 +132,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
             <CatalogImage
               src={image.url}
               alt={image.alt || `${productName} image ${index + 1}`}
-              sizes="(max-width: 900px) 100vw, 38vw"
+              sizes="(max-width: 760px) 100vw, 52vw"
               priority={index === 0}
               fallbackLabel={`Image ${index + 1} · HIDI product photography`}
             />
@@ -170,6 +177,8 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
             ) : null}
           </button>
         ))}
+      </div>
+      <p className={styles.galleryHint}>{activeIndex + 1} / {images.length} <span>Tap image to zoom</span></p>
       </div>
 
       {selected && selectedIndex !== null ? (

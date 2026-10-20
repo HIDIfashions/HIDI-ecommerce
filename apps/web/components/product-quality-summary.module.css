@@ -7,3 +7,12 @@
 .facts dt { color: var(--muted); font-size: var(--type-ui); }
 .facts dd { margin: 0; font-size: var(--type-ui); line-height: 1.6; overflow-wrap: anywhere; }
 .pending { color: var(--muted); font-size: var(--type-ui); line-height: 1.6; margin: 14px 0 0; }
+
+.wrap { margin: 0; padding: 0 0 12px; border-top: 0; }
+.heading { margin-bottom: 8px; }
+.heading h2 { font-size: 16px; color: #591d20; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.facts > div { display: block; padding: 10px 0; }
+.facts dt { font-size: 12px; margin-bottom: 4px; }
+.facts dd { font-size: 14px; line-height: 1.5; }
+@media(max-width: 360px) { .facts { grid-template-columns: 1fr; } }

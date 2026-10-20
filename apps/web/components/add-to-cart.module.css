@@ -341,3 +341,17 @@
 .addButton, .mobileAdd { background: #e8d8c4; border-color: #d6c1a7; color: #591d20; }
 .buyButton, .mobileBuy { background: #591d20; color: #fff8ef; }
 .addButton:hover:not(:disabled), .mobileAdd:hover:not(:disabled) { background: #deccb4; border-color: #ccb394; color: #591d20; }
+
+/* The product page has one primary purchase action. */
+.addButton, .mobileAdd { background: #591d20; border-color: #591d20; color: #fff8ef; }
+.buyButton, .mobileBuy { background: transparent; border-color: #591d20; color: #591d20; }
+.addButton:hover:not(:disabled), .mobileAdd:hover:not(:disabled) { background: #69282a; border-color: #69282a; color: #fff8ef; }
+.buyButton:hover:not(:disabled), .mobileBuy:hover:not(:disabled) { background: #eee3d3; color: #591d20; }
+@media (max-width: 620px) {
+ .purchaseActions { display: grid; }
+ .helper { display: block; }
+ .mobileBar { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); grid-template-areas: "price actions"; padding: 10px 16px max(10px, env(safe-area-inset-bottom)); box-shadow: 0 -2px 14px #3014140d; gap: 12px; align-items: center; }
+ .mobilePrice { flex-direction: column; gap: 2px; }
+ .mobileWishlist, .mobileBuy { display: none; }
+ .mobileActions { grid-template-columns: 1fr; }
+}

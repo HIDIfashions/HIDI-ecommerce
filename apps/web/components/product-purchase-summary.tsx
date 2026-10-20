@@ -6,10 +6,12 @@ import { ProductGallery } from "./product-gallery";
 export function ProductPurchaseSummary({ product }: { product: ApiProduct }) {
   const { variants, variant } = useProductSelection(product);
   const price = cardPrice(variants, variant?.id ?? "", product.minPricePaise);
+  const discount = price.mrpPaise && price.mrpPaise > price.pricePaise ? Math.round((1 - price.pricePaise / price.mrpPaise) * 100) : 0;
   return <div aria-live="polite" aria-atomic="true" data-pdp-summary>
     <div className="pdp-price">{price.from ? "From " : ""}{money(price.pricePaise)}
       {price.mrpPaise && <del className="pdp-mrp">MRP {money(price.mrpPaise)}</del>}
-      <span>inclusive of taxes</span>
+      {discount > 0 && <span className="pdp-discount">{discount}% OFF</span>}
+      <small className="pdp-tax-note">Inclusive of all taxes</small>
     </div>
   </div>;
 }

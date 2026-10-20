@@ -16,7 +16,8 @@ import { getProduct, getProductReviews, getRelatedProducts } from "@/lib/api";
 import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 import { productOffers } from "@/lib/seo";
 import { ProductCopy } from "@/components/product-copy";
-import { productNarrative } from "@/lib/product-facts";
+import { pdpInformation } from "@/lib/pdp-information";
+import styles from "./product-page.module.css";
 import { DeliveryCheck } from "@/components/delivery-check";
 import { ProductPageShell } from "@/components/product-page-shell";
 
@@ -98,6 +99,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       ?? { slug: "all", name: "All Products" };
   })();
 
+  const information = pdpInformation(product);
   const canonicalUrl = absoluteUrl(`/products/${encodeURIComponent(product.slug)}`);
   const schemaImages = product.images
     .filter((image) => Boolean(image.url))
@@ -154,24 +156,27 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     />
     <RetentionTracker productId={product.id} slug={product.slug} />
     <div className="breadcrumbs"><a href="/">Home</a> / <Link href={`/collections/${collection.slug}`}>{collection.name}</Link> / {product.name}</div>
-    <div className="pdp-grid">
+    <div className={`pdp-grid ${styles.layout}`}>
       <ProductMedia key={product.id} product={product} />
       <aside className="pdp-info">
         <p className="eyebrow">{product.category?.name ?? "HIDI EDIT"}</p>
         <div className="pdp-title-row">
-          <h1>{product.name}</h1>
+          <h1>{information.title}</h1>
           <WishlistButton slug={product.slug} compact />
         </div>
-        <div className="pdp-subtitle"><ProductCopy text={product.shortDescription} /></div>
+        {reviews.reviewCount > 0 && <a className={styles.rating} href="#reviews" aria-label={`${reviews.averageRating.toFixed(1)} out of 5, ${reviews.reviewCount} reviews`}><span aria-hidden="true">★</span> {reviews.averageRating.toFixed(1)} <span>({reviews.reviewCount} reviews)</span></a>}
+        {information.includes && <p className={styles.includes}>{information.includes}</p>}
         <ProductPurchaseSummary key={product.id} product={product} />
-        {productNarrative(product.description) && <div className="pdp-description"><ProductCopy text={productNarrative(product.description)} /></div>}
         <AddToCart key={product.id} product={product} />
-        <ProductContactActions product={product} />
-        <ProductQualitySummary product={product} />
+        <div className={styles.services}><span>Free shipping</span><span>7-day returns on eligible items</span><Link href="/returns">View policy</Link></div>
         <DeliveryCheck />
+        <ProductQualitySummary product={product} />
+        {information.narrative && <details className={styles.description}><summary>Product description</summary><div><ProductCopy text={information.narrative} /></div></details>}
         <ProductInfoAccordion product={product} />
+        <ProductContactActions product={product} />
       </aside>
     </div>
+    <ProductReviews data={reviews} />
     {related.length > 0 && (
       <section className="pdp-related">
         <div className="pdp-related-heading">
@@ -189,6 +194,5 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
     <RecentlyViewedProducts currentSlug={product.slug} />
 
-    <ProductReviews data={reviews} />
   </ProductPageShell>;
 }
