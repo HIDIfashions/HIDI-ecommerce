@@ -36,7 +36,7 @@ if(mode==='candidate'){
 }
 if(mode==='after'){
  const before=JSON.parse(await readFile(out+'/before.json','utf8'));
- for(const r of rows){const b=before.find(x=>x.device===r.device);if(r.bytes>b.bytes*1.05)throw Error('Live transfer regression for '+r.device);if(r.cls>.1)throw Error('Homepage layout shift above budget');if(r.device==='mobile'&&r.lcp>=2500)throw Error('Mobile median LCP must be below 2.5 seconds');if(r.score<=90)throw Error('Both device scores must exceed 90');}
+ for(const r of rows){const b=before.find(x=>x.device===r.device);if(r.bytes>b.bytes*1.05)throw Error('Live transfer regression for '+r.device);if(r.cls>.1)throw Error('Homepage layout shift above budget');if(r.device==='mobile'&&r.lcp>=2200)throw Error('Live mobile median LCP must remain below 2.2 seconds');if(r.score<93)throw Error('Both live device scores must remain at least 93');}
  await writeFile('evidence/paint-performance/performance-comparison.json',JSON.stringify({passed:true,before,after:rows},null,2));
 }
 console.log(JSON.stringify({mode,results:rows}));

@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {createTransferTracker,requireInitialTransferParity,transferAssetIdentity} from './transfer-parity.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {createTransferTracker,normalizedInitialRequests,requireInitialTransferParity,transferAssetIdentity} from './transfer-parity.mjs';
 
 test('transfer tracking separates variable media buffering from page delivery bytes',()=>{
  const tracker=createTransferTracker();
@@ -9,10 +9,12 @@ test('transfer tracking separates variable media buffering from page delivery by
 });
 
 test('transfer parity keeps the two-percent non-media ceiling and exact media identity',()=>{
- const row=(nonMediaBytes,src='https://mirror.example/media/hero.mp4',poster='data:image/avif;base64,exact')=>({initialNonMediaBytes:nonMediaBytes,initial:{video:{src,poster}}});
+ const row=(nonMediaBytes,src='https://mirror.example/media/hero.mp4',poster='data:image/avif;base64,exact',initialRequests=['https://mirror.example/assets/index-aaaaaaaaaaaaaaaa.js','https://mirror.example/media/hero.mp4'])=>({initialNonMediaBytes:nonMediaBytes,initialRequests,initial:{video:{src,poster}}});
  requireInitialTransferParity(row(101999),row(100000,'https://origin.example/media/hero.mp4'),390);
  assert.throws(()=>requireInitialTransferParity(row(102000),row(100000,'https://origin.example/media/hero.mp4'),390),/No non-media transfer regression/);
  assert.throws(()=>requireInitialTransferParity(row(100000,'https://mirror.example/media/other.mp4'),row(100000),390),/Initial video asset changed/);
  assert.throws(()=>requireInitialTransferParity(row(100000,undefined,'data:image\/avif;base64,changed'),row(100000),390),/Initial poster asset changed/);
+ assert.throws(()=>requireInitialTransferParity(row(100000,undefined,undefined,['https://origin.example/assets/index-aaaaaaaaaaaaaaaa.js','https://mirror.example/media/hero.mp4']),row(100000),390),/Initial request route changed/);
  assert.equal(transferAssetIdentity('https://mirror.example/media/hero.mp4?v=1'),'/media/hero.mp4?v=1');
+ assert.deepEqual(normalizedInitialRequests(['https://b.example/z','https://a.example/a']),['https://a.example/a','https://b.example/z']);
 });
