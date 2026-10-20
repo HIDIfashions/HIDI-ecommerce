@@ -31,26 +31,45 @@
   if(video.autoplay)video.play().catch(()=>{});
   return true;
  };
- let fallbackStarted=false,waitingForParser=false;
+ let fallbackStarted=false,primaryQueued=false,primaryStarted=false,waitingForParser=null,fallbackTimer=null,recoveryVersion=0;
+ const fallbackDelay=typeof matchMedia==='function'&&!matchMedia('(max-width: 700px)').matches?3000:1500;
+ const clearPendingRecovery=()=>{
+  recoveryVersion++;
+  if(fallbackTimer!==null){clearTimeout(fallbackTimer);fallbackTimer=null;}
+  if(waitingForParser){document.removeEventListener('readystatechange',waitingForParser);waitingForParser=null;}
+ };
+ const armRecovery=()=>{
+  const version=recoveryVersion;
+  fallbackTimer=setTimeout(()=>{if(version===recoveryVersion)window.__HidiAppFallback();},fallbackDelay);
+ };
  window.__HidiAppFallback=()=>{
   if(fallbackStarted||window.__HidiAppStarted)return;
   if(document.readyState==='loading'){
    if(!waitingForParser){
-    waitingForParser=true;
-    const ready=()=>{if(document.readyState==='loading')return;document.removeEventListener('readystatechange',ready);window.__HidiAppFallback();};
+    const version=recoveryVersion;
+    const ready=()=>{if(version!==recoveryVersion||document.readyState==='loading')return;document.removeEventListener('readystatechange',ready);waitingForParser=null;window.__HidiAppFallback();};
+    waitingForParser=ready;
     document.addEventListener('readystatechange',ready);
    }
    return;
   }
   const original=document.querySelector('script[data-hidi-mirror-app]');
   if(!original)return;
-  fallbackStarted=true;
+  fallbackStarted=true;clearPendingRecovery();
   const script=document.createElement('script');script.type='module';script.crossOrigin='anonymous';script.integrity=original.integrity;script.src=original.dataset.hidiMirrorApp;document.head.append(script);
  };
- // Desktop intentionally fetches the verified application at Low priority so
- // the native poster can win the first paint. Give that request enough time to
- // finish before starting the original-origin recovery; errors still recover
- // immediately through the queued module's onerror handler.
- const fallbackDelay=typeof matchMedia==='function'&&!matchMedia('(max-width: 700px)').matches?3000:1500;
- setTimeout(window.__HidiAppFallback,fallbackDelay);
+ window.__HidiQueuePrimaryApp=()=>{
+  if(primaryStarted||fallbackStarted||window.__HidiAppStarted)return false;
+  if(!primaryQueued){primaryQueued=true;clearPendingRecovery();}
+  return true;
+ };
+ window.__HidiStartPrimaryApp=()=>{
+  if(primaryStarted||fallbackStarted||window.__HidiAppStarted)return false;
+  primaryStarted=true;clearPendingRecovery();armRecovery();return true;
+ };
+ // Keep a bounded head failsafe if the queued startup never runs. Once it does,
+ // its own bounded poster/preload wait owns the queued phase. Measure the same
+ // load deadline from actual dispatch, after that wait.
+ // A recovery that already claimed startup prevents a later primary request.
+ armRecovery();
 })();

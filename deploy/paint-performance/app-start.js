@@ -1,9 +1,11 @@
 (() => {
  const original=document.querySelector('script[data-hidi-queued-src]');if(!original)return;
+ if(window.__HidiAppStarted||window.__HidiQueuePrimaryApp?.()===false)return;
  let started=false;
  const desktop=!matchMedia('(max-width: 700px)').matches;
  const start=()=>{
   if(started)return;started=true;
+  if(window.__HidiAppStarted||window.__HidiStartPrimaryApp?.()===false)return;
   const script=document.createElement('script');
   for(const attribute of original.attributes)if(!['type','data-hidi-queued-src'].includes(attribute.name))script.setAttribute(attribute.name,attribute.value);
   script.type='module';script.src=original.dataset.hidiQueuedSrc;
