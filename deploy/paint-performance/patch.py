@@ -50,16 +50,8 @@ def with_painted_desktop_video(text):
     delay=(HERE/'video-delay.txt').read_text()
     expected=REVIEWED_VIDEO_GUARD+delay
     return once(text,expected,REVIEWED_VIDEO_GUARD+DESKTOP_VIDEO_AFTER_PAINT+delay)
-def build_icons(base,overlay):
-    html=(base/'dist/index.html').read_text()
-    tags=re.findall(r'<link\b[^>]*rel=["\'](?:shortcut icon|icon)["\'][^>]*>',html,re.I)
-    legacy=[tag for tag in tags if 'shortcut icon' in tag];assert len(legacy)==1
-    href=re.search(r'href=["\']([^"\']+)',legacy[0])[1]
-    relative=href.removeprefix('./').removeprefix('/');assert re.fullmatch(r'[A-Za-z0-9_/-]+\.ico',relative)
-    choices=[base/'dist'/relative,base/'apps/web/public'/relative,base/'public'/relative]
-    inputs=[file.read_bytes() for file in choices if file.is_file()];assert inputs,'Current icon not found'
-    assert len({hashlib.sha256(data).hexdigest() for data in inputs})==1,'Conflicting icon copies; stop'
-    source=inputs[0];reserved,kind,count=struct.unpack_from('<HHH',source);assert reserved==0 and kind==1 and 1<=count<=20
+def _icon_frames(source,overlay):
+    reserved,kind,count=struct.unpack_from('<HHH',source);assert reserved==0 and kind==1 and 1<=count<=20
     frames=[]
     for index in range(count):
         width,height,_,_,planes,bpp,length,offset=struct.unpack_from('<BBBBHHII',source,6+index*16)
@@ -71,10 +63,50 @@ def build_icons(base,overlay):
         target=overlay/'dist/media-performance/assets'/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
         assert target.read_bytes()==source[offset:offset+length]
         frames.append({'width':width,'height':height,'bytes':length,'sha256':digest,'url':'/media-performance/assets/'+name})
+    return frames
+
+def _icon_markup(frames):
     by_size={row['width']:row for row in frames if row['width']==row['height']};assert all(size in by_size for size in [16,32,48,64])
     links=[f'<link rel="shortcut icon" type="image/png" sizes="32x32" href="{by_size[32]["url"]}" />']
     links += [f'<link rel="icon" type="image/png" sizes="{size}x{size}" href="{by_size[size]["url"]}" />' for size in [16,32,48,64]]
-    return {'passed':True,'source':href,'sourceFile':next(file for file in choices if file.is_file()).relative_to(base).as_posix(),'originalBytes':len(source),'originalSha256':hashlib.sha256(source).hexdigest(),'frames':frames,'allFramePayloadsByteIdentical':True,'legacyOriginalPreserved':True,'originalTags':tags,'markup':'\n'.join(links)}
+    return '\n'.join(links)
+
+def build_icons(base,overlay):
+    html=(base/'dist/index.html').read_text()
+    tags=re.findall(r'<link\b[^>]*rel=["\'](?:shortcut icon|icon)["\'][^>]*>',html,re.I)
+    legacy=[tag for tag in tags if 'shortcut icon' in tag];assert len(legacy)==1
+    href=re.search(r'href=["\']([^"\']+)',legacy[0])[1]
+    relative=href.removeprefix('./').removeprefix('/')
+    if re.fullmatch(r'[A-Za-z0-9_/-]+\.ico',relative):
+        choices=[base/'dist'/relative,base/'apps/web/public'/relative,base/'public'/relative]
+        inputs=[file.read_bytes() for file in choices if file.is_file()];assert inputs,'Current icon not found'
+        assert len({hashlib.sha256(data).hexdigest() for data in inputs})==1,'Conflicting icon copies; stop'
+        source=inputs[0];source_file=next(file for file in choices if file.is_file()).relative_to(base).as_posix()
+    else:
+        # A prior guarded release already replaced the linked ICO with exact PNG
+        # frames. Reuse it only when the deployed provenance record, original ICO,
+        # current markup and every content-addressed frame all still agree.
+        assert re.fullmatch(r'media-performance/assets/icon-[a-f0-9]{16}-32\.png',relative),'Unexpected current shortcut icon'
+        record_file=base/'paint-performance/icons.json';assert record_file.is_file(),'Verified icon provenance missing'
+        record=json.loads(record_file.read_text());assert record.get('passed') is True
+        source_href=record.get('source');source_file=record.get('sourceFile')
+        assert isinstance(source_href,str) and re.fullmatch(r'(?:\./|/)?[A-Za-z0-9_/-]+\.ico',source_href)
+        assert isinstance(source_file,str) and re.fullmatch(r'(?:dist|apps/web/public|public)/[A-Za-z0-9_/-]+\.ico',source_file)
+        source_relative=source_href.removeprefix('./').removeprefix('/')
+        assert source_file in ['dist/'+source_relative,'apps/web/public/'+source_relative,'public/'+source_relative]
+        allowed_root=next(root for root in ['dist','apps/web/public','public'] if source_file.startswith(root+'/'))
+        source_path=(base/source_file).resolve();source_path.relative_to((base/allowed_root).resolve());assert source_path.is_file()
+        source=source_path.read_bytes();digest=hashlib.sha256(source).hexdigest()
+        assert record.get('originalBytes')==len(source) and record.get('originalSha256')==digest
+        href=source_href
+    frames=_icon_frames(source,overlay);markup=_icon_markup(frames)
+    if not relative.endswith('.ico'):
+        assert record.get('frames')==frames and record.get('markup')==markup,'Verified icon record changed'
+        assert tags==re.findall(r'<link\b[^>]*rel=["\'](?:shortcut icon|icon)["\'][^>]*>',markup,re.I),'Current icon markup changed'
+        for row in frames:
+            current=(base/'dist'/row['url'].lstrip('/')).resolve();current.relative_to((base/'dist').resolve());assert current.is_file()
+            assert hashlib.sha256(current.read_bytes()).hexdigest()==row['sha256'],'Current icon frame changed'
+    return {'passed':True,'source':href,'sourceFile':source_file,'originalBytes':len(source),'originalSha256':hashlib.sha256(source).hexdigest(),'frames':frames,'allFramePayloadsByteIdentical':True,'legacyOriginalPreserved':True,'originalTags':tags,'markup':markup}
 
 def patch_web(base,overlay,poster,icons=None):
     icons=icons or build_icons(base,overlay)

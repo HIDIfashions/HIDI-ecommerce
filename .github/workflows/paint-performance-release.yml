@@ -1,4 +1,4 @@
-# Prepare the scoped homepage announcement/header clearance only after fresh initial-frame, performance, shopping and preservation gates pass.
+# Re-prepare the scoped homepage header clearance from the current product-page image with verified idempotent icon provenance.
 # Wait for the reported native desktop poster paint before retaining its video; ordinary mobile React path and all gates remain required.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
