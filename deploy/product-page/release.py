@@ -67,6 +67,7 @@ def apply():
                 url='/_next/'+name.split('/.next/')[1].replace('[slug]','%5Bslug%5D')
                 assert cloud.get(url)==(P/'web/candidate-app'/name).read_bytes()
         subprocess.run(['node','tests/pdp-refinement.browser.mjs'],check=True,timeout=900,env={**os.environ,'PDP_BASE_URL':'https://hidiindia.com','HIDI_BROWSER_ENGINES':'chromium,firefox,webkit','HIDI_VERIFY_COLLECTION_NAVIGATION':'1'})
+        subprocess.run(['node',str(HERE/'live-visual.mjs')],check=True,timeout=180)
         assert g.public_snapshot()==captured;photo.unchanged(deployed)
         save('after.json',{'passed':True,'sourceSha':os.environ['GITHUB_SHA'],'states':deployed,'apiUnchanged':True,'settingsPreserved':True,'databaseWrites':False,'blobWrites':False,'liveRegressionPassed':True})
     except Exception:

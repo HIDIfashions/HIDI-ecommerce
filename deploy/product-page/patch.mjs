@@ -65,11 +65,11 @@ const originalClient=readFileSync(join(base,clientName),'utf8');
 assert(originalClient.includes('var r=i(84882),a=i(98298),n=i(11614),s=i(12187),o=i(26333)'));
 let client=replaceFactories(originalClient,'client');server=replaceFactories(server,'server');
 function once(text,old,value){assert.equal(text.split(old).length-1,1,'Retained product anchor drift: '+old.slice(0,100));return text.replace(old,value);}
-const infoBundle=bundle('apps/web/lib/pdp-information.ts','server'),specBundle=bundle('apps/web/lib/pdp-source-specifications.ts','server');
+const infoBundle=bundle('apps/web/lib/pdp-information.ts','server'),specBundle=bundle('apps/web/lib/pdp-source-specifications.ts','server'),copyBundle=bundle('apps/web/lib/product-copy.mjs','server');
 // Only the product page factory receives audited server-side facts and layout changes.
 const pageTree=ts.createSourceFile('server.js',server,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);let pageNode;
 function pageWalk(n){if(ts.isPropertyAssignment(n)&&/^\d+$/.test(n.name.getText(pageTree))&&ts.isArrowFunction(n.initializer)&&n.initializer.getText(pageTree).includes('className:"pdp-title-row"')){assert(!pageNode);pageNode=n.initializer;return;}ts.forEachChild(n,pageWalk);}pageWalk(pageTree);assert(pageNode);
-let page=pageNode.getText(pageTree);const opening=page.indexOf('{');page=page.slice(0,opening+1)+`const HidiInfo=${infoBundle},HidiSpecs=${specBundle};function HidiDetails(product){return HidiInfo.pdpInformation(product,HidiSpecs.reviewedPdpSpecifications(product));}`+page.slice(opening+1);
+let page=pageNode.getText(pageTree);const opening=page.indexOf('{');page=page.slice(0,opening+1)+`const HidiInfo=${infoBundle},HidiSpecs=${specBundle},HidiCopy=${copyBundle};function HidiDetails(product){return HidiInfo.pdpInformation(product,HidiSpecs.reviewedPdpSpecifications(product));}`+page.slice(opening+1);
 page=once(page,'(0,d.jsx)("h1",{children:e.name})','(0,d.jsx)("h1",{children:HidiDetails(e).title})');
 page=once(page,'(0,d.jsx)("p",{className:"pdp-subtitle",children:e.shortDescription})','HidiDetails(e).includes&&(0,d.jsx)("p",{className:"hidi-pdp-includes",children:HidiDetails(e).includes})');
 page=once(page,'y(e.description)&&(0,d.jsx)("p",{className:"pdp-description",children:y(e.description)}),','');
@@ -77,6 +77,8 @@ page=once(page,'(0,d.jsx)(r.ProductContactActions,{product:e}),(0,d.jsx)(q.Produ
  '(0,d.jsxs)("div",{className:"hidi-pdp-services",children:[(0,d.jsx)("span",{children:"Free shipping"}),(0,d.jsx)("span",{children:"7-day returns on eligible items"}),(0,d.jsx)("a",{href:"/returns",children:"View policy"})]}),(0,d.jsx)(z.DeliveryCheck,{}),(0,d.jsx)(q.ProductQualitySummary,{product:e,specifications:HidiDetails(e).specifications}),HidiDetails(e).narrative&&(0,d.jsxs)("details",{className:"hidi-pdp-description",children:[(0,d.jsx)("summary",{children:"Product description"}),(0,d.jsx)("p",{children:HidiDetails(e).narrative})]}),(0,d.jsx)(k.ProductInfoAccordion,{product:e,specifications:HidiDetails(e).specifications}),(0,d.jsx)(r.ProductContactActions,{product:e})');
 // Preserve the existing reviews component and put it ahead of recommendations.
 page=once(page,',(0,d.jsx)(p,{data:f})', '');page=once(page,',m.length>0&&', ',(0,d.jsx)(p,{data:f}),m.length>0&&');
+page=once(page,'(0,d.jsx)("p",{children:HidiDetails(e).narrative})','(0,d.jsx)("div",{dangerouslySetInnerHTML:{__html:HidiCopy.renderProductCopy(HidiDetails(e).narrative)}})');
+page=once(page,'HidiDetails(e).includes&&(0,d.jsx)("p",','f.reviewCount>0&&(0,d.jsxs)("a",{href:"#reviews",className:"hidi-pdp-rating","aria-label":`${f.averageRating.toFixed(1)} out of 5, ${f.reviewCount} reviews`,children:["★ ",f.averageRating.toFixed(1)," (",f.reviewCount," reviews)"]}),HidiDetails(e).includes&&(0,d.jsx)("p",');
 cssModule(resolve('apps/web/app/products/[slug]/product-page.module.css'));
 const layoutStyles=styles.get(resolve('apps/web/app/products/[slug]/product-page.module.css'));
 page=once(page,'className:"pdp-grid"','className:"pdp-grid '+layoutStyles.layout+'"');
