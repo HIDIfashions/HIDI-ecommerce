@@ -12,7 +12,7 @@ export async function runRefinementChecks({browser,engine,scenario,until,product
   const add=page.locator('[aria-label="Purchase actions"]').getByRole('button',{name:'Add to Cart',exact:true});
   assert.equal(await add.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(89, 29, 32)');
   assert.equal(await add.locator('svg').count(),1);
-  await size.click();assert(await add.isDisabled());
+  await size.click();assert(await add.isEnabled());
  },{startPath:productPath});
  await scenario(browser,engine,'REFINE-RECOMMENDATIONS','Recommendation cards omit expand controls while catalogue cards retain them',async page=>{
   await until(()=>page.evaluate(()=>localStorage.getItem('hidi_recently_viewed_products_v1')?.includes('myra-peach-comfort-kurta-set')),'recent product recorded');

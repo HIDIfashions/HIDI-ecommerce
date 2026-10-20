@@ -43,8 +43,12 @@ try { for (const width of [1440,1280,768,390,320]) {
  assert.equal(await facts.getByText('Garment measurements are not available for this style yet.',{exact:true}).count(),0);
  assert.equal(await facts.getByText('Care',{exact:true}).count(),0);
  assert.equal(await page.getByText('Specifications',{exact:true}).count(),0);
- const add=page.locator('[aria-label="Purchase actions"] button').first();assert.equal(await add.isEnabled(),false);
- if(width<=620){ await page.getByRole('button',{name:'Select size',exact:true}).click(); await page.locator('.sizes button').first().waitFor(); }
+ for(const name of ['Material & Care','Shipping & Returns','Photography & Colour']){const section=page.locator('details').filter({has:page.locator('summary').getByText(name,{exact:true})});const box=await section.boundingBox();assert(box.height>=52&&box.height<=60,'Closed section spacing must match its heading row');}
+ const add=page.locator('[aria-label="Purchase actions"] button').first();assert.equal(await add.isEnabled(),true);
+ let missingSizeWrites=0;const watch=request=>{if(request.method()==='POST' && /\/carts\/.+\/items/.test(request.url()))missingSizeWrites++;};page.on('request',watch);
+ for(const name of ['Add to Cart','Buy Now']){const action=page.getByRole('button',{name,exact:true});assert.equal(await action.count(),1);assert(await action.isEnabled());await action.click();await page.getByRole('alert').getByText('Please select an available size to continue.',{exact:true}).waitFor();}
+ assert.equal(missingSizeWrites,0,'No cart write without an explicit size');page.off('request',watch);
+ await page.locator('.sizes button').first().waitFor();
  await page.locator('.sizes button').getByText('M',{exact:true}).click();await page.waitForFunction(()=>document.querySelector('[aria-label="Purchase actions"] button')?.disabled===false);
  await page.getByRole('button',{name:'View product image 2',exact:true}).click();assert.equal(await page.getByRole('button',{name:'View product image 2',exact:true}).getAttribute('aria-pressed'),'true');
  await page.locator('.pdp-gallery button:visible').click();await page.getByRole('dialog',{name:/detailed image viewer/}).waitFor();await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog',{name:/detailed image viewer/}).count(),0);
@@ -55,7 +59,8 @@ try { for (const width of [1440,1280,768,390,320]) {
  assert.equal(await visibleAdd.count(),1);
  await visibleAdd.click();await page.getByRole('status').getByText('Size M · Fuchsia Pink added to your bag.',{exact:true}).waitFor();assert.equal(cartWrites,1);
  await page.route('**/api/store/checkout/delivery-serviceability?**',route=>route.fulfill({json:{serviceable:true,cod:true,city:'Bengaluru',estimatedTransitDays:4}}));
- await page.getByRole('textbox',{name:'Delivery PIN code'}).fill('560001');await page.getByRole('button',{name:'Check delivery PIN code'}).click();await page.getByText('Pay on delivery available',{exact:true}).waitFor();
+ const pin=page.getByRole('textbox',{name:'Delivery PIN code'}),check=page.getByRole('button',{name:'Check delivery PIN code'});const pinBox=await pin.boundingBox(),checkBox=await check.boundingBox();assert(Math.abs(pinBox.height-checkBox.height)<=1,'PIN entry and Check button align');assert(pinBox.width+checkBox.width<=382,'PIN form stays compact');
+ await pin.fill('560001');await page.getByRole('button',{name:'Check delivery PIN code'}).click();await page.getByText('Pay on delivery available',{exact:true}).waitFor();
  await page.getByRole('button',{name:'View product image 1',exact:true}).click();await page.locator('.pdp-gallery img:visible').evaluate(im=>im.decode());await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:fileURLToPath(new URL('functional-'+engine+'-'+width+'.png',dir)),fullPage:true});await page.screenshot({path:fileURLToPath(new URL('functional-viewport-'+engine+'-'+width+'.png',dir))});
  const box=await visibleAdd.boundingBox(); results.push({engine,width,purchaseButtonBottom:box.y+box.height,overflow:false,errors});assert.deepEqual(errors,[]);await context.close();
  }} finally {await browser.close();}

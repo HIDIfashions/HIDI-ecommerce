@@ -19,3 +19,13 @@
 
 .heading { display: flex; align-items: center; gap: 12px; color: #591d20; }
 .heading svg { flex: 0 0 auto; }
+
+/* Compact rows with a shared baseline, independent of catalogue copy length. */
+.wrap { padding-bottom: 0; }
+.heading { margin: 0; padding: 14px 0 8px; gap: 12px; }
+.heading h2 { font: 500 16px/1.4 var(--font-sans); }
+.heading svg { width: 20px; height: 20px; }
+.facts { column-gap: 20px; }
+.facts > div { padding: 10px 0; }
+.facts dt { margin: 0 0 5px; font-size: 12px; line-height: 1.4; }
+.facts dd, .facts dd p { margin: 0; font-size: 14px; line-height: 1.5; }

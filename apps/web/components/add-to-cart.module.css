@@ -358,3 +358,16 @@
 .selectionSummary{margin:0 0 16px;color:var(--ink-muted,#74635c);font-size:14px;line-height:1.6}
 @media (max-width: 620px) { .selectionSummary { display: none; } }
 
+
+/* Keep both purchase choices available; size selection is requested on activation. */
+.sizePrompt { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: #591d20; }
+@media (max-width: 620px) {
+ .mobileBar { grid-template-columns: 84px minmax(0, 1fr); padding-inline: 12px; gap: 8px; }
+ .mobileActions { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 6px; }
+ .mobileBuy { display: inline-flex; }
+ .mobileAdd, .mobileBuy { min-width: 0; min-height: 46px; padding: 0 6px; font-size: 11px; letter-spacing: 0; white-space: nowrap; }
+ .mobilePrice strong { font-size: 13px; }
+}
+@media (max-width: 360px) { .mobileAdd svg { display: none; } }
+
+.helper:empty { display: none; }

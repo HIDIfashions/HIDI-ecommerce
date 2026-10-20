@@ -13,7 +13,7 @@ for(const engine of (process.env.HIDI_BROWSER_ENGINES || 'chromium,firefox,webki
   await page.waitForLoadState('networkidle',{timeout:30000});
   let sizes=await page.locator('.sizes').boundingBox(),sticky=await page.locator('[aria-label="Mobile purchase actions"]').boundingBox();
   assert(sticky.y>=0 && sticky.y+sticky.height<=height+1,'Sticky purchase action remains visible alongside the larger gallery');
-  await page.getByRole('button',{name:'Select size',exact:true}).click();
+  assert(await page.getByRole('button',{name:'Buy Now',exact:true}).isEnabled());await page.getByRole('button',{name:'Add to Cart',exact:true}).click();
   sizes=await page.locator('.sizes').boundingBox();sticky=await page.locator('[aria-label="Mobile purchase actions"]').boundingBox();
   assert(sizes.y+sizes.height<=sticky.y-4,'Size selection scrolls clear of the purchase bar');
   await page.locator('.sizes button').getByText('M',{exact:true}).click();assert.equal(await page.getByRole('button',{name:'Add to Cart',exact:true}).count(),1);

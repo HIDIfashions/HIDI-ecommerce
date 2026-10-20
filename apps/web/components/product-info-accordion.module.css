@@ -146,3 +146,13 @@
   }
 }
 
+
+/* Match description and details headings without oversized accordion rows. */
+.wrap { margin-top: 0; border-top: 0; }
+.summary { min-height: 56px; padding: 16px 0; box-sizing: border-box; }
+.titleWrap { gap: 12px; font-size: 16px; line-height: 1.4; font-weight: 500; }
+.titleWrap svg { width: 20px; height: 20px; flex: 0 0 20px; }
+.content { padding: 0 0 16px 32px; font-size: 14px; line-height: 1.6; }
+@media (max-width: 640px) { .content { padding-left: 32px; } }
+
+.wrap .section { margin: 0; padding: 0; }

@@ -22,13 +22,13 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
   }await page.setViewportSize({width:390,height:844});await shots(page,'home');
  },phone);
  await run('QUAL-02','PDP price, MRP, selected size and deselection follow the exact variant',async page=>{
-  await pdp(page,1);assert.match(await summary(page).innerText(),/From ₹1,499/);assert(await actions(page).getByRole('button',{name:'Add to Cart',exact:true}).isDisabled());
+  await pdp(page,1);assert.match(await summary(page).innerText(),/From ₹1,499/);assert(await actions(page).getByRole('button',{name:'Add to Cart',exact:true}).isEnabled());
   for(const [name,price] of [['M','₹1,499'],['L','₹1,799']]){await size(page,name).click();await until(async()=>(await summary(page).innerText()).includes('Size '+name),'selected size reflected');assert((await summary(page).innerText()).includes(price));assert.match(await summary(page).innerText(),/MRP ₹1,999/);assert.equal(await size(page,name).getAttribute('aria-pressed'),'true');}
-  await size(page,'L').click();assert(await actions(page).getByRole('button',{name:'Buy Now',exact:true}).isDisabled());assert.match(await summary(page).innerText(),/Select a size/);await shots(page,'product');
+  await size(page,'L').click();assert(await actions(page).getByRole('button',{name:'Buy Now',exact:true}).isEnabled());assert.match(await summary(page).innerText(),/Select a size/);await shots(page,'product');
  });
  await run('QUAL-03','Colour changes reset size and update price, specifications and colour-specific photography',async page=>{
   await pdp(page);await size(page,'M').click();await page.locator('.colour-options').getByRole('button',{name:'Wine',exact:true}).click();
-  await until(async()=>(await summary(page).innerText()).includes('Wine'),'colour summary');assert.match(await summary(page).innerText(),/Select a size/);assert.equal(await size(page,'M').count(),0);assert(await actions(page).getByRole('button',{name:'Buy Now',exact:true}).isDisabled());
+  await until(async()=>(await summary(page).innerText()).includes('Wine'),'colour summary');assert.match(await summary(page).innerText(),/Select a size/);assert.equal(await size(page,'M').count(),0);assert(await actions(page).getByRole('button',{name:'Buy Now',exact:true}).isEnabled());
   assert.equal(await page.locator('.pdp-gallery button').count(),1);assert.match(await page.locator('.pdp-gallery img').first().getAttribute('src'),/02-alt/);
   await size(page,'XL').click();assert.match(await summary(page).innerText(),/FIXTURE-0-XL/);const details=page.locator('[aria-label="Product quality and fit summary"]');assert.equal(await details.locator('div').filter({has:page.locator('dt').getByText('Colour',{exact:true})}).locator('dd').innerText(),'Wine');
  });

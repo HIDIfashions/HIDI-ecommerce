@@ -43,9 +43,11 @@ export function AddToCart({ product }: { product: ApiProduct }) {
   const [variantId, setVariantId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [sizeRequired, setSizeRequired] = useState(false);
   const [unavailable, setUnavailable] = useState<string[]>([]);
   const writing = useRef(false);
   const selected = sizes.find(v => v.id === variantId && v.available > 0 && !unavailable.includes(v.id));
+  const canChooseSize = product.inStock && sizes.some(v => v.available > 0 && !unavailable.includes(v.id));
   const price = cardPrice(sizes, selected?.id ?? "", product.minPricePaise);
   const [busyAction, setBusyAction] = useState<"add" | "buy" | null>(null);
   const [fitHelp, setFitHelp] = useState(false);
@@ -66,7 +68,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
 
   function selectVariant(variant: ApiProduct["variants"][number]) {
     if (writing.current || variant.available < 1 || unavailable.includes(variant.id) || !product.inStock) return;
-    setError("");
+    setError(""); setSizeRequired(false);
     const deselecting = variant.id === variantId;
     setVariantId(deselecting ? "" : variant.id);
     setMessage("");
@@ -91,9 +93,9 @@ export function AddToCart({ product }: { product: ApiProduct }) {
 
   async function add(destination: "bag" | "checkout" = "bag") {
     if (writing.current || !product.inStock) return;
-    if (!selected) { setError("Please select an available size."); return; }
+    if (!selected) { setSizeRequired(true); focusSizeSelection(); return; }
     writing.current = true;
-    setBusyAction(destination === "checkout" ? "buy" : "add"); setMessage(""); setError("");
+    setBusyAction(destination === "checkout" ? "buy" : "add"); setMessage(""); setError(""); setSizeRequired(false);
     try {
       await addCatalogueVariant(selected.id);
       if (destination === "checkout") router.push("/checkout");
@@ -109,13 +111,13 @@ export function AddToCart({ product }: { product: ApiProduct }) {
 
   return (
     <div className="pdp-purchase">
-      <p className={styles.selectionSummary} aria-hidden="true">{color}{selected ? ` · Size ${selected.size} · SKU ${selected.sku}` : " · Select a size below"}</p>
+      <p className={styles.selectionSummary} aria-hidden="true">{color}{selected ? ` · Size ${selected.size}` : " · Select a size below"}</p>
       {colors.length > 1 && <>
         <div className="size-row-title"><strong>Colour</strong></div>
         <div className="colour-options">
           {colors.map((value) => <button key={value} type="button" disabled={busyAction !== null} aria-pressed={value === color} className={value === color ? "selected" : ""} onClick={() => {
             if (writing.current || value === color) return;
-            setError("");
+            setError(""); setSizeRequired(false);
             setColor(value);
             setVariantId("");
             setMessage("");
@@ -178,7 +180,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           )}
         </section>
       )}
-      <div className="sizes" id={fitHelpId + "-sizes"} role="group" aria-label="Select size">
+      <div className="sizes" id={fitHelpId + "-sizes"} role="group" aria-label="Select size" aria-describedby={sizeRequired ? fitHelpId + "-size-prompt" : undefined}>
         {sizes.map((variant) => (
           <button
             key={variant.id}
@@ -196,7 +198,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
         <button
           className={styles.addButton}
           type="button"
-          disabled={busyAction !== null || !product.inStock || !selected}
+          disabled={busyAction !== null || !canChooseSize}
           onClick={() => void add("bag")}
         >
           <ShoppingBag size={17} aria-hidden="true" />{busyAction === "add" ? "Adding…" : "Add to Cart"}
@@ -204,7 +206,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
         <button
           className={styles.buyButton}
           type="button"
-          disabled={busyAction !== null || !product.inStock || !selected}
+          disabled={busyAction !== null || !canChooseSize}
           onClick={() => void add("checkout")}
         >
           {busyAction === "buy" ? "Opening checkout…" : "Buy Now"}
@@ -213,6 +215,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
       <p className={styles.helper}>
         {!product.inStock ? "This piece is currently sold out." : !variantId ? "Select a size to continue." : ""}
       </p>
+      {sizeRequired && <p id={fitHelpId + "-size-prompt"} className={styles.sizePrompt} role="alert">Please select an available size to continue.</p>}
       <p className="inline-message pdp-add-message" role="status" aria-live="polite">{message}</p>
       {error && <p className="inline-message" role="alert">{error} <Link href="/cart">Review your bag</Link></p>}
 
@@ -228,15 +231,15 @@ export function AddToCart({ product }: { product: ApiProduct }) {
           <button
             className={styles.mobileAdd}
             type="button"
-            disabled={busyAction !== null || !product.inStock}
-            onClick={() => { if (!selected) focusSizeSelection(); else void add("bag"); }}
+            disabled={busyAction !== null || !canChooseSize}
+            onClick={() => void add("bag")}
           >
-            <ShoppingBag size={17} aria-hidden="true" />{busyAction === "add" ? "Adding…" : !product.inStock ? "Sold out" : !selected ? "Select size" : "Add to Cart"}
+            <ShoppingBag size={17} aria-hidden="true" />{busyAction === "add" ? "Adding…" : !canChooseSize ? "Sold out" : "Add to Cart"}
           </button>
           <button
             className={styles.mobileBuy}
             type="button"
-            disabled={busyAction !== null || !product.inStock || !selected}
+            disabled={busyAction !== null || !canChooseSize}
             onClick={() => void add("checkout")}
           >
             {busyAction === "buy" ? "Opening…" : "Buy Now"}
