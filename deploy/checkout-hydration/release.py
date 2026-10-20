@@ -1,0 +1,80 @@
+"""Guarded web-only editor release with exact image backup and owned rollback."""
+import argparse,hashlib,importlib.util,json,os,subprocess
+from pathlib import Path
+HERE=Path(__file__).resolve().parent
+def load(name,path):
+ s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
+g=load('hydration_guard',HERE.parent/'range-five/release.py');g.PRIVATE=Path(os.environ.get('RUNNER_TEMP','/tmp'))/'hidi-checkout-hydration-private';g.EVIDENCE=Path('evidence/checkout-hydration-release');g.setup()
+photo,cloud,images=g.photo,g.cloud,g.images
+patch=load('hydration_patch',HERE/'patch-runtime.py')
+P,E=g.PRIVATE,g.EVIDENCE
+save,read=g.save,g.read
+
+def tag(backup=False):return images.REGISTRY+'/hidi-web:'+('backup-checkout-hydration-' if backup else 'checkout-hydration-')+g.run_key()
+def digest(image):return subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image',image.split('/',1)[1],'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
+def capture():
+ photo.capture();before=photo.states();g.write_private('public-before.json',g.public_snapshot())
+ original=before['hidi-web']['image'];g.immutable(original,'web')
+ auth=Path(os.environ.get('DOCKER_CONFIG',str(Path.home()/'.docker')))/'config.json'
+ subprocess.run(['skopeo','copy','--all','--preserve-digests','--authfile',str(auth),'docker://'+original,'docker://'+tag(True)],check=True)
+ assert digest(tag(True))==original.split('@')[1]
+ save('backup.json',{'passed':True,'image':original,'backup':tag(True),'digest':digest(tag(True))});photo.unchanged(before)
+def backups():
+ proof=read('backup.json');assert proof['passed'] and proof['image']==photo.states()['hidi-web']['image'];assert digest(tag(True))==proof['digest']
+def compose():
+ backups();before=photo.states();photo.unchanged(before)
+ folder=P/'web';folder.mkdir();base,overlay,candidate=(folder/n for n in ['base-app','overlay','candidate-app'])
+ images.extract(before['hidi-web']['image'],base);plan=patch.patch_runtime(base,overlay);save('patch.json',plan)
+ for name in plan['allowedFiles']:
+  if name.endswith(('.js','.mjs')):subprocess.run(['node','--check',str(overlay/name)],check=True)
+ (folder/'Dockerfile').write_text('FROM '+before['hidi-web']['image']+'\nCOPY --chown=node:node overlay/ /app/\n')
+ subprocess.run(['docker','build','--pull=false','-t',tag(),str(folder)],check=True);images.extract(tag(),candidate)
+ report=g.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),json.loads(images.docker('image','inspect',before['hidi-web']['image'],tag())))
+ report['baseImage']=before['hidi-web']['image'];save('web-preservation.json',report);photo.unchanged(before)
+def browser_reports(folder):
+ report=read(folder+'/report.json');assert report['passed'] and report['productionWrites']==0 and report['runtimeErrors']==[] and len(report['cases'])==24
+ assert sorted(report['publicConfigFixturePaths'])==(['/api/hidi/hero-config','/api/hidi/landing-media-config'] if folder=='candidate' else [])
+ assert {(r['engine'],r['width'],r['delayed'],r['entry']) for r in report['cases']}=={(e,w,d,p) for e in ['chromium','firefox','webkit'] for w in [375,1440] for d in [False,True] for p in ['/cart','/checkout']}
+ product=read(folder+'/product/report.json');assert product['passed'] and product['newRuntimeErrors']==[] and product['existingBaselineWarnings']==[] and product['productionWrites']==0
+ assert {(r['engine'],r['width']) for r in product['cases']}=={(e,w) for e in ['chromium','firefox','webkit'] for w in [375,1440]}
+ pricing=read(folder+'/pricing/report.json');assert pricing['passed'] and pricing['runtimeErrors']==[] and pricing['unexpectedWrites']==[] and pricing['productionWrites']==0
+ assert {(r['engine'],r['width']) for r in pricing['results']}=={(e,w) for e in ['chromium','firefox','webkit'] for w in [390,1440]}
+
+def seal():
+ photo.unchanged(photo.states());manifest={}
+ for name in ['patch.json','web-preservation.json','source-ci.json','candidate/public-config.json','candidate/report.json','candidate/product/report.json','candidate/pricing/report.json']:
+  assert read(name)['passed'],name;manifest[name]=g.sha256_file(E/name)
+ assert read('source-ci.json')['sourceSha']==os.environ['GITHUB_SHA'] and read('source-ci.json')['allSourceGatesPassed']
+ browser_reports('candidate')
+ save('sealed.json',{'passed':True,'sourceSha':os.environ['GITHUB_SHA'],'imageId':g.image_id(tag()),'manifest':manifest})
+def publish():
+ seal();subprocess.run(['docker','push',tag()],check=True);assert g.image_id(tag())==read('sealed.json')['imageId']
+ image=images.REGISTRY+'/hidi-web@'+digest(tag());g.immutable(image,'web');save('published.json',{'passed':True,'image':image})
+ with open(os.environ['GITHUB_ENV'],'a') as stream:stream.write('WEB_IMAGE='+image+'\n')
+def verified():
+ proof=read('sealed.json');assert proof['passed'] and proof['sourceSha']==os.environ['GITHUB_SHA']
+ for name,sha in proof['manifest'].items():assert g.sha256_file(E/name)==sha
+ return read('published.json')['image']
+def recover():
+ marker=P/'forward-write.json'
+ if not marker.exists():return
+ image=verified();before=photo.states();captured=g.private_json('public-before.json');state=g.private_json('forward-write.json')
+ report=g.reconcile_failure(image,before,captured,captured,'checkouthydration'+g.run_key('a'),bool(state.get('mayComplete')));save('rollback.json',report);assert report['passed']
+def apply():
+ image=verified();backups();before=photo.states();photo.unchanged(before);captured=g.private_json('public-before.json');assert g.public_snapshot()==captured
+ suffix='checkouthydration'+g.run_key('a');g.install_interrupt_handler();g.write_private('forward-write.json',{'attempted':False,'mayComplete':False})
+ try:
+  g.conditional_write_image(photo.originals()['hidi-web'],image,suffix,'forward-write.json')
+  deployed={'hidi-api':before['hidi-api'],'hidi-web':cloud.snapshot(g.wait_ready(image,suffix,before))};photo.unchanged(deployed)
+  for path in ['/health','/healthz','/api/store/health/ready','/','/collections/all','/cart','/checkout','/account','/wishlist','/admin','/admin/products','/admin/import','/admin/product-quick-fill','/admin/product-upload','/admin/product-preview']:cloud.get(path)
+  for path in ['/api/admin/session','/api/admin/products/options','/api/admin/products','/api/admin/orders?status=CONFIRMED']:cloud.get(path,401)
+  cloud.get('/admin/product-pricing',401)
+  assert cloud.get('/pricing-assets/storefront.mjs')==(P/'web/candidate-app/pricing/storefront.mjs').read_bytes(),'Live pricing asset mismatch'
+  subprocess.run(['node',str(HERE/'live.mjs')],check=True,timeout=1200)
+  browser_reports('live')
+  assert g.public_snapshot()==captured;photo.unchanged(deployed)
+  save('after.json',{'passed':True,'sourceSha':os.environ['GITHUB_SHA'],'states':deployed,'apiUnchanged':True,'settingsPreserved':True,'originalPhotosPreserved':True,'databaseWrites':False,'blobWrites':False,'liveRegressionPassed':True,'zeroRuntimeErrors':True})
+ except Exception:
+  recover();raise
+if __name__=='__main__':
+ parser=argparse.ArgumentParser();parser.add_argument('mode',choices=['capture','compose','seal','publish','apply','recover']);args=parser.parse_args();globals()[args.mode]()

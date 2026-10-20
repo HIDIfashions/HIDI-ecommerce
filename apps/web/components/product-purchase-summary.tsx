@@ -3,8 +3,9 @@ import type { ApiProduct } from "@/lib/api";
 import { cardPrice, money } from "@/lib/product-card-utils";
 import { useProductSelection } from "@/lib/use-product-selection";
 import { ProductGallery } from "./product-gallery";
+import styles from "./product-purchase-summary.module.css";
 export function ProductPurchaseSummary({ product }: { product: ApiProduct }) {
-  const { variants, variant } = useProductSelection(product);
+  const { color, variants, variant } = useProductSelection(product);
   const price = cardPrice(variants, variant?.id ?? "", product.minPricePaise);
   const discount = price.mrpPaise && price.mrpPaise > price.pricePaise ? Math.round((1 - price.pricePaise / price.mrpPaise) * 100) : 0;
   return <div aria-live="polite" aria-atomic="true" data-pdp-summary>
@@ -13,6 +14,7 @@ export function ProductPurchaseSummary({ product }: { product: ApiProduct }) {
       {discount > 0 && <span className="pdp-discount">{discount}% OFF</span>}
       <small className="pdp-tax-note">Inclusive of all taxes</small>
     </div>
+    <p className={`pdp-selected-detail sr-only ${styles.selectionAnnouncement}`}>{color}{variant ? ` · Size ${variant.size} · SKU ${variant.sku}` : " · Select a size below"}</p>
   </div>;
 }
 export function ProductMedia({ product }: { product: ApiProduct }) {

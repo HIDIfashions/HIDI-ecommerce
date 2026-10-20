@@ -24,3 +24,11 @@ test('optimized media retains future unrecognized uploads and selects the correc
   const image={src:'/new-upload.webp',alt:'Original text',style:{objectPosition:'30% 70%'}};assert.equal(scope.HidiMediaImageProps(image),image);
  }
 });
+test('landing collection cards use their fitted desktop width while other media keeps its reviewed default',()=>{
+ const scope={URL,location:{origin:'https://hidiindia.com'},HidiMediaManifest:{images:{'/landing.png':{variants:[{width:320,url:'/landing-320.webp'},{width:640,url:'/landing-640.webp'},{width:960,url:'/landing-960.webp'}]}}}};
+ runInNewContext(readFileSync(new URL('./client.js',import.meta.url),'utf8'),scope);
+ const landing=scope.HidiMediaImageProps({src:'/landing.png','data-landing-media-slot':'range-occasion'});
+ const ordinary=scope.HidiMediaImageProps({src:'/landing.png'});
+ assert.equal(landing.sizes,'(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 25vw');
+ assert.equal(ordinary.sizes,'(max-width: 700px) 100vw, (max-width: 1100px) 60vw, 50vw');
+});

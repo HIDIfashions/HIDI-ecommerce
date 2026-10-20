@@ -1,12 +1,19 @@
-import { canonicalOrigin, identityUrl, isPublishedProductImage } from './metadata.mjs';
+import { canonicalOrigin, identityUrl, isPublishedProductImage, registerPublishedProductImages } from './metadata.mjs';
 
-const routes = ['/', '/collections/all', '/collections/work-wear', '/collections/casual-wear', '/collections/occasional-wear', '/collections/ananyas-pick', '/about', '/shipping', '/returns', '/contact', '/offers', '/privacy'];
+import {readFileSync} from 'node:fs';
+const reviewedImages=JSON.parse(readFileSync(new URL('./reviewed-product-image-map.json',import.meta.url),'utf8'));
+
+const routes = ['/', '/collections/all', '/collections/work-wear', '/collections/casual-wear', '/collections/occasional-wear', '/collections/ananyas-pick', '/about', '/shipping', '/returns', '/contact', '/offers', '/privacy', '/guides', '/guides/kurta-set-buying-guide', '/guides/choosing-kurta-set-size'];
 const xmlEscape = text => String(text).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]));
 // Only existing, reviewed public product assets are eligible. Do not fetch or
 // invent an image, expose a signed URL, or use a photo from another product.
 export function productImageUrls(product) {
   const records = [...(Array.isArray(product.images) ? product.images : []),
     ...(Array.isArray(product.variants) ? product.variants.flatMap(variant => Array.isArray(variant.images) ? variant.images : []) : [])];
+  const reviewed=reviewedImages[product.slug];
+  if ((!product.status || product.status === 'ACTIVE') && reviewed && reviewed.id === product.id) {
+    records.push(...reviewed.paths.map(path=>({url:canonicalOrigin+path})));
+  }
   const urls = new Set();
   for (const image of records) {
     if (typeof image?.url !== 'string') continue;
@@ -52,7 +59,9 @@ export function createSeoSitemap({ catalogueUrl, isProductionRequest, fetcher = 
         if (!result.ok) throw new Error('Catalogue unavailable');
         const body = await result.text();
         if (Buffer.byteLength(body) > 5 * 1024 * 1024) throw new Error('Catalogue too large');
-        cached = sitemapXml(JSON.parse(body)); expires = Date.now() + 30000;
+        const products=JSON.parse(body);
+        registerPublishedProductImages(products);
+        cached = sitemapXml(products); expires = Date.now() + 30000;
       }
       response.writeHead(200, {'Content-Type':'application/xml; charset=utf-8', 'Cache-Control':'public, max-age=30', 'Content-Length':Buffer.byteLength(cached)});
       response.end(request.method === 'HEAD' ? undefined : cached);

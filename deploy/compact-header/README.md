@@ -1,0 +1,15 @@
+# Compact header
+
+Reduce the existing logo lockup by 20–25% at every breakpoint. The Next storefront desktop logo changes176→136px and104→84px inner header; mobile112→86px (104→80px on narrow screens) with56px inner header. The homepage logo changes132→102px,120→92px,96→74px and88→68px, with72px desktop/58px mobile header. Existing artwork, colour, typography, icons and destinations remain intact. Mobile menu remains44px. Checkout retains its dedicated88px/64px inner header and content offset.
+
+Source imports the shared CSS last. The production overlay adds its content-addressed CSS file and inserts stylesheet references into the existing server response transform and homepage document. Exact inverse transforms verify the only two edited files; full image fingerprints prove existing JavaScript, Next bundles, CSS, media, product editor, category cleanup, APIs, configuration and pricing files are unchanged. The original image is backed up with preserved digest before composition. Only the tested image is published and applied with deployment ownership guards and automatic rollback.
+
+Candidate and live tests run Chromium, Firefox and WebKit at320,390,768,1001,1440px. Checks cover homepage, collections, product details, cart, checkout, measured logo/header dimensions, viewport overflow, control overlaps, both search/menu implementations, mobile drawer alignment and focus restoration, footer preservation, metadata and retained collection cleanup. Tests block commerce writes and external tracking. Explicit502/503/504 navigation responses use the shared bounded retry with evidence; every new JavaScript error fails. The existing cart/checkout418 recovery is independently reproduced in the unchanged baseline and recorded separately, pending its separately coordinated fix.
+
+The user saw desktop/mobile layout previews before deployment. Preview HTML disables client scripts; functional gates use the actual complete image. No real orders or payment mutations are performed.
+
+At the768px boundary, the checkout logo needs an explicit full-row grid placement because its menu controls are hidden. Only logo alignment changes; the checkout header height, back link and form clearance are retained. Metadata comparisons settle commerce reads and compare exact head values; duplicate identical tags during Next's streamed client commit have the same meaning, while missing or conflicting values still fail. Readiness is proved by real menu/search interactions rather than an internal collection flag.
+
+After the separate checkout fix lands, exact pricing-module byte equality selects strict normal/delayed baseline validation. Its proof has an empty warning allowance; every runtime error fails the complete header matrix. The legacy warning reproduction remains available only when composing over the earlier unchanged pricing module.
+
+The full exact-commit source regression must succeed before capture. Candidate media configuration uses fresh public hero/landing snapshots so isolated runners do not depend on the private media provider. Commerce reads still settle and all writes remain blocked.

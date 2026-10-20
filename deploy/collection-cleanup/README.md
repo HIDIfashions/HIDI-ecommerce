@@ -12,6 +12,8 @@ Use the existing guarded deployment sequence with a dedicated workflow and evide
 
 The source contract and compiled-runtime patch tests run before browser tests. This scope does not place a real order, initiate payment, change stock or test authenticated account mutations.
 
+A live retry returned Azure's upstream connection-refused gateway page while opening the homepage. Read-only document navigation retries only explicit HTTP 502/503/504 responses, at most three attempts, with every attempt recorded. Other HTTP failures, transport exceptions and JavaScript errors are not retried or excluded. Persistent gateway failure still triggers rollback.
+
 ## Existing private-page warning
 
 The complete candidate matrix found intermittent React #418 recovery events on cart/checkout, whose existing pricing script can prepend a discount note inside the React root before startup. The two-file overlay does not change that script or either private route. Before acceptance, a controlled delayed-start test must reproduce this exact warning on both routes in the unchanged baseline and verify page recovery. Its hashed evidence is required for publication. Only the same message on those two unchanged paths is recorded as an existing issue; every other runtime error still fails. Live checks use that recorded baseline proof. This checkout warning is reported, not silently fixed or suppressed, by the collection cleanup.

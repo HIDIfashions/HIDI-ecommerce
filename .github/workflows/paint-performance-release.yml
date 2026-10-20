@@ -1,8 +1,31 @@
+# Release the reviewed 39376538609 candidate only after fresh initial-frame, performance, shopping and preservation gates pass.
+# Wait for the reported native desktop poster paint before retaining its video; ordinary mobile React path and all gates remain required.
+# Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
+# Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
+# Responsive poster preloads use disjoint screen-shape conditions verified in a real browser.
+# Checkout fixtures retain real mirrored application bytes and enforce browser integrity checks.
+# Media recovery uses the same installed Chromium codec build as the other video checks; fallback gates remain strict.
+# Asset publication addresses only the approved pre-provisioned site; no resource-group listing or creation.
+# Provider registration and site-scoped IAM are provisioned by the Azure owner.
+# Manual dispatch and [prepare-only] HEAD commits do not enter the live deployment job.
+# An isolated Free static asset mirror retains old immutable files and same-origin recovery; DNS and existing services remain unchanged.
+# Production-host SEO assertions run on the pinned public fixture; loopback probes retain preview behavior.
+# Candidate verification requires the exact content-verified mirrored application URL.
+# The native poster paints before React handoff; fast fresh HTML is coalesced with a bounded streaming fallback.
+# Live release preserves the verified checkout, collection cleanup and product editor; all performance gates remain required.
+# Desktop app modulepreload stays request-deduplicated and Low; full CSS gains priority only after verified native poster paint, retaining Low on fallback paths.
+# Desktop mirror recovery allows the Low-priority request a bounded 3s window; origin errors still recover immediately.
+# WebKit's known ResizeObserver layout diagnostic is filtered only in the recovery probe; application errors remain fatal.
 name: Guarded sub-2.5s mobile paint and 90-plus performance release
 on:
+  workflow_dispatch: {}
   push:
     branches: [migration/azure-sql-blob]
     paths: [.github/workflows/paint-performance-release.yml]
+concurrency:
+  group: hidi-hero-guarded-release
+  queue: max
+  cancel-in-progress: false
 permissions:
   contents: read
   actions: read
@@ -14,7 +37,7 @@ env:
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 90
     concurrency:
       group: hidi-home-paint-prepare
       queue: max
@@ -25,19 +48,27 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: 24}
-      - name: Verify protocol safety and install media/browser tooling
-        run: |
-          google-chrome --version
-          node --test deploy/paint-performance/head.test.mjs deploy/paint-performance/early-hero.test.mjs deploy/paint-performance/delivery.test.mjs deploy/paint-performance/announcement.test.mjs deploy/paint-performance/hero.test.mjs
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg
-          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
-          node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      # IAM is provisioned by the Azure owner; the deployment identity cannot grant itself roles.
+      - name: Verify isolated asset-site access before build or publication
+        run: python3 deploy/paint-performance/asset-mirror.py preflight
+      - name: Verify protocol safety and install media/browser tooling
+        run: |
+          google-chrome --version
+          python3 deploy/paint-performance/test_icons.py
+          python3 deploy/paint-performance/test_hook.py
+          python3 deploy/paint-performance/test_poster_positions.py
+          python3 deploy/paint-performance/test_asset_mirror.py
+          node --test deploy/paint-performance/*.test.mjs
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg openssl iproute2
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 terser@5.44.0 @azure/static-web-apps-cli@2.0.10
+          node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+          HIDI_FIRST_FRAME_ENGINES=chromium,firefox,webkit node deploy/paint-performance/first-frame-fixtures.mjs evidence/paint-performance/first-frame-fixtures
       - name: Capture stable production and fresh rollback copies
         env:
           GH_TOKEN: ${{ github.token }}
@@ -47,7 +78,7 @@ jobs:
           echo "CANDIDATE_WEB=acrhidiprod0927.azurecr.io/hidi-web:paint-performance-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
       - name: Measure current mobile and desktop performance
         run: node deploy/paint-performance/lighthouse.mjs before
-      - name: Compose early native hero, immediate preferred playback and poster priority
+      - name: Compose candidate and publish verified immutable asset mirror
         run: python3 deploy/paint-performance/release.py compose
       - name: Verify candidate bundle, design, media and compression
         run: node deploy/paint-performance/candidate.mjs
@@ -64,14 +95,26 @@ jobs:
           path: evidence/paint-performance
           retention-days: 30
           overwrite: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paint-summary-prepared-${{ github.run_id }}
+          path: |
+            evidence/paint-performance/*.json
+            evidence/paint-performance/lighthouse/before.json
+            evidence/paint-performance/lighthouse/candidate.json
+            evidence/paint-performance/lighthouse/candidate-mobile-1.report.json
+            evidence/paint-performance/lighthouse/candidate-desktop-1.report.json
+            evidence/paint-performance/checkout-candidate/report.json
+            evidence/paint-performance/candidate/chromium-390.png
+            evidence/paint-performance/candidate/chromium-1440.png
+          retention-days: 30
+          overwrite: true
   deploy:
+    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[prepare-only]')
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    concurrency:
-      group: hidi-hero-guarded-release
-      queue: max
-      cancel-in-progress: false
+    timeout-minutes: 75
     env:
       WEB_IMAGE: ${{ needs.prepare.outputs.image }}
     steps:
@@ -85,8 +128,8 @@ jobs:
       - name: Install live verification tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg
-          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0
+          sudo apt-get install -y ffmpeg openssl iproute2
+          npm install --prefix /tmp/media-tools --no-save playwright@1.56.1 lighthouse@13.5.0 terser@5.44.0 @azure/static-web-apps-cli@2.0.10
           node /tmp/media-tools/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
@@ -113,5 +156,20 @@ jobs:
         with:
           name: paint-live-${{ github.run_id }}
           path: evidence/paint-performance
+          retention-days: 30
+          overwrite: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paint-summary-live-${{ github.run_id }}
+          path: |
+            evidence/paint-performance/*.json
+            evidence/paint-performance/lighthouse/before.json
+            evidence/paint-performance/lighthouse/after.json
+            evidence/paint-performance/lighthouse/after-mobile-1.report.json
+            evidence/paint-performance/lighthouse/after-desktop-1.report.json
+            evidence/paint-performance/checkout-live/report.json
+            evidence/paint-performance/live/chromium-390.png
+            evidence/paint-performance/live/chromium-1440.png
           retention-days: 30
           overwrite: true

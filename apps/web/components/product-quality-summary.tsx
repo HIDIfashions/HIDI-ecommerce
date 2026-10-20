@@ -1,4 +1,5 @@
 "use client";
+import { ProductCopy } from "./product-copy";
 import type { ApiProduct } from "@/lib/api";
 import { pdpInformation, type ProductSpecification } from "@/lib/pdp-information";
 import { useProductSelection } from "@/lib/use-product-selection";
@@ -9,8 +10,9 @@ export function ProductQualitySummary({ product, specifications = [] }: { produc
   const hasMeasurements = product.variants.some(variant => [variant.bustMm, variant.waistMm, variant.hipMm, variant.shoulderMm, variant.sleeveLengthMm, variant.garmentLengthMm].some(value => typeof value === "number" && value > 0));
   return <section className={styles.wrap} aria-label="Product quality and fit summary">
     <div className={styles.heading}><h2>Product details</h2></div>
-    <dl className={styles.facts}>{rows.map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}{facts.specifications.map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+    <dl className={styles.facts}>{rows.map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{label === "Colour" ? value : <ProductCopy text={value} />}</dd></div>)}{facts.specifications.map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{label === "Colour" ? value : <ProductCopy text={value} />}</dd></div>)}</dl>
     {!hasMeasurements && <p className={styles.pending}>Garment measurements are not available for this style yet.</p>}
+
     {!facts.includes && <p className={styles.pending}>Included pieces are not specified for this style yet. Photography alone does not confirm the contents.</p>}
   </section>;
 }

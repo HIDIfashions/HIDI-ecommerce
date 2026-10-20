@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {isBlockedTelemetry} from '../button-states/request-policy.mjs';
+import {navigate} from './navigation.mjs';
 
 const copy=JSON.parse(await readFile(new URL('../collection-seo/collections.json',import.meta.url),'utf8'));
 const titles={all:'All Products','casual-wear':'Casual Wear','work-wear':'Work Wear','occasional-wear':'Occasional Wear'};
@@ -14,7 +15,11 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
   assert.deepEqual(baselinePrivate.issues.map(issue=>issue.path).sort(),['/cart','/checkout']);
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
   await mkdir(output,{recursive:true});
-  const results=[],writes=[],errors=[],publicApiReads=[];const navigationOnly=new WeakSet();let blockedSessionRefreshes=0,blockedTelemetryRequests=0,isolatedTrackingScripts=0,hydrationRetries=0;
+  const results=[],writes=[],errors=[],publicApiReads=[],gatewayRetries=[];const navigationOnly=new WeakSet();let blockedSessionRefreshes=0,blockedTelemetryRequests=0,isolatedTrackingScripts=0,hydrationRetries=0;
+  const go=async(page,url)=>{
+    try{return await navigate(page,url,gatewayRetries);}
+    finally{await writeFile(output+'/gateway-retries.json',JSON.stringify(gatewayRetries,null,2));}
+  };
   landing ||= await (await fetch('https://hidiindia.com/api/hidi/landing-media-config')).json();
   let offers;
   if(baseline){const response=await fetch('https://hidiindia.com/api/hidi/offers',{signal:AbortSignal.timeout(30000)});assert(response.ok);offers=await response.json();}
@@ -81,7 +86,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         for(const slug of routes){
           const path='/collections/'+slug;
           page=await fresh(path);
-          assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
+          await go(page,base+path);
           // Existing catalogue CSS intentionally hides the short header on mobile.
           // Assert its content without forcing a layout change to make it visible.
           await page.locator('.collection-header h1').waitFor({state:'attached'});
@@ -101,7 +106,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           assert.equal(await page.getByRole('navigation',{name:'Explore HIDI collections'}).count(),0,'Extra SEO links remain');
           await settleReads(page);const expected=await products(page);assert(expected.length>0);
           if(inventory)assert.deepEqual(expected,inventory[slug].map(p=>'/products/'+p.slug).sort(),'Collection differs from frozen active inventory: '+slug);
-          if(baseline){const prior=await fresh('baseline '+path,false);await prior.goto(baseline+path,{waitUntil:'domcontentloaded'});await prior.locator('main article').first().waitFor();await settleReads(prior);assert.deepEqual(expected,await products(prior),'Product selection changed');
+          if(baseline){const prior=await fresh('baseline '+path,false);await go(prior,baseline+path);await prior.locator('main article').first().waitFor();await settleReads(prior);assert.deepEqual(expected,await products(prior),'Product selection changed');
           assert.deepEqual(await cardFacts(page),await cardFacts(prior),'Product card facts or prices changed');
           const metadata=async p=>p.locator('head title,head meta,head link[rel=canonical]').evaluateAll(nodes=>nodes.map(n=>n.outerHTML).sort());
           assert.deepEqual(await metadata(page),await metadata(prior),'Search/social metadata changed');await finish(prior);}
@@ -120,7 +125,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           if(slug!==routes.at(-1))await finish(page);
         }
         for(const [slug,title] of Object.entries({'ananyas-pick':'Ananya’s Pick','new-arrivals':'All Products','work-edit':'Work Wear',everyday:'Casual Wear',occasion:'Occasional Wear'})){
-          const alias=await fresh('alias '+slug);await alias.goto(base+'/collections/'+slug,{waitUntil:'domcontentloaded'});
+          const alias=await fresh('alias '+slug);await go(alias,base+'/collections/'+slug);
           await alias.locator('.collection-header h1').waitFor({state:'attached'});
           assert.equal(await alias.locator('.collection-header h1').textContent(),title);
           assert.equal(await alias.locator('h1').count(),1);
@@ -139,7 +144,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         assert(await page.locator('script[type="application/ld+json"]').count()>0,'Product schema missing');
         await finish(page);
         for(const policyPath of ['/shipping','/returns']){
-          const policy=await fresh(policyPath);await policy.goto(base+policyPath,{waitUntil:'domcontentloaded'});
+          const policy=await fresh(policyPath);await go(policy,base+policyPath);
           const body=await policy.locator('main').textContent();
           assert(!/awaiting confirmation|launch prerequisites|final terms must be published/i.test(body));
           if(policyPath==='/returns'){
@@ -151,12 +156,12 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           await policy.screenshot({path:`${output}/${engine}-${width}-${policyPath.slice(1)}.png`});await finish(policy);
         }
         for(const path of ['/cart','/checkout','/account','/admin']){
-          page=await fresh(path);await page.goto(base+path,{waitUntil:'domcontentloaded'});
+          page=await fresh(path);await go(page,base+path);
           await settleReads(page);
           assert.match(await page.locator('meta[name="robots"]').first().getAttribute('content'),/noindex/,'Private indexing changed: '+path);
           await finish(page);
         }
-        page=await fresh('homepage links');await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+        page=await fresh('homepage links');await go(page,base+'/');
         await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');
         const links=page.locator('.hidi-collection-link');assert.equal(await links.count(),5);
         for(let i=0;i<5;i++){
@@ -168,7 +173,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
         await finish(page);
         // Activate each card through its real keyboard/click handler, not just its href.
         for(let i=0;i<5;i++){
-          page=await fresh('carousel card '+i);await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+          page=await fresh('carousel card '+i);await go(page,base+'/');
           await page.waitForFunction(()=>document.querySelector('#our-range')?.dataset.landingConfigStatus==='ready');
           const carousel=page.locator('#range-carousel');await carousel.press('Home');
           await page.waitForFunction(()=>{const c=document.querySelector('#range-carousel');return c?.dataset.activeIndex==='0'&&c.dataset.transitioning==='false';});
@@ -182,7 +187,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
           await page.locator('main article').first().waitFor();
           await finish(page);
         }
-        page=await fresh('homepage screenshot');await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.locator('.hidi-collection-link').first().waitFor();
+        page=await fresh('homepage screenshot');await go(page,base+'/');await page.locator('.hidi-collection-link').first().waitFor();
         await page.screenshot({path:`${output}/${engine}-${width}-homepage.png`});
         await finish(page);
         results.push({engine,width,height,collections:9,carouselLinks:5,carouselActivations:5,productDetails:true,privateNoindex:true,sortPreserved:true,status:'PASS'});
@@ -199,6 +204,7 @@ export async function probe(base,output,{baseline,landing,inventory}={}){
   const feed=await fetch(base+'/google-products.xml',{headers:{'X-Forwarded-Host':'hidiindia.com'}});assert(feed.ok);const xml=await feed.text();assert.match(xml,/<g:id>/);assert.match(xml,/<g:price>/);
   assert(publicApiReads.every(read=>read.status>=200&&read.status<400),'Public API response failed: '+JSON.stringify(publicApiReads.filter(read=>read.status>=400)));
   const report={passed:true,baselinePrivateProofVerified:true,existingPrivateErrors,newRuntimeErrors,publicApiReads,navigationImagesIsolated:true,engines,results,liveWrites:0,blockedSessionRefreshes,blockedTelemetryRequests,isolatedTrackingScripts,hydrationRetries,offersFixtureUsed:Boolean(baseline),independentPages:true,baselineCompared:Boolean(baseline)};
+  report.gatewayRetries=gatewayRetries;
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);

@@ -1,0 +1,48 @@
+name: Read-only performance report diagnostics
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/paint-performance-diagnostics.yml]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.run_id || '39000049708' }}
+          github-token: ${{ github.token }}
+          pattern: paint-prepared-*
+          path: reports
+          merge-multiple: true
+      - name: Summarize actual LCP and request chain
+        run: |
+          python3 - <<'PY'
+          import pathlib,json
+          root=pathlib.Path('reports')
+          for p in sorted(root.rglob('*.json')):
+              if p.name in ['candidate.json','before.json'] and p.parent.name=='lighthouse':print('MEDIANS',p,json.dumps(json.loads(p.read_text())))
+              if 'candidate-mobile-1' not in p.name or not p.name.endswith('report.json'):continue
+              d=json.loads(p.read_text());a=d['audits'];print('REPORT',p)
+              for key,value in a.items():
+                  if any(x in key for x in ['lcp','largest-contentful','render-blocking','critical-request']):print('AUDIT',key,json.dumps(value))
+              rows=a['network-requests']['details']['items']
+              print('NETWORK',json.dumps([{k:r.get(k) for k in ['url','resourceType','priority','startTime','endTime','transferSize','resourceSize','statusCode']} for r in rows]))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compact-performance-diagnostics
+          path: |
+            reports/lighthouse/*mobile-1.report.json
+            reports/lighthouse/*desktop-1.report.json
+            reports/lighthouse/candidate.json
+            reports/lighthouse/before.json
+          retention-days: 7

@@ -47,6 +47,7 @@ type OrderItem = {
 };
 
 type Props = {
+  canManage?: boolean;
   orderNumber: string;
   requests: AdminReturnRequest[];
   items: OrderItem[];
@@ -77,11 +78,13 @@ function dateTime(value?: string | null) {
 }
 
 function ReturnRequestCard({
+  canManage,
   orderNumber,
   request,
   item,
   onUpdated,
 }: {
+  canManage: boolean;
   orderNumber: string;
   request: AdminReturnRequest;
   item?: OrderItem;
@@ -194,6 +197,7 @@ function ReturnRequestCard({
         </div>
       )}
 
+      {canManage && <>
       {["REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "RECEIVED", "EXCHANGE_SHIPPED"].includes(request.status) && (
         <div className={styles.noteField}>
           <label>
@@ -333,6 +337,7 @@ function ReturnRequestCard({
         </div>
       )}
 
+      </>}
       {error && <div className={styles.error}>{error}</div>}
       {notice && <div className={styles.notice}>{notice}</div>}
 
@@ -344,7 +349,7 @@ function ReturnRequestCard({
   );
 }
 
-export function AdminReturnRequests({ orderNumber, requests, items, onUpdated }: Props) {
+export function AdminReturnRequests({ orderNumber, requests, items, onUpdated, canManage = false }: Props) {
   const itemMap = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
 
   if (!requests.length) return null;
@@ -364,6 +369,7 @@ export function AdminReturnRequests({ orderNumber, requests, items, onUpdated }:
       <div className={styles.requests}>
         {requests.map((request) => (
           <ReturnRequestCard
+            canManage={canManage}
             key={request.id}
             orderNumber={orderNumber}
             request={request}

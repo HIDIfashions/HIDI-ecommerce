@@ -1,0 +1,42 @@
+import {inlinePosterPath} from './poster-reference.mjs';
+import assert from 'node:assert/strict';import {writeFile,mkdir} from 'node:fs/promises';import {existsSync} from 'node:fs';
+import {readMirrorProof,isMirrorAsset} from './asset-mirror.mjs';
+export async function verifyPosterCache(pw,base,out,mode){
+ await mkdir(out+'/'+mode,{recursive:true});
+ const mirror=await readMirrorProof(out);
+ const browser=await pw.chromium.launch({headless:true,...(existsSync('/usr/bin/google-chrome')?{executablePath:'/usr/bin/google-chrome'}:{})}),rows=[];
+ try{for(const mobile of [true,false]){
+  const context=await browser.newContext({viewport:{width:mobile?390:1440,height:900},...(mobile?{userAgent:'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36'}:{})}),page=await context.newPage(),errors=[];
+  page.on('pageerror',error=>errors.push(error.message));const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');
+  await page.addInitScript(()=>document.addEventListener('error',event=>{const video=event.target;if(video instanceof HTMLMediaElement){window.__HidiCacheProbeMediaErrors=window.__HidiCacheProbeMediaErrors||[];window.__HidiCacheProbeMediaErrors.push({src:video.currentSrc||video.src,code:video.error?.code,message:video.error?.message});}},{capture:true}));
+  // CDP interception preserves the HTTP cache; Playwright routing disables it.
+  await cdp.send('Fetch.enable',{patterns:[{urlPattern:'*',requestStage:'Request'}]});
+  cdp.on('Fetch.requestPaused',event=>{
+   const req=event.request,url=new URL(req.url),allowed=['GET','HEAD'].includes(req.method)&&(url.origin===new URL(base).origin||isMirrorAsset(url.href,mirror)||['data:','blob:'].includes(url.protocol));
+   void cdp.send(allowed?'Fetch.continueRequest':'Fetch.failRequest',allowed?{requestId:event.requestId}:{requestId:event.requestId,errorReason:'Aborted'}).catch(()=>{});
+  });
+  const requests=new Map(),responses=new Map();let returning=false,reused=false,logoReused=false,expected,expectedLogo,inlinePath;
+  cdp.on('Network.requestWillBeSent',event=>requests.set(event.requestId,event.request.url));
+  cdp.on('Network.requestServedFromCache',event=>{if(returning&&requests.get(event.requestId)===expected)reused=true;if(returning&&requests.get(event.requestId)===expectedLogo)logoReused=true;});
+  cdp.on('Network.responseReceived',event=>{if(!returning)responses.set(event.response.url,event.response);if(returning&&event.response.url===expected&&event.response.fromDiskCache)reused=true;if(returning&&event.response.url===expectedLogo&&event.response.fromDiskCache)logoReused=true;});
+  try{
+   await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+   await page.waitForFunction(()=>{const video=document.querySelector('video.hero-live-media');return !document.querySelector('video[data-hidi-first-hero]')&&(/\/poster-[a-f0-9]{16}\.avif$/.test(video?.poster||'')||video?.poster?.startsWith('data:image/avif;base64,'))&&video.readyState>=2;});
+   expected=await page.evaluate(()=>new URL(document.querySelector('video.hero-live-media').poster,location.href).href);
+   inlinePath=inlinePosterPath(expected,mirror);
+   const cold=responses.get(expected);if(!inlinePath){assert(cold&&cold.status===200);assert.match(cold.mimeType,/image\/avif/);assert.match(String(Object.entries(cold.headers).find(([key])=>key.toLowerCase()==='cache-control')?.[1]),/immutable/);
+   assert.equal([...requests.values()].filter(url=>url===expected).length,1,'Preload, native hero and React must reuse one cold poster request');}else assert.equal([...requests.values()].filter(url=>new URL(url).pathname===inlinePath).length,0,'Verified inline poster must not also request its external copy');
+   expectedLogo=await page.locator('#site-header .campaign-brand img').evaluate(image=>image.currentSrc||image.src);assert.match(expectedLogo,/\/media-performance\/assets\/logo-[a-f0-9]{16}\.png$/);const coldLogo=responses.get(expectedLogo);assert(coldLogo&&coldLogo.status===200);assert.match(coldLogo.mimeType,/image\/png/);assert.match(String(Object.entries(coldLogo.headers).find(([key])=>key.toLowerCase()==='cache-control')?.[1]),/immutable/);assert.equal([...requests.values()].filter(url=>url===expectedLogo).length,1,'Preload and React logo must reuse one pixel-identical image request');returning=true;
+   await page.goto(base+'/?cache-return',{waitUntil:'domcontentloaded'});
+   await page.waitForFunction(()=>{const video=document.querySelector('video.hero-live-media');return !document.querySelector('video[data-hidi-first-hero]')&&Boolean(video?.poster)&&video.readyState>=2;});
+   const poster=await page.locator('video.hero-live-media').getAttribute('poster');if(inlinePath){assert.equal(inlinePosterPath(poster,mirror),inlinePath);assert.equal(poster,expected);assert.equal([...requests.values()].filter(url=>new URL(url).pathname===inlinePath).length,0);}else{assert(!poster.startsWith('data:'));assert.equal(new URL(poster,base).href,expected);}
+   await page.evaluate(async()=>{const image=new Image();image.src=document.querySelector('video.hero-live-media').poster;await image.decode();});
+   const returningLogo=await page.locator('#site-header .campaign-brand img').evaluate(async image=>{await image.decode();return image.currentSrc||image.src;});assert.equal(returningLogo,expectedLogo);assert(logoReused,'Returning logo must reuse its exact immutable HTTP cache entry');if(!inlinePath)assert(reused,'Returning poster must reuse its exact immutable HTTP cache entry');assert.deepEqual(errors,[]);
+   rows.push({mobile,passed:true,coldPosterRequests:inlinePath?0:1,returningPoster:inlinePath||poster,inlineBytesVerified:Boolean(inlinePath),httpCacheReused:inlinePath?null:true,coldLogoRequests:1,returningLogo,logoHttpCacheReused:true,writes:0});console.log('PASS poster and logo cache '+mode+' '+(mobile?'mobile':'desktop'));
+  }catch(error){
+   await writeFile(out+'/'+mode+'/poster-cache-failure-'+mobile+'.json',JSON.stringify({error:error.message,url:page.url(),errors,mediaErrors:await page.evaluate(()=>window.__HidiCacheProbeMediaErrors||[]).catch(()=>[]),hero:await page.locator('.hero-media').evaluate(el=>el.outerHTML).catch(()=>null)},null,2));
+   await page.screenshot({path:out+'/'+mode+'/poster-cache-failure-'+mobile+'.png',timeout:10000}).catch(()=>{});throw error;
+  }finally{await context.close();}
+ }}finally{await browser.close();}
+ await writeFile(out+'/poster-cache-'+mode+'.json',JSON.stringify({passed:true,results:rows},null,2));
+}

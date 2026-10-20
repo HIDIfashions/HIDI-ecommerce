@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript, isPublishedProductImage, shouldIndexPublishedImage, productRouteMetadata } from './metadata.mjs';
+import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript, isPublishedProductImage, shouldIndexPublishedImage, productRouteMetadata, registerPublishedProductImages } from './metadata.mjs';
 import { Readable } from 'node:stream';
 import { sitemapXml, createSeoSitemap, productImageUrls } from './sitemap.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
@@ -170,10 +170,36 @@ test('image eligibility is limited to exact published catalogue assets',()=>{
   assert(shouldIndexPublishedImage(200,'image/svg+xml','hidiindia.com','/brand/hidi-logo-header.svg'));
   assert(!shouldIndexPublishedImage(200,'image/svg+xml','hidiindia.com','/brand/unknown.svg'));
   assert(!shouldIndexPublishedImage(200,'image/svg+xml','thidigk.thehidi.com','/brand/hidi-logo-header.svg'));
-  for(const input of [[404,'image/webp','hidiindia.com'],[304,'image/webp','hidiindia.com'],[200,'application/json','hidiindia.com'],[200,'image/webp','thidigk.thehidi.com'],[200,'image/webp','thehidi.com']])assert(!shouldIndexPublishedImage(...input,known));
+  for(const input of [[404,'image/webp','hidiindia.com'],[304,'application/json','hidiindia.com'],[200,'application/json','hidiindia.com'],[200,'image/webp','thidigk.thehidi.com'],[200,'image/webp','thehidi.com']])assert(!shouldIndexPublishedImage(...input,known));
   for(const path of ['/admin','/api/orders','/media/private/customer.jpg','/media/products/variants/unknown/private.jpg',known+'/other',known+'?private=1']){
     assert(!isPublishedProductImage(path));assert(!shouldIndexPublishedImage(200,'image/webp','hidiindia.com',path));
   }
+});
+test('verified cached image responses remain eligible without opening unknown files or previews',()=>{
+ const known=publishedImages[0];
+ assert(shouldIndexPublishedImage(304,'image/webp','hidiindia.com',known));
+ assert(shouldIndexPublishedImage(304,'','hidiindia.com',known));
+ assert(!shouldIndexPublishedImage(200,'','hidiindia.com',known));
+ assert(!shouldIndexPublishedImage(304,'','preview.invalid',known));
+ assert(!shouldIndexPublishedImage(304,'','hidiindia.com','/media/products/private.jpg'));
+});
+test('catalogue refresh admits future published photos while rejecting draft, private, signed and foreign references',()=>{
+ const path='/media/products/variants/reviewed-future/photo-20261017.webp';
+ const bad=['/media/private/customer.jpg','https://foreign.example/media/products/private.jpg','https://user:pass@hidiindia.com'+path,path+'?sig=private',path+'#private'];
+ const product={slug:'future-published-style',status:'ACTIVE',images:[{url:'https://thidigk.thehidi.com'+path},...bad.map(url=>({url}))]};
+ const before=JSON.stringify(product);assert(!isPublishedProductImage(path));
+ assert.equal(registerPublishedProductImages([{...product,slug:'draft-style',status:'DRAFT'}]),0);
+ assert.equal(registerPublishedProductImages([product]),1);assert(isPublishedProductImage(path));
+ assert.equal(registerPublishedProductImages([product]),0);assert.equal(JSON.stringify(product),before);
+ for(const unknown of ['/media/private/customer.jpg','/media/products/private.jpg'])assert(!isPublishedProductImage(unknown));
+});
+test('the existing sitemap refresh registers future catalogue images without extra backend reads',async()=>{
+ const path='/media/products/variants/future-sitemap/photo-20261017.jpg';let calls=0,body,status;
+ const products=[{slug:'future-sitemap-style',images:[{url:path}]},{slug:'draft-photo',status:'DRAFT',images:[{url:'/media/products/variants/future-sitemap/private.jpg'}]}];
+ const handler=createSeoSitemap({catalogueUrl:'http://fixture/products',isProductionRequest:()=>true,fetcher:async()=>{calls++;return {ok:true,text:async()=>JSON.stringify(products)};}});
+ const response={writeHead:s=>status=s,end:value=>body=value};
+ await handler({method:'GET'},response);assert.equal(status,200);assert(body.includes('https://hidiindia.com'+path));assert(isPublishedProductImage(path));
+ assert(!body.includes('private.jpg'));await handler({method:'GET'},response);assert.equal(calls,1);
 });
 test('private, error, preview, product and unsupported destination metadata stays unchanged',()=>{
   const page='<head><title>Existing product | HIDI</title><meta name="description" content="Existing facts"></head><body>Exact</body>';

@@ -1,0 +1,37 @@
+name: Activate verified HIDI order SMS
+# Runtime keeps its existing restricted SQL permissions; migration proof is retained.
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/activate-order-sms.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  activate-sms:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify activation guard tests
+        run: |
+          python3 tests/sms-activation.test.py
+          node tests/sms-readiness.test.mjs
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Install official private console extension
+        run: az extension add --name containerapp --upgrade --only-show-errors
+      - name: Verify private readiness and activate SMS with guarded rollback
+        run: python3 deploy/order-notifications/activate-sms.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: order-sms-activation-${{ github.run_id }}
+          path: evidence/order-notifications/
+          retention-days: 30

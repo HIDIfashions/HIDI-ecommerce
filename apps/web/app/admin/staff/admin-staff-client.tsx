@@ -157,7 +157,7 @@ export function AdminStaffClient() {
           <div className={styles.roleHelp}>
             <span><strong>Owner</strong> Full access including staff management.</span>
             <span><strong>Operations</strong> Orders, returns, refunds, inventory and follow-ups.</span>
-            <span><strong>Support</strong> Read-only customer/order support access.</span>
+            <span><strong>Support</strong> View orders, add internal notes, issue tags and follow-ups. Request Owner approval for refunds, cancellations, compensation and order changes.</span>
             <span><strong>Catalog</strong> Products, SKU media and catalog maintenance.</span>
           </div>
         </section>

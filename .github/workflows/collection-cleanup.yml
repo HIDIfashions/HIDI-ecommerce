@@ -29,6 +29,7 @@ jobs:
           node --check deploy/collection-cleanup/candidate.mjs
           node --check deploy/collection-cleanup/baseline-private.mjs
           node --check deploy/collection-cleanup/probes.mjs
+          node --test deploy/collection-cleanup/navigation.test.mjs
           node --test deploy/merchant-feed/feed.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs tests/storefront-surfaces.test.cjs
       - name: Install isolated browser engines and exact image backup tooling
         run: |

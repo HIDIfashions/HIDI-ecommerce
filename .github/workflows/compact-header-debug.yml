@@ -1,0 +1,54 @@
+name: Read-only compact header container diagnostics
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/compact-header-debug.yml]
+  workflow_dispatch:
+    inputs:
+      debug_ref:
+        description: Reviewed same-repository diagnostic source revision
+        required: true
+        default: 08e4dbda84250de65ce4a8b04a16546619aa1024
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/header-debug/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/header-debug-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.debug_ref || '08e4dbda84250de65ce4a8b04a16546619aa1024' }}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - run: |
+          npm install --prefix /tmp/header-debug --no-save playwright@1.56.1
+          node /tmp/header-debug/node_modules/playwright/cli.js install --with-deps chromium
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Read existing image and build locally without registry or deployment writes
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/compact-header/debug-compose.py
+      - name: Diagnose isolated browser readiness
+        run: |
+          node --input-type=module <<'JS'
+          import {readFile,writeFile} from 'node:fs/promises';
+          const root='deploy/compact-header/';
+          await writeFile(root+'probes-debug.mjs',(await readFile(root+'probes.mjs','utf8')).replace("const engines=['chromium','firefox','webkit'];","const engines=['chromium'];").replace('for(const width of [320,390,768,1001,1440])','for(const width of [320])'));
+          await writeFile(root+'candidate-debug.mjs',(await readFile(root+'candidate.mjs','utf8')).replace("'./probes.mjs'","'./probes-debug.mjs'"));
+          JS
+          node deploy/compact-header/candidate-debug.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: header-debug-${{ github.run_id }}
+          path: evidence/compact-header
+          retention-days: 7

@@ -17,7 +17,10 @@ import { SupabaseAuthService } from "../auth/supabase-auth.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 export type AdminRole = "OWNER" | "OPERATIONS" | "SUPPORT" | "CATALOG";
+export const PRIMARY_OWNER_EMAIL = "fashionshidi@gmail.com";
 export type AdminPermission =
+  | "support:write"
+  | "support:approve"
   | "order:read"
   | "order:write"
   | "return:write"
@@ -42,6 +45,8 @@ const ADMIN_PERMISSIONS_KEY = "hidi:admin-permissions";
 
 const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
   OWNER: new Set<AdminPermission>([
+    "support:write",
+    "support:approve",
     "order:read",
     "order:write",
     "return:write",
@@ -54,6 +59,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
     "staff:manage",
   ]),
   OPERATIONS: new Set<AdminPermission>([
+    "support:write",
     "order:read",
     "order:write",
     "return:write",
@@ -64,6 +70,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
     "review:write",
   ]),
   SUPPORT: new Set<AdminPermission>([
+    "support:write",
     "order:read",
     "inventory:read",
     "catalog:read",
@@ -120,8 +127,8 @@ export class AdminAuthService {
       throw new BadRequestException("Enter a valid admin email address");
     }
 
-    // Azure SQL staff membership is authoritative. This endpoint never creates
-    // a staff member or auth identity, and never exposes the staff directory.
+    // Azure SQL staff membership is authoritative. Only an active, Owner-added
+    // staff account can provision its email identity during verified OTP login.
     const staff = await this.prisma.adminStaff.findFirst({ where: { email } });
     if (!staff || !staff.active || !isAdminRole(staff.role)) {
       throw new ForbiddenException("This email is not authorised for HIDI Admin");
@@ -151,7 +158,7 @@ export class AdminAuthService {
         redirect: "error",
         signal: AbortSignal.timeout(10_000),
         headers: { apikey: key, "content-type": "application/json" },
-        body: JSON.stringify({ email, create_user: false }),
+        body: JSON.stringify({ email, create_user: true }),
       });
       if (!response.ok) throw new Error("Code delivery rejected");
     } catch {
@@ -299,6 +306,10 @@ export class AdminAuthService {
       throw new BadRequestException("Enter a valid admin display name");
     }
     if (!isAdminRole(nextRole)) throw new BadRequestException("Choose a valid admin role");
+
+    if (current.email.trim().toLowerCase() === PRIMARY_OWNER_EMAIL && (!nextActive || nextRole !== "OWNER")) {
+      throw new ConflictException("The primary HIDI Owner cannot be disabled or demoted");
+    }
 
     if (actor.id === current.id && (!nextActive || nextRole !== current.role)) {
       throw new ConflictException("You cannot deactivate or change your own admin role");

@@ -1,41 +1,185 @@
+import {inlinePosterPath} from './poster-reference.mjs';
+import {verifyPosterTiers} from './poster-tiers.mjs';
+import {verifyPosterCache} from './cache-probe.mjs';
+import {verifyInitialCss} from './critical-probe.mjs';
+import {readMirrorProof,isMirrorAsset,mirrorAssetUrl} from './asset-mirror.mjs';
+import {verifyMirrorFallback} from './mirror-fallback-probe.mjs';
+import {verifyLoaderSafety} from './loader-safety-probe.mjs';
+import {observeFirstFrames,finishFirstFrames,assertFirstFrames} from './first-frame-probe.mjs';
 import assert from 'node:assert/strict';import {readFile,writeFile,mkdir} from 'node:fs/promises';import {pathToFileURL} from 'node:url';import {get} from 'node:http';import {get as getHttps} from 'node:https';import {brotliDecompressSync,gunzipSync} from 'node:zlib';
-import {existsSync} from 'node:fs';
+import {existsSync} from 'node:fs';import {createHash} from 'node:crypto';
 const [base,mode='live']=process.argv.slice(2),OUT='evidence/paint-performance';await mkdir(OUT+'/'+mode,{recursive:true});
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),manifest=JSON.parse(await readFile(OUT+'/manifest.json','utf8'));
 const baseline=mode==='baseline',rows=[];
+const mirror=baseline?null:await readMirrorProof(OUT);
+function observeLoaderNetwork(page){
+ const network=[],appRequests=[],documents=[],requests=new Map();
+ const appUrl=url=>{try{return /\/assets\/index-[^/]+\.js$/.test(new URL(url).pathname);}catch{return false;}};
+ page.on('request',request=>{
+  network.push(request.url());if(!appUrl(request.url()))return;
+  const entry={url:request.url(),method:request.method(),resourceType:request.resourceType(),requestedAt:Date.now(),timing:request.timing()};requests.set(request,entry);appRequests.push(entry);
+ });
+ page.on('response',response=>{const headers=response.headers(),publicHeaders=Object.fromEntries(['cache-control','cf-cache-status','age','vary','link','content-type','access-control-allow-origin'].filter(name=>headers[name]!==undefined).map(name=>[name,headers[name]]));const entry=requests.get(response.request());if(entry){entry.status=response.status();entry.responseUrl=response.url();entry.responseAt=Date.now();entry.headers=publicHeaders;}if(response.request().resourceType()==='document')documents.push({url:response.url(),status:response.status(),headers:publicHeaders,timing:response.request().timing()});});
+ page.on('requestfinished',request=>{const entry=requests.get(request);if(entry){entry.finishedAt=Date.now();entry.timing=request.timing();}});
+ page.on('requestfailed',request=>{const entry=requests.get(request);if(entry){entry.failedAt=Date.now();entry.failure=request.failure();entry.timing=request.timing();}});
+ return {network,appRequests,documents};
+}
+async function loaderFailureState(page){
+ return page.evaluate(()=>({readyState:document.readyState,appStarted:Boolean(window.__HidiAppStarted),primaryDispatchHook:typeof window.__HidiStartPrimaryApp==='function',scripts:[...document.querySelectorAll('script[data-hidi-mirror-app],script[data-hidi-queued-src],script[type="module"]')].map(script=>({src:script.src,type:script.type,integrity:script.integrity,crossOrigin:script.crossOrigin,queuedSrc:script.dataset.hidiQueuedSrc,originSrc:script.dataset.hidiMirrorApp})),preloads:[...document.querySelectorAll('link[rel="modulepreload"]')].map(link=>({href:link.href,media:link.media,integrity:link.integrity,crossOrigin:link.crossOrigin,fetchPriority:link.fetchPriority})),appResources:performance.getEntriesByType('resource').filter(entry=>/\/assets\/index-[^/]+\.js(?:\?|$)/.test(entry.name)).map(entry=>({url:entry.name,initiatorType:entry.initiatorType,startTime:entry.startTime,responseEnd:entry.responseEnd,duration:entry.duration,transferSize:entry.transferSize}))})).catch(error=>({captureError:String(error)}));
+}
+// Independent evidence: do not use the application's poster-ready promise or
+// success marker to prove the native frame painted before the video request.
+async function observeNativePoster(page){
+ await page.addInitScript(()=>{
+  const capture=()=>{
+   const video=window.__HidiProbeNativeVideo||document.querySelector('video[data-hidi-first-hero]');
+   if(!video)return;
+   window.__HidiProbeNativeVideo=video;
+   if(video.poster&&!window.__HidiProbeNativePoster){window.__HidiProbeNativePoster=video.poster;mutation.disconnect();}
+  };
+  const mutation=new MutationObserver(capture);mutation.observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:['poster']});capture();
+  try{new PerformanceObserver(list=>{
+   for(const entry of list.getEntries())if(!window.__HidiProbeNativePaint&&entry.element===window.__HidiProbeNativeVideo&&entry.url===window.__HidiProbeNativePoster&&Number.isFinite(entry.renderTime)&&entry.renderTime>0){
+    window.__HidiProbeNativePaint={renderTime:entry.renderTime,poster:entry.url,observedAt:performance.now()};
+   }
+  }).observe({type:'largest-contentful-paint',buffered:true});}catch{}
+ });
+}
+async function assertDesktopPosterBeforeVideo(page,label){
+ await page.waitForFunction(()=>{
+  const video=document.querySelector('video.hero-live-media');
+  return video?.readyState>=2&&performance.getEntriesByType('resource').some(entry=>entry.name===video.currentSrc);
+ });
+ const proof=await page.evaluate(()=>{
+  const video=document.querySelector('video.hero-live-media'),resources=performance.getEntriesByType('resource');
+  const media=resources.filter(entry=>entry.name===video.currentSrc).sort((a,b)=>a.startTime-b.startTime)[0];
+  return {nativeSeen:Boolean(window.__HidiProbeNativeVideo),sameNode:video===window.__HidiProbeNativeVideo,paint:window.__HidiProbeNativePaint||null,poster:video.poster,media:{url:media.name,startTime:media.startTime},styles:[...document.querySelectorAll('link[data-hidi-deferred-style]')].map(link=>{
+   const resource=resources.filter(entry=>entry.name===link.href).sort((a,b)=>b.responseEnd-a.responseEnd)[0];
+   return {url:link.href,priority:link.fetchPriority,applied:link.media==='all'&&Boolean(link.sheet),startTime:resource?.startTime??null,responseEnd:resource?.responseEnd??null};
+  })};
+ });
+ assert(proof.nativeSeen&&proof.sameNode,label+': the actual native video must survive hydration');
+ assert(proof.paint?.renderTime>0,label+': an independent native-poster LCP with a positive renderTime is required');
+ assert.equal(proof.paint.poster,proof.poster,label+': the painted poster must match the retained video');
+ assert(proof.media.startTime>=proof.paint.renderTime,label+': video download must start after actual native poster paint on the same browser clock');
+ assert(proof.styles.length>0&&proof.styles.every(style=>style.applied&&style.responseEnd>0&&style.responseEnd<=proof.media.startTime),label+': every complete stylesheet must finish before automatic video download');
+ assert(proof.styles.every(style=>style.priority==='high'&&style.startTime>=proof.paint.renderTime),label+': promoted desktop CSS must start only after independently observed native poster paint');
+ return proof;
+}
+async function verifyDesktopVideoSafety(browser){
+ const results=[];
+ for(const scenario of ['full-css-held','reduced-motion','data-saving']){
+  const context=await browser.newContext({viewport:{width:1440,height:900},reducedMotion:scenario==='reduced-motion'?'reduce':'no-preference'}),page=await context.newPage();page.setDefaultTimeout(45000);
+  const media=[],heldCss=[],errors=[],loaderNetwork=observeLoaderNetwork(page);let releaseCss;
+  const cssGate=new Promise(resolve=>releaseCss=resolve);
+  page.on('request',req=>{if(req.resourceType()==='media')media.push(req.url());});page.on('pageerror',error=>errors.push(error.message));
+  await observeNativePoster(page);
+  if(scenario==='data-saving')await page.addInitScript(()=>{
+   if(navigator.connection)Object.defineProperty(navigator.connection,'saveData',{get:()=>true});
+   else Object.defineProperty(navigator,'connection',{value:{saveData:true}});
+  });
+  try{
+   await page.route('**/*',async route=>{
+    const req=route.request(),url=new URL(req.url());
+    if(url.origin!==new URL(base).origin&&!isMirrorAsset(url.href,mirror)||!['GET','HEAD'].includes(req.method()))return route.abort();
+    if(scenario==='full-css-held'&&url.pathname.endsWith('.css')){heldCss.push(url.href);await cssGate;}
+    return route.continue();
+   });
+   assert.equal((await page.goto(base+'/',{waitUntil:'commit'})).status(),200);
+   await page.waitForFunction(()=>window.__HidiAppStarted&&window.__HidiProbeNativePaint?.renderTime>0);
+   assert(await page.evaluate(()=>typeof document.body.moveBefore==='function'),'Desktop safety probe requires Chromium native-node retention support');
+   if(scenario==='full-css-held'){
+    await page.waitForFunction(()=>[...document.querySelectorAll('link[data-hidi-deferred-style]')].some(link=>Boolean(link.href)));
+    // Cross the normal desktop delay and mirror CSS recovery deadline while
+    // both original and mirrored complete styles remain held at the network.
+    await page.waitForTimeout(1800);
+    const held=await page.evaluate(()=>({native:document.querySelector('video[data-hidi-first-hero]')===window.__HidiProbeNativeVideo,src:document.querySelector('video.hero-live-media')?.getAttribute('src'),pending:[...document.querySelectorAll('link[data-hidi-deferred-style]')].some(link=>!link.sheet||link.media!=='all')}));
+    assert(heldCss.length>0&&held.pending,'Held CSS scenario must have an actual pending complete stylesheet');
+    assert(held.native,'Hydration must retain the native poster while complete CSS is held');
+    assert.equal(held.src,null,'Desktop video must have no source while complete CSS is held');
+    assert.deepEqual(media,[],'Desktop video must not download before complete CSS is released');
+    releaseCss();
+   }
+   await page.waitForFunction(()=>document.querySelector('.hero-media')?.dataset.heroConfigStatus==='uploaded'&&!document.querySelector('video[data-hidi-first-hero]'));
+   let manualAt=null;
+   if(scenario!=='full-css-held'){
+    assert(await page.evaluate(kind=>kind==='reduced-motion'?matchMedia('(prefers-reduced-motion: reduce)').matches:navigator.connection?.saveData===true,scenario),'Requested desktop preference must be active');
+    await page.waitForTimeout(1500);
+    assert.equal(await page.locator('video.hero-live-media').getAttribute('src'),null,'Desktop '+scenario+' must prevent automatic video downloads');
+    assert.deepEqual(media,[],'Desktop '+scenario+' must issue no automatic media request');
+    manualAt=await page.evaluate(()=>performance.now());
+    await page.getByRole('button',{name:'Turn video sound on'}).click();
+    await page.waitForFunction(()=>{const video=document.querySelector('video.hero-live-media');return video?.readyState>=2&&!video.muted&&!video.paused;});
+   }else await page.waitForFunction(()=>{const video=document.querySelector('video.hero-live-media');return video?.readyState>=2&&!video.paused&&video.currentTime>0;});
+   const paint=await assertDesktopPosterBeforeVideo(page,'Desktop '+scenario);
+   if(manualAt!==null){assert(paint.media.startTime>=manualAt,'Preference override may download video only after explicit user interaction');await page.getByRole('button',{name:'Mute video sound'}).click();await page.waitForFunction(()=>document.querySelector('video.hero-live-media').muted);}
+   assert.deepEqual(errors,[]);
+   results.push({scenario,passed:true,heldCss,manualAt,media,paint});
+  }catch(error){
+   await page.screenshot({path:OUT+'/'+mode+'/desktop-'+scenario+'-failure.png'}).catch(()=>{});
+   await writeFile(OUT+'/'+mode+'/desktop-'+scenario+'-failure.json',JSON.stringify({error:String(error),media,heldCss,errors,...loaderNetwork,loader:await loaderFailureState(page)}));throw error;
+  }finally{releaseCss();await context.close();}
+ }
+ await writeFile(OUT+'/desktop-video-safety-'+mode+'.json',JSON.stringify({passed:true,results},null,2));
+ console.log('PASS: desktop video waits for actual native poster paint and complete CSS; reduced-motion/data-saving require explicit playback');
+ return results;
+}
 const request=(path,headers={})=>new Promise((resolve,reject)=>{const u=new URL(path,base);(u.protocol==='https:'?getHttps:get)(u,{headers},res=>{const chunks=[];res.on('data',c=>chunks.push(c));res.on('end',()=>resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks)}));}).on('error',reject);});
 if(!baseline){
+ const patch=JSON.parse(await readFile(OUT+'/patch.json','utf8'));
+ if(patch.seoHomeDiscoveryPreserved){const initial=(await request('/')).body.toString();assert(initial.includes('data-hidi-home-discovery'),'Current SEO discovery must remain in initial HTML');assert(initial.includes('href="/guides"'),'Current buying guide link must remain discoverable');assert.equal((initial.match(/<h1\b/gi)||[]).length,1,'Native hero and discovery must retain one primary heading');}
  const report=JSON.parse(await readFile(OUT+'/patch.json','utf8'));
- const home=await request('/');assert(home.body.toString().includes('data-hidi-first-header'));assert(home.body.toString().includes('data-hidi-inline-css'));assert(home.body.toString().includes('src="/'+report.bundle+'"'));assert(home.body.toString().includes('rel="modulepreload"'));assert(home.body.toString().includes('data-hidi-inline-script="/config.js"'));assert(home.body.toString().includes('data-hidi-early-hero'));assert(home.body.toString().includes('data:image/png;base64,'));
+ const originalPricing=await request('/pricing-assets/storefront.mjs',{'accept-encoding':'identity'});assert.equal(originalPricing.status,200);assert.equal(createHash('sha256').update(originalPricing.body).digest('hex'),report.globalPricingSourceSha256,'Global commerce pricing script must stay byte-identical');
+ const encodedAsset=JSON.parse(await readFile(OUT+'/static-encoding-quality.json','utf8'));
+ const icons=JSON.parse(await readFile(OUT+'/icon-quality.json','utf8'));
+ for(const frame of icons.frames.filter(frame=>frame.width<=64)){const r=await request(frame.url);assert.equal(r.status,200);assert.match(r.headers['content-type'],/image\/png/);assert.match(r.headers['cache-control'],/immutable/);assert.equal(createHash('sha256').update(r.body).digest('hex'),frame.sha256);}
+ const legacy=await request(icons.source);assert.equal(legacy.status,200);assert.equal(createHash('sha256').update(legacy.body).digest('hex'),icons.originalSha256,'Original multisize icon must remain intact');
+ const home=await request('/');assert(!/rel="shortcut icon"[^>]*href="[^"]+\.ico/.test(home.body.toString()),'Browser tab should use the exact sized PNG frame');assert(home.body.toString().includes('data-hidi-first-header'));assert(home.body.toString().includes('data-hidi-first-hero="true"'),'Current supported hero must be present in initial HTML');assert(home.body.toString().includes('data-hidi-inline-css'));assert(home.body.toString().includes('src="'+mirrorAssetUrl('/'+report.bundle,mirror)+'"'),'Exact verified application URL must be present');assert(home.body.toString().includes('data-hidi-desktop-preload="true"'));assert(home.body.toString().includes('data-hidi-app-start="true"'));assert(home.body.toString().includes('data-hidi-inline-script="/config.js"'));assert(home.body.toString().includes('data-hidi-early-hero'));
+ await verifyPosterTiers(pw,home.body.toString(),manifest,OUT,mode);
+ const headAssets=JSON.parse(await readFile(OUT+'/head-assets-quality.json','utf8'));
+ for(const asset of [headAssets.logo,headAssets.seo,headAssets.countdown].filter(Boolean)){const r=await request(asset.url,{'accept-encoding':'identity'});assert.equal(r.status,200);assert.equal(createHash('sha256').update(r.body).digest('hex'),asset.sha256,'Prepared head assets must retain their reviewed bytes');assert.match(r.headers['content-type'],asset===headAssets.logo?/image\/png/:/(?:java|ecma)script/);}
+ if(headAssets.countdown){const original=await request('/hidi-launch-countdown-20261011.js',{'accept-encoding':'identity'});assert.equal(original.status,200);assert.equal(createHash('sha256').update(original.body.toString().replace(/\r\n/g,'\n')).digest('hex'),headAssets.countdown.sourceSha256,'Original countdown source must remain byte-equivalent');assert(home.body.toString().includes('src="'+headAssets.countdown.url+'"'),'Homepage must use only the reviewed hashed countdown copy');}
+ assert(home.body.toString().includes('src="'+headAssets.logo.url+'"'),'Native logo must reuse the exact verified immutable PNG');assert(headAssets.logo.allRgbaPixelsIdentical);
+ // The wrapper injects identity metadata only for its production host. The
+ // separate pinned public-host fixture always requires this exact asset.
+ if(headAssets.seo&&(!['127.0.0.1','localhost'].includes(new URL(base).hostname)||home.body.toString().includes('data-hidi-seo-identity')))assert(home.body.toString().includes('defer src="'+headAssets.seo.url+'"'),'Exact SEO code must load independently of HTML');
+ const encodedHome=await request('/',{'accept-encoding':'br'});assert.equal(encodedHome.headers['content-encoding'],'br');await writeFile(OUT+'/document-delivery-'+mode+'.json',JSON.stringify({passed:true,brotliHtmlBytes:encodedHome.body.length,fullStylesIndependent:true,seoCodeUnchanged:true,logoPixelsUnchanged:headAssets.logo.allRgbaPixelsIdentical}));
  for(const path of ['/'+report.bundle,'/assets/index-yOknTVcM.css','/api/store/products']){
   const plain=await request(path,{'accept-encoding':'identity'});assert.equal(plain.status,200,path);
-  for(const encoding of ['br','gzip']){const r=await request(path,{'accept-encoding':encoding});assert.equal(r.status,200);assert.equal(r.headers['content-encoding'],encoding,path);assert.match(r.headers.vary,/Accept-Encoding/i);const decoded=encoding==='br'?brotliDecompressSync(r.body):gunzipSync(r.body);if(mode==='live'&&path.startsWith('/api/'))assert(Array.isArray(JSON.parse(decoded)));else assert.deepEqual(decoded,plain.body);assert(r.body.length<plain.body.length*.7,path+' should compress');}
+  for(const encoding of ['br','gzip']){const r=await request(path,{'accept-encoding':encoding});assert.equal(r.status,200);assert.equal(r.headers['content-encoding'],encoding,path);assert.match(r.headers.vary,/Accept-Encoding/i);const decoded=encoding==='br'?brotliDecompressSync(r.body):gunzipSync(r.body);if(mode==='live'&&path.startsWith('/api/'))assert(Array.isArray(JSON.parse(decoded)));else assert.deepEqual(decoded,plain.body);assert(r.body.length<plain.body.length*.7,path+' should compress');if(path===encodedAsset.url){assert.equal(r.body.length,encodedAsset.encodings[encoding].bytes);assert.equal(createHash('sha256').update(r.body).digest('hex'),encodedAsset.encodings[encoding].sha256,'Prepared representation must be used without recompression');}}
   if(path.startsWith('/api/'))assert.match(plain.headers['cache-control'],/no-store/);
  }
  for(const item of Object.values(manifest.videos))for(const variant of [item.mobile,item.desktop]){
   const poster=await request(variant.avifPoster);assert.equal(poster.status,200);assert.match(poster.headers['content-type'],/image\/avif/);assert.match(poster.headers['cache-control'],/immutable/);
-  const r=await request(variant.url,{range:'bytes=0-63'});assert.equal(r.status,206);assert.equal(r.body.length,64);assert.match(r.headers['cache-control'],/immutable/);assert(!r.headers['content-encoding']);
-  const suffix=await request(variant.url,{range:'bytes=-64'});assert.equal(suffix.status,206);assert.equal(suffix.body.length,64);
+  for(const mediaUrl of [variant.url,variant.av1Url].filter(Boolean)){
+  const r=await request(mediaUrl,{range:'bytes=0-63'});assert.equal(r.status,206);assert.equal(r.body.length,64);assert.match(r.headers['cache-control'],/immutable/);assert(!r.headers['content-encoding']);
+  const suffix=await request(mediaUrl,{range:'bytes=-64'});assert.equal(suffix.status,206);assert.equal(suffix.body.length,64);
+  }
  }
 }
 for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
  const browser=await pw[engine].launch({headless:true,...(engine==='chromium'&&existsSync('/usr/bin/google-chrome')?{executablePath:'/usr/bin/google-chrome'}:{})});
  try{for(const width of engine==='chromium'?[320,390,768,1440]:[390,1440]){
-  const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<700,reducedMotion:engine==='chromium'?'no-preference':'reduce'}),page=await context.newPage();page.setDefaultTimeout(45000);
-  const errors=[],network=[],media=[];let transferred=0;page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{network.push(r.url());if(r.resourceType()==='media')media.push(r.url());});
-  if(engine==='chromium'){const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');cdp.on('Network.loadingFinished',e=>transferred+=e.encodedDataLength);}
-  await page.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin||!['GET','HEAD'].includes(r.method()))return route.abort();return route.continue();});
+  const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<700,...(engine==='chromium'&&width<=700?{userAgent:'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36'}:{}),reducedMotion:engine==='chromium'?'no-preference':'reduce'}),page=await context.newPage();page.setDefaultTimeout(45000);
+  const errors=[],network=[],media=[],appPriorities=[],stylePriorities=[],loaderNetwork=observeLoaderNetwork(page);let transferred=0,firstFrames=null;page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{network.push(r.url());if(r.resourceType()==='media')media.push(r.url());});
+  if(engine==='chromium'){const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');cdp.on('Network.loadingFinished',e=>transferred+=e.encodedDataLength);cdp.on('Network.requestWillBeSent',e=>{try{const u=new URL(e.request.url);if(u.pathname.includes('/assets/index-')&&u.pathname.endsWith('.js'))appPriorities.push({url:e.request.url,initialPriority:e.request.initialPriority||null});if(e.type==='Stylesheet')stylePriorities.push({url:e.request.url,initialPriority:e.request.initialPriority||null});}catch{}});}
+  await page.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin&&!isMirrorAsset(u.href,mirror)||!['GET','HEAD'].includes(r.method()))return route.abort();return route.continue();});
+  if(!baseline){await observeNativePoster(page);await observeFirstFrames(page);}
   await page.addInitScript(()=>{window.__lcp=0;window.__cls=0;try{new PerformanceObserver(l=>window.__lcp=l.getEntries().at(-1).startTime).observe({type:'largest-contentful-paint',buffered:true});new PerformanceObserver(l=>l.getEntries().forEach(e=>{if(!e.hadRecentInput)window.__cls+=e.value;})).observe({type:'layout-shift',buffered:true});}catch{}});
   try{
    assert.equal((await page.goto(base+'/',{waitUntil:'domcontentloaded'})).status(),200);
    await page.waitForFunction(()=>document.querySelector('.hero-media')?.dataset.heroConfigStatus==='uploaded');
    const video=page.locator('video.hero-live-media');await video.waitFor({state:'attached'});
+   if(!baseline)await page.waitForFunction(()=>window.__HidiAppStarted&&!document.querySelector('video[data-hidi-first-hero]'));
    if(engine==='chromium')await page.waitForFunction(()=>{const v=document.querySelector('video.hero-live-media');return v?.readyState>=2&&v.videoWidth>0;});
    else await page.waitForFunction(()=>!!document.querySelector('video.hero-live-media')?.poster);
    await page.waitForTimeout(2500);
-   const initial=await page.evaluate(()=>({lcp:window.__lcp,cls:window.__cls,video:{src:document.querySelector('video.hero-live-media').currentSrc,poster:document.querySelector('video.hero-live-media').poster,width:document.querySelector('video.hero-live-media').videoWidth},overflow:document.documentElement.scrollWidth>innerWidth+1}));
-   const initialBytes=transferred,initialRequests=[...network];if(!baseline&&engine==='chromium'){assert(!initialRequests.some(u=>u.includes(width<=700?'poster-1920.webp':'poster-1280.webp')),'Only the matching responsive poster should download');}assert(!initial.overflow);if(!baseline){assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/api/hidi/hero-config').length,1,'Early hero request must be reused');assert(!initialRequests.some(u=>new URL(u).pathname==='/config.js'),'Config must not block on another request');assert.equal(initialRequests.filter(u=>u.includes('/assets/index-')&&u.endsWith('.js')).length,1,'App preload and module should reuse one request');assert(!initialRequests.some(u=>u.includes('/ananya-portraits/')),'Off-screen original portraits must not download');}
-   if(!baseline){assert(initial.video.poster.includes('/media-performance/assets/'));if(engine==='chromium'){assert(initial.video.poster.endsWith('.avif'));const wrong=Object.values(manifest.videos)[0][width<=700?'desktop':'mobile'].avifPoster;assert(!initialRequests.some(u=>new URL(u).pathname===wrong),'Only matching AVIF poster should download');assert(!initialRequests.some(u=>/poster-.*\.webp/.test(u)),'Modern browser should avoid duplicate WebP poster');}if(engine==='chromium'){assert(initial.video.src.includes('/media-performance/assets/'));assert.equal(initial.video.width,width<=700?1280:1920);assert(initialBytes<(width<=700?7:11)*1024*1024,'Initial transfer budget');}assert(!media.some(u=>u.includes('/api/hidi/hero-asset/')),'Original video should not be downloaded');}
+   if(!baseline){firstFrames=await finishFirstFrames(page);assertFirstFrames(firstFrames,mode+'/'+engine+'/'+width);}
+   if(!baseline){const retention=await page.evaluate(()=>({eligible:!matchMedia('(max-width: 700px)').matches&&typeof document.body.moveBefore==='function',nativeSeen:Boolean(window.__HidiProbeNativeVideo),sameNode:window.__HidiProbeNativeVideo===document.querySelector('video.hero-live-media')}));if(retention.eligible)assert(retention.nativeSeen&&retention.sameNode,'Supported desktop browsers must retain the actual painted native video node');}
+   const initial=await page.evaluate(()=>({lcp:window.__lcp,cls:window.__cls,retentionEligible:!matchMedia('(max-width: 700px)').matches&&typeof document.body.moveBefore==='function',retainedNativeVideo:window.__HidiProbeNativeVideo===document.querySelector('video.hero-live-media'),video:{src:document.querySelector('video.hero-live-media').currentSrc,poster:document.querySelector('video.hero-live-media').poster,width:document.querySelector('video.hero-live-media').videoWidth},overflow:document.documentElement.scrollWidth>innerWidth+1}));
+   const initialBytes=transferred,initialRequests=[...network];if(!baseline){const scope=JSON.parse(await readFile(OUT+'/patch.json','utf8'));assert(!initialRequests.some(u=>new URL(u).pathname==='/pricing-assets/storefront.mjs'),'Home must use its scoped loader without replacing the global commerce script');assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/'+scope.homePricingBundle).length,1);}if(!baseline)assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/api/store/products').length,1,'One fresh initial catalogue request must be reused by the offer script');if(!baseline&&engine==='chromium')assert(!initialRequests.some(u=>new URL(u).pathname.endsWith('.ico')),'Normal browser tab must use the exact small PNG frame');if(!baseline&&engine==='chromium'){assert(!initialRequests.some(u=>u.includes(width<=700?'poster-1920.webp':'poster-1280.webp')),'Only the matching responsive poster should download');}assert(!initial.overflow);if(!baseline){assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/api/hidi/hero-config').length,1,'Early hero request must be reused');assert.equal(initialRequests.filter(u=>new URL(u).pathname==='/api/hidi/landing-media-config').length,1,'Early landing selection must be reused');assert(!initialRequests.some(u=>new URL(u).pathname==='/config.js'),'Config must not block on another request');assert.equal(initialRequests.filter(u=>u.includes('/assets/index-')&&u.endsWith('.js')).length,1,'App preload and module should reuse one request');assert(!initialRequests.some(u=>u.includes('/ananya-portraits/')),'Off-screen original portraits must not download');}
+   if(!baseline){assert(initial.video.poster.includes('/media-performance/assets/')||inlinePosterPath(initial.video.poster,mirror),'Poster must be a verified external or exact inline asset'); if(engine==='chromium'){assert(initial.video.poster.endsWith('.avif')||inlinePosterPath(initial.video.poster,mirror));const expectedVariant=Object.values(manifest.videos)[0][width<=700?'mobile':'desktop'];const smallTier=await page.evaluate(()=>{const video=document.querySelector('video.hero-live-media'),rect=video.getBoundingClientRect();const mobile=matchMedia('(max-width: 700px)').matches;return (mobile?matchMedia('(max-width: 432px) and (min-height: 760px)').matches:matchMedia('(min-width: 701px) and (max-aspect-ratio: 40/27)').matches)&&getComputedStyle(video).objectPosition==='50% 50%'&&rect.width/rect.height<=(mobile?512/720:1600/1080);});const expected=smallTier&&expectedVariant.avifPosterSmall?expectedVariant.avifPosterSmall:expectedVariant.avifPoster;const inline=inlinePosterPath(initial.video.poster,mirror);assert.equal(inline||new URL(initial.video.poster,base).pathname,expected);assert.equal(initialRequests.filter(u=>new URL(u).pathname===expected).length,inline?0:1,'Inline bytes need no request; external preload and both hero renderers must reuse one request');const wrong=Object.values(manifest.videos)[0][width<=700?'desktop':'mobile'].avifPoster;assert(!initialRequests.some(u=>new URL(u).pathname===wrong),'Only matching AVIF poster should download');assert(!initialRequests.some(u=>/poster-.*\.webp/.test(u)),'Modern browser should avoid duplicate WebP poster');}if(engine==='chromium'){assert(initial.video.src.includes('/media-performance/assets/'));assert.equal(initial.video.width,width<=700?1280:1920);assert.equal(new URL(initial.video.src).pathname,Object.values(manifest.videos)[0][width<=700?'mobile':'desktop'].av1Url,'Responsive AV1 must decode successfully');assert(initialBytes<(width<=700?7:11)*1024*1024,'Initial transfer budget');}assert(!media.some(u=>u.includes('/api/hidi/hero-asset/')),'Original video should not be downloaded');}
+   if(!baseline&&engine==='chromium'&&width>700){assert.equal(appPriorities.length,1,'Desktop application must have one network request');assert.equal(appPriorities[0].initialPriority,'Low','Desktop application preload must be observed at Low priority');if(initial.retentionEligible){initial.desktopPaint=await assertDesktopPosterBeforeVideo(page,'Chromium '+width);for(const style of initial.desktopPaint.styles){const requests=stylePriorities.filter(row=>row.url===style.url);assert.equal(requests.length,1,'Each complete stylesheet must issue one observed browser request');assert.equal(requests[0].initialPriority,'High','Complete desktop CSS must actually dispatch at High after native poster paint');}}}
    const sound=page.getByRole('button',{name:'Turn video sound on'});await sound.waitFor();
    if(engine==='chromium'){
     await sound.click();await page.waitForFunction(()=>!document.querySelector('video.hero-live-media').muted);await page.getByRole('button',{name:'Mute video sound'}).click();await page.waitForFunction(()=>document.querySelector('video.hero-live-media').muted);
@@ -49,8 +193,8 @@ for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
    const photos=await page.locator('main img').evaluateAll(imgs=>imgs.filter(i=>{const r=i.getBoundingClientRect();return r.width>0&&r.right>0&&r.left<innerWidth;}).map(i=>({original:i.dataset.hidiOriginalSrc||i.src,src:i.currentSrc,loaded:i.complete&&i.naturalWidth>1,fit:getComputedStyle(i).objectFit,position:getComputedStyle(i).objectPosition})));
    assert(photos.every(i=>i.loaded),'All homepage photographs must decode after scrolling');assert.deepEqual(errors,[]);
    if(!baseline&&engine==='chromium'){const section=page.locator('#meet-hidi');await section.scrollIntoViewIfNeeded();const choices=section.locator('.portrait-gallery__preview');for(let i=0;i<await choices.count();i++){await choices.nth(i).click();await page.waitForFunction(()=>document.querySelector('.portrait-gallery__portrait')?.dataset.photoReady==='true'||document.querySelector('.portrait-gallery__portrait')?.naturalWidth>1);assert.equal(await choices.nth(i).getAttribute('aria-pressed'),'true');}await choices.first().click();await page.evaluate(()=>scrollTo(0,0));}
-   await page.screenshot({path:OUT+'/'+mode+'/'+engine+'-'+width+'.png',fullPage:true});rows.push({engine,width,passed:true,initialBytes,initialRequests,initial,geometry,photos});
-  }catch(error){await page.screenshot({path:OUT+'/'+mode+'/'+engine+'-'+width+'-failure.png',fullPage:true}).catch(()=>{});await writeFile(OUT+'/'+mode+'/'+engine+'-'+width+'-failure.json',JSON.stringify({error:String(error),errors,media,hero:await page.locator('.hero-media').evaluate(el=>el.outerHTML).catch(()=>null)}));throw error;}finally{await context.close();}
+   await page.screenshot({path:OUT+'/'+mode+'/'+engine+'-'+width+'.png',fullPage:true});rows.push({engine,width,passed:true,initialBytes,initialRequests,appPriorities,stylePriorities,firstFrames,initial,geometry,photos});
+  }catch(error){if(!baseline&&!firstFrames)firstFrames=await finishFirstFrames(page).catch(()=>null);await page.screenshot({path:OUT+'/'+mode+'/'+engine+'-'+width+'-failure.png',fullPage:true}).catch(()=>{});await writeFile(OUT+'/'+mode+'/'+engine+'-'+width+'-failure.json',JSON.stringify({error:String(error),errors,media,appPriorities,stylePriorities,firstFrames,...loaderNetwork,loader:await loaderFailureState(page),hero:await page.locator('.hero-media').evaluate(el=>el.outerHTML).catch(()=>null)}));throw error;}finally{await context.close();}
  }}finally{await browser.close();}
 }
 if(!baseline&&mode==='candidate'){
@@ -61,5 +205,30 @@ if(!baseline&&mode==='candidate'){
  }
  await writeFile(OUT+'/visual-comparison.json',JSON.stringify({passed:true,widths:[320,390,768,1440],unchanged:'section geometry, typography, colours, CSS, button positions and selected uploads'}));
 }
+if(!baseline&&mode==='candidate'){
+ const browser=await pw.chromium.launch({headless:true,...(existsSync('/usr/bin/google-chrome')?{executablePath:'/usr/bin/google-chrome'}:{})});
+ try{for(const scenario of ['codec-failure','unsupported','reduced-motion','data-saving','initial-selection']){
+  const context=await browser.newContext({viewport:{width:390,height:900},reducedMotion:scenario==='reduced-motion'?'reduce':'no-preference'}),page=await context.newPage();page.setDefaultTimeout(45000);
+  const loaderNetwork=observeLoaderNetwork(page);let releaseInitial;
+  try{
+  if(scenario==='unsupported')await page.addInitScript(()=>{const native=HTMLMediaElement.prototype.canPlayType;HTMLMediaElement.prototype.canPlayType=function(type){return type.includes('av01')?'':native.call(this,type);};});
+  if(scenario==='data-saving')await page.addInitScript(()=>{if(navigator.connection)Object.defineProperty(navigator.connection,'saveData',{get:()=>true});});
+  let catalogueReads=0;page.on('request',r=>{if(new URL(r.url()).pathname==='/api/store/products')catalogueReads++;});
+  const initialGate=new Promise(resolve=>{releaseInitial=resolve;});
+  await page.route('**/*',async route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin&&!isMirrorAsset(u.href,mirror)||!['GET','HEAD'].includes(r.method()))return route.abort();if(scenario==='initial-selection'&&u.pathname==='/api/hidi/hero-config'){const response=await route.fetch();const value=await response.json();value.mobilePosition='35% 65%';if(value.items?.length)value.items[0].mobilePosition='35% 65%';await initialGate;return route.fulfill({response,json:value});}if(scenario==='codec-failure'&&u.pathname.includes('/hero-av1-'))return route.fulfill({status:500,body:'Controlled codec fallback test'});return route.continue();});
+  await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.querySelector('.hero-media')?.dataset.heroConfigStatus==='uploaded'&&!document.querySelector('video[data-hidi-first-hero]'));
+  if(scenario==='initial-selection'){assert.equal(await page.evaluate(()=>window.__HidiHeroInitial),null,'Initial snapshot must be cleared after first mount');assert(await page.locator('video.hero-live-media').getAttribute('poster'));releaseInitial();await page.waitForFunction(()=>document.querySelector('video.hero-live-media')?.style.getPropertyValue('--hero-position-mobile')==='35% 65%');await page.waitForLoadState('load');assert.equal(catalogueReads,1);for(const resume of ['pageshow','visibility']){const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/store/products');await page.evaluate(type=>{if(type==='pageshow')dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));else document.dispatchEvent(new Event('visibilitychange'));},resume);await response;await page.waitForTimeout(100);}assert.equal(catalogueReads,3,'Returning to the page and becoming visible must still read fresh prices');}
+  if(['codec-failure','unsupported'].includes(scenario)){
+   await page.waitForFunction(()=>{const v=document.querySelector('video.hero-live-media');return v?.readyState>=2;});
+   assert.equal(new URL(await page.locator('video.hero-live-media').evaluate(v=>v.currentSrc)).pathname,Object.values(manifest.videos)[0].mobile.url);
+  }else if(['reduced-motion','data-saving'].includes(scenario)){await page.waitForTimeout(1500);assert.equal(await page.locator('video.hero-live-media').evaluate(v=>v.getAttribute('src')),null,'Motion and data preferences must prevent automatic video downloads');}
+  await page.getByRole('button',{name:'Turn video sound on'}).click();await page.waitForFunction(()=>{const v=document.querySelector('video.hero-live-media');return v?.readyState>=2&&!v.muted;});
+  }catch(error){await writeFile(OUT+'/'+mode+'/'+scenario+'-failure.json',JSON.stringify({error:String(error),...loaderNetwork,loader:await loaderFailureState(page)}));throw error;}finally{releaseInitial?.();await context.close();}
+ }await verifyDesktopVideoSafety(browser);}finally{await browser.close();}
+ await verifyLoaderSafety(pw,OUT,mode);
+ await writeFile(OUT+'/fallback-safety.json',JSON.stringify({passed:true,codecFailure:true,unsupportedCodec:true,reducedMotion:true,dataSaving:true,manualSound:true,initialSelectionReuse:true,freshSelectionUpdate:true,catalogueRequestReuse:true,catalogueResumeFreshness:true}));
+ console.log('PASS: codec recovery, original MP4 fallback, reduced-motion, data saving, explicit sound playback, initial hero reuse and fresh selection updates');
+}
+if(!baseline){await verifyInitialCss(pw,base,OUT,mode);await verifyPosterCache(pw,base,OUT,mode);await verifyMirrorFallback(pw,base,OUT,mode);}
 await writeFile(OUT+'/'+mode+'.json',JSON.stringify({passed:true,results:rows},null,2));
 console.log('PASS: '+mode+' homepage, poster, responsive photographs, sound controls, media ranges, compression and layout; '+rows.length+' browser/viewport cases');

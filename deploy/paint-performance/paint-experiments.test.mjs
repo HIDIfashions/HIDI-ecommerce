@@ -1,0 +1,59 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {transformPaintExperiment,encodeExperimentResponse} from './paint-experiments.mjs';
+import {runInNewContext} from 'node:vm';
+import {brotliDecompressSync,gunzipSync} from 'node:zlib';
+const origin='https://hidi-test.azurestaticapps.net',html='<head><link rel="preload" href="'+origin+'/media-performance/assets/poster-123.avif"><link rel="modulepreload" href="'+origin+'/assets/index-123.js"><script>const url=window.__HidiAssetUrl(path);</script><script type="module" crossorigin="anonymous" integrity="sha256-original" src="'+origin+'/assets/index-123.js" data-hidi-mirror-app="/assets/index-123.js" onerror="window.__HidiAppFallback()"></script></head><body>Original contents</body>';
+test('diagnostic variants isolate connection reuse and application fetch order without altering content or integrity',()=>{
+ assert.equal(transformPaintExperiment(html,'control',{origin}),html);
+ const local=transformPaintExperiment(html,'poster-origin',{origin});assert(local.includes('href="/media-performance/assets/poster-123.avif"'));assert(local.includes('src="'+origin+'/assets/index-123.js"'));assert(local.includes('path.endsWith(".avif")?path:'));
+ const first=transformPaintExperiment(html,'poster-first',{origin});assert(!first.includes('rel="modulepreload"'));assert(first.includes('data-hidi-queued-src="'+origin+'/assets/index-123.js"'));assert(first.includes('integrity="sha256-original"'));assert(first.includes('onerror="window.__HidiAppFallback()"'));assert(first.includes('window.__HidiNativePosterReady'));assert(first.includes('setTimeout(start,1200)'));assert(first.includes('Original contents'));
+ assert.throws(()=>transformPaintExperiment(html,'other',{origin}));assert.throws(()=>transformPaintExperiment('<body></body>','poster-first',{origin}));
+});
+test('external logo comparison reuses the exact preloaded file without changing other image bytes or markup',()=>{
+ const logo='/media-performance/assets/logo-0123456789abcdef.png',input='<head><link rel="preload" href="'+logo+'"></head><body><img width="265" src="data:image/png;base64,YWJj" alt="HIDI India"></body>';
+ const output=transformPaintExperiment(input,'external-logo',{origin});assert(output.includes('src="'+logo+'"'));assert(output.includes('width="265"'));assert(output.includes('alt="HIDI India"'));assert(!output.includes('data:image/png'));assert.throws(()=>transformPaintExperiment('<head></head>','external-logo',{origin}));
+});
+test('diagnostic fetch ordering waits for both AVIF selection and poster paint, with one bounded fallback',async()=>{
+ let avifReady,posterReady;const scripts=[],timers=[];
+ const window={__HidiAvifSupport:new Promise(done=>avifReady=done)};
+ const original={dataset:{hidiQueuedSrc:origin+'/assets/index-123.js'},attributes:[{name:'type',value:'application/x-hidi-deferred-module'},{name:'integrity',value:'sha256-original'},{name:'data-hidi-queued-src',value:origin+'/assets/index-123.js'}]};
+ const document={querySelector:()=>original,createElement:()=>({setAttribute(name,value){this[name]=value;}}),head:{append:script=>scripts.push(script)}};
+ const code=transformPaintExperiment(html,'poster-first',{origin}).match(/<script data-hidi-diagnostic-boot="true">([\s\S]*?)<\/script>/)[1];
+ runInNewContext(code,{window,document,Promise,setTimeout:(fn,ms)=>timers.push({fn,ms})});
+ await new Promise(setImmediate);assert.equal(scripts.length,0);
+ window.__HidiNativePosterReady=new Promise(done=>posterReady=done);avifReady(true);await new Promise(setImmediate);assert.equal(scripts.length,0);
+ posterReady();await new Promise(setImmediate);assert.equal(scripts.length,1);assert.equal(scripts[0].integrity,'sha256-original');assert.equal(scripts[0].src,original.dataset.hidiQueuedSrc);timers[0].fn();assert.equal(scripts.length,1);assert.equal(timers[0].ms,1200);
+});
+test('rewritten fixture responses never combine transfer encoding and length, and preserve decoded bytes and security headers',()=>{
+ const original={'transfer-encoding':'chunked','content-length':'999','etag':'old','content-security-policy':"default-src 'self'",vary:'Accept-Encoding'};
+ for(const encoding of ['identity','gzip','br']){
+  const result=encodeExperimentResponse(original,html,encoding);assert(!Object.hasOwn(result.headers,'transfer-encoding'));assert(!Object.hasOwn(result.headers,'etag'));assert.equal(result.headers['content-length'],result.body.length);assert.equal(result.headers['content-security-policy'],original['content-security-policy']);
+  assert.equal((encoding==='br'?brotliDecompressSync(result.body):encoding==='gzip'?gunzipSync(result.body):result.body).toString(),html);
+ }
+ assert.equal(original['transfer-encoding'],'chunked');
+});
+test('poster connection comparison retains anonymous module hint and adds the image credential mode only',()=>{
+ const hint='<link rel="preconnect" href="'+origin+'" crossorigin>',input='<head>'+hint+'</head><body>Same pixels</body>';
+ assert.equal(transformPaintExperiment(input,'warm-poster',{origin}),'<head><link rel="preconnect" href="'+origin+'">'+hint+'</head><body>Same pixels</body>');
+});
+test('mobile origin comparison changes only matching mobile hints and retains desktop asset delivery',()=>{
+ const mobile='<link rel="preload" type="image/avif" media="(max-width: 432px) and (min-height: 760px)" href="'+origin+'/media-performance/assets/poster-small.avif">',desktop='<link rel="preload" type="image/avif" media="(min-width: 701px)" href="'+origin+'/media-performance/assets/poster-desktop.avif">';
+ const output=transformPaintExperiment('<head>'+mobile+desktop+'<script>const url=window.__HidiAssetUrl(path);</script></head>','mobile-poster-origin',{origin});
+ assert(output.includes('href="/media-performance/assets/poster-small.avif"'));assert(output.includes(desktop));assert(output.includes('matchMedia("(max-width: 700px)").matches?path:window.__HidiAssetUrl(path)'));
+});
+test('mobile inline experiment uses identical supplied AVIF bytes and adds nothing to desktop HTML',()=>{
+ const path='/media-performance/assets/poster-small.avif',row={path,url:'data:image/avif;base64,YWJj'},input='<head><link rel="preload" type="image/avif" href="'+origin+path+'"><script>const url=window.__HidiAssetUrl(path);</script></head><body></body>',mirror={origin,files:{[path]:'verified'}};
+ const desktop=transformPaintExperiment(input,'inline-mobile',mirror,{isMobile:false,inlinePoster:row});assert(!desktop.includes('data:image/avif'));const mobile=transformPaintExperiment(input,'inline-mobile',mirror,{isMobile:true,inlinePoster:row});assert(mobile.includes('href="'+row.url+'"'));assert(mobile.includes('path===inline.path?inline.url'));assert.throws(()=>transformPaintExperiment(input,'inline-mobile',mirror,{isMobile:true}));
+});
+test('desktop preview never delays or replaces the final poster and leaves phone HTML exact',()=>{
+ const input='<head><link rel="preload" href="/full-quality.avif"></head><body><video data-hidi-first-hero poster="/full-quality.avif"></video></body>',options={isMobile:false,desktopPreview:'data:image/avif;base64,YWJj'};
+ const result=transformPaintExperiment(input,'desktop-preview',{origin},options);assert(result.includes('href="/full-quality.avif"'));assert(result.includes('poster="/full-quality.avif"'));assert(result.includes('video[data-hidi-first-hero]'));assert(!result.includes('visibility:'));assert.equal(transformPaintExperiment(input,'desktop-preview',{origin},{...options,isMobile:true}),input);assert.throws(()=>transformPaintExperiment(input,'desktop-preview',{origin},{...options,desktopPreview:'data:image/avif;base64,'+'A'.repeat(2049)}));
+});
+test('native image comparison retains source framing and selects exactly the original poster',()=>{
+ const input='<head><link rel="preload" href="/full.avif"></head><body><video data-hidi-first-hero="true" class="hero-live-media" loop playsinline preload="none" style="--hero-position-desktop:20% 50%;"></video><script>const video=document.querySelector("video[data-hidi-first-hero]");video.poster=window.__HidiMirrorPoster?.(poster)||poster;</script></body>';
+ const result=transformPaintExperiment(input,'native-image',{});assert(result.includes('<img data-hidi-first-hero="true"'));assert(result.includes('--hero-position-desktop:20% 50%;'));assert(result.includes('href="/full.avif"'));assert(result.includes('video.src=video.poster;'));assert(!result.includes('<video'));assert.throws(()=>transformPaintExperiment('<body></body>','native-image',{}));
+});
+test('poster-first scheduling keeps every classic script URL, attributes and bounded start',()=>{
+ const input=html.replace('</head>','<script data-hidi-desktop-preload="true">desktop preload</script></head>').replace('</body>',"<script>if(!matchMedia('(max-width: 700px)').matches||!document.querySelector('video[data-hidi-first-hero]')){start();return;}</script>"+['/app-coming-soon-c471a1b693c0383d.js','/hidi-launch-countdown-20261011.js','/hidi-analytics.js','/performance/rum.js','/offers-assets/admin-link.js','/offers-assets/storefront.js','/privacy-policy-assets/links.js'].map((url,i)=>'<script defer data-original="'+i+'" src="'+url+'"></script>').join('')+'</body>');
+ const desktop=transformPaintExperiment(input,'desktop-poster-first',{origin});assert(!desktop.includes('desktop preload'));assert(desktop.includes("if(!document.querySelector('video[data-hidi-first-hero]'))"));assert(desktop.includes('src="/app-coming-soon-c471a1b693c0383d.js"'));
+ const seo='<script defer data-hidi-seo-identity="1" src="/assets/home-seo-reviewed.js"></script>',output=transformPaintExperiment(input.replace('</head>',seo+'</head>'),'aux-after-poster',{origin});assert(output.includes(seo));for(let i=0;i<7;i++)assert(output.includes('data-original="'+i+'" data-hidi-aux-src="'));assert(output.includes('script.async=false'));assert(output.includes('setTimeout(start,1200)'));assert(output.includes('integrity="sha256-original"'));assert.throws(()=>transformPaintExperiment(input.replace(' defer data-original="0"',' data-original="0"'),'aux-after-poster',{origin}));
+});

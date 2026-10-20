@@ -70,6 +70,27 @@ test('explicit labelled catalogue facts are used without inferring from the name
 test('photography and the word set never invent included pieces or fabric', () => {const f=productFacts({...factsProduct,name:'Silk three piece set',fabric:null,description:'A beautiful set.',shortDescription:null});assert.equal(f.includes,null);assert.equal(f.fabric,null);assert.equal(f.fit,null);});
 test('labels are case-insensitive and tolerate CRLF and spaces',()=>assert.equal(productFacts({...a,description:'  INCLUDES : Kurta only\r\nFIT: Straight'}).includes,'Kurta only'));
 test('empty or misleading in-sentence labels do not become garment facts',()=>assert.equal(productFacts({...a,description:'Our vision includes: imagination'}).includes,null));
+test('explicit piece-count catalogue descriptions are retained verbatim instead of contradicted as missing',()=>{
+ for(const statement of ['2-Piece Set Kurta Set with Straight-Fit Pants, Embroidered Kurta and Matching Pants','3-Piece Set Embroidered Kurta Set with Bottom and Dupatta.'])
+  assert.equal(productFacts({...a,description:null,shortDescription:statement}).includes,statement);
+});
+test('explicit component descriptions without a piece count stay verbatim',()=>{
+ for(const statement of ['Printed Kurta Set with Bottom and Dupatta','Designer Embroidered Kurta Set with Bottom and Dupatta','Designer Kurti Set with Palazzo','Embroidered Kurta Set with Bottom','Printed Co-Ord Kurti Set with Palazzo','Designer Embroidered Suit Set with Bottom and Dupatta','Coord Set with Top and Bottom','Embroidered Anarkali Kurta Set with Bottom and Dupatta'])
+  assert.equal(productFacts({...a,description:null,shortDescription:statement}).includes,statement);
+});
+test('bullet Includes labels are explicit without interpreting a malformed Model bullet',()=>{
+ const result=productFacts({...a,description:'- Includes: Kurta, Bottom and Dupatta\n- Model: 3 Piece Kurtha Set',shortDescription:null});
+ assert.equal(result.includes,'Kurta, Bottom and Dupatta');assert.equal(result.model,null);
+});
+test('extra components and incomplete or qualified set descriptions stay unresolved',()=>{
+ for(const statement of ['Embroidered Kurta Set with Dupatta','Kurta Set','Kurta Set with Bottom and optional Dupatta','Kurta Set with Bottom or Palazzo','Kurta Set with Bottom and an accessory','Designer Suit Set with Bottom and Dupatta available separately'])
+  assert.equal(productFacts({...a,description:null,shortDescription:statement}).includes,null);
+});
+test('ambiguous component statements do not turn into included-piece promises',()=>{
+ for(const statement of ['3-Piece Set Kurta with Bottom','2-Piece Set Kurta with Bottom and optional Dupatta','3-Piece Set Kurta with Bottom or Dupatta','2-Piece Set with unknown contents'])
+  assert.equal(productFacts({...a,description:null,shortDescription:statement}).includes,null);
+ assert.equal(productFacts({...a,name:'3-Piece Set Kurta with Bottom and Dupatta',description:null,shortDescription:null}).includes,null);
+});
 test('complete catalogue evidence clears all readiness gaps',()=>assert.equal(productContentGaps(factsProduct).length,0));
 test('each available variant needs usable measurements, not only the first size',()=>assert(productContentGaps({...factsProduct,variants:[...factsProduct.variants,{...b.variants[0]}]}).includes('Measurements for every available size')));
 test('invalid and zero garment measurements remain a content gap',()=>{for(const value of [0,-1,NaN,Infinity,null])assert(productContentGaps({...factsProduct,variants:[{...factsProduct.variants[0],bustMm:value}]}).includes('Measurements for every available size'));});

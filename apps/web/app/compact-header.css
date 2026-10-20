@@ -1,0 +1,35 @@
+/* Compact brand chrome. Keep artwork, navigation and touch controls intact. */
+:root { --hidi-header-height: 85px; }
+.site-header[data-editorial-header] .header-inner { height: 84px; }
+.site-header[data-editorial-header] .wordmark { width: 136px; height: 71px; }
+body:has(.checkout-page) .site-header[data-editorial-header] .wordmark { grid-column: 1 / -1; justify-self: start; }
+@media (min-width: 1001px) {
+  .site-header[data-editorial-header] .header-inner { grid-template-columns: 136px minmax(0, 1fr) auto; }
+}
+.site-shell, .hidi-page { --header-height: 72px; }
+#site-header .campaign-brand,
+#site-header .campaign-brand img { width: 102px; }
+#site-header .campaign-brand { min-height: 44px; }
+@media (max-width: 1000px) {
+  :root { --hidi-header-height: 57px; --hidi-mobile-header: 56px; }
+  .site-header[data-editorial-header] .header-inner { height: 56px; }
+  body:not(:has(.checkout-page)) .site-header[data-editorial-header] .header-inner { min-height: 56px !important; }
+  .site-header[data-editorial-header] .wordmark { width: 86px; height: 44.5px; min-height: 44px; }
+  .site-header[data-editorial-header] .mobile-menu { width: 44px !important; height: 44px !important; flex: 0 0 44px !important; }
+}
+@media (min-width: 701px) and (max-width: 1000px) {
+  #site-header .campaign-brand,
+  #site-header .campaign-brand img { width: 92px; }
+}
+@media (max-width: 700px) {
+  .site-shell, .hidi-page { --header-height: 58px; }
+  #site-header .campaign-brand,
+  #site-header .campaign-brand img { width: 74px; }
+}
+@media (max-width: 389px) {
+  .site-header[data-editorial-header] .wordmark { width: 80px; height: 41.5px; }
+}
+@media (max-width: 360px) {
+  #site-header .campaign-brand,
+  #site-header .campaign-brand img { width: 68px; }
+}

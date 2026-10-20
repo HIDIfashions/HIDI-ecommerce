@@ -1,17 +1,31 @@
 import { Injectable } from "@nestjs/common";
 import { orderMessage, recipient, type NotificationChannel, type NotificationOrder } from "./order-message.js";
-export type PreparedNotification = { provider: "RESEND" | "MSG91"; body: Record<string, unknown> };
+export type PreparedNotification = { provider: "RESEND" | "MSG91" | "MSG91_SMS"; body: Record<string, unknown> };
 export type SendResult = { status: "SENT" | "RETRY" | "FAILED" | "UNKNOWN"; error: string | null; messageId?: string };
 @Injectable()
 export class OrderNotificationSender {
   configured(provider: string): boolean {
     if (provider === "RESEND") return Boolean(process.env.RESEND_API_KEY);
+    if (provider === "MSG91_SMS") return Boolean(process.env.MSG91_SMS_AUTHKEY || process.env.MSG91_AUTHKEY);
     if (provider === "MSG91") return Boolean(process.env.MSG91_WHATSAPP_AUTHKEY || process.env.MSG91_AUTHKEY);
     return false;
   }
   prepare(order: NotificationOrder, channel: NotificationChannel): PreparedNotification | null {
     const to = recipient(order, channel);
     if (!to) return null;
+    if (channel === "SMS") {
+      const template = process.env.MSG91_ORDER_SMS_TEMPLATE_ID?.trim();
+      // Require explicit provider clearance; configuring a key alone must never start SMS.
+      if (process.env.ORDER_SMS_PROVIDER_VERIFIED !== "true" || !template
+        || !/^[a-f0-9]{24}$/i.test(template) || !this.configured("MSG91_SMS")) return null;
+      if (!/^[A-Za-z0-9-]{1,40}$/.test(order.orderNumber)
+        || !Number.isSafeInteger(order.totalPaise) || order.totalPaise < 0) return null;
+      const amount = (order.totalPaise / 100).toFixed(2);
+      return { provider: "MSG91_SMS", body: {
+        template_id: template, short_url: "0",
+        recipients: [{ mobiles: to, order_number: order.orderNumber, amount }],
+      } };
+    }
     const message = orderMessage(order);
     if (channel === "EMAIL") {
       // Require an explicitly verified transactional sender; no test sender fallback.
@@ -35,20 +49,24 @@ export class OrderNotificationSender {
   }
   async send(id: string, prepared: PreparedNotification): Promise<SendResult> {
     const email = prepared.provider === "RESEND";
+    const sms = prepared.provider === "MSG91_SMS";
     try {
-      const response = await fetch(email ? "https://api.resend.com/emails" : "https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/", {
+      const response = await fetch(email ? "https://api.resend.com/emails" : sms ? "https://control.msg91.com/api/v5/flow" : "https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/", {
         method: "POST", signal: AbortSignal.timeout(15000), redirect: "error",
         headers: email ? {
           Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json",
           "Idempotency-Key": `hidi-order-confirmation/${id}`,
-        } : { authkey: process.env.MSG91_WHATSAPP_AUTHKEY || process.env.MSG91_AUTHKEY || "", "Content-Type": "application/json" },
+        } : { authkey: (sms ? process.env.MSG91_SMS_AUTHKEY : process.env.MSG91_WHATSAPP_AUTHKEY) || process.env.MSG91_AUTHKEY || "", "Content-Type": "application/json" },
         body: JSON.stringify(prepared.body),
       });
       // Never persist or log provider error text, recipient details or credentials.
       const body = await response.json().catch(() => null) as any;
       if (response.ok) {
-        const messageId = email ? body?.id : body?.request_id;
+        const messageId = email ? body?.id : sms ? body?.request_id || body?.message : body?.request_id;
         const accepted = email || (body?.status === "success" || body?.type === "success") && body?.hasError !== true;
+        if (sms && (body?.type === "error" || body?.status === "error")) {
+          return { status: "FAILED", error: "PROVIDER_REJECTED" };
+        }
         if (accepted && typeof messageId === "string" && messageId.length > 0 && messageId.length <= 191) {
           return { status: "SENT", error: null, messageId };
         }

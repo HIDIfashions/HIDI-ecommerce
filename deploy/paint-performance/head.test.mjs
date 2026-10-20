@@ -1,4 +1,80 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHomeHead} from './head.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHash} from 'node:crypto';import {createHomeHead} from './head.mjs';
+import {runInNewContext} from 'node:vm';
+import {readFileSync} from 'node:fs';
+
+test('split desktop poster and application hosts warm their own connections without changing media bytes',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-split-preconnect-')),root=join(app,'dist'),hash=value=>createHash('sha256').update(value).digest('hex');
+ const js='if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}',poster=Buffer.from('verified poster'),scriptPath='/assets/index-'+hash(js).slice(0,16)+'.js',posterPath='/media-performance/assets/poster-'+hash(poster).slice(0,16)+'.avif',origin='https://hidi-test.azurestaticapps.net',edgeOrigin='https://hidi-performance-posters.pages.dev';
+ try{
+  mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(root,'media-performance/assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));
+  writeFileSync(join(root,scriptPath),js);writeFileSync(join(root,posterPath),poster);
+  const files={[scriptPath]:hash(js),[posterPath]:hash(poster)},writeMirror=edgeFiles=>writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin,edgeOrigin,files,edgeFiles}));
+  writeMirror({[posterPath]:hash(poster)});
+  const html='<head><meta charset="utf-8"><link rel="preload" as="image" type="image/avif" media="(min-width: 701px)" href="'+posterPath+'"><script type="module" src="'+scriptPath+'"></script></head><body></body>',desktop={headers:{'user-agent':'Desktop browser'}};
+  const output=createHomeHead(root,app)(html,desktop),hint='<link rel="preconnect" href="'+edgeOrigin+'">';
+  assert(output.includes(hint));assert(output.indexOf(hint)<output.indexOf('rel="preload"'));assert(output.includes('<link rel="preconnect" href="'+origin+'" crossorigin>'));assert(output.includes('href="'+edgeOrigin+posterPath+'"'));
+  assert(!createHomeHead(root,app)(html,{headers:{'user-agent':'Android Mobile'}}).includes(hint));
+  writeMirror(files);assert.equal(createHomeHead(root,app)(html,desktop).split(hint).length,2,'Same image and app origin must not receive duplicate credentialed hints');
+  writeFileSync(join(root,posterPath),'corrupt');assert.equal(createHomeHead(root,app)(html,desktop),html,'Unverified mirror must retain original delivery');
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
+test('only verified mobile poster preloads use origin while desktop keeps its immutable mirror',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-origin-poster-')),root=join(app,'dist'),bytes=Buffer.from('exact encoded poster'),sha=createHash('sha256').update(bytes).digest('hex'),path='/media-performance/assets/poster-'+sha.slice(0,16)+'.avif',origin='https://hidi-test.azurestaticapps.net';
+ try{
+  mkdirSync(join(root,'media-performance/assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));writeFileSync(join(root,path),bytes);
+  writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin,files:{[path]:sha}}));
+  writeFileSync(join(app,'paint-performance/initial-hero.json'),JSON.stringify({'/selected.mp4':{mobile:{avifPoster:path,avifPosterSmall:path,posterCrop:{width:512,height:720,sourceWidth:1280,sourceHeight:720}},desktop:{avifPoster:path}}}));
+  const mobile='<link rel="preload" type="image/avif" media="(max-width: 700px)" href="'+path+'">',desktop='<link rel="preload" type="image/avif" media="(min-width: 701px)" href="'+path+'">',html='<head>'+mobile+desktop+'</head><body></body>',result=createHomeHead(root,app)(html);
+  assert(result.includes(mobile));assert(result.includes(desktop.replace('href="'+path,'href="'+origin+path)));assert(result.includes('"originPosters":["'+path+'"]'));
+  const mobileHtml=createHomeHead(root,app)(html,{headers:{'user-agent':'Android Mobile'}}),data='data:image/avif;base64,'+bytes.toString('base64');assert(mobileHtml.includes('href="'+data+'"'));assert(mobileHtml.includes('"inlinePosters":{"'+path+'":"'+data+'"}'));assert(!result.includes(data));
+  writeFileSync(join(root,path),'corrupt');assert.equal(createHomeHead(root,app)(html),html);
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
+test('only byte-verified boot-once entries use the asset mirror, with original-origin recovery',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-mirror-head-')),root=join(app,'dist'),code='if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}';
+ try{mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));const sha=createHash('sha256').update(code).digest('hex'),url='/assets/index-'+sha.slice(0,16)+'.js',origin='https://hidi-test.azurestaticapps.net';writeFileSync(join(root,url),code);writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin,files:{[url]:sha}}));
+ const html='<head><link rel="modulepreload" href="'+url+'"><script type="module" crossorigin src="'+url+'"></script></head><body></body>',result=createHomeHead(root,app)(html);assert(result.includes('src="'+origin+url+'"'));assert(result.includes('rel="modulepreload" media="(min-width: 701px)" fetchpriority="low"'));assert(result.includes('href="'+origin+url+'"'));assert(!result.includes('rel="preload" as="script" media="(min-width: 701px)"'));assert(result.includes('data-hidi-desktop-preload="true"'));assert(result.includes('data-hidi-app-start="true"'));assert(result.includes('type="application/x-hidi-queued-module"'));assert(result.includes('data-hidi-mirror-app="'+url+'"'));assert(result.indexOf('window.__HidiAppFallback=')<result.indexOf('src="'+origin));assert(result.includes('onerror="window.__HidiAppFallback()"'));
+ const edgeOrigin='https://hidi-performance-posters.pages.dev';writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin,files:{[url]:sha},edgeOrigin,edgeFiles:{[url]:sha}}));const edge=createHomeHead(root,app)(html);assert(edge.includes('data-hidi-queued-src="'+edgeOrigin+url+'"'));assert(edge.includes('href="'+edgeOrigin+url+'"'));assert(edge.includes('integrity="sha256-'+Buffer.from(sha,'hex').toString('base64')+'"'));assert(edge.includes('<link rel="preconnect" href="'+edgeOrigin+'" crossorigin>'));
+ writeFileSync(join(root,url),'changed');assert.equal(createHomeHead(root,app)(html),html);
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
+test('complete CSS waits for the native poster and automatically starts when native markup is unavailable',async()=>{const app=mkdtempSync(join(tmpdir(),'hidi-style-priority-')),root=join(app,'dist');try{mkdirSync(root);mkdirSync(join(app,'paint-performance'));const css='body{color:red}.later{color:blue}',sha256=createHash('sha256').update(css).digest('hex');writeFileSync(join(root,'a.css'),css);writeFileSync(join(app,'paint-performance/critical-css.json'),JSON.stringify({styles:{'/a.css':{sha256,critical:'body{color:red}'}}}));const html=createHomeHead(root,app)('<head><link rel="stylesheet" href="/a.css"></head><body></body>'),script=html.match(/<script data-hidi-full-css="true">([\s\S]*?)<\/script>/)[1];assert(html.includes('data-hidi-full-href="/a.css?hidi_full='));assert(!/<link\b[^>]*\shref=/.test(html));for(const native of [true,false]){let requests=0;const listeners={},link={dataset:{hidiFullHref:'/a.css?hidi_full='+sha256.slice(0,16)},addEventListener:(name,fn)=>listeners[name]=fn,set href(value){assert.equal(value,this.dataset.hidiFullHref);requests++;}},context={window:{},document:{readyState:native?'loading':'interactive',querySelectorAll:()=>[link],querySelector:()=>native?{}:null,addEventListener:()=>{}}};runInNewContext(script,context);assert.equal(requests,native?0:1);context.window.__HidiLoadFullCss();assert.equal(requests,1);listeners.load();await context.window.__HidiFullCssReady;assert.equal(link.media,'all');context.window.__HidiLoadFullCss();assert.equal(requests,1);}}finally{rmSync(app,{recursive:true,force:true});}});
+
+test('countdown replacement requires the reviewed source and preserves the original on mismatch',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-countdown-head-')),root=join(app,'dist');try{
+  mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));
+  const source=readFileSync(new URL('../launch-countdown/countdown.js',import.meta.url)),optimized=source.toString().replace(/\r\n/g,'\n'),sourceSha=createHash('sha256').update(optimized).digest('hex');
+  assert.equal(sourceSha,'9f32ea5cc3f76cff81a7b5a6537d5437b161a73dd9b6df9328e285e578ac4195');
+  const candidate=optimized.replace('function position() {','function observeHeader() {');
+  const url='/assets/home-countdown-'+createHash('sha256').update(candidate).digest('hex').slice(0,16)+'.js';writeFileSync(join(root,'hidi-launch-countdown-20261011.js'),source);writeFileSync(join(root,url.slice(1)),candidate);
+  writeFileSync(join(app,'paint-performance/head-assets.json'),JSON.stringify({countdown:{url,sourceFile:'dist/hidi-launch-countdown-20261011.js',sourceSha256:sourceSha,sha256:createHash('sha256').update(candidate).digest('hex')}}));
+  const html='<script defer src="/hidi-launch-countdown-20261011.js"></script>';assert(createHomeHead(root,app)(html).includes('src="'+url+'"'));
+  writeFileSync(join(root,'hidi-launch-countdown-20261011.js'),'changed');assert.equal(createHomeHead(root,app)(html),html);
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
+test('desktop CSS keeps the fresh native-paint path and eagerly recovers hash, back, hidden and scroll states',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-css-eligibility-')),root=join(app,'dist');try{
+  mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));const js='if (!window.__HidiAppStarted) {window.__HidiAppStarted=true;}';const sha=createHash('sha256').update(js).digest('hex'),url='/assets/index-'+sha.slice(0,16)+'.js';writeFileSync(join(root,url.slice(1)),js);writeFileSync(join(app,'paint-performance/asset-mirror.json'),JSON.stringify({passed:true,bootOnce:true,origin:'https://hidi-test.azurestaticapps.net',files:{[url]:sha}}));const css='body{color:red}',cssSha=createHash('sha256').update(css).digest('hex');writeFileSync(join(root,'a.css'),css);writeFileSync(join(app,'paint-performance/critical-css.json'),JSON.stringify({styles:{'/a.css':{sha256:cssSha,critical:css}}}));
+  const html=createHomeHead(root,app)('<head><link rel="modulepreload" href="'+url+'"><link rel="stylesheet" href="/a.css"></head><body><video data-hidi-first-hero></video></body>'),source=html.match(/<script data-hidi-mirror-css="true">([\s\S]*?)<\/script>/)[1];assert(html.includes('fetchpriority="low" data-hidi-deferred-style="true"'));let events={};const make=(hash='',scroll=0,hidden='visible',nav='navigate')=>{const state={loaded:0};const window={__HidiLoadFullCss:()=>state.loaded++},document={visibilityState:hidden,addEventListener:(name,fn)=>events[name]=fn},context={window,document,location:{hash},scrollY:scroll,matchMedia:()=>({matches:false}),performance:{getEntriesByType:()=>[{type:nav}]},Element:{prototype:{moveBefore(){}}},PerformanceObserver:{supportedEntryTypes:['largest-contentful-paint']},addEventListener:(name,fn)=>events[name]=fn};runInNewContext(source,context);return {state,context};};
+  let run=make('');assert.equal(run.state.loaded,0);run.context.scrollY=10;events.scroll();assert.equal(run.state.loaded,1);run=make('#size');assert.equal(run.state.loaded,1);run=make('',0,'visible','back_forward');assert.equal(run.state.loaded,1);run=make('',0,'hidden');assert.equal(run.state.loaded,1);
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
+test('prepared logo and SEO assets require matching source and immutable content hashes',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-head-assets-')),root=join(app,'dist'),hash=value=>createHash('sha256').update(value).digest('hex');
+ try{for(const folder of ['assets/images','media-performance/assets'])mkdirSync(join(root,folder),{recursive:true});mkdirSync(join(app,'paint-performance'));
+ const original=Buffer.from('reviewed-original-logo'),optimized=Buffer.from('same-reviewed-pixels'),code='window.__hidiSeo="original";',logo='/media-performance/assets/logo-'+hash(optimized).slice(0,16)+'.png',seo='/assets/home-seo-'+hash(code).slice(0,16)+'.js';
+ writeFileSync(join(root,'assets/images/hidi-logo.png'),original);writeFileSync(join(root,logo),optimized);writeFileSync(join(root,seo),code);writeFileSync(join(app,'paint-performance/head-assets.json'),JSON.stringify({logo:{url:logo,sourceSha256:hash(original),sha256:hash(optimized)},seo:{url:seo,sha256:hash(code)}}));
+ const html='<head><script data-hidi-seo-identity="1">'+code+'</script><link rel="preload" as="image" fetchpriority="high" href="/assets/images/hidi-logo.png"></head><body><img src="/assets/images/hidi-logo.png"></body>';
+ let output=createHomeHead(root,app)(html);assert(output.includes('defer src="'+seo+'"'));assert(!output.includes(code));assert(output.includes('src="'+logo+'"'));assert(!output.includes('data:image/png;base64,'+optimized.toString('base64')));assert(output.includes('href="'+logo+'"'));assert(output.includes('fetchpriority="low"'));
+ writeFileSync(join(root,seo),'corrupt');writeFileSync(join(root,logo),'corrupt');output=createHomeHead(root,app)(html);assert(output.includes(code));assert(output.includes('data:image/png;base64,'+original.toString('base64')));
+ const changed=html.replace(code,'window.__hidiSeo="updated";');assert(createHomeHead(root,app)(changed).includes('window.__hidiSeo="updated";'));
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
 test('public CSS retains cascade order, markers and asset URL resolution; remote/imported/conditional styles remain links',()=>{
  const root=mkdtempSync(join(tmpdir(),'hidi-head-'));
  try{
@@ -26,6 +102,36 @@ test('parser header logo embeds exact bytes while external app loading is preser
   mkdirSync(join(root,'assets/images'),{recursive:true});const logo=Buffer.from([137,80,78,71,13,10,26,10]);writeFileSync(join(root,'assets/images/hidi-logo.png'),logo);
   writeFileSync(join(root,'assets/index-abc.js'),'const x={src:Tt("images/hidi-logo.png"),fetchPriority:"high"};');
   const html='<link rel="preload" as="image" href="./assets/images/hidi-logo.png"><script type="module" src="/assets/index-abc.js"></script><header><img src="./assets/images/hidi-logo.png"></header>';
-  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(!result.includes('rel="preload"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
+  const result=createHomeHead(root)(html),data='data:image/png;base64,'+logo.toString('base64');assert.equal(result.split(data).length,2);assert(!result.includes('href="./assets/images/hidi-logo.png"'));assert(!result.includes('src:Tt('));assert.equal(Buffer.from(result.match(/<img src="data:image\/png;base64,([^"]+)"/)[1],'base64').compare(logo),0);
  }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test('sized favicons retain Apple/PWA declarations and stale branding metadata is ignored',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-icons-')),root=join(app,'dist');try{
+  mkdirSync(root);mkdirSync(join(app,'paint-performance'));const source=Buffer.from('current-icon-frames');writeFileSync(join(root,'brand.ico'),source);
+  const markup='<link rel="icon" type="image/png" sizes="32x32" href="/media-performance/assets/icon-exact-32.png">';writeFileSync(join(app,'paint-performance/icons.json'),JSON.stringify({sourceFile:'dist/brand.ico',originalSha256:createHash('sha256').update(source).digest('hex'),markup}));
+  const input='<link rel="shortcut icon" href="/brand.ico"><link rel="icon" href="/other.png"><link rel="apple-touch-icon" href="/touch.png"><link rel="manifest" href="/site.webmanifest">';const output=createHomeHead(root,app)(input);
+  assert(output.startsWith(markup));assert(!output.includes('/brand.ico'));assert(!output.includes('/other.png'));assert(output.includes('href="/touch.png"'));assert(output.includes('href="/site.webmanifest"'));
+  writeFileSync(join(root,'brand.ico'),'updated-brand');assert.equal(createHomeHead(root,app)(input),input);
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
+test('homepage pricing gets a scoped module while the original commerce file stays exact; changed versions fall back',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-home-price-')),root=join(app,'dist'),url='/assets/home-pricing-0123456789abcdef.js',original='export const pricing="reviewed";\n',home='export const homeOnly=true;\n',hash=value=>createHash('sha256').update(value).digest('hex');
+ try{mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'pricing'));mkdirSync(join(app,'paint-performance'));writeFileSync(join(app,'pricing/storefront.mjs'),original);writeFileSync(join(root,url.slice(1)),home);writeFileSync(join(app,'paint-performance/home-pricing.json'),JSON.stringify({url,sourceSha256:hash(original),homeSha256:hash(home)}));
+ const input='<script type="module" data-hidi-pricing-loader src="/pricing-assets/storefront.mjs"></script>',result=createHomeHead(root,app)(input);assert(result.includes('src="'+url+'"'));assert(result.includes('data-hidi-pricing-loader'));assert(result.includes('fetchpriority="low"'));assert(!result.includes('src="/pricing-assets/storefront.mjs"'));
+ writeFileSync(join(app,'pricing/storefront.mjs'),original+'// later reviewed release');assert.equal(createHomeHead(root,app)(input),input);
+ writeFileSync(join(app,'pricing/storefront.mjs'),original);writeFileSync(join(root,url.slice(1)),home+'// changed');assert.equal(createHomeHead(root,app)(input),input);
+ }finally{rmSync(app,{recursive:true,force:true});}
+});
+
+test('critical styles retain their full sheet and cascade position; changed CSS uses complete inline fallback',()=>{
+ const app=mkdtempSync(join(tmpdir(),'hidi-critical-')),root=join(app,'dist');try{
+  mkdirSync(join(root,'assets'),{recursive:true});mkdirSync(join(app,'paint-performance'));
+  const css='header{color:red}footer{color:blue}',critical='header{color:red}';writeFileSync(join(root,'assets/index-test.css'),css);
+  const metadata={styles:{'/assets/index-test.css':{sha256:createHash('sha256').update(css).digest('hex'),critical}}};writeFileSync(join(app,'paint-performance/critical-css.json'),JSON.stringify(metadata));
+  const html='<head><link rel="stylesheet" href="/assets/index-test.css" /><style>header{padding:2px}</style></head><body><header>Same design</header></body>';
+  const result=createHomeHead(root,app)(html);assert(result.includes('>'+critical+'</style>'));assert(result.includes('rel="stylesheet"'));assert(result.includes('window.__HidiFullCssReady'));assert(result.indexOf('>'+critical+'</style>')<result.indexOf('padding:2px'));assert(result.includes('media="print"'));assert(result.includes('fetchpriority="low"'));assert(result.includes('hidi_full='+metadata.styles['/assets/index-test.css'].sha256.slice(0,16)));assert(!result.includes('<template'));assert(!result.includes('footer{color:blue}'));
+  writeFileSync(join(root,'assets/index-test.css'),'header{color:green}footer{color:purple}');const fresh=createHomeHead(root,app)(html);assert(fresh.includes('color:purple'));assert(!fresh.includes('data-hidi-deferred-style'));assert(!fresh.includes('__HidiFullCssReady'));
+ }finally{rmSync(app,{recursive:true,force:true});}
 });
