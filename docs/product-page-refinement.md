@@ -41,3 +41,9 @@ The mobile gallery (up to 760px) now places 44px-wide thumbnail buttons beside a
 At 390×844, the price starts at 520px instead of approximately 795px with the previous mobile styling; sizes occupy 689–735px, above the sticky bar at 776px. At 375×812, sizes end at 726px, above the bar at 744px. At 320×568, the price is visible initially but sizes still require scrolling; the sticky Select size action takes users to them. These are measurements for the reviewed fuchsia product, not promises for every title or variant configuration.
 
 Verified at 320×568, 375×812, 390×844, 430×932, 768×900 and 1440×900, with no horizontal overflow. The existing five-width interaction suite also passed, including thumbnails, zoom, size selection, mocked cart and delivery. Local photo previews and measurements are in `evidence/product-page/compact-mobile-*.png` and `compact-gallery-results.json`. No deployment was performed.
+
+## Single mobile purchase action follow-up
+
+At phone widths up to 620px, inline Add to Cart / Buy Now buttons and their duplicate helper are hidden. The sticky action remains Select size before selection, Add to Cart after selection, and Sold out for unavailable products; its price label now identifies the selected size. Desktop and tablet purchase controls are unchanged. Error and confirmation messages remain available.
+
+Verified at six viewport sizes with actual cached product photos; mobile has exactly one visible Add to Cart after selecting a size. The existing five-width browser suite passed, including a single mocked cart POST for the selected size, delivery results, zoom, and size-guide interaction. The suite was adjusted to click the visible purchase action after the duplicate was removed. Preview: `evidence/product-page/purchase-mobile-selected-390.png`. No product facts, shared loaders or deployment files changed; no deployment performed.

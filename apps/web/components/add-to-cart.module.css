@@ -348,8 +348,8 @@
 .addButton:hover:not(:disabled), .mobileAdd:hover:not(:disabled) { background: #69282a; border-color: #69282a; color: #fff8ef; }
 .buyButton:hover:not(:disabled), .mobileBuy:hover:not(:disabled) { background: #eee3d3; color: #591d20; }
 @media (max-width: 620px) {
- .purchaseActions { display: grid; }
- .helper { display: block; }
+ /* Keep a single purchase action on phones; the sticky bar guides size selection. */
+ .purchaseActions, .helper { display: none; }
  .mobileBar { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); grid-template-areas: "price actions"; padding: 10px 16px max(10px, env(safe-area-inset-bottom)); box-shadow: 0 -2px 14px #3014140d; gap: 12px; align-items: center; }
  .mobilePrice { flex-direction: column; gap: 2px; }
  .mobileWishlist, .mobileBuy { display: none; }

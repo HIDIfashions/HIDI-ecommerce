@@ -218,7 +218,7 @@ export function AddToCart({ product }: { product: ApiProduct }) {
 
       <div className={styles.mobileBar} aria-label="Mobile purchase actions">
         <div className={styles.mobilePrice}>
-          <span>{selected ? "Selected" : price.from ? "From" : "Price"}</span>
+          <span>{selected ? `Size ${selected.size}` : price.from ? "From" : "Price"}</span>
           <strong>{money(price.pricePaise)}</strong>
         </div>
         <div className={styles.mobileWishlist}>
