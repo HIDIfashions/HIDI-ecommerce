@@ -30,7 +30,7 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
   await pdp(page);await size(page,'M').click();await page.locator('.colour-options').getByRole('button',{name:'Wine',exact:true}).click();
   await until(async()=>(await summary(page).innerText()).includes('Wine'),'colour summary');assert.match(await summary(page).innerText(),/Select a size/);assert.equal(await size(page,'M').count(),0);assert(await actions(page).getByRole('button',{name:'Buy Now',exact:true}).isDisabled());
   assert.equal(await page.locator('.pdp-gallery button').count(),1);assert.match(await page.locator('.pdp-gallery img').first().getAttribute('src'),/02-alt/);
-  await size(page,'XL').click();assert.match(await summary(page).innerText(),/FIXTURE-0-XL/);await page.getByText('Specifications',{exact:true}).click();assert.match(await page.locator('details').filter({has:page.getByText('Specifications',{exact:true})}).innerText(),/Wine/);
+  await size(page,'XL').click();assert.match(await summary(page).innerText(),/FIXTURE-0-XL/);const details=page.locator('[aria-label="Product quality and fit summary"]');assert.equal(await details.locator('div').filter({has:page.locator('dt').getByText('Colour',{exact:true})}).locator('dd').innerText(),'Wine');
  });
  await run('QUAL-04','Size guide units, missing measurements, related-product navigation and sold-out controls',async page=>{
   await pdp(page);assert(await size(page,'L — unavailable').isDisabled());await page.getByRole('button',{name:'Size & fit guide',exact:true}).click();const guide=page.getByRole('region',{name:'HIDI size and fit guide'});
