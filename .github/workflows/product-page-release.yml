@@ -29,4 +29,5 @@ jobs:
         with:
           name: product-page-inspection-${{ github.run_id }}
           path: evidence/product-page-release/inspection
+          include-hidden-files: true
           retention-days: 7
