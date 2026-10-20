@@ -3,7 +3,6 @@ import {resolve,sep} from 'node:path';
 import {createHash} from 'node:crypto';
 import {normalizeMirror,mirrorAssetUrl} from '../paint-performance/asset-mirror.mjs';
 import {normalizeStyleUrls} from '../paint-performance/style-urls.mjs';
-import {desktopInlineStyles} from '../paint-performance/desktop-inline-styles.mjs';
 const mirrorClient=readFileSync(new URL('../paint-performance/asset-mirror-client.js',import.meta.url),'utf8');
 const appStart=readFileSync(new URL('../paint-performance/app-start.js',import.meta.url),'utf8');
 const fullCssClient=readFileSync(new URL('../paint-performance/full-css-client.js',import.meta.url),'utf8');
@@ -91,13 +90,9 @@ export function createHomeHead(root,appRoot=resolve(root,'..')) {
   const data=[...tag.matchAll(/\s(data-[\w-]+)(?:=["']([^"']*)["'])?/g)].map(m=>' '+m[1]+'="'+(m[2]||'')+'"').join('');
   const row=criticalStyles[new URL(href,'https://hidiindia.com/').pathname];
   if(completeHead&&row&&typeof row.critical==='string'&&!/<\/style/i.test(row.critical)&&row.sha256===createHash('sha256').update(css).digest('hex')){
+   deferred++;
    const original=href+(href.includes('?')?'&':'?')+'hidi_full='+row.sha256.slice(0,16),asset=styleAssets[new URL(href,'https://hidiindia.com/').pathname];
    const mirrored=desktopStyle&&mirror&&asset?.sourceSha256===row.sha256&&mirror.files[asset.url]===asset.sha256&&verifiedAsset(asset,/^\/assets\/style-[a-f0-9]{16}\.css$/);
-   const reviewed=desktopInlineStyles[new URL(href,'https://hidiindia.com/').pathname];
-   if(mirrored&&reviewed?.sha256===row.sha256&&reviewed.bytes<=5500&&Buffer.byteLength(css)===reviewed.bytes){
-    return '<style data-hidi-inline-css="'+href.replaceAll('"','&quot;')+'" data-hidi-complete-css="true" data-hidi-source-sha256="'+row.sha256+'"'+data+'>'+css+'</style>';
-   }
-   deferred++;
    const full=mirrored?mirrorAssetUrl(asset.url,mirror):original;
    if(mirrored)styleOrigins.add(new URL(full).origin);
    const recovery=mirrored?' data-hidi-origin-href="'+original.replaceAll('&','&amp;')+'" integrity="sha256-'+Buffer.from(asset.sha256,'hex').toString('base64')+'" crossorigin="anonymous"':'';

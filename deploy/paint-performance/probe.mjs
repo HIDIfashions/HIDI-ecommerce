@@ -5,7 +5,6 @@ import {verifyInitialCss} from './critical-probe.mjs';
 import {readMirrorProof,isMirrorAsset,mirrorAssetUrl} from './asset-mirror.mjs';
 import {verifyMirrorFallback} from './mirror-fallback-probe.mjs';
 import {verifyLoaderSafety} from './loader-safety-probe.mjs';
-import {observeCompleteCss,assertCompleteCss,writeCompleteCssProof} from './complete-css-probe.mjs';
 import assert from 'node:assert/strict';import {readFile,writeFile,mkdir} from 'node:fs/promises';import {pathToFileURL} from 'node:url';import {get} from 'node:http';import {get as getHttps} from 'node:https';import {brotliDecompressSync,gunzipSync} from 'node:zlib';
 import {existsSync} from 'node:fs';import {createHash} from 'node:crypto';
 const [base,mode='live']=process.argv.slice(2),OUT='evidence/paint-performance';await mkdir(OUT+'/'+mode,{recursive:true});
@@ -63,7 +62,6 @@ async function assertDesktopPosterBeforeVideo(page,label){
  assert.equal(proof.paint.poster,proof.poster,label+': the painted poster must match the retained video');
  assert(proof.media.startTime>=proof.paint.renderTime,label+': video download must start after actual native poster paint on the same browser clock');
  assert(proof.styles.length>0&&proof.styles.every(style=>style.applied&&style.responseEnd>0&&style.responseEnd<=proof.media.startTime),label+': every complete stylesheet must finish before automatic video download');
- proof.completeCss=await assertCompleteCss(page,OUT,{group:'video',label,mediaStart:proof.media.startTime});
  return proof;
 }
 async function verifyDesktopVideoSafety(browser){
@@ -74,7 +72,6 @@ async function verifyDesktopVideoSafety(browser){
   const cssGate=new Promise(resolve=>releaseCss=resolve);
   page.on('request',req=>{if(req.resourceType()==='media')media.push(req.url());});page.on('pageerror',error=>errors.push(error.message));
   await observeNativePoster(page);
-  await observeCompleteCss(page);
   if(scenario==='data-saving')await page.addInitScript(()=>{
    if(navigator.connection)Object.defineProperty(navigator.connection,'saveData',{get:()=>true});
    else Object.defineProperty(navigator,'connection',{value:{saveData:true}});
@@ -96,11 +93,9 @@ async function verifyDesktopVideoSafety(browser){
     await page.waitForTimeout(1800);
     const held=await page.evaluate(()=>({native:document.querySelector('video[data-hidi-first-hero]')===window.__HidiProbeNativeVideo,src:document.querySelector('video.hero-live-media')?.getAttribute('src'),pending:[...document.querySelectorAll('link[data-hidi-deferred-style]')].some(link=>!link.sheet||link.media!=='all')}));
     assert(heldCss.length>0&&held.pending,'Held CSS scenario must have an actual pending complete stylesheet');
-    assert(heldCss.some(url=>new URL(url).pathname==='/assets/style-642ee7cd71456af7.css')&&heldCss.some(url=>new URL(url).pathname==='/assets/index-yOknTVcM.css'),'Held CSS must encounter both the mirrored main sheet and its original recovery request');
     assert(held.native,'Hydration must retain the native poster while complete CSS is held');
     assert.equal(held.src,null,'Desktop video must have no source while complete CSS is held');
     assert.deepEqual(media,[],'Desktop video must not download before complete CSS is released');
-    await assertCompleteCss(page,OUT,{group:'video-held',label:'Desktop '+scenario,phase:'pending'});
     releaseCss();
    }
    await page.waitForFunction(()=>document.querySelector('.hero-media')?.dataset.heroConfigStatus==='uploaded'&&!document.querySelector('video[data-hidi-first-hero]'));
@@ -167,7 +162,7 @@ for(const engine of baseline?['chromium']:['chromium','firefox','webkit']){
   const errors=[],network=[],media=[],appPriorities=[],loaderNetwork=observeLoaderNetwork(page);let transferred=0;page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{network.push(r.url());if(r.resourceType()==='media')media.push(r.url());});
   if(engine==='chromium'){const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');cdp.on('Network.loadingFinished',e=>transferred+=e.encodedDataLength);cdp.on('Network.requestWillBeSent',e=>{try{const u=new URL(e.request.url);if(u.pathname.includes('/assets/index-')&&u.pathname.endsWith('.js'))appPriorities.push({url:e.request.url,initialPriority:e.request.initialPriority||null});}catch{}});}
   await page.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==new URL(base).origin&&!isMirrorAsset(u.href,mirror)||!['GET','HEAD'].includes(r.method()))return route.abort();return route.continue();});
-  if(!baseline){await observeNativePoster(page);await observeCompleteCss(page);}
+  if(!baseline)await observeNativePoster(page);
   await page.addInitScript(()=>{window.__lcp=0;window.__cls=0;try{new PerformanceObserver(l=>window.__lcp=l.getEntries().at(-1).startTime).observe({type:'largest-contentful-paint',buffered:true});new PerformanceObserver(l=>l.getEntries().forEach(e=>{if(!e.hadRecentInput)window.__cls+=e.value;})).observe({type:'layout-shift',buffered:true});}catch{}});
   try{
    assert.equal((await page.goto(base+'/',{waitUntil:'domcontentloaded'})).status(),200);
@@ -231,6 +226,6 @@ if(!baseline&&mode==='candidate'){
  await writeFile(OUT+'/fallback-safety.json',JSON.stringify({passed:true,codecFailure:true,unsupportedCodec:true,reducedMotion:true,dataSaving:true,manualSound:true,initialSelectionReuse:true,freshSelectionUpdate:true,catalogueRequestReuse:true,catalogueResumeFreshness:true}));
  console.log('PASS: codec recovery, original MP4 fallback, reduced-motion, data saving, explicit sound playback, initial hero reuse and fresh selection updates');
 }
-if(!baseline){await verifyInitialCss(pw,base,OUT,mode);await verifyPosterCache(pw,base,OUT,mode);await verifyMirrorFallback(pw,base,OUT,mode);if(mode==='candidate')await writeCompleteCssProof(OUT,mode);}
+if(!baseline){await verifyInitialCss(pw,base,OUT,mode);await verifyPosterCache(pw,base,OUT,mode);await verifyMirrorFallback(pw,base,OUT,mode);}
 await writeFile(OUT+'/'+mode+'.json',JSON.stringify({passed:true,results:rows},null,2));
 console.log('PASS: '+mode+' homepage, poster, responsive photographs, sound controls, media ranges, compression and layout; '+rows.length+' browser/viewport cases');

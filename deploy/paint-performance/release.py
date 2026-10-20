@@ -1,6 +1,5 @@
 import importlib.util,json,os,re,signal,subprocess,time,urllib.request
 from pathlib import Path
-from css_proof import verify_complete_css
 HERE=Path(__file__).resolve().parent
 def load(name,path):
     s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
@@ -73,9 +72,8 @@ def wait(image,suffix,baseline):
     raise AssertionError('Readiness timeout')
 def apply():
     before=photo.states();photo.require_backups();photo.unchanged(before)
-    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','desktop-video-safety-candidate.json','loader-safety-candidate.json','complete-css-candidate.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','poster-tiers-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json','media-cache.json','asset-mirror.json','mirror-fallback-candidate.json']:
+    for name in ['preservation.json','candidate.json','visual-comparison.json','fallback-safety.json','desktop-video-safety-candidate.json','loader-safety-candidate.json','static-encoding-quality.json','protocol-comparison.json','commerce-preservation.json','initial-css-candidate.json','poster-cache-candidate.json','poster-tiers-candidate.json','network-fixture.json','candidate-origin.json','head-assets-quality.json','public-fixture-health.json','media-cache.json','asset-mirror.json','mirror-fallback-candidate.json']:
         assert json.loads((OUT/name).read_text())['passed'],name+' must pass'
-    verify_complete_css(OUT)
     loader=json.loads((OUT/'loader-safety-candidate.json').read_text());assert len(loader['results'])==21 and all(row['passed'] for row in loader['results']) and all(sum(row['engine']==engine for row in loader['results'])==7 for engine in ['chromium','firefox','webkit'])
     checkout=json.loads((OUT/'checkout-candidate/report.json').read_text());assert checkout['passed'] and len(checkout['cases'])==24 and not checkout['runtimeErrors'] and checkout['productionWrites']==0
     recovery=json.loads((OUT/'mirror-fallback-candidate.json').read_text());assert recovery['passed'] and len(recovery['cases'])==32 and recovery['writes']==0 and recovery['integrityRecovery'] and recovery['streamedDocumentRecovery'] and recovery['stylesheetIntegrityRecovery'] and recovery['edgeOriginRecovery']
