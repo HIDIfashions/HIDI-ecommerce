@@ -1,6 +1,9 @@
 import {isMirrorAsset,mirrorAssetUrl} from './asset-mirror.mjs';
+export function normalizeExternalScriptUrls(urls,mirror=null){
+ return [...new Set(urls.filter(url=>typeof url==='string'&&!isMirrorAsset(url,mirror)))].sort();
+}
 export function externalScriptUrls(items,mirror=null){
- return [...new Set(items.filter(item=>item.resourceType==='Script').flatMap(item=>{try{const url=new URL(item.url);return /^https?:$/.test(url.protocol)&&!['hidiindia.com','www.hidiindia.com'].includes(url.hostname)&&!isMirrorAsset(url.href,mirror)?[url.href]:[];}catch{return [];}}))].sort();
+ return normalizeExternalScriptUrls(items.filter(item=>item.resourceType==='Script').flatMap(item=>{try{const url=new URL(item.url);return /^https?:$/.test(url.protocol)&&!['hidiindia.com','www.hidiindia.com'].includes(url.hostname)?[url.href]:[];}catch{return [];}}),mirror);
 }
 export function isPinnedFixtureResponse(response){return response?.url==='https://hidiindia.com/'&&response.remoteIPAddress==='127.0.0.1'&&response.remotePort===3190;}
 export function requireHealthyAudit(items,mirror=null){

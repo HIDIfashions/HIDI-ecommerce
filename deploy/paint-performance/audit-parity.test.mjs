@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {externalScriptUrls,isPinnedFixtureResponse,requireHealthyAudit} from './audit-parity.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {externalScriptUrls,isPinnedFixtureResponse,normalizeExternalScriptUrls,requireHealthyAudit} from './audit-parity.mjs';
 test('audits reject missing catalogue data, private-domain responses and unavailable analytics SDKs',()=>{
  const rows=['/api/store/products','/api/hidi/hero-config','/api/hidi/landing-media-config','/api/hidi/analytics-config','/api/hidi/offers'].map(path=>({url:'https://hidiindia.com'+path,statusCode:200,resourceType:'Fetch'}));
  rows.push({url:'https://www.googletagmanager.com/gtag/js?id=G-APP',statusCode:200,resourceType:'Script'});requireHealthyAudit(rows);
@@ -15,5 +15,6 @@ test('a verified owned mirror stays distinct from analytics and must load succes
  const path='/assets/index-aaaaaaaaaaaaaaaa.js',mirror={origin:'https://hidi-test.azurestaticapps.net',files:{[path]:'a'.repeat(64)}},ga='https://www.googletagmanager.com/gtag/js?id=G-APP';
  const rows=['/api/store/products','/api/hidi/hero-config','/api/hidi/landing-media-config','/api/hidi/analytics-config','/api/hidi/offers'].map(path=>({url:'https://hidiindia.com'+path,statusCode:200,resourceType:'Fetch'}));rows.push({url:mirror.origin+path,statusCode:200,resourceType:'Script'},{url:ga,statusCode:200,resourceType:'Script'});
  assert.deepEqual(externalScriptUrls(rows,mirror),[ga]);requireHealthyAudit(rows,mirror);assert.throws(()=>requireHealthyAudit(rows.filter(row=>row.url!==mirror.origin+path),mirror),/application must load/);assert.throws(()=>requireHealthyAudit(rows.map(row=>row.url===mirror.origin+path?{...row,statusCode:503}:row),mirror));assert.deepEqual(externalScriptUrls([{url:mirror.origin+'/unverified.js',resourceType:'Script'}],mirror),[mirror.origin+'/unverified.js']);
+ assert.deepEqual(normalizeExternalScriptUrls([ga,mirror.origin+path,mirror.origin+'/unverified.js',ga],mirror),[mirror.origin+'/unverified.js',ga],'Saved baseline URLs remove only the exact content-addressed HIDI mirror asset');
  const edgeOrigin='https://hidi-performance-posters.pages.dev',edge={...mirror,edgeOrigin,edgeFiles:mirror.files},edgeRows=rows.map(row=>row.url===mirror.origin+path?{...row,url:edgeOrigin+path}:row);requireHealthyAudit(edgeRows,edge);assert.deepEqual(externalScriptUrls(edgeRows,edge),[ga]);assert.throws(()=>requireHealthyAudit(rows,edge),/application must load/);
 });

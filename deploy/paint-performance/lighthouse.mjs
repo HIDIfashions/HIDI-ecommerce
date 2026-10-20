@@ -1,7 +1,7 @@
 import {spawn} from 'node:child_process';import {readFile,writeFile,mkdir,open} from 'node:fs/promises';import {pathToFileURL} from 'node:url';import {resolve} from 'node:path';
 import {existsSync} from 'node:fs';
 import {summarizeTrials} from './summary.mjs';
-import {externalScriptUrls,isPinnedFixtureResponse,requireHealthyAudit} from './audit-parity.mjs';
+import {externalScriptUrls,isPinnedFixtureResponse,normalizeExternalScriptUrls,requireHealthyAudit} from './audit-parity.mjs';
 import {readMirrorProof} from './asset-mirror.mjs';
 const mode=process.argv[2],out=resolve('evidence/paint-performance/lighthouse');await mkdir(out,{recursive:true});
 const mirror=mode==='before'?null:await readMirrorProof(resolve('evidence/paint-performance'));
@@ -28,7 +28,7 @@ if(mode==='candidate'){
  const network=JSON.parse(await readFile('evidence/paint-performance/network-fixture.json','utf8'));
  if(!network.passed||network.host!=='127.0.0.1'||network.port!==3190||network.roundTripDelayMs!==250||network.mtu!==1500||network.otherPortsDelayed!==false)throw Error('Candidate must retain the isolated delayed HTTP2 connection fixture');
  const matched=rows.every(row=>{const baseline=before.find(item=>item.device===row.device);return baseline?.samples.every(sample=>sample.protocol==='h2')&&row.samples.every(sample=>sample.protocol==='h2'&&JSON.stringify(sample.profile)===JSON.stringify(baseline.profile));});
- const scriptsMatched=rows.every(row=>{const baseline=before.find(item=>item.device===row.device);return baseline?.samples.every(sample=>JSON.stringify(sample.externalScripts)===JSON.stringify(row.externalScripts))&&row.samples.every(sample=>JSON.stringify(sample.externalScripts)===JSON.stringify(row.externalScripts));});
+ const scriptsMatched=rows.every(row=>{const baseline=before.find(item=>item.device===row.device),expected=normalizeExternalScriptUrls(row.externalScripts,mirror);return baseline?.samples.every(sample=>JSON.stringify(normalizeExternalScriptUrls(sample.externalScripts,mirror))===JSON.stringify(expected))&&row.samples.every(sample=>JSON.stringify(normalizeExternalScriptUrls(sample.externalScripts,mirror))===JSON.stringify(expected));});
  if(!scriptsMatched)throw Error('Candidate and live baseline must load identical production third-party scripts');
  await writeFile('evidence/paint-performance/protocol-comparison.json',JSON.stringify({passed:matched,live:before.map(row=>({device:row.device,protocol:row.protocol})),staging:rows.map(row=>({device:row.device,protocol:row.protocol})),sameLighthouseThrottling:matched,sameProductionThirdPartyScripts:scriptsMatched,stagingRoundTripDelayMs:network.roundTripDelayMs,stagingMtu:network.mtu}));
  if(!matched)throw Error('Staging must match the observed live HTTP/2 protocol and device throttling settings');
