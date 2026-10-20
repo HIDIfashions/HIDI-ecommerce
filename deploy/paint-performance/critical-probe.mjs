@@ -1,6 +1,7 @@
 import {inlinePosterPath} from './poster-reference.mjs';
 import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
 import {readMirrorProof,isMirrorAsset} from './asset-mirror.mjs';
+import {observeCompleteCss,assertCompleteCss} from './complete-css-probe.mjs';
 export async function verifyInitialCss(pw,base,out,mode){
  const rows=[],mirror=await readMirrorProof(out);
  for(const engine of ['chromium','webkit']){
@@ -9,6 +10,7 @@ export async function verifyInitialCss(pw,base,out,mode){
    const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',...(engine==='chromium'&&width<=700?{userAgent:'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36'}:{})}),page=await context.newPage();
    let release;const gate=new Promise(resolve=>release=resolve);
    try{
+    await observeCompleteCss(page);
     await page.route('**/*',async route=>{const req=route.request(),url=new URL(req.url());
      if(url.origin!==new URL(base).origin&&!isMirrorAsset(url.href,mirror)||!['GET','HEAD'].includes(req.method()))return route.abort();
      if(url.pathname==='/'){
@@ -34,6 +36,7 @@ export async function verifyInitialCss(pw,base,out,mode){
      return {tag:el.tagName,cls:el.className,rect:[r.x,r.y,r.width,r.height],style:Object.fromEntries(['display','position','font','color','backgroundColor','padding','margin','border','outline','opacity','objectFit','objectPosition','zIndex','transform'].map(key=>[key,s[key]]))};
     }));
     const initial=await snapshot();
+    const pendingCss=await assertCompleteCss(page,out,{group:'initial',label:engine+'/'+width,phase:'pending'});
     release();await page.evaluate(async()=>{
      if(window.__HidiFullCssReady){window.__HidiActivateFullCss?.();return window.__HidiFullCssReady;}
      const inline=document.querySelector('style[data-hidi-inline-css*="index-"]');
@@ -42,9 +45,10 @@ export async function verifyInitialCss(pw,base,out,mode){
      inline.remove();
     });await page.waitForTimeout(100);
     assert(await page.evaluate(()=>[...document.querySelectorAll('link[data-hidi-deferred-style]')].every(link=>Boolean(link.sheet)&&link.media==='all')),'Every original deferred stylesheet must actually load');
+    const completeCss=await assertCompleteCss(page,out,{group:'initial',label:engine+'/'+width});
     assert.deepEqual(await snapshot(),initial,'Initial header/hero CSS must match the complete stylesheet at '+engine+'/'+width);
     await page.screenshot({path:out+'/'+mode+'/initial-css-'+engine+'-'+width+'.png'});
-    rows.push({engine,width,passed:true});console.log('PASS initial CSS '+mode+' '+engine+' '+width);
+    rows.push({engine,width,passed:true,pendingCss,completeCss});console.log('PASS initial CSS '+mode+' '+engine+' '+width);
    }finally{release();await context.close();}
   }}finally{await browser.close();}
  }
