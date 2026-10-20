@@ -1,4 +1,4 @@
-# Complete the previously loader-blocked post-paint CSS priority check; initial-frame, performance, shopping and preservation gates remain required.
+# Release the reviewed 39376538609 candidate only after fresh initial-frame, performance, shopping and preservation gates pass.
 # Wait for the reported native desktop poster paint before retaining its video; ordinary mobile React path and all gates remain required.
 # Exact inline mobile poster and pixel-preserving tall-desktop crop; all existing release gates remain mandatory.
 # Portrait posters retain original pixels and crop only verified off-screen sides; no image downsampling.
