@@ -19,7 +19,7 @@ const derivativeLoader: ImageLoader = ({ src, width }) =>
 export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel, className }: CatalogImageProps) {
   const [failure, setFailure] = useState<{ src: string; stage: "runtime" | "failed" } | null>(null);
   const delivery: "derivative" | "runtime" | "failed" =
-    failure?.src === src ? failure.stage : "derivative";
+    failure && failure.src === src ? failure.stage : "derivative";
 
   if (!src || delivery === "failed") {
     return <div aria-label={alt} className={className} style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "linear-gradient(0deg, #541d1f 0 36px, transparent 56px), linear-gradient(145deg, var(--hidi-page-bg, #fbf6f2), var(--hidi-page-bg, #fbf6f2))" }}>
