@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
@@ -101,7 +102,11 @@ test('Azure derivative persistence is immutable, idempotent, and source-hash che
   for(const saved of container.saved.values()){
     assert.equal(saved.metadata.hidi_source_sha256,'a'.repeat(64));
     assert.equal(saved.metadata.hidi_derivative_version,'v1');
+    assert.equal(saved.metadata.hidi_derivative_sha256,createHash('sha256').update(saved.bytes).digest('hex'));
   }
+  const firstSaved=container.saved.values().next().value;const originalDerivativeHash=firstSaved.metadata.hidi_derivative_sha256;firstSaved.metadata.hidi_derivative_sha256='0'.repeat(64);
+  await assert.rejects(()=>persistProductDerivatives(container,'products/variants/a/photo.jpg',photo,{render}),/differs from this source photo/);
+  firstSaved.metadata.hidi_derivative_sha256=originalDerivativeHash;
   await assert.rejects(
     ()=>persistProductDerivatives(container,'products/variants/a/photo.jpg',{...photo,sha256:'b'.repeat(64)},{render}),
     /differs from this source photo/,
