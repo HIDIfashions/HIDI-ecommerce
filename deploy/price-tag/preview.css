@@ -1,0 +1,10 @@
+.previewTag[data-square=true] { padding: 7px; }
+.previewTag[data-square=true] > img { height: 25px; padding-bottom: 2px; }
+.previewTag[data-square=true] .previewIdentity { padding: 3px 0; gap: 1px; }
+.previewTag[data-square=true] .previewIdentity strong { font-size: 9px; }
+.previewTag[data-square=true] .previewPrice { padding: 3px 0 2px; }
+.previewTag[data-square=true] .previewPrice strong { font-size: 18px; }
+.previewTag[data-square=true] .previewBarcode { padding-bottom: 2px; }
+.previewTag[data-square=true] .previewBarcode svg { height: 30px; }
+.previewTag[data-square=true] .previewLegal { padding-top: 2px; }
+.previewTag[data-square=true] .previewLegal div + div { margin-top: 1px; }

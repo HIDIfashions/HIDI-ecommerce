@@ -11,7 +11,7 @@ import styles from "./price-tags.module.css";
 
 type StockFilter = "ALL" | "IN_STOCK";
 type ProductFilter = "ALL" | "DRAFT" | "ACTIVE" | "ARCHIVED";
-type PresetKey = "50x90" | "50x80" | "60x100";
+type PresetKey = "50x50" | "50x90" | "50x80" | "60x100";
 type PrintLine = { item: PriceTagVariant; quantity: number };
 type BusinessDetails = {
   legalName: string;
@@ -43,6 +43,7 @@ const DEFAULT_DETAILS: BusinessDetails = {
   countryOfOrigin: "India",
 };
 const PRESETS: Record<PresetKey, { label: string; width: number; height: number; note: string }> = {
+  "50x50": { label: "50 × 50 mm", width: 50, height: 50, note: "Compact square tag" },
   "50x90": { label: "50 × 90 mm", width: 50, height: 90, note: "Recommended for the complete legal footer" },
   "50x80": { label: "50 × 80 mm", width: 50, height: 80, note: "Compact swing tag" },
   "60x100": { label: "60 × 100 mm", width: 60, height: 100, note: "Large, easiest to scan" },
@@ -145,6 +146,7 @@ function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: s
 function printDocument(lines: PrintLine[], details: BusinessDetails, presetKey: PresetKey, logoUrl: string) {
   const preset = PRESETS[presetKey];
   const compact = preset.height <= 80;
+  const square = presetKey === "50x50";
   const labels: string[] = [];
   for (const line of lines) {
     const label = labelMarkup(line.item, details, logoUrl);
@@ -174,6 +176,24 @@ function printDocument(lines: PrintLine[], details: BusinessDetails, presetKey: 
   .legal { border-top: .2mm solid #000; padding-top: ${compact ? .8 : 1.1}mm; font-size: ${compact ? 4.7 : 5.25}pt; line-height: 1.22; text-align: left; overflow: hidden; flex: 1 1 auto; }
   .legal div + div { margin-top: .35mm; }
   .website { text-align: center; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+${square ? `
+  .price-tag { padding: 1.2mm; }
+  .brand { height: 4mm; padding-bottom: .4mm; }
+  .brand img { width: 20mm; }
+  .identity { padding: .4mm 0; }
+  .product-name { font-size: 6pt; }
+  .product-meta, .sku, .fabric { margin-top: .3mm; font-size: 4.5pt; overflow-wrap: anywhere; }
+  .size-line { margin-top: .4mm; font-size: 5pt; }
+  .price-block { padding: .6mm 0 .4mm; }
+  .price-block strong { font-size: 13pt; }
+  .price-block span { font-size: 6pt; }
+  .price-block small { font-size: 4pt; margin-top: .2mm; }
+  .barcode { padding: 0 .8mm .4mm; }
+  .barcode svg { height: 6mm; }
+  .barcode div { font-size: 4.5pt; margin-top: .2mm; }
+  .legal { padding-top: .4mm; font-size: 4pt; line-height: 1.1; overflow-wrap: anywhere; }
+  .legal div + div { margin-top: .15mm; }
+  ` : ""}
 </style></head><body>${labels.join("")}</body></html>`;
 }
 
@@ -227,10 +247,10 @@ function BarcodeSvg({ value }: { value: string }) {
   </svg>;
 }
 
-function TagPreview({ item, details }: { item: PriceTagVariant | undefined; details: BusinessDetails }) {
+function TagPreview({ item, details, preset }: { item: PriceTagVariant | undefined; details: BusinessDetails; preset: PresetKey }) {
   if (!item) return <div className={styles.previewEmpty}>Choose a product or load in-stock SKUs to preview the tag.</div>;
   const metric = measurements(item);
-  return <div className={styles.previewTag}>
+  return <div className={styles.previewTag} data-square={preset === "50x50"} style={{ aspectRatio: `${PRESETS[preset].width} / ${PRESETS[preset].height}` }}>
     <img src="/brand/hidi-logo-price-tag.svg" alt="HIDI — Wear the Feeling" />
     <div className={styles.previewIdentity}>
       <strong>{item.productName}</strong>
@@ -517,7 +537,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
 
       <aside className={styles.previewPanel}>
         <div className={styles.previewHeader}><div><p className={base.eyebrow}>LIVE PREVIEW</p><strong>{PRESETS[preset].label}</strong></div><span>MONOCHROME · 300 DPI READY</span></div>
-        <TagPreview item={previewItem} details={details} />
+        <TagPreview item={previewItem} details={details} preset={preset} />
         <p className={styles.previewNote}>The on-screen preview is scaled. The print job uses the exact millimetre dimensions selected on the left.</p>
       </aside>
     </div>

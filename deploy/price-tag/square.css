@@ -1,0 +1,18 @@
+
+  .price-tag { padding: 1.2mm; }
+  .brand { height: 4mm; padding-bottom: .4mm; }
+  .brand img { width: 20mm; }
+  .identity { padding: .4mm 0; }
+  .product-name { font-size: 6pt; }
+  .product-meta, .sku, .fabric { margin-top: .3mm; font-size: 4.5pt; overflow-wrap: anywhere; }
+  .size-line { margin-top: .4mm; font-size: 5pt; }
+  .price-block { padding: .6mm 0 .4mm; }
+  .price-block strong { font-size: 13pt; }
+  .price-block span { font-size: 6pt; }
+  .price-block small { font-size: 4pt; margin-top: .2mm; }
+  .barcode { padding: 0 .8mm .4mm; }
+  .barcode svg { height: 6mm; }
+  .barcode div { font-size: 4.5pt; margin-top: .2mm; }
+  .legal { padding-top: .4mm; font-size: 4pt; line-height: 1.1; overflow-wrap: anywhere; }
+  .legal div + div { margin-top: .15mm; }
+  

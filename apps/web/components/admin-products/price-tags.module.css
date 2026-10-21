@@ -26,7 +26,7 @@
 .address { grid-column: 1 / -1; }
 .savedState { margin-top: 18px; padding: 13px 15px; background: #fff2ef; color: #8a332c; border: 1px solid #e5b6b1; font-size: 12px; line-height: 1.5; }
 .savedState[data-complete=true] { background: #eef5ef; color: #2b5745; border-color: #b1cbbb; }
-.presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .presets label { position: relative; border: 1px solid #d7d0c5; padding: 17px; cursor: pointer; min-height: 102px; display: flex; flex-direction: column; gap: 7px; }
 .presets label[data-active=true] { border: 2px solid #24231f; padding: 16px; background: #faf7f2; }
 .presets input { position: absolute; top: 13px; right: 13px; accent-color: #24231f; }
@@ -70,3 +70,14 @@
   .sizeFilter { align-items: stretch; }
   .sizeFilter small { flex-basis: 100%; }
 }
+
+.previewTag[data-square=true] { padding: 7px; }
+.previewTag[data-square=true] > img { height: 25px; padding-bottom: 2px; }
+.previewTag[data-square=true] .previewIdentity { padding: 3px 0; gap: 1px; }
+.previewTag[data-square=true] .previewIdentity strong { font-size: 9px; }
+.previewTag[data-square=true] .previewPrice { padding: 3px 0 2px; }
+.previewTag[data-square=true] .previewPrice strong { font-size: 18px; }
+.previewTag[data-square=true] .previewBarcode { padding-bottom: 2px; }
+.previewTag[data-square=true] .previewBarcode svg { height: 30px; }
+.previewTag[data-square=true] .previewLegal { padding-top: 2px; }
+.previewTag[data-square=true] .previewLegal div + div { margin-top: 1px; }
