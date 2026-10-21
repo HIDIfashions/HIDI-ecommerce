@@ -40,10 +40,17 @@ BlobServiceClient.prototype.getContainerClient=function(container){
    const target=join(directory,createHash('sha256').update(key).digest('hex'));await copyFile(file,target);
    const sha256=await diskHash(file),size=(await diskStat(file)).size;
    assert.equal(options.metadata.hidi_source_sha256,sha256);h.state.writes++;
-   h.state.files.set(key,{path:target,sha256,size,type:options.blobHTTPHeaders.blobContentType});
+   h.state.files.set(key,{path:target,sha256,size,type:options.blobHTTPHeaders.blobContentType,metadata:options.metadata});
   },
-  async getProperties(){const saved=h.state.files.get(key);if(!saved)throw Error('Missing fixture blob');return {contentLength:saved.size,contentType:saved.type};},
-  async download(){return {readableStreamBody:createReadStream(h.state.files.get(key).path)};}
+  async uploadData(bytes,options){
+   assert.deepEqual(options.conditions,{ifNoneMatch:'*'});assert.equal(options.metadata.hidi_derivative_version,'v1');assert.equal(options.metadata.hidi_format,'webp');
+   if(h.state.files.has(key))throw Object.assign(new Error('Already stored'),{statusCode:412});
+   const target=join(directory,createHash('sha256').update(key).digest('hex'));await writeFile(target,bytes);h.state.derivativeWrites++;
+   h.state.files.set(key,{path:target,sha256:options.metadata.hidi_source_sha256,size:bytes.length,type:options.blobHTTPHeaders.blobContentType,metadata:options.metadata});
+  },
+  async getProperties(){const saved=h.state.files.get(key);if(!saved)throw Object.assign(new Error('Missing fixture blob'),{statusCode:404});return {contentLength:saved.size,contentType:saved.type,metadata:saved.metadata||{}};},
+  async download(){const saved=h.state.files.get(key);if(!saved)throw Object.assign(new Error('Missing fixture blob'),{statusCode:404});return {readableStreamBody:createReadStream(saved.path)};},
+  async deleteIfExists(){const saved=h.state.files.get(key);if(saved){h.state.files.delete(key);await rm(saved.path,{force:true});}return {succeeded:Boolean(saved)};}
  };}};
 };
 const {handlePhotoUpload:compiledUpload}=await import(pathToFileURL(join(candidateRoot,'photo-stream/handler.mjs')).href);
@@ -67,7 +74,7 @@ once("const page=await context.newPage(),errors=[],served=[];latestPage=page;pag
   const editorPage=await context.newPage();let page=editorPage;observe(page);latestPage=page;""")
 once("served.length=0;await page.goto(base+'/products/photo-fixture'", "served.length=0;page=await context.newPage();observe(page);latestPage=page;await page.goto(base+'/products/photo-fixture'")
 once("await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{await page.goto", "await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{page=editorPage;latestPage=page;await page.goto")
-once("assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);await h.assertClean();});", "assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);await h.assertClean();assert.deepEqual(errors,[],'No uncaught errors on either retained editor or customer product page');});")
+once("assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);assert.equal(h.state.derivativeWrites,14);await h.assertClean();});", "assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);assert.equal(h.state.derivativeWrites,14);await h.assertClean();assert.deepEqual(errors,[],'No uncaught errors on either retained editor or customer product page');});")
 dest=root/'tests/photo-retained-compiled.browser.mjs';dest.write_text(s)
 subprocess.run(['node','--check',str(dest)],cwd=root,check=True)
 subprocess.run(['node','--experimental-strip-types',str(dest)],cwd=root,check=True)
