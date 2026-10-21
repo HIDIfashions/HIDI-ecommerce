@@ -36,6 +36,11 @@ async function uploadImmutableDerivative(container, item, sourceSha256) {
         metadata.hidi_derivative_sha256 !== derivativeSha256) {
       throw new Error('Saved product derivative differs from this source photo');
     }
+    const existing=await blob.downloadToBuffer(0,item.bytes.length);
+    if(existing.length!==item.bytes.length ||
+        createHash('sha256').update(existing).digest('hex')!==derivativeSha256) {
+      throw new Error('Saved product derivative bytes differ from this source photo');
+    }
   }
 }
 
