@@ -37,3 +37,7 @@ Use `--limit=N` for a small canary.
 5. Run limited backfill, inspect.
 6. Backfill remaining published Azure images.
 7. Keep runtime fallback for 2048/3840 and legacy/non-WebP cases until a later, separately reviewed removal.
+
+## Validation checkpoint
+
+The feature branch is validated only after the dedicated CI workflow passes unit, large-source, overlay-contract, production-built browser upload/render, deletion cleanup, and catalogue audit checks. Production deployment and Azure backfill remain disabled until that evidence is reviewed.
