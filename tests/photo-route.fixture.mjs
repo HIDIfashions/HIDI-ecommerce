@@ -7,6 +7,7 @@ import vm from 'node:vm';
 import * as streamed from '../apps/web/lib/photo-upload-stream.mjs';
 import {authorizePhotoUpload} from '../apps/web/lib/photo-upload-authorize.mjs';
 import {persistProductDerivatives} from '../apps/web/lib/product-image-derivative-store.mjs';
+import {PERSISTENT_DERIVATIVE_WIDTHS,persistentDerivativeBlobKey} from '../deploy/collection-speed/images.mjs';
 const require=createRequire(resolve('apps/web/package.json'));
 const ts=require('typescript');
 export const {NextRequest}=require('next/server');
@@ -14,7 +15,7 @@ const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function createPhotoRouteFixture(directory,{apiBase='http://127.0.0.1:4219/v1'}={}){
  const temporary=join(directory,'temporary'),stored=join(directory,'stored');
  await mkdir(temporary,{recursive:true});await mkdir(stored,{recursive:true});
- const state={role:'OWNER',authStatus:200,ticketStatus:200,metadataStatus:200,reads:0,writes:0,derivativeWrites:0,tickets:0,metadata:[],files:new Map()};
+ const state={role:'OWNER',authStatus:200,ticketStatus:200,metadataStatus:200,reads:0,writes:0,derivativeWrites:0,cleanupCalls:0,tickets:0,metadata:[],files:new Map()};
  const send=async(url,options={})=>{
   if(!String(url).startsWith(apiBase+'/admin/'))throw new Error('Non-fixture API request blocked');
   if(String(url).endsWith('/admin/me'))return new Response(JSON.stringify(state.authStatus===200?{admin:{id:'fixture-staff',role:state.role}}:{message:'Fixture session rejected'}),{status:state.authStatus});
@@ -39,7 +40,14 @@ export async function createPhotoRouteFixture(directory,{apiBase='http://127.0.0
   const path=join(stored,digest(Buffer.from(key)));await copyFile(photo.path,path);state.writes++;
   state.files.set(key,{path,sha256:photo.sha256,size:photo.size,type});
   return {url:'/media/'+key,storagePath:'azure://product-media/'+key};
- },ensureProductImageDerivatives:(key,photo)=>persistProductDerivatives(derivativeContainer,key,photo)};
+ },ensureProductImageDerivatives:(key,photo)=>persistProductDerivatives(derivativeContainer,key,photo),
+ deleteUnattachedProductImage:async key=>{
+  state.cleanupCalls++;
+  state.files.delete(key);
+  for(const width of PERSISTENT_DERIVATIVE_WIDTHS){
+   const derivative=persistentDerivativeBlobKey(key,width,'webp');if(derivative)state.files.delete(derivative);
+  }
+ }};
  const aliases={'@/lib/azure-blob':storage,'@/lib/api':{API_URL:apiBase},
   '@/lib/photo-upload-stream.mjs':{...streamed,readStreamedPhotoForm:request=>{state.reads++;return streamed.readStreamedPhotoForm(request,{directory:temporary});}},
   '@/lib/photo-upload-authorize.mjs':{authorizePhotoUpload:(request,base,headers)=>authorizePhotoUpload(request,base,headers,send)}};
