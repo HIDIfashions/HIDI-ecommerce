@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {isBlockedTelemetry} from '../button-states/request-policy.mjs';
+import {isFixtureProductImageRequest} from '../seo-discovery/probes.mjs';
 
 async function captureScreenshot(page,options) {
   const previous=process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;
@@ -51,6 +52,10 @@ export async function foundationProbe(base,output,{baseline}={}) {
             if(!isBlockedTelemetry(request.method(),request.url(),base)&&!(baseline&&isBlockedTelemetry(request.method(),request.url(),baseline)))writes.push({method:request.method(),path:url.pathname});
             return route.abort();
           }
+          // The isolated candidate intentionally has no Azure media identity.
+          // Keep its reviewed product images from occupying the shared context's
+          // connections while the retained collection and About page run together.
+          if(isFixtureProductImageRequest(base,request.resourceType(),request.url()))return route.abort();
           if(request.resourceType()==='media'||/google-analytics|googletagmanager|facebook\.net|cloudflareinsights/.test(url.hostname))return route.abort();
           if(url.pathname==='/api/hidi/landing-media-config')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(landing)});
           return route.continue();

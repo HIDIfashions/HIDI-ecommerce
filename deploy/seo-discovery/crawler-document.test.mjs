@@ -111,6 +111,11 @@ test('read-only browser probe isolates reviewed SEO checks from the fake Azure m
   assert.match(helper,/if\(isFixtureProductImageRequest\(base,req\.resourceType\(\),req\.url\(\)\)\)return route\.abort\(\);/,
     'Synthetic image fetches must not reach the intentionally unavailable fixture media backend');
   assert.match(helper,/return route\.continue\(\);/,'Documents, scripts and styles still use the candidate runtime');
+  const foundation=readFileSync(new URL('../seo-foundation/browser.mjs',import.meta.url),'utf8');
+  assert.match(foundation,/import \{isFixtureProductImageRequest\} from '\.\.\/seo-discovery\/probes\.mjs';/,
+    'The independent foundation context must use the same exact fixture-media classifier');
+  assert.match(foundation,/if\(isFixtureProductImageRequest\(base,request\.resourceType\(\),request\.url\(\)\)\)return route\.abort\(\);/,
+    'Retaining the 54-product collection must not starve the foundation About document');
 });
 
 test('candidate catalogue and guarded product-fact release retain reviewed boundaries', () => {
