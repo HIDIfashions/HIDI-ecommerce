@@ -1,0 +1,136 @@
+name: Persistent image derivatives - Azure production-runtime preflight
+
+on:
+  push:
+    branches: [feature/persistent-image-derivatives-20261021]
+    paths:
+      - '.github/workflows/persistent-image-derivatives-azure-preflight.yml'
+      - 'apps/web/lib/azure-blob.ts'
+      - 'apps/web/lib/photo-derivatives.mjs'
+      - 'apps/web/lib/product-image-derivatives.mjs'
+      - 'apps/web/app/api/admin/inventory/[variantId]/images/route.ts'
+      - 'deploy/collection-speed/images.mjs'
+      - 'deploy/photo-live/**'
+      - 'deploy/persistent-derivatives/**'
+      - 'tests/photo-route.fixture.mjs'
+      - 'tests/photo-route-current.cases.mjs'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: hidi-persistent-image-azure-preflight
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: 'sqlserver://localhost:1433;database=fixture;user=build;password=build;encrypt=true'
+      API_URL: http://127.0.0.1:4100/v1
+      NEXT_TELEMETRY_DISABLED: '1'
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/persistent-preflight-browsers
+      HIDI_PHOTO_RELEASE_MODE: preflight-only
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: pnpm
+
+      - name: Install pinned application dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm db:generate
+
+      - name: Install isolated packaging and browser tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/photo-tools" --no-audit --no-fund esbuild@0.25.5 playwright@1.56.1 sharp@0.34.1
+          node "$RUNNER_TEMP/photo-tools/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+          echo "HIDI_ESBUILD_MODULE=$RUNNER_TEMP/photo-tools/node_modules/esbuild" >> "$GITHUB_ENV"
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/photo-tools/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          echo "HIDI_TEST_SHARP=$RUNNER_TEMP/photo-tools/node_modules/sharp" >> "$GITHUB_ENV"
+          echo "HIDI_SHARP_MODULE=$RUNNER_TEMP/photo-tools/node_modules/sharp" >> "$GITHUB_ENV"
+          sudo apt-get update -qq
+          sudo apt-get install -y skopeo
+
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+
+      - name: Capture exact current production runtime and rollback state
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python deploy/photo-live/release.py capture
+
+      - name: Verify existing storage identity binding without changes
+        run: python deploy/photo-live/azure-check.py identity-preflight
+
+      - name: Audit published catalogue media without writes
+        run: |
+          mkdir -p evidence/persistent-derivatives
+          node deploy/persistent-derivatives/audit-catalog.mjs | tee evidence/persistent-derivatives/catalog-audit.json
+
+      - name: Compose derivative candidate over exact captured production runtime
+        run: python deploy/photo-live/release.py compose
+
+      - name: Test actual packaged runtime across browser, upload, image and checkout paths
+        run: python deploy/photo-live/test.py
+
+      - name: Publish tested immutable candidate images only
+        run: python deploy/photo-live/release.py publish
+
+      - name: Verify real Azure original plus six derivatives and clean temporary objects
+        run: python deploy/photo-live/azure-check.py
+
+      - name: Confirm preflight stopped before production rollout
+        run: |
+          test "$HIDI_PHOTO_RELEASE_MODE" = preflight-only
+          test ! -f evidence/photo-live/after.json
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path('evidence/photo-live')
+          storage=json.loads((root/'azure-storage-test.json').read_text())
+          published=json.loads((root/'published.json').read_text())
+          assert storage.get('passed') is True
+          assert storage.get('validationJobRemoved') is True
+          assert storage.get('persistentDerivativesVerified') == 6
+          assert storage.get('persistentDerivativesDeleted') is True
+          assert published.get('passed') is True
+          summary={
+              'passed': True,
+              'productionTrafficChanged': False,
+              'catalogueBackfillExecuted': False,
+              'databaseWrites': 0,
+              'temporaryAzureValidationCleaned': True,
+              'candidateImagesPublishedButNotApplied': True,
+              'persistentDerivativesVerified': 6,
+          }
+          pathlib.Path('evidence/persistent-derivatives').mkdir(parents=True,exist_ok=True)
+          (pathlib.Path('evidence/persistent-derivatives/preflight-summary.json')).write_text(json.dumps(summary,indent=2))
+          print(json.dumps(summary,indent=2))
+          PY
+
+      - name: Preserve review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: persistent-image-azure-preflight-evidence
+          path: |
+            evidence/photo-live/
+            evidence/persistent-derivatives/
+            evidence/checkout-offers/candidate/
+            evidence/checkout-offers/purchase-regression/
+            test-results/photo-web-upload/
+          retention-days: 30
