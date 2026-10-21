@@ -465,6 +465,12 @@ export const CLIENT_NAVIGATION_CASES=Object.freeze([
 ]);
 const retainedNavigationCase=Object.freeze({name:'retained-context-pointer',settled:false,history:true,freshContext:false});
 
+export async function waitForRetainedCollectionReady(page) {
+  const selector='.collection-page[data-hidi-collection-hydrated="true"]';
+  await page.locator(selector).waitFor({state:'attached',timeout:45000});
+  return {selector,hydrated:true};
+}
+
 export function isFixtureProductImageRequest(base,resourceType,rawUrl) {
   if(!base.startsWith('http://127.0.0.1')||resourceType!=='image')return false;
   const url=new URL(rawUrl);
@@ -501,6 +507,7 @@ async function probeClientNavigation(page,base,scenario,output,filePrefix) {
   try {
     const response=await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded',timeout:45000});
     assert(response?.ok(),'Client-navigation collection document must load');
+    let collectionReadiness=null;
     if(scenario.settled) {
       await assertSearchMetadata(page,'/collections/all');
       await page.waitForLoadState('load',{timeout:45000});
@@ -508,6 +515,9 @@ async function probeClientNavigation(page,base,scenario,output,filePrefix) {
       await page.waitForTimeout(1000);
     } else if(!scenario.freshContext) {
       await assertSearchMetadata(page,'/collections/all');
+      // Existing head fields may already agree in the server HTML. The retained
+      // scenario exercises client navigation after the collection has hydrated.
+      collectionReadiness=await waitForRetainedCollectionReady(page);
     }
     const productHeading=page.locator('main article h3').first();
     const nextProduct=productHeading.locator('a[href^="/products/"]').first();
@@ -585,7 +595,7 @@ async function probeClientNavigation(page,base,scenario,output,filePrefix) {
     assert(productIdentity.name,'Destination product schema remains present');
     assert.equal(productIdentity.title,productIdentity.name+' | HIDI','Product title belongs to the destination, not the prior collection');
     const checks=[{page:'client-navigation',path:nextPath,scenario:scenario.name,settled:scenario.settled,
-      freshContext:scenario.freshContext,passed:true,...navigationSeo}];
+      freshContext:scenario.freshContext,collectionReadiness,passed:true,...navigationSeo}];
     await captureScreenshot(page,{path:`${output}/${filePrefix}-${scenario.name}.png`});
     if(scenario.history) {
       await page.goBack({waitUntil:'domcontentloaded',timeout:45000});

@@ -245,7 +245,11 @@ class CandidateEvidenceTest(unittest.TestCase):
                 scenarios = [('fresh-immediate-pointer', False, True), ('fresh-settled-pointer', True, True)] if engine == 'firefox' else [('retained-context-pointer', False, False)]
                 for scenario, settled, fresh in scenarios:
                     after['checks'].append({'page': 'client-navigation', 'path': routes['product'],
-                                            'scenario': scenario, 'settled': settled, 'freshContext': fresh, 'passed': True})
+                                            'scenario': scenario, 'settled': settled, 'freshContext': fresh, 'passed': True,
+                                            'collectionReadiness': None if fresh else {
+                                                'selector': '.collection-page[data-hidi-collection-hydrated="true"]',
+                                                'hydrated': True,
+                                            }})
                 scenario = 'fresh-settled-pointer' if engine == 'firefox' else 'retained-context-pointer'
                 after['checks'].append({'page': 'back-forward-reload-metadata', 'scenario': scenario,
                                         'freshContext': engine == 'firefox', 'passed': True})
@@ -304,11 +308,96 @@ class CandidateEvidenceTest(unittest.TestCase):
         bundle = self.bundle()
         self.assertEqual(len(bundle['candidate/prior/report.json']['results']), 12)
         self.assertEqual(sum(len(row['checks']) for row in bundle['candidate/prior/report.json']['results']), 42)
+        navigation = [check for row in bundle['candidate/report.json']['results']
+                      for check in row['checks'] if check['page'] == 'client-navigation']
+        self.assertEqual(sum(check['collectionReadiness'] is not None for check in navigation), 4)
+        self.assertEqual(sum(check['collectionReadiness'] is None for check in navigation), 4)
         result = self.verify(bundle)
         self.assertTrue(result['passed'])
         self.assertTrue(result['collectionAllBodyPreserved'])
         self.assertTrue(result['footerLayoutPreserved'])
         self.assertEqual(result['clientNavigationCases'], 8)
+
+    def test_retained_navigation_requires_exact_collection_readiness(self):
+        for engine, width in [('chromium', 390), ('chromium', 1440), ('webkit', 390), ('webkit', 1440)]:
+            for change in ['missing', 'null', 'false', 'selector', 'numeric-true', 'numeric-false',
+                           'missing-hydrated', 'extra-field']:
+                with self.subTest(engine=engine, width=width, change=change):
+                    bundle = self.bundle()
+                    row = next(value for value in bundle['candidate/report.json']['results']
+                               if value['engine'] == engine and value['width'] == width)
+                    check = next(value for value in row['checks'] if value['page'] == 'client-navigation')
+                    readiness = check['collectionReadiness']
+                    if change == 'missing':
+                        del check['collectionReadiness']
+                    elif change == 'null':
+                        check['collectionReadiness'] = None
+                    elif change == 'false':
+                        readiness['hydrated'] = False
+                    elif change == 'selector':
+                        readiness['selector'] = '[data-hidi-collection-hydrated]'
+                    elif change == 'numeric-true':
+                        readiness['hydrated'] = 1
+                    elif change == 'numeric-false':
+                        readiness['hydrated'] = 0
+                    elif change == 'missing-hydrated':
+                        del readiness['hydrated']
+                    else:
+                        readiness['unreviewed'] = True
+                    with self.assertRaises(AssertionError):
+                        self.verify(bundle)
+
+    def test_fresh_firefox_navigation_requires_explicit_null_readiness(self):
+        for width in [390, 1440]:
+            for scenario in ['fresh-immediate-pointer', 'fresh-settled-pointer']:
+                for change in ['missing', 'retained-wait', 'false', 'numeric-zero', 'empty-object']:
+                    with self.subTest(width=width, scenario=scenario, change=change):
+                        bundle = self.bundle()
+                        row = next(value for value in bundle['candidate/report.json']['results']
+                                   if value['engine'] == 'firefox' and value['width'] == width)
+                        check = next(value for value in row['checks'] if value.get('scenario') == scenario
+                                     and value['page'] == 'client-navigation')
+                        if change == 'missing':
+                            del check['collectionReadiness']
+                        elif change == 'retained-wait':
+                            check['collectionReadiness'] = {
+                                'selector': '.collection-page[data-hidi-collection-hydrated="true"]',
+                                'hydrated': True,
+                            }
+                        else:
+                            check['collectionReadiness'] = {'false': False, 'numeric-zero': 0, 'empty-object': {}}[change]
+                        with self.assertRaises(AssertionError):
+                            self.verify(bundle)
+
+    def test_retained_navigation_cannot_be_missing_duplicated_or_relabelled(self):
+        for change in ['missing', 'duplicate', 'extra-viewport', 'scenario', 'settled', 'fresh',
+                       'numeric-settled', 'numeric-fresh', 'failed']:
+            with self.subTest(change=change):
+                bundle = self.bundle()
+                rows = bundle['candidate/report.json']['results']
+                row = rows[0]
+                check = next(value for value in row['checks'] if value['page'] == 'client-navigation')
+                if change == 'missing':
+                    row['checks'].remove(check)
+                elif change == 'duplicate':
+                    row['checks'].append(deepcopy(check))
+                elif change == 'extra-viewport':
+                    next(value for value in rows if value['width'] == 320)['checks'].append(deepcopy(check))
+                elif change == 'scenario':
+                    check['scenario'] = 'fresh-immediate-pointer'
+                elif change == 'settled':
+                    check['settled'] = True
+                elif change == 'fresh':
+                    check['freshContext'] = True
+                elif change == 'numeric-settled':
+                    check['settled'] = 0
+                elif change == 'numeric-fresh':
+                    check['freshContext'] = 0
+                else:
+                    check['passed'] = False
+                self.assertEqual(bundle['candidate/report.json']['clientNavigationCases'], 8)
+                with self.assertRaises(AssertionError):
+                    self.verify(bundle)
 
     def test_legacy_visible_delta_and_normalization_evidence_are_rejected(self):
         for legacy in ['visible-delta', 'inverse-transforms']:

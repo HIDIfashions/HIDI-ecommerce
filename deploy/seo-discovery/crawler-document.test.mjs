@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import test from 'node:test';
-import {CLIENT_NAVIGATION_CASES, PRESENTATION_MATRIX, crawlerDocument, isFixtureProductImageRequest, assertCollectionPresentationPreserved, assertFooterLayoutPreserved, assertRetainedPriceAnnouncement, validatePresentationBaseline} from './probes.mjs';
+import {CLIENT_NAVIGATION_CASES, PRESENTATION_MATRIX, crawlerDocument, isFixtureProductImageRequest, assertCollectionPresentationPreserved, assertFooterLayoutPreserved, assertRetainedPriceAnnouncement, validatePresentationBaseline, waitForRetainedCollectionReady} from './probes.mjs';
 
 async function withServer(handler, run) {
   const server = createServer(handler);
@@ -60,6 +60,35 @@ test('crawler document has an absolute deadline even when the server keeps sendi
   });
 });
 
+test('retained collection readiness reports success only after the exact bounded marker wait resolves', async () => {
+  const calls=[];
+  let release,resolved=false;
+  const markerWait=new Promise(resolve=>{release=resolve;});
+  const page={locator(selector){
+    calls.push({selector});
+    return {waitFor(options){calls.push({options});return markerWait;}};
+  }};
+  const pending=waitForRetainedCollectionReady(page).then(value=>{resolved=true;return value;});
+  assert.deepEqual(calls,[
+    {selector:'.collection-page[data-hidi-collection-hydrated="true"]'},
+    {options:{state:'attached',timeout:45000}},
+  ]);
+  await Promise.resolve();
+  assert.equal(resolved,false,'Readiness cannot be reported before the app marker wait completes');
+  release();
+  assert.deepEqual(JSON.parse(JSON.stringify(await pending)),{
+    selector:'.collection-page[data-hidi-collection-hydrated="true"]',hydrated:true,
+  });
+});
+
+test('retained collection readiness propagates a missing-marker timeout without fallback', async () => {
+  const failure=new Error('Collection hydration marker did not appear before the deadline');
+  let waits=0;
+  const page={locator(){return {async waitFor(){waits++;throw failure;}};}};
+  await assert.rejects(waitForRetainedCollectionReady(page),error=>error===failure);
+  assert.equal(waits,1,'A missing hydration marker must fail the single bounded wait');
+});
+
 test('Firefox client navigation has fixed immediate and settled fresh-context cases', () => {
   assert.deepEqual(CLIENT_NAVIGATION_CASES, [
     {name:'fresh-immediate-pointer',settled:false,history:false,freshContext:true},
@@ -81,9 +110,12 @@ test('Firefox client navigation has fixed immediate and settled fresh-context ca
     'The oversized inline product anchor must not be auto-centred outside its clipped mobile card');
   assert.match(helper,/window\.addEventListener\('click',record\)/,
     'The trusted click recorder must run after the Next/React bubble handler');
+  assert.match(helper,/if\(clicked!==anchor\)return;/,
+    'The original exact-anchor recorder is retained');
   assert.doesNotMatch(helper,/queueMicrotask/,
     'The recorder must not sample defaultPrevented before the link bubble handler runs');
   assert.match(helper,/activationEvidence\.trusted,true/);
+  assert.match(helper,/activationEvidence\.button,0/);
   assert.match(helper,/activationEvidence\.defaultPrevented,true/);
   assert.match(helper,/__hidiSeoDocumentMarker/,
     'The gate must prove the pointer kept a same-document Next client transition');
@@ -93,6 +125,22 @@ test('Firefox client navigation has fixed immediate and settled fresh-context ca
   assert.match(helper,/document\.fonts\.status==='loaded'.*timeout:30000/s);
   assert.doesNotMatch(helper,/\bretr(?:y|ies|ied)\b/i,'Navigation gate must not mask failures with retries');
   for(const match of helper.matchAll(/timeout:(\d+)/g))assert(Number(match[1])<=45000,'Navigation operation timeout must not exceed 45 seconds');
+});
+
+test('collection hydration readiness is confined to the retained branch before pointer selection', () => {
+  const source=readFileSync(new URL('./probes.mjs',import.meta.url),'utf8');
+  const start=source.indexOf('async function probeClientNavigation');
+  const end=source.indexOf('\nexport async function probe',start);
+  const helper=source.slice(start,end);
+  assert.match(helper,/let collectionReadiness=null;/,'Fresh cases persist an explicit null precondition');
+  assert.match(helper,/else if\(!scenario\.freshContext\) \{\s*await assertSearchMetadata\(page,'\/collections\/all'\);\s*(?:\/\/[^\n]*\n\s*)*collectionReadiness=await waitForRetainedCollectionReady\(page\);\s*\}\s*const productHeading=/,
+    'Only the retained branch awaits the marker, before choosing or arming the pointer target');
+  assert.equal([...helper.matchAll(/waitForRetainedCollectionReady\(/g)].length,1,
+    'The immediate and settled fresh-context cases must not gain the retained readiness wait');
+  assert.match(helper,/freshContext:scenario\.freshContext,collectionReadiness,passed:true/,
+    'Navigation evidence records the actual retained hydration precondition');
+  assert.match(helper,/assert\.equal\(await page\.evaluate\(\(\)=>globalThis\.__hidiSeoDocumentMarker\),activation\.documentMarker/,
+    'A hard reload still fails even when it reaches the correct destination');
 });
 
 test('read-only browser probe isolates reviewed SEO checks from the fake Azure media backend', () => {

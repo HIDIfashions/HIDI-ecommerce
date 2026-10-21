@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {appendFile, mkdir, writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
+import {waitForRetainedCollectionReady} from './probes.mjs';
 
 // Observation only: this never changes a release gate or a production asset.
 // The restored image has its prior SEO metadata. Warm-up therefore waits for
@@ -274,6 +275,16 @@ async function runCase(browser,base,output,specification){
       await page.waitForFunction(()=>document.fonts.status==='loaded',null,{timeout:30000});
       await page.waitForTimeout(1000);
     }
+    if(specification.retainedReadiness){
+      attempt.beforeReadiness=await snapshot(page);
+      if(specification.delayedHydration){
+        // Controlled local fixture only; production readiness is observed as-is.
+        assert(base.startsWith('http://127.0.0.1:'),'Synthetic hydration is loopback-only');
+        await page.evaluate(()=>setTimeout(()=>globalThis.__hidiFixtureHydrate(),350));
+      }
+      attempt.collectionReadiness=await waitForRetainedCollectionReady(page);
+      attempt.afterReadiness=await snapshot(page);
+    }
     await activateOriginalPointer(page,attempt,{replaceAnchor:!!specification.fixture,
       checkpoint:value=>json(directory+'/checkpoint.json',{...value,events:state})});
   }catch(error){attempt.infrastructureError=errorValue(error);}
@@ -320,42 +331,101 @@ async function replacementFixture(browser,output){
   }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 }
 
-export async function diagnoseNavigation(base,output){
+async function readinessFixtures(browser,output){
+  let clientNavigation=true;
+  const server=createServer((request,response)=>{
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405);response.end();return;}
+    response.writeHead(200,{'content-type':'text/html'});
+    if(request.url.startsWith('/products/')){
+      response.end('<!doctype html><html><head><title>Fixture product</title><meta name="description" content="Hard navigation control"></head><body><main><h1>Fixture product</h1></main></body></html>');return;
+    }
+    response.end(`<!doctype html><html><head><title>Fixture collection</title><meta name="description" content="Delayed collection hydration control">
+    <style>body{margin:16px;font:16px sans-serif}h3{width:350px;overflow:hidden;white-space:nowrap}</style></head>
+    <body><main class="collection-page" data-hidi-collection-hydrated="false"><article><h3><a href="/products/diagnostic-product">Retained product link</a></h3></article></main>
+    <script>globalThis.__hidiFixtureHydrate=()=>{
+      if(${JSON.stringify(clientNavigation)})document.addEventListener('click',event=>{
+        const anchor=event.target.closest('main article h3 a');if(!anchor)return;
+        event.preventDefault();history.pushState({},'',anchor.getAttribute('href'));
+        document.querySelector('main').innerHTML='<h1>Fixture product</h1>';
+      });
+      document.querySelector('.collection-page').dataset.hidiCollectionHydrated='true';
+    };</script></body></html>`);
+  });
+  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
+  const results=[];
+  try{
+    for(const sameDocument of [true,false]){
+      clientNavigation=sameDocument;
+      const attempt=await runCase(browser,'http://127.0.0.1:'+server.address().port,output,{
+        name:sameDocument?'local-delayed-hydration-client-navigation':'local-hydrated-hard-navigation-rejected',
+        warm:false,settled:false,retainedReadiness:true,delayedHydration:true,
+      });
+      const clicks=attempt.events.domEvents.filter(event=>event.kind==='dom:click:capture');
+      const readyBeforeClick=attempt.beforeReadiness?.collectionHydrated==='false'&&
+        attempt.afterReadiness?.collectionHydrated==='true'&&attempt.collectionReadiness?.hydrated===true&&
+        clicks.length===1&&clicks[0].collectionHydrated==='true'&&clicks[0].trusted===true&&clicks[0].button===0;
+      attempt.controlPassed=readyBeforeClick&&attempt.destinationContentReady===true&&(
+        sameDocument?attempt.originalGuard?.passed===true:
+        attempt.originalGuard?.passed===false&&attempt.originalGuard.recordPresent===true&&
+        attempt.originalGuard.defaultPrevented===false&&attempt.originalGuard.sameDocumentMarker===false&&
+        attempt.originalGuard.sameTimeOrigin===false);
+      await json(output+'/'+attempt.name+'/attempt.json',attempt);results.push(attempt);
+    }
+    return results;
+  }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+}
+
+export async function diagnoseNavigation(base,output,{mode='original'}={}){
+  assert(['original','retained-ready'].includes(mode),'Use an explicit supported diagnostic mode');
   const target=new URL(base);
   assert.equal(target.href,'https://hidiindia.com/','Live diagnostic is pinned to the HIDI production origin');
   assert(process.env.HIDI_PLAYWRIGHT_MODULE,'HIDI_PLAYWRIGHT_MODULE is required');
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
   await mkdir(output,{recursive:true});
-  const report={diagnostic:'Original Chromium390 pointer-recorder lifetime',base:target.origin,sourceSha:process.env.GITHUB_SHA??null,
+  const report={diagnostic:'Chromium390 retained product-link activation',mode,base:target.origin,sourceSha:process.env.GITHUB_SHA??null,
     startedAt:now(),readOnly:true,liveWrites:0,unsafeRequestsAllowed:0,liveMetadataDifference:'Warm-up checks existing head coherence; it does not assert candidate SEO titles on the restored runtime.',attempts:[]};
-  report.passedMeaning='All diagnostic cases completed, the local recorder control reproduced, and no commerce write was emitted; this does not mean the natural navigation guards all passed.';
+  report.passedMeaning=mode==='retained-ready'
+    ?'All three natural retained cases passed the unchanged pointer guard after observed collection readiness; delayed hydration and rejection of a hydrated hard navigation were verified locally; no commerce write was emitted.'
+    :'All diagnostic cases completed, the local recorder control reproduced, and no commerce write was emitted; this does not mean the natural navigation guards all passed.';
   report.serviceWorkers='Blocked in fresh diagnostic contexts so every browser request is subject to the read-only routing policy.';
   let browser;
   try{
     browser=await pw.chromium.launch({headless:true});
-    for(const specification of [
+    const specifications=mode==='retained-ready'
+      ?[1,2,3].map(index=>({name:'warm-retained-ready-'+index,warm:true,settled:false,retainedReadiness:true}))
+      :[
       {name:'warm-retained-1',warm:true,settled:false},
       {name:'warm-retained-2',warm:true,settled:false},
       {name:'warm-retained-3',warm:true,settled:false},
       {name:'settled-control',warm:false,settled:true},
-    ]){
+    ];
+    for(const specification of specifications){
       report.attempts.push(await runCase(browser,target.origin,output,specification));
       await json(output+'/partial-report.json',report);
     }
-    report.fixture=await replacementFixture(browser,output);
-    const all=[...report.attempts,report.fixture];
+    if(mode==='retained-ready')report.readinessFixtures=await readinessFixtures(browser,output);
+    else report.fixture=await replacementFixture(browser,output);
+    const all=[...report.attempts,...(report.readinessFixtures||[report.fixture])];
     report.blockedCommerceRequests=all.flatMap(attempt=>attempt.events.blockedCommerceRequests);
     report.completedAt=now();
     report.completed=all.every(attempt=>!attempt.infrastructureError&&!attempt.deadlineExceeded);
-    report.passed=report.completed&&report.fixture.fixtureReproduced===true&&report.blockedCommerceRequests.length===0;
+    const controlPassed=mode==='retained-ready'
+      ?report.attempts.length===3&&report.attempts.every(attempt=>attempt.originalGuard?.passed===true&&
+        attempt.destinationContentReady===true&&attempt.collectionReadiness?.hydrated===true&&
+        attempt.afterReadiness?.collectionHydrated==='true')&&
+        report.readinessFixtures.length===2&&report.readinessFixtures.every(attempt=>attempt.controlPassed===true)
+      :report.fixture.fixtureReproduced===true;
+    report.passed=report.completed&&controlPassed&&report.blockedCommerceRequests.length===0;
   }catch(error){report.infrastructureError=errorValue(error);report.passed=false;}
   finally{if(browser)await browser.close();await json(output+'/report.json',report);}
-  console.log('NAVIGATION_DIAGNOSTIC',JSON.stringify({passed:report.passed,fixtureReproduced:report.fixture?.fixtureReproduced,
+  console.log('NAVIGATION_DIAGNOSTIC',JSON.stringify({mode,passed:report.passed,fixtureReproduced:report.fixture?.fixtureReproduced,
+    readinessControls:report.readinessFixtures?.map(attempt=>({name:attempt.name,passed:attempt.controlPassed})),
     liveGuards:report.attempts.map(attempt=>({name:attempt.name,passed:attempt.originalGuard?.passed})),liveWrites:0}));
-  assert(report.passed,'Read-only diagnostic must complete all cases, reproduce its local control, and emit no commerce writes');
+  assert(report.passed,'Read-only diagnostic must complete its selected cases and controls, and emit no commerce writes');
   return report;
 }
 
 if(process.argv[1]&&pathToFileURL(process.argv[1]).href===import.meta.url){
-  await diagnoseNavigation(process.argv[2]||'https://hidiindia.com',process.argv[3]||'evidence/seo-navigation-diagnostics');
+  assert(process.argv.length<=5,'Provide only the origin, output directory and optional diagnostic mode');
+  await diagnoseNavigation(process.argv[2]||'https://hidiindia.com',process.argv[3]||'evidence/seo-navigation-diagnostics',{mode:process.argv[4]||'original'});
 }

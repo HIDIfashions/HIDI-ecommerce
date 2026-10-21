@@ -45,6 +45,15 @@ def _price_announcement(value, page):
     assert value == expected, 'Retained price announcement must be ready before presentation measurement'
 
 
+def _collection_readiness(value):
+    assert isinstance(value, dict), 'Retained client navigation requires collection readiness evidence'
+    assert type(value.get('hydrated')) is bool, 'Collection hydration readiness must be a boolean'
+    assert value == {
+        'selector': '.collection-page[data-hidi-collection-hydrated="true"]',
+        'hydrated': True,
+    }, 'Retained client navigation must wait for the existing collection hydration marker'
+
+
 def _footer(prior, candidate, page):
     variant = 'landing' if page == 'home' else 'storefront'
     selector, link_selector, controls = {
@@ -138,10 +147,28 @@ def verify_candidate_evidence(root):
             ('fresh-immediate-pointer', False, True),
             ('fresh-settled-pointer', True, True),
         ]
+        for check in navigation:
+            assert check['passed'] is True
+            assert type(check['settled']) is bool and check['freshContext'] is True
+            assert 'collectionReadiness' in check and check['collectionReadiness'] is None, \
+                'Fresh Firefox navigation cases must remain free of the retained-context readiness wait'
         history = [check for check in result['checks'] if check['page'] == 'back-forward-reload-metadata']
         assert len(history) == 1
         assert history[0]['scenario'] == 'fresh-settled-pointer'
         assert history[0]['freshContext'] is True
+    retained_navigation = [
+        (result, check)
+        for result in candidate_report['results'] if result['engine'] != 'firefox'
+        for check in result['checks'] if check['page'] == 'client-navigation'
+    ]
+    assert [(row['engine'], row['width'], row['height']) for row, _ in retained_navigation] == [
+        ('chromium', 390, 844), ('chromium', 1440, 900),
+        ('webkit', 390, 844), ('webkit', 1440, 900),
+    ], 'Exactly four reviewed retained-context navigation cases are required'
+    for _, check in retained_navigation:
+        assert check['passed'] is True and check['scenario'] == 'retained-context-pointer'
+        assert check['settled'] is False and check['freshContext'] is False
+        _collection_readiness(check.get('collectionReadiness'))
     for field in ['collectionAllBodyPreserved', 'collectionAllPresentationPreserved', 'collectionAllBreadcrumbPreserved',
                   'footerLayoutPreserved', 'presentationBaselineVerified']:
         assert candidate_report[field] is True
