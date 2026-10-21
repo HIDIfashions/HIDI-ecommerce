@@ -121,6 +121,37 @@ test('Azure derivative persistence is immutable, idempotent, and source-hash che
   );
 });
 
+test('partial Azure derivative failure resumes idempotently on retry',async()=>{
+  const base=fakeContainer(),photo={path:'/tmp/not-used',sha256:'c'.repeat(64)};
+  const items=[
+    {key:'products/_derivatives/v1/variants/a/photo.jpg/384.webp',width:384,contentType:'image/webp',bytes:Buffer.from('384')},
+    {key:'products/_derivatives/v1/variants/a/photo.jpg/640.webp',width:640,contentType:'image/webp',bytes:Buffer.from('640')},
+    {key:'products/_derivatives/v1/variants/a/photo.jpg/750.webp',width:750,contentType:'image/webp',bytes:Buffer.from('750')},
+  ];
+  let failOnce=true;
+  const container={
+    saved:base.saved,
+    getBlockBlobClient(key){
+      const blob=base.getBlockBlobClient(key);
+      return {
+        ...blob,
+        async uploadData(bytes,options){
+          if(key.endsWith('/640.webp')&&failOnce){failOnce=false;throw {statusCode:503};}
+          return blob.uploadData(bytes,options);
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    ()=>persistProductDerivatives(container,'products/variants/a/photo.jpg',photo,{render:async()=>items}),
+    error=>error?.statusCode===503,
+  );
+  assert.equal(container.saved.size,1);
+  const replay=await persistProductDerivatives(container,'products/variants/a/photo.jpg',photo,{render:async()=>items});
+  assert.deepEqual(replay,items.map(({key,width})=>({key,width})));
+  assert.equal(container.saved.size,3);
+});
+
 test('runtime image handler serves a persisted derivative before touching the original',async t=>{
   const dir=await temp(t),webp=await sharp(await fixture()).resize(640).webp({quality:75}).toBuffer();
   let originals=0,derivatives=0;
