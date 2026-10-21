@@ -209,15 +209,36 @@ export function createImageStore({ sharp, fetchSource, cacheDir = join(tmpdir(),
 export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'..'), sharp: providedSharp, fetchSource: providedFetch, fetchDerivative: providedDerivativeFetch, cacheDir, seedDir }) {
   const require = createRequire(join(runtimeRoot,'apps/web/server.js'));
   const sharp = providedSharp || require('next/dist/server/image-optimizer.js').getSharp(1,false);
+  const transient = status => [429,502,503,504].includes(status);
+  const delay = ms => new Promise(resolve => setTimeout(resolve,ms));
+  async function retryFetch(url,options,timeoutMs) {
+    let lastError;
+    for(let attempt=0;attempt<3;attempt++){
+      const signal=AbortSignal.timeout(timeoutMs);
+      try {
+        const response=await fetch(url,{...options,signal});
+        if(transient(response.status)&&attempt<2){
+          await response.body?.cancel().catch(()=>{});
+          await delay(150*(attempt+1));
+          continue;
+        }
+        return {response,signal};
+      } catch(error) {
+        lastError=error;
+        if(attempt<2){await delay(150*(attempt+1));continue;}
+      }
+    }
+    throw lastError || new Error('Product media request failed');
+  }
   const fetchSource = providedFetch || (async source => {
-    const signal = AbortSignal.timeout(300000);
-    return downloadPhotoToDisk(await fetch(new URL(source,origin), {signal,redirect:'error'}), {signal});
+    const {response,signal}=await retryFetch(new URL(source,origin),{redirect:'error'},300000);
+    return downloadPhotoToDisk(response,{signal});
   });
   const fetchDerivative = providedDerivativeFetch || (async path => {
-    const signal = AbortSignal.timeout(15000);
-    let response;
-    try { response = await fetch(new URL(path,origin), {signal,redirect:'error',headers:{Accept:'image/webp'}}); }
-    catch { return null; }
+    let response,signal;
+    try {
+      ({response,signal}=await retryFetch(new URL(path,origin),{redirect:'error',headers:{Accept:'image/webp'}},15000));
+    } catch { return null; }
     const type=(response.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
     const declared=response.headers.get('content-length');
     if (!response.ok || !response.body || type!=='image/webp' ||
@@ -227,6 +248,7 @@ export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'
     const reader=response.body.getReader(),parts=[];let count=0;
     try {
       for (;;) {
+        if(signal.aborted)return null;
         const {value,done}=await reader.read();if(done)break;
         count+=value.byteLength;
         if(count>10*1024*1024)return null;
