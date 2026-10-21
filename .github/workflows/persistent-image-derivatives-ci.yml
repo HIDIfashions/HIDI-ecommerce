@@ -1,0 +1,72 @@
+name: Persistent image derivatives CI
+on:
+  push:
+    branches: [feature/persistent-image-derivatives-v2-20261021]
+    paths:
+      - '.github/workflows/persistent-image-derivatives-ci.yml'
+      - 'apps/web/lib/azure-blob.ts'
+      - 'apps/web/lib/product-image-derivatives.mjs'
+      - 'apps/web/lib/product-image-derivatives.d.mts'
+      - 'apps/web/lib/product-image-derivative-store.mjs'
+      - 'apps/web/lib/product-image-derivative-store.d.mts'
+      - 'apps/web/app/api/admin/inventory/**/images/route.ts'
+      - 'apps/web/components/catalog-image.tsx'
+      - 'deploy/collection-speed/images.mjs'
+      - 'deploy/image-derivatives/**'
+      - 'tests/photo-route.fixture.mjs'
+      - 'tests/photo-web-upload.browser.mjs'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+      API_URL: http://127.0.0.1:4100/v1
+      NEXT_PUBLIC_API_URL: /api/store
+      NEXT_TELEMETRY_DISABLED: '1'
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/persistent-image-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: pnpm
+      - name: Install application dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install isolated image and browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/persistent-image-tools" --no-audit --no-fund sharp@0.34.1 playwright@1.56.1
+          echo "HIDI_TEST_SHARP=$RUNNER_TEMP/persistent-image-tools/node_modules/sharp" >> "$GITHUB_ENV"
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/persistent-image-tools/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          node "$RUNNER_TEMP/persistent-image-tools/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Persistent derivative unit and fallback tests
+        run: node --test deploy/image-derivatives/persistent.test.mjs
+      - name: Build and run isolated end-to-end upload/render regression
+        run: python deploy/image-optimization/verify-web-upload.py
+      - name: Preserve end-to-end evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: persistent-image-derivatives-evidence
+          path: |
+            reports/upload-integration/
+            test-results/photo-web-upload/
+          retention-days: 14
+      - name: Enforce end-to-end result
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          data=json.load(open('reports/upload-integration/results.json'))
+          failed=[s for s in data['suites'] if s['status']!='PASS']
+          assert not failed, 'Persistent image end-to-end gate failed: '+str(failed)
+          assert any(c.get('case')=='Uploaded photos render in the production-built product page as optimized images' and c.get('status')=='PASS' for c in data['cases'])
+          PY
