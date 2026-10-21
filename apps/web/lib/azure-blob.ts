@@ -1,5 +1,6 @@
 import { DefaultAzureCredential } from "@azure/identity";
 import { BlobServiceClient } from "@azure/storage-blob";
+import { createAndUploadProductDerivatives } from "./photo-derivatives.mjs";
 
 let service: BlobServiceClient | undefined;
 export function productMediaContainer() {
@@ -39,5 +40,11 @@ export async function uploadProductImageFile(key: string, photo: DiskPhoto, cont
   if (!base || !base.startsWith("https://")) throw new Error("MEDIA_PUBLIC_BASE_URL must be an HTTPS media origin");
   const blob = productMediaContainer().getBlockBlobClient(key);
   await uploadDiskPhotoToBlob(blob, photo, contentType);
-  return { url: `${base}/${key}`, storagePath: `azure://product-media/${key}` };
+  const derivatives = await createAndUploadProductDerivatives(productMediaContainer(), key, photo);
+  return {
+    url: `${base}/${key}`,
+    storagePath: `azure://product-media/${key}`,
+    derivatives,
+    imageReady: true as const,
+  };
 }
