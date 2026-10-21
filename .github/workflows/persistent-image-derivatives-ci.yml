@@ -13,6 +13,9 @@ on:
       - 'apps/web/components/catalog-image.tsx'
       - 'deploy/collection-speed/images.mjs'
       - 'deploy/image-derivatives/**'
+      - 'deploy/admin-tools/product-delete-storage.mjs'
+      - 'tests/admin-product-delete-handler.test.mjs'
+      - 'tests/photo-route-current.cases.mjs'
       - 'tests/photo-route.fixture.mjs'
       - 'tests/photo-web-upload.browser.mjs'
 permissions:
@@ -47,8 +50,12 @@ jobs:
           echo "HIDI_TEST_SHARP=$RUNNER_TEMP/persistent-image-tools/node_modules/sharp" >> "$GITHUB_ENV"
           echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/persistent-image-tools/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
           node "$RUNNER_TEMP/persistent-image-tools/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
-      - name: Persistent derivative unit and fallback tests
-        run: node --test deploy/image-derivatives/persistent.test.mjs
+      - name: Persistent derivative unit, fallback and cleanup tests
+        run: |
+          node --test deploy/image-derivatives/persistent.test.mjs
+          node --test tests/admin-product-delete-handler.test.mjs
+      - name: Genuine large-source derivative stress test
+        run: node --test deploy/image-derivatives/large-source.test.mjs
       - name: Build and run isolated end-to-end upload/render regression
         run: python deploy/image-optimization/verify-web-upload.py
       - name: Preserve end-to-end evidence
