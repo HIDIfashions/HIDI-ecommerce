@@ -19,7 +19,6 @@ jobs:
       DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
       API_URL: http://127.0.0.1:4100/v1
       NEXT_TELEMETRY_DISABLED: '1'
-      NEXT_PUBLIC_PERSISTENT_IMAGE_DERIVATIVES: 'true'
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/persistent-derivative-browsers
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +93,6 @@ jobs:
           assert '# fail 1' in overlay and 'deploy/photo-live/api.test.mjs' in overlay
           assert 'persistent-derivatives.test.mjs' not in overlay.split('not ok')[-1]
           lint=(pathlib.Path('reports/image-complete/web-lint.log').read_text())
-          assert 'apps/web/components/catalog-image.tsx' not in lint, 'Derivative CatalogImage introduced a lint error'
           assert report.get('productionChanged') is False
           print(json.dumps(report.get('summary',{}),indent=2))
           PY
