@@ -43,7 +43,7 @@ def seal():
   assert read(name)['passed'] is True,name;manifest[name]=hashlib.sha256((E/name).read_bytes()).hexdigest()
  passed=read('tests.json');assert passed['passed'] and passed['photoSourceSha']==source_sha()
  browser=json.loads((ROOT/'test-results/photo-web-upload/results.json').read_text())
- assert len(browser['results'])==24 and all(x['status']=='PASS' for x in browser['results'])
+ assert len(browser['results'])==27 and all(x['status']=='PASS' for x in browser['results'])
  assert {x['engine'] for x in browser['results']}=={'chromium','firefox','webkit'}
  for name in ['candidate/report.json','purchase-regression/report.json']:
   p=Path('evidence/checkout-offers')/name;data=json.loads(p.read_text());assert data.get('passed') is True,name
