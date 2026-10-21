@@ -13,6 +13,23 @@ async function captureScreenshot(page,options) {
   }
 }
 
+export function foundationReadKind(request) {
+  if(request.method()!=='GET')return;
+  const url=new URL(request.url());
+  if(url.pathname.startsWith('/api/store/carts/'))return 'blocking';
+  if(!url.searchParams.has('_rsc'))return;
+  return request.headers()['next-router-prefetch']?'prefetch':'blocking';
+}
+
+export function trackFoundationReads(page) {
+  const state={pending:new Set(),prefetch:new Set(),prefetchFailures:new Map()};
+  page.on('request',request=>{const kind=foundationReadKind(request);if(kind==='prefetch')state.prefetch.add(request);else if(kind==='blocking')state.pending.add(request);});
+  page.on('response',response=>{const request=response.request();if(!state.prefetch.delete(request))return;if(response.status()<200||response.status()>=300)state.prefetchFailures.set(request,response.status());});
+  page.on('requestfinished',request=>state.pending.delete(request));
+  page.on('requestfailed',request=>{state.pending.delete(request);if(state.prefetch.delete(request))state.prefetchFailures.set(request,'network failure');});
+  return state;
+}
+
 export async function foundationProbe(base,output,{baseline}={}) {
   await mkdir(output,{recursive:true});
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
@@ -38,17 +55,18 @@ export async function foundationProbe(base,output,{baseline}={}) {
         const errors=[];page.on('pageerror',error=>errors.push(String(error)));
         const reads=new Map();
         for(const p of [page,...(prior?[prior]:[])]) {
-          const pending=new Set();reads.set(p,pending);
-          p.on('request',request=>{const url=new URL(request.url());if(request.method()==='GET'&&(url.pathname.startsWith('/api/store/carts/')||url.searchParams.has('_rsc')))pending.add(request);});
-          for(const event of ['requestfinished','requestfailed'])p.on(event,request=>pending.delete(request));
+          // Next's declared speculative prefetch may remain a live RSC stream;
+          // require its successful response while cart/navigation reads finish.
+          reads.set(p,trackFoundationReads(p));
         }
         const settleReads=async p=>{
-          const pending=reads.get(p);let quiet=0;
+          const state=reads.get(p);let quiet=0;
           for(let elapsed=0;elapsed<15000;elapsed+=50) {
             await new Promise(done=>setTimeout(done,50));
-            quiet=pending.size?0:quiet+50;if(quiet>=500)return;
+            assert.equal(state.prefetchFailures.size,0,'Next prefetch failed: '+[...state.prefetchFailures].map(([request,status])=>request.url()+' ('+status+')').join(', '));
+            quiet=state.pending.size||state.prefetch.size?0:quiet+50;if(quiet>=500)return;
           }
-          assert.fail('Cart/prefetch reads did not settle: '+[...pending].map(request=>request.url()).join(', '));
+          assert.fail('Cart/navigation reads or prefetch responses did not settle: '+[...state.pending,...state.prefetch].map(request=>request.url()).join(', '));
         };
         page.setDefaultTimeout(30000);prior?.setDefaultTimeout(30000);
         const prepare=async(p,url)=>{

@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
 import {HidiSeoLinkProps} from './links.mjs';
+import {foundationReadKind,trackFoundationReads} from './browser.mjs';
 
 test('ordinary activation retains the existing action; modified clicks use native link behavior',()=>{
   let actions=0,prevented=0;
@@ -21,4 +23,27 @@ test('Space retains button activation on release and prevents page scrolling; En
   link.onKeyDown({...event,key:'Enter'});link.onKeyUp({...event,key:'Enter'});
   link.onKeyDown({...event,ctrlKey:true});link.onKeyUp({...event,metaKey:true});
   assert.equal(actions,1);assert.equal(prevented,2);
+});
+
+test('foundation read gate requires completed shopping reads and successful declared prefetch responses',()=>{
+  const page=new EventEmitter(),request=(url,headers={})=>({method:()=> 'GET',url:()=>url,headers:()=>headers});
+  const cart=request('https://hidiindia.com/api/store/carts/test');
+  const navigation=request('https://hidiindia.com/collections/all?_rsc=navigation');
+  const prefetch=request('https://hidiindia.com/products/example?_rsc=prefetch',{'next-router-prefetch':'1'});
+  const ordinary=request('https://hidiindia.com/products/example',{'next-router-prefetch':'1'});
+  assert.equal(foundationReadKind(cart),'blocking');
+  assert.equal(foundationReadKind(navigation),'blocking');
+  assert.equal(foundationReadKind(prefetch),'prefetch');
+  assert.equal(foundationReadKind(ordinary),undefined);
+  const state=trackFoundationReads(page);
+  for(const value of [cart,navigation,prefetch,ordinary])page.emit('request',value);
+  assert.deepEqual(state.pending,new Set([cart,navigation]));
+  assert.deepEqual(state.prefetch,new Set([prefetch]));
+  page.emit('response',{request:()=>prefetch,status:()=>200});
+  assert.equal(state.prefetch.size,0);
+  page.emit('requestfinished',cart);page.emit('requestfailed',navigation);
+  assert.equal(state.pending.size,0);
+  const failed=request('https://hidiindia.com/products/failure?_rsc=prefetch',{'next-router-prefetch':'1'});
+  page.emit('request',failed);page.emit('response',{request:()=>failed,status:()=>503});
+  assert.equal(state.prefetchFailures.get(failed),503);
 });
