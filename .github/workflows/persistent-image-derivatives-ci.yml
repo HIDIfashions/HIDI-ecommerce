@@ -46,8 +46,12 @@ jobs:
           echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/image-tools/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
           node "$RUNNER_TEMP/image-tools/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
 
-      - name: Run persistent derivative contract first
-        run: node --experimental-strip-types --test deploy/image-optimization/persistent-derivatives.test.mjs
+      - name: Run persistent derivative and runtime bypass contracts first
+        run: |
+          node --experimental-strip-types --test             deploy/image-optimization/persistent-derivatives.test.mjs             deploy/image-optimization/image-optimization.test.mjs
+          node --check deploy/photo-live/storage-probe.mjs
+          node --check deploy/photo-live/build.mjs
+          python deploy/photo-live/azure-check.test.py
 
       - name: Lint only files changed by the derivative delivery feature
         run: |
