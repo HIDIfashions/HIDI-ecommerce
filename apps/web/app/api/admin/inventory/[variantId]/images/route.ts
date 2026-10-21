@@ -1,4 +1,4 @@
-import { ensureProductImageDerivatives, uploadProductImageFile } from "@/lib/azure-blob";
+import { deleteUnattachedProductImage, ensureProductImageDerivatives, uploadProductImageFile } from "@/lib/azure-blob";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
@@ -186,6 +186,8 @@ export async function POST(
   const { variantId } = await context.params;
   let releasePhotoUpload: (() => void) | undefined;
   let photoForm: StreamedPhotoForm | undefined;
+  let unattachedAzureKey: string | undefined;
+  let storageAttached = false;
 
   try {
     await authorizePhotoUpload(request, API_URL, adminApiHeaders(request));
@@ -222,6 +224,7 @@ export async function POST(
     if (process.env.MEDIA_STORAGE_PROVIDER === "azure") {
       const key = objectKey(variantId, file.type, uploadKey);
       uploaded = await uploadProductImageFile(key, file, file.type);
+      if (!uploadKey) unattachedAzureKey = key;
       try {
         await ensureProductImageDerivatives(key, file);
       } catch (error) {
@@ -240,6 +243,7 @@ export async function POST(
       isMain: String(form.get("isMain") ?? "false") === "true",
     });
     const body = await response.json().catch(() => ({ message: "Photo uploaded, but it could not be attached to the SKU" }));
+    if (response.ok) storageAttached = true;
     return NextResponse.json(body, { status: response.status });
   } catch (error) {
     return NextResponse.json(
@@ -247,7 +251,13 @@ export async function POST(
       { status: error instanceof PhotoUploadError ? error.status : 502 },
     );
   } finally {
-    try { await photoForm?.cleanup(); } finally { releasePhotoUpload?.(); }
+    try {
+      if (unattachedAzureKey && !storageAttached) {
+        await deleteUnattachedProductImage(unattachedAzureKey).catch(() => {});
+      }
+    } finally {
+      try { await photoForm?.cleanup(); } finally { releasePhotoUpload?.(); }
+    }
   }
 }
 
