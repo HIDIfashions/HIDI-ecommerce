@@ -22,6 +22,17 @@ function safeKey(value) {
   return key;
 }
 
+const DERIVATIVE_VERSION = 'v1';
+const DERIVATIVE_WIDTHS = [384,640,750,828,1080,1200,1920];
+
+export function productDerivativeKeys(value) {
+  const key = safeKey(value);
+  if (key.startsWith('products/_derivatives/')) return [];
+  if (!/\.(?:jpg|jpeg|png|webp|avif)$/i.test(key)) return [];
+  const stem = key.replace(/\.(?:jpg|jpeg|png|webp|avif)$/i, '').slice('products/'.length);
+  return DERIVATIVE_WIDTHS.map(width => `products/_derivatives/${DERIVATIVE_VERSION}/${stem}/${width}.webp`);
+}
+
 /** Resolve only this account's product photos. Never fetch a database-supplied host. */
 export function ownedProductKey(image, env = process.env) {
   const account = env.AZURE_STORAGE_ACCOUNT || '';
@@ -94,9 +105,12 @@ export function createProductPhotoStorage({ env = process.env, requestFetch = fe
       return keys;
     },
     async remove(key) {
-      safeKey(key);
-      const response = await request('DELETE', 'product-media', key);
-      if (![202, 404].includes(response.status)) throw fail('Photo cleanup could not finish. Retry cleanup to complete deletion.');
+      const original = safeKey(key);
+      const targets = [...productDerivativeKeys(original), original];
+      const results = await Promise.all(targets.map(target => request('DELETE', 'product-media', target)));
+      if (results.some(response => ![202, 404].includes(response.status))) {
+        throw fail('Photo cleanup could not finish. Retry cleanup to complete deletion.');
+      }
     },
   };
 }
