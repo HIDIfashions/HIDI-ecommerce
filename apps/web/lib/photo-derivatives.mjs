@@ -53,12 +53,16 @@ export async function createAndUploadProductDerivatives(
     throw new Error("Invalid product derivative widths");
   }
 
+  // Decode/reorient/colour-normalise the potentially very large original once.
+  // All shopper sizes are then produced from this bounded 1920px master, which
+  // avoids six full source decodes during an admin upload.
+  const master = await resizedImage(processor, photo.path, 1920, "webp", 92);
   const results = [];
   for (const width of requested) {
     if (signal.aborted) throw signal.reason ?? new Error("Product derivative generation aborted");
     const key = productDerivativeKey(originalKey, width);
     if (!key) throw new Error("Invalid product image key for derivatives");
-    const bytes = await resizedImage(processor, photo.path, width, "webp", 75);
+    const bytes = await resizedImage(processor, master, width, "webp", 75);
     const blob = container.getBlockBlobClient(key);
     const status = await uploadDerivative(blob, bytes, photo, width, signal);
     results.push({ width, key, bytes: bytes.length, created: status.created });
