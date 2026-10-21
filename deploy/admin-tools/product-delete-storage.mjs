@@ -22,6 +22,19 @@ function safeKey(value) {
   return key;
 }
 
+const DERIVATIVE_WIDTHS = [384, 640, 828, 1080, 1200, 1920];
+function derivativeKeysForOriginal(key) {
+  const match = /^products\/variants\/([a-z0-9_-]+)\/([^/]+\.(?:jpg|jpeg|png|webp|avif))$/.exec(key);
+  if (!match) return [];
+  let token = '';
+  for (const char of match[2]) {
+    const code = char.charCodeAt(0);
+    if (code > 0x7f) return [];
+    token += code.toString(16).padStart(2, '0');
+  }
+  return DERIVATIVE_WIDTHS.map(width => `products/_derivatives/v1/variants/${match[1]}/${token}/w${width}.webp`);
+}
+
 /** Resolve only this account's product photos. Never fetch a database-supplied host. */
 export function ownedProductKey(image, env = process.env) {
   const account = env.AZURE_STORAGE_ACCOUNT || '';
@@ -95,6 +108,12 @@ export function createProductPhotoStorage({ env = process.env, requestFetch = fe
     },
     async remove(key) {
       safeKey(key);
+      // Persistent derivatives are owned by the same original. Remove them first
+      // so a product deletion cannot leave permanent shopper-ready orphan blobs.
+      for (const derivativeKey of derivativeKeysForOriginal(key)) {
+        const derivative = await request('DELETE', 'product-media', derivativeKey);
+        if (![202, 404].includes(derivative.status)) throw fail('Photo derivative cleanup could not finish. Retry cleanup to complete deletion.');
+      }
       const response = await request('DELETE', 'product-media', key);
       if (![202, 404].includes(response.status)) throw fail('Photo cleanup could not finish. Retry cleanup to complete deletion.');
     },
