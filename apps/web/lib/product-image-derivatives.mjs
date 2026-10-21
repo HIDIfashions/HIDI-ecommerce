@@ -49,10 +49,23 @@ export function productMediaKey(source) {
   return null;
 }
 
+function hexSegment(value) {
+  let output = "";
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code > 0x7f) return null;
+    output += code.toString(16).padStart(2, "0");
+  }
+  return output;
+}
+
 export function productDerivativeKey(originalKey, width) {
   if (!safeOriginalKey(originalKey) || !validWidth(width)) return null;
-  const relative = originalKey.slice("products/".length).replace(/\.(?:jpg|jpeg|png|webp|avif)$/i, "");
-  return `products/_derivatives/${PRODUCT_DERIVATIVE_VERSION}/${relative}/w${width}.webp`;
+  const match = /^products\/variants\/([a-z0-9_-]+)\/([^/]+)$/.exec(originalKey);
+  if (!match) return null;
+  const fileToken = hexSegment(match[2]);
+  if (!fileToken) return null;
+  return `products/_derivatives/${PRODUCT_DERIVATIVE_VERSION}/variants/${match[1]}/${fileToken}/w${width}.webp`;
 }
 
 export function productDerivativeUrl(source, width) {
