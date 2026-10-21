@@ -31,6 +31,13 @@ jobs:
               print('SEO_CURRENT_FILE',json.dumps({'path':name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}))
           PY
 
+      - name: Retain the exact live wrapper for baseline review
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-live-wrapper-${{ github.run_id }}
+          path: ${{ runner.temp }}/hidi-seo-inspection/server.mjs
+          retention-days: 7
+
 
       - name: Inspect public-rendering code for India SEO candidate
         run: |
