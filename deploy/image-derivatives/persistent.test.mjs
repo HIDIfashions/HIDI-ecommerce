@@ -41,11 +41,19 @@ test('persistent derivative paths are deterministic and reject recursion',()=>{
   const key='products/variants/sku-a/photo.jpg';
   assert.equal(
     persistentDerivativeBlobKey(key,640,'webp'),
-    'products/_derivatives/v1/variants/sku-a/photo/640.webp',
+    'products/_derivatives/v1/variants/sku-a/photo.jpg/640.webp',
   );
   assert.equal(
     persistentDerivativeMediaPath('/media/products/_display_v2/variants/sku-a/photo.jpg?hidi_image=3',640,'webp'),
-    '/media/products/_derivatives/v1/variants/sku-a/photo/640.webp',
+    '/media/products/_derivatives/v1/variants/sku-a/photo.jpg/640.webp',
+  );
+  assert.equal(
+    persistentDerivativeMediaPath('/media/products/variants/sku-a/photo.jpg',256,'webp'),
+    '/media/products/_derivatives/v1/variants/sku-a/photo.jpg/384.webp',
+  );
+  assert.notEqual(
+    persistentDerivativeBlobKey('products/variants/sku-a/photo.jpg',640,'webp'),
+    persistentDerivativeBlobKey('products/variants/sku-a/photo.png',640,'webp'),
   );
   assert.equal(persistentDerivativeBlobKey(key,2048,'webp'),null);
   assert.equal(persistentDerivativeBlobKey('products/_derivatives/v1/x/640.webp',640,'webp'),null);
@@ -92,8 +100,8 @@ test('Azure derivative persistence is immutable, idempotent, and source-hash che
   const container=fakeContainer();
   const photo={path:'/tmp/not-used',sha256:'a'.repeat(64)};
   const render=async()=>[
-    {key:'products/_derivatives/v1/variants/a/photo/384.webp',width:384,contentType:'image/webp',bytes:Buffer.from('one')},
-    {key:'products/_derivatives/v1/variants/a/photo/640.webp',width:640,contentType:'image/webp',bytes:Buffer.from('two')},
+    {key:'products/_derivatives/v1/variants/a/photo.jpg/384.webp',width:384,contentType:'image/webp',bytes:Buffer.from('one')},
+    {key:'products/_derivatives/v1/variants/a/photo.jpg/640.webp',width:640,contentType:'image/webp',bytes:Buffer.from('two')},
   ];
   const first=await persistProductDerivatives(container,'products/variants/a/photo.jpg',photo,{render});
   const second=await persistProductDerivatives(container,'products/variants/a/photo.jpg',photo,{render});
@@ -124,7 +132,7 @@ test('runtime image handler serves a persisted derivative before touching the or
     seedDir:join(dir,'seed'),
     fetchDerivative:async path=>{
       derivatives++;
-      assert.equal(path,'/media/products/_derivatives/v1/variants/sku-a/photo/640.webp');
+      assert.equal(path,'/media/products/_derivatives/v1/variants/sku-a/photo.jpg/640.webp');
       return webp;
     },
     fetchSource:async()=>{originals++;return await fixture();},
