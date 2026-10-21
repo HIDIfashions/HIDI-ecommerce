@@ -35,7 +35,7 @@ def seal():
  photo.unchanged(photo.states());manifest={}
  for name in ['patch.json','web-preservation.json','candidate/report.json']:
   assert read(name)['passed'],name;manifest[name]=g.sha256_file(E/name)
- report=read('candidate/report.json');assert report['productionWrites']==0 and len(report['cases'])==12
+ report=read('candidate/report.json');assert report['productionWrites']==0 and len(report['cases'])==18
  save('sealed.json',{'passed':True,'sourceSha':os.environ['GITHUB_SHA'],'imageId':g.image_id(tag()),'manifest':manifest})
 def publish():
  seal();subprocess.run(['docker','push',tag()],check=True);assert g.image_id(tag())==read('sealed.json')['imageId']

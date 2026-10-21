@@ -1,4 +1,4 @@
-name: 50x50 and 50x40 price tag guarded release
+name: Compact price tag sizes guarded release
 on:
   push:
     branches: [migration/azure-sql-blob]

@@ -11,7 +11,7 @@ import styles from "./price-tags.module.css";
 
 type StockFilter = "ALL" | "IN_STOCK";
 type ProductFilter = "ALL" | "DRAFT" | "ACTIVE" | "ARCHIVED";
-type PresetKey = "50x40" | "50x50" | "50x90" | "50x80" | "60x100";
+type PresetKey = "40x50" | "50x40" | "50x50" | "50x90" | "50x80" | "60x100";
 type PrintLine = { item: PriceTagVariant; quantity: number };
 type BusinessDetails = {
   legalName: string;
@@ -43,6 +43,7 @@ const DEFAULT_DETAILS: BusinessDetails = {
   countryOfOrigin: "India",
 };
 const PRESETS: Record<PresetKey, { label: string; width: number; height: number; note: string }> = {
+  "40x50": { label: "40 × 50 mm", width: 40, height: 50, note: "Portrait label · size without measurements" },
   "50x40": { label: "50 × 40 mm", width: 50, height: 40, note: "Small label · size without measurements" },
   "50x50": { label: "50 × 50 mm", width: 50, height: 50, note: "Compact square tag" },
   "50x90": { label: "50 × 90 mm", width: 50, height: 90, note: "Recommended for the complete legal footer" },
@@ -149,7 +150,7 @@ function printDocument(lines: PrintLine[], details: BusinessDetails, presetKey: 
   const square = preset.height <= 50;
   const labels: string[] = [];
   for (const line of lines) {
-    const label = labelMarkup(line.item, details, logoUrl, preset.height === 40);
+    const label = labelMarkup(line.item, details, logoUrl, preset.height === 40 || preset.width === 40);
     for (let copy = 0; copy < line.quantity; copy++) labels.push(label);
   }
   return `<!doctype html>
@@ -262,8 +263,8 @@ function BarcodeSvg({ value }: { value: string }) {
 
 function TagPreview({ item, details, preset }: { item: PriceTagVariant | undefined; details: BusinessDetails; preset: PresetKey }) {
   if (!item) return <div className={styles.previewEmpty}>Choose a product or load in-stock SKUs to preview the tag.</div>;
-  const metric = preset === "50x40" ? [] : measurements(item);
-  return <div className={styles.previewTag} data-square={preset === "50x50" || preset === "50x40"} style={{ aspectRatio: `${PRESETS[preset].width} / ${PRESETS[preset].height}` }}>
+  const metric = (preset === "50x40" || preset === "40x50") ? [] : measurements(item);
+  return <div className={styles.previewTag} data-square={preset === "50x50" || preset === "50x40" || preset === "40x50"} style={{ aspectRatio: `${PRESETS[preset].width} / ${PRESETS[preset].height}` }}>
     <img src="/brand/hidi-logo-price-tag.svg" alt="HIDI — Wear the Feeling" />
     <div className={styles.previewIdentity}>
       <strong>{item.productName}</strong>

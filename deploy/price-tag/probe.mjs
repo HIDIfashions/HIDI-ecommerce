@@ -6,7 +6,7 @@ const item={variantId:'fixture-M',productId:'fixture',productName:'Nila Navy Flo
 const details={legalName:'HIDI Fashions',address:'12 Example Road, Hyderabad, Telangana 500001',consumerCareEmail:'care@thehidi.com',consumerCarePhone:'+91 90000 00000',website:'thehidi.com',countryOfOrigin:'India'};
 export async function probe(base,mode='candidate',routePatch){
  const out='evidence/price-tag-release/'+mode;await mkdir(out,{recursive:true});const cases=[];
- for(const [engine,type] of Object.entries({chromium,firefox,webkit}).filter(([e])=>(process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',').includes(e))){const browser=await type.launch({headless:true});try{for(const width of [390,1440])for(const preset of ["50x50","50x40"]){
+ for(const [engine,type] of Object.entries({chromium,firefox,webkit}).filter(([e])=>(process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',').includes(e))){const browser=await type.launch({headless:true});try{for(const width of [390,1440])for(const preset of ["50x50","50x40","40x50"]){
  console.log('Checking',engine,width,preset);const context=await browser.newContext({viewport:{width,height:1100}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await context.addInitScript(({details})=>{localStorage.setItem('hidi.price-tags.business-details.v1',JSON.stringify(details));window.print=()=>{};},{details});
  await context.route('**/*',route=>new URL(route.request().url()).origin!==new URL(base).origin?route.abort():route.continue());
@@ -21,11 +21,11 @@ export async function probe(base,mode='candidate',routePatch){
  await page.goto(base+'/admin/products/price-tags',{waitUntil:'domcontentloaded',timeout:60000});
  await page.locator(`input[value="${preset}"]`).evaluate(el=>el.click());
  await page.getByRole('button',{name:'One each',exact:true}).evaluate(el=>el.click());
- const preview=page.locator('[data-square="true"]');await preview.waitFor();const box=await preview.boundingBox();assert(Math.abs(box.width/box.height-(preset==="50x40"?1.25:1))<.01);
+ const preview=page.locator('[data-square="true"]');await preview.waitFor();const box=await preview.boundingBox();assert(Math.abs(box.width/box.height-(preset==="40x50"?.8:preset==="50x40"?1.25:1))<.01);
  await page.getByRole('button',{name:'Print selected tags',exact:true}).evaluate(el=>el.click());
  const frame=page.frameLocator('iframe[title="HIDI price tag print job"]');await frame.locator('.price-tag').waitFor();
  const metrics=await frame.locator('.price-tag').evaluate(el=>{const r=el.getBoundingClientRect();const legal=el.querySelector('.legal');return {width:r.width,height:r.height,scroll:el.scrollHeight,client:el.clientHeight,legalScroll:legal.scrollHeight,legalClient:legal.clientHeight,text:el.textContent,html:el.ownerDocument.documentElement.outerHTML};});
- assert(Math.abs(metrics.width-188.976)<1);assert(Math.abs(metrics.height-(preset==="50x40"?151.18:188.976))<1);assert(metrics.scroll<=metrics.client+1,JSON.stringify(metrics));assert(metrics.legalScroll<=metrics.legalClient+1,'Footer clipped '+JSON.stringify(metrics));
+ assert(Math.abs(metrics.width-(preset==="40x50"?151.18:188.976))<1);assert(Math.abs(metrics.height-(preset==="50x40"?151.18:188.976))<1);assert(metrics.scroll<=metrics.client+1,JSON.stringify(metrics));assert(metrics.legalScroll<=metrics.legalClient+1,'Footer clipped '+JSON.stringify(metrics));
  assert(!metrics.text.includes(item.sku),"SKU removed from print");
  for(const text of [item.barcode,details.consumerCareEmail,'Gentle hand wash'])assert(metrics.text.includes(text));
  if(width===1440&&engine==='chromium'){
