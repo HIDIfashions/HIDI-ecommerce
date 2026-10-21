@@ -25,7 +25,7 @@ export function productMediaKey(source) {
 
   if (source.startsWith("/media/products/")) {
     const pathname = source.split("?", 1)[0]
-      .replace(/^\/media\/products\/(?:_display_v[23]\//)?/, "/products/");
+      .replace(/^\/media\/products\/(?:_display_v[23]\/)?/, "/products/");
     const key = pathname.slice(1);
     return safeOriginalKey(key) ? key : null;
   }
@@ -37,7 +37,7 @@ export function productMediaKey(source) {
   const host = url.hostname.toLowerCase();
   if (STOREFRONT_MEDIA_HOSTS.has(host) && url.pathname.startsWith("/media/products/")) {
     const key = url.pathname
-      .replace(/^\/media\/products\/(?:_display_v[23]\//)?/, "products/");
+      .replace(/^\/media\/products\/(?:_display_v[23]\/)?/, "products/");
     return safeOriginalKey(key) ? key : null;
   }
 
