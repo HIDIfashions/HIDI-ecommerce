@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { productApi } from "@/lib/admin-products-client";
 import type { PriceTagList, PriceTagVariant } from "@/lib/admin-products-contract";
+import { rasterizePriceTagDocument } from "@/lib/price-tag-raster.mjs";
 import { priceTagLogo } from "@/lib/price-tag-logo.mjs";
 import { fitPriceTagDocument } from "@/lib/price-tag-fit.mjs";
 import { encodeCode128B } from "@/lib/code128";
@@ -218,6 +219,7 @@ ${preset.height === 40 ? `
 .tag-content .brand svg { display: block; width: 22mm; height: 4.5mm; fill: #000; }
 .price-tag { padding-top: 2mm !important; }
 .postal-address { line-height: 1.15; }
+.tag-content .product-name { font-family: Arial, Helvetica, sans-serif !important; }
 </style></head><body>${labels.join("")}</body></html>`;
 }
 
@@ -253,6 +255,7 @@ async function printInFrame(html: string) {
   await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 
   fitPriceTagDocument(printDoc);
+  await rasterizePriceTagDocument(printDoc);
 
   let removed = false;
   const cleanup = () => {
@@ -319,7 +322,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
   const [success, setSuccess] = useState<string | null>(null);
   const [details, setDetails] = useState<BusinessDetails>(DEFAULT_DETAILS);
   const [detailsLoaded, setDetailsLoaded] = useState(false);
-  const [preset, setPreset] = useState<PresetKey>("50x90");
+  const [preset, setPreset] = useState<PresetKey>("50x40");
   const autoSelected = useRef(false);
 
   useEffect(() => {
@@ -550,7 +553,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
         </section>
 
         <section className={base.card}>
-          <div className={base.sectionTitle}><span>03</span><div><h2>Tag size & print</h2><p>The output is vector-based for sharp 300-DPI thermal-transfer printing. One tag is sent per physical page.</p></div></div>
+          <div className={base.sectionTitle}><span>03</span><div><h2>Tag size & print</h2><p>The output is vector-based for sharp 203-DPI thermal-transfer printing. One tag is sent per physical page.</p></div></div>
           <div className={styles.presets}>{(Object.keys(PRESETS) as PresetKey[]).map((key) => <label key={key} data-active={preset === key}><input type="radio" name="tag-preset" value={key} checked={preset === key} onChange={() => setPreset(key)} /><strong>{PRESETS[key].label}</strong><small>{PRESETS[key].note}</small></label>)}</div>
           <div className={styles.printChecklist}><strong>Printer dialog settings</strong><span>Thermal printer · Actual size / 100% · Margins none · Headers and footers off · Correct media size loaded</span></div>
           <div className={styles.finalActions}>
@@ -561,7 +564,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
       </div>
 
       <aside className={styles.previewPanel}>
-        <div className={styles.previewHeader}><div><p className={base.eyebrow}>LIVE PREVIEW</p><strong>{PRESETS[preset].label}</strong></div><span>MONOCHROME · 300 DPI READY</span></div>
+        <div className={styles.previewHeader}><div><p className={base.eyebrow}>LIVE PREVIEW</p><strong>{PRESETS[preset].label}</strong></div><span>MONOCHROME · 203 DPI</span></div>
         <TagPreview item={previewItem} details={details} preset={preset} />
         <p className={styles.previewNote}>The on-screen preview is scaled. The print job uses the exact millimetre dimensions selected on the left.</p>
       </aside>

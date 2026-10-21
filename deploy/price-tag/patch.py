@@ -4,25 +4,23 @@ HERE=Path(__file__).resolve().parent
 
 def patch_runtime(base,overlay):
  base,overlay=Path(base),Path(overlay);files={};replacements={};patched=[]
- css=(HERE/'logo-address.css').read_text()
- fit=(HERE.parent.parent/'apps/web/lib/price-tag-fit.mjs').read_text().replace('export function','function',1)
- svg=(HERE.parent.parent/'apps/web/public/brand/hidi-logo-price-tag.svg').read_text().strip()
+ css=(HERE/'raster.css').read_text()
+ raster=(HERE.parent.parent/'apps/web/lib/price-tag-raster.mjs').read_text().replace('export async function','async function',1)
  for path in (base/'apps/web/.next').rglob('*.js'):
   text=path.read_text(encoding='utf-8')
-  if 'function fitPriceTagDocument(doc)' not in text:continue
-  assert 'postal-address' not in text, 'Already updated'
-  new,count=re.subn(r'<header class="brand"><img src="\$\{[^}]+\}" alt="HIDI"></header>',lambda _: '<header class="brand">'+svg+'</header>',text);assert count==1
-  # The address immediately follows the marketed-by row.
-  marker=new.index('<b>Marketed by:</b>');address=re.search(r'<div>\$\{([$\w]+)\}</div>',new[marker:]);assert address
-  start=marker+address.start();end=marker+address.end()
-  new=new[:start]+address[0].replace('<div>','<div class="postal-address">')+new[end:]
-  new=new.replace('</style></head><body>',css+'</style></head><body>')
+  if "address.dataset.lines = '2'" not in text:continue
+  assert 'rasterizePriceTagDocument' not in text, 'Already rasterized'
+  new=text.replace('</style></head><body>',css+'</style></head><body>')
   start=new.index('function fitPriceTagDocument(doc)');brace=new.index('{',start);depth=1;end=brace+1
   while depth:
    if new[end]=='{':depth+=1
    elif new[end]=='}':depth-=1
    end+=1
-  new=new[:start]+fit.strip()+new[end:]
+  invocation=re.match(r'\s*\)\(([$\w]+)\);',new[end:]);assert invocation
+  after=end+invocation.end()
+  new=new[:after]+'await ('+raster.strip()+')('+invocation[1]+');'+new[after:]
+  new=new.replace('Thermal printer','Gobbler TT428B (203 DPI)')
+  new=new.replace('300-DPI thermal-transfer','203-DPI thermal-transfer').replace('300 DPI READY','203 DPI')
   name=path.relative_to(base).as_posix()
   if '/static/' in name:
    newname=re.sub(r'-[a-f0-9]{16}\.js$', '-'+hashlib.sha256(new.encode()).hexdigest()[:16]+'.js',name);assert newname!=name
