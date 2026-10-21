@@ -23,11 +23,21 @@ export function foundationReadKind(request) {
 }
 
 export function trackFoundationReads(page) {
-  const state={pending:new Set(),declaredPrefetches:0};
+  const state={pending:new Set(),declaredPrefetches:0,allowFailedDeclaredPrefetches:false,failedDeclaredPrefetches:new Set()};
   page.on('request',request=>{const kind=foundationReadKind(request);if(kind==='prefetch')state.declaredPrefetches++;else if(kind==='blocking')state.pending.add(request);});
   page.on('requestfinished',request=>state.pending.delete(request));
-  page.on('requestfailed',request=>state.pending.delete(request));
+  page.on('requestfailed',request=>{
+    state.pending.delete(request);
+    if(state.allowFailedDeclaredPrefetches&&foundationReadKind(request)==='prefetch')state.failedDeclaredPrefetches.add(request.url());
+  });
   return state;
+}
+
+export function isFailedDeclaredPrefetchError(message,state) {
+  const match=/^Fetch API cannot load (.+) due to access control checks\.$/.exec(String(message));
+  if(!match)return false;
+  const url=match[1].replace(/^(https?):\s+\/(?!\/)/i,'$1://');
+  return state.failedDeclaredPrefetches.has(url);
 }
 
 export async function foundationProbe(base,output,{baseline}={}) {
@@ -162,6 +172,8 @@ export async function foundationProbe(base,output,{baseline}={}) {
               };
             },aboutMarker);
           };
+          reads.get(page).allowFailedDeclaredPrefetches=true;
+          if(prior)reads.get(prior).allowFailedDeclaredPrefetches=true;
           const aboutResponses=await Promise.all([
             page.goto(base+'/about',{waitUntil:'domcontentloaded'}),
             ...(prior?[prior.goto(baseline+'/about',{waitUntil:'domcontentloaded'})]:[])
@@ -169,6 +181,8 @@ export async function foundationProbe(base,output,{baseline}={}) {
           for(const response of aboutResponses)assert.equal(response?.status(),200,'About page remains available');
           const about=await readAbout(page);
           if(prior)assert.deepEqual(about,await readAbout(prior),'About copy and destinations match the current Next page exactly');
+          reads.get(page).allowFailedDeclaredPrefetches=false;
+          if(prior)reads.get(prior).allowFailedDeclaredPrefetches=false;
           assert.equal(about.heading,'Considered clothing. A clear point of view.','Current About heading remains intact');
           assert.equal(about.introduction,expectedIntroduction,'Visible About association is factual and present');
           for(const [text,href] of [['Explore HIDI','/collections/all'],['Talk to our team ↗','/contact'],['Read our returns policy ↗','/returns']]) {
@@ -177,16 +191,20 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await page.reload({waitUntil:'domcontentloaded'});
           assert.deepEqual(await readAbout(page),about,'About semantics survive rendering and reload');
           await captureScreenshot(page,{path:`${output}/${engine}-${width}-about.png`});
-          const blocking=errors.filter(e=>!e.includes('Minified React error #418;'));
+          const readState=reads.get(page);
+          const ignoredPrefetchErrors=engine==='webkit'?errors.filter(error=>isFailedDeclaredPrefetchError(error,readState)):[];
+          const blocking=errors.filter(error=>!error.includes('Minified React error #418;')&&!ignoredPrefetchErrors.includes(error));
           assert.deepEqual(blocking,[],'No new shopping or DOM ownership errors');
           results.push({engine,width,height,passed:true,appearancePreserved:!!prior,crawlablePublicDestinations:true,carouselKeyboardPreserved:true,spaceActivationPreserved:true,aboutCopyVerified:true,
-            declaredNextPrefetches:reads.get(page).declaredPrefetches,
+            declaredNextPrefetches:readState.declaredPrefetches,failedDeclaredNextPrefetches:[...readState.failedDeclaredPrefetches],
+            ignoredFailedDeclaredPrefetchErrors:ignoredPrefetchErrors,
             baselineDeclaredNextPrefetches:prior?reads.get(prior).declaredPrefetches:null});
           console.log(`PASS: SEO foundation ${engine} ${width}x${height}: crawlable links, retained controls, About association`);
         } catch(error) {
           await captureScreenshot(page,{path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});
           await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({message:String(error),url:page.url(),errors,
             declaredNextPrefetches:reads.get(page).declaredPrefetches,
+            failedDeclaredNextPrefetches:[...reads.get(page).failedDeclaredPrefetches],
             baselineDeclaredNextPrefetches:prior?reads.get(prior).declaredPrefetches:null},null,2));throw error;
         } finally {await context.close();}
       }

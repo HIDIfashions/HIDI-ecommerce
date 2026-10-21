@@ -115,9 +115,19 @@ def seal():
     assert candidate_report['collectionAllIntroVerified'] and candidate_report['collectionAllBreadcrumbVerified'] and candidate_report['collectionAllExactCopy']
     assert candidate_report['collectionAllMatrixCases']==12 and candidate_report['reviewedCollectionBodyDelta']=='/collections/all exact search copy, breadcrumb label, header visibility and intro insertion'
     assert all(any(check['page']=='catalogue' and check['collectionIntro']['heading']=='Women’s Kurta Sets & Indian Wear' and check['collectionIntro']['intro']=='Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.' and check['collectionIntro']['breadcrumbLabel']=='Women’s Kurta Sets & Indian Wear' for check in result['checks']) for result in candidate_report['results'])
-    assert len(read('foundation-candidate/report.json')['results'])==12
-    assert read('foundation-candidate/report.json')['liveWrites']==0
-    assert all(value['appearancePreserved'] for value in read('foundation-candidate/report.json')['results'])
+    foundation_report=read('foundation-candidate/report.json')
+    assert len(foundation_report['results'])==12
+    assert foundation_report['liveWrites']==0
+    assert all(value['appearancePreserved'] for value in foundation_report['results'])
+    for value in foundation_report['results']:
+        failed=value['failedDeclaredNextPrefetches'];ignored=value['ignoredFailedDeclaredPrefetchErrors']
+        assert isinstance(failed,list) and len(failed)==len(set(failed))
+        assert isinstance(ignored,list) and len(ignored)==len(set(ignored))
+        if value['engine']!='webkit':assert ignored==[]
+        for message in ignored:
+            match=re.fullmatch(r'Fetch API cannot load (.+) due to access control checks\.',message);assert match
+            url=re.sub(r'^(https?):\s+/(?!/)',r'\1://',match.group(1),flags=re.I)
+            assert url in failed,'Ignored WebKit error must match an exact failed declared-prefetch URL'
     body_report=read('candidate-body-preservation.json')
     assert body_report['readOnly'] and body_report['liveWrites']==0 and body_report['sampleCount']==3
     assert [route['route'] for route in body_report['routes']]==['/','/privacy']

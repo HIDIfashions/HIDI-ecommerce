@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {HidiSeoLinkProps} from './links.mjs';
-import {foundationReadKind,trackFoundationReads} from './browser.mjs';
+import {foundationReadKind,isFailedDeclaredPrefetchError,trackFoundationReads} from './browser.mjs';
 
 test('ordinary activation retains the existing action; modified clicks use native link behavior',()=>{
   let actions=0,prevented=0;
@@ -43,4 +43,23 @@ test('foundation read gate requires completed shopping reads without waiting on 
   assert.equal(state.declaredPrefetches,2);
   page.emit('requestfinished',cart);page.emit('requestfailed',navigation);
   assert.equal(state.pending.size,0);
+});
+
+test('only a failed declared prefetch can explain WebKit access-control noise',()=>{
+  const page=new EventEmitter(),request=(url,headers={})=>({method:()=> 'GET',url:()=>url,headers:()=>headers});
+  const url='http://127.0.0.1:39095/products/example?_rsc=prefetch';
+  const prefetch=request(url,{'next-router-segment-prefetch':'/_tree'});
+  const blocking=request('http://127.0.0.1:39095/products/interactive?_rsc=navigation');
+  const state=trackFoundationReads(page);
+  page.emit('request',prefetch);page.emit('request',blocking);
+  const message='Fetch API cannot load http: /127.0.0.1:39095/products/example?_rsc=prefetch due to access control checks.';
+  page.emit('requestfailed',prefetch);
+  assert.equal(isFailedDeclaredPrefetchError(message,state),false);
+  state.allowFailedDeclaredPrefetches=true;
+  page.emit('request',prefetch);
+  page.emit('requestfailed',prefetch);page.emit('requestfailed',blocking);
+  assert.equal(isFailedDeclaredPrefetchError(message,state),true);
+  assert.equal(isFailedDeclaredPrefetchError('Fetch API cannot load http: /127.0.0.1:39095/products/interactive?_rsc=navigation due to access control checks.',state),false);
+  assert.equal(isFailedDeclaredPrefetchError('Fetch API cannot load http: /127.0.0.1:39095/products/other?_rsc=prefetch due to access control checks.',state),false);
+  assert.equal(isFailedDeclaredPrefetchError('A real application error',state),false);
 });
