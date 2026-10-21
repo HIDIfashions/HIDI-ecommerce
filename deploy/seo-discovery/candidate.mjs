@@ -46,6 +46,7 @@ const api = 'http://127.0.0.1:' + upstream.address().port + '/v1';
 const privacyFixture = new URL('./privacy-store-fixture.mjs', import.meta.url).href;
 const runtimeEnvironment = {
   ...process.env,
+  ALLOW_PUBLIC_DOMAIN: 'true',
   API_URL: api,
   INTERNAL_API_URL: api,
   NODE_OPTIONS: `${process.env.NODE_OPTIONS ? process.env.NODE_OPTIONS + ' ' : ''}--import=${privacyFixture}`,

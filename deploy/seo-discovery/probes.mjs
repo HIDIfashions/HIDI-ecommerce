@@ -282,7 +282,7 @@ export async function probe(base, output) {
             }
             if(key==='product'&&width<=620)await page.locator('[aria-label="Mobile purchase actions"]').waitFor({state:'visible'});
             const expectedPrivate=['bag','checkout'].includes(key);
-            const headerResponse=await fetch(base+path,{method:'HEAD',headers:seoHeaders});
+            const headerResponse=await fetch(base+path,{method:'HEAD',headers:seoHeaders,signal:AbortSignal.timeout(30000)});
             assert.equal(headerResponse.status,200);
             assert.equal(headerResponse.headers.get('x-robots-tag')?.includes('noindex')??false,expectedPrivate,'HEAD and GET indexing policies agree');
             const seo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
@@ -300,8 +300,8 @@ export async function probe(base, output) {
               const graphs=await page.locator('script[type="application/ld+json"]').allTextContents();
               for(const graph of graphs)assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(graph),'Structured-data identities use the production origin');
             }
-            await page.evaluate(async()=>{
-              await document.fonts.ready;
+            await page.waitForFunction(()=>document.fonts.status==='loaded',{}, {timeout:30000});
+            await page.evaluate(()=>{
               document.documentElement.style.scrollBehavior='auto';
               scrollTo(0,document.documentElement.scrollHeight);
             });
