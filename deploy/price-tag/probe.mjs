@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 const {chromium,firefox,webkit}=await import(process.env.HIDI_PLAYWRIGHT_MODULE||'playwright');
-const item={variantId:'fixture-M',productId:'fixture',productName:'Nila Navy Floral Kurta Set',category:'Work Wear',color:'Navy blue with pink and multicolour embr',sku:'HIDI-NILA-NAVY-FLORAL-KURTA-8A95F2A6B641-NAVY-BLUE-WITH-PINK-AND-MULTICOLOUR-EMBR-XXL',size:'M',barcode:'H10001901',mrpPaise:249900,onHand:1,reserved:0,fabric:'Cotton',care:'Gentle hand wash. Dry in shade.',bustMm:960,waistMm:880,hipMm:1020,shoulderMm:370,sleeveLengthMm:450,garmentLengthMm:1120};
-const details={legalName:'HIDI Fashions',address:'12 Example Road, Hyderabad, Telangana 500001',consumerCareEmail:'care@thehidi.com',consumerCarePhone:'+91 90000 00000',website:'thehidi.com',countryOfOrigin:'India'};
+const item={variantId:'fixture-M',productId:'fixture',productName:'3 Piece Embroidered Kurta Set Along With Bottom Straight Pants & Full Length Dupatta',category:'Occasional Wear',color:'Red',sku:'HIDI-NILA-NAVY-FLORAL-KURTA-8A95F2A6B641-NAVY-BLUE-WITH-PINK-AND-MULTICOLOUR-EMBR-XXL',size:'XL',barcode:'H10001901',mrpPaise:219900,onHand:1,reserved:0,fabric:'Cotton',care:'Gentle Hand Wash / Dry Clean',bustMm:960,waistMm:880,hipMm:1020,shoulderMm:370,sleeveLengthMm:450,garmentLengthMm:1120};
+const details={legalName:'HIDI',address:'2-58/1/704,Sy.No 11/29, Hyma Arcade Building, Flat No:704, Khanamet\nAyyappa Society, Serilingampally',consumerCareEmail:'contact@hidiindia.com',consumerCarePhone:'+919000812818',website:'www.hidiindia.com',countryOfOrigin:'India'};
 export async function probe(base,mode='candidate',routePatch){
  const out='evidence/price-tag-release/'+mode;await mkdir(out,{recursive:true});const cases=[];
  for(const [engine,type] of Object.entries({chromium,firefox,webkit}).filter(([e])=>(process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',').includes(e))){const browser=await type.launch({headless:true});try{for(const width of [390,1440])for(const preset of ["50x50","50x40","40x50"]){
@@ -23,11 +23,11 @@ export async function probe(base,mode='candidate',routePatch){
  await page.getByRole('button',{name:'One each',exact:true}).evaluate(el=>el.click());
  const preview=page.locator('[data-square="true"]');await preview.waitFor();const box=await preview.boundingBox();assert(Math.abs(box.width/box.height-(preset==="40x50"?.8:preset==="50x40"?1.25:1))<.01);
  await page.getByRole('button',{name:'Print selected tags',exact:true}).evaluate(el=>el.click());
- const frame=page.frameLocator('iframe[title="HIDI price tag print job"]');await frame.locator('.price-tag').waitFor();
- const metrics=await frame.locator('.price-tag').evaluate(el=>{const r=el.getBoundingClientRect();const legal=el.querySelector('.legal');return {width:r.width,height:r.height,scroll:el.scrollHeight,client:el.clientHeight,legalScroll:legal.scrollHeight,legalClient:legal.clientHeight,text:el.textContent,html:el.ownerDocument.documentElement.outerHTML};});
- assert(Math.abs(metrics.width-(preset==="40x50"?151.18:188.976))<1);assert(Math.abs(metrics.height-(preset==="50x40"?151.18:188.976))<1);assert(metrics.scroll<=metrics.client+1,JSON.stringify(metrics));assert(metrics.legalScroll<=metrics.legalClient+1,'Footer clipped '+JSON.stringify(metrics));
+ const frame=page.frameLocator('iframe[title="HIDI price tag print job"]');await frame.locator('.price-tag[data-content-scale]').waitFor();
+ const metrics=await frame.locator('.price-tag').evaluate(el=>{const r=el.getBoundingClientRect();const legal=el.querySelector('.legal');return {width:r.width,height:r.height,scroll:el.scrollHeight,client:el.clientHeight,legalScroll:legal.scrollHeight,legalClient:legal.clientHeight,bottomGap:r.bottom-legal.lastElementChild.getBoundingClientRect().bottom,titleFont:parseFloat(getComputedStyle(el.querySelector('.product-name')).fontSize),text:el.textContent,html:el.ownerDocument.documentElement.outerHTML};});
+ assert(Math.abs(metrics.width-(preset==="40x50"?151.18:188.976))<1);assert(Math.abs(metrics.height-(preset==="50x40"?151.18:188.976))<1);assert(metrics.bottomGap>=6,"Footer needs bottom clearance "+JSON.stringify(metrics));assert(metrics.titleFont<=6.01,"Smaller product title");assert(metrics.legalScroll<=metrics.legalClient+1,'Footer clipped '+JSON.stringify(metrics));
  assert(!metrics.text.includes(item.sku),"SKU removed from print");
- for(const text of [item.barcode,details.consumerCareEmail,'Gentle hand wash'])assert(metrics.text.includes(text));
+ for(const text of [item.barcode,details.consumerCareEmail,'Gentle Hand Wash'])assert(metrics.text.includes(text));
  if(width===1440&&engine==='chromium'){
  await page.screenshot({path:out+'/'+preset+'-size-option.png',fullPage:true});
  const printPage=await context.newPage();await printPage.setViewportSize({width:650,height:650});await printPage.setContent(metrics.html);await printPage.locator('.brand img').evaluate((img,url)=>img.src=url,new URL('/brand/hidi-logo-price-tag.svg',base).href);await printPage.waitForTimeout(300);await printPage.locator('.price-tag').screenshot({path:out+'/'+preset+'-tag.png',scale:'css'});await writeFile(out+'/'+preset+'-print.html',metrics.html);

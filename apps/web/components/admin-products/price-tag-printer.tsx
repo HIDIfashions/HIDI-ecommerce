@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { productApi } from "@/lib/admin-products-client";
 import type { PriceTagList, PriceTagVariant } from "@/lib/admin-products-contract";
+import { fitPriceTagDocument } from "@/lib/price-tag-fit.mjs";
 import { encodeCode128B } from "@/lib/code128";
 import base from "./products.module.css";
 import styles from "./price-tags.module.css";
@@ -120,7 +121,7 @@ function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: s
   const care = compactText(item.care, 78) || "Refer to the sewn-in care label";
   const address = escapeHtml(details.address).replace(/\r?\n/g, "<br>");
   const website = details.website.trim() ? `<div class="website">${escapeHtml(details.website.trim())}</div>` : "";
-  return `<article class="price-tag">
+  return `<article class="price-tag"><div class="tag-content">
     <header class="brand"><img src="${escapeHtml(logoUrl)}" alt="HIDI"></header>
     <section class="identity">
       <div class="product-name">${escapeHtml(item.productName)}</div>
@@ -141,7 +142,7 @@ function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: s
       <div><b>Care:</b> ${escapeHtml(care)}</div>
       ${website}
     </section>
-  </article>`;
+  </div></article>`;
 }
 
 function printDocument(lines: PrintLine[], details: BusinessDetails, presetKey: PresetKey, logoUrl: string) {
@@ -208,6 +209,10 @@ ${preset.height === 40 ? `
 
   ` : ""}
 .product-meta { font-size: 3.5pt; line-height: 1.1; }
+.price-tag { padding-bottom: 2mm !important; }
+.tag-content { display: flex; flex-direction: column; width: 100%; height: auto; flex: 0 0 auto; }
+.tag-content .product-name { font-size: 4.5pt !important; line-height: 1.1; overflow-wrap: anywhere; }
+.tag-content .legal { flex: 0 0 auto; overflow: visible; }
 </style></head><body>${labels.join("")}</body></html>`;
 }
 
@@ -242,6 +247,8 @@ async function printInFrame(html: string) {
   })));
   await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 
+  fitPriceTagDocument(printDoc);
+
   let removed = false;
   const cleanup = () => {
     if (removed) return;
@@ -267,7 +274,7 @@ function TagPreview({ item, details, preset }: { item: PriceTagVariant | undefin
   return <div className={styles.previewTag} data-square={preset === "50x50" || preset === "50x40" || preset === "40x50"} style={{ aspectRatio: `${PRESETS[preset].width} / ${PRESETS[preset].height}` }}>
     <img src="/brand/hidi-logo-price-tag.svg" alt="HIDI — Wear the Feeling" />
     <div className={styles.previewIdentity}>
-      <strong>{item.productName}</strong>
+      <strong style={{ fontSize: "8px", lineHeight: 1.1 }}>{item.productName}</strong>
       <span style={{ fontSize: "5px", lineHeight: 1.1 }}>{item.category ?? "HIDI Womenswear"} · {item.color}</span>
       <b>{[`Size ${item.size}`, ...metric].join(" · ")}</b>
     </div>
@@ -511,7 +518,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
                 const metric = measurements(item);
                 return <tr key={item.variantId}>
                   <td><input className={styles.checkbox} type="checkbox" aria-label={`Select ${item.sku}`} checked={quantity > 0} onChange={(event: ChangeEvent<HTMLInputElement>) => setQuantity(item.variantId, event.target.checked ? Math.max(1, item.onHand) : 0)} /></td>
-                  <td><div className={styles.productCell}><strong>{item.productName}</strong><small>{item.sku}</small><small>Barcode {item.barcode}</small></div></td>
+                  <td><div className={styles.productCell}><strong style={{ fontSize: "8px", lineHeight: 1.1 }}>{item.productName}</strong><small>{item.sku}</small><small>Barcode {item.barcode}</small></div></td>
                   <td>{item.color}</td>
                   <td><strong>{item.size}</strong>{metric.length > 0 && <small>{metric.join(" · ")}</small>}</td>
                   <td>{formatMoney(item.mrpPaise)}</td>

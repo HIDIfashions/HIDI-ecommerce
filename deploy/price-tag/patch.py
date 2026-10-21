@@ -4,15 +4,21 @@ HERE=Path(__file__).resolve().parent
 
 def patch_runtime(base,overlay):
  base,overlay=Path(base),Path(overlay);files={};replacements={};patched=[]
+ css=(HERE/'fit.css').read_text()
+ fit=(HERE.parent.parent/'apps/web/lib/price-tag-fit.mjs').read_text().replace('export function','function',1)
  for path in (base/'apps/web/.next').rglob('*.js'):
   text=path.read_text(encoding='utf-8')
-  if '.product-meta { font-size: 3.5pt;' not in text or '<div class="sku">SKU' in text:continue
-  assert '"40x50":{label:' not in text
-  new,count=re.subn(r'(?="50x40":\{label:)', '"40x50":{label:"40 × 50 mm",width:40,height:50,note:"Portrait label · size without measurements"},',text);assert count==1
-  new,count=re.subn(r'(\.item,[$\w]+,[$\w]+,)([$\w]+)\.height===40\)', r'\1(\2.height===40||\2.width===40))',new);assert count==1
-  new,count=re.subn(r'hidiPreset==="50x40"\?\[\]', '(hidiPreset==="50x40"||hidiPreset==="40x50")?[]',new);assert count==1
-  new=new.replace('(hidiPreset==="50x50"||hidiPreset==="50x40")','(hidiPreset==="50x50"||hidiPreset==="50x40"||hidiPreset==="40x50")')
-  new=new.replace('aspectRatio:hidiPreset===', 'aspectRatio:hidiPreset==="40x50"?"4 / 5":hidiPreset===')
+  if '"40x50":{label:' not in text or '<div class="sku">SKU' in text:continue
+  assert 'tag-content' not in text, 'Already fitted'
+  new=text.replace('<article class="price-tag">','<article class="price-tag"><div class="tag-content">').replace('</article>`}', '</div></article>`}')
+  assert new.count('class="tag-content"')==1
+  new=new.replace('</style></head><body>',css+'</style></head><body>')
+  document=re.search(r'([$\w]+)=[$\w]+\.contentDocument',new);assert document
+  hook=re.search(r'await new Promise\(([$\w]+)=>window\.requestAnimationFrame\(\(\)=>\1\(\)\)\);',new);assert hook
+  new=new[:hook.end()]+'('+fit+')('+document[1]+');'+new[hook.end():]
+  start=new.index('preset:hidiPreset');end=new.index('function ',start+20);section=new[start:end]
+  section,count=re.subn(r'("strong",\{)(children:[$\w]+\.productName)',r'\1style:{fontSize:"8px",lineHeight:1.1},\2',section,count=1);assert count==1
+  new=new[:start]+section+new[end:]
   name=path.relative_to(base).as_posix()
   if '/static/' in name:
    newname=re.sub(r'-[a-f0-9]{16}\.js$', '-'+hashlib.sha256(new.encode()).hexdigest()[:16]+'.js',name);assert newname!=name

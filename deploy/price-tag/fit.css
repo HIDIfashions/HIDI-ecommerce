@@ -1,0 +1,4 @@
+.price-tag { padding-bottom: 2mm !important; }
+.tag-content { display: flex; flex-direction: column; width: 100%; height: auto; flex: 0 0 auto; }
+.tag-content .product-name { font-size: 4.5pt !important; line-height: 1.1; overflow-wrap: anywhere; }
+.tag-content .legal { flex: 0 0 auto; overflow: visible; }
