@@ -45,5 +45,12 @@ for(const [name,config] of Object.entries(shims)){
  if(name.startsWith('@azure/'))await build({entryPoints:[sourceRequire.resolve(name)],outfile:join(folder,'sdk.cjs'),bundle:true,platform:'node',format:'cjs',target:'node22',logLevel:'info',legalComments:'eof'});
 }
 await copyFile(join(source,'apps/web/lib/photo-azure-stream.mjs'),join(feature,'storage.mjs'));
-await copyFile(join(source,'deploy/photo-live/storage-probe.mjs'),join(feature,'validate-storage.mjs'));
-console.log('Photo route and source-lockfile Azure SDKs packaged privately; verified retained Next and Sharp implementations are reused without modifying them.');
+await build({
+ entryPoints:[join(source,'deploy/image-derivatives/azure-storage-probe.mjs')],
+ outfile:join(feature,'validate-storage.mjs'),
+ bundle:true,platform:'node',format:'esm',target:'node22',
+ external:['sharp','@azure/identity','@azure/storage-blob'],
+ banner:{js:"import { createRequire as hidiCreateRequire } from 'node:module'; const require = hidiCreateRequire(import.meta.url);"},
+ logLevel:'info',
+});
+console.log('Photo route, persistent Azure derivative probe and source-lockfile SDKs packaged privately; verified retained Next and Sharp implementations are reused without modifying them.');
