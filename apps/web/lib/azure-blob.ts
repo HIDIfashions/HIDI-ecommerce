@@ -32,7 +32,7 @@ export async function uploadProductImage(key: string, bytes: Buffer, contentType
 
 import { uploadDiskPhotoToBlob } from "./photo-azure-stream.mjs";
 import type { DiskPhoto } from "./photo-upload-stream.mjs";
-import { renderProductDerivatives } from "./product-image-derivatives.mjs";
+import { persistProductDerivatives } from "./product-image-derivative-store.mjs";
 
 export async function uploadProductImageFile(key: string, photo: DiskPhoto, contentType: string) {
   if (!key.startsWith("products/") || key.includes("..")) throw new Error("Invalid product image key");
@@ -44,62 +44,11 @@ export async function uploadProductImageFile(key: string, photo: DiskPhoto, cont
 }
 
 
-const DERIVATIVE_VERSION = "v1";
-const DERIVATIVE_UPLOAD_CONCURRENCY = 2;
-
-async function uploadImmutableDerivative(
-  key: string,
-  bytes: Buffer,
-  contentType: string,
-  sourceSha256: string,
-  width: number,
-) {
-  const blob = productMediaContainer().getBlockBlobClient(key);
-  try {
-    await blob.uploadData(bytes, {
-      conditions: { ifNoneMatch: "*" },
-      metadata: {
-        hidi_source_sha256: sourceSha256,
-        hidi_derivative_version: DERIVATIVE_VERSION,
-        hidi_width: String(width),
-        hidi_format: "webp",
-      },
-      blobHTTPHeaders: {
-        blobContentType: contentType,
-        blobCacheControl: "public, max-age=31536000, immutable",
-      },
-    });
-  } catch (error) {
-    const status = (error as { statusCode?: number })?.statusCode;
-    if (![409, 412].includes(status ?? 0)) throw error;
-    const saved = await blob.getProperties();
-    const metadata = saved.metadata ?? {};
-    if (
-      !saved.contentLength ||
-      saved.contentType !== contentType ||
-      metadata.hidi_source_sha256 !== sourceSha256 ||
-      metadata.hidi_derivative_version !== DERIVATIVE_VERSION ||
-      metadata.hidi_width !== String(width) ||
-      metadata.hidi_format !== "webp"
-    ) {
-      throw new Error("Saved product derivative differs from this source photo");
-    }
-  }
-}
-
 /**
  * Persist the common storefront sizes beside the immutable Azure original.
  * Metadata is attached only after all derivatives exist, so a successful
  * admin upload never points shoppers at a half-prepared new photo.
  */
 export async function ensureProductImageDerivatives(key: string, photo: DiskPhoto) {
-  const derivatives = await renderProductDerivatives(key, photo.path);
-  for (let index = 0; index < derivatives.length; index += DERIVATIVE_UPLOAD_CONCURRENCY) {
-    await Promise.all(
-      derivatives.slice(index, index + DERIVATIVE_UPLOAD_CONCURRENCY).map(item =>
-        uploadImmutableDerivative(item.key, item.bytes, item.contentType, photo.sha256, item.width)
-      ),
-    );
-  }
-  return derivatives.map(({ key: derivativeKey, width }) => ({ key: derivativeKey, width }));
+  return persistProductDerivatives(productMediaContainer(), key, photo);
 }
