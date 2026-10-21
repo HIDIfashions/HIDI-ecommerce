@@ -1,11 +1,12 @@
 /** Test fixture only: actual route, parser and authorization; isolated storage/API. */
 import {createRequire} from 'node:module';
-import {readFile,copyFile,mkdir,rm,readdir} from 'node:fs/promises';
+import {readFile,copyFile,writeFile,mkdir,rm,readdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {join,resolve} from 'node:path';
 import vm from 'node:vm';
 import * as streamed from '../apps/web/lib/photo-upload-stream.mjs';
 import {authorizePhotoUpload} from '../apps/web/lib/photo-upload-authorize.mjs';
+import {persistProductDerivatives} from '../apps/web/lib/product-image-derivative-store.mjs';
 const require=createRequire(resolve('apps/web/package.json'));
 const ts=require('typescript');
 export const {NextRequest}=require('next/server');
@@ -13,7 +14,7 @@ const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function createPhotoRouteFixture(directory,{apiBase='http://127.0.0.1:4219/v1'}={}){
  const temporary=join(directory,'temporary'),stored=join(directory,'stored');
  await mkdir(temporary,{recursive:true});await mkdir(stored,{recursive:true});
- const state={role:'OWNER',authStatus:200,ticketStatus:200,metadataStatus:200,reads:0,writes:0,tickets:0,metadata:[],files:new Map()};
+ const state={role:'OWNER',authStatus:200,ticketStatus:200,metadataStatus:200,reads:0,writes:0,derivativeWrites:0,tickets:0,metadata:[],files:new Map()};
  const send=async(url,options={})=>{
   if(!String(url).startsWith(apiBase+'/admin/'))throw new Error('Non-fixture API request blocked');
   if(String(url).endsWith('/admin/me'))return new Response(JSON.stringify(state.authStatus===200?{admin:{id:'fixture-staff',role:state.role}}:{message:'Fixture session rejected'}),{status:state.authStatus});
@@ -21,13 +22,24 @@ export async function createPhotoRouteFixture(directory,{apiBase='http://127.0.0
   if(/\/images$/.test(String(url))){const payload=JSON.parse(options.body);if(state.metadataStatus===200)state.metadata.push(payload);return new Response(JSON.stringify(state.metadataStatus===200?{ok:true,images:state.metadata}:{message:'Fixture metadata unavailable'}),{status:state.metadataStatus});}
   throw new Error('Unexpected fixture API request: '+url);
  };
+ const derivativeContainer={getBlockBlobClient:key=>({
+  uploadData:async(bytes,options)=>{
+   if(state.files.has(key))throw {statusCode:412};
+   const path=join(stored,digest(Buffer.from(key)));await writeFile(path,bytes);state.derivativeWrites++;
+   state.files.set(key,{path,sha256:options.metadata?.hidi_source_sha256,size:bytes.length,type:options.blobHTTPHeaders?.blobContentType,metadata:options.metadata});
+  },
+  getProperties:async()=>{
+   const file=state.files.get(key);if(!file)throw {statusCode:404};
+   return {contentLength:file.size,contentType:file.type,metadata:file.metadata||{}};
+  },
+ })};
  const storage={uploadProductImageFile:async(key,photo,type)=>{
   const bytes=await readFile(photo.path);if(digest(bytes)!==photo.sha256)throw new Error('Fixture source integrity mismatch');
   const existing=state.files.get(key);if(existing&&existing.sha256!==photo.sha256)throw new Error('Conflicting saved image');
   const path=join(stored,digest(Buffer.from(key)));await copyFile(photo.path,path);state.writes++;
   state.files.set(key,{path,sha256:photo.sha256,size:photo.size,type});
   return {url:'/media/'+key,storagePath:'azure://product-media/'+key};
- }};
+ },ensureProductImageDerivatives:(key,photo)=>persistProductDerivatives(derivativeContainer,key,photo)};
  const aliases={'@/lib/azure-blob':storage,'@/lib/api':{API_URL:apiBase},
   '@/lib/photo-upload-stream.mjs':{...streamed,readStreamedPhotoForm:request=>{state.reads++;return streamed.readStreamedPhotoForm(request,{directory:temporary});}},
   '@/lib/photo-upload-authorize.mjs':{authorizePhotoUpload:(request,base,headers)=>authorizePhotoUpload(request,base,headers,send)}};
