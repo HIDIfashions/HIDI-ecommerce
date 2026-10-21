@@ -1,6 +1,6 @@
 /** Test fixture only: actual route, parser and authorization; isolated storage/API. */
 import {createRequire} from 'node:module';
-import {readFile,copyFile,mkdir,rm,readdir} from 'node:fs/promises';
+import {readFile,writeFile,copyFile,mkdir,rm,readdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {join,resolve} from 'node:path';
 import vm from 'node:vm';
