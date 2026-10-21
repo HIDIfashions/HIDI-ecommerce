@@ -19,7 +19,8 @@ const context={params:Promise.resolve({variantId:'v1'})};
 test('current upload route derives idempotent keys from the bytes it actually received',async t=>{
  const h=await fixture(t),bytes=await photo();const expected=hash(['KUR_001','1','image/jpeg',hash(bytes)].join('\u0000'));
  for(let i=0;i<2;i++){const response=await h.route.POST(request(bytes),context);assert.equal(response.status,200);}
- assert.equal(h.state.files.size,8);assert.equal(h.state.derivativeWrites,7);assert.match(h.state.metadata[0].url,new RegExp('/batch-'+expected+'\\.jpg
+ assert.equal(h.state.files.size,8);assert.equal(h.state.derivativeWrites,7);assert.match(h.state.metadata[0].url,new RegExp('/batch-'+expected+'\\.jpg$'));assert.equal(h.state.metadata[0].applyToColor,true);
+ const saved=[...h.state.files.entries()].find(([key])=>!key.includes('/_derivatives/'))?.[1];assert(saved);assert.deepEqual(await readFile(saved.path),bytes);await h.assertClean();
 });
 test('current upload route preserves mapping validation and legacy optional image codes',async t=>{
  const h=await fixture(t),bytes=await photo();
