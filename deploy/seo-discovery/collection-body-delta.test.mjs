@@ -36,3 +36,7 @@ test('normalization rejects an unreviewed body change and duplicate approved anc
 test('normalization rejects a breadcrumb that does not use the approved label',()=>{
   assert.throws(()=>compareReviewedCollectionBodies(prior,candidate.replace(`"name":"${collectionAllTitle}"`,`"name":"Other"`)),/BreadcrumbList position 2/);
 });
+
+test('a shared candidate renderer cannot masquerade as the prior baseline',()=>{
+  assert.throws(()=>compareReviewedCollectionBodies(candidate,candidate),/Prior Shop All H1 matches the inspected renderer/);
+});

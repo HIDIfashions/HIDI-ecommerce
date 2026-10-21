@@ -41,8 +41,25 @@ const upstream = createServer((req, res) => {
   return send(401, { message: 'Authentication required' });
 });
 await new Promise(done => upstream.listen(0, '127.0.0.1', done));
-const reserve = createServer(); await new Promise(done => reserve.listen(0, '127.0.0.1', done));
-const port = reserve.address().port; await new Promise(done => reserve.close(done));
+const reserveLoopbackPorts = async count => {
+  const reservations = [];
+  try {
+    for (let i = 0; i < count; i++) {
+      const reservation = createServer();
+      await new Promise((done, reject) => {
+        reservation.once('error', reject);
+        reservation.listen(0, '127.0.0.1', done);
+      });
+      reservations.push(reservation);
+    }
+    const ports = reservations.map(reservation => reservation.address().port);
+    assert.equal(new Set(ports).size, count, 'Candidate and prior runtimes require distinct loopback ports');
+    return ports;
+  } finally {
+    await Promise.all(reservations.map(reservation => new Promise(done => reservation.close(done))));
+  }
+};
+const [port, storefrontPort, priorPort, priorStorefrontPort] = await reserveLoopbackPorts(4);
 const api = 'http://127.0.0.1:' + upstream.address().port + '/v1';
 const privacyFixture = new URL('./privacy-store-fixture.mjs', import.meta.url).href;
 const runtimeEnvironment = {
@@ -56,15 +73,30 @@ const runtimeEnvironment = {
   AZURE_STORAGE_ACCOUNT: 'fixture',
   AZURE_STORAGE_BLOB_ENDPOINT: 'https://fixture.blob.core.windows.net/',
 };
+const logsFrom = child => {
+  child.stdout.on('data', chunk => logs += chunk);
+  child.stderr.on('data', chunk => logs += chunk);
+  return child;
+};
+let logs = '';
+const storefrontBase = 'http://127.0.0.1:' + storefrontPort;
+const storefront = logsFrom(spawn(process.execPath, [join(root, 'apps/web/server.js')], {
+  cwd: join(root, 'apps/web'),
+  env: { ...runtimeEnvironment, PORT: String(storefrontPort), HOSTNAME: '127.0.0.1' },
+  stdio: ['ignore', 'pipe', 'pipe'],
+}));
 const runtime = spawn(process.execPath, [join(root, 'server.mjs')], { cwd: root,
-  env: { ...runtimeEnvironment, PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'] });
-let logs = ''; runtime.stdout.on('data', c => logs += c); runtime.stderr.on('data', c => logs += c);
+  env: { ...runtimeEnvironment, PORT: String(port), STOREFRONT_ORIGIN: storefrontBase }, stdio: ['ignore', 'pipe', 'pipe'] });
+logsFrom(runtime);
 const base = 'http://127.0.0.1:' + port;
-const priorReserve=createServer();await new Promise(done=>priorReserve.listen(0,'127.0.0.1',done));
-const priorPort=priorReserve.address().port;await new Promise(done=>priorReserve.close(done));
 const priorRoot=resolve(root,'../base-app');
-const priorRuntime=spawn(process.execPath,[join(priorRoot,'server.mjs')],{cwd:priorRoot,env:{...runtimeEnvironment,PORT:String(priorPort),STOREFRONT_ORIGIN:'http://127.0.0.1:3001'},stdio:['ignore','pipe','pipe']});
-priorRuntime.stdout.on('data',c=>logs+=c);priorRuntime.stderr.on('data',c=>logs+=c);
+const priorStorefrontBase='http://127.0.0.1:'+priorStorefrontPort;
+const priorStorefront=logsFrom(spawn(process.execPath,[join(priorRoot,'apps/web/server.js')],{
+  cwd:join(priorRoot,'apps/web'),env:{...runtimeEnvironment,PORT:String(priorStorefrontPort),HOSTNAME:'127.0.0.1'},
+  stdio:['ignore','pipe','pipe'],
+}));
+const priorRuntime=logsFrom(spawn(process.execPath,[join(priorRoot,'server.mjs')],{cwd:priorRoot,
+  env:{...runtimeEnvironment,PORT:String(priorPort),STOREFRONT_ORIGIN:priorStorefrontBase},stdio:['ignore','pipe','pipe']}));
 const priorBase='http://127.0.0.1:'+priorPort;
 
 const bodyEvidencePath = 'evidence/seo-discovery/candidate-body-preservation.json';
@@ -202,11 +234,20 @@ const compareReviewedCollectionBody = async () => {
 try {
   let ready = false;
   for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(base + '/collections/all')).ok && (await fetch(priorBase+'/about')).ok) { ready = true; break; } } catch {}
-    if (runtime.exitCode !== null) throw new Error('Candidate exited: ' + logs.slice(-2000));
+    try {
+      const responses=await Promise.all([
+        fetch(base+'/collections/all'),fetch(storefrontBase+'/collections/all'),
+        fetch(priorBase+'/collections/all'),fetch(priorStorefrontBase+'/collections/all'),
+      ]);
+      if(responses.every(response=>response.ok)){ready=true;break;}
+    } catch {}
+    for(const [label,child] of [['candidate wrapper',runtime],['candidate storefront',storefront],
+      ['prior wrapper',priorRuntime],['prior storefront',priorStorefront]]) {
+      if(child.exitCode!==null||child.signalCode!==null) throw new Error(label+' exited before readiness: '+logs.slice(-2000));
+    }
     await new Promise(done => setTimeout(done, 200));
   }
-  assert(ready, 'Actual candidate must become ready');
+  assert(ready, 'Isolated candidate and prior runtimes must become ready');
   await compareRetainedBodies();
   await compareReviewedCollectionBody();
   await probe(base, 'evidence/seo-discovery/candidate');
@@ -215,9 +256,16 @@ try {
   assert.deepEqual(writes, []);
 } catch (error) { console.error(logs.slice(-2000)); throw error; }
 finally {
-  priorRuntime.kill('SIGTERM');
-  runtime.kill('SIGTERM');
-  await new Promise(done => { if (runtime.exitCode !== null) return done(); runtime.once('exit', done); setTimeout(() => { runtime.kill('SIGKILL'); done(); }, 5000).unref(); });
+  const stopChild=child=>new Promise(done=>{
+    if(child.exitCode!==null||child.signalCode!==null)return done();
+    let settled=false,deadline,force;
+    const finish=()=>{if(settled)return;settled=true;clearTimeout(force);clearTimeout(deadline);done();};
+    child.once('exit',finish);
+    deadline=setTimeout(()=>child.kill('SIGKILL'),4500);
+    force=setTimeout(finish,5000);
+    child.kill('SIGTERM');
+  });
+  await Promise.all([stopChild(priorRuntime),stopChild(priorStorefront),stopChild(runtime),stopChild(storefront)]);
   upstream.closeAllConnections(); await new Promise(done => upstream.close(done));
 }
 
