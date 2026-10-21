@@ -11,6 +11,10 @@ export const IMAGE_VERSION = '3';
 export const SOURCE_LIMIT = 40 * 1024 * 1024;
 export const PIXEL_LIMIT = 100_000_000;
 const WIDTHS = new Set([16,32,48,64,96,128,256,384,640,750,828,1080,1200,1920,2048,3840]);
+export const PERSISTENT_DERIVATIVE_VERSION = 'v1';
+export const PERSISTENT_DERIVATIVE_WIDTHS = Object.freeze([384,640,750,828,1080,1200,1920]);
+const PERSISTENT_DERIVATIVE_WIDTH_SET = new Set(PERSISTENT_DERIVATIVE_WIDTHS);
+const PRODUCT_BLOB_RE = /^products\/(?!_derivatives\/)(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp|avif)$/;
 const HOSTS = new Set(['thehidi.com','www.thehidi.com','hidiindia.com','www.hidiindia.com','thidigk.thehidi.com','azure-preview.thehidi.com']);
 const TYPES = new Set(['image/jpeg','image/png','image/webp','image/avif']);
 const MASTER_WIDTH = 1920;
@@ -27,6 +31,21 @@ export function mediaPath(value) {
   if (!/^\/media\/products\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp|avif)$/.test(url.pathname)) return null;
   if ([...url.searchParams.keys()].some(key => key !== 'hidi_image') || url.searchParams.getAll('hidi_image').length > 1) return null;
   return url.pathname.replace(/^\/media\/products\/_display_v[23]\//, '/media/products/');
+}
+
+export function persistentDerivativeBlobKey(originalKey, width, format = 'webp') {
+  if (typeof originalKey !== 'string' || !PRODUCT_BLOB_RE.test(originalKey) ||
+      !PERSISTENT_DERIVATIVE_WIDTH_SET.has(width) || format !== 'webp') return null;
+  const withoutExtension = originalKey.replace(/\.(?:jpg|jpeg|png|webp|avif)$/i, '');
+  return `products/_derivatives/${PERSISTENT_DERIVATIVE_VERSION}/${withoutExtension.slice('products/'.length)}/${width}.${format}`;
+}
+
+export function persistentDerivativeMediaPath(source, width, format = 'webp') {
+  const normalized = mediaPath(source);
+  if (!normalized) return null;
+  const originalKey = normalized.slice('/media/'.length);
+  const derivativeKey = persistentDerivativeBlobKey(originalKey,width,format);
+  return derivativeKey ? '/media/' + derivativeKey : null;
 }
 
 export function acceptsWebp(accept = '') {
@@ -183,14 +202,31 @@ export function createImageStore({ sharp, fetchSource, cacheDir = join(tmpdir(),
   return { get, master };
 }
 
-export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'..'), sharp: providedSharp, fetchSource: providedFetch, cacheDir, seedDir }) {
+export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'..'), sharp: providedSharp, fetchSource: providedFetch, fetchDerivative: providedDerivativeFetch, cacheDir, seedDir }) {
   const require = createRequire(join(runtimeRoot,'apps/web/server.js'));
   const sharp = providedSharp || require('next/dist/server/image-optimizer.js').getSharp(1,false);
   const fetchSource = providedFetch || (async source => {
     const signal = AbortSignal.timeout(300000);
     return downloadPhotoToDisk(await fetch(new URL(source,origin), {signal,redirect:'error'}), {signal});
   });
+  const fetchDerivative = providedDerivativeFetch || (async path => {
+    const signal = AbortSignal.timeout(15000);
+    let response;
+    try { response = await fetch(new URL(path,origin), {signal,redirect:'error'}); }
+    catch { return null; }
+    if (response.status === 404) { await response.body?.cancel().catch(() => {}); return null; }
+    if (!response.ok) { await response.body?.cancel().catch(() => {}); return null; }
+    try { return await boundedBody(response); } catch { return null; }
+  });
   const store = createImageStore({ sharp,fetchSource,cacheDir,seedDir });
+  async function resolveImage(spec) {
+    const derivativePath = persistentDerivativeMediaPath(spec.source,spec.width,spec.format);
+    if (derivativePath) {
+      const persisted = await fetchDerivative(derivativePath);
+      if (Buffer.isBuffer(persisted) && persisted.length) return { bytes:persisted, cache:'PERSISTED' };
+    }
+    return store.get(spec);
+  }
   async function handle(request,response,pathname) {
     if (pathname !== '/_next/image') return false;
     const spec = imageRequest(new URL(request.url,'https://hidiindia.com'),request.headers.accept || '');
@@ -200,7 +236,7 @@ export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'
     }
     const start = performance.now();
     try {
-      const { bytes,cache } = await store.get(spec); const etag = '"' + hash(bytes) + '"';
+      const { bytes,cache } = await resolveImage(spec); const etag = '"' + hash(bytes) + '"';
       const headers = { 'Content-Type':'image/' + spec.format, 'Content-Length':bytes.length,
         'Cache-Control':'public, max-age=31536000, immutable', 'Vary':'Accept', 'ETag':etag,
         'X-Content-Type-Options':'nosniff', 'X-Hidi-Image-Cache':cache, 'X-Hidi-Image-Version':IMAGE_VERSION,
@@ -224,7 +260,7 @@ export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'
       for (const source of [...paths].slice(0,400)) {
         if (stopped) break;
         if (prepared.has(source)) continue;
-        try { for (const width of [384,640,750,828,1080,1200]) await store.get({ source,width,format:'webp',quality:75 }); prepared.add(source); } catch {}
+        try { for (const width of [384,640,750,828,1080,1200]) await resolveImage({ source,width,format:'webp',quality:75 }); prepared.add(source); } catch {}
       }
     } catch {}
     finally { if (!stopped) { timer = setTimeout(warm,30000); timer.unref(); } }
