@@ -56,7 +56,7 @@ test('persistent Azure derivative bypasses original download and Sharp queue',as
  const priorFetch=globalThis.fetch;let originalReads=0,requests=[];
  globalThis.fetch=async url=>{requests.push(String(url));return new Response(bytes,{status:200,headers:{'content-type':'image/webp','content-length':String(bytes.length)}});};
  t.after(()=>{globalThis.fetch=priorFetch;});
- const handler=createProductImageHandler({origin:'http://127.0.0.1:3000',sharp,cacheDir,seedDir:join(cacheDir,'none'),fetchSource:async()=>{originalReads++;throw new Error('original should not be read');}});
+ const handler=createProductImageHandler({origin:'http://127.0.0.1:3000',sharp,cacheDir,seedDir:join(cacheDir,'none'),persistentEnabled:true,fetchSource:async()=>{originalReads++;throw new Error('original should not be read');}});
  const response=reply(),req={method:'GET',url:imageUrl().pathname+imageUrl().search,headers:{accept:'image/webp'}};
  assert.equal(await handler.handle(req,response,'/_next/image'),true);
  assert.equal(response.status,200);assert.equal(response.headers['Content-Type'],'image/webp');
