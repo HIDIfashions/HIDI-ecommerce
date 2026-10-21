@@ -176,6 +176,33 @@ test('runtime image handler serves a persisted derivative before touching the or
   assert.equal(originals,0);
 });
 
+test('transient persisted-media 503 is retried inside the server before browser fallback',async t=>{
+  const dir=await temp(t),webp=await sharp(await fixture()).resize(640).webp({quality:75}).toBuffer();
+  const prior=globalThis.fetch;let calls=0,originals=0;
+  globalThis.fetch=async url=>{
+    calls++;
+    assert.match(String(url),/\/media\/products\/_derivatives\/v1\/variants\/sku-a\/photo\.jpg\/640\.webp$/);
+    if(calls===1)return new Response(null,{status:503,headers:{'cache-control':'no-store'}});
+    return new Response(webp,{status:200,headers:{'content-type':'image/webp','content-length':String(webp.length)}});
+  };
+  t.after(()=>{globalThis.fetch=prior;});
+  const handler=createProductImageHandler({
+    origin:'https://hidiindia.com',
+    runtimeRoot:dir,
+    sharp,
+    cacheDir:join(dir,'cache'),
+    seedDir:join(dir,'seed'),
+    fetchSource:async()=>{originals++;return await fixture();},
+  });
+  const response=reply();
+  await handler.handle({method:'GET',url:optimizerUrl(),headers:{accept:'image/webp'}},response,'/_next/image');
+  assert.equal(response.status,200);
+  assert.equal(response.headers['X-Hidi-Image-Cache'],'PERSISTED');
+  assert.equal(calls,2);
+  assert.equal(originals,0);
+  assert.deepEqual(response.body,webp);
+});
+
 test('invalid persisted MIME is rejected and falls back to the existing Sharp path',async t=>{
   const dir=await temp(t),source=await fixture();let originals=0;
   const prior=globalThis.fetch;
