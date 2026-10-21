@@ -1,4 +1,4 @@
-"""Fail-closed brand SEO overlay with retained mobile purchase-bar clearance."""
+"""Fail-closed brand SEO overlay with current image discovery and retained mobile purchase-bar clearance."""
 from pathlib import Path
 import hashlib, re
 
@@ -11,6 +11,7 @@ METADATA_BASE_SHA = '6ed0aa58a93f91651dbaf3035cfc93da3bd1f130c76be32fff3f0fb393b
 METADATA_HELPER_SHA = '78afd9bd62aedccf395d16edc881951fc45cba5ecdf7f8f588670b2178cf7290'
 SITEMAP_HELPER_SHA = 'c8cb5640b825a9681ef69cf30349bf3c69af8521e96ea0f3565aa949cd94a530'
 FOUNDATION_BUNDLE_SHA = 'cab82d617544299bcd56b6072987d9acb2db7da0e51d0539a92879b5c14047b2'
+PUBLISHED_IMAGES_SHA = '62d5f70257d7197d5658e1c195dd12bc4bc5ab07655ab9f6044487dc38751f6a'
 ABOUT_OLD = 'From responsibility and ambition to the moments that are entirely your own, HIDI is made for women who move through every day with ease, confidence and quiet elegance.'
 ABOUT_MARKER = 'Introduced by actress Ananya Nagalla'
 HEADER_BEFORE = '    const contentType = String(responseHeaders["content-type"] || "");'
@@ -70,6 +71,7 @@ def patch_runtime(base, overlay):
         'seo-discovery/metadata.mjs':'b7a30602764f95acc1fa27cf820127d7432e2c00972ef27178ef48ca28e55b05',
         'seo-discovery/sitemap.mjs':'3589d48f90ef0687592716a025a2e786042de043911eb351b97eee7b17005f5d',
         'seo-discovery/published-product-images.json':'ed1cb9149498306cb0689132f5a0c314f705b004de1c2a79eeeb1c9e85b8d11b',
+        'seo-discovery/reviewed-product-image-map.json':'0ed29d9c82e075b246c5615900724003cf887f760cf77de0a2c009f9ce5a1b1a',
         'dist/hidi-analytics.js':'d626a5bcc6fe7313e55ea85fe66347f4c41e3abf1fb02697e2ef45033f9085ea',
     }
     for name,digest in expected.items():
@@ -105,6 +107,9 @@ def patch_runtime(base, overlay):
     metadata=(HERE/'metadata.mjs').read_bytes().replace(b'\r\n', b'\n')
     assert hashlib.sha256(metadata).hexdigest()=='857d4ce44ea81472f6b08a5d39df9ff82cae5f58c19e69db55be8d9e18e717a2', 'Reviewed brand identity helper changed'
     (overlay/'seo-discovery/metadata.mjs').write_bytes(metadata)
+    images=(HERE/'published-product-images.json').read_bytes().replace(b'\r\n', b'\n')
+    assert hashlib.sha256(images).hexdigest()==PUBLISHED_IMAGES_SHA, 'Reviewed current product-image allowlist changed'
+    (overlay/'seo-discovery/published-product-images.json').write_bytes(images)
     source=(base/'server.mjs').read_text()
     stream_old='createSeoIdentityStream(incoming), status, responseHeaders'
     stream_new='createSeoIdentityStream(incoming, isProductionRequest(request) ? pathname : undefined), status, responseHeaders'
@@ -133,8 +138,8 @@ def patch_runtime(base, overlay):
     foundation_plan={'passed':True,'allowedFiles':[],'alreadyApplied':True,
                      'landingModule':'dist/'+landing_name,'landingSha256':FOUNDATION_BUNDLE_SHA,
                      'aboutCopyFiles':about,'preserved':True}
-    return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs','server.mjs'],
+    return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs','seo-discovery/published-product-images.json','server.mjs'],
             'foundation':foundation_plan,
             'reviewedScopeOnly':True,'canonicalHostRedirect':True,'mobilePurchaseFooterClearance':True,
-            'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,
+            'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImageManifestRefreshed':True,'publishedImageCount':238,
             'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

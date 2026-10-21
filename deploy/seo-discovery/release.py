@@ -1,4 +1,4 @@
-"""Guarded brand SEO release over the captured live image, preserving commerce and backend behavior."""
+"""Guarded brand SEO and current image-discovery release over the captured live image, preserving commerce and backend behavior."""
 import argparse
 import hashlib
 import importlib.util
@@ -69,7 +69,7 @@ def compose():
     configs=json.loads(images.docker('image','inspect',before['hidi-web']['image'],own_tag()))
     report=guard.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),configs)
     report.update({'baseImage':before['hidi-web']['image'],'candidateImageId':image_id(own_tag()),'candidateTag':own_tag()});save('web-preservation.json',report)
-    photo.unchanged(before);print('PASS: only reviewed SEO identity and canonical-host routing changed; retained navigation and About copy preserved')
+    photo.unchanged(before);print('PASS: only reviewed SEO identity, canonical-host routing, footer clearance and current product-image allowlist changed; retained navigation and About copy preserved')
 def seal():
     photo.unchanged(photo.states());manifest={}
     for name in ['candidate/report.json','foundation-candidate/report.json','patch.json','web-preservation.json']:
