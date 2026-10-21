@@ -14,12 +14,12 @@ const stateText = JSON.stringify(state);
 
 globalThis.fetch = async (input, options = {}) => {
   const request = input instanceof Request ? input : null;
+  const method = String(options.method || request?.method || 'GET').toUpperCase();
+  if (!['GET', 'HEAD'].includes(method)) throw new Error(`Read-only candidate fixture refused ${method}`);
   let url;
   try { url = new URL(request?.url || input); }
   catch { return originalFetch(input, options); }
-  const method = String(options.method || request?.method || 'GET').toUpperCase();
   if (url.pathname === '/hidi-seo-fixture-token') {
-    if (method !== 'GET') throw new Error('Fixture identity is read-only');
     return new Response(JSON.stringify({ access_token: 'read-only-fixture', expires_in: 3600 }),
       { status: 200, headers: { 'content-type': 'application/json' } });
   }
