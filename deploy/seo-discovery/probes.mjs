@@ -11,6 +11,15 @@ import { productImageUrls } from './sitemap.mjs';
 
 const crawlerDocumentTimeoutMs = 30000;
 const crawlerDocumentLimit = 4 * 1024 * 1024;
+async function captureScreenshot(page, options) {
+  const previous = process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;
+  process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
+  try { return await page.screenshot(options); }
+  finally {
+    if (previous === undefined) delete process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;
+    else process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = previous;
+  }
+}
 export const crawlerDocument = (base, path, {timeoutMs = crawlerDocumentTimeoutMs, limit = crawlerDocumentLimit} = {}) => new Promise((resolveDocument, rejectDocument) => {
   const target = new URL(path, base);
   const started = Date.now();
@@ -337,7 +346,7 @@ export async function probe(base, output) {
             } else {
               assert.equal(measurement.pageHasPurchaseBar,false,'Clearance selector applies only to products');
             }
-            await page.screenshot({path:`${output}/${engine}-${width}-${height}-${key}.png`});
+            await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-${key}.png`});
             checks.push({page:key,path,passed:true,...measurement});
           }
           if(width===390||width===1440) {
@@ -430,7 +439,7 @@ export async function probe(base, output) {
           results.push({engine,width,height,passed:true,checks});
           console.log(`PASS: ${engine} ${width}x${height}: footer links clear the purchase bar; other layouts preserved`);
         } catch(error) {
-          await page.screenshot({path:`${output}/${engine}-${width}-${height}-failure.png`}).catch(()=>{});
+          await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-failure.png`}).catch(()=>{});
           await writeFile(`${output}/${engine}-${width}-${height}-failure.txt`,page.url()+'\n'+await page.locator('body').innerText());
           throw error;
         } finally {await context.close();}
