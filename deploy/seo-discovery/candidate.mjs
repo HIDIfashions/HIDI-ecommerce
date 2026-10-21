@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { probe } from './probes.mjs';
 import { foundationProbe } from '../seo-foundation/browser.mjs';
@@ -48,6 +50,63 @@ const priorRoot=resolve(root,'../base-app');
 const priorRuntime=spawn(process.execPath,[join(priorRoot,'server.mjs')],{cwd:priorRoot,env:{...process.env,PORT:String(priorPort),STOREFRONT_ORIGIN:'http://127.0.0.1:3001',API_URL:api,INTERNAL_API_URL:api},stdio:['ignore','pipe','pipe']});
 priorRuntime.stdout.on('data',c=>logs+=c);priorRuntime.stderr.on('data',c=>logs+=c);
 const priorBase='http://127.0.0.1:'+priorPort;
+
+const bodyEvidencePath = 'evidence/seo-discovery/body-preservation.json';
+const forwardedHeaders = {
+  'cache-control': 'no-cache',
+  'pragma': 'no-cache',
+  'x-forwarded-host': 'hidiindia.com',
+  'x-forwarded-proto': 'https',
+};
+const sha256 = value => createHash('sha256').update(value).digest('hex');
+const firstDifference = (left, right) => {
+  const shared = Math.min(left.length, right.length);
+  let offset = 0;
+  while (offset < shared && left[offset] === right[offset]) offset++;
+  if (offset === shared && left.length === right.length) return null;
+  const start = Math.max(0, offset - 80), end = offset + 80;
+  return {
+    offset,
+    priorSnippet: left.subarray(start, Math.min(left.length, end)).toString('utf8'),
+    candidateSnippet: right.subarray(start, Math.min(right.length, end)).toString('utf8'),
+  };
+};
+const sampleBody = async (origin, route) => {
+  const response = await fetch(origin + route, { headers: forwardedHeaders });
+  const document = Buffer.from(await response.arrayBuffer());
+  const marker = document.indexOf(Buffer.from('</head>'));
+  assert.equal(response.status, 200, `${route} must return HTTP 200`);
+  assert(marker >= 0, `${route} must contain </head>`);
+  const body = document.subarray(marker + Buffer.byteLength('</head>'));
+  return { body, status: response.status, length: body.length, sha256: sha256(body) };
+};
+const compareRetainedBodies = async () => {
+  const report = { passed: false, readOnly: true, sampleCount: 3, routes: [] };
+  for (const route of ['/', '/privacy']) {
+    const prior = [], candidate = [];
+    for (let i = 0; i < report.sampleCount; i++) {
+      prior.push(await sampleBody(priorBase, route));
+      candidate.push(await sampleBody(base, route));
+    }
+    const priorStable = prior.every(sample => sample.sha256 === prior[0].sha256 && sample.length === prior[0].length);
+    const candidateStable = candidate.every(sample => sample.sha256 === candidate[0].sha256 && sample.length === candidate[0].length);
+    const difference = firstDifference(prior[0].body, candidate[0].body);
+    report.routes.push({
+      route,
+      status: { prior: prior[0].status, candidate: candidate[0].status },
+      prior: { sha256: prior[0].sha256, length: prior[0].length, samples: prior.map(({ sha256, length }) => ({ sha256, length })) },
+      candidate: { sha256: candidate[0].sha256, length: candidate[0].length, samples: candidate.map(({ sha256, length }) => ({ sha256, length })) },
+      priorStable,
+      candidateStable,
+      exactMatch: difference === null,
+      firstDifference: difference,
+    });
+  }
+  report.passed = report.routes.every(route => route.priorStable && route.candidateStable && route.exactMatch);
+  await mkdir('evidence/seo-discovery', { recursive: true });
+  await writeFile(bodyEvidencePath, JSON.stringify(report, null, 2) + '\n');
+  assert(report.passed, `Retained public body comparison failed; see ${bodyEvidencePath}`);
+};
 try {
   let ready = false;
   for (let i = 0; i < 100; i++) {
@@ -56,6 +115,7 @@ try {
     await new Promise(done => setTimeout(done, 200));
   }
   assert(ready, 'Actual candidate must become ready');
+  await compareRetainedBodies();
   await probe(base, 'evidence/seo-discovery/candidate');
   await foundationProbe(base,'evidence/seo-discovery/foundation-candidate',{baseline:priorBase});
   assert(reads.length > 0, 'Catalogue regression must reach read-only fixture');

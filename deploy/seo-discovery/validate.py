@@ -21,7 +21,7 @@ overlay_files=images.fingerprints(overlay)
 expected={p for p in plan['allowedFiles'] if before.get(p)!=overlay_files.get(p)}
 assert changed==expected and changed, 'Changes outside the reviewed SEO overlay: '+str(changed)
 subprocess.run(['node','--check',str(candidate/'server.mjs')],check=True)
-subprocess.run(['node','--test','deploy/seo-discovery/seo.test.mjs','deploy/seo-discovery/policy-metadata.test.mjs','deploy/seo-foundation/links.test.mjs'],check=True)
+subprocess.run(['node','--test','deploy/seo-product-facts/sitemap-summary.test.mjs','deploy/seo-discovery/seo.test.mjs','deploy/seo-discovery/policy-metadata.test.mjs','deploy/seo-foundation/links.test.mjs'],check=True)
 env={**os.environ,'HIDI_CANDIDATE_RUNTIME':str(candidate)}
 subprocess.run(['node','deploy/seo-discovery/candidate.mjs'],env=env,check=True)
 current=json.loads(subprocess.check_output(['az','containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--only-show-errors','-o','json'],text=True))
