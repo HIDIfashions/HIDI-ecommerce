@@ -68,7 +68,8 @@ const front=createServer(async(req,res)=>{
   }
   if(await optimizer.handle(req,res,path))return;
   if(path.startsWith('/media/products/')){
-   const canonical=mediaPath(path),file=canonical&&h.state.files.get(canonical.replace(/^\/media\//,''));
+   const direct=path.startsWith('/media/products/_derivatives/')?path.replace(/^\/media\//,''):null;
+   const canonical=direct||(mediaPath(path)?.replace(/^\/media\//,'')||null),file=canonical&&h.state.files.get(canonical);
    if(!file){res.writeHead(404);return res.end();}res.writeHead(200,{'content-type':file.type,'content-length':file.size});return res.end(await readFile(file.path));
   }
   const proxy=httpRequest({hostname:'127.0.0.1',port:nextPort,path:req.url,method:req.method,headers:req.headers},up=>{res.writeHead(up.statusCode,up.headers);up.pipe(res);});
