@@ -1,0 +1,79 @@
+name: Persistent Azure image derivatives - complete regression
+
+on:
+  push:
+    branches: [feature/persistent-image-derivatives-20261021]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hidi-persistent-image-derivatives
+  cancel-in-progress: false
+
+jobs:
+  complete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+      API_URL: http://127.0.0.1:4100/v1
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_PERSISTENT_IMAGE_DERIVATIVES: 'true'
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/persistent-derivative-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: pnpm
+
+      - name: Install application dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install isolated image and browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/image-tools" --no-audit --no-fund sharp@0.34.1 playwright@1.56.1
+          echo "HIDI_TEST_SHARP=$RUNNER_TEMP/image-tools/node_modules/sharp" >> "$GITHUB_ENV"
+          echo "HIDI_SHARP_MODULE=$RUNNER_TEMP/image-tools/node_modules/sharp" >> "$GITHUB_ENV"
+          echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/image-tools/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          node "$RUNNER_TEMP/image-tools/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+
+      - name: Run persistent derivative contract first
+        run: node --experimental-strip-types --test deploy/image-optimization/persistent-derivatives.test.mjs
+
+      - name: Run complete application, upload and browser regression
+        run: python deploy/image-optimization/full-regression.py
+
+      - name: Require every executed suite to pass
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          path=pathlib.Path('reports/image-complete/results.json')
+          assert path.exists(), 'Complete regression did not produce results.json'
+          report=json.loads(path.read_text())
+          failed=[suite for suite in report.get('suites',[]) if suite.get('status')!='PASS']
+          if failed:
+              print(json.dumps(failed,indent=2))
+          assert not failed, 'One or more complete regression suites failed'
+          assert report.get('productionChanged') is False
+          print(json.dumps(report.get('summary',{}),indent=2))
+          PY
+
+      - name: Preserve complete evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: persistent-image-derivatives-evidence
+          path: |
+            reports/image-complete/
+            test-results/
+          retention-days: 14
