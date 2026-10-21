@@ -3,6 +3,16 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {isBlockedTelemetry} from '../button-states/request-policy.mjs';
 
+async function captureScreenshot(page,options) {
+  const previous=process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;
+  process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY='1';
+  try {return await page.screenshot(options);}
+  finally {
+    if(previous===undefined)delete process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;
+    else process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY=previous;
+  }
+}
+
 export async function foundationProbe(base,output,{baseline}={}) {
   await mkdir(output,{recursive:true});
   const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
@@ -49,7 +59,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
           if(await pause.count())await pause.click();
           await p.locator('#range-carousel').press('Home');
           await p.waitForFunction(()=>document.querySelector('#range-carousel')?.dataset.activeIndex==='0');
-          await p.evaluate(async()=>{await document.fonts.ready;});
+          await p.waitForFunction(()=>document.fonts.status==='loaded',null,{timeout:30000});
           await settleReads(p);
         };
         try {
@@ -111,7 +121,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await page.waitForFunction(()=>document.querySelector('#range-carousel')?.dataset.activeIndex==='0');
           await page.locator('a.hidi-collection-link').first().focus();
           assert.equal(await page.locator('a.hidi-collection-link').first().getAttribute('tabindex'),'0','Carousel retains focus eligibility');
-          await page.screenshot({path:`${output}/${engine}-${width}-home.png`});
+          await captureScreenshot(page,{path:`${output}/${engine}-${width}-home.png`});
           const shop=page.locator('.campaign-shop-button');await shop.focus();await shop.press('Space');
           await page.waitForURL('**/collections/all');
           assert.equal(await page.locator('main article h3 a').count()>0,true,'Existing Shop Now navigation remains functional');
@@ -146,13 +156,13 @@ export async function foundationProbe(base,output,{baseline}={}) {
           }
           await page.reload({waitUntil:'domcontentloaded'});
           assert.deepEqual(await readAbout(page),about,'About semantics survive rendering and reload');
-          await page.screenshot({path:`${output}/${engine}-${width}-about.png`});
+          await captureScreenshot(page,{path:`${output}/${engine}-${width}-about.png`});
           const blocking=errors.filter(e=>!e.includes('Minified React error #418;'));
           assert.deepEqual(blocking,[],'No new shopping or DOM ownership errors');
           results.push({engine,width,height,passed:true,appearancePreserved:!!prior,crawlablePublicDestinations:true,carouselKeyboardPreserved:true,spaceActivationPreserved:true,aboutCopyVerified:true});
           console.log(`PASS: SEO foundation ${engine} ${width}x${height}: crawlable links, retained controls, About association`);
         } catch(error) {
-          await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});
+          await captureScreenshot(page,{path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});
           await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({message:String(error),url:page.url(),errors},null,2));throw error;
         } finally {await context.close();}
       }
