@@ -106,7 +106,8 @@ def apply():
   req=urllib.request.Request(r.cloud.BASE+'/_next/image?'+q,headers={'Accept':'image/webp'})
   with urllib.request.urlopen(req,timeout=60) as response:
    data=response.read(5*1024*1024);assert response.status==200 and response.headers.get('X-Hidi-Image-Version')=='3' and response.headers.get('Content-Type')=='image/webp'
-   image={'bytes':len(data),'widthRequested':640,'format':'WebP','optimizerVersion':3}
+   assert response.headers.get('X-Hidi-Image-Cache')=='PERSISTED','Production image did not use the verified persistent derivative; roll back instead of accepting runtime Sharp fallback'
+   image={'bytes':len(data),'widthRequested':640,'format':'WebP','optimizerVersion':3,'cache':'PERSISTED'}
   assert r.guard.public_snapshot()==captured;r.photo.unchanged(deployed)
   save('after.json',{'passed':True,'productionDeployment':True,'states':deployed,'imageSample':image,'checkoutFilesPreserved':True,'sqlSchemaChanged':False,'catalogueRowsChanged':False,'photoSourceSha':source_sha(),'sourceSha':os.environ['GITHUB_SHA']})
  except Exception:
