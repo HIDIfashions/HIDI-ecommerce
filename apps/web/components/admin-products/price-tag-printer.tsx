@@ -124,7 +124,6 @@ function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: s
     <section class="identity">
       <div class="product-name">${escapeHtml(item.productName)}</div>
       <div class="product-meta">${escapeHtml(item.category ?? "HIDI Womenswear")} · ${escapeHtml(item.color)}</div>
-      <div class="sku">SKU ${escapeHtml(item.sku)}</div>
       <div class="size-line">${escapeHtml(sizeLine)}</div>
       ${fabric ? `<div class="fabric">Fabric: ${escapeHtml(fabric)}</div>` : ""}
     </section>
@@ -207,6 +206,7 @@ ${preset.height === 40 ? `
   .product-name { margin-bottom: .3mm; }
 
   ` : ""}
+.product-meta { font-size: 3.5pt; line-height: 1.1; }
 </style></head><body>${labels.join("")}</body></html>`;
 }
 
@@ -267,8 +267,7 @@ function TagPreview({ item, details, preset }: { item: PriceTagVariant | undefin
     <img src="/brand/hidi-logo-price-tag.svg" alt="HIDI — Wear the Feeling" />
     <div className={styles.previewIdentity}>
       <strong>{item.productName}</strong>
-      <span>{item.category ?? "HIDI Womenswear"} · {item.color}</span>
-      <small>SKU {item.sku}</small>
+      <span style={{ fontSize: "5px", lineHeight: 1.1 }}>{item.category ?? "HIDI Womenswear"} · {item.color}</span>
       <b>{[`Size ${item.size}`, ...metric].join(" · ")}</b>
     </div>
     <div className={styles.previewPrice}><span>MRP</span><strong>{formatMoney(item.mrpPaise)}</strong><small>INCLUSIVE OF ALL TAXES</small></div>
@@ -465,7 +464,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
     <div className={styles.workspace}>
       <div>
         <section className={base.card}>
-          <div className={base.sectionTitle}><span>01</span><div><h2>Find and select labels</h2><p>The barcode is a short, stable HIDI item code; the full SKU remains printed below the product details.</p></div></div>
+          <div className={base.sectionTitle}><span>01</span><div><h2>Find and select labels</h2><p>The barcode is a short, stable HIDI item code; it remains printed below the price.</p></div></div>
           <div className={styles.filters}>
             <form onSubmit={(event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setQuery(search.trim()); }} className={styles.searchForm}>
               <label>Product, SKU or barcode<input value={search} onChange={(event: ChangeEvent<HTMLInputElement>) => setSearch(event.target.value)} placeholder="Search name, SKU or scan H… barcode" maxLength={160} /></label>
