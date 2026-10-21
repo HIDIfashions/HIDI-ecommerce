@@ -100,8 +100,10 @@ def patch_runtime(base, overlay):
 
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
-    metadata=(HERE/'metadata.mjs').read_bytes()
-    assert hashlib.sha256(metadata).hexdigest()=='5fb2c9a5f623e33b627432646ccb4d85ad6a345800d634289e4a8dceb660b8e6', 'Reviewed brand identity helper changed'
+    # Git stores this reviewed helper with LF line endings; normalize Windows
+    # worktrees so the integrity check covers the same repository bytes in CI.
+    metadata=(HERE/'metadata.mjs').read_bytes().replace(b'\r\n', b'\n')
+    assert hashlib.sha256(metadata).hexdigest()=='857d4ce44ea81472f6b08a5d39df9ff82cae5f58c19e69db55be8d9e18e717a2', 'Reviewed brand identity helper changed'
     (overlay/'seo-discovery/metadata.mjs').write_bytes(metadata)
     source=(base/'server.mjs').read_text()
     stream_old='createSeoIdentityStream(incoming), status, responseHeaders'
