@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {mediaPath,imageRequest,acceptsWebp,derivativeKey,masterKey,boundedBody,resizedImage,createImageStore,createProductImageHandler,SOURCE_LIMIT} from '../collection-speed/images.mjs';
+import {mediaPath,persistentDerivativePath,imageRequest,acceptsWebp,derivativeKey,masterKey,boundedBody,resizedImage,createImageStore,createProductImageHandler,SOURCE_LIMIT} from '../collection-speed/images.mjs';
 import {readPhotoForm,acquirePhotoUploadSlot,MAX_PHOTO_BODY_BYTES} from '../../apps/web/lib/product-photo-upload.mjs';
 const require = createRequire(import.meta.url);
 const sharp = require(process.env.HIDI_TEST_SHARP || 'sharp');
@@ -24,6 +24,15 @@ for (const value of ['//evil.com/media/products/a.jpg','https://evil.com'+source
   test('rejects unapproved source '+value,()=>assert.equal(mediaPath(value),null));
 }
 test('keeps approved legacy cache hint',()=>assert.equal(mediaPath(source+'?hidi_image=2'),source));
+test('maps ordinary display widths to persistent Azure derivatives while keeping deep zoom on the runtime path',()=>{
+ assert.equal(persistentDerivativePath(source,16),'/media/products/_derivatives/v1/variants/sku-one/70686f746f2e6a7067/w384.webp');
+ assert.equal(persistentDerivativePath(source,640),'/media/products/_derivatives/v1/variants/sku-one/70686f746f2e6a7067/w640.webp');
+ assert.equal(persistentDerivativePath(source,750),'/media/products/_derivatives/v1/variants/sku-one/70686f746f2e6a7067/w828.webp');
+ assert.equal(persistentDerivativePath(source,1920),'/media/products/_derivatives/v1/variants/sku-one/70686f746f2e6a7067/w1920.webp');
+ assert.equal(persistentDerivativePath(source,2048),null);
+ assert.equal(persistentDerivativePath('/media/products/legacy/photo.jpg',640),null);
+});
+
 test('negotiates WebP and honours q=0',()=>{assert.equal(acceptsWebp('image/avif,image/webp,*/*'),true);for(const a of ['image/webp;q=0','image/webp;q=0;foo=bar','image/webp;q=nan','image/webp;q=2','*/*'])assert.equal(acceptsWebp(a),false);assert.equal(acceptsWebp('image/webp;q=0.5'),true);});
 test('parses a valid optimizer request',()=>assert.deepEqual(imageRequest(imageUrl(),'image/webp'),spec()));
 for (const extra of ['&w=750','&q=90','&url='+encodeURIComponent(source),'&surprise=1']) test('rejects duplicate/extra parameters '+extra,()=>assert.equal(imageRequest(imageUrl(extra),'image/webp').error,400));
@@ -42,6 +51,21 @@ test('rejects oversized bytes before decoding',async()=>assert.rejects(()=>resiz
 test('caches derivatives, deduplicates visitors, and shares the display master',async t=>{const cacheDir=await temp(t),input=await fixture();let reads=0;const store=createImageStore({sharp,cacheDir,seedDir:join(cacheDir,'none'),fetchSource:async()=>{reads++;return input;}});await Promise.all(Array.from({length:8},()=>store.get(spec())));await store.get(spec(750));assert.equal(reads,1);assert.equal((await store.get(spec())).cache,'HIT');});
 test('fetches zoom only on demand and caches its master',async t=>{const cacheDir=await temp(t),input=await fixture();let reads=0;const store=createImageStore({sharp,cacheDir,seedDir:join(cacheDir,'none'),fetchSource:async()=>{reads++;return input;}});await store.get(spec());assert.equal(reads,1);await Promise.all([store.get(spec(2048)),store.get(spec(3840))]);assert.equal(reads,2);await store.get(spec(2048));assert.equal(reads,2);});
 test('serializes source fetching even for simultaneous zoom requests',async t=>{const cacheDir=await temp(t),input=await fixture();let active=0,max=0;const store=createImageStore({sharp,cacheDir,seedDir:join(cacheDir,'none'),fetchSource:async()=>{active++;max=Math.max(max,active);await new Promise(r=>setTimeout(r,10));active--;return input;}});await Promise.all([1,2,3].map(n=>store.get({...spec(3840),source:source.replace('photo.jpg',n+'.jpg')})));assert.equal(max,1);});
+test('persistent Azure derivative bypasses original download and Sharp queue',async t=>{
+ const cacheDir=await temp(t),bytes=await sharp({create:{width:640,height:960,channels:3,background:'white'}}).webp({quality:75}).toBuffer();
+ const priorFetch=globalThis.fetch;let originalReads=0,requests=[];
+ globalThis.fetch=async url=>{requests.push(String(url));return new Response(bytes,{status:200,headers:{'content-type':'image/webp','content-length':String(bytes.length)}});};
+ t.after(()=>{globalThis.fetch=priorFetch;});
+ const handler=createProductImageHandler({origin:'http://127.0.0.1:3000',sharp,cacheDir,seedDir:join(cacheDir,'none'),fetchSource:async()=>{originalReads++;throw new Error('original should not be read');}});
+ const response=reply(),req={method:'GET',url:imageUrl().pathname+imageUrl().search,headers:{accept:'image/webp'}};
+ assert.equal(await handler.handle(req,response,'/_next/image'),true);
+ assert.equal(response.status,200);assert.equal(response.headers['Content-Type'],'image/webp');
+ assert.equal(response.headers['X-Hidi-Image-Cache'],'PERSISTENT');
+ assert.equal(response.headers['X-Hidi-Image-Source'],'azure-derivative');
+ assert.equal(originalReads,0);assert.equal(requests.length,1);
+ assert.match(requests[0],/\/media\/products\/_derivatives\/v1\/variants\/sku-one\/70686f746f2e6a7067\/w640\.webp$/);
+ assert.deepEqual(response.body,bytes);
+});
 test('HTTP GET, HEAD, ETag, and unsupported method retain correct semantics',async t=>{const cacheDir=await temp(t),input=await fixture();const handler=createProductImageHandler({origin:'http://127.0.0.1:3000',sharp,cacheDir,seedDir:join(cacheDir,'none'),fetchSource:async()=>input});const req={method:'GET',url:imageUrl().pathname+imageUrl().search,headers:{accept:'image/webp'}};const a=reply();assert.equal(await handler.handle(req,a,'/_next/image'),true);assert.equal(a.status,200);assert.equal(a.headers['Content-Type'],'image/webp');assert.equal(a.headers.Vary,'Accept');assert.equal(a.headers['X-Hidi-Image-Version'],'3');const b=reply();await handler.handle({...req,method:'HEAD'},b,'/_next/image');assert.equal(b.status,200);assert.equal(b.body,undefined);const c=reply();await handler.handle({...req,headers:{...req.headers,'if-none-match':'W/'+a.headers.ETag}},c,'/_next/image');assert.equal(c.status,304);assert.equal(c.body,undefined);const d=reply();await handler.handle({...req,method:'POST'},d,'/_next/image');assert.equal(d.status,405);assert.equal(d.headers.Allow,'GET, HEAD');assert.equal(await handler.handle(req,reply(),'/checkout'),false);});
 test('processing failure never returns multi-megabyte originals',async t=>{const cacheDir=await temp(t);const handler=createProductImageHandler({origin:'http://127.0.0.1:3000',sharp,cacheDir,seedDir:join(cacheDir,'none'),fetchSource:async()=>{throw new Error('unavailable');}});const response=reply();await handler.handle({method:'GET',url:imageUrl().href,headers:{}},response,'/_next/image');assert.equal(response.status,503);assert.equal(response.body,undefined);assert.equal(response.headers['Cache-Control'],'no-store');});
 test('reads exactly one multipart photo',async()=>{const form=new FormData();form.set('file',new File([Buffer.from('image bytes')],'a.jpg',{type:'image/jpeg'}));form.set('applyToColor','true');const parsed=await readPhotoForm(new Request('https://hidiindia.com/upload',{method:'POST',body:form}));assert.equal(parsed.get('file').name,'a.jpg');assert.equal(parsed.get('applyToColor'),'true');});
