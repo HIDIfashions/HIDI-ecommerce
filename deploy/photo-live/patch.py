@@ -2,10 +2,10 @@
 from pathlib import Path
 import hashlib,re,shutil,subprocess,os
 API='apps/api/dist/admin/admin-inventory.service.js'
-PIN_API='d22e01c31343910b570e73ec9ce09d03f6c6312e9bc0684f988182a4c404668d'
-PIN_SERVER='e3bdbf6695088c61cd573a7cd84d33d9a58785a3502fd0d3a319f34793ed454e'
-PIN_IMAGES='4138a628b649d8b8aa94a15a4d8fb910522e5204af5d238f0013f1cc31bdca89'
-PIN_DELETE_STORAGE_BLOB='2eadad3b9a5efef7060241d4af48862275aa7af5'
+PIN_API='4ae2c0865fa3be640b845ab78f012e4a768be17b339f0bfe176a3284449db4fd'
+PIN_SERVER='d25c5bc3dfca427cfe0771ccc0444e69feb28e7a07249bd94fcc13156bb6f9a2'
+PIN_IMAGES='0593c2d4b1ef740cf5fda2262b40c8e6fc392c4bca40d8c2552107251de822ac'
+PIN_DELETE_STORAGE_BLOB='0f70fd060d904cb3881c6f4090705869c37d3b33'
 ROOT=Path(__file__).resolve().parents[2]
 def digest(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def git_blob(p):
@@ -20,71 +20,30 @@ def patch(base,overlay,app):
     if app=='api':
         assert digest(base/API)==PIN_API,'Live inventory service changed: explicit review is required'
         s=(base/API).read_text()
-        s=once(s,'const sizeBytes = Number(input.sizeBytes);','const sizeBytes = input.sizeBytes;')
-        s=once(s,'!Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > 12 * 1024 * 1024','typeof sizeBytes !== "number" || !Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > 2147483647')
-        s=once(s,'Image must be no larger than 12 MB','Choose a non-empty photo within the server storage capacity')
-        s=s.replace('//# sourceMappingURL=admin-inventory.service.js.map','// Photo-only runtime overlay; retained source map is not used for this patched file.')
-        write(overlay,API,s)
-        return {'passed':True,'allowedFiles':[API],'removedPhotoCapMiB':12,'databaseSchemaUnchanged':True,'ticketIntegerCapacityBytes':2147483647}
+        # The verified photo-stream release is already live. Do not rewrite the
+        # API again: prove its current ticket contract and preserve it byte-for-byte.
+        assert s.count('const sizeBytes = input.sizeBytes;')==1,'Current upload ticket number contract changed'
+        assert s.count('typeof sizeBytes !== "number" || !Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > 2147483647')==1,'Current upload ticket capacity changed'
+        assert s.count('maxBytes: sizeBytes')==1,'Current upload ticket storage changed'
+        assert '12 * 1024 * 1024' not in s and 'Image must be no larger than 12 MB' not in s,'Legacy 12 MB API guard unexpectedly returned'
+        return {'passed':True,'allowedFiles':[],'apiUnchanged':True,'databaseSchemaUnchanged':True,'ticketIntegerCapacityBytes':2147483647}
     assert app=='web'
     assert digest(base/'server.mjs')==PIN_SERVER,'Live storefront wrapper changed: explicit review is required'
     assert digest(base/'product-images/images.mjs')==PIN_IMAGES,'Live image processor changed: explicit review is required'
     assert git_blob(base/'admin-tools/product-delete-storage.mjs')==PIN_DELETE_STORAGE_BLOB,'Live product photo deletion storage changed: explicit review is required'
-    tree=base/'apps/web/.next'
-    original={p.relative_to(base).as_posix():p.read_text() for p in tree.rglob('*') if p.is_file() and not p.is_symlink() and p.suffix in {'.js','.json','.html','.rsc','.meta'}}
-    semantic={};counts={'numeric':0,'labels':0}
-    labels={
-      'choose a non-empty photo no larger than 12 MB':'choose a valid non-empty photo',
-      'Image exceeds 12 MB.':'Invalid photo size.',
-      'Image must be no larger than 12 MB':'Choose a valid non-empty photo',
-      'up to 12 MB each':'without a fixed photo MB cap',
-      'max 12 MB each':'no fixed photo MB cap',
-    }
-    pattern=re.compile(r'([A-Za-z_$][\w$]*\.size)\s*>\s*12582912(?=[^\n]{0,160}(?:12 MB|Image exceeds))')
-    for name,s in original.items():
-        t,n=pattern.subn(lambda m:'!Number.isSafeInteger('+m[1]+')',s);counts['numeric']+=n
-        for a,b in labels.items():counts['labels']+=t.count(a);t=t.replace(a,b)
-        semantic[name]=t
-    assert counts['numeric']>=3 and counts['labels']>=4,'Photo validators/labels missing'
+    # Photo size/UI changes are already in the retained production image.
+    # This derivative release deliberately leaves every compiled storefront
+    # asset byte-identical; only server-side media delivery is overlaid.
     mapping={}
-    for _ in range(16):
-        final={name:text for name,text in semantic.items()}
-        for name,s in list(final.items()):
-            for old,new in mapping.items():
-                s=s.replace(re.search(r'-([a-f0-9]{16})\.js$',old)[1],re.search(r'-([a-f0-9]{16})\.js$',new)[1])
-            final[name]=s
-        newmap={}
-        for name,s in final.items():
-            if name.startswith('apps/web/.next/static/') and name.endswith('.js') and s!=original[name]:
-                m=re.search(r'-([a-f0-9]{16})\.js$',name);assert m,'Changed photo asset must be content-addressed'
-                newmap[name]=name[:m.start(1)]+hashlib.sha256(s.encode()).hexdigest()[:16]+name[m.end(1):]
-        if newmap==mapping:break
-        mapping=newmap
-    else:raise AssertionError('Photo asset references did not converge')
-    for name,s in final.items():
-        if s==original[name]:continue
-        target=mapping.get(name,name)
-        if target!=name:assert not (base/target).exists(),'Generated photo asset collides with retained asset'
-        write(overlay,target,s)
-    raw=['admin-tools/image-sku-client.mjs','admin-tools/product-upload/model.mjs','admin-tools/product-upload/engine.mjs','admin-tools/product-upload/package.mjs','admin-tools/product-upload/page.html']
-    for name in raw:
-        s=(base/name).read_text();t=s
-        if name.endswith('image-sku-client.mjs'):
-            t=once(t,'item.file.size < 1 || item.file.size > 12 * 1024 * 1024','!Number.isSafeInteger(item.file.size) || item.file.size < 1')
-            t=once(t,'Each image must be between 1 byte and 12 MB.','Choose a valid non-empty image.')
-        if name.endswith('model.mjs'):t=once(t,'MAX_PHOTO_BYTES = 12 * 1024 * 1024','MAX_PHOTO_BYTES = Number.MAX_SAFE_INTEGER')
-        t=t.replace('Photo must be between 1 byte and 12 MB: ','Choose a valid non-empty photo: ')
-        t=t.replace('Photos must be at most 12 MB each.','Photos must be non-empty; server storage capacity applies.')
-        t=t.replace('each photo: at most 12 MB','photos: no fixed MB cap').replace('each at most 12 MB','no fixed photo MB cap')
-        assert t!=s,'Expected photo-only change in '+name
-        write(overlay,name,t)
+    counts={'numeric':0,'labels':0}
     shutil.copyfile(ROOT/'deploy/admin-tools/product-delete-storage.mjs',overlay/'admin-tools/product-delete-storage.mjs')
     server=(base/'server.mjs').read_text()
-    anchor='import { createProductImageHandler } from "./product-images/images.mjs";'
-    server=once(server,anchor,anchor+'\nimport { handlePhotoUpload } from "./photo-stream/handler.mjs";')
-    anchor='  if (await productImageHandler.handle(request, response, pathname)) return;'
-    server=once(server,anchor,'  if (await handlePhotoUpload(request, response, pathname)) return;\n'+anchor)
-    write(overlay,'server.mjs',server)
+    assert server.count('import { createProductImageHandler } from "./product-images/images.mjs";')==1,'Image handler wiring changed'
+    assert server.count('import { handlePhotoUpload } from "./photo-stream/handler.mjs";')==1,'Photo upload handler wiring changed'
+    assert server.count('if (await handlePhotoUpload(request, response, pathname)) return;')==1,'Photo upload route wiring changed'
+    assert server.count('if (await productImageHandler.handle(request, response, pathname)) return;')==1,'Product image route wiring changed'
+    # No server wrapper rewrite is needed: the existing imports point at paths
+    # that this overlay replaces with the derivative-aware implementations.
     for name in ['images.mjs','photo-disk.mjs']:
         dest=overlay/'product-images'/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/'deploy/collection-speed'/name,dest)
     subprocess.run(['node',str(ROOT/'deploy/photo-live/build.mjs'),str(ROOT),str(overlay),str(base)],check=True)
