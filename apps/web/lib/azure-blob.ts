@@ -33,6 +33,7 @@ export async function uploadProductImage(key: string, bytes: Buffer, contentType
 import { uploadDiskPhotoToBlob } from "./photo-azure-stream.mjs";
 import type { DiskPhoto } from "./photo-upload-stream.mjs";
 import { persistProductDerivatives } from "./product-image-derivative-store.mjs";
+import { PERSISTENT_DERIVATIVE_WIDTHS, persistentDerivativeBlobKey } from "../../../deploy/collection-speed/images.mjs";
 
 export async function uploadProductImageFile(key: string, photo: DiskPhoto, contentType: string) {
   if (!key.startsWith("products/") || key.includes("..")) throw new Error("Invalid product image key");
@@ -51,4 +52,18 @@ export async function uploadProductImageFile(key: string, photo: DiskPhoto, cont
  */
 export async function ensureProductImageDerivatives(key: string, photo: DiskPhoto) {
   return persistProductDerivatives(productMediaContainer(), key, photo);
+}
+
+
+/** Best-effort caller-controlled cleanup for a newly created, unattached random upload. */
+export async function deleteUnattachedProductImage(key: string) {
+  if (!key.startsWith("products/") || key.includes("..")) throw new Error("Invalid product image key");
+  const derivatives = PERSISTENT_DERIVATIVE_WIDTHS.map(width => persistentDerivativeBlobKey(key, width, "webp"));
+  if (derivatives.some(value => !value)) throw new Error("Invalid product image key for cleanup");
+  const targets = [...derivatives as string[], key];
+  const results = await Promise.allSettled(
+    targets.map(target => productMediaContainer().getBlockBlobClient(target).deleteIfExists({ deleteSnapshots: "include" })),
+  );
+  const failed = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+  if (failed.length) throw new Error("Unattached product photo cleanup did not finish");
 }
