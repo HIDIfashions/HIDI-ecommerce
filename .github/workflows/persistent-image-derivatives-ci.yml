@@ -14,6 +14,7 @@ on:
       - 'deploy/collection-speed/images.mjs'
       - 'deploy/image-derivatives/**'
       - 'deploy/admin-tools/product-delete-storage.mjs'
+      - 'deploy/photo-live/**'
       - 'tests/admin-product-delete-handler.test.mjs'
       - 'tests/photo-route-current.cases.mjs'
       - 'tests/photo-route.fixture.mjs'
@@ -59,6 +60,23 @@ jobs:
           node --test tests/admin-product-delete-handler.test.mjs
       - name: Genuine large-source derivative stress test
         run: node --test deploy/image-derivatives/large-source.test.mjs
+      - name: Deployable photo-overlay source contract
+        run: |
+          python -m py_compile deploy/photo-live/azure-check.py deploy/photo-live/arm-state.py deploy/photo-live/patch.py deploy/photo-live/release.py deploy/photo-live/retained-test.py deploy/photo-live/test.py
+          python deploy/photo-live/azure-check.test.py
+          python deploy/photo-live/arm-state.test.py
+          python - <<'PY'
+          import ast,pathlib,subprocess
+          p=pathlib.Path('deploy/photo-live/retained-test.py')
+          tree=ast.parse(p.read_text())
+          for item in tree.body[-2:]:
+              assert isinstance(item,ast.Expr) and isinstance(item.value,ast.Call)
+          ns={'__file__':str(p.resolve()),'__name__':'fixture_generation_only'}
+          exec(compile(ast.Module(body=tree.body[:-2],type_ignores=[]),str(p),'exec'),ns)
+          generated=pathlib.Path('tests/photo-retained-compiled.browser.mjs')
+          subprocess.run(['node','--check',str(generated)],check=True)
+          generated.unlink(missing_ok=True)
+          PY
       - name: Build and run isolated end-to-end upload/render regression
         run: python deploy/image-optimization/verify-web-upload.py
       - name: Preserve end-to-end evidence
