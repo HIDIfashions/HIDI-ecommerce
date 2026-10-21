@@ -1,4 +1,4 @@
-name: Release HIDI brand SEO and verified mobile footer clearance
+name: Release HIDI brand SEO, current product images and verified mobile footer clearance
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -24,12 +24,13 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/setup-node@v4
         with: {node-version: 24}
-      - name: Check reviewed brand SEO and footer-clearance patch
+      - name: Check reviewed brand SEO, product images and footer-clearance patch
         run: |
           node --check deploy/seo-discovery/probes.mjs
           node --check deploy/seo-discovery/candidate.mjs
+          node --check deploy/seo-discovery/image-discovery-check.mjs
           node --check deploy/seo-foundation/browser.mjs
-          node --test deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs
+          node --test deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs deploy/seo-product-facts/sitemap-summary.test.mjs
           python3 tests/photo-upload-release.test.py
           python3 -m py_compile deploy/seo-discovery/patch-runtime.py deploy/seo-discovery/release.py deploy/seo-foundation/patch-runtime.py
       - name: Install exact OCI backup tooling
@@ -49,7 +50,7 @@ jobs:
           node deploy/seo-discovery/image-discovery-check.mjs
           python3 deploy/seo-discovery/release.py capture
           echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-seo-discovery-private/web/candidate-app" >> "$GITHUB_ENV"
-      - name: Add only the reviewed brand SEO and footer-clearance layer
+      - name: Add only the reviewed brand SEO, product-image allowlist and footer-clearance layer
         run: python3 deploy/seo-discovery/release.py compose
       - name: Verify SEO metadata and unchanged layouts in twelve browser and viewport combinations
         run: |
@@ -63,7 +64,7 @@ jobs:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Release SEO layer and verify live metadata, sitemap and retained shopping routes
+      - name: Release SEO layer and verify live metadata, product images, sitemap and retained shopping routes
         id: apply
         timeout-minutes: 25
         run: |
