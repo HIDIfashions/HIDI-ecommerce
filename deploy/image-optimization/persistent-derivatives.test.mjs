@@ -23,15 +23,15 @@ test("maps HIDI Azure media URLs to deterministic derivative keys", () => {
   assert.equal(productMediaKey(source), "products/variants/abc_123/photo.test.jpg");
   assert.equal(
     productDerivativeKey("products/variants/abc_123/photo.test.jpg", 640),
-    "products/_derivatives/v1/variants/abc_123/photo.test/w640.webp",
+    "products/_derivatives/v1/variants/abc_123/70686f746f2e746573742e6a7067/w640.webp",
   );
   assert.equal(
     productDerivativeUrl(source, 640),
-    "/media/products/_derivatives/v1/variants/abc_123/photo.test/w640.webp",
+    "/media/products/_derivatives/v1/variants/abc_123/70686f746f2e746573742e6a7067/w640.webp",
   );
   assert.equal(
     productDerivativeUrl("https://media.thehidi.com/products/variants/abc_123/photo.jpg", 1080),
-    "https://media.thehidi.com/products/_derivatives/v1/variants/abc_123/photo/w1080.webp",
+    "https://media.thehidi.com/products/_derivatives/v1/variants/abc_123/70686f746f2e6a7067/w1080.webp",
   );
 });
 
@@ -58,7 +58,7 @@ test("builds responsive srcset only from approved widths", () => {
   assert.match(set, /w384\.webp 384w/);
   assert.match(set, /w640\.webp 640w/);
   assert.match(set, /w1080\.webp 1080w/);
-  assert.equal(preferredProductDerivative(source, 1000), "/media/products/_derivatives/v1/variants/abc/photo/w1080.webp");
+  assert.equal(preferredProductDerivative(source, 1000), "/media/products/_derivatives/v1/variants/abc/70686f746f2e6a7067/w1080.webp");
   assert.deepEqual(PRODUCT_DERIVATIVE_WIDTHS, [384, 640, 828, 1080, 1200, 1920]);
 });
 
