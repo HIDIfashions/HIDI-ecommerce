@@ -306,7 +306,10 @@ export async function probe(base, output) {
             await assertSearchMetadata(page,'/collections/all');
             const nextProduct=page.locator('main article h3 a').first();await nextProduct.waitFor();
             const nextPath=await nextProduct.getAttribute('href');
-            await nextProduct.click();await page.waitForURL('**'+nextPath);
+            await Promise.all([
+              page.waitForURL(url=>url.pathname===nextPath,{waitUntil:'commit'}),
+              nextProduct.click({noWaitAfter:true}),
+            ]);
             await page.waitForTimeout(500);
             const navigationSeo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
             assert.equal(navigationSeo.canonical,'https://hidiindia.com'+nextPath,'Canonical survives client navigation');
