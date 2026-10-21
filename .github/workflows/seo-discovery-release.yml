@@ -1,4 +1,4 @@
-name: Release HIDI brand SEO, current product images and verified mobile footer clearance
+name: Release HIDI technical SEO with storefront preservation
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -24,7 +24,7 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/setup-node@v4
         with: {node-version: 24}
-      - name: Check reviewed brand SEO, product images and footer-clearance patch
+      - name: Check reviewed technical SEO and storefront preservation guards
         run: |
           node --check deploy/seo-discovery/probes.mjs
           node --check deploy/seo-discovery/candidate.mjs
@@ -52,7 +52,7 @@ jobs:
           node deploy/seo-discovery/image-discovery-check.mjs
           python3 deploy/seo-discovery/release.py capture
           echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-seo-discovery-private/web/candidate-app" >> "$GITHUB_ENV"
-      - name: Add only the reviewed brand SEO, product-image allowlist and footer-clearance layer
+      - name: Add only reviewed SEO metadata, canonical routing and product-image allowlist
         run: python3 deploy/seo-discovery/release.py compose
       - name: Verify SEO metadata and unchanged layouts in twelve browser and viewport combinations
         run: |
