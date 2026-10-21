@@ -30,11 +30,11 @@ test('current upload route preserves mapping validation and legacy optional imag
  assert.equal(h.state.writes,0);assert.equal((await h.route.POST(request(bytes,{imageSku:''}),context)).status,200);assert.equal(h.state.files.size,8);assert.equal(h.state.derivativeWrites,7);await h.assertClean();
 });
 
-test('failed metadata attachment removes a newly generated random Azure original and all derivatives',async t=>{
+test('ambiguous random metadata failure retains the immutable original and derivatives for reconciliation',async t=>{
  const h=await fixture(t),bytes=await photo();h.state.metadataStatus=503;
  const response=await h.route.POST(request(bytes,{imageSku:''}),context);
  assert.equal(response.status,503);assert.equal(h.state.metadata.length,0);assert.equal(h.state.writes,1);assert.equal(h.state.derivativeWrites,7);
- assert.equal(h.state.cleanupCalls,1);assert.equal(h.state.files.size,0);await h.assertClean();
+ assert.equal(h.state.cleanupCalls,0);assert.equal(h.state.files.size,8);await h.assertClean();
 });
 
 test('current upload route rejects missing, expired and cross-origin sessions before reading file bytes',async t=>{
