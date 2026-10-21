@@ -122,7 +122,7 @@ test('Azure derivative persistence is immutable, idempotent, and source-hash che
   firstSaved.metadata.hidi_derivative_sha256=originalDerivativeHash;
   const originalBytes=Buffer.from(firstSaved.bytes);
   firstSaved.bytes=Buffer.from('bad');
-  await assert.rejects(()=>persistProductDerivatives(container,'products/variants/a/photo.jpg',photo,{render}),/differs from this source photo/);
+  await assert.rejects(()=>persistProductDerivatives(container,'products/variants/a/photo.jpg',photo,{render}),/bytes differ from this source photo/);
   firstSaved.bytes=originalBytes;
   await assert.rejects(
     ()=>persistProductDerivatives(container,'products/variants/a/photo.jpg',{...photo,sha256:'b'.repeat(64)},{render}),
