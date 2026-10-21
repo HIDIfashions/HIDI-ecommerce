@@ -1,4 +1,4 @@
-import { deleteUnattachedProductImage, ensureProductImageDerivatives, uploadProductImageFile } from "@/lib/azure-blob";
+import { ensureProductImageDerivatives, uploadProductImageFile } from "@/lib/azure-blob";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
@@ -186,8 +186,6 @@ export async function POST(
   const { variantId } = await context.params;
   let releasePhotoUpload: (() => void) | undefined;
   let photoForm: StreamedPhotoForm | undefined;
-  let unattachedAzureKey: string | undefined;
-  let storageAttached = false;
 
   try {
     await authorizePhotoUpload(request, API_URL, adminApiHeaders(request));
@@ -224,7 +222,6 @@ export async function POST(
     if (process.env.MEDIA_STORAGE_PROVIDER === "azure") {
       const key = objectKey(variantId, file.type, uploadKey);
       uploaded = await uploadProductImageFile(key, file, file.type);
-      if (!uploadKey) unattachedAzureKey = key;
       try {
         await ensureProductImageDerivatives(key, file);
       } catch (error) {
@@ -243,7 +240,6 @@ export async function POST(
       isMain: String(form.get("isMain") ?? "false") === "true",
     });
     const body = await response.json().catch(() => ({ message: "Photo uploaded, but it could not be attached to the SKU" }));
-    if (response.ok) storageAttached = true;
     return NextResponse.json(body, { status: response.status });
   } catch (error) {
     return NextResponse.json(
@@ -251,13 +247,11 @@ export async function POST(
       { status: error instanceof PhotoUploadError ? error.status : 502 },
     );
   } finally {
-    try {
-      if (unattachedAzureKey && !storageAttached) {
-        await deleteUnattachedProductImage(unattachedAzureKey).catch(() => {});
-      }
-    } finally {
-      try { await photoForm?.cleanup(); } finally { releasePhotoUpload?.(); }
-    }
+    // Never delete a stored original after an ambiguous metadata/API outcome:
+    // the backend may have committed the reference even if its response was lost.
+    // Immutable storage can be reconciled later; a DB row pointing at deleted
+    // customer media would be a harder failure.
+    try { await photoForm?.cleanup(); } finally { releasePhotoUpload?.(); }
   }
 }
 
