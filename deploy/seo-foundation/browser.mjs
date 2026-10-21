@@ -75,8 +75,26 @@ export async function foundationProbe(base,output,{baseline}={}) {
               }
             }
           }
-          const cardPaths=await page.locator('a.hidi-collection-link').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('href')));
-          assert.deepEqual(cardPaths,['/collections/casual-wear','/collections/work-wear','/collections/occasional-wear','/collections/ananyas-pick','/collections/ananyas-pick']);
+          const cards=await page.locator('a.hidi-collection-link').evaluateAll(nodes=>nodes.map(node=>({
+            label:node.getAttribute('aria-label'),href:node.getAttribute('href')
+          })));
+          const cardPaths=cards.map(card=>card.href);
+          if(prior) {
+            const originalCards=await prior.locator('a.hidi-collection-link').evaluateAll(nodes=>nodes.map(node=>({
+              label:node.getAttribute('aria-label'),href:node.getAttribute('href')
+            })));
+            assert.deepEqual(cards,originalCards,'Configured collection labels, destinations and order are preserved exactly');
+          }
+          const expectedPaths=['/collections/casual-wear','/collections/work-wear','/collections/occasional-wear','/collections/ananyas-pick','/collections/ananyas-pick'];
+          assert.deepEqual([...cardPaths].sort(),[...expectedPaths].sort(),'All five crawlable collection destinations remain present');
+          const expectedByLabel=new Map([
+            ['Casual Wear','/collections/casual-wear'],['Work Wear','/collections/work-wear'],
+            ['Occasional Wear','/collections/occasional-wear'],['Ananya’s Pick','/collections/ananyas-pick']
+          ]);
+          for(const card of cards) {
+            const label=card.label?.replace(/^Explore /,'').replace(/ - Photo \d+$/,'');
+            assert.equal(card.href,expectedByLabel.get(label),'Each configured card label keeps its matching destination');
+          }
           assert.equal(await page.locator('.campaign-shop-button').getAttribute('href'),'/collections/all');
           assert.equal(await page.locator('.range-join .text-link').getAttribute('href'),'/collections/all');
           for(const [label,path] of [['Casual Wear','/collections/casual-wear'],['Work Wear','/collections/work-wear'],['Occasional Wear','/collections/occasional-wear'],['Ananya’s Pick','/collections/ananyas-pick'],['Shipping','/shipping'],['Returns & exchanges','/returns'],['Contact HIDI','/contact']]) {
