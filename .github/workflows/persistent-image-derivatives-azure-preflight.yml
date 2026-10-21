@@ -1,21 +1,8 @@
 name: Persistent image derivatives Azure preflight
+# Azure federation is intentionally restricted to migration/azure-sql-blob.
+# Use the authorized persistent-image-derivatives-azure-bridge workflow there.
 on:
-  push:
-    branches: [feature/persistent-image-derivatives-v2-20261021]
-    paths:
-      - '.github/workflows/persistent-image-derivatives-azure-preflight.yml'
-      - 'apps/web/app/api/admin/inventory/**/images/route.ts'
-      - 'apps/web/lib/azure-blob.ts'
-      - 'apps/web/lib/photo-azure-stream.mjs'
-      - 'apps/web/lib/photo-upload-stream.mjs'
-      - 'apps/web/lib/product-image-derivative-store.*'
-      - 'apps/web/lib/product-image-derivatives.*'
-      - 'apps/web/components/catalog-image.tsx'
-      - 'deploy/collection-speed/images.*'
-      - 'deploy/collection-speed/photo-disk.mjs'
-      - 'deploy/image-derivatives/**'
-      - 'deploy/photo-live/**'
-      - 'deploy/admin-tools/product-delete-storage.mjs'
+  workflow_dispatch:
 permissions:
   contents: read
   id-token: write
