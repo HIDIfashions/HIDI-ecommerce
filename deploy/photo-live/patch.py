@@ -5,8 +5,11 @@ API='apps/api/dist/admin/admin-inventory.service.js'
 PIN_API='d22e01c31343910b570e73ec9ce09d03f6c6312e9bc0684f988182a4c404668d'
 PIN_SERVER='e3bdbf6695088c61cd573a7cd84d33d9a58785a3502fd0d3a319f34793ed454e'
 PIN_IMAGES='4138a628b649d8b8aa94a15a4d8fb910522e5204af5d238f0013f1cc31bdca89'
+PIN_DELETE_STORAGE_BLOB='2eadad3b9a5efef7060241d4af48862275aa7af5'
 ROOT=Path(__file__).resolve().parents[2]
 def digest(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+def git_blob(p):
+    data=Path(p).read_bytes();return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\\0'+data).hexdigest()
 def once(s,a,b):
     assert s.count(a)==1,'Expected one photo anchor: '+a[:100]
     return s.replace(a,b,1)
@@ -26,6 +29,7 @@ def patch(base,overlay,app):
     assert app=='web'
     assert digest(base/'server.mjs')==PIN_SERVER,'Live storefront wrapper changed: explicit review is required'
     assert digest(base/'product-images/images.mjs')==PIN_IMAGES,'Live image processor changed: explicit review is required'
+    assert git_blob(base/'admin-tools/product-delete-storage.mjs')==PIN_DELETE_STORAGE_BLOB,'Live product photo deletion storage changed: explicit review is required'
     tree=base/'apps/web/.next'
     original={p.relative_to(base).as_posix():p.read_text() for p in tree.rglob('*') if p.is_file() and not p.is_symlink() and p.suffix in {'.js','.json','.html','.rsc','.meta'}}
     semantic={};counts={'numeric':0,'labels':0}
@@ -74,6 +78,7 @@ def patch(base,overlay,app):
         t=t.replace('each photo: at most 12 MB','photos: no fixed MB cap').replace('each at most 12 MB','no fixed photo MB cap')
         assert t!=s,'Expected photo-only change in '+name
         write(overlay,name,t)
+    shutil.copyfile(ROOT/'deploy/admin-tools/product-delete-storage.mjs',overlay/'admin-tools/product-delete-storage.mjs')
     server=(base/'server.mjs').read_text()
     anchor='import { createProductImageHandler } from "./product-images/images.mjs";'
     server=once(server,anchor,anchor+'\nimport { handlePhotoUpload } from "./photo-stream/handler.mjs";')
