@@ -10,6 +10,7 @@ export async function probe(base,mode='candidate',routePatch){
  console.log('Checking',engine,width,preset);const context=await browser.newContext({viewport:{width,height:1100}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await context.addInitScript(({details})=>{localStorage.setItem('hidi.price-tags.business-details.v1',JSON.stringify(details));window.print=()=>{};},{details});
  await context.route('**/*',route=>new URL(route.request().url()).origin!==new URL(base).origin?route.abort():route.continue());
+ await context.route('**/admin/**',route=>new URL(route.request().url()).searchParams.has('_rsc')?route.fulfill({status:204,body:''}):route.continue());
  await context.route('**/api/admin/**',async route=>{assert.equal(route.request().method(),'GET','No production mutations');const path=new URL(route.request().url()).pathname;let data;
  if(path==='/api/admin/session')data={admin:{id:'preview-owner',displayName:'Preview',email:'preview@example.test',role:'OWNER'}};
  else if(path.includes('/price-tags'))data={items:[item],total:1,productCount:1,totalOnHand:1,truncated:false};
