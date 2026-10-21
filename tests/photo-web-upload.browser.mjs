@@ -90,7 +90,7 @@ try{
  child.stdout.on('data',b=>log+=b);child.stderr.on('data',b=>log+=b);
  await until(async()=>{if(child.exitCode!==null)throw new Error('Next server exited: '+log);try{return (await fetch(base+'/admin')).ok;}catch{return false;}},'Next fixture startup');
  for(const engine of ['chromium','firefox','webkit']){
-  h.state.metadata=[];h.state.files.clear();h.state.reads=0;h.state.writes=0;h.state.role='OWNER';h.state.authStatus=200;
+  h.state.metadata=[];h.state.files.clear();h.state.reads=0;h.state.writes=0;h.state.derivativeWrites=0;h.state.role='OWNER';h.state.authStatus=200;
   browser=await pw[engine].launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});contexts.push(context);
   await context.addCookies([{name:'hidi_admin_access',value:'fixture-owner',url:base,httpOnly:true,sameSite:'Lax'}]);
   await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
