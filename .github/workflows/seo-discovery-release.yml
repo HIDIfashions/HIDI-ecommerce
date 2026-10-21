@@ -1,4 +1,4 @@
-name: Release HIDI brand SEO with both test origins protected
+name: Release HIDI brand SEO and verified mobile footer clearance
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -14,7 +14,7 @@ jobs:
   release:
     if: github.ref == 'refs/heads/migration/azure-sql-blob'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-seo-discovery-browser/node_modules/playwright/index.mjs
       PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-seo-discovery-browsers
@@ -24,7 +24,7 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/setup-node@v4
         with: {node-version: 24}
-      - name: Check SEO-only patch and release syntax
+      - name: Check reviewed brand SEO and footer-clearance patch
         run: |
           node --check deploy/seo-discovery/probes.mjs
           node --check deploy/seo-discovery/candidate.mjs
@@ -49,7 +49,7 @@ jobs:
           node deploy/seo-discovery/image-discovery-check.mjs
           python3 deploy/seo-discovery/release.py capture
           echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-seo-discovery-private/web/candidate-app" >> "$GITHUB_ENV"
-      - name: Add only the reviewed SEO layer
+      - name: Add only the reviewed brand SEO and footer-clearance layer
         run: python3 deploy/seo-discovery/release.py compose
       - name: Verify SEO metadata and unchanged layouts in twelve browser and viewport combinations
         run: |
