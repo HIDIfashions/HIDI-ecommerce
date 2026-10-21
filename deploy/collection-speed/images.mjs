@@ -216,11 +216,25 @@ export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'
   const fetchDerivative = providedDerivativeFetch || (async path => {
     const signal = AbortSignal.timeout(15000);
     let response;
-    try { response = await fetch(new URL(path,origin), {signal,redirect:'error'}); }
+    try { response = await fetch(new URL(path,origin), {signal,redirect:'error',headers:{Accept:'image/webp'}}); }
     catch { return null; }
-    if (response.status === 404) { await response.body?.cancel().catch(() => {}); return null; }
-    if (!response.ok) { await response.body?.cancel().catch(() => {}); return null; }
-    try { return await boundedBody(response); } catch { return null; }
+    const type=(response.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
+    const declared=response.headers.get('content-length');
+    if (!response.ok || !response.body || type!=='image/webp' ||
+        (declared!==null && (!/^\d+$/.test(declared) || Number(declared)<1 || Number(declared)>10*1024*1024))) {
+      await response.body?.cancel().catch(() => {}); return null;
+    }
+    const reader=response.body.getReader(),parts=[];let count=0;
+    try {
+      for (;;) {
+        const {value,done}=await reader.read();if(done)break;
+        count+=value.byteLength;
+        if(count>10*1024*1024)return null;
+        parts.push(value);
+      }
+    } catch { return null; }
+    finally { await reader.cancel().catch(()=>{}); }
+    return count ? Buffer.concat(parts,count) : null;
   });
   const store = createImageStore({ sharp,fetchSource,cacheDir,seedDir });
   async function resolveImage(spec) {
