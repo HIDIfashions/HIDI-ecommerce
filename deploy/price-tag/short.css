@@ -1,0 +1,11 @@
+
+  .price-tag { padding: 1mm; }
+  .brand { height: 3mm; padding-bottom: .2mm; }
+  .identity { padding: .3mm 0; font-size: 4.5pt; line-height: 1.1; }
+  .product-name { font-size: 5.5pt; }
+  .price-block { padding: .4mm 0 .3mm; }
+  .price-block strong { font-size: 11pt; }
+  .barcode svg { height: 5mm; }
+  
+  .product-meta, .sku, .size-line, .fabric { display: inline; margin: 0 .3mm; font-size: 4.5pt; line-height: 1.05; }
+  .product-name { margin-bottom: .3mm; }

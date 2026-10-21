@@ -4,24 +4,37 @@ HERE=Path(__file__).resolve().parent
 
 def patch_runtime(base,overlay):
  base,overlay=Path(base),Path(overlay);files={};replacements={};patched=[]
- css=(HERE/'square.css').read_text()
+ css=(HERE/'square.css').read_text();shortcss=(HERE/'short.css').read_text()
  for path in (base/'apps/web/.next').rglob('*.js'):
   text=path.read_text(encoding='utf-8')
   if 'Recommended for the complete legal footer' not in text or '@page { size:' not in text:continue
   assert '"50x50"' not in text,'Square option already exists'
-  new,count=re.subn(r'(?="50x90":\{label:)', '"50x50":{label:"50 × 50 mm",width:50,height:50,note:"Compact square tag"},',text)
+  new,count=re.subn(r'(?="50x90":\{label:)', '"50x40":{label:"50 × 40 mm",width:50,height:40,note:"Small label · size without measurements"},"50x50":{label:"50 × 50 mm",width:50,height:50,note:"Compact square tag"},',text)
   assert count==1
   match=re.search(r'@page \{ size: \$\{(\w+)\.width\}',new);assert match
   size=match[1]
   assert new.count('</style></head><body>')==1
-  new=new.replace('</style></head><body>','${'+size+'.height===50?'+json.dumps(css)+':""}</style></head><body>')
+  new=new.replace('</style></head><body>','${'+size+'.height<=50?'+json.dumps(css)+':""}${'+size+'.height===40?'+json.dumps(shortcss)+':""}</style></head><body>')
+  # Short tags retain garment size while detailed measurements stay on larger tags.
+  marker=new.index('return`<article class="price-tag">')
+  start=new.rfind('function(',0,marker);end=new.index('){',start)
+  args=new[start+9:end].split(',');assert len(args)==3
+  new=new[:end]+',hidiShort'+new[end:]
+  call=re.search(r'</article>`}\(([$\w]+)\.item,([$\w]+),([$\w]+)\)',new);assert call
+  new=new.replace(call[0],call[0][:-1]+','+size+'.height===40)')
+  line=re.search(r'<div class="size-line">\$\{([$\w]+)\(([$\w]+)\)\}</div>',new);assert line
+  new=new.replace(line[0],'<div class="size-line">${'+line[1]+'(hidiShort?"Size "+'+args[0]+'.size:'+line[2]+')}</div>')
   # The preview receives the selected preset, including its exact aspect ratio.
   preview=re.search(r'function ([$\w]+)\(\{item:(\w+),details:(\w+)\}\)',new);assert preview
   func,item,details=preview.groups()
+  previewStart=preview.start();previewEnd=new.index('.previewTag',previewStart)
+  prefix=new[previewStart:previewEnd]
+  prefix,count=re.subn(r'(let [$\w]+=)([$\w]+\('+re.escape(item)+r'\));return',r'\1hidiPreset==="50x40"?[]:\2;return',prefix);assert count==1
+  new=new[:previewStart]+prefix+new[previewEnd:]
   new=new.replace(preview[0],preview[0].replace('details:'+details,'details:'+details+',preset:hidiPreset'))
   tag=re.search(r'className:([^,}]+\.previewTag),children:',new);assert tag
   # Width is 50mm for square; other preset previews keep their established layout.
-  new=new.replace(tag[0],tag[0].replace(',children:',',"data-square":hidiPreset==="50x50",style:{aspectRatio:hidiPreset==="50x50"?"1 / 1":hidiPreset==="50x80"?"5 / 8":hidiPreset==="60x100"?"3 / 5":"5 / 9"},children:'))
+  new=new.replace(tag[0],tag[0].replace(',children:',',"data-square":(hidiPreset==="50x50"||hidiPreset==="50x40"),style:{aspectRatio:hidiPreset==="50x40"?"5 / 4":hidiPreset==="50x50"?"1 / 1":hidiPreset==="50x80"?"5 / 8":hidiPreset==="60x100"?"3 / 5":"5 / 9"},children:'))
   call=re.search(re.escape(func)+r',\{item:([^,}]+),details:([^,}]+)\}',new);assert call
   # Locate the current preset in the live preview heading.
   current=re.findall(r'children:[$\w]+\[([$\w]+)\]\.label',new);assert current
@@ -57,7 +70,7 @@ def patch_runtime(base,overlay):
    preview=re.search(r'\(0,([$\w]+)\.jsxs\)\("div",\{className:[^,]+\.previewTag',content);assert preview
    alias=preview[1]
    anchor='},children:['
-   start=content.index('"data-square":hidiPreset')
+   start=content.index('"data-square":')
    pos=content.index(anchor,start)+len(anchor)
    files[name]=content[:pos]+'(0,'+alias+'.jsx)("style",{children:'+json.dumps(extra)+'}),'+content[pos:]
  for name,text in files.items():

@@ -11,7 +11,7 @@ import styles from "./price-tags.module.css";
 
 type StockFilter = "ALL" | "IN_STOCK";
 type ProductFilter = "ALL" | "DRAFT" | "ACTIVE" | "ARCHIVED";
-type PresetKey = "50x50" | "50x90" | "50x80" | "60x100";
+type PresetKey = "50x40" | "50x50" | "50x90" | "50x80" | "60x100";
 type PrintLine = { item: PriceTagVariant; quantity: number };
 type BusinessDetails = {
   legalName: string;
@@ -43,6 +43,7 @@ const DEFAULT_DETAILS: BusinessDetails = {
   countryOfOrigin: "India",
 };
 const PRESETS: Record<PresetKey, { label: string; width: number; height: number; note: string }> = {
+  "50x40": { label: "50 × 40 mm", width: 50, height: 40, note: "Small label · size without measurements" },
   "50x50": { label: "50 × 50 mm", width: 50, height: 50, note: "Compact square tag" },
   "50x90": { label: "50 × 90 mm", width: 50, height: 90, note: "Recommended for the complete legal footer" },
   "50x80": { label: "50 × 80 mm", width: 50, height: 80, note: "Compact swing tag" },
@@ -111,8 +112,8 @@ function barcodeMarkup(value: string) {
   return `<svg viewBox="0 0 ${encoded.width} ${encoded.height}" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true">${bars}</svg>`;
 }
 
-function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: string) {
-  const metric = measurements(item);
+function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: string, short = false) {
+  const metric = short ? [] : measurements(item);
   const sizeLine = [`Size ${item.size}`, ...metric].join(" · ");
   const fabric = compactText(item.fabric, 62);
   const care = compactText(item.care, 78) || "Refer to the sewn-in care label";
@@ -146,10 +147,10 @@ function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: s
 function printDocument(lines: PrintLine[], details: BusinessDetails, presetKey: PresetKey, logoUrl: string) {
   const preset = PRESETS[presetKey];
   const compact = preset.height <= 80;
-  const square = presetKey === "50x50";
+  const square = preset.height <= 50;
   const labels: string[] = [];
   for (const line of lines) {
-    const label = labelMarkup(line.item, details, logoUrl);
+    const label = labelMarkup(line.item, details, logoUrl, preset.height === 40);
     for (let copy = 0; copy < line.quantity; copy++) labels.push(label);
   }
   return `<!doctype html>
@@ -193,6 +194,18 @@ ${square ? `
   .barcode div { font-size: 4.5pt; margin-top: .2mm; }
   .legal { padding-top: .4mm; font-size: 4pt; line-height: 1.1; overflow-wrap: anywhere; }
   .legal div + div { margin-top: .15mm; }
+  ` : ""}
+${preset.height === 40 ? `
+  .price-tag { padding: 1mm; }
+  .brand { height: 3mm; padding-bottom: .2mm; }
+  .identity { padding: .3mm 0; font-size: 4.5pt; line-height: 1.1; }
+  .product-name { font-size: 5.5pt; }
+  .price-block { padding: .4mm 0 .3mm; }
+  .price-block strong { font-size: 11pt; }
+  .barcode svg { height: 5mm; }
+  .product-meta, .sku, .size-line, .fabric { display: inline; margin: 0 .3mm; font-size: 4.5pt; line-height: 1.05; }
+  .product-name { margin-bottom: .3mm; }
+
   ` : ""}
 </style></head><body>${labels.join("")}</body></html>`;
 }
@@ -249,8 +262,8 @@ function BarcodeSvg({ value }: { value: string }) {
 
 function TagPreview({ item, details, preset }: { item: PriceTagVariant | undefined; details: BusinessDetails; preset: PresetKey }) {
   if (!item) return <div className={styles.previewEmpty}>Choose a product or load in-stock SKUs to preview the tag.</div>;
-  const metric = measurements(item);
-  return <div className={styles.previewTag} data-square={preset === "50x50"} style={{ aspectRatio: `${PRESETS[preset].width} / ${PRESETS[preset].height}` }}>
+  const metric = preset === "50x40" ? [] : measurements(item);
+  return <div className={styles.previewTag} data-square={preset === "50x50" || preset === "50x40"} style={{ aspectRatio: `${PRESETS[preset].width} / ${PRESETS[preset].height}` }}>
     <img src="/brand/hidi-logo-price-tag.svg" alt="HIDI — Wear the Feeling" />
     <div className={styles.previewIdentity}>
       <strong>{item.productName}</strong>
