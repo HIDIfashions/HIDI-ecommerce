@@ -4,21 +4,25 @@ HERE=Path(__file__).resolve().parent
 
 def patch_runtime(base,overlay):
  base,overlay=Path(base),Path(overlay);files={};replacements={};patched=[]
- css=(HERE/'fit.css').read_text()
+ css=(HERE/'logo-address.css').read_text()
  fit=(HERE.parent.parent/'apps/web/lib/price-tag-fit.mjs').read_text().replace('export function','function',1)
+ svg=(HERE.parent.parent/'apps/web/public/brand/hidi-logo-price-tag.svg').read_text().strip()
  for path in (base/'apps/web/.next').rglob('*.js'):
   text=path.read_text(encoding='utf-8')
-  if '"40x50":{label:' not in text or '<div class="sku">SKU' in text:continue
-  assert 'tag-content' not in text, 'Already fitted'
-  new=text.replace('<article class="price-tag">','<article class="price-tag"><div class="tag-content">').replace('</article>`}', '</div></article>`}')
-  assert new.count('class="tag-content"')==1
+  if 'function fitPriceTagDocument(doc)' not in text:continue
+  assert 'postal-address' not in text, 'Already updated'
+  new,count=re.subn(r'<header class="brand"><img src="\$\{[^}]+\}" alt="HIDI"></header>',lambda _: '<header class="brand">'+svg+'</header>',text);assert count==1
+  # The address immediately follows the marketed-by row.
+  marker=new.index('<b>Marketed by:</b>');address=re.search(r'<div>\$\{([$\w]+)\}</div>',new[marker:]);assert address
+  start=marker+address.start();end=marker+address.end()
+  new=new[:start]+address[0].replace('<div>','<div class="postal-address">')+new[end:]
   new=new.replace('</style></head><body>',css+'</style></head><body>')
-  document=re.search(r'([$\w]+)=[$\w]+\.contentDocument',new);assert document
-  hook=re.search(r'await new Promise\(([$\w]+)=>window\.requestAnimationFrame\(\(\)=>\1\(\)\)\);',new);assert hook
-  new=new[:hook.end()]+'('+fit+')('+document[1]+');'+new[hook.end():]
-  start=new.index('preset:hidiPreset');end=new.index('function ',start+20);section=new[start:end]
-  section,count=re.subn(r'("strong",\{)(children:[$\w]+\.productName)',r'\1style:{fontSize:"8px",lineHeight:1.1},\2',section,count=1);assert count==1
-  new=new[:start]+section+new[end:]
+  start=new.index('function fitPriceTagDocument(doc)');brace=new.index('{',start);depth=1;end=brace+1
+  while depth:
+   if new[end]=='{':depth+=1
+   elif new[end]=='}':depth-=1
+   end+=1
+  new=new[:start]+fit.strip()+new[end:]
   name=path.relative_to(base).as_posix()
   if '/static/' in name:
    newname=re.sub(r'-[a-f0-9]{16}\.js$', '-'+hashlib.sha256(new.encode()).hexdigest()[:16]+'.js',name);assert newname!=name

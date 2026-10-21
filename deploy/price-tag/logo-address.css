@@ -1,0 +1,4 @@
+.tag-content .brand { height: 5.5mm !important; min-height: 5.5mm; padding-bottom: .5mm; }
+.tag-content .brand svg { display: block; width: 22mm; height: 4.5mm; fill: #000; }
+.price-tag { padding-top: 2mm !important; }
+.postal-address { line-height: 1.15; }

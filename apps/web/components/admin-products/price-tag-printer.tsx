@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { productApi } from "@/lib/admin-products-client";
 import type { PriceTagList, PriceTagVariant } from "@/lib/admin-products-contract";
+import { priceTagLogo } from "@/lib/price-tag-logo.mjs";
 import { fitPriceTagDocument } from "@/lib/price-tag-fit.mjs";
 import { encodeCode128B } from "@/lib/code128";
 import base from "./products.module.css";
@@ -114,7 +115,7 @@ function barcodeMarkup(value: string) {
   return `<svg viewBox="0 0 ${encoded.width} ${encoded.height}" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true">${bars}</svg>`;
 }
 
-function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: string, short = false) {
+function labelMarkup(item: PriceTagVariant, details: BusinessDetails, short = false) {
   const metric = short ? [] : measurements(item);
   const sizeLine = [`Size ${item.size}`, ...metric].join(" · ");
   const fabric = compactText(item.fabric, 62);
@@ -122,7 +123,7 @@ function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: s
   const address = escapeHtml(details.address).replace(/\r?\n/g, "<br>");
   const website = details.website.trim() ? `<div class="website">${escapeHtml(details.website.trim())}</div>` : "";
   return `<article class="price-tag"><div class="tag-content">
-    <header class="brand"><img src="${escapeHtml(logoUrl)}" alt="HIDI"></header>
+    <header class="brand">${priceTagLogo}</header>
     <section class="identity">
       <div class="product-name">${escapeHtml(item.productName)}</div>
       <div class="product-meta">${escapeHtml(item.category ?? "HIDI Womenswear")} · ${escapeHtml(item.color)}</div>
@@ -136,7 +137,7 @@ function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: s
     <section class="barcode">${barcodeMarkup(item.barcode)}<div>${escapeHtml(item.barcode)}</div></section>
     <section class="legal">
       <div><b>Marketed by:</b> ${escapeHtml(details.legalName.trim())}</div>
-      <div>${address}</div>
+      <div class="postal-address">${address}</div>
       <div><b>Country of origin:</b> ${escapeHtml(details.countryOfOrigin.trim())}</div>
       <div><b>Consumer care:</b> ${escapeHtml(details.consumerCareEmail.trim())} · ${escapeHtml(details.consumerCarePhone.trim())}</div>
       <div><b>Care:</b> ${escapeHtml(care)}</div>
@@ -145,13 +146,13 @@ function labelMarkup(item: PriceTagVariant, details: BusinessDetails, logoUrl: s
   </div></article>`;
 }
 
-function printDocument(lines: PrintLine[], details: BusinessDetails, presetKey: PresetKey, logoUrl: string) {
+function printDocument(lines: PrintLine[], details: BusinessDetails, presetKey: PresetKey) {
   const preset = PRESETS[presetKey];
   const compact = preset.height <= 80;
   const square = preset.height <= 50;
   const labels: string[] = [];
   for (const line of lines) {
-    const label = labelMarkup(line.item, details, logoUrl, preset.height === 40 || preset.width === 40);
+    const label = labelMarkup(line.item, details, preset.height === 40 || preset.width === 40);
     for (let copy = 0; copy < line.quantity; copy++) labels.push(label);
   }
   return `<!doctype html>
@@ -213,6 +214,10 @@ ${preset.height === 40 ? `
 .tag-content { display: flex; flex-direction: column; width: 100%; height: auto; flex: 0 0 auto; }
 .tag-content .product-name { font-size: 4.5pt !important; line-height: 1.1; overflow-wrap: anywhere; }
 .tag-content .legal { flex: 0 0 auto; overflow: visible; }
+.tag-content .brand { height: 5.5mm !important; min-height: 5.5mm; padding-bottom: .5mm; }
+.tag-content .brand svg { display: block; width: 22mm; height: 4.5mm; fill: #000; }
+.price-tag { padding-top: 2mm !important; }
+.postal-address { line-height: 1.15; }
 </style></head><body>${labels.join("")}</body></html>`;
 }
 
@@ -419,7 +424,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
     const legal = validateBusiness(details);
     if (legal.length) throw new Error(`Complete the saved tag details before printing: ${legal.join(", ")}.`);
     if (total > 1000 && !window.confirm(`This will send ${total.toLocaleString("en-IN")} individual tags to the printer. Continue?`)) return;
-    const html = printDocument(lines, details, preset, `${window.location.origin}/brand/hidi-logo-price-tag.svg`);
+    const html = printDocument(lines, details, preset);
     await printInFrame(html);
     setSuccess(`${label}: ${total.toLocaleString("en-IN")} tag${total === 1 ? "" : "s"} prepared. In the print dialog use 100% / Actual size, no margins, and disable headers and footers.`);
   }
