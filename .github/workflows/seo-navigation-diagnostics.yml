@@ -1,0 +1,44 @@
+name: Diagnose retained product-link activation without deployment
+
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths:
+      - deploy/seo-discovery/navigation-diagnostics.mjs
+      - .github/workflows/seo-navigation-diagnostics.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hidi-seo-navigation-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-seo-navigation-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-seo-navigation-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Check diagnostic syntax
+        run: node --check deploy/seo-discovery/navigation-diagnostics.mjs
+      - name: Install isolated Chromium diagnostic tools
+        run: |
+          npm install --prefix /tmp/hidi-seo-navigation-browser --no-save playwright@1.56.1
+          node /tmp/hidi-seo-navigation-browser/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Record product-link activation on the restored live storefront
+        run: timeout --signal=TERM --kill-after=1m 12m node deploy/seo-discovery/navigation-diagnostics.mjs https://hidiindia.com evidence/seo-navigation-diagnostics
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seo-navigation-diagnostics-${{ github.run_id }}
+          path: evidence/seo-navigation-diagnostics
+          if-no-files-found: error
+          retention-days: 30
