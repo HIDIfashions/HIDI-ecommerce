@@ -30,9 +30,11 @@ jobs:
           node --check deploy/seo-discovery/candidate.mjs
           node --check deploy/seo-discovery/image-discovery-check.mjs
           node --check deploy/seo-foundation/browser.mjs
-          node --test deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs deploy/seo-product-facts/sitemap-summary.test.mjs
+          node --test tests/storefront-surfaces.test.cjs deploy/seo-discovery/collection-body-delta.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-discovery/privacy-store-fixture.test.mjs deploy/seo-discovery/crawler-document.test.mjs deploy/seo-foundation/links.test.mjs deploy/seo-product-facts/sitemap-summary.test.mjs
+          python3 deploy/seo-discovery/test_body_preservation.py
+          python3 deploy/seo-discovery/test_collection_intro.py
           python3 tests/photo-upload-release.test.py
-          python3 -m py_compile deploy/seo-discovery/patch-runtime.py deploy/seo-discovery/release.py deploy/seo-foundation/patch-runtime.py
+          python3 -m py_compile deploy/seo-discovery/body-preservation.py deploy/seo-discovery/patch-runtime.py deploy/seo-discovery/release.py deploy/seo-discovery/test_collection_intro.py deploy/seo-foundation/patch-runtime.py
       - name: Install exact OCI backup tooling
         run: sudo apt-get update -qq && sudo apt-get install -y skopeo
       - name: Install desktop and mobile browser test engines
@@ -81,7 +83,9 @@ jobs:
       - name: Recover an interrupted owned rollout
         if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
         timeout-minutes: 15
-        run: python3 deploy/seo-discovery/release.py recover --image "$WEB_IMAGE"
+        run: |
+          python3 deploy/seo-discovery/release.py recover --image "$WEB_IMAGE"
+          node deploy/seo-discovery/image-discovery-check.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
