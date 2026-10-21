@@ -18,7 +18,8 @@ export function foundationReadKind(request) {
   const url=new URL(request.url());
   if(url.pathname.startsWith('/api/store/carts/'))return 'blocking';
   if(!url.searchParams.has('_rsc'))return;
-  return request.headers()['next-router-prefetch']?'prefetch':'blocking';
+  const headers=request.headers();
+  return headers['next-router-prefetch']||headers['next-router-segment-prefetch']?'prefetch':'blocking';
 }
 
 export function trackFoundationReads(page) {
@@ -66,7 +67,9 @@ export async function foundationProbe(base,output,{baseline}={}) {
             assert.equal(state.prefetchFailures.size,0,'Next prefetch failed: '+[...state.prefetchFailures].map(([request,status])=>request.url()+' ('+status+')').join(', '));
             quiet=state.pending.size||state.prefetch.size?0:quiet+50;if(quiet>=500)return;
           }
-          assert.fail('Cart/navigation reads or prefetch responses did not settle: '+[...state.pending,...state.prefetch].map(request=>request.url()).join(', '));
+          assert.fail('Cart/navigation reads or prefetch responses did not settle: '+[...state.pending,...state.prefetch].map(request=>{
+            const headers=request.headers();return request.url()+` [prefetch=${headers['next-router-prefetch']||''}, segment=${headers['next-router-segment-prefetch']||''}]`;
+          }).join(', '));
         };
         page.setDefaultTimeout(30000);prior?.setDefaultTimeout(30000);
         const prepare=async(p,url)=>{
