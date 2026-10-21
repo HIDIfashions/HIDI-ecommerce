@@ -23,49 +23,15 @@ export function foundationReadKind(request) {
 }
 
 export function trackFoundationReads(page) {
-  const state={pending:new Set(),declaredPrefetches:0,prefetchWindowOpen:false,prefetchWindowRequests:new Set(),prefetchWindowFailedRequests:new Set(),prefetchWindowDeclaredUrls:new Set(),prefetchWindowFailedUrls:new Set(),routeChangeDeclaredPrefetches:new Set()};
+  const state={pending:new Set(),declaredPrefetches:0};
   page.on('request',request=>{
     const kind=foundationReadKind(request);
-    if(kind==='prefetch') {
-      state.declaredPrefetches++;
-      if(state.prefetchWindowOpen&&new URL(request.frame().url()).pathname===state.prefetchWindowSourcePath)state.prefetchWindowRequests.add(request);
-    }
+    if(kind==='prefetch')state.declaredPrefetches++;
     else if(kind==='blocking')state.pending.add(request);
   });
   page.on('requestfinished',request=>state.pending.delete(request));
-  page.on('requestfailed',request=>{
-    state.pending.delete(request);
-    if(state.prefetchWindowOpen&&state.prefetchWindowRequests.has(request))state.prefetchWindowFailedRequests.add(request);
-  });
+  page.on('requestfailed',request=>state.pending.delete(request));
   return state;
-}
-
-export function beginDeclaredPrefetchWindow(state,sourcePath) {
-  assert(sourcePath?.startsWith('/'),'Declared-prefetch source path must be absolute');
-  state.prefetchWindowOpen=true;
-  state.prefetchWindowSourcePath=sourcePath;
-  state.prefetchWindowRequests=new Set();
-  state.prefetchWindowFailedRequests=new Set();
-  state.prefetchWindowDeclaredUrls=new Set();
-  state.prefetchWindowFailedUrls=new Set();
-  state.routeChangeDeclaredPrefetches=new Set();
-}
-
-export function routeChangeDeclaredPrefetchErrorUrl(message,index,state,errorStartIndex) {
-  if(index<errorStartIndex)return;
-  const match=/^Fetch API cannot load (.+) due to access control checks\.$/.exec(String(message));
-  if(!match)return;
-  const url=match[1].replace(/^(https?):\s+\/(?!\/)/i,'$1://');
-  if(state.routeChangeDeclaredPrefetches.has(url))return url;
-}
-
-export function snapshotDeclaredPrefetchWindow(state) {
-  assert.equal(state.prefetchWindowOpen,true,'Declared-prefetch collection window must be open before route change');
-  state.prefetchWindowOpen=false;
-  state.prefetchWindowDeclaredUrls=new Set([...state.prefetchWindowRequests].map(request=>request.url()));
-  state.prefetchWindowFailedUrls=new Set([...state.prefetchWindowFailedRequests].map(request=>request.url()));
-  state.routeChangeDeclaredPrefetches=new Set([...state.prefetchWindowDeclaredUrls].filter(url=>!state.prefetchWindowFailedUrls.has(url)));
-  return state.routeChangeDeclaredPrefetches;
 }
 
 export async function foundationProbe(base,output,{baseline}={}) {
@@ -90,6 +56,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
           return route.continue();
         });
         const page=await context.newPage(),prior=baseline?await context.newPage():null;
+        let aboutPage=null,priorAbout=null;
         const errors=[];page.on('pageerror',error=>errors.push(String(error)));
         const reads=new Map();
         for(const p of [page,...(prior?[prior]:[])]) {
@@ -180,7 +147,6 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await page.locator('a.hidi-collection-link').first().focus();
           assert.equal(await page.locator('a.hidi-collection-link').first().getAttribute('tabindex'),'0','Carousel retains focus eligibility');
           await captureScreenshot(page,{path:`${output}/${engine}-${width}-home.png`});
-          beginDeclaredPrefetchWindow(reads.get(page),'/collections/all');
           const shop=page.locator('.campaign-shop-button');await shop.focus();
           await Promise.all([page.waitForURL('**/collections/all',{waitUntil:'domcontentloaded'}),shop.press('Space')]);
           assert.equal(await page.locator('main article h3 a').count()>0,true,'Existing Shop Now navigation remains functional');
@@ -201,42 +167,43 @@ export async function foundationProbe(base,output,{baseline}={}) {
               };
             },aboutMarker);
           };
-          const routeChangeErrorStartIndex=errors.length;
-          snapshotDeclaredPrefetchWindow(reads.get(page));
+          // Keep the collection document alive while About is verified. Replacing it
+          // with page.goto() makes WebKit cancel Next's completed product RSC
+          // destination streams and report test-induced Fetch API pageerrors.
+          aboutPage=await context.newPage();aboutPage.on('pageerror',error=>errors.push(String(error)));
+          reads.set(aboutPage,trackFoundationReads(aboutPage));aboutPage.setDefaultTimeout(30000);
+          if(prior) {
+            priorAbout=await context.newPage();reads.set(priorAbout,trackFoundationReads(priorAbout));priorAbout.setDefaultTimeout(30000);
+          }
           const aboutResponses=await Promise.all([
-            page.goto(base+'/about',{waitUntil:'domcontentloaded'}),
-            ...(prior?[prior.goto(baseline+'/about',{waitUntil:'domcontentloaded'})]:[])
+            aboutPage.goto(base+'/about',{waitUntil:'domcontentloaded'}),
+            ...(priorAbout?[priorAbout.goto(baseline+'/about',{waitUntil:'domcontentloaded'})]:[])
           ]);
           for(const response of aboutResponses)assert.equal(response?.status(),200,'About page remains available');
-          const about=await readAbout(page);
-          if(prior)assert.deepEqual(about,await readAbout(prior),'About copy and destinations match the current Next page exactly');
+          const about=await readAbout(aboutPage);
+          if(priorAbout)assert.deepEqual(about,await readAbout(priorAbout),'About copy and destinations match the current Next page exactly');
           assert.equal(about.heading,'Considered clothing. A clear point of view.','Current About heading remains intact');
           assert.equal(about.introduction,expectedIntroduction,'Visible About association is factual and present');
           for(const [text,href] of [['Explore HIDI','/collections/all'],['Talk to our team ↗','/contact'],['Read our returns policy ↗','/returns']]) {
             assert(about.links.some(link=>link.text===text&&link.href===href),`${text} keeps its current destination`);
           }
-          await page.reload({waitUntil:'domcontentloaded'});
-          assert.deepEqual(await readAbout(page),about,'About semantics survive rendering and reload');
-          await captureScreenshot(page,{path:`${output}/${engine}-${width}-about.png`});
+          await aboutPage.reload({waitUntil:'domcontentloaded'});
+          assert.deepEqual(await readAbout(aboutPage),about,'About semantics survive rendering and reload');
+          assert.equal(new URL(page.url()).pathname,'/collections/all','Collection remains open while isolated About semantics are verified');
+          await captureScreenshot(aboutPage,{path:`${output}/${engine}-${width}-about.png`});
           const readState=reads.get(page);
-          const ignoredPrefetchErrors=engine==='webkit'?errors.map((message,index)=>({message,index,url:routeChangeDeclaredPrefetchErrorUrl(message,index,readState,routeChangeErrorStartIndex)})).filter(value=>value.url):[];
-          const ignoredPrefetchErrorIndexes=new Set(ignoredPrefetchErrors.map(value=>value.index));
-          const blocking=errors.filter((error,index)=>!error.includes('Minified React error #418;')&&!ignoredPrefetchErrorIndexes.has(index));
+          const blocking=errors.filter(error=>!error.includes('Minified React error #418;'));
           assert.deepEqual(blocking,[],'No new shopping or DOM ownership errors');
           results.push({engine,width,height,passed:true,appearancePreserved:!!prior,crawlablePublicDestinations:true,carouselKeyboardPreserved:true,spaceActivationPreserved:true,aboutCopyVerified:true,
-            declaredNextPrefetches:readState.declaredPrefetches,prefetchWindowSourcePath:readState.prefetchWindowSourcePath,prefetchWindowDeclaredUrls:[...readState.prefetchWindowDeclaredUrls],
-            prefetchWindowFailedUrls:[...readState.prefetchWindowFailedUrls],routeChangeDeclaredPrefetches:[...readState.routeChangeDeclaredPrefetches],
-            routeChangePageErrorStartIndex:routeChangeErrorStartIndex,ignoredRouteChangeDeclaredPrefetchErrors:ignoredPrefetchErrors,
+            collectionRetainedWhileAboutVerified:true,declaredNextPrefetches:readState.declaredPrefetches,
+            aboutDeclaredNextPrefetches:reads.get(aboutPage).declaredPrefetches,
             baselineDeclaredNextPrefetches:prior?reads.get(prior).declaredPrefetches:null});
           console.log(`PASS: SEO foundation ${engine} ${width}x${height}: crawlable links, retained controls, About association`);
         } catch(error) {
-          await captureScreenshot(page,{path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});
-          await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({message:String(error),url:page.url(),errors,
+          await captureScreenshot(aboutPage||page,{path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});
+          await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({message:String(error),url:page.url(),aboutUrl:aboutPage?.url()||null,errors,
             declaredNextPrefetches:reads.get(page).declaredPrefetches,
-            prefetchWindowSourcePath:reads.get(page).prefetchWindowSourcePath,
-            prefetchWindowDeclaredUrls:[...reads.get(page).prefetchWindowDeclaredUrls],
-            prefetchWindowFailedUrls:[...reads.get(page).prefetchWindowFailedUrls],
-            routeChangeDeclaredPrefetches:[...reads.get(page).routeChangeDeclaredPrefetches],
+            aboutDeclaredNextPrefetches:aboutPage?reads.get(aboutPage).declaredPrefetches:null,
             baselineDeclaredNextPrefetches:prior?reads.get(prior).declaredPrefetches:null},null,2));throw error;
         } finally {await context.close();}
       }
