@@ -137,8 +137,8 @@ try:
  logs()
  assert status=='Succeeded','Real Azure storage job did not succeed: '+status
  details=report.get('details')
- assert isinstance(details,dict) and details.get('run')==run and details.get('passed') is True and details.get('deleted') is True and details.get('originalUnchanged') is True and details.get('sourceBytes',0)>40*1024*1024,'Original integrity, large source and cleanup evidence must pass'
- report.update({'passed':True,'sourceExceeds40MiB':True,'sourceHashVerified':True,'temporaryBlobDeleted':True,'memoryLimit':'1Gi','cpuLimit':0.5,'identitySource':'captured web configuration','registryRoleGrants':0})
+ assert isinstance(details,dict) and details.get('run')==run and details.get('passed') is True and details.get('deleted') is True and details.get('derivativesDeleted') is True and details.get('derivativesCreated')==6 and details.get('originalUnchanged') is True and details.get('sourceBytes',0)>40*1024*1024,'Original integrity, six persistent derivatives and cleanup evidence must pass'
+ report.update({'passed':True,'sourceExceeds40MiB':True,'sourceHashVerified':True,'temporaryBlobDeleted':True,'persistentDerivativesVerified':6,'persistentDerivativesDeleted':True,'memoryLimit':'1Gi','cpuLimit':0.5,'identitySource':'captured web configuration','registryRoleGrants':0})
 except Exception as error:
  report['passed']=False;report['error']=str(error)
 finally:
