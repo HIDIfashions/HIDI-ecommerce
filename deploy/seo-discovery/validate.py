@@ -7,6 +7,7 @@ def load(name,path):
 
 images=load('images',Path('deploy/compose-msg91-images.py'))
 patcher=load('seo_patch',Path('deploy/seo-discovery/patch-runtime.py'))
+evidence_guard=load('seo_candidate_evidence',Path('deploy/seo-discovery/evidence.py'))
 subprocess.run(['node','--test','tests/storefront-surfaces.test.cjs','deploy/seo-discovery/collection-body-delta.test.mjs'],check=True)
 subprocess.run(['python3','deploy/seo-discovery/test_collection_intro.py'],check=True)
 data=json.loads(subprocess.check_output(['az','containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--only-show-errors','-o','json'],text=True))
@@ -27,6 +28,7 @@ subprocess.run(['node','--test','deploy/seo-product-facts/sitemap-summary.test.m
 subprocess.run(['python3','deploy/seo-discovery/test_body_preservation.py'],check=True)
 env={**os.environ,'HIDI_CANDIDATE_RUNTIME':str(candidate)}
 subprocess.run(['node','deploy/seo-discovery/candidate.mjs'],env=env,check=True)
+evidence_guard.verify_candidate_evidence(Path('evidence/seo-discovery'))
 current=json.loads(subprocess.check_output(['az','containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--only-show-errors','-o','json'],text=True))
 assert current['properties']['template']==data['properties']['template'],'An independent live rollout occurred during validation'
 report={'passed':True,'changedFiles':sorted(changed),'protectedFilesIdentical':len(before)-len(changed),'image':image,'readOnly':True,'deploymentWrites':0,'databaseWrites':0,'blobWrites':0}

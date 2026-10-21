@@ -251,6 +251,125 @@ async function assertBrandIdentity(page,rawHtml) {
   }
 }
 
+export const CLIENT_NAVIGATION_CASES=Object.freeze([
+  Object.freeze({name:'fresh-immediate-pointer',settled:false,history:false,freshContext:true}),
+  Object.freeze({name:'fresh-settled-pointer',settled:true,history:true,freshContext:true}),
+]);
+const retainedNavigationCase=Object.freeze({name:'retained-context-pointer',settled:false,history:true,freshContext:false});
+
+async function createReadOnlyContext(browser,engine,width,height,base,writes) {
+  const context=await browser.newContext({viewport:{width,height},hasTouch:width<1000,
+    isMobile:engine==='webkit'&&width<1000,reducedMotion:'reduce',extraHTTPHeaders:{'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'}});
+  await context.route('**/*',async route=>{
+    const req=route.request(),url=new URL(req.url());
+    // Synthetic verification must not emit external analytics or commerce writes.
+    if(url.hostname==='static.cloudflareinsights.com')return route.abort();
+    if(!['GET','HEAD'].includes(req.method())) {
+      if(!isBlockedTelemetry(req.method(),req.url(),base))writes.push({method:req.method(),path:url.pathname});
+      return route.abort();
+    }
+    if(req.resourceType()==='media'||/google-analytics|googletagmanager|facebook\.net/.test(url.hostname))return route.abort();
+    return route.continue();
+  });
+  return context;
+}
+
+function observeFrameworkHeadErrors(page,headErrors) {
+  page.on('pageerror',error=>{if(/NotFoundError|removeChild|HierarchyRequestError|Rendered fewer hooks/i.test(String(error)))headErrors.push(String(error));});
+}
+
+async function probeClientNavigation(page,base,scenario,output,filePrefix) {
+  try {
+    const response=await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded',timeout:45000});
+    assert(response?.ok(),'Client-navigation collection document must load');
+    if(scenario.settled) {
+      await assertSearchMetadata(page,'/collections/all');
+      await page.waitForLoadState('load',{timeout:45000});
+      await page.waitForFunction(()=>document.fonts.status==='loaded',null,{timeout:30000});
+      await page.waitForTimeout(1000);
+    } else if(!scenario.freshContext) {
+      await assertSearchMetadata(page,'/collections/all');
+    }
+    const nextProduct=page.locator('main article h3 a').first();
+    await nextProduct.waitFor({state:'visible',timeout:45000});
+    const nextPath=await nextProduct.getAttribute('href');
+    assert(nextPath?.startsWith('/products/'),'Client-navigation target must be a product route');
+    await Promise.all([
+      page.waitForURL(url=>url.pathname===nextPath,{waitUntil:'commit',timeout:45000}),
+      nextProduct.click({noWaitAfter:true,timeout:45000}),
+    ]);
+    await page.waitForFunction(({path,canonical})=>{
+      const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(node=>{
+        try {const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}
+      });
+      const product=values.find(value=>value['@type']==='Product');
+      const robots=document.querySelector('meta[name="robots"]')?.content;
+      return location.pathname===path && document.querySelector('link[rel="canonical"]')?.href===canonical &&
+        !robots?.includes('noindex') && product?.name && document.title===product.name+' | HIDI';
+    },{path:nextPath,canonical:'https://hidiindia.com'+nextPath},{timeout:45000});
+    const navigationSeo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
+    assert.equal(navigationSeo.canonical,'https://hidiindia.com'+nextPath,'Canonical survives client navigation');
+    assert(!navigationSeo.robots?.includes('noindex'),'Public product remains indexable after client navigation');
+    await assertCrawlerDirectives(page,false);
+    const productIdentity=await page.evaluate(()=>{
+      const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(node=>{
+        try {const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}
+      });
+      const product=values.find(value=>value['@type']==='Product');
+      return {title:document.title,name:product?.name,description:product?.description};
+    });
+    assert(productIdentity.name,'Destination product schema remains present');
+    assert.equal(productIdentity.title,productIdentity.name+' | HIDI','Product title belongs to the destination, not the prior collection');
+    const checks=[{page:'client-navigation',path:nextPath,scenario:scenario.name,settled:scenario.settled,
+      freshContext:scenario.freshContext,passed:true,...navigationSeo}];
+    await captureScreenshot(page,{path:`${output}/${filePrefix}-${scenario.name}.png`});
+    if(scenario.history) {
+      await page.goBack({waitUntil:'domcontentloaded',timeout:45000});
+      await assertSearchMetadata(page,'/collections/all');
+      await page.goForward({waitUntil:'domcontentloaded',timeout:45000});
+      if(base.startsWith('http://127.0.0.1')) {
+        // Reproduce the slow live-router case where cached product head nodes
+        // still contain the preceding collection's metadata.
+        await page.evaluate(()=>{document.title='Previous collection';document.head.querySelector('meta[name="description"]').content='Previous collection description';});
+      }
+      await page.waitForFunction(({path,canonical,name})=>{
+        const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(node=>{
+          try {const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}
+        });
+        const product=values.find(value=>value['@type']==='Product');
+        const robots=document.querySelector('meta[name="robots"]')?.content;
+        return location.pathname===path && document.querySelector('link[rel="canonical"]')?.href===canonical &&
+          !robots?.includes('noindex') && product?.name===name && document.title===name+' | HIDI';
+      },{path:nextPath,canonical:'https://hidiindia.com'+nextPath,name:productIdentity.name},{timeout:45000});
+      const restoredProduct=await page.evaluate(()=>{
+        const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(node=>{
+          try {const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}
+        });
+        const product=values.find(value=>value['@type']==='Product');
+        return {canonical:document.querySelector('link[rel="canonical"]')?.href,name:product?.name,description:product?.description};
+      });
+      assert.equal(restoredProduct.canonical,'https://hidiindia.com'+nextPath,'Product canonical survives forward history');
+      assert.equal(restoredProduct.name,productIdentity.name,'Product schema identity survives forward history');
+      assert.equal(restoredProduct.description,productIdentity.description,'Product schema description survives forward history');
+      const restoredDescriptions=await page.locator('meta[name="description"]').evaluateAll(nodes=>nodes.map(node=>node.content));
+      assert(restoredDescriptions.length>0 && restoredDescriptions.every(value=>value===productIdentity.description),'Every retained product description survives cached forward navigation');
+      await assertCrawlerDirectives(page,false);
+      await page.goto(base+'/',{waitUntil:'domcontentloaded',timeout:45000});
+      await page.locator('footer').first().waitFor({timeout:45000});
+      await assertSearchMetadata(page,'/');
+      await page.reload({waitUntil:'domcontentloaded',timeout:45000});
+      await page.locator('footer').first().waitFor({timeout:45000});
+      await assertSearchMetadata(page,'/');
+      checks.push({page:'back-forward-reload-metadata',scenario:scenario.name,freshContext:scenario.freshContext,passed:true});
+    }
+    return checks;
+  } catch(error) {
+    await captureScreenshot(page,{path:`${output}/${filePrefix}-${scenario.name}-failure.png`}).catch(()=>{});
+    await writeFile(`${output}/${filePrefix}-${scenario.name}-failure.txt`,page.url()+'\n'+await page.locator('body').innerText().catch(()=>''));
+    throw error;
+  }
+}
+
 export async function probe(base, output) {
   const seoHeaders={'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'};
   const aliasLive=base.startsWith('https://hidiindia.com');
@@ -282,6 +401,7 @@ export async function probe(base, output) {
   const catalogueResponse=await fetch(base+'/api/store/products',{headers:seoHeaders});
   assert.equal(catalogueResponse.status,200);
   const catalogue=await catalogueResponse.json();
+  const catalogueProductCount=catalogue.filter(product=>!product.status||product.status==='ACTIVE').length;
   const entries=[...xml.matchAll(/<url><loc>(.*?)<\/loc>(.*?)<\/url>/gs)];
   const actual=new Map(entries.map(([,url,body])=>[url,[...body.matchAll(/<image:loc>(.*?)<\/image:loc>/g)].map(m=>m[1])]));
   let imageAssociations=0;
@@ -312,23 +432,10 @@ export async function probe(base, output) {
     try {
       const sizes = [[390,844],[1440,900],...(engine==='webkit'?[[320,568],[620,844],[621,844],[568,320],[844,390],[768,1024]]:[])];
       for (const [width,height] of sizes) {
-        const context = await browser.newContext({viewport:{width,height},hasTouch:width<1000,
-          isMobile:engine==='webkit'&&width<1000,reducedMotion:'reduce',extraHTTPHeaders:{'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'}});
-        await context.route('**/*',async route=>{
-          const req=route.request(),url=new URL(req.url());
-          // Synthetic verification must not emit the newly installed external beacon.
-          // Keep the independent deny-and-record policy for every commerce mutation.
-          if(url.hostname==='static.cloudflareinsights.com')return route.abort();
-          if(!['GET','HEAD'].includes(req.method())) {
-            if(!isBlockedTelemetry(req.method(),req.url(),base))writes.push({method:req.method(),path:url.pathname});
-            return route.abort();
-          }
-          if(req.resourceType()==='media'||/google-analytics|googletagmanager|facebook\.net/.test(url.hostname))return route.abort();
-          return route.continue();
-        });
+        const context = await createReadOnlyContext(browser,engine,width,height,base,writes);
         const page=await context.newPage();page.setDefaultTimeout(45000);
         const headErrors=[];
-        page.on('pageerror',error=>{if(/NotFoundError|removeChild|HierarchyRequestError|Rendered fewer hooks/i.test(String(error)))headErrors.push(String(error));});
+        observeFrameworkHeadErrors(page,headErrors);
         const checks=[];
         try {
           const pages=width===390||width===1440?['home','catalogue','product','bag','checkout']:['catalogue','product'];
@@ -452,48 +559,19 @@ export async function probe(base, output) {
               await assertSearchMetadata(page,path,raw.text);
               checks.push({page:'collection-search-metadata',path,passed:true});
             }
-            await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});
-            await assertSearchMetadata(page,'/collections/all');
-            const nextProduct=page.locator('main article h3 a').first();await nextProduct.waitFor();
-            const nextPath=await nextProduct.getAttribute('href');
-            await Promise.all([
-              page.waitForURL(url=>url.pathname===nextPath,{waitUntil:'commit'}),
-              nextProduct.click({noWaitAfter:true}),
-            ]);
-            await page.waitForTimeout(500);
-            const navigationSeo=await page.evaluate(()=>({canonical:document.querySelector('link[rel=canonical]')?.href,robots:document.querySelector('meta[name=robots]')?.content}));
-            assert.equal(navigationSeo.canonical,'https://hidiindia.com'+nextPath,'Canonical survives client navigation');
-            assert(!navigationSeo.robots?.includes('noindex'),'Public product remains indexable after client navigation');
-            await assertCrawlerDirectives(page,false);
-            const productIdentity=await page.evaluate(()=>{
-              const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(n=>{
-                try {const v=JSON.parse(n.textContent);return Array.isArray(v)?v:(v['@graph']||[v]);}catch{return [];}
-              });
-              const product=values.find(v=>v['@type']==='Product');
-              return {title:document.title,name:product?.name,description:product?.description};
-            });
-            assert(productIdentity.name,'Destination product schema remains present');
-            assert.equal(productIdentity.title,productIdentity.name+' | HIDI','Product title belongs to the destination, not the prior collection');
-            checks.push({page:'client-navigation',path:nextPath,passed:true,...navigationSeo});
-            await page.goBack({waitUntil:'domcontentloaded'});
-            await assertSearchMetadata(page,'/collections/all');
-            await page.goForward({waitUntil:'domcontentloaded'});
-            if(base.startsWith('http://127.0.0.1')) {
-              // Reproduce the slow live-router case where cached product head
-              // nodes still contain the preceding collection's metadata.
-              await page.evaluate(()=>{document.title='Previous collection';document.head.querySelector('meta[name="description"]').content='Previous collection description';});
+            if(engine==='firefox') {
+              for(const scenario of CLIENT_NAVIGATION_CASES) {
+                const navigationContext=await createReadOnlyContext(browser,engine,width,height,base,writes);
+                try {
+                  const navigationPage=await navigationContext.newPage();navigationPage.setDefaultTimeout(45000);
+                  observeFrameworkHeadErrors(navigationPage,headErrors);
+                  checks.push(...await probeClientNavigation(navigationPage,base,scenario,output,`${engine}-${width}-${height}`));
+                }
+                finally {await navigationContext.close();}
+              }
+            } else {
+              checks.push(...await probeClientNavigation(page,base,retainedNavigationCase,output,`${engine}-${width}-${height}`));
             }
-            await page.waitForFunction(name=>document.title===name+' | HIDI',productIdentity.name);
-            const restoredDescriptions=await page.locator('meta[name="description"]').evaluateAll(nodes=>nodes.map(node=>node.content));
-            assert(restoredDescriptions.length>0 && restoredDescriptions.every(value=>value===productIdentity.description),'Every retained product description survives cached forward navigation');
-            await assertCrawlerDirectives(page,false);
-            await page.goto(base+'/',{waitUntil:'domcontentloaded'});
-            await page.locator('footer').first().waitFor();
-            await assertSearchMetadata(page,'/');
-            await page.reload({waitUntil:'domcontentloaded'});
-            await page.locator('footer').first().waitFor();
-            await assertSearchMetadata(page,'/');
-            checks.push({page:'back-forward-reload-metadata',passed:true});
           }
           assert.deepEqual(headErrors,[],'Metadata reconciliation must not break framework DOM ownership');
           results.push({engine,width,height,passed:true,checks});
@@ -509,7 +587,17 @@ export async function probe(base, output) {
   assert.deepEqual(writes,[],'No commerce writes permitted');
   const missing=await fetch(base+'/products/hidi-seo-missing-8f29017',{method:'HEAD',headers:seoHeaders});
   assert.equal(missing.status,404,'Missing product status remains accurate');
+  const allChecks=results.flatMap(result=>result.checks);
+  const clientNavigationChecks=allChecks.filter(check=>check.page==='client-navigation');
+  const historyChecks=allChecks.filter(check=>check.page==='back-forward-reload-metadata');
+  const freshFirefoxChecks=results.filter(result=>result.engine==='firefox').flatMap(result=>result.checks)
+    .filter(check=>check.page==='client-navigation'&&check.freshContext);
   const report={passed:true,engines,results,liveWrites:0,footerLinksAccessible:true,
+    catalogueProductCount,catalogueImageAssociations:imageAssociations,
+    clientNavigationCases:clientNavigationChecks.length,freshFirefoxClientNavigationCases:freshFirefoxChecks.length,
+    immediateFirefoxClientNavigationCases:freshFirefoxChecks.filter(check=>check.scenario==='fresh-immediate-pointer').length,
+    settledFirefoxClientNavigationCases:freshFirefoxChecks.filter(check=>check.scenario==='fresh-settled-pointer').length,
+    backForwardReloadCases:historyChecks.length,
     collectionAllIntroVerified:true,collectionAllBreadcrumbVerified:true,collectionAllExactCopy:true,collectionAllMatrixCases:results.length,
     reviewedCollectionBodyDelta:'/collections/all exact search copy, breadcrumb label, header visibility and intro insertion'};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));

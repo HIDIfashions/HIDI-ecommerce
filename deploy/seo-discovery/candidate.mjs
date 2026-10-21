@@ -8,17 +8,39 @@ import { probe } from './probes.mjs';
 import { foundationProbe } from '../seo-foundation/browser.mjs';
 import { catalogueStatus } from '../pricing/model.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
+import reviewedProductImages from './reviewed-product-image-map.json' with {type:'json'};
 import bodyConfig from './body-preservation-config.json' with {type:'json'};
 import { collectionAllTitle, collectionAllDescription, compareReviewedCollectionBodies, inspectCollectionBody } from './collection-body-delta.mjs';
 
 const root = resolve(process.env.HIDI_CANDIDATE_RUNTIME);
-const products = Array.from({ length: 3 }, (_, i) => ({
-  id: 'bag-fixture-' + i, slug: 'bag-fixture-style-' + i, name: 'Bag catalogue fixture ' + (i + 1),
-  status: 'ACTIVE', description: 'Read-only catalogue fixture.', shortDescription: 'Fixture.', fabric: 'Cotton', care: 'Fixture care',
-  category: { id: 'fixture-category', name: 'Casual Wear', slug: 'casual-wear' }, collections: [], images: [{url:'https://hidiindia.com'+publishedImages[i]}],
-  minPricePaise: 119000, maxPricePaise: 119000, inStock: true,
-  variants: [{ id: 'bag-variant-' + i, sku: 'FIXTURE-BAG-' + i, size: 'M', color: 'Pink', available: 4, pricePaise: 119000, mrpPaise: 140000 }],
-}));
+const categories = [
+  { id: 'fixture-work-wear', name: 'Work Wear', slug: 'work-wear' },
+  { id: 'fixture-casual-wear', name: 'Casual Wear', slug: 'casual-wear' },
+  { id: 'fixture-occasional-wear', name: 'Occasion Wear', slug: 'occasional-wear' },
+  { id: 'fixture-ananyas-pick', name: 'Ananya\u2019s Pick', slug: 'ananyas-pick' },
+];
+const titleFromSlug = slug => slug.replace(/^(?:hidi|kur)-\d+-/, '').split('-')
+  .map(word => word ? word[0].toUpperCase() + word.slice(1) : word).join(' ');
+const products = Object.entries(reviewedProductImages).map(([slug, reviewed], i) => {
+  const category = categories[i % categories.length];
+  const colour = ['Wine', 'Pink', 'Blue', 'Green'][i % 4];
+  return {
+    id: reviewed.id, slug, name: titleFromSlug(slug), status: 'ACTIVE',
+    description: 'Read-only full-catalogue fixture for HIDI women\u2019s Indian wear.', shortDescription: 'Read-only HIDI catalogue fixture.',
+    fabric: 'Cotton blend', care: 'Gentle hand wash', category, collections: [category],
+    images: reviewed.paths.map(url => ({url:'https://hidiindia.com'+url})),
+    minPricePaise: 119000, maxPricePaise: 119000, inStock: true,
+    variants: ['S','M','L','XL'].map((size, variantIndex) => ({
+      id: `${reviewed.id}-${size}`, sku: `FIXTURE-${String(i + 1).padStart(3, '0')}-${size}`,
+      size, color: colour, available: variantIndex + 1, pricePaise: 119000, mrpPaise: 140000,
+    })),
+  };
+});
+const fixtureImagePaths = products.flatMap(product => product.images.map(image => new URL(image.url).pathname));
+assert.equal(products.length, 54, 'Candidate uses every reviewed live product identity');
+assert.equal(fixtureImagePaths.length, 238, 'Candidate uses every reviewed live product image association');
+assert.equal(new Set(fixtureImagePaths).size, 238, 'Candidate image associations are unique');
+assert.deepEqual([...fixtureImagePaths].sort(), [...publishedImages].sort(), 'Candidate image set matches the reviewed live image allowlist');
 assert(catalogueStatus(products).ready, 'Read-only catalogue fixture must retain the live 15% price campaign');
 const reads = [], writes = [];
 const upstream = createServer((req, res) => {
@@ -29,13 +51,17 @@ const upstream = createServer((req, res) => {
   if (path.startsWith('/carts/')) return send(200, { items: [], itemCount: 0, subtotalPaise: 0, shippingPaise: 0, totalPaise: 0 });
   if (path.includes('/reviews')) return send(200, { averageRating: 0, reviewCount: 0, verifiedReviewCount: 0, reviews: [], ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } });
   if (/^\/products(?:\/(featured|best-sellers))?$/.test(path)) {
-    reads.push(url.searchParams.get('category'));
+    const category = url.searchParams.get('category');
+    reads.push(category);
     // Reproduce the actual bug: the obsolete collection has no members.
-    return send(200, url.searchParams.get('category') === 'new-arrivals' ? [] : products);
+    if (category === 'new-arrivals') return send(200, []);
+    if (path !== '/products') return send(200, products.slice(0, 8));
+    return send(200, category ? products.filter(product => product.category.slug === category) : products);
   }
   if (path.startsWith('/products/')) {
-    if (path.endsWith('/related')) return send(200, products.slice(1));
-    const product = products.find(p => p.slug === decodeURIComponent(path.split('/')[2]));
+    const slug = decodeURIComponent(path.split('/')[2]);
+    if (path.endsWith('/related')) return send(200, products.filter(product => product.slug !== slug).slice(0, 4));
+    const product = products.find(p => p.slug === slug);
     return send(product ? 200 : 404, product || {});
   }
   return send(401, { message: 'Authentication required' });
@@ -233,13 +259,14 @@ const compareReviewedCollectionBody = async () => {
   assert(priorStable&&candidateStable,'Shop All reviewed body must be stable before comparison');
   const comparisons=candidate.map(value=>compareReviewedCollectionBodies(prior[0].body,value.body));
   assert(comparisons.every(value=>value.exactNormalizedMatch),'Every candidate sample must normalize byte-exactly to the prior body');
-  assert(candidate.every(value=>value.value.productArticleCount>0),'Candidate Shop All body must retain product cards');
+  assert(candidate.every(value=>value.value.productArticleCount===products.length),'Candidate Shop All body must retain all 54 reviewed product cards');
   const summarize=value=>({...value.evidence,...value.value});
   const report={passed:true,readOnly:true,liveWrites:0,sampleCount,route:'/collections/all',
     reviewedDelta:'exact collection search copy, breadcrumb label, header visibility and intro insertion',retainedExactBodyRoutes:['/','/privacy'],
     exactNormalizedBodyMatch:true,normalization:{mode:'count-locked inverse transforms followed by byte equality',operations:comparisons[0].operations},
     normalizedBody:{prior:prior[0].evidence.body,candidateAfterApprovedTransforms:{length:Buffer.byteLength(comparisons[0].normalized),sha256:sha256(comparisons[0].normalized)}},
     prior:{stable:priorStable,samples:prior.map(summarize)},candidate:{stable:candidateStable,samples:candidate.map(summarize)},
+    fixtureCatalogue:{products:products.length,imageAssociations:fixtureImagePaths.length},
     expected:{title:collectionAllTitle,description:collectionAllDescription}};
   await writeFile(collectionBodyEvidencePath,JSON.stringify(report,null,2)+'\n');
 };

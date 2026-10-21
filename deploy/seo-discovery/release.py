@@ -20,6 +20,7 @@ photo,cloud,images=guard.photo,guard.cloud,guard.images
 cloud.BASE='https://hidiindia.com'
 patcher=load('seo_discovery_patch',HERE/'patch-runtime.py')
 body_guard=load('seo_body_preservation',HERE/'body-preservation.py')
+evidence_guard=load('seo_candidate_evidence',HERE/'evidence.py')
 PRIVATE,EVIDENCE=guard.PRIVATE,guard.EVIDENCE
 def save(name,value):guard.save(name,value)
 def read(name):return guard.read(name)
@@ -108,33 +109,7 @@ def seal():
     photo.unchanged(photo.states());manifest={}
     for name in ['candidate/report.json','foundation-candidate/report.json','candidate-body-preservation.json','candidate-collection-body-delta.json','patch.json','web-preservation.json']:
         value=read(name);assert value.get('passed') is True,name+' must pass';manifest[name]=digest(EVIDENCE/name)
-    candidate_report=read('candidate/report.json')
-    assert candidate_report['engines']==['chromium','firefox','webkit'] and len(candidate_report['results'])==12
-    assert candidate_report['liveWrites']==0
-    assert candidate_report['collectionAllIntroVerified'] and candidate_report['collectionAllBreadcrumbVerified'] and candidate_report['collectionAllExactCopy']
-    assert candidate_report['collectionAllMatrixCases']==12 and candidate_report['reviewedCollectionBodyDelta']=='/collections/all exact search copy, breadcrumb label, header visibility and intro insertion'
-    assert all(any(check['page']=='catalogue' and check['collectionIntro']['heading']=='Women’s Kurta Sets & Indian Wear' and check['collectionIntro']['intro']=='Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.' and check['collectionIntro']['breadcrumbLabel']=='Women’s Kurta Sets & Indian Wear' for check in result['checks']) for result in candidate_report['results'])
-    foundation_report=read('foundation-candidate/report.json')
-    assert len(foundation_report['results'])==12
-    assert foundation_report['liveWrites']==0
-    assert all(value['appearancePreserved'] for value in foundation_report['results'])
-    assert all(value['collectionRetainedWhileAboutVerified'] is True for value in foundation_report['results'])
-    body_report=read('candidate-body-preservation.json')
-    assert body_report['readOnly'] and body_report['liveWrites']==0 and body_report['sampleCount']==3
-    assert [route['route'] for route in body_report['routes']]==['/','/privacy']
-    assert all(route['prior']['normalizedStable'] and route['candidate']['normalizedStable'] and route['exactNormalizedMatch'] for route in body_report['routes'])
-    collection_report=read('candidate-collection-body-delta.json')
-    assert collection_report['readOnly'] and collection_report['liveWrites']==0 and collection_report['sampleCount']==3
-    assert collection_report['route']=='/collections/all' and collection_report['reviewedDelta']=='exact collection search copy, breadcrumb label, header visibility and intro insertion'
-    assert collection_report['retainedExactBodyRoutes']==['/','/privacy']
-    assert collection_report['prior']['stable'] and collection_report['candidate']['stable'] and collection_report['exactNormalizedBodyMatch']
-    expected_operations=['visible header, H1 and intro','serialized header, H1 and intro','document title','Open Graph title','Twitter title','document description','Open Graph description','Twitter description','visible BreadcrumbList position 2 label','serialized BreadcrumbList position 2 label']
-    assert collection_report['normalization']['mode']=='count-locked inverse transforms followed by byte equality'
-    assert collection_report['normalization']['operations']==[{'label':label,'occurrences':1} for label in expected_operations]
-    assert collection_report['normalizedBody']['prior']==collection_report['normalizedBody']['candidateAfterApprovedTransforms']
-    assert all(sample['breadcrumbLabel']=='All Products' for sample in collection_report['prior']['samples'])
-    assert all(sample['breadcrumbLabel']=='Women’s Kurta Sets & Indian Wear' for sample in collection_report['candidate']['samples'])
-    assert collection_report['expected']=={'title':'Women’s Kurta Sets & Indian Wear','description':'Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.'}
+    evidence_guard.verify_candidate_evidence(EVIDENCE)
     patch_report=read('patch.json')
     assert patch_report['collectionAllIntroAdded'] and patch_report['collectionAllBreadcrumbUpdated'] and patch_report['collectionAllExactSearchCopyDelta']
     save('candidate-regression.json',{'passed':True,'candidateImageId':image_id(own_tag()),'reportManifest':manifest,'sourceSha':os.environ['GITHUB_SHA']})
