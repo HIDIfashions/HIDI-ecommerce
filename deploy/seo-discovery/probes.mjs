@@ -301,14 +301,59 @@ async function probeClientNavigation(page,base,scenario,output,filePrefix) {
     } else if(!scenario.freshContext) {
       await assertSearchMetadata(page,'/collections/all');
     }
-    const nextProduct=page.locator('main article h3 a').first();
-    await nextProduct.waitFor({state:'visible',timeout:45000});
+    const productHeading=page.locator('main article h3').first();
+    const nextProduct=productHeading.locator('a[href^="/products/"]').first();
+    await productHeading.waitFor({state:'visible',timeout:45000});
+    await productHeading.scrollIntoViewIfNeeded({timeout:45000});
     const nextPath=await nextProduct.getAttribute('href');
     assert(nextPath?.startsWith('/products/'),'Client-navigation target must be a product route');
+    const activation=await productHeading.evaluate((heading,path)=>{
+      const anchor=heading.querySelector('a[href^="/products/"]');
+      if(!anchor||anchor.getAttribute('href')!==path)return null;
+      // The product name is a long inline anchor clipped by a nowrap heading.
+      // Target the visible heading box so the browser cannot horizontally
+      // centre the oversized anchor outside the card before dispatching it.
+      heading.scrollLeft=0;
+      const rect=heading.getBoundingClientRect(),y=rect.top+rect.height/2;
+      const offsets=[Math.min(8,rect.width/2),rect.width*.25,rect.width*.5,rect.width*.75];
+      const offset=offsets.find(x=>{
+        const hit=document.elementFromPoint(rect.left+x,y);
+        return hit===anchor||anchor.contains(hit);
+      });
+      if(offset===undefined)return null;
+      const key='hidi-seo-navigation-activation';
+      const documentMarker='hidi-seo-'+Date.now()+'-'+Math.random();
+      globalThis.__hidiSeoDocumentMarker=documentMarker;
+      sessionStorage.removeItem(key);
+      const record=event=>{
+        const clicked=event.target instanceof Element?event.target.closest('a'):null;
+        if(clicked!==anchor)return;
+        sessionStorage.setItem(key,JSON.stringify({href:clicked.getAttribute('href'),trusted:event.isTrusted,
+          button:event.button,documentMarker,defaultPrevented:event.defaultPrevented}));
+        window.removeEventListener('click',record);
+      };
+      // Window bubbling runs after the React/anchor handler, so the recorded
+      // defaultPrevented value proves Next handled the same-document route.
+      window.addEventListener('click',record);
+      return {key,x:offset,y:rect.height/2,hitHref:anchor.getAttribute('href'),headingScrollLeft:heading.scrollLeft,documentMarker};
+    },nextPath);
+    assert(activation,'A visible point in the product heading must hit its exact link');
+    assert.equal(activation.hitHref,nextPath,'The reviewed pointer point belongs to the selected product link');
+    assert.equal(activation.headingScrollLeft,0,'The clipped product heading starts at its visible leading edge');
     await Promise.all([
       page.waitForURL(url=>url.pathname===nextPath,{waitUntil:'commit',timeout:45000}),
-      nextProduct.click({noWaitAfter:true,timeout:45000}),
+      productHeading.click({position:{x:activation.x,y:activation.y},noWaitAfter:true,timeout:45000}),
     ]);
+    const activationEvidence=await page.evaluate(key=>{
+      try{return JSON.parse(sessionStorage.getItem(key)||'null');}catch{return null;}
+    },activation.key);
+    assert(activationEvidence,'The product route must retain exact pointer-activation evidence');
+    assert.equal(activationEvidence.href,nextPath,'The trusted pointer activated the selected product link');
+    assert.equal(activationEvidence.trusted,true,'Client navigation must come from one trusted physical pointer action');
+    assert.equal(activationEvidence.button,0,'Client navigation uses the primary pointer button');
+    assert.equal(activationEvidence.defaultPrevented,true,'The Next link must retain client-side navigation handling');
+    assert.equal(await page.evaluate(()=>globalThis.__hidiSeoDocumentMarker),activation.documentMarker,
+      'Client navigation must retain the same document instead of masking metadata with a hard reload');
     await page.waitForFunction(({path,canonical})=>{
       const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(node=>{
         try {const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}

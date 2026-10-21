@@ -72,7 +72,23 @@ test('Firefox client navigation has fixed immediate and settled fresh-context ca
   const helper=source.slice(start,end);
   assert.match(source,/const navigationContext=await createReadOnlyContext\(browser,engine,width,height,base,writes\)/);
   assert.match(source,/finally \{await navigationContext\.close\(\);\}/);
-  assert.match(helper,/nextProduct\.click\(\{noWaitAfter:true,timeout:45000\}\)/);
+  assert.match(helper,/const productHeading=page\.locator\('main article h3'\)\.first\(\);/);
+  assert.match(helper,/document\.elementFromPoint\(rect\.left\+x,y\)/,
+    'The physical activation point must be verified inside the visible clipped heading');
+  assert.match(helper,/productHeading\.click\(\{position:\{x:activation\.x,y:activation\.y\},noWaitAfter:true,timeout:45000\}\)/,
+    'The bounded heading receives one physical pointer action at the verified product-link point');
+  assert.doesNotMatch(helper,/nextProduct\.click\(/,
+    'The oversized inline product anchor must not be auto-centred outside its clipped mobile card');
+  assert.match(helper,/window\.addEventListener\('click',record\)/,
+    'The trusted click recorder must run after the Next/React bubble handler');
+  assert.doesNotMatch(helper,/queueMicrotask/,
+    'The recorder must not sample defaultPrevented before the link bubble handler runs');
+  assert.match(helper,/activationEvidence\.trusted,true/);
+  assert.match(helper,/activationEvidence\.defaultPrevented,true/);
+  assert.match(helper,/__hidiSeoDocumentMarker/,
+    'The gate must prove the pointer kept a same-document Next client transition');
+  assert.doesNotMatch(helper,/\b(?:chromium|firefox|webkit)\b/i,
+    'The exact trusted activation must be identical in every browser engine');
   assert.match(helper,/waitForLoadState\('load',\{timeout:45000\}\)/);
   assert.match(helper,/document\.fonts\.status==='loaded'.*timeout:30000/s);
   assert.doesNotMatch(helper,/\bretr(?:y|ies|ied)\b/i,'Navigation gate must not mask failures with retries');
