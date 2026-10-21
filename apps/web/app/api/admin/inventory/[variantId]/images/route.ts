@@ -218,6 +218,9 @@ export async function POST(
       uploadKey = sha256Hex([imageSku, photoNumber, file.type, file.sha256].join("\u0000"));
     }
     await createUploadTicket(request, variantId, file);
+    // Azure originals are content-addressed for retry safety. A failed derivative
+    // write can be retried without creating another multi-megabyte original.
+    if (process.env.MEDIA_STORAGE_PROVIDER === "azure" && !uploadKey) uploadKey = file.sha256;
     const uploaded = process.env.MEDIA_STORAGE_PROVIDER === "azure"
       ? await uploadProductImageFile(objectKey(variantId, file.type, uploadKey), file, file.type)
       : await uploadToR2(variantId, file);
