@@ -139,6 +139,17 @@ class CandidateEvidenceTest(unittest.TestCase):
         return {'x': x, 'y': y, 'right': x + width, 'bottom': y + height,
                 'width': width, 'height': height}
 
+    @staticmethod
+    def price_announcement(page):
+        private_note = page in ['bag', 'checkout']
+        return {
+            'selector': 'body > aside.hidi-price-announcement[data-hidi-price-announcement="true"][aria-label="HIDI price offer"]',
+            'count': 1,
+            'text': ('Your product prices already include 15% off. No additional percentage discount is applied at checkout.'
+                     if private_note else '15% off across HIDI · Prices already reduced · No code needed'),
+            'privateNote': private_note, 'visible': True,
+        }
+
     def footer(self, width, height, page):
         top = height - 200
         product = page == 'product'
@@ -222,6 +233,7 @@ class CandidateEvidenceTest(unittest.TestCase):
                     }
                     collection = {'raw': deepcopy(raw), 'body': deepcopy(digest), 'rendered': rendered}
                 before['checks'].append({'page': page, 'path': routes[page], 'passed': True,
+                                         'priceAnnouncement': self.price_announcement(page),
                                          'footer': self.footer(width, height, page),
                                          'collectionAll': collection})
             after = deepcopy(before)
@@ -311,6 +323,40 @@ class CandidateEvidenceTest(unittest.TestCase):
                                                'operations': [{'label': 'visible header, H1 and intro', 'occurrences': 1}]}
                 with self.assertRaises(AssertionError):
                     self.verify(bundle)
+
+    def test_pricing_readiness_cannot_be_omitted_or_forged_in_matching_reports(self):
+        for page in ['home', 'catalogue', 'product', 'bag', 'checkout']:
+            for change in ['missing', 'null', 'zero', 'duplicate', 'boolean-count', 'selector',
+                           'text', 'note', 'numeric-note', 'invisible', 'numeric-visible']:
+                with self.subTest(page=page, change=change):
+                    bundle = self.bundle()
+                    for name in ['candidate/prior/report.json', 'candidate/report.json']:
+                        check = next(value for value in bundle[name]['results'][0]['checks'] if value['page'] == page)
+                        value = check['priceAnnouncement']
+                        if change == 'missing':
+                            del check['priceAnnouncement']
+                        elif change == 'null':
+                            check['priceAnnouncement'] = None
+                        elif change == 'zero':
+                            value['count'] = 0
+                        elif change == 'duplicate':
+                            value['count'] = 2
+                        elif change == 'boolean-count':
+                            value['count'] = True
+                        elif change == 'selector':
+                            value['selector'] = 'aside'
+                        elif change == 'text':
+                            value['text'] = 'Changed offer'
+                        elif change == 'note':
+                            value['privateNote'] = not value['privateNote']
+                        elif change == 'numeric-note':
+                            value['privateNote'] = int(value['privateNote'])
+                        elif change == 'invisible':
+                            value['visible'] = False
+                        else:
+                            value['visible'] = 1
+                    with self.assertRaises(AssertionError):
+                        self.verify(bundle)
 
     def test_claimed_preservation_cannot_hide_changed_heading_visibility_or_breadcrumb(self):
         for field, value in [('heading', 'Changed heading'), ('headerVisible', True),

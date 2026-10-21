@@ -141,6 +141,39 @@ function assertFooterVariant(value,page) {
     'Footer must contain every reviewed policy/support control in order');
 }
 
+function retainedPriceAnnouncement(page) {
+  assert(['home','catalogue','product','bag','checkout'].includes(page),'A reviewed presentation route is required for pricing readiness');
+  const privateNote=['bag','checkout'].includes(page);
+  return {selector:'body > aside.hidi-price-announcement[data-hidi-price-announcement="true"][aria-label="HIDI price offer"]',
+    count:1,text:privateNote
+      ?'Your product prices already include 15% off. No additional percentage discount is applied at checkout.'
+      :'15% off across HIDI · Prices already reduced · No code needed',privateNote,visible:true};
+}
+
+export function assertRetainedPriceAnnouncement(value,page) {
+  assert.deepEqual(value,retainedPriceAnnouncement(page),'Retained price announcement must be ready before presentation measurement');
+  return value;
+}
+
+export async function waitForRetainedPriceAnnouncement(page,pageKind) {
+  const expected=retainedPriceAnnouncement(pageKind);
+  // The retained pricing module inserts this notice only after its catalogue
+  // request finishes. DOMContentLoaded and footer presence do not prove readiness.
+  const handle=await page.waitForFunction(expected=>{
+    const notices=document.querySelectorAll('[data-hidi-price-announcement]');
+    const notice=document.querySelector(expected.selector);
+    if(notices.length!==1||!notice)return false;
+    const rect=notice.getBoundingClientRect(),style=getComputedStyle(notice);
+    const value={selector:expected.selector,count:notices.length,text:notice.textContent.trim(),
+      privateNote:notice.hasAttribute('data-hidi-price-note'),
+      visible:style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0};
+    if(value.text!==expected.text||value.privateNote!==expected.privateNote||!value.visible)return false;
+    return value;
+  },expected,{timeout:45000});
+  try {return assertRetainedPriceAnnouncement(await handle.jsonValue(),pageKind);}
+  finally {await handle.dispose();}
+}
+
 function assertRectanglePreserved(prior,candidate,label) {
   assert.equal(candidate===null,prior===null,label+' presence is preserved');
   if(prior===null)return;
@@ -270,6 +303,7 @@ export function validatePresentationBaseline(report,expectedBase) {
     for(const check of row.checks) {
       assert.equal(check.path,presentationRoute(check.page,product),'Presentation baseline route identity must remain exact');
       assert.equal(check.passed,true,'Presentation baseline route must have passed');
+      assertRetainedPriceAnnouncement(check.priceAnnouncement,check.page);
       assert(check.footer&&typeof check.footer.markup==='string'&&check.footer.markup.startsWith('<footer'),'Presentation baseline footer markup is required');
       assert(check.footer.styles&&typeof check.footer.styles.paddingBottom==='string','Presentation baseline computed footer styles are required');
       assertFooterVariant(check.footer,check.page);
@@ -316,11 +350,12 @@ export async function capturePresentationBaseline(base,output) {
               product=await link.getAttribute('href');assert(product?.startsWith('/products/'));
             }
             if(key==='product'&&width<=620)await page.locator('[aria-label="Mobile purchase actions"]').waitFor({state:'visible'});
+            const priceAnnouncement=await waitForRetainedPriceAnnouncement(page,key);
             await settlePresentation(page);
             const collectionAll=key==='catalogue'?{...collectionRaw,rendered:await readCollectionPresentation(page)}:null;
             const footer=await measureFooter(page,key);
             await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-${key}.png`});
-            checks.push({page:key,path,passed:true,collectionAll,footer});
+            checks.push({page:key,path,passed:true,priceAnnouncement,collectionAll,footer});
           }
           results.push({engine,width,height,passed:true,checks});
         } catch(error) {
@@ -685,12 +720,6 @@ export async function probe(base, output, {baseline,baselineReport}={}) {
             let collectionAll=null;
             assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
             const footer=page.locator('footer.site-footer, footer.footer').first();await footer.waitFor();
-            if(key==='home') {
-              const offer=page.locator('body > aside[data-hidi-price-announcement="true"][aria-label="HIDI price offer"]');
-              await offer.waitFor({state:'visible'});
-              assert.equal(await offer.count(),1,'Hydrated homepage must contain one exact price announcement');
-              assert.equal((await offer.textContent()).trim(),'15% off across HIDI · Prices already reduced · No code needed','Retained offer text must stay exact');
-            }
             if(key==='catalogue') {
               const link=page.locator('main article h3 a').first();await link.waitFor();
               product=await link.getAttribute('href');assert(product.startsWith('/products/'));
@@ -720,6 +749,8 @@ export async function probe(base, output, {baseline,baselineReport}={}) {
               const graphs=await page.locator('script[type="application/ld+json"]').allTextContents();
               for(const graph of graphs)assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(graph),'Structured-data identities use the production origin');
             }
+            const priceAnnouncement=await waitForRetainedPriceAnnouncement(page,key);
+            assert.deepEqual(priceAnnouncement,priorCheck.priceAnnouncement,'The same retained price announcement is ready in both captures');
             await settlePresentation(page);
             if(key==='catalogue') {
               const rendered=await readCollectionPresentation(page);
@@ -732,7 +763,7 @@ export async function probe(base, output, {baseline,baselineReport}={}) {
             else if(key==='product')assert.equal(measurement.bar,null,'Desktop/tablet purchase layout remains unchanged');
             else assert.equal(measurement.pageHasPurchaseBar,false,'Purchase bar remains limited to product pages');
             await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-${key}.png`});
-            checks.push({page:key,path,passed:true,collectionAll,footerLayoutPreserved:true,footer:measurement});
+            checks.push({page:key,path,passed:true,priceAnnouncement,collectionAll,footerLayoutPreserved:true,footer:measurement});
           }
           if(width===390||width===1440) {
             if(process.env.HIDI_SEO_LOOKBOOK_RETIRED==='1') {

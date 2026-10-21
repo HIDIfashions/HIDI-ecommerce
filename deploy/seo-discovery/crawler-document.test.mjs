@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import test from 'node:test';
-import {CLIENT_NAVIGATION_CASES, PRESENTATION_MATRIX, crawlerDocument, isFixtureProductImageRequest, assertCollectionPresentationPreserved, assertFooterLayoutPreserved, validatePresentationBaseline} from './probes.mjs';
+import {CLIENT_NAVIGATION_CASES, PRESENTATION_MATRIX, crawlerDocument, isFixtureProductImageRequest, assertCollectionPresentationPreserved, assertFooterLayoutPreserved, assertRetainedPriceAnnouncement, validatePresentationBaseline} from './probes.mjs';
 
 async function withServer(handler, run) {
   const server = createServer(handler);
@@ -146,13 +146,45 @@ const footer=(page='catalogue')=>{
     pageHasPurchaseBar:false,documentWidth:390,viewportWidth:390,
     links:controls.map(([tag,type,text,href])=>({tag,type,text,href,rect:{...rectangle},tappable:true,cover:''}))};
 };
+const priceAnnouncement=page=>({
+  selector:'body > aside.hidi-price-announcement[data-hidi-price-announcement="true"][aria-label="HIDI price offer"]',
+  count:1,text:['bag','checkout'].includes(page)
+    ?'Your product prices already include 15% off. No additional percentage discount is applied at checkout.'
+    :'15% off across HIDI · Prices already reduced · No code needed',
+  privateNote:['bag','checkout'].includes(page),visible:true,
+});
 const baseline=()=>({schemaVersion:1,kind:'hidi-seo-presentation-baseline',passed:true,readOnly:true,liveWrites:0,
   base:'https://hidiindia.com',capturedAt:'2026-10-21T12:00:00.000Z',
   results:PRESENTATION_MATRIX.map(({engine,width,height})=>({engine,width,height,passed:true,
     checks:(width===390||width===1440?['home','catalogue','product','bag','checkout']:['catalogue','product']).map(page=>({page,
       path:{home:'/',catalogue:'/collections/all',product:'/products/retained-product',bag:'/cart',checkout:'/checkout'}[page],
-      passed:true,footer:footer(page),collectionAll:page==='catalogue'?{raw:{heading:'All Products',introCount:0,breadcrumbLabel:'All Products',productArticleCount:54},
+      passed:true,priceAnnouncement:priceAnnouncement(page),footer:footer(page),collectionAll:page==='catalogue'?{raw:{heading:'All Products',introCount:0,breadcrumbLabel:'All Products',productArticleCount:54},
         body:{length:2048,sha256:'a'.repeat(64)},rendered:collection()}:null}))}))});
+
+test('presentation readiness requires the exact visible public or private retained pricing notice',()=>{
+  for(const page of ['home','catalogue','product','bag','checkout']) {
+    const valid=priceAnnouncement(page);
+    assert.equal(assertRetainedPriceAnnouncement(valid,page),valid);
+    for(const mutate of [
+      value=>{value.count=0;},value=>{value.count=2;},value=>{value.count=true;},
+      value=>{value.selector='aside';},value=>{value.text='Changed offer';},
+      value=>{value.text=priceAnnouncement(page==='checkout'?'home':'checkout').text;value.privateNote=!value.privateNote;},
+      value=>{value.privateNote=!value.privateNote;},value=>{value.privateNote=Number(value.privateNote);},
+      value=>{value.visible=false;},value=>{value.visible=1;},
+    ]) {
+      const changed=priceAnnouncement(page);mutate(changed);
+      assert.throws(()=>assertRetainedPriceAnnouncement(changed,page),/Retained price announcement/);
+    }
+    for(const value of [null,undefined])assert.throws(()=>assertRetainedPriceAnnouncement(value,page));
+  }
+  const premature=baseline();
+  delete premature.results[0].checks.find(check=>check.page==='checkout').priceAnnouncement;
+  assert.throws(()=>validatePresentationBaseline(premature,premature.base),/Retained price announcement/,
+    'The old checkout capture must fail before release even when its footer is present');
+  const hidden=baseline();
+  hidden.results[0].checks.find(check=>check.page==='checkout').priceAnnouncement.visible=false;
+  assert.throws(()=>validatePresentationBaseline(hidden,hidden.base),/Retained price announcement/);
+});
 
 test('preservation accepts unchanged hidden collection header and absent intro',()=>{
   const prior=collection();

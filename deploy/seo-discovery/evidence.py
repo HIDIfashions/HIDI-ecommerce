@@ -29,6 +29,22 @@ def _rectangle(prior, candidate):
         assert abs(prior[key] - candidate[key]) <= 1, 'Presentation geometry changed: ' + key
 
 
+def _price_announcement(value, page):
+    assert page in ['home', 'catalogue', 'product', 'bag', 'checkout']
+    private_note = page in ['bag', 'checkout']
+    expected = {
+        'selector': 'body > aside.hidi-price-announcement[data-hidi-price-announcement="true"][aria-label="HIDI price offer"]',
+        'count': 1,
+        'text': ('Your product prices already include 15% off. No additional percentage discount is applied at checkout.'
+                 if private_note else '15% off across HIDI · Prices already reduced · No code needed'),
+        'privateNote': private_note, 'visible': True,
+    }
+    assert isinstance(value, dict), 'Retained pricing readiness evidence is required'
+    assert type(value.get('count')) is int
+    assert type(value.get('privateNote')) is bool and type(value.get('visible')) is bool
+    assert value == expected, 'Retained price announcement must be ready before presentation measurement'
+
+
 def _footer(prior, candidate, page):
     variant = 'landing' if page == 'home' else 'storefront'
     selector, link_selector, controls = {
@@ -181,6 +197,8 @@ def verify_candidate_evidence(root):
         for before, after in zip(prior['checks'], checks):
             assert before['passed'] is True and after['passed'] is True and after['footerLayoutPreserved'] is True
             assert before['path'] == after['path'] == routes[before['page']]
+            _price_announcement(before.get('priceAnnouncement'), before['page'])
+            _price_announcement(after.get('priceAnnouncement'), before['page'])
             _footer(before['footer'], after['footer'], before['page'])
             if before['page'] == 'catalogue':
                 _collection(before['collectionAll'], after['collectionAll'], retained_body)
