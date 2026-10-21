@@ -36,7 +36,9 @@ def patch(base,overlay,app):
     # asset byte-identical; only server-side media delivery is overlaid.
     mapping={}
     counts={'numeric':0,'labels':0}
-    shutil.copyfile(ROOT/'deploy/admin-tools/product-delete-storage.mjs',overlay/'admin-tools/product-delete-storage.mjs')
+    delete_storage=overlay/'admin-tools/product-delete-storage.mjs'
+    delete_storage.parent.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(ROOT/'deploy/admin-tools/product-delete-storage.mjs',delete_storage)
     server=(base/'server.mjs').read_text()
     assert server.count('import { createProductImageHandler } from "./product-images/images.mjs";')==1,'Image handler wiring changed'
     assert server.count('import { handlePhotoUpload } from "./photo-stream/handler.mjs";')==1,'Photo upload handler wiring changed'
