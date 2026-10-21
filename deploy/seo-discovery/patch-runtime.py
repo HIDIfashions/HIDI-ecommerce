@@ -1,4 +1,4 @@
-"""Fail-closed SEO-only overlay for the reviewed current live wrapper."""
+"""Fail-closed brand SEO overlay with retained mobile purchase-bar clearance."""
 from pathlib import Path
 import hashlib, re
 
@@ -119,10 +119,12 @@ def patch_runtime(base, overlay):
     route_old=next((value for value in route_anchors if source.count(value)==1),None)
     assert route_old, 'Expected one reviewed route-dispatch anchor'
     route_new='  if (handleCanonicalHostRedirect(request, response)) return;\n'+route_old
-    changes=[(import_old,import_new),(route_old,route_new)]
+    footer_old='body:has([class*="add-to-cart_mobileBar__"]) footer.footer {'
+    footer_new='body:has([aria-label="Mobile purchase actions"]) footer.footer {'
+    changes=[(import_old,import_new),(route_old,route_new),(footer_old,footer_new)]
     server=source
     for old,new in changes:
-        assert server.count(old)==1 and new not in server, 'Reviewed canonical-host anchor changed'
+        assert server.count(old)==1 and new not in server, 'Reviewed brand SEO/layout anchor changed'
         server=server.replace(old,new,1)
     restored=server
     for old,new in reversed(changes):restored=restored.replace(new,old,1)
@@ -133,5 +135,6 @@ def patch_runtime(base, overlay):
                      'aboutCopyFiles':about,'preserved':True}
     return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs','server.mjs'],
             'foundation':foundation_plan,
-            'seoOnly':True,'canonicalHostRedirect':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,
+            'reviewedScopeOnly':True,'canonicalHostRedirect':True,'mobilePurchaseFooterClearance':True,
+            'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,
             'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

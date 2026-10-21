@@ -196,7 +196,7 @@ export async function probe(base, output) {
               const link=page.locator('main article h3 a').first();await link.waitFor();
               product=await link.getAttribute('href');assert(product.startsWith('/products/'));
             }
-            if(key==='product'&&width<=620)await page.locator('[class*="add-to-cart_mobileBar__"]').waitFor({state:'visible'});
+            if(key==='product'&&width<=620)await page.locator('[aria-label="Mobile purchase actions"]').waitFor({state:'visible'});
             const expectedPrivate=['bag','checkout'].includes(key);
             const headerResponse=await fetch(base+path,{method:'HEAD',headers:seoHeaders});
             assert.equal(headerResponse.status,200);
@@ -226,7 +226,7 @@ export async function probe(base, output) {
             const measurement=await page.evaluate(()=>{
               const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
               const footer=document.querySelector('footer.site-footer,footer.footer');
-              const bar=document.querySelector('[class*="add-to-cart_mobileBar__"]');
+              const bar=document.querySelector('[aria-label="Mobile purchase actions"]');
               const visibleBar=bar&&getComputedStyle(bar).display!=='none'?bar:null;
               const links=Array.from(footer.querySelectorAll('.footer-bottom a')).map(e=>{
                 const r=rect(e),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);

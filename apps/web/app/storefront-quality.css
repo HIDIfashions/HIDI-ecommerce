@@ -55,7 +55,7 @@ html { scroll-padding-top: calc(var(--hidi-header-height, 105px) + 24px); }
 /* hidi-product-footer-clearance */
 /* Keep product footer links above the two-row fixed mobile purchase bar. */
 @media (max-width: 620px) {
-  body:has([class*="add-to-cart_mobileBar__"]) footer.footer {
+  body:has([aria-label="Mobile purchase actions"]) footer.footer {
     padding-bottom: calc(126px + env(safe-area-inset-bottom, 0px));
   }
 }

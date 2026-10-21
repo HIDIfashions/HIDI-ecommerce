@@ -1,4 +1,4 @@
-"""SEO-only release over the captured live image, preserving UX and backend."""
+"""Guarded brand SEO release over the captured live image, preserving commerce and backend behavior."""
 import argparse
 import hashlib
 import importlib.util
