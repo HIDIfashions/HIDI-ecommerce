@@ -120,8 +120,12 @@ def seal():
     assert foundation_report['liveWrites']==0
     assert all(value['appearancePreserved'] for value in foundation_report['results'])
     for value in foundation_report['results']:
-        active=value['routeChangeActiveDeclaredPrefetches'];ignored=value['ignoredRouteChangeDeclaredPrefetchErrors'];error_start=value['routeChangePageErrorStartIndex']
-        assert isinstance(active,list) and all(isinstance(url,str) for url in active) and len(active)==len(set(active))
+        declared=value['prefetchWindowDeclaredUrls'];failed=value['prefetchWindowFailedUrls'];eligible=value['routeChangeDeclaredPrefetches'];ignored=value['ignoredRouteChangeDeclaredPrefetchErrors'];error_start=value['routeChangePageErrorStartIndex']
+        assert value['prefetchWindowSourcePath']=='/collections/all'
+        assert isinstance(declared,list) and all(isinstance(url,str) for url in declared) and len(declared)==len(set(declared))
+        assert isinstance(failed,list) and all(isinstance(url,str) for url in failed) and len(failed)==len(set(failed))
+        assert isinstance(eligible,list) and all(isinstance(url,str) for url in eligible) and len(eligible)==len(set(eligible))
+        assert set(failed)<=set(declared) and set(eligible)==set(declared)-set(failed)
         assert isinstance(error_start,int) and error_start>=0
         assert isinstance(ignored,list)
         if value['engine']!='webkit':assert ignored==[]
@@ -132,7 +136,7 @@ def seal():
             assert isinstance(index,int) and index>=error_start;indexes.append(index)
             match=re.fullmatch(r'Fetch API cannot load (.+) due to access control checks\.',message);assert match
             url=re.sub(r'^(https?):\s+/(?!/)',r'\1://',match.group(1),flags=re.I)
-            assert recorded_url==url and url in active,'Ignored WebKit error must match an exact prefetch active when the deliberate route change began'
+            assert recorded_url==url and url in eligible,'Ignored WebKit error must match an exact declared collection-window prefetch without an earlier failure'
         assert len(indexes)==len(set(indexes))
     body_report=read('candidate-body-preservation.json')
     assert body_report['readOnly'] and body_report['liveWrites']==0 and body_report['sampleCount']==3

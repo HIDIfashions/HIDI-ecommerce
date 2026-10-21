@@ -23,23 +23,32 @@ export function foundationReadKind(request) {
 }
 
 export function trackFoundationReads(page) {
-  const state={pending:new Set(),declaredPrefetches:0,activeDeclaredPrefetches:new Set(),routeChangeActiveDeclaredPrefetches:new Set()};
+  const state={pending:new Set(),declaredPrefetches:0,prefetchWindowOpen:false,prefetchWindowRequests:new Set(),prefetchWindowFailedRequests:new Set(),prefetchWindowDeclaredUrls:new Set(),prefetchWindowFailedUrls:new Set(),routeChangeDeclaredPrefetches:new Set()};
   page.on('request',request=>{
     const kind=foundationReadKind(request);
-    if(kind==='prefetch') {state.declaredPrefetches++;state.activeDeclaredPrefetches.add(request);}
+    if(kind==='prefetch') {
+      state.declaredPrefetches++;
+      if(state.prefetchWindowOpen&&new URL(request.frame().url()).pathname===state.prefetchWindowSourcePath)state.prefetchWindowRequests.add(request);
+    }
     else if(kind==='blocking')state.pending.add(request);
   });
-  page.on('requestfinished',request=>{state.pending.delete(request);state.activeDeclaredPrefetches.delete(request);});
+  page.on('requestfinished',request=>state.pending.delete(request));
   page.on('requestfailed',request=>{
     state.pending.delete(request);
-    state.activeDeclaredPrefetches.delete(request);
+    if(state.prefetchWindowOpen&&state.prefetchWindowRequests.has(request))state.prefetchWindowFailedRequests.add(request);
   });
   return state;
 }
 
-export function snapshotActiveDeclaredPrefetches(state) {
-  state.routeChangeActiveDeclaredPrefetches=new Set([...state.activeDeclaredPrefetches].map(request=>request.url()));
-  return state.routeChangeActiveDeclaredPrefetches;
+export function beginDeclaredPrefetchWindow(state,sourcePath) {
+  assert(sourcePath?.startsWith('/'),'Declared-prefetch source path must be absolute');
+  state.prefetchWindowOpen=true;
+  state.prefetchWindowSourcePath=sourcePath;
+  state.prefetchWindowRequests=new Set();
+  state.prefetchWindowFailedRequests=new Set();
+  state.prefetchWindowDeclaredUrls=new Set();
+  state.prefetchWindowFailedUrls=new Set();
+  state.routeChangeDeclaredPrefetches=new Set();
 }
 
 export function routeChangeDeclaredPrefetchErrorUrl(message,index,state,errorStartIndex) {
@@ -47,7 +56,16 @@ export function routeChangeDeclaredPrefetchErrorUrl(message,index,state,errorSta
   const match=/^Fetch API cannot load (.+) due to access control checks\.$/.exec(String(message));
   if(!match)return;
   const url=match[1].replace(/^(https?):\s+\/(?!\/)/i,'$1://');
-  if(state.routeChangeActiveDeclaredPrefetches.has(url))return url;
+  if(state.routeChangeDeclaredPrefetches.has(url))return url;
+}
+
+export function snapshotDeclaredPrefetchWindow(state) {
+  assert.equal(state.prefetchWindowOpen,true,'Declared-prefetch collection window must be open before route change');
+  state.prefetchWindowOpen=false;
+  state.prefetchWindowDeclaredUrls=new Set([...state.prefetchWindowRequests].map(request=>request.url()));
+  state.prefetchWindowFailedUrls=new Set([...state.prefetchWindowFailedRequests].map(request=>request.url()));
+  state.routeChangeDeclaredPrefetches=new Set([...state.prefetchWindowDeclaredUrls].filter(url=>!state.prefetchWindowFailedUrls.has(url)));
+  return state.routeChangeDeclaredPrefetches;
 }
 
 export async function foundationProbe(base,output,{baseline}={}) {
@@ -162,6 +180,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await page.locator('a.hidi-collection-link').first().focus();
           assert.equal(await page.locator('a.hidi-collection-link').first().getAttribute('tabindex'),'0','Carousel retains focus eligibility');
           await captureScreenshot(page,{path:`${output}/${engine}-${width}-home.png`});
+          beginDeclaredPrefetchWindow(reads.get(page),'/collections/all');
           const shop=page.locator('.campaign-shop-button');await shop.focus();
           await Promise.all([page.waitForURL('**/collections/all',{waitUntil:'domcontentloaded'}),shop.press('Space')]);
           assert.equal(await page.locator('main article h3 a').count()>0,true,'Existing Shop Now navigation remains functional');
@@ -183,8 +202,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
             },aboutMarker);
           };
           const routeChangeErrorStartIndex=errors.length;
-          snapshotActiveDeclaredPrefetches(reads.get(page));
-          if(prior)snapshotActiveDeclaredPrefetches(reads.get(prior));
+          snapshotDeclaredPrefetchWindow(reads.get(page));
           const aboutResponses=await Promise.all([
             page.goto(base+'/about',{waitUntil:'domcontentloaded'}),
             ...(prior?[prior.goto(baseline+'/about',{waitUntil:'domcontentloaded'})]:[])
@@ -206,16 +224,19 @@ export async function foundationProbe(base,output,{baseline}={}) {
           const blocking=errors.filter((error,index)=>!error.includes('Minified React error #418;')&&!ignoredPrefetchErrorIndexes.has(index));
           assert.deepEqual(blocking,[],'No new shopping or DOM ownership errors');
           results.push({engine,width,height,passed:true,appearancePreserved:!!prior,crawlablePublicDestinations:true,carouselKeyboardPreserved:true,spaceActivationPreserved:true,aboutCopyVerified:true,
-            declaredNextPrefetches:readState.declaredPrefetches,routeChangeActiveDeclaredPrefetches:[...readState.routeChangeActiveDeclaredPrefetches],
+            declaredNextPrefetches:readState.declaredPrefetches,prefetchWindowSourcePath:readState.prefetchWindowSourcePath,prefetchWindowDeclaredUrls:[...readState.prefetchWindowDeclaredUrls],
+            prefetchWindowFailedUrls:[...readState.prefetchWindowFailedUrls],routeChangeDeclaredPrefetches:[...readState.routeChangeDeclaredPrefetches],
             routeChangePageErrorStartIndex:routeChangeErrorStartIndex,ignoredRouteChangeDeclaredPrefetchErrors:ignoredPrefetchErrors,
-            baselineDeclaredNextPrefetches:prior?reads.get(prior).declaredPrefetches:null,
-            baselineRouteChangeActiveDeclaredPrefetches:prior?[...reads.get(prior).routeChangeActiveDeclaredPrefetches]:null});
+            baselineDeclaredNextPrefetches:prior?reads.get(prior).declaredPrefetches:null});
           console.log(`PASS: SEO foundation ${engine} ${width}x${height}: crawlable links, retained controls, About association`);
         } catch(error) {
           await captureScreenshot(page,{path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});
           await writeFile(`${output}/${engine}-${width}-failure.json`,JSON.stringify({message:String(error),url:page.url(),errors,
             declaredNextPrefetches:reads.get(page).declaredPrefetches,
-            routeChangeActiveDeclaredPrefetches:[...reads.get(page).routeChangeActiveDeclaredPrefetches],
+            prefetchWindowSourcePath:reads.get(page).prefetchWindowSourcePath,
+            prefetchWindowDeclaredUrls:[...reads.get(page).prefetchWindowDeclaredUrls],
+            prefetchWindowFailedUrls:[...reads.get(page).prefetchWindowFailedUrls],
+            routeChangeDeclaredPrefetches:[...reads.get(page).routeChangeDeclaredPrefetches],
             baselineDeclaredNextPrefetches:prior?reads.get(prior).declaredPrefetches:null},null,2));throw error;
         } finally {await context.close();}
       }
