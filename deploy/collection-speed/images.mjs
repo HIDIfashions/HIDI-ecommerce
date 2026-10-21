@@ -206,7 +206,7 @@ export function createImageStore({ sharp, fetchSource, cacheDir = join(tmpdir(),
   return { get, master };
 }
 
-export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'..'), sharp: providedSharp, fetchSource: providedFetch, cacheDir, seedDir }) {
+export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'..'), sharp: providedSharp, fetchSource: providedFetch, cacheDir, seedDir, persistentEnabled = process.env.HIDI_PERSISTENT_IMAGE_DERIVATIVES === 'true' }) {
   const require = createRequire(join(runtimeRoot,'apps/web/server.js'));
   const sharp = providedSharp || require('next/dist/server/image-optimizer.js').getSharp(1,false);
   const fetchSource = providedFetch || (async source => {
@@ -214,7 +214,7 @@ export function createProductImageHandler({ origin, runtimeRoot = resolve(ROOT,'
     return downloadPhotoToDisk(await fetch(new URL(source,origin), {signal,redirect:'error'}), {signal});
   });
   async function persistent(spec) {
-    if (spec.format !== 'webp') return null;
+    if (!persistentEnabled || spec.format !== 'webp') return null;
     const path = persistentDerivativePath(spec.source,spec.width);
     if (!path) return null;
     const signal = AbortSignal.timeout(15000);
