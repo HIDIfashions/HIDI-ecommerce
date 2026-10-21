@@ -10,7 +10,7 @@ import { catalogueStatus } from '../pricing/model.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
 import reviewedProductImages from './reviewed-product-image-map.json' with {type:'json'};
 import bodyConfig from './body-preservation-config.json' with {type:'json'};
-import { collectionAllTitle, collectionAllDescription, compareReviewedCollectionBodies, inspectCollectionBody } from './collection-body-delta.mjs';
+import { priorCollectionTitle, compareReviewedCollectionBodies, inspectCollectionBody } from './collection-body-delta.mjs';
 
 const root = resolve(process.env.HIDI_CANDIDATE_RUNTIME);
 const categories = [
@@ -243,7 +243,7 @@ const sampleCollectionBody = async origin => {
   assert.match(response.contentType, /^text\/html\b/i, 'Shop All reviewed body must return HTML');
   const document=response.document.toString('utf8');
   const marker=document.indexOf('</head>');
-  assert(marker>=0,'Shop All reviewed body contains a head boundary');
+  assert.equal(countBytes(response.document,headMarker),1,'Shop All retained body contains exactly one head boundary');
   const body=document.slice(marker+7);
   return {body,value:inspectCollectionBody(body),evidence:{status:response.status,contentType:response.contentType,
     body:{length:Buffer.byteLength(body),sha256:sha256(body)}}};
@@ -258,16 +258,16 @@ const compareReviewedCollectionBody = async () => {
   const candidateStable=candidate.every(value=>value.evidence.body.sha256===candidate[0].evidence.body.sha256);
   assert(priorStable&&candidateStable,'Shop All reviewed body must be stable before comparison');
   const comparisons=candidate.map(value=>compareReviewedCollectionBodies(prior[0].body,value.body));
-  assert(comparisons.every(value=>value.exactNormalizedMatch),'Every candidate sample must normalize byte-exactly to the prior body');
+  assert(comparisons.every(value=>value.exactBodyMatch),'Every candidate sample must remain byte-identical to the prior body');
   assert(candidate.every(value=>value.value.productArticleCount===products.length),'Candidate Shop All body must retain all 54 reviewed product cards');
   const summarize=value=>({...value.evidence,...value.value});
   const report={passed:true,readOnly:true,liveWrites:0,sampleCount,route:'/collections/all',
-    reviewedDelta:'exact collection search copy, breadcrumb label, header visibility and intro insertion',retainedExactBodyRoutes:['/','/privacy'],
-    exactNormalizedBodyMatch:true,normalization:{mode:'count-locked inverse transforms followed by byte equality',operations:comparisons[0].operations},
-    normalizedBody:{prior:prior[0].evidence.body,candidateAfterApprovedTransforms:{length:Buffer.byteLength(comparisons[0].normalized),sha256:sha256(comparisons[0].normalized)}},
+    reviewedDelta:'none',retainedExactBodyRoutes:['/','/privacy','/collections/all'],
+    exactBodyMatch:true,normalization:{mode:'none',operations:[]},
+    body:{prior:prior[0].evidence.body,candidate:candidate[0].evidence.body},
     prior:{stable:priorStable,samples:prior.map(summarize)},candidate:{stable:candidateStable,samples:candidate.map(summarize)},
     fixtureCatalogue:{products:products.length,imageAssociations:fixtureImagePaths.length},
-    expected:{title:collectionAllTitle,description:collectionAllDescription}};
+    expected:{heading:priorCollectionTitle,introCount:0,breadcrumbLabel:priorCollectionTitle}};
   await writeFile(collectionBodyEvidencePath,JSON.stringify(report,null,2)+'\n');
 };
 try {
@@ -287,7 +287,7 @@ try {
   assert(ready, 'Isolated candidate and prior runtimes must become ready');
   await compareRetainedBodies();
   await compareReviewedCollectionBody();
-  await probe(base, 'evidence/seo-discovery/candidate');
+  await probe(base, 'evidence/seo-discovery/candidate', {baseline:priorBase});
   await foundationProbe(base,'evidence/seo-discovery/foundation-candidate',{baseline:priorBase});
   assert(reads.length > 0, 'Catalogue regression must reach read-only fixture');
   assert.deepEqual(writes, []);

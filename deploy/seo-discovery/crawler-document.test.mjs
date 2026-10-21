@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import test from 'node:test';
-import {CLIENT_NAVIGATION_CASES, crawlerDocument, isFixtureProductImageRequest} from './probes.mjs';
+import {CLIENT_NAVIGATION_CASES, PRESENTATION_MATRIX, crawlerDocument, isFixtureProductImageRequest, assertCollectionPresentationPreserved, assertFooterLayoutPreserved, validatePresentationBaseline} from './probes.mjs';
 
 async function withServer(handler, run) {
   const server = createServer(handler);
@@ -126,4 +126,87 @@ test('candidate catalogue and guarded product-fact release retain reviewed bound
   const workflow=readFileSync(new URL('../../.github/workflows/seo-product-facts-release.yml',import.meta.url),'utf8');
   assert.match(workflow,/if: github\.event_name == 'workflow_dispatch' \|\| contains\(github\.event\.head_commit\.message, '\[deploy-seo-product-facts\]'\)/,
     'Product-fact production release must require an explicit deploy token or manual dispatch');
+});
+
+const rectangle={x:0,y:0,right:100,bottom:20,width:100,height:20};
+const collection=()=>({headerCount:1,headingCount:1,introCount:0,heading:'All Products',intro:null,breadcrumbLabel:'All Products',
+  headerVisible:false,headingVisible:false,introVisible:false,headerDisplay:'',introDisplay:null,collectionNavigationCount:0,
+  header:{...rectangle},headingBox:{...rectangle},introBox:null,firstProduct:{...rectangle},
+  styles:{header:{display:'none'},heading:{display:'block'},intro:null},productArticleCount:54});
+const footer=()=>({footer:{...rectangle},bar:null,padding:'0px',styles:{paddingBottom:'0px',backgroundColor:'rgb(240, 233, 220)'},
+  markup:'<footer class="site-footer">Retained footer</footer>',pageHasPurchaseBar:false,documentWidth:390,viewportWidth:390,
+  links:['Privacy','Shipping','Returns','Contact'].map((text,index)=>({text,href:'/policy-'+index,rect:{...rectangle},tappable:true,cover:''}))});
+const baseline=()=>({schemaVersion:1,kind:'hidi-seo-presentation-baseline',passed:true,readOnly:true,liveWrites:0,
+  base:'https://hidiindia.com',capturedAt:'2026-10-21T12:00:00.000Z',
+  results:PRESENTATION_MATRIX.map(({engine,width,height})=>({engine,width,height,passed:true,
+    checks:(width===390||width===1440?['home','catalogue','product','bag','checkout']:['catalogue','product']).map(page=>({page,
+      path:{home:'/',catalogue:'/collections/all',product:'/products/retained-product',bag:'/cart',checkout:'/checkout'}[page],
+      passed:true,footer:footer(),collectionAll:page==='catalogue'?{raw:{heading:'All Products',introCount:0,breadcrumbLabel:'All Products',productArticleCount:54},
+        body:{length:2048,sha256:'a'.repeat(64)},rendered:collection()}:null}))}))});
+
+test('preservation accepts unchanged hidden collection header and absent intro',()=>{
+  const prior=collection();
+  assert.equal(assertCollectionPresentationPreserved(prior,structuredClone(prior)).passed,true);
+  assert.equal(assertFooterLayoutPreserved(footer(),footer()).passed,true);
+});
+
+test('collection copy, visibility, styles, breadcrumb and layout drift fail',()=>{
+  for(const mutate of [
+    value=>{value.heading='New heading';},
+    value=>{value.introCount=1;value.intro='New intro';},
+    value=>{value.headerVisible=true;},
+    value=>{value.headerDisplay='block';},
+    value=>{value.breadcrumbLabel='New label';},
+    value=>{value.styles.heading.fontWeight='700';},
+    value=>{value.firstProduct.y+=2;},
+  ]) {
+    const changed=collection();mutate(changed);
+    assert.throws(()=>assertCollectionPresentationPreserved(collection(),changed));
+  }
+});
+
+test('footer improvements and regressions both require a separately reviewed change',()=>{
+  for(const mutate of [
+    value=>{value.padding='126px';},
+    value=>{value.styles.paddingBottom='126px';},
+    value=>{value.markup=value.markup.replace('Retained','Changed');},
+    value=>{value.links[0].href='/different';},
+    value=>{value.links[0].tappable=false;},
+    value=>{value.links[0].rect.y+=2;},
+    value=>{value.bar={...rectangle};},
+  ]) {
+    const changed=footer();mutate(changed);
+    assert.throws(()=>assertFooterLayoutPreserved(footer(),changed));
+  }
+  const existingOverlap=footer();existingOverlap.links[0].tappable=false;
+  assert.equal(assertFooterLayoutPreserved(existingOverlap,structuredClone(existingOverlap)).passed,true,
+    'Preservation evidence does not invent an accessibility fix for a retained limitation');
+});
+
+test('presentation baseline requires exact independent origin and complete 12-viewport route matrix',()=>{
+  const valid=baseline();
+  assert.equal(validatePresentationBaseline(valid,'https://hidiindia.com'),valid);
+  assert.equal(PRESENTATION_MATRIX.length,12);
+  assert.equal(valid.results.reduce((count,row)=>count+row.checks.length,0),42);
+  assert.throws(()=>validatePresentationBaseline(valid,'http://127.0.0.1:4100'),/origin/);
+  for(const mutate of [
+    value=>{value.results.pop();},
+    value=>{value.results[1]=structuredClone(value.results[0]);},
+    value=>{value.results[0].checks.pop();},
+    value=>{value.results[0].checks[0].path='/different';},
+    value=>{value.results[0].checks[1].collectionAll=null;},
+    value=>{value.results[0].checks[0].footer=null;},
+    value=>{value.liveWrites=1;},
+    value=>{value.passed=false;},
+  ]) {
+    const changed=baseline();mutate(changed);
+    assert.throws(()=>validatePresentationBaseline(changed,'https://hidiindia.com'));
+  }
+});
+
+test('presentation evidence cannot hide a changed collection behind a matching baseline',()=>{
+  const changed=collection();changed.heading='New heading';
+  assert.throws(()=>assertCollectionPresentationPreserved(changed,structuredClone(changed)),/current renderer copy/);
+  const incomplete=baseline();delete incomplete.results[0].checks[1].collectionAll.body;
+  assert.throws(()=>validatePresentationBaseline(incomplete,'https://hidiindia.com'),/streamed Shop All body digest/);
 });

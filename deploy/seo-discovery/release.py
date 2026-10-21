@@ -104,14 +104,16 @@ def compose():
     configs=json.loads(images.docker('image','inspect',before['hidi-web']['image'],own_tag()))
     report=guard.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),configs)
     report.update({'baseImage':before['hidi-web']['image'],'candidateImageId':image_id(own_tag()),'candidateTag':own_tag()});save('web-preservation.json',report)
-    photo.unchanged(before);print('PASS: only reviewed SEO identity, Shop All search copy/breadcrumb/visibility, canonical-host routing, footer clearance and current product-image allowlist changed; retained navigation and About copy preserved')
+    photo.unchanged(before);print('PASS: only reviewed SEO metadata, canonical-host routing and current product-image allowlist changed; Shop All renderer, footer, navigation and About copy preserved')
 def seal():
     photo.unchanged(photo.states());manifest={}
-    for name in ['candidate/report.json','foundation-candidate/report.json','candidate-body-preservation.json','candidate-collection-body-delta.json','patch.json','web-preservation.json']:
+    for name in ['candidate/report.json','candidate/prior/report.json','foundation-candidate/report.json','candidate-body-preservation.json','candidate-collection-body-delta.json','patch.json','web-preservation.json']:
         value=read(name);assert value.get('passed') is True,name+' must pass';manifest[name]=digest(EVIDENCE/name)
     evidence_guard.verify_candidate_evidence(EVIDENCE)
     patch_report=read('patch.json')
-    assert patch_report['collectionAllIntroAdded'] and patch_report['collectionAllBreadcrumbUpdated'] and patch_report['collectionAllExactSearchCopyDelta']
+    assert patch_report['allowedFiles']==list(patcher.ALLOWED_FILES)
+    assert patch_report['collectionAllRendererPreserved'] is True and patch_report['mobileFooterLayoutPreserved'] is True
+    assert patch_report['collectionAllRendererSha256']==patcher.COLLECTION_ALL_SHA and patch_report['reviewedCollectionBodyDelta']=='none'
     save('candidate-regression.json',{'passed':True,'candidateImageId':image_id(own_tag()),'reportManifest':manifest,'sourceSha':os.environ['GITHUB_SHA']})
 def publish():
     seal();report=read('candidate-regression.json');subprocess.run(['docker','push',own_tag()],check=True)
@@ -128,20 +130,30 @@ def require_candidate(image):
     for name,value in tested['reportManifest'].items():assert digest(EVIDENCE/name)==value,'Candidate evidence changed'
 def apply(image):
     before=photo.states();backups();require_candidate(image);photo.unchanged(before);captured=guard.private_json('public-before.json');assert guard.public_snapshot()==captured
+    # Capture the retained production presentation independently before any write.
+    # The live probe must compare against this baseline, not against new CSS rules.
+    presentation_path=EVIDENCE/'presentation-before/report.json'
+    subprocess.run(['node',str(HERE/'probes.mjs'),cloud.BASE,str(presentation_path.parent),'--capture-presentation-baseline'],check=True,timeout=1000)
+    presentation=read('presentation-before/report.json')
+    assert presentation['passed'] is True and presentation['readOnly'] is True and presentation['liveWrites']==0
+    presentation_sha=digest(presentation_path)
+    save('presentation-baseline.json',{'passed':True,'baseImage':before['hidi-web']['image'],'reportSha256':presentation_sha,'sourceSha':os.environ['GITHUB_SHA']})
+    photo.unchanged(before);assert guard.public_snapshot()==captured
     suffix='seodiscovery'+guard.run_key('a');guard.write_private('forward-write.json',{'attempted':False,'mayComplete':False});guard.install_interrupt_handler()
     try:
         guard.conditional_write_image(photo.originals()['hidi-web'],image,suffix,'forward-write.json')
         state=cloud.snapshot(guard.wait_ready(image,suffix,before));assert state['settingsHash']==before['hidi-web']['settingsHash']
         guard.routes()
-        subprocess.run(['node',str(HERE/'probes.mjs'),cloud.BASE,'evidence/seo-discovery/live'],check=True,timeout=1000)
+        assert digest(presentation_path)==presentation_sha,'Pre-deployment presentation evidence changed'
+        subprocess.run(['node',str(HERE/'probes.mjs'),cloud.BASE,'evidence/seo-discovery/live','--baseline-report',str(presentation_path)],check=True,timeout=1000)
         subprocess.run(['node',str(HERE.parent/'seo-foundation/browser.mjs'),cloud.BASE,'evidence/seo-discovery/foundation-live'],check=True,timeout=1000)
         verify_retained_bodies()
         assert editorial_snapshot()==guard.private_json('retained-editorial-response.json'),'Retained editorial response changed'
         assert hashlib.sha256(cloud.get('/hidi-analytics.js')).hexdigest()==guard.private_json('retained-analytics.json')['sha256'], 'Newer analytics asset changed'
         assert guard.public_snapshot()==captured,'Published media, privacy or public config changed'
         photo.unchanged({'hidi-api':before['hidi-api'],'hidi-web':state})
-        save('after.json',{'passed':True,'states':{'hidi-api':before['hidi-api'],'hidi-web':state},'apiUnchanged':True,'publishedContentPreserved':True,'retainedPublicBodiesPreserved':True,'retainedPublicBodyRoutes':['/','/privacy'],'reviewedCollectionBodyDelta':'/collections/all exact search copy, breadcrumb label, header visibility and intro insertion','analyticsPreserved':True,'webSettingsPreserved':True,'sourceSha':os.environ['GITHUB_SHA'],'databaseWrites':False,'blobWrites':False})
-        print('PASS: SEO identity, Shop All search copy and breadcrumb, crawling and sitemap released; live desktop/mobile checks passed')
+        save('after.json',{'passed':True,'states':{'hidi-api':before['hidi-api'],'hidi-web':state},'apiUnchanged':True,'publishedContentPreserved':True,'retainedPublicBodiesPreserved':True,'retainedPublicBodyRoutes':['/','/privacy'],'reviewedCollectionBodyDelta':'none','collectionAllPresentationPreserved':True,'footerLayoutPreserved':True,'presentationBaselineSha256':presentation_sha,'analyticsPreserved':True,'webSettingsPreserved':True,'sourceSha':os.environ['GITHUB_SHA'],'databaseWrites':False,'blobWrites':False})
+        print('PASS: technical SEO released; Shop All and footer presentation preserved across live desktop/mobile checks')
     except Exception:
         marker=guard.private_json('forward-write.json');result=guard.reconcile_failure(image,before,captured,captured,suffix,bool(marker.get('mayComplete')));save('rollback.json',result);raise
 def recover(image):
