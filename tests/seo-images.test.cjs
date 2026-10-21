@@ -94,7 +94,11 @@ test("HIDI India domain is covered by launch gates and image optimizer allowlist
   assert.match(middleware, /ALLOW_PUBLIC_DOMAIN !== "true"/);
   assert.match(middleware, /CANONICAL_HOST = "hidiindia\.com"/);
   assert.match(middleware, /\["GET", "HEAD"\]\.includes\(request\.method\.toUpperCase\(\)\)/);
-  assert.match(middleware, /!pathname\.startsWith\("\/api\/"\)/);
+  for (const prefix of ["/api", "/v1", "/admin", "/account", "/cart", "/checkout", "/order-confirmed", "/wishlist", "/search", "/review"]) {
+    assert.ok(middleware.includes(`"${prefix}"`), `canonical redirect must preserve ${prefix}`);
+  }
+  assert.match(middleware, /canonicalRedirectExclusions\.some/);
+  assert.match(middleware, /!excludedPath/);
   assert.match(middleware, /url\.hostname = CANONICAL_HOST/);
   assert.match(middleware, /url\.port = ""/);
   assert.match(middleware, /NextResponse\.redirect\(url, 308\)/);

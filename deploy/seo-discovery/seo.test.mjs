@@ -166,7 +166,7 @@ test('homepage and collection search/social fields change together; creative bod
   const collection=normalizeSeoIdentity(head+body,'/collections/all');
   assert(collection.includes('Women’s Kurta Sets &amp; Indian Wear | HIDI India'));
 });
-test('public aliases redirect navigational requests to the apex while mutations, APIs, canonical host and previews pass through',()=>{
+test('public aliases redirect indexable navigation while mutations, APIs, private shopping paths, canonical host and previews pass through',()=>{
   const call=(host,url='/collections/all?size=M',method='GET')=>{
     const result={status:null,headers:null,ended:false};
     const response={writeHead(status,headers){result.status=status;result.headers=headers;},end(){result.ended=true;}};
@@ -175,8 +175,10 @@ test('public aliases redirect navigational requests to the apex while mutations,
   };
   assert.deepEqual(call('www.hidiindia.com'),{status:308,headers:{location:'https://hidiindia.com/collections/all?size=M','cache-control':'public, max-age=3600'},ended:true,handled:true});
   assert.deepEqual(call('thehidi.com','/checkout?step=payment','POST'),{status:null,headers:null,ended:false,handled:false});
-  assert.deepEqual(call('www.hidiindia.com','/api/cart','GET'),{status:null,headers:null,ended:false,handled:false});
-  assert.equal(call('thehidi.com','/checkout?step=payment','HEAD').headers.location,'https://hidiindia.com/checkout?step=payment');
+  for(const path of ['/api/cart','/v1/products','/admin/products','/account/orders','/cart','/checkout?step=payment','/order-confirmed?order=example','/wishlist','/search?q=kurta','/review/example']) {
+    assert.deepEqual(call('www.hidiindia.com',path,'GET'),{status:null,headers:null,ended:false,handled:false},path+' stays on its current origin');
+    assert.deepEqual(call('thehidi.com',path,'HEAD'),{status:null,headers:null,ended:false,handled:false},path+' HEAD stays on its current origin');
+  }
   assert.equal(call('www.thehidi.com','/products/example').status,308);
   for(const host of ['hidiindia.com','thidigk.thehidi.com','localhost:3000','www.hidiindia.com.evil.example'])assert.deepEqual(call(host),{status:null,headers:null,ended:false,handled:false});
 });

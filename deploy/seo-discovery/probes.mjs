@@ -115,6 +115,13 @@ export async function probe(base, output) {
   });
   assert.equal(alias.status,308,'Public www host must permanently redirect to the canonical apex');
   assert.equal(alias.headers.get('location'),'https://hidiindia.com/collections/all?source=canonical-check','Canonical redirect preserves path and query');
+  if(!aliasLive) {
+    for(const path of ['/api/store/products','/v1/products','/admin','/account','/cart','/checkout','/order-confirmed','/wishlist','/search','/review/example']) {
+      const retained=await fetch(base+path,{method:'HEAD',redirect:'manual',headers:{'x-forwarded-host':'www.hidiindia.com','x-forwarded-proto':'https'}});
+      assert.notEqual(retained.status,308,'API and private shopping routes must stay on their current origin: '+path);
+      assert.notEqual(retained.headers.get('location'),'https://hidiindia.com'+path,'Private route must not lose origin-scoped state: '+path);
+    }
+  }
   const robots=await fetch(base+'/robots.txt',{headers:seoHeaders});
   assert.equal(robots.status,200);
   const policy=await robots.text();

@@ -191,7 +191,7 @@ try{
     await scenario(browser,engine,'HDR-01','Transparent header, scroll blur and home-logo return to top',async page=>{
       const header=page.locator('.site-header');assert.equal(await header.getAttribute('data-home'),'true');assert.equal(await header.evaluate(el=>getComputedStyle(el,'::before').backdropFilter),'none');
       await page.evaluate(()=>scrollTo(0,900));await until(()=>header.getAttribute('data-scrolled').then(v=>v==='true'),'scrolled header');assert.match(await header.evaluate(el=>getComputedStyle(el,'::before').backdropFilter),/blur\(12px\)/);
-      await header.getByRole('link',{name:'HIDI — Wear the Feeling',exact:true}).click();await until(()=>page.evaluate(()=>scrollY<2),'logo scroll');
+      await header.getByRole('link',{name:'HIDI India home',exact:true}).click();await until(()=>page.evaluate(()=>scrollY<2),'logo scroll');
     });
     await scenario(browser,engine,'NAV-01','Mobile drawer anchor, single close action, Escape and focus return',async page=>{
       const button=page.getByRole('button',{name:'Open menu',exact:true});await button.click();const panel=page.getByRole('dialog',{name:'Mobile navigation'});await panel.waitFor();

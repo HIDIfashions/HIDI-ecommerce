@@ -33,6 +33,7 @@ export function shouldIndexPublishedImage(status, contentType, hostname, pathnam
 export const canonicalOrigin = 'https://hidiindia.com';
 const legacyHosts = new Set(['thehidi.com', 'www.thehidi.com', 'thidigk.thehidi.com', 'azure-preview.thehidi.com', 'www.hidiindia.com', 'localhost', '127.0.0.1']);
 const identityKeys = new Set(['@id', 'url', 'logo', 'image', 'item', 'contentUrl']);
+const canonicalRedirectExclusions = ['/api', '/v1', '/admin', '/account', '/cart', '/checkout', '/order-confirmed', '/wishlist', '/search', '/review'];
 export const verifiedBrandProfiles = Object.freeze([
   'https://www.instagram.com/hidiindia/',
   'https://www.facebook.com/profile.php?id=61594615364935',
@@ -56,7 +57,7 @@ export function handleCanonicalHostRedirect(request, response) {
   const method = String(request?.method || 'GET').toUpperCase();
   if (!['GET', 'HEAD'].includes(method)) return false;
   const target = new URL(request?.url || '/', canonicalOrigin);
-  if (target.pathname === '/api' || target.pathname.startsWith('/api/')) return false;
+  if (canonicalRedirectExclusions.some(prefix => target.pathname === prefix || target.pathname.startsWith(prefix + '/'))) return false;
   response.writeHead(308, {
     location: canonicalOrigin + target.pathname + target.search,
     'cache-control': 'public, max-age=3600',

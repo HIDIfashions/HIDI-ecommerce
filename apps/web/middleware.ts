@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const CANONICAL_HOST = "hidiindia.com";
 const publicBrandHosts = new Set(["thehidi.com", "www.thehidi.com", CANONICAL_HOST, "www.hidiindia.com"]);
+const canonicalRedirectExclusions = ["/api", "/v1", "/admin", "/account", "/cart", "/checkout", "/order-confirmed", "/wishlist", "/search", "/review"];
 
 function getHostname(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
@@ -87,7 +88,8 @@ function blockResponse() {
 export function middleware(request: NextRequest) {
   const hostname = getHostname(request);
   const pathname = request.nextUrl.pathname;
-  const navigationalRequest = ["GET", "HEAD"].includes(request.method.toUpperCase()) && pathname !== "/api" && !pathname.startsWith("/api/");
+  const excludedPath = canonicalRedirectExclusions.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const navigationalRequest = ["GET", "HEAD"].includes(request.method.toUpperCase()) && !excludedPath;
 
   if (publicBrandHosts.has(hostname) && process.env.ALLOW_PUBLIC_DOMAIN !== "true") {
     return blockResponse();
