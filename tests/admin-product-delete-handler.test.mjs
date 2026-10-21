@@ -6,7 +6,8 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.env.HIDI_CANDIDATE_RUNTIME ? resolve(process.env.HIDI_CANDIDATE_RUNTIME, 'admin-tools') : resolve('deploy/admin-tools');
 const { createProductDeletionHandler, sameOrigin, trustedAdminHeaders } = await import(pathToFileURL(resolve(root, 'product-delete-handler.mjs')));
-const { ownedProductKey, createProductPhotoStorage } = await import(pathToFileURL(resolve(root, 'product-delete-storage.mjs')));
+const { ownedProductKey, productDerivativeKeys, createProductPhotoStorage } = await import(pathToFileURL(resolve(root, 'product-delete-storage.mjs')));
+const { persistentDerivativeBlobKey, PERSISTENT_DERIVATIVE_WIDTHS } = await import(pathToFileURL(resolve('deploy/collection-speed/images.mjs')));
 const env = { AZURE_STORAGE_ACCOUNT: 'hidiaccount', MEDIA_PUBLIC_BASE_URL: 'https://hidiaccount.blob.core.windows.net/product-media' };
 const timestamp = '2026-10-10T10:00:00.000Z';
 const photo = (id, extra = {}) => ({ id, kind: 'product', url: '/media/products/photo.jpg', storagePath: null, shared: false, ...extra });
@@ -34,12 +35,19 @@ test('owned photo keys require this account/container and reject traversal or co
   for (const image of [{ url: '/media/products/../private.json' }, { url: '/media/products/%252e%252e/private.json' }, { url: '/media/products/a.jpg', storagePath: 'azure://product-media/products/b.jpg' }, { url: '/media/products/a.jpg?token=secret' }, { storagePath: 'azure://product-media/brand/hero/current.json' }]) assert.throws(() => ownedProductKey(image, env));
 });
 
-test('storage only deletes owned product keys, accepts absent blobs and never forwards identity to a redirect', async () => {
+test('storage deletes owned originals and persisted derivatives, accepts absent blobs and never forwards identity to a redirect', async () => {
   const calls = [];
   const storage = createProductPhotoStorage({ env, getToken: async () => 'test-storage-token', requestFetch: async (url, options) => { calls.push({ url: String(url), options }); return new Response(null, { status: 404 }); } });
-  await storage.remove('products/photo.jpg'); assert.deepEqual([...await storage.protectedKeys()], []);
+  const original='products/photo.jpg';
+  assert.deepEqual(productDerivativeKeys(original),PERSISTENT_DERIVATIVE_WIDTHS.map(width=>persistentDerivativeBlobKey(original,width,'webp')));
+  await storage.remove(original); assert.deepEqual([...await storage.protectedKeys()], []);
   assert.ok(calls.every(c => c.url.startsWith('https://hidiaccount.blob.core.windows.net/product-media/') && c.options.redirect === 'error'));
-  assert.equal(calls[0].options.method, 'DELETE'); assert.equal(calls[0].options.headers['x-ms-delete-snapshots'], 'include'); await assert.rejects(() => storage.remove('brand/hero/current.json'));
+  const deletes=calls.filter(c=>c.options.method==='DELETE');
+  assert.equal(deletes.length,8);
+  assert(deletes.every(c=>c.options.headers['x-ms-delete-snapshots']==='include'));
+  assert(deletes.some(c=>decodeURIComponent(new URL(c.url).pathname).endsWith('/product-media/products/photo.jpg')));
+  for(const key of productDerivativeKeys(original))assert(deletes.some(c=>decodeURIComponent(new URL(c.url).pathname).endsWith('/product-media/'+key)));
+  await assert.rejects(() => storage.remove('brand/hero/current.json'));
 });
 
 test('homepage configuration preserves reused product photos while safely ignoring its dedicated brand assets', async () => {
