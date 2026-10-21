@@ -145,6 +145,27 @@ test('runtime image handler serves a persisted derivative before touching the or
   assert.equal(originals,0);
 });
 
+test('invalid persisted MIME is rejected and falls back to the existing Sharp path',async t=>{
+  const dir=await temp(t),source=await fixture();let originals=0;
+  const prior=globalThis.fetch;
+  globalThis.fetch=async()=>new Response(Buffer.from('jpeg-ish'),{status:200,headers:{'content-type':'image/jpeg','content-length':'9'}});
+  t.after(()=>{globalThis.fetch=prior;});
+  const handler=createProductImageHandler({
+    origin:'https://hidiindia.com',
+    runtimeRoot:dir,
+    sharp,
+    cacheDir:join(dir,'cache'),
+    seedDir:join(dir,'seed'),
+    fetchSource:async()=>{originals++;return source;},
+  });
+  const response=reply();
+  await handler.handle({method:'GET',url:optimizerUrl(),headers:{accept:'image/webp'}},response,'/_next/image');
+  assert.equal(response.status,200);
+  assert.equal(response.headers['X-Hidi-Image-Cache'],'MISS');
+  assert.equal(originals,1);
+  assert.equal((await sharp(response.body).metadata()).format,'webp');
+});
+
 test('runtime image handler falls back to existing Sharp path when derivative is absent',async t=>{
   const dir=await temp(t);let originals=0;
   const source=await fixture();
