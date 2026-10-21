@@ -10,12 +10,13 @@ def once(a,b):
 once("import {createProductImageHandler,mediaPath} from '../deploy/collection-speed/images.mjs';", "const candidateRoot=resolve(process.env.HIDI_CANDIDATE_RUNTIME);\nconst {createProductImageHandler,mediaPath}=await import(pathToFileURL(join(candidateRoot,'product-images/images.mjs')).href);")
 anchor="const results=[],snapshots=[],contexts=[],uploadResponses=[];let browser,child,latestPage,log='';"
 once(anchor,anchor+'''
-const {copyFile,stat:diskStat,readdir}=await import('node:fs/promises');
+const {copyFile,writeFile,readFile,stat:diskStat,readdir}=await import('node:fs/promises');
 const {createReadStream}=await import('node:fs');
 const {BlobServiceClient}=require(join(candidateRoot,'photo-stream/node_modules/@azure/storage-blob'));
 process.env.AZURE_STORAGE_ACCOUNT='photofixture';
 process.env.MEDIA_PUBLIC_BASE_URL='https://hidiindia.com/media';
 process.env.API_URL='http://127.0.0.1:'+apiPort+'/v1';
+process.env.HIDI_PERSISTENT_IMAGE_DERIVATIVES='true';
 const uploadTemp=join(directory,'stream-temp');await mkdir(uploadTemp);process.env.TMPDIR=uploadTemp;
 const browserTemp=join(directory,'browser-temp');await mkdir(browserTemp);
 // Playwright creates its active profile and artifacts in the parent's TMPDIR.
@@ -40,9 +41,16 @@ BlobServiceClient.prototype.getContainerClient=function(container){
    const target=join(directory,createHash('sha256').update(key).digest('hex'));await copyFile(file,target);
    const sha256=await diskHash(file),size=(await diskStat(file)).size;
    assert.equal(options.metadata.hidi_source_sha256,sha256);h.state.writes++;
-   h.state.files.set(key,{path:target,sha256,size,type:options.blobHTTPHeaders.blobContentType});
+   h.state.files.set(key,{path:target,sha256,size,type:options.blobHTTPHeaders.blobContentType,metadata:options.metadata});
   },
-  async getProperties(){const saved=h.state.files.get(key);if(!saved)throw Error('Missing fixture blob');return {contentLength:saved.size,contentType:saved.type};},
+  async uploadData(bytes,options){
+   if(h.state.files.has(key))throw Object.assign(new Error('Already stored'),{statusCode:412});
+   const target=join(directory,createHash('sha256').update(key).digest('hex'));await writeFile(target,bytes);
+   h.state.derivativeWrites=(h.state.derivativeWrites||0)+1;
+   h.state.files.set(key,{path:target,sha256:createHash('sha256').update(bytes).digest('hex'),size:bytes.length,type:options.blobHTTPHeaders.blobContentType,metadata:options.metadata});
+  },
+  async getProperties(){const saved=h.state.files.get(key);if(!saved)throw Error('Missing fixture blob');return {contentLength:saved.size,contentType:saved.type,metadata:saved.metadata};},
+  async downloadToBuffer(){const saved=h.state.files.get(key);if(!saved)throw Error('Missing fixture blob');return readFile(saved.path);},
   async download(){return {readableStreamBody:createReadStream(h.state.files.get(key).path)};}
  };}};
 };
@@ -51,6 +59,8 @@ const {handlePhotoUpload:compiledUpload}=await import(pathToFileURL(join(candida
 start=s.index("  if(path==='/api/admin/inventory/v1/images'&&req.method==='POST'){")
 end=s.index('  if(await optimizer.handle(req,res,path))return;',start)
 s=s[:start]+"  if(await compiledUpload(req,res,path))return;\n"+s[end:]
+once("  if(path.startsWith('/media/products/')){\n   const canonical=mediaPath(path),file=canonical&&h.state.files.get(canonical.replace(/^\\/media\\//,''));",
+     "  if(path.startsWith('/media/products/')){\n   const direct=path.startsWith('/media/products/_derivatives/')?path.replace(/^\\/media\\//,''):null;\n   const canonical=direct||(mediaPath(path)?.replace(/^\\/media\\//,'')||null),file=canonical&&h.state.files.get(canonical);")
 once("browser=await pw[engine].launch({headless:true});", "browser=await launchIsolatedBrowser(engine);await h.assertClean();")
 once("[resolve('apps/web/node_modules/next/dist/bin/next'),'start','-H','127.0.0.1','-p',String(nextPort)]", "[join(candidateRoot,'apps/web/server.js')]")
 once("cwd:resolve('apps/web'),env:{...process.env,NODE_ENV:'production',", "cwd:join(candidateRoot,'apps/web'),env:{...process.env,NODE_ENV:'production',HOSTNAME:'127.0.0.1',PORT:String(nextPort),")
@@ -67,7 +77,9 @@ once("const page=await context.newPage(),errors=[],served=[];latestPage=page;pag
   const editorPage=await context.newPage();let page=editorPage;observe(page);latestPage=page;""")
 once("served.length=0;await page.goto(base+'/products/photo-fixture'", "served.length=0;page=await context.newPage();observe(page);latestPage=page;await page.goto(base+'/products/photo-fixture'")
 once("await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{await page.goto", "await record(engine,'Corrupted upload shows an error without attaching a photo',async()=>{page=editorPage;latestPage=page;await page.goto")
-once("assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);await h.assertClean();});", "assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);await h.assertClean();assert.deepEqual(errors,[],'No uncaught errors on either retained editor or customer product page');});")
+once("assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);await h.assertClean();});", "assert.equal(h.state.metadata.length,2);assert.equal(h.state.writes,2);assert.equal(h.state.derivativeWrites,12);await h.assertClean();assert.deepEqual(errors,[],'No uncaught errors on either retained editor or customer product page');});")
+once("rows.push({url:response.url(),bytes:size,format:headers['content-type']});}}assert(rows.length>0,'Custom image optimizer served product images');",
+     "rows.push({url:response.url(),bytes:size,format:headers['content-type'],source:headers['x-hidi-image-source']||'',cache:headers['x-hidi-image-cache']||''});}}assert(rows.length>0,'Custom image optimizer served product images');assert(rows.some(row=>row.source==='azure-derivative'&&row.cache==='PERSISTENT'),'Published-size product images must bypass Sharp and come from persistent Azure derivatives');")
 dest=root/'tests/photo-retained-compiled.browser.mjs';dest.write_text(s)
 subprocess.run(['node','--check',str(dest)],cwd=root,check=True)
 subprocess.run(['node','--experimental-strip-types',str(dest)],cwd=root,check=True)
