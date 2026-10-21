@@ -9,8 +9,8 @@ import {persistProductDerivatives} from '../../apps/web/lib/product-image-deriva
 const apply=process.argv.includes('--apply');
 const origin=(process.env.HIDI_STOREFRONT_ORIGIN||'https://hidiindia.com').replace(/\/$/,'');
 const limitArg=process.argv.find(x=>x.startsWith('--limit='));
-const limit=limitArg?Number(limitArg.slice('--limit='.length)):Infinity;
-if(!Number.isFinite(limit)||limit<1)throw new Error('Invalid --limit value');
+const limit=limitArg?Number(limitArg.slice('--limit='.length)):undefined;
+if(limitArg&&(!Number.isInteger(limit)||limit<1))throw new Error('Invalid --limit value');
 
 async function json(url){
   const response=await fetch(url,{headers:{accept:'application/json'},signal:AbortSignal.timeout(30000),redirect:'error'});
@@ -35,7 +35,7 @@ for(const card of list){
     if(source)sources.add(source);else if(value)external.add(value);
   }
 }
-const selected=[...sources].slice(0,limit);
+const selected=limit?[...sources].slice(0,limit):[...sources];
 const plan=selected.map(source=>{
   const originalKey=source.slice('/media/'.length);
   return {
