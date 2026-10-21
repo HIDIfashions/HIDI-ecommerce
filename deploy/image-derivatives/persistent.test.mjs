@@ -91,6 +91,11 @@ function fakeContainer(){
           if(!value) throw {statusCode:404};
           return {contentLength:value.bytes.length,contentType:value.contentType,metadata:value.metadata};
         },
+        async downloadToBuffer(){
+          const value=saved.get(key);
+          if(!value) throw {statusCode:404};
+          return Buffer.from(value.bytes);
+        },
       };
     },
   };
@@ -115,6 +120,10 @@ test('Azure derivative persistence is immutable, idempotent, and source-hash che
   const firstSaved=container.saved.values().next().value;const originalDerivativeHash=firstSaved.metadata.hidi_derivative_sha256;firstSaved.metadata.hidi_derivative_sha256='0'.repeat(64);
   await assert.rejects(()=>persistProductDerivatives(container,'products/variants/a/photo.jpg',photo,{render}),/differs from this source photo/);
   firstSaved.metadata.hidi_derivative_sha256=originalDerivativeHash;
+  const originalBytes=Buffer.from(firstSaved.bytes);
+  firstSaved.bytes=Buffer.from('bad');
+  await assert.rejects(()=>persistProductDerivatives(container,'products/variants/a/photo.jpg',photo,{render}),/differs from this source photo/);
+  firstSaved.bytes=originalBytes;
   await assert.rejects(
     ()=>persistProductDerivatives(container,'products/variants/a/photo.jpg',{...photo,sha256:'b'.repeat(64)},{render}),
     /differs from this source photo/,
