@@ -36,15 +36,19 @@ export function mediaPath(value) {
 export function persistentDerivativeBlobKey(originalKey, width, format = 'webp') {
   if (typeof originalKey !== 'string' || !PRODUCT_BLOB_RE.test(originalKey) ||
       !PERSISTENT_DERIVATIVE_WIDTH_SET.has(width) || format !== 'webp') return null;
-  const withoutExtension = originalKey.replace(/\.(?:jpg|jpeg|png|webp|avif)$/i, '');
-  return `products/_derivatives/${PERSISTENT_DERIVATIVE_VERSION}/${withoutExtension.slice('products/'.length)}/${width}.${format}`;
+  // Keep the complete immutable source filename as a path segment. This prevents
+  // photo.jpg and photo.png from ever sharing a derivative family.
+  return `products/_derivatives/${PERSISTENT_DERIVATIVE_VERSION}/${originalKey.slice('products/'.length)}/${width}.${format}`;
 }
 
 export function persistentDerivativeMediaPath(source, width, format = 'webp') {
   const normalized = mediaPath(source);
-  if (!normalized) return null;
+  if (!normalized || !Number.isInteger(width) || width < 1 || width > 1920 || format !== 'webp') return null;
   const originalKey = normalized.slice('/media/'.length);
-  const derivativeKey = persistentDerivativeBlobKey(originalKey,width,format);
+  // Next can request widths below the smallest persisted size. Serve the next
+  // larger persisted derivative rather than decoding the original just for a thumbnail.
+  const persistedWidth = PERSISTENT_DERIVATIVE_WIDTHS.find(candidate => candidate >= width);
+  const derivativeKey = persistedWidth ? persistentDerivativeBlobKey(originalKey,persistedWidth,format) : null;
   return derivativeKey ? '/media/' + derivativeKey : null;
 }
 
