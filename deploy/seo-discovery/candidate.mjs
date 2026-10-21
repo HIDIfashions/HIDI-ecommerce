@@ -73,9 +73,14 @@ const runtimeEnvironment = {
   AZURE_STORAGE_ACCOUNT: 'fixture',
   AZURE_STORAGE_BLOB_ENDPOINT: 'https://fixture.blob.core.windows.net/',
 };
-const logsFrom = child => {
+const childFailures = new Map();
+const logsFrom = (child, label) => {
   child.stdout.on('data', chunk => logs += chunk);
   child.stderr.on('data', chunk => logs += chunk);
+  child.on('error', failure => {
+    childFailures.set(child, failure);
+    logs += `${label} failed to start: ${failure.message}\n`;
+  });
   return child;
 };
 let logs = '';
@@ -84,19 +89,19 @@ const storefront = logsFrom(spawn(process.execPath, [join(root, 'apps/web/server
   cwd: join(root, 'apps/web'),
   env: { ...runtimeEnvironment, PORT: String(storefrontPort), HOSTNAME: '127.0.0.1' },
   stdio: ['ignore', 'pipe', 'pipe'],
-}));
+}), 'candidate storefront');
 const runtime = spawn(process.execPath, [join(root, 'server.mjs')], { cwd: root,
   env: { ...runtimeEnvironment, PORT: String(port), STOREFRONT_ORIGIN: storefrontBase }, stdio: ['ignore', 'pipe', 'pipe'] });
-logsFrom(runtime);
+logsFrom(runtime, 'candidate wrapper');
 const base = 'http://127.0.0.1:' + port;
 const priorRoot=resolve(root,'../base-app');
 const priorStorefrontBase='http://127.0.0.1:'+priorStorefrontPort;
 const priorStorefront=logsFrom(spawn(process.execPath,[join(priorRoot,'apps/web/server.js')],{
   cwd:join(priorRoot,'apps/web'),env:{...runtimeEnvironment,PORT:String(priorStorefrontPort),HOSTNAME:'127.0.0.1'},
   stdio:['ignore','pipe','pipe'],
-}));
+}),'prior storefront');
 const priorRuntime=logsFrom(spawn(process.execPath,[join(priorRoot,'server.mjs')],{cwd:priorRoot,
-  env:{...runtimeEnvironment,PORT:String(priorPort),STOREFRONT_ORIGIN:priorStorefrontBase},stdio:['ignore','pipe','pipe']}));
+  env:{...runtimeEnvironment,PORT:String(priorPort),STOREFRONT_ORIGIN:priorStorefrontBase},stdio:['ignore','pipe','pipe']}),'prior wrapper');
 const priorBase='http://127.0.0.1:'+priorPort;
 
 const bodyEvidencePath = 'evidence/seo-discovery/candidate-body-preservation.json';
@@ -137,6 +142,13 @@ const requestDocument = (origin, route) => new Promise((resolveRequest, reject) 
   req.setTimeout(30000, () => req.destroy(new Error(`Timed out reading ${route}`)));
   req.on('error', reject); req.end();
 });
+const readinessRequest = async origin => {
+  try {
+    const response = await fetch(origin + '/collections/all', { signal: AbortSignal.timeout(3000) });
+    try { return response.ok; }
+    finally { try { await response.body?.cancel(); } catch {} }
+  } catch { return false; }
+};
 const sampleBody = async (origin, route) => {
   const response = await requestDocument(origin, route), document = response.document;
   const marker = document.indexOf(headMarker), markerCount = countBytes(document, headMarker);
@@ -233,16 +245,14 @@ const compareReviewedCollectionBody = async () => {
 };
 try {
   let ready = false;
-  for (let i = 0; i < 100; i++) {
-    try {
-      const responses=await Promise.all([
-        fetch(base+'/collections/all'),fetch(storefrontBase+'/collections/all'),
-        fetch(priorBase+'/collections/all'),fetch(priorStorefrontBase+'/collections/all'),
-      ]);
-      if(responses.every(response=>response.ok)){ready=true;break;}
-    } catch {}
+  const readinessDeadline=Date.now()+30000;
+  for (let i = 0; i < 100 && Date.now()<readinessDeadline; i++) {
+    const responses=await Promise.all([base,storefrontBase,priorBase,priorStorefrontBase].map(readinessRequest));
+    if(responses.every(Boolean)){ready=true;break;}
     for(const [label,child] of [['candidate wrapper',runtime],['candidate storefront',storefront],
       ['prior wrapper',priorRuntime],['prior storefront',priorStorefront]]) {
+      const failure=childFailures.get(child);
+      if(failure) throw new Error(label+' failed before readiness: '+failure.message+'\n'+logs.slice(-2000));
       if(child.exitCode!==null||child.signalCode!==null) throw new Error(label+' exited before readiness: '+logs.slice(-2000));
     }
     await new Promise(done => setTimeout(done, 200));
