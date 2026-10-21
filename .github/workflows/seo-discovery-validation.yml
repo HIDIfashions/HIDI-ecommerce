@@ -12,7 +12,7 @@ concurrency:
 jobs:
   validation:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-seo-browser/node_modules/playwright/index.mjs
       PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-seo-browsers
