@@ -11,7 +11,7 @@ on:
       - 'apps/web/lib/product-image-derivative-store.d.mts'
       - 'apps/web/app/api/admin/inventory/**/images/route.ts'
       - 'apps/web/components/catalog-image.tsx'
-      - 'deploy/collection-speed/images.mjs'
+      - 'deploy/collection-speed/images.*'
       - 'deploy/image-derivatives/**'
       - 'deploy/admin-tools/product-delete-storage.mjs'
       - 'deploy/photo-live/**'
@@ -79,6 +79,12 @@ jobs:
           PY
       - name: Build and run isolated end-to-end upload/render regression
         run: python deploy/image-optimization/verify-web-upload.py
+      - name: Read-only published catalogue media audit
+        continue-on-error: true
+        run: |
+          mkdir -p reports/image-derivatives
+          node deploy/image-derivatives/backfill.mjs > reports/image-derivatives/catalogue-audit.json
+          cat reports/image-derivatives/catalogue-audit.json
       - name: Preserve end-to-end evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,6 +92,7 @@ jobs:
           name: persistent-image-derivatives-evidence
           path: |
             reports/upload-integration/
+            reports/image-derivatives/
             test-results/photo-web-upload/
           retention-days: 14
       - name: Enforce end-to-end result
