@@ -1,10 +1,21 @@
 /** Backfill persistent Azure derivatives for already-published HIDI product photos.
  * Read-only by default. Set HIDI_DERIVATIVE_BACKFILL_WRITE=YES only after review.
  */
-import { productMediaContainer } from "../../apps/web/lib/azure-blob.ts";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import { productMediaKey, PRODUCT_DERIVATIVE_WIDTHS } from "../../apps/web/lib/product-image-derivatives.mjs";
 import { createAndUploadProductDerivatives } from "../../apps/web/lib/photo-derivatives.mjs";
 import { downloadPhotoToDisk } from "../collection-speed/photo-disk.mjs";
+
+const require = createRequire(resolve("apps/web/package.json"));
+const { BlobServiceClient } = require("@azure/storage-blob");
+const { DefaultAzureCredential } = require("@azure/identity");
+
+function productMediaContainer() {
+  const account = process.env.AZURE_STORAGE_ACCOUNT?.trim() ?? "";
+  if (!/^[a-z0-9]{3,24}$/.test(account)) throw new Error("AZURE_STORAGE_ACCOUNT is not configured");
+  return new BlobServiceClient(`https://${account}.blob.core.windows.net`, new DefaultAzureCredential()).getContainerClient("product-media");
+}
 
 const catalogUrl = process.env.HIDI_DERIVATIVE_CATALOG_URL || "https://hidiindia.com/api/store/products";
 const write = process.env.HIDI_DERIVATIVE_BACKFILL_WRITE === "YES";
