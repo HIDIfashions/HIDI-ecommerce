@@ -1,6 +1,7 @@
 """Focused fail-closed tests for the reviewed Shop All heading and intro patch."""
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import unittest
 
@@ -16,9 +17,21 @@ patch=load_patch()
 
 class CollectionIntroPatchTest(unittest.TestCase):
     def baseline(self):
-        data=(HERE.parent/'india-seo/fixtures/all-before.js').read_bytes().rstrip(b'\r\n')
+        data=(HERE/'fixtures/collection-all-before.js').read_bytes()
+        self.assertEqual(len(data),4099)
         self.assertEqual(hashlib.sha256(data).hexdigest(),patch.COLLECTION_ALL_SHA)
         return data
+
+    def test_exact_live_baseline_has_reviewed_shop_all_semantics(self):
+        text=self.baseline().decode()
+        self.assertEqual(text.count('i="All Products"'),1)
+        self.assertEqual(text.count('j='+json.dumps(patch.COLLECTION_ALL_OLD_DESCRIPTION,ensure_ascii=False,separators=(',',':'))),1)
+        self.assertEqual(text.count('(0,d.jsx)("header",{className:"collection-header",children:(0,d.jsx)("h1",{children:i})})'),1)
+        self.assertEqual(text.count('position:2,name:i,item:(0,g.rf)("/collections/all")'),1)
+        self.assertEqual(text.count('(0,d.jsx)(e.CollectionBrowser,{products:a})'),1)
+        self.assertNotIn('hidi-collection-intro',text)
+        self.assertNotIn(patch.COLLECTION_ALL_TITLE,text)
+        self.assertNotIn(patch.COLLECTION_ALL_DESCRIPTION,text)
 
     def test_exact_renderer_patch_adds_only_reviewed_heading_and_intro(self):
         before=self.baseline()

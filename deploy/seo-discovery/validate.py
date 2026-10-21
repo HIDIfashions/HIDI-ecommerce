@@ -7,23 +7,15 @@ def load(name,path):
 
 images=load('images',Path('deploy/compose-msg91-images.py'))
 patcher=load('seo_patch',Path('deploy/seo-discovery/patch-runtime.py'))
-EXPECTED_DIAGNOSTIC_IMAGE='acrhidiprod0927.azurecr.io/hidi-web@sha256:491c82d0e7d86328a9d2361cfc952ea4fd5fe5d77cdaa5fbace340964d8c3e8c'
 subprocess.run(['node','--test','tests/storefront-surfaces.test.cjs','deploy/seo-discovery/collection-body-delta.test.mjs'],check=True)
 subprocess.run(['python3','deploy/seo-discovery/test_collection_intro.py'],check=True)
 data=json.loads(subprocess.check_output(['az','containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--only-show-errors','-o','json'],text=True))
 props=data['properties'];assert props['latestRevisionName']==props['latestReadyRevisionName'],'Live web rollout in progress'
 image=props['template']['containers'][0]['image'];images.validate_image(image,'web')
-assert image==EXPECTED_DIAGNOSTIC_IMAGE,'Live web image is not the settled diagnostic baseline'
 subprocess.run(['docker','pull',image],check=True)
 private=Path(os.environ['RUNNER_TEMP'])/'hidi-seo-validation';private.mkdir(mode=0o700)
 base,overlay,candidate=(private/n for n in ['base-app','overlay','candidate-app'])
-images.extract(image,base)
-compiled=base/patcher.COLLECTION_ALL_PATH
-assert compiled.is_file(),'Compiled Shop All page missing from exact live image'
-diagnostic=Path('evidence/seo-discovery/baseline-diagnostic');diagnostic.mkdir(parents=True,exist_ok=True)
-payload=compiled.read_bytes();(diagnostic/'page.js').write_bytes(payload)
-(diagnostic/'manifest.json').write_text(json.dumps({'image':image,'path':patcher.COLLECTION_ALL_PATH,'sha256':hashlib.sha256(payload).hexdigest(),'size':len(payload),'readOnly':True,'deploymentWrites':0,'databaseWrites':0,'blobWrites':0},indent=2)+'\n')
-plan=patcher.patch_runtime(base,overlay)
+images.extract(image,base);plan=patcher.patch_runtime(base,overlay)
 shutil.copytree(base,candidate,symlinks=True);shutil.copytree(overlay,candidate,dirs_exist_ok=True)
 before,after=images.fingerprints(base),images.fingerprints(candidate)
 changed={p for p in before.keys()|after.keys() if before.get(p)!=after.get(p)}
