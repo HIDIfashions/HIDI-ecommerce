@@ -31,7 +31,7 @@ export async function probe(base,mode='candidate',routePatch){
  await page.screenshot({path:out+'/'+preset+'-size-option.png',fullPage:true});
  const printPage=await context.newPage();await printPage.setViewportSize({width:650,height:650});await printPage.setContent(metrics.html);await printPage.locator('.brand img').evaluate((img,url)=>img.src=url,new URL('/brand/hidi-logo-price-tag.svg',base).href);await printPage.waitForTimeout(300);await printPage.locator('.price-tag').screenshot({path:out+'/'+preset+'-tag.png',scale:'css'});await writeFile(out+'/'+preset+'-print.html',metrics.html);
  }
- await page.reload({waitUntil:'domcontentloaded',timeout:60000});assert(await page.locator(`input[value="${preset}"]`).isChecked(),'Preset persists');assert.deepEqual(errors,[]);
+ await page.reload({waitUntil:'domcontentloaded',timeout:60000});await page.waitForFunction(key=>document.querySelector('input[value="'+key+'"]')?.checked,preset);assert(await page.locator(`input[value="${preset}"]`).isChecked(),'Preset persists');assert.deepEqual(errors,[]);
  cases.push({engine,width,preset,passed:true,exactDimensions:true,footerFits:true});await context.close();
  }}finally{await browser.close();}}
  await writeFile(out+'/report.json',JSON.stringify({passed:true,cases,productionWrites:0},null,2));console.log(JSON.stringify(cases));
