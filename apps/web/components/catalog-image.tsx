@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image, { type ImageLoader } from "next/image";
 import { canOptimizeProductImage, productImageSource } from "@/lib/product-image";
 import { preferredProductDerivative, productMediaKey } from "@/lib/product-image-derivatives.mjs";
@@ -17,11 +17,9 @@ const derivativeLoader: ImageLoader = ({ src, width }) =>
   preferredProductDerivative(src, width) ?? productImageSource(src);
 
 export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel, className }: CatalogImageProps) {
-  const [delivery, setDelivery] = useState<"derivative" | "runtime" | "failed">("derivative");
-
-  useEffect(() => {
-    setDelivery("derivative");
-  }, [src]);
+  const [failure, setFailure] = useState<{ src: string; stage: "runtime" | "failed" } | null>(null);
+  const delivery: "derivative" | "runtime" | "failed" =
+    failure?.src === src ? failure.stage : "derivative";
 
   if (!src || delivery === "failed") {
     return <div aria-label={alt} className={className} style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "linear-gradient(0deg, #541d1f 0 36px, transparent 56px), linear-gradient(145deg, var(--hidi-page-bg, #fbf6f2), var(--hidi-page-bg, #fbf6f2))" }}>
@@ -48,7 +46,10 @@ export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel,
     fetchPriority={priority ? "high" : undefined}
     decoding="async"
     className={className}
-    onError={() => setDelivery(current => current === "derivative" ? "runtime" : "failed")}
+    onError={() => setFailure({
+      src,
+      stage: delivery === "derivative" ? "runtime" : "failed",
+    })}
     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }}
   />;
 }
