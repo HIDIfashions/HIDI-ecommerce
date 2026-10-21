@@ -81,6 +81,50 @@ jobs:
           env GITHUB_SHA="$BASELINE_SHA" python deploy/photo-live/release.py capture
           env GITHUB_SHA="$BASELINE_SHA" python deploy/photo-live/azure-check.py identity-preflight
 
+      - name: Record exact live photo-runtime contract before composition
+        working-directory: candidate-source
+        run: |
+          env GITHUB_SHA="$HIDI_PRODUCTION_BASELINE_SHA" python - <<'PY'
+          import hashlib,importlib.util,json
+          from pathlib import Path
+          p=Path('deploy/photo-live/release.py').resolve()
+          spec=importlib.util.spec_from_file_location('photo_contract',p)
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          states=m.r.photo.states()
+          root=Path(m.P)/'contract-diagnostic'
+          result={'states':{},'api':{},'web':{}}
+          for app in ['api','web']:
+              target=root/app
+              m.r.images.extract(states['hidi-'+app]['image'],target)
+              result['states'][app]={'image':states['hidi-'+app]['image']}
+          api=root/'api'/'apps/api/dist/admin/admin-inventory.service.js'
+          text=api.read_text()
+          result['api']={
+              'sha256':hashlib.sha256(api.read_bytes()).hexdigest(),
+              'ticketNumberAnchor':text.count('const sizeBytes = Number(input.sizeBytes);'),
+              'twelveMiBAnchor':text.count('!Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > 12 * 1024 * 1024'),
+              'twelveMiBMessage':text.count('Image must be no larger than 12 MB'),
+              'bigIntAnchor':text.count('maxBytes: BigInt(sizeBytes)'),
+          }
+          web=root/'web'
+          def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+          def blob(path):
+              data=path.read_bytes()
+              return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\\0'+data).hexdigest()
+          server=(web/'server.mjs').read_text()
+          result['web']={
+              'serverSha256':sha(web/'server.mjs'),
+              'imagesSha256':sha(web/'product-images/images.mjs'),
+              'deleteStorageGitBlob':blob(web/'admin-tools/product-delete-storage.mjs'),
+              'imageHandlerImportAnchor':server.count('import { createProductImageHandler } from "./product-images/images.mjs";'),
+              'imageHandlerCallAnchor':server.count('if (await productImageHandler.handle(request, response, pathname)) return;'),
+          }
+          out=Path('evidence/photo-live/live-contract.json')
+          out.parent.mkdir(parents=True,exist_ok=True)
+          out.write_text(json.dumps(result,indent=2))
+          print(json.dumps(result,indent=2))
+          PY
+
       - name: Compose candidate over captured production runtime
         working-directory: candidate-source
         run: env GITHUB_SHA="$HIDI_PRODUCTION_BASELINE_SHA" python deploy/photo-live/release.py compose
