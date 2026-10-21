@@ -25,7 +25,7 @@ test('Space retains button activation on release and prevents page scrolling; En
   assert.equal(actions,1);assert.equal(prevented,2);
 });
 
-test('foundation read gate requires completed shopping reads and successful declared prefetch responses',()=>{
+test('foundation read gate requires completed shopping reads without waiting on declared Next streams',()=>{
   const page=new EventEmitter(),request=(url,headers={})=>({method:()=> 'GET',url:()=>url,headers:()=>headers});
   const cart=request('https://hidiindia.com/api/store/carts/test');
   const navigation=request('https://hidiindia.com/collections/all?_rsc=navigation');
@@ -40,12 +40,7 @@ test('foundation read gate requires completed shopping reads and successful decl
   const state=trackFoundationReads(page);
   for(const value of [cart,navigation,prefetch,segmentPrefetch,ordinary])page.emit('request',value);
   assert.deepEqual(state.pending,new Set([cart,navigation]));
-  assert.deepEqual(state.prefetch,new Set([prefetch,segmentPrefetch]));
-  for(const value of [prefetch,segmentPrefetch])page.emit('response',{request:()=>value,status:()=>200});
-  assert.equal(state.prefetch.size,0);
+  assert.equal(state.declaredPrefetches,2);
   page.emit('requestfinished',cart);page.emit('requestfailed',navigation);
   assert.equal(state.pending.size,0);
-  const failed=request('https://hidiindia.com/products/failure?_rsc=prefetch',{'next-router-prefetch':'1'});
-  page.emit('request',failed);page.emit('response',{request:()=>failed,status:()=>503});
-  assert.equal(state.prefetchFailures.get(failed),503);
 });

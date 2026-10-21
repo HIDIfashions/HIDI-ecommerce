@@ -7,6 +7,8 @@ def load(name,path):
 
 images=load('images',Path('deploy/compose-msg91-images.py'))
 patcher=load('seo_patch',Path('deploy/seo-discovery/patch-runtime.py'))
+subprocess.run(['node','--test','tests/storefront-surfaces.test.cjs','deploy/seo-discovery/collection-body-delta.test.mjs'],check=True)
+subprocess.run(['python3','deploy/seo-discovery/test_collection_intro.py'],check=True)
 data=json.loads(subprocess.check_output(['az','containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--only-show-errors','-o','json'],text=True))
 props=data['properties'];assert props['latestRevisionName']==props['latestReadyRevisionName'],'Live web rollout in progress'
 image=props['template']['containers'][0]['image'];images.validate_image(image,'web')

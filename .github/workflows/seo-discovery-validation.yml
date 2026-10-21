@@ -2,7 +2,7 @@ name: Validate SEO-only candidate without deployment
 on:
   push:
     branches: [migration/azure-sql-blob]
-    paths: [deploy/seo-discovery/**, deploy/seo-foundation/**, .github/workflows/seo-discovery-validation.yml]
+    paths: [deploy/seo-discovery/**, deploy/seo-foundation/**, apps/web/app/collections/all/page.tsx, tests/storefront-surfaces.test.cjs, .github/workflows/seo-discovery-validation.yml]
 permissions:
   contents: read
   id-token: write

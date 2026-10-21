@@ -107,6 +107,63 @@ const expectedTitles = {
   '/contact':'Contact & Help | HIDI',
   '/offers':'HIDI Privileges | HIDI',
 };
+const collectionAllTitle='Women’s Kurta Sets & Indian Wear';
+const collectionAllDescription='Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.';
+async function assertCollectionAllIntro(page,rawHtml) {
+  const rendered=await page.evaluate(({title,description})=>{
+    const headers=[...document.querySelectorAll('main .collection-header')];
+    const headings=[...document.querySelectorAll('main .collection-header h1')];
+    const intros=[...document.querySelectorAll('main .hidi-collection-intro')];
+    const header=headers[0],heading=headings[0],intro=intros[0],firstProduct=document.querySelector('main article');
+    const box=node=>{const value=node?.getBoundingClientRect();return value?{x:value.x,y:value.y,right:value.right,bottom:value.bottom,width:value.width,height:value.height}:null;};
+    const visible=node=>!!node&&getComputedStyle(node).display!=='none'&&getComputedStyle(node).visibility!=='hidden'&&box(node).width>0&&box(node).height>0;
+    const values=[...document.querySelectorAll('script[type="application/ld+json"]')].flatMap(node=>{try{const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}});
+    const breadcrumb=values.find(value=>value?.['@type']==='BreadcrumbList');
+    return {headerCount:headers.length,headingCount:headings.length,introCount:intros.length,
+      heading:heading?.textContent?.trim(),intro:intro?.textContent?.trim(),
+      breadcrumbLabel:breadcrumb?.itemListElement?.find(value=>value?.position===2)?.name,
+      headerVisible:visible(header),headingVisible:visible(heading),introVisible:visible(intro),
+      headerDisplay:header?.style.display,introDisplay:intro?.style.display,
+      collectionNavigationCount:document.querySelectorAll('nav[aria-label="Explore HIDI collections"]').length,
+      header:box(header),headingBox:box(heading),introBox:box(intro),firstProduct:box(firstProduct),
+      expected:{title,description}};
+  },{title:collectionAllTitle,description:collectionAllDescription});
+  assert.equal(rendered.headerCount,1,'Shop All renders one collection header');
+  assert.equal(rendered.headingCount,1,'Shop All renders one H1');
+  assert.equal(rendered.introCount,1,'Shop All renders one factual intro');
+  assert.equal(rendered.heading,collectionAllTitle,'Visible Shop All H1 matches the reviewed search intent');
+  assert.equal(rendered.intro,collectionAllDescription,'Visible Shop All intro matches the reviewed factual description');
+  assert.equal(rendered.breadcrumbLabel,collectionAllTitle,'Hydrated BreadcrumbList position 2 uses the reviewed Shop All label');
+  assert(rendered.headerVisible&&rendered.headingVisible&&rendered.introVisible,'Shop All heading and intro remain visible at this viewport');
+  assert.equal(rendered.headerDisplay,'block','Inline header gate overrides the retained small-screen hide rule');
+  assert.equal(rendered.introDisplay,'block','Inline intro gate overrides the retained global paragraph hide rule');
+  assert.equal(rendered.collectionNavigationCount,0,'No duplicate collection navigation is introduced');
+  assert(rendered.introBox.y>=rendered.headingBox.bottom-1,'Intro follows the heading without overlap');
+  assert(rendered.firstProduct&&rendered.firstProduct.y>=rendered.header.bottom-1,'Product grid follows the reviewed intro without overlap');
+  if(rawHtml) {
+    const raw=await page.evaluate(({html,title,description})=>{
+      const doc=new DOMParser().parseFromString(html,'text/html');
+      const headers=[...doc.querySelectorAll('main .collection-header')],headings=[...doc.querySelectorAll('main .collection-header h1')],intros=[...doc.querySelectorAll('main .hidi-collection-intro')];
+      const values=[...doc.querySelectorAll('script[type="application/ld+json"]')].flatMap(node=>{try{const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}});
+      const breadcrumb=values.find(value=>value?.['@type']==='BreadcrumbList');
+      return {headerCount:headers.length,headingCount:headings.length,introCount:intros.length,
+        heading:headings[0]?.textContent?.trim(),intro:intros[0]?.textContent?.trim(),
+        breadcrumbLabel:breadcrumb?.itemListElement?.find(value=>value?.position===2)?.name,
+        headerDisplay:headers[0]?.style.display,introDisplay:intros[0]?.style.display,
+        productCount:doc.querySelectorAll('main article').length,expected:{title,description}};
+    },{html:rawHtml,title:collectionAllTitle,description:collectionAllDescription});
+    assert.equal(raw.headerCount,1,'Crawler HTML contains one collection header');
+    assert.equal(raw.headingCount,1,'Crawler HTML contains one Shop All H1');
+    assert.equal(raw.introCount,1,'Crawler HTML contains one Shop All intro');
+    assert.equal(raw.heading,collectionAllTitle,'Crawler HTML contains the exact reviewed Shop All H1');
+    assert.equal(raw.intro,collectionAllDescription,'Crawler HTML contains the exact reviewed Shop All intro');
+    assert.equal(raw.breadcrumbLabel,collectionAllTitle,'Crawler HTML BreadcrumbList position 2 uses the reviewed Shop All label');
+    assert.equal(raw.headerDisplay,'block','Crawler HTML retains the visible header gate');
+    assert.equal(raw.introDisplay,'block','Crawler HTML retains the visible intro gate');
+    assert(raw.productCount>0,'Crawler HTML retains the product catalogue after the reviewed intro');
+  }
+  return rendered;
+}
 async function assertCrawlerDirectives(page, privatePage = false, rawHtml) {
   await page.waitForFunction(expected=>{
     const nodes=[...document.querySelectorAll('meta[name="robots"],meta[name="googlebot"]')];
@@ -277,6 +334,7 @@ export async function probe(base, output) {
           const pages=width===390||width===1440?['home','catalogue','product','bag','checkout']:['catalogue','product'];
           for(const key of pages) {
             const path={home:'/',catalogue:'/collections/all',product,bag:'/cart',checkout:'/checkout'}[key];
+            let collectionIntro=null;
             assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
             const footer=page.locator('footer.site-footer, footer.footer').first();await footer.waitFor();
             if(key==='home') {
@@ -288,6 +346,7 @@ export async function probe(base, output) {
             if(key==='catalogue') {
               const link=page.locator('main article h3 a').first();await link.waitFor();
               product=await link.getAttribute('href');assert(product.startsWith('/products/'));
+              collectionIntro=await assertCollectionAllIntro(page);
             }
             if(key==='product'&&width<=620)await page.locator('[aria-label="Mobile purchase actions"]').waitFor({state:'visible'});
             const expectedPrivate=['bag','checkout'].includes(key);
@@ -305,6 +364,7 @@ export async function probe(base, output) {
               assert.match(rawResponse.headers.get('content-type')||'',/^text\/html\b/i,'Public crawler response is HTML');
               const rawHtml=rawResponse.text;
               await assertSearchMetadata(page,path,rawHtml);
+              if(key==='catalogue')collectionIntro=await assertCollectionAllIntro(page,rawHtml);
               for(const match of rawHtml.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi))assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(match[1]),'Initial HTML structured-data identities use the production origin');
               const graphs=await page.locator('script[type="application/ld+json"]').allTextContents();
               for(const graph of graphs)assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(graph),'Structured-data identities use the production origin');
@@ -347,7 +407,7 @@ export async function probe(base, output) {
               assert.equal(measurement.pageHasPurchaseBar,false,'Clearance selector applies only to products');
             }
             await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-${key}.png`});
-            checks.push({page:key,path,passed:true,...measurement});
+            checks.push({page:key,path,passed:true,collectionIntro,...measurement});
           }
           if(width===390||width===1440) {
             if(process.env.HIDI_SEO_LOOKBOOK_RETIRED==='1') {
@@ -449,7 +509,9 @@ export async function probe(base, output) {
   assert.deepEqual(writes,[],'No commerce writes permitted');
   const missing=await fetch(base+'/products/hidi-seo-missing-8f29017',{method:'HEAD',headers:seoHeaders});
   assert.equal(missing.status,404,'Missing product status remains accurate');
-  const report={passed:true,engines,results,liveWrites:0,footerLinksAccessible:true};
+  const report={passed:true,engines,results,liveWrites:0,footerLinksAccessible:true,
+    collectionAllIntroVerified:true,collectionAllBreadcrumbVerified:true,collectionAllExactCopy:true,collectionAllMatrixCases:results.length,
+    reviewedCollectionBodyDelta:'/collections/all exact search copy, breadcrumb label, header visibility and intro insertion'};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));
   return report;
 }

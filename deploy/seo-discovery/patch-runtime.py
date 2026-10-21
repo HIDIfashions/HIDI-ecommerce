@@ -1,6 +1,6 @@
 """Fail-closed brand SEO overlay with current image discovery and retained mobile purchase-bar clearance."""
 from pathlib import Path
-import hashlib, re
+import hashlib, json, re
 
 HERE = Path(__file__).resolve().parent
 IMAGE_DISCOVERY_SERVER_SHA = '80ca9c482c3c574a1122603ee077ed5b5d740d528a842a3d8cea6e63a36d7365'
@@ -12,10 +12,42 @@ METADATA_HELPER_SHA = '78afd9bd62aedccf395d16edc881951fc45cba5ecdf7f8f588670b217
 SITEMAP_HELPER_SHA = 'c8cb5640b825a9681ef69cf30349bf3c69af8521e96ea0f3565aa949cd94a530'
 FOUNDATION_BUNDLE_SHA = 'cab82d617544299bcd56b6072987d9acb2db7da0e51d0539a92879b5c14047b2'
 PUBLISHED_IMAGES_SHA = '62d5f70257d7197d5658e1c195dd12bc4bc5ab07655ab9f6044487dc38751f6a'
+COLLECTION_ALL_PATH = 'apps/web/.next/server/app/collections/all/page.js'
+COLLECTION_ALL_SHA = '066dfb1139cc7bc9d36f0e458ec982adb3e807f8866195cd08e86fae3de904cf'
+COLLECTION_ALL_TITLE = 'Women’s Kurta Sets & Indian Wear'
+COLLECTION_ALL_DESCRIPTION = 'Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.'
+COLLECTION_ALL_OLD_DESCRIPTION = "Shop HIDI women's kurta sets and Indian wear for work, everyday dressing and special occasions. Explore colours, sizes and the complete collection."
 ABOUT_OLD = 'From responsibility and ambition to the moments that are entirely your own, HIDI is made for women who move through every day with ease, confidence and quiet elegance.'
 ABOUT_MARKER = 'Introduced by actress Ananya Nagalla'
 HEADER_BEFORE = '    const contentType = String(responseHeaders["content-type"] || "");'
 HEADER_AFTER = HEADER_BEFORE + '\n    if (status === 200 && contentType.includes("text/html")) {\n      if (shouldNoIndex(request, pathname)) responseHeaders["x-robots-tag"] = "noindex, nofollow, noarchive";\n      else delete responseHeaders["x-robots-tag"];\n    }'
+
+def exact(source, changes):
+    result=source
+    for before,after in changes:
+        assert result.count(before)==1 and after not in result, 'Reviewed Shop All renderer anchor changed: '+before[:100]
+        result=result.replace(before,after,1)
+    restored=result
+    for before,after in reversed(changes):
+        assert restored.count(after)==1, 'Reviewed Shop All inverse anchor changed: '+after[:100]
+        restored=restored.replace(after,before,1)
+    assert restored==source, 'Changes outside the reviewed Shop All search-copy renderer patch'
+    return result
+
+def patch_collection_all(data):
+    assert hashlib.sha256(data).hexdigest()==COLLECTION_ALL_SHA, 'Dedicated Shop All renderer changed; inspect the new baseline first'
+    compact=lambda value:json.dumps(value,ensure_ascii=False,separators=(',',':'))
+    old_header='(0,d.jsx)("header",{className:"collection-header",children:(0,d.jsx)("h1",{children:i})})'
+    new_header='(0,d.jsxs)("header",{className:"collection-header",style:{display:"block"},children:[(0,d.jsx)("h1",{children:i}),(0,d.jsx)("p",{className:"hidi-collection-intro",style:{display:"block"},children:j})]})'
+    changes=[
+        ('i="All Products"','i='+compact(COLLECTION_ALL_TITLE)),
+        ('j='+compact(COLLECTION_ALL_OLD_DESCRIPTION),'j='+compact(COLLECTION_ALL_DESCRIPTION)),
+        ('k={title:"Women\'s Kurta Sets & Indian Wear"','k={title:i'),
+        ('openGraph:{type:"website",url:"/collections/all",title:"Women\'s Kurta Sets & Indian Wear | HIDI",description:j','openGraph:{type:"website",url:"/collections/all",title:i+" | HIDI",description:j'),
+        ('twitter:{card:"summary_large_image",title:"Women\'s Kurta Sets & Indian Wear | HIDI",description:j','twitter:{card:"summary_large_image",title:i+" | HIDI",description:j'),
+        (old_header,new_header),
+    ]
+    return exact(data.decode(),changes).encode()
 
 def patch_text(source):
     source_sha=hashlib.sha256(source.encode()).hexdigest()
@@ -73,6 +105,7 @@ def patch_runtime(base, overlay):
         'seo-discovery/published-product-images.json':'ed1cb9149498306cb0689132f5a0c314f705b004de1c2a79eeeb1c9e85b8d11b',
         'seo-discovery/reviewed-product-image-map.json':'0ed29d9c82e075b246c5615900724003cf887f760cf77de0a2c009f9ce5a1b1a',
         'dist/hidi-analytics.js':'d626a5bcc6fe7313e55ea85fe66347f4c41e3abf1fb02697e2ef45033f9085ea',
+        COLLECTION_ALL_PATH:COLLECTION_ALL_SHA,
     }
     for name,digest in expected.items():
         assert hashlib.sha256((base/name).read_bytes()).hexdigest()==digest, 'Inspected baseline changed: '+name
@@ -110,6 +143,9 @@ def patch_runtime(base, overlay):
     images=(HERE/'published-product-images.json').read_bytes().replace(b'\r\n', b'\n')
     assert hashlib.sha256(images).hexdigest()==PUBLISHED_IMAGES_SHA, 'Reviewed current product-image allowlist changed'
     (overlay/'seo-discovery/published-product-images.json').write_bytes(images)
+    collection_all=patch_collection_all((base/COLLECTION_ALL_PATH).read_bytes())
+    (overlay/COLLECTION_ALL_PATH).parent.mkdir(parents=True,exist_ok=True)
+    (overlay/COLLECTION_ALL_PATH).write_bytes(collection_all)
     source=(base/'server.mjs').read_text()
     stream_old='createSeoIdentityStream(incoming), status, responseHeaders'
     stream_new='createSeoIdentityStream(incoming, isProductionRequest(request) ? pathname : undefined), status, responseHeaders'
@@ -138,8 +174,11 @@ def patch_runtime(base, overlay):
     foundation_plan={'passed':True,'allowedFiles':[],'alreadyApplied':True,
                      'landingModule':'dist/'+landing_name,'landingSha256':FOUNDATION_BUNDLE_SHA,
                      'aboutCopyFiles':about,'preserved':True}
-    return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs','seo-discovery/published-product-images.json','server.mjs'],
+    return {'passed':True,'allowedFiles':['seo-discovery/metadata.mjs','seo-discovery/published-product-images.json','server.mjs',COLLECTION_ALL_PATH],
             'foundation':foundation_plan,
             'reviewedScopeOnly':True,'canonicalHostRedirect':True,'mobilePurchaseFooterClearance':True,
+            'collectionAllIntroAdded':True,'collectionAllBreadcrumbUpdated':True,
+            'collectionAllExactSearchCopyDelta':True,
+            'retainedBodyRoutes':['/','/privacy'],
             'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImageManifestRefreshed':True,'publishedImageCount':238,
             'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

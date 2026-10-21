@@ -9,6 +9,7 @@ import { foundationProbe } from '../seo-foundation/browser.mjs';
 import { catalogueStatus } from '../pricing/model.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
 import bodyConfig from './body-preservation-config.json' with {type:'json'};
+import { collectionAllTitle, collectionAllDescription, compareReviewedCollectionBodies, inspectCollectionBody } from './collection-body-delta.mjs';
 
 const root = resolve(process.env.HIDI_CANDIDATE_RUNTIME);
 const products = Array.from({ length: 3 }, (_, i) => ({
@@ -67,6 +68,7 @@ priorRuntime.stdout.on('data',c=>logs+=c);priorRuntime.stderr.on('data',c=>logs+
 const priorBase='http://127.0.0.1:'+priorPort;
 
 const bodyEvidencePath = 'evidence/seo-discovery/candidate-body-preservation.json';
+const collectionBodyEvidencePath = 'evidence/seo-discovery/candidate-collection-body-delta.json';
 const forwardedHeaders = bodyConfig.requestHeaders;
 const announcement = Buffer.from(bodyConfig.announcementHtml);
 const headMarker = Buffer.from('</head>');
@@ -165,6 +167,38 @@ const compareRetainedBodies = async () => {
   await writeFile(bodyEvidencePath, JSON.stringify(report, null, 2) + '\n');
   assert(report.passed, `Retained public body comparison failed; see ${bodyEvidencePath}`);
 };
+const sampleCollectionBody = async origin => {
+  const response = await requestDocument(origin, '/collections/all');
+  assert.equal(response.status, 200, 'Shop All reviewed body must return HTTP 200');
+  assert.match(response.contentType, /^text\/html\b/i, 'Shop All reviewed body must return HTML');
+  const document=response.document.toString('utf8');
+  const marker=document.indexOf('</head>');
+  assert(marker>=0,'Shop All reviewed body contains a head boundary');
+  const body=document.slice(marker+7);
+  return {body,value:inspectCollectionBody(body),evidence:{status:response.status,contentType:response.contentType,
+    body:{length:Buffer.byteLength(body),sha256:sha256(body)}}};
+};
+const compareReviewedCollectionBody = async () => {
+  const sampleCount=3,prior=[],candidate=[];
+  for(let i=0;i<sampleCount;i++) {
+    prior.push(await sampleCollectionBody(priorBase));
+    candidate.push(await sampleCollectionBody(base));
+  }
+  const priorStable=prior.every(value=>value.evidence.body.sha256===prior[0].evidence.body.sha256);
+  const candidateStable=candidate.every(value=>value.evidence.body.sha256===candidate[0].evidence.body.sha256);
+  assert(priorStable&&candidateStable,'Shop All reviewed body must be stable before comparison');
+  const comparisons=candidate.map(value=>compareReviewedCollectionBodies(prior[0].body,value.body));
+  assert(comparisons.every(value=>value.exactNormalizedMatch),'Every candidate sample must normalize byte-exactly to the prior body');
+  assert(candidate.every(value=>value.value.productArticleCount>0),'Candidate Shop All body must retain product cards');
+  const summarize=value=>({...value.evidence,...value.value});
+  const report={passed:true,readOnly:true,liveWrites:0,sampleCount,route:'/collections/all',
+    reviewedDelta:'exact collection search copy, breadcrumb label, header visibility and intro insertion',retainedExactBodyRoutes:['/','/privacy'],
+    exactNormalizedBodyMatch:true,normalization:{mode:'count-locked inverse transforms followed by byte equality',operations:comparisons[0].operations},
+    normalizedBody:{prior:prior[0].evidence.body,candidateAfterApprovedTransforms:{length:Buffer.byteLength(comparisons[0].normalized),sha256:sha256(comparisons[0].normalized)}},
+    prior:{stable:priorStable,samples:prior.map(summarize)},candidate:{stable:candidateStable,samples:candidate.map(summarize)},
+    expected:{title:collectionAllTitle,description:collectionAllDescription}};
+  await writeFile(collectionBodyEvidencePath,JSON.stringify(report,null,2)+'\n');
+};
 try {
   let ready = false;
   for (let i = 0; i < 100; i++) {
@@ -174,6 +208,7 @@ try {
   }
   assert(ready, 'Actual candidate must become ready');
   await compareRetainedBodies();
+  await compareReviewedCollectionBody();
   await probe(base, 'evidence/seo-discovery/candidate');
   await foundationProbe(base,'evidence/seo-discovery/foundation-candidate',{baseline:priorBase});
   assert(reads.length > 0, 'Catalogue regression must reach read-only fixture');

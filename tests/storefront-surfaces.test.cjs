@@ -31,14 +31,25 @@ test('collection title is 24px desktop and 22px mobile, using shared font', () =
   assert.match(css, /\.collection-page \.collection-header h1\s*\{[^}]*font-family:\s*var\(--font-sans\);[^}]*font-size:\s*24px;/);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.collection-page \.collection-header h1\s*\{\s*font-size:\s*22px;/);
 });
-test('collection headings retain one short title without extra SEO copy or links', () => {
-  for (const file of ['apps/web/app/collections/all/page.tsx', 'apps/web/app/collections/[slug]/page.tsx']) {
-    const markup = read(file).match(/<header className="collection-header"[^>]*>([\s\S]*?)<\/header>/)[1];
-    assert.doesNotMatch(markup, /HIDI EDIT/);
-    assert.equal((markup.match(/<h1>/g)||[]).length,1);
-    assert.doesNotMatch(markup, /hidi-collection-intro/);
-    assert.doesNotMatch(markup, /<CollectionLinks/);
-  }
+test('Shop All exposes one exact visible SEO heading and factual intro without route links', () => {
+  const page = read('apps/web/app/collections/all/page.tsx');
+  const markup = page.match(/<header className="collection-header"[^>]*>([\s\S]*?)<\/header>/)[1];
+  assert.match(page, /const title = "Women’s Kurta Sets & Indian Wear";/);
+  assert.match(page, /const description = "Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits\. Compare product details, current prices and size information\.";/);
+  assert.match(page, /position: 2, name: title, item: absoluteUrl\("\/collections\/all"\)/);
+  assert.match(page, /<header className="collection-header" style=\{\{ display: "block" \}\}>/);
+  assert.equal((markup.match(/<h1>/g)||[]).length,1);
+  assert.equal((markup.match(/hidi-collection-intro/g)||[]).length,1);
+  assert.match(markup, /<p className="hidi-collection-intro" style=\{\{ display: "block" \}\}>\{description\}<\/p>/);
+  assert.doesNotMatch(page, /<CollectionLinks/);
+});
+test('named collection headings remain a single title without injected SEO copy or links', () => {
+  const page = read('apps/web/app/collections/[slug]/page.tsx');
+  const markup = page.match(/<header className="collection-header"[^>]*>([\s\S]*?)<\/header>/)[1];
+  assert.doesNotMatch(markup, /HIDI EDIT/);
+  assert.equal((markup.match(/<h1>/g)||[]).length,1);
+  assert.doesNotMatch(markup, /hidi-collection-intro/);
+  assert.doesNotMatch(page, /<CollectionLinks/);
 });
 test('home logo scrolls to top and closes the menu without stealing focus', () => {
   const calls = [];
