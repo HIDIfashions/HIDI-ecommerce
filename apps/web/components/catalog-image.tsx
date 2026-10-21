@@ -30,7 +30,11 @@ export function CatalogImage({ src, alt, sizes, priority = false, fallbackLabel,
     </div>;
   }
 
-  const canUsePersistentDerivative = delivery === "derivative" && Boolean(productMediaKey(src));
+  const persistentDerivativesEnabled = process.env.NEXT_PUBLIC_PERSISTENT_IMAGE_DERIVATIVES === "true";
+  const canUsePersistentDerivative =
+    persistentDerivativesEnabled &&
+    delivery === "derivative" &&
+    Boolean(productMediaKey(src));
   const runtimeSource = productImageSource(src);
 
   return <Image
