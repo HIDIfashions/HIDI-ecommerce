@@ -133,15 +133,25 @@ const collection=()=>({headerCount:1,headingCount:1,introCount:0,heading:'All Pr
   headerVisible:false,headingVisible:false,introVisible:false,headerDisplay:'',introDisplay:null,collectionNavigationCount:0,
   header:{...rectangle},headingBox:{...rectangle},introBox:null,firstProduct:{...rectangle},
   styles:{header:{display:'none'},heading:{display:'block'},intro:null},productArticleCount:54});
-const footer=()=>({footer:{...rectangle},bar:null,padding:'0px',styles:{paddingBottom:'0px',backgroundColor:'rgb(240, 233, 220)'},
-  markup:'<footer class="site-footer">Retained footer</footer>',pageHasPurchaseBar:false,documentWidth:390,viewportWidth:390,
-  links:['Privacy','Shipping','Returns','Contact'].map((text,index)=>({text,href:'/policy-'+index,rect:{...rectangle},tappable:true,cover:''}))});
+const footer=(page='catalogue')=>{
+  const landing=page==='home';
+  const controls=landing
+    ?[['a',null,'Shipping','/shipping'],['a',null,'Returns & exchanges','/returns'],['a',null,'Privacy policy','/privacy'],
+      ['button','button','Terms of use',null],['a',null,'Contact HIDI','/contact']]
+    :[['a',null,'Delivery','/shipping'],['a',null,'Returns & exchanges','/returns'],['a',null,'Order support','/contact'],['a',null,'Privacy policy','/privacy']];
+  return {variant:landing?'landing':'storefront',selector:landing?'footer.site-footer#footer':'footer.footer',
+    linkSelector:landing?'.footer-grid > .footer-column:nth-child(4) > :is(a, button):not([hidden])':'.footer-bottom a',
+    footer:{...rectangle},bar:null,padding:'0px',styles:{paddingBottom:'0px',backgroundColor:'rgb(240, 233, 220)'},
+    markup:landing?'<footer class="site-footer" id="footer">Retained footer</footer>':'<footer class="footer">Retained footer</footer>',
+    pageHasPurchaseBar:false,documentWidth:390,viewportWidth:390,
+    links:controls.map(([tag,type,text,href])=>({tag,type,text,href,rect:{...rectangle},tappable:true,cover:''}))};
+};
 const baseline=()=>({schemaVersion:1,kind:'hidi-seo-presentation-baseline',passed:true,readOnly:true,liveWrites:0,
   base:'https://hidiindia.com',capturedAt:'2026-10-21T12:00:00.000Z',
   results:PRESENTATION_MATRIX.map(({engine,width,height})=>({engine,width,height,passed:true,
     checks:(width===390||width===1440?['home','catalogue','product','bag','checkout']:['catalogue','product']).map(page=>({page,
       path:{home:'/',catalogue:'/collections/all',product:'/products/retained-product',bag:'/cart',checkout:'/checkout'}[page],
-      passed:true,footer:footer(),collectionAll:page==='catalogue'?{raw:{heading:'All Products',introCount:0,breadcrumbLabel:'All Products',productArticleCount:54},
+      passed:true,footer:footer(page),collectionAll:page==='catalogue'?{raw:{heading:'All Products',introCount:0,breadcrumbLabel:'All Products',productArticleCount:54},
         body:{length:2048,sha256:'a'.repeat(64)},rendered:collection()}:null}))}))});
 
 test('preservation accepts unchanged hidden collection header and absent intro',()=>{
@@ -204,9 +214,44 @@ test('presentation baseline requires exact independent origin and complete 12-vi
   }
 });
 
+test('presentation baseline retains each route-specific footer and every policy/support control',()=>{
+  const valid=baseline();
+  const home=valid.results[0].checks.find(check=>check.page==='home').footer;
+  const catalogue=valid.results[0].checks.find(check=>check.page==='catalogue').footer;
+  assert.equal(home.links.length,5,'Landing help column includes the retained Terms button');
+  assert.deepEqual(home.links[3],{tag:'button',type:'button',text:'Terms of use',href:null,rect:{...rectangle},tappable:true,cover:''});
+  assert.equal(catalogue.links.length,4,'Storefront bottom row retains its four anchors');
+  assert.equal(validatePresentationBaseline(valid,valid.base),valid);
+  for(const page of ['home','catalogue']) {
+    for(const mutate of [
+      value=>{value.variant=page==='home'?'storefront':'landing';},
+      value=>{value.selector='footer';},
+      value=>{value.linkSelector='a';},
+      value=>{value.links.pop();},
+      value=>{value.links.push(structuredClone(value.links[0]));},
+      value=>{[value.links[0],value.links[1]]=[value.links[1],value.links[0]];},
+      value=>{value.links[0].tag='button';},
+      value=>{value.links[0].type='button';},
+      value=>{value.links[0].text='Different policy';},
+      value=>{value.links[0].href='/different-policy';},
+    ]) {
+      const changed=baseline();
+      mutate(changed.results[0].checks.find(check=>check.page===page).footer);
+      assert.throws(()=>validatePresentationBaseline(changed,changed.base));
+    }
+  }
+  const onlyBackToTop=baseline();
+  onlyBackToTop.results[0].checks[0].footer.links=[{tag:'a',type:null,text:'Back to top',href:'#top',rect:{...rectangle},tappable:true,cover:''}];
+  assert.throws(()=>validatePresentationBaseline(onlyBackToTop,onlyBackToTop.base),/every reviewed policy\/support control/);
+  const changedTerms=baseline();
+  Object.assign(changedTerms.results[0].checks[0].footer.links[3],{tag:'a',type:null,href:'/terms'});
+  assert.throws(()=>validatePresentationBaseline(changedTerms,changedTerms.base),/every reviewed policy\/support control/);
+});
+
 test('presentation evidence cannot hide a changed collection behind a matching baseline',()=>{
   const changed=collection();changed.heading='New heading';
   assert.throws(()=>assertCollectionPresentationPreserved(changed,structuredClone(changed)),/current renderer copy/);
   const incomplete=baseline();delete incomplete.results[0].checks[1].collectionAll.body;
   assert.throws(()=>validatePresentationBaseline(incomplete,'https://hidiindia.com'),/streamed Shop All body digest/);
 });
+

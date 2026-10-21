@@ -139,10 +139,27 @@ class CandidateEvidenceTest(unittest.TestCase):
         return {'x': x, 'y': y, 'right': x + width, 'bottom': y + height,
                 'width': width, 'height': height}
 
-    def footer(self, width, height, product):
+    def footer(self, width, height, page):
         top = height - 200
+        product = page == 'product'
+        landing = page == 'home'
+        controls = (
+            [('a', None, 'Shipping', '/shipping'),
+             ('a', None, 'Returns & exchanges', '/returns'),
+             ('a', None, 'Privacy policy', '/privacy'),
+             ('button', 'button', 'Terms of use', None),
+             ('a', None, 'Contact HIDI', '/contact')]
+            if landing else
+            [('a', None, 'Delivery', '/shipping'),
+             ('a', None, 'Returns & exchanges', '/returns'),
+             ('a', None, 'Order support', '/contact'),
+             ('a', None, 'Privacy policy', '/privacy')]
+        )
         return {
-            'markup': '<footer class="site-footer">Synthetic retained footer</footer>',
+            'variant': 'landing' if landing else 'storefront',
+            'selector': 'footer.site-footer#footer' if landing else 'footer.footer',
+            'linkSelector': '.footer-grid > .footer-column:nth-child(4) > :is(a, button):not([hidden])' if landing else '.footer-bottom a',
+            'markup': '<footer id="footer" class="site-footer">Synthetic retained footer</footer>' if landing else '<footer class="footer">Synthetic retained footer</footer>',
             'styles': {'paddingBottom': '24px', 'display': 'block'},
             'padding': '24px',
             'footer': self.rect(0, top, width, 200),
@@ -150,12 +167,9 @@ class CandidateEvidenceTest(unittest.TestCase):
             'pageHasPurchaseBar': product,
             'documentWidth': width, 'viewportWidth': width,
             'links': [
-                {'text': text, 'href': href, 'tappable': True,
+                {'tag': tag, 'type': control_type, 'text': text, 'href': href, 'tappable': True,
                  'rect': self.rect(8, top + 80 + index * 20, 80, 18)}
-                for index, (text, href) in enumerate([
-                    ('Privacy', '/privacy'), ('Shipping', '/shipping'),
-                    ('Returns', '/returns'), ('Contact', '/contact'),
-                ])
+                for index, (tag, control_type, text, href) in enumerate(controls)
             ],
         }
 
@@ -208,7 +222,7 @@ class CandidateEvidenceTest(unittest.TestCase):
                     }
                     collection = {'raw': deepcopy(raw), 'body': deepcopy(digest), 'rendered': rendered}
                 before['checks'].append({'page': page, 'path': routes[page], 'passed': True,
-                                         'footer': self.footer(width, height, page == 'product'),
+                                         'footer': self.footer(width, height, page),
                                          'collectionAll': collection})
             after = deepcopy(before)
             for check in after['checks']:
@@ -332,6 +346,36 @@ class CandidateEvidenceTest(unittest.TestCase):
                 self.assertTrue(check['footerLayoutPreserved'])
                 with self.assertRaises(AssertionError):
                     self.verify(bundle)
+
+    def test_footer_variants_require_every_actual_control_even_when_both_reports_match(self):
+        for page in ['home', 'catalogue']:
+            for change in ['variant', 'selector', 'control-selector', 'missing-control',
+                           'extra-control', 'control-kind', 'control-type', 'text', 'destination']:
+                with self.subTest(page=page, change=change):
+                    bundle = self.bundle()
+                    for name in ['candidate/prior/report.json', 'candidate/report.json']:
+                        check = next(value for value in bundle[name]['results'][0]['checks'] if value['page'] == page)
+                        footer = check['footer']
+                        if change == 'variant':
+                            footer['variant'] = 'storefront' if page == 'home' else 'landing'
+                        elif change == 'selector':
+                            footer['selector'] = 'footer'
+                        elif change == 'control-selector':
+                            footer['linkSelector'] = 'a'
+                        elif change == 'missing-control':
+                            footer['links'].pop(3)
+                        elif change == 'extra-control':
+                            footer['links'].append(deepcopy(footer['links'][0]))
+                        elif change == 'control-kind':
+                            footer['links'][0]['tag'] = 'button'
+                        elif change == 'control-type':
+                            footer['links'][0]['type'] = 'button'
+                        elif change == 'text':
+                            footer['links'][0]['text'] = 'Changed support control'
+                        else:
+                            footer['links'][0]['href'] = '/different-policy'
+                    with self.assertRaises(AssertionError):
+                        self.verify(bundle)
 
     def test_body_hashes_and_samples_are_checked_beyond_true_pass_flags(self):
         for change in ['browser-body', 'collection-body', 'sample-body']:

@@ -29,7 +29,35 @@ def _rectangle(prior, candidate):
         assert abs(prior[key] - candidate[key]) <= 1, 'Presentation geometry changed: ' + key
 
 
-def _footer(prior, candidate):
+def _footer(prior, candidate, page):
+    variant = 'landing' if page == 'home' else 'storefront'
+    selector, link_selector, controls = {
+        'landing': (
+            'footer.site-footer#footer',
+            '.footer-grid > .footer-column:nth-child(4) > :is(a, button):not([hidden])',
+            [
+                ('a', None, 'Shipping', '/shipping'),
+                ('a', None, 'Returns & exchanges', '/returns'),
+                ('a', None, 'Privacy policy', '/privacy'),
+                ('button', 'button', 'Terms of use', None),
+                ('a', None, 'Contact HIDI', '/contact'),
+            ],
+        ),
+        'storefront': (
+            'footer.footer', '.footer-bottom a',
+            [
+                ('a', None, 'Delivery', '/shipping'),
+                ('a', None, 'Returns & exchanges', '/returns'),
+                ('a', None, 'Order support', '/contact'),
+                ('a', None, 'Privacy policy', '/privacy'),
+            ],
+        ),
+    }[variant]
+    for value in [prior, candidate]:
+        assert value['variant'] == variant, 'Footer variant does not match its route'
+        assert value['selector'] == selector and value['linkSelector'] == link_selector
+        assert [(link['tag'], link['type'], link['text'], link['href']) for link in value['links']] == controls, \
+            'Footer must contain every reviewed policy/support control in order'
     assert isinstance(prior['markup'], str) and prior['markup'].startswith('<footer')
     assert isinstance(prior['styles']['paddingBottom'], str)
     exclude = {'footer', 'bar', 'links'}
@@ -39,7 +67,7 @@ def _footer(prior, candidate):
     assert prior['footer'] is not None
     for key in ['footer', 'bar']:
         _rectangle(prior[key], candidate[key])
-    assert len(prior['links']) == len(candidate['links']) == 4
+    assert len(prior['links']) == len(candidate['links']) == len(controls)
     for before, after in zip(prior['links'], candidate['links']):
         assert {key: value for key, value in before.items() if key != 'rect'} == {
             key: value for key, value in after.items() if key != 'rect'
@@ -153,7 +181,7 @@ def verify_candidate_evidence(root):
         for before, after in zip(prior['checks'], checks):
             assert before['passed'] is True and after['passed'] is True and after['footerLayoutPreserved'] is True
             assert before['path'] == after['path'] == routes[before['page']]
-            _footer(before['footer'], after['footer'])
+            _footer(before['footer'], after['footer'], before['page'])
             if before['page'] == 'catalogue':
                 _collection(before['collectionAll'], after['collectionAll'], retained_body)
             else:

@@ -115,6 +115,31 @@ export const PRESENTATION_MATRIX=Object.freeze(['chromium','firefox','webkit'].f
 const presentationPages=width=>width===390||width===1440?['home','catalogue','product','bag','checkout']:['catalogue','product'];
 const presentationRoute=(key,product)=>({home:'/',catalogue:'/collections/all',product,bag:'/cart',checkout:'/checkout'}[key]);
 const rectangleFields=['x','y','right','bottom','width','height'];
+const footerContracts={
+  landing:{selector:'footer.site-footer#footer',
+    // The retained privacy script adds its anchor before the hidden old button.
+    // Measure all five visible help controls, including the Terms button.
+    linkSelector:'.footer-grid > .footer-column:nth-child(4) > :is(a, button):not([hidden])',
+    controls:[['a',null,'Shipping','/shipping'],['a',null,'Returns & exchanges','/returns'],
+      ['a',null,'Privacy policy','/privacy'],['button','button','Terms of use',null],['a',null,'Contact HIDI','/contact']]},
+  storefront:{selector:'footer.footer',linkSelector:'.footer-bottom a',
+    controls:[['a',null,'Delivery','/shipping'],['a',null,'Returns & exchanges','/returns'],
+      ['a',null,'Order support','/contact'],['a',null,'Privacy policy','/privacy']]},
+};
+function footerContract(page) {
+  assert(['home','catalogue','product','bag','checkout'].includes(page),'A reviewed presentation route is required for footer evidence');
+  const variant=page==='home'?'landing':'storefront';
+  return {variant,...footerContracts[variant]};
+}
+function assertFooterVariant(value,page) {
+  const {variant,selector,linkSelector,controls}=footerContract(page);
+  assert.equal(value.variant,variant,'Footer variant must match its reviewed route');
+  assert.equal(value.selector,selector,'Footer selector must match its reviewed route');
+  assert.equal(value.linkSelector,linkSelector,'Footer control selector must match its reviewed route');
+  assert(Array.isArray(value.links),'Footer policy/support controls are required');
+  assert.deepEqual(value.links.map(({tag,type,text,href})=>[tag,type,text,href]),controls,
+    'Footer must contain every reviewed policy/support control in order');
+}
 
 function assertRectanglePreserved(prior,candidate,label) {
   assert.equal(candidate===null,prior===null,label+' presence is preserved');
@@ -169,7 +194,8 @@ async function readCollectionPresentation(page) {
 
 export function assertFooterLayoutPreserved(prior,candidate) {
   assert(prior&&candidate,'Independent prior and candidate footer evidence is required');
-  const nonGeometric=value=>({padding:value.padding,styles:value.styles,markup:value.markup,
+  const nonGeometric=value=>({variant:value.variant,selector:value.selector,linkSelector:value.linkSelector,
+    padding:value.padding,styles:value.styles,markup:value.markup,
     pageHasPurchaseBar:value.pageHasPurchaseBar,documentWidth:value.documentWidth,viewportWidth:value.viewportWidth,
     links:value.links.map(({rect,...link})=>link)});
   assert.deepEqual(nonGeometric(candidate),nonGeometric(prior),'Footer markup, styling, links and tappability match the independent baseline');
@@ -186,25 +212,31 @@ async function settlePresentation(page) {
   await page.waitForTimeout(300);
 }
 
-async function measureFooter(page) {
+async function measureFooter(page,pageKind) {
+  const {variant,selector,linkSelector}=footerContract(pageKind);
+  if(variant==='landing')await page.locator(selector+' a[data-hidi-privacy-policy][href="/privacy"]').waitFor({state:'attached'});
   await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
   await page.waitForTimeout(300);
   await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
   await page.waitForFunction(()=>Math.abs(document.documentElement.scrollHeight-innerHeight-scrollY)<2);
-  const measurement=await page.evaluate(()=>{
+  const measurement=await page.evaluate(({variant,selector,linkSelector})=>{
     const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
-    const footer=document.querySelector('footer.site-footer,footer.footer');
+    const footers=document.querySelectorAll(selector);
+    if(footers.length!==1)throw new Error('Expected exactly one reviewed '+variant+' footer');
+    const footer=footers[0];
     const bar=document.querySelector('[aria-label="Mobile purchase actions"]');
     const visibleBar=bar&&getComputedStyle(bar).display!=='none'?bar:null;
     const styles=['display','visibility','position','fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','color','backgroundColor','borderTopWidth','marginTop','marginBottom','paddingTop','paddingRight','paddingBottom','paddingLeft'];
-    const links=Array.from(footer.querySelectorAll('.footer-bottom a')).map(e=>{
+    const links=Array.from(footer.querySelectorAll(linkSelector)).map(e=>{
       const r=rect(e),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
-      return {text:e.textContent.trim(),href:e.getAttribute('href'),rect:r,tappable:hit===e||e.contains(hit),cover:hit?.className??null};
+      return {tag:e.tagName.toLowerCase(),type:e.getAttribute('type'),text:e.textContent.trim(),href:e.getAttribute('href'),
+        rect:r,tappable:hit===e||e.contains(hit),cover:hit?.className??null};
     });
-    return {footer:rect(footer),bar:visibleBar?rect(visibleBar):null,links,markup:footer.outerHTML,
+    return {variant,selector,linkSelector,footer:rect(footer),bar:visibleBar?rect(visibleBar):null,links,markup:footer.outerHTML,
       padding:getComputedStyle(footer).paddingBottom,styles:Object.fromEntries(styles.map(key=>[key,getComputedStyle(footer)[key]])),
       pageHasPurchaseBar:!!bar,documentWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth};
-  });
+  },{variant,selector,linkSelector});
+  assertFooterVariant(measurement,pageKind);
   assert(measurement.documentWidth<=measurement.viewportWidth+1,'No horizontal overflow');
   return measurement;
 }
@@ -240,7 +272,7 @@ export function validatePresentationBaseline(report,expectedBase) {
       assert.equal(check.passed,true,'Presentation baseline route must have passed');
       assert(check.footer&&typeof check.footer.markup==='string'&&check.footer.markup.startsWith('<footer'),'Presentation baseline footer markup is required');
       assert(check.footer.styles&&typeof check.footer.styles.paddingBottom==='string','Presentation baseline computed footer styles are required');
-      assert(Array.isArray(check.footer.links)&&check.footer.links.length===4,'Presentation baseline must contain all four policy/support links');
+      assertFooterVariant(check.footer,check.page);
       assertFooterLayoutPreserved(check.footer,check.footer);
       if(check.page==='catalogue') {
         assert(check.collectionAll?.body&&/^[a-f0-9]{64}$/.test(check.collectionAll.body.sha256)&&check.collectionAll.body.length>0,'Presentation baseline needs its complete streamed Shop All body digest');
@@ -286,7 +318,7 @@ export async function capturePresentationBaseline(base,output) {
             if(key==='product'&&width<=620)await page.locator('[aria-label="Mobile purchase actions"]').waitFor({state:'visible'});
             await settlePresentation(page);
             const collectionAll=key==='catalogue'?{...collectionRaw,rendered:await readCollectionPresentation(page)}:null;
-            const footer=await measureFooter(page);
+            const footer=await measureFooter(page,key);
             await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-${key}.png`});
             checks.push({page:key,path,passed:true,collectionAll,footer});
           }
@@ -694,7 +726,7 @@ export async function probe(base, output, {baseline,baselineReport}={}) {
               assertCollectionPresentationPreserved(priorCheck.collectionAll.rendered,rendered);
               collectionAll={...collectionAll,rendered,preserved:true};
             }
-            const measurement=await measureFooter(page);
+            const measurement=await measureFooter(page,key);
             assertFooterLayoutPreserved(priorCheck.footer,measurement);
             if(key==='product'&&width<=620)assert(measurement.bar,'Existing mobile purchase bar remains visible');
             else if(key==='product')assert.equal(measurement.bar,null,'Desktop/tablet purchase layout remains unchanged');
@@ -803,3 +835,4 @@ if(process.argv[1]===new URL(import.meta.url).pathname) {
     await probe(base,output,{baselineReport});
   }
 }
+
