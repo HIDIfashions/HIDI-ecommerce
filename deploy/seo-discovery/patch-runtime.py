@@ -74,19 +74,35 @@ def patch_runtime(base, overlay):
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
     metadata=(HERE/'metadata.mjs').read_bytes()
-    assert hashlib.sha256(metadata).hexdigest()=='caf67764e9b0419c1002fc4560ddba8b34cc99512f8a517922012a01074f7fde', 'Reviewed brand identity helper changed'
+    assert hashlib.sha256(metadata).hexdigest()=='595ab31b8962e5f76725ff1c3e2d0eff4c3f069c459725ba7b7277fb0ea816ac', 'Reviewed brand identity helper changed'
     (overlay/'seo-discovery/metadata.mjs').write_bytes(metadata)
     source=(base/'server.mjs').read_text()
-    old='createSeoIdentityStream(incoming), status, responseHeaders'
-    new='createSeoIdentityStream(incoming, isProductionRequest(request) ? pathname : undefined), status, responseHeaders'
-    assert source.count(old)==1, 'Expected one retained body stream call'
-    server=source.replace(old,new,1)
-    assert server.replace(new,old,1)==source, 'Unrelated server bytes changed'
+    stream_old='createSeoIdentityStream(incoming), status, responseHeaders'
+    stream_new='createSeoIdentityStream(incoming, isProductionRequest(request) ? pathname : undefined), status, responseHeaders'
+    import_old='import { normalizeSeoIdentity, clientMetadataScript, createSeoIdentityStream, shouldIndexPublishedImage } from "./seo-discovery/metadata.mjs";'
+    import_new='import { normalizeSeoIdentity, clientMetadataScript, createSeoIdentityStream, shouldIndexPublishedImage, handleCanonicalHostRedirect } from "./seo-discovery/metadata.mjs";'
+    assert source.count(stream_old)==1, 'Expected one retained body stream call'
+    assert source.count(import_old)==1 and import_new not in source, 'Expected the reviewed SEO helper import'
+    route_anchors=[
+        '  if (handleGuide(request, response, pathname, isProductionRequest(request))) return;',
+        '  if (handleCatalogueAlias(request, response, pathname)) return;',
+    ]
+    route_old=next((value for value in route_anchors if source.count(value)==1),None)
+    assert route_old, 'Expected one reviewed route-dispatch anchor'
+    route_new='  if (handleCanonicalHostRedirect(request, response)) return;\n'+route_old
+    changes=[(stream_old,stream_new),(import_old,import_new),(route_old,route_new)]
+    server=source
+    for old,new in changes:
+        assert server.count(old)==1 and new not in server, 'Reviewed canonical-host anchor changed'
+        server=server.replace(old,new,1)
+    restored=server
+    for old,new in reversed(changes):restored=restored.replace(new,old,1)
+    assert restored==source, 'Unrelated server bytes changed'
     (overlay/'server.mjs').write_text(server)
     spec=importlib.util.spec_from_file_location('seo_foundation_patch',HERE.parent/'seo-foundation/patch-runtime.py')
     foundation=importlib.util.module_from_spec(spec);spec.loader.exec_module(foundation)
     foundation_plan=foundation.patch_runtime(base,overlay)
     return {'passed':True,'allowedFiles':sorted(set(['seo-discovery/metadata.mjs','server.mjs']+foundation_plan['allowedFiles'])),
             'foundation':foundation_plan,
-            'seoOnly':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,
+            'seoOnly':True,'canonicalHostRedirect':True,'policyBodyUnchanged':True,'analyticsUnchanged':True,'publishedImagesUnchanged':True,
             'databaseWrites':False,'blobWrites':False,'apiUnchanged':True}

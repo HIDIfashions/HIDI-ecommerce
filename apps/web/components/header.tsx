@@ -115,7 +115,7 @@ export function Header() {
     <header ref={headerRef} className="site-header" data-editorial-header data-home={pathname === "/"} data-scrolled={scrolled} data-menu-open={menuOpen}>
       <div className="header-inner">
         <button ref={menuButtonRef} className="mobile-menu" type="button" aria-label={menuOpen ? "Close menu" : "Open menu"} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => menuOpen ? closeMenu(false) : setMenuOpen(true)}>{menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}</button>
-        <a className="wordmark" href="/" aria-label="HIDI — Wear the Feeling" onClick={handleWordmarkClick}><img src="/brand/hidi-logo-header.svg?v=8f2e2b8731a3" alt="" /></a>
+        <a className="wordmark" href="/" aria-label="HIDI India home" onClick={handleWordmarkClick}><img src="/brand/hidi-logo-header.svg?v=8f2e2b8731a3" alt="HIDI India — Wear the Feeling" /></a>
         <nav className="desktop-nav" aria-label="Primary navigation">{mobileLinks.map(([label, href]) => <Link key={href} href={href} prefetch={pathname === href ? false : undefined} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}</nav>
         <nav className="utility-nav" aria-label="Utilities">
           <HeaderSearch onOpen={() => closeMenu(false)} />

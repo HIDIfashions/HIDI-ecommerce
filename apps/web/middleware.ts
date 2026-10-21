@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const blockedHosts = new Set(["thehidi.com", "www.thehidi.com", "hidiindia.com", "www.hidiindia.com"]);
-const canonicalHosts = new Set(["thehidi.com", "www.thehidi.com", "hidiindia.com", "www.hidiindia.com"]);
+const CANONICAL_HOST = "hidiindia.com";
+const publicBrandHosts = new Set(["thehidi.com", "www.thehidi.com", CANONICAL_HOST, "www.hidiindia.com"]);
 
 function getHostname(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
@@ -84,29 +84,20 @@ function blockResponse() {
   );
 }
 
-function primaryDomain() {
-  const value = process.env.HIDI_PRIMARY_DOMAIN?.trim() || process.env.NEXT_PUBLIC_HIDI_PRIMARY_DOMAIN?.trim();
-  if (!value) return undefined;
-  try {
-    const hostname = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`).hostname.toLowerCase();
-    return canonicalHosts.has(hostname) ? hostname : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function middleware(request: NextRequest) {
   const hostname = getHostname(request);
+  const pathname = request.nextUrl.pathname;
+  const navigationalRequest = ["GET", "HEAD"].includes(request.method.toUpperCase()) && pathname !== "/api" && !pathname.startsWith("/api/");
 
-  if (blockedHosts.has(hostname) && process.env.ALLOW_PUBLIC_DOMAIN !== "true") {
+  if (publicBrandHosts.has(hostname) && process.env.ALLOW_PUBLIC_DOMAIN !== "true") {
     return blockResponse();
   }
 
-  const targetHost = primaryDomain();
-  if (targetHost && hostname !== targetHost && blockedHosts.has(hostname) && process.env.ALLOW_PUBLIC_DOMAIN === "true") {
+  if (navigationalRequest && hostname !== CANONICAL_HOST && publicBrandHosts.has(hostname) && process.env.ALLOW_PUBLIC_DOMAIN === "true") {
     const url = request.nextUrl.clone();
-    url.hostname = targetHost;
+    url.hostname = CANONICAL_HOST;
     url.protocol = "https";
+    url.port = "";
     return NextResponse.redirect(url, 308);
   }
 

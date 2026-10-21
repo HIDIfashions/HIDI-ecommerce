@@ -3,6 +3,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { isBlockedTelemetry } from '../button-states/request-policy.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
+const verifiedBrandProfiles=['https://www.instagram.com/hidiindia/','https://www.facebook.com/profile.php?id=61594615364935','https://x.com/Hidiindia','https://www.youtube.com/@Hidiindia'];
+const brandDescription='HIDI is an Indian women’s wear brand offering kurta sets for work, everyday dressing and occasions.';
 import { productImageUrls } from './sitemap.mjs';
 
 const expectedTitles = {
@@ -78,15 +80,15 @@ async function assertSearchMetadata(page,path,rawHtml) {
   return fields;
 }
 async function assertBrandIdentity(page,rawHtml) {
-  await page.waitForFunction(()=>{
+  await page.waitForFunction(({profiles,description})=>{
     const values=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).flatMap(node=>{
       try {const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}
     });
     const brand=values.filter(value=>value.name==='HIDI' && value.url==='https://hidiindia.com/');
     return brand.some(value=>value['@type']==='Organization') && brand.some(value=>value['@type']==='WebSite') &&
-      brand.filter(value=>value['@type']==='Organization').every(value=>value.logo==='https://hidiindia.com/brand/hidi-logo-header.svg' && [value.sameAs].flat().includes('https://www.instagram.com/hidiindia/')) &&
+      brand.filter(value=>value['@type']==='Organization').every(value=>value.logo==='https://hidiindia.com/brand/hidi-logo-header.svg' && profiles.every(profile=>[value.sameAs].flat().includes(profile)) && [value.alternateName].flat().includes('HIDI India') && value.description===description) &&
       brand.filter(value=>value['@type']==='WebSite').every(value=>[value.alternateName].flat().includes('HIDI India'));
-  },null,{timeout:5000});
+  },{profiles:verifiedBrandProfiles,description:brandDescription},{timeout:5000});
   if (rawHtml) {
     const values=[...rawHtml.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].flatMap(match=>{
       const value=JSON.parse(match[1]);return Array.isArray(value)?value:(value['@graph']||[value]);
@@ -96,7 +98,9 @@ async function assertBrandIdentity(page,rawHtml) {
     for(const value of values) {
       if(value['@type']==='Organization') {
         assert.equal(value.logo,'https://hidiindia.com/brand/hidi-logo-header.svg','Raw brand logo is consistent');
-        assert([value.sameAs].flat().includes('https://www.instagram.com/hidiindia/'),'Raw verified official brand profile remains associated');
+        for(const profile of verifiedBrandProfiles)assert([value.sameAs].flat().includes(profile),'Raw verified official brand profile remains associated');
+        assert([value.alternateName].flat().includes('HIDI India'),'Raw organization alias remains present');
+        assert.equal(value.description,brandDescription,'Raw organization description remains factual and consistent');
       }
       if(value['@type']==='WebSite')assert([value.alternateName].flat().includes('HIDI India'),'Raw alternate brand name remains present');
     }
@@ -105,6 +109,12 @@ async function assertBrandIdentity(page,rawHtml) {
 
 export async function probe(base, output) {
   const seoHeaders={'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'};
+  const aliasLive=base.startsWith('https://hidiindia.com');
+  const alias=await fetch((aliasLive?'https://www.hidiindia.com':base)+'/collections/all?source=canonical-check',{
+    redirect:'manual',headers:aliasLive?{}:{'x-forwarded-host':'www.hidiindia.com','x-forwarded-proto':'https'}
+  });
+  assert.equal(alias.status,308,'Public www host must permanently redirect to the canonical apex');
+  assert.equal(alias.headers.get('location'),'https://hidiindia.com/collections/all?source=canonical-check','Canonical redirect preserves path and query');
   const robots=await fetch(base+'/robots.txt',{headers:seoHeaders});
   assert.equal(robots.status,200);
   const policy=await robots.text();

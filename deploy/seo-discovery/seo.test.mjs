@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript, isPublishedProductImage, shouldIndexPublishedImage, productRouteMetadata, registerPublishedProductImages } from './metadata.mjs';
+import { normalizeSeoIdentity, identityUrl, seoIdentityTransform, clientMetadataScript, isPublishedProductImage, shouldIndexPublishedImage, productRouteMetadata, registerPublishedProductImages, handleCanonicalHostRedirect, verifiedBrandProfiles, brandDescription } from './metadata.mjs';
 import { Readable } from 'node:stream';
 import { sitemapXml, createSeoSitemap, productImageUrls } from './sitemap.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
@@ -18,7 +18,9 @@ test('verified HIDI brand identity is consistent across retained head graphs wit
     const result=JSON.parse(output.match(/application\/ld\+json">(.*?)<\/script>/)[1]);
     const values=Array.isArray(result)?result:result['@graph'];
     assert.equal(values[0].logo,'https://hidiindia.com/brand/hidi-logo-header.svg');
-    assert.deepEqual(values[0].sameAs,['https://www.instagram.com/hidiindia/']);
+    assert.deepEqual(values[0].sameAs,verifiedBrandProfiles);
+    assert.equal(values[0].alternateName,'HIDI India');
+    assert.equal(values[0].description,brandDescription);
     assert.equal(values[1].alternateName,'HIDI India');
     assert.deepEqual(values[2],product);assert.deepEqual(values[3],unrelated);
     assert.equal(output.slice(output.indexOf('<body>')),body);
@@ -37,7 +39,7 @@ test('brand graph correction survives client hydration while retaining framework
   const document={title:'About HIDI | HIDI',documentElement:{},head:{contains:n=>n===node,querySelectorAll:selector=>selector.includes('robots')?[robots]:[]},querySelectorAll:()=>[node,body],addEventListener:()=>{}};
   const location={pathname:'/lookbook'},window={addEventListener:(event,fn)=>events[event]=fn};
   runInNewContext(clientMetadataScript.replace(/^<script[^>]*>|<\/script>$/g,''),{document,window,location,queueMicrotask:fn=>fn(),MutationObserver:class{observe(){}}});
-  const check=()=>{const graph=JSON.parse(node.textContent)['@graph'];assert.equal(graph[0].logo,'https://hidiindia.com/brand/hidi-logo-header.svg');assert.equal(graph[1].alternateName,'HIDI India');};
+  const check=()=>{const graph=JSON.parse(node.textContent)['@graph'];assert.equal(graph[0].logo,'https://hidiindia.com/brand/hidi-logo-header.svg');assert.deepEqual(graph[0].sameAs,verifiedBrandProfiles);assert.equal(graph[0].alternateName,'HIDI India');assert.equal(graph[0].description,brandDescription);assert.equal(graph[1].alternateName,'HIDI India');};
   check();assert.equal(body.textContent,bodyBefore);location.pathname='/about';node.textContent=JSON.stringify({'@type':'WebSite',name:'HIDI',url:'https://hidiindia.com/'});events.popstate();
   assert.equal(JSON.parse(node.textContent).alternateName,'HIDI India');
   assert.equal(JSON.parse(body.textContent)['@graph'][1].alternateName,'HIDI India');
@@ -55,7 +57,9 @@ test('streamed Lookbook body keeps its existing brand graph exact while new head
   let result='';for await(const chunk of stream)result+=chunk.toString();
   const changed=JSON.parse(result.match(/application\/ld\+json">(.*?)<\/script>/)[1]);
   assert.equal(changed['@graph'][1].alternateName,'HIDI India');
-  assert.deepEqual(changed['@graph'][0].sameAs,['https://www.instagram.com/hidiindia/']);
+  assert.deepEqual(changed['@graph'][0].sameAs,verifiedBrandProfiles);
+  assert.equal(changed['@graph'][0].alternateName,'HIDI India');
+  assert.equal(changed['@graph'][0].description,brandDescription);
   assert.equal(result.replace(/(<script[^>]*>)[\s\S]*?(<\/script>)/,'$1JSON$2'),body.replace(/(<script[^>]*>)[\s\S]*?(<\/script>)/,'$1JSON$2'));
 });
 
@@ -162,11 +166,25 @@ test('homepage and collection search/social fields change together; creative bod
   const collection=normalizeSeoIdentity(head+body,'/collections/all');
   assert(collection.includes('Women’s Kurta Sets &amp; Indian Wear | HIDI India'));
 });
-test('image eligibility is limited to exact published catalogue assets',()=>{
+test('public aliases redirect navigational requests to the apex while mutations, APIs, canonical host and previews pass through',()=>{
+  const call=(host,url='/collections/all?size=M',method='GET')=>{
+    const result={status:null,headers:null,ended:false};
+    const response={writeHead(status,headers){result.status=status;result.headers=headers;},end(){result.ended=true;}};
+    result.handled=handleCanonicalHostRedirect({method,url,headers:{'x-forwarded-host':host}},response);
+    return result;
+  };
+  assert.deepEqual(call('www.hidiindia.com'),{status:308,headers:{location:'https://hidiindia.com/collections/all?size=M','cache-control':'public, max-age=3600'},ended:true,handled:true});
+  assert.deepEqual(call('thehidi.com','/checkout?step=payment','POST'),{status:null,headers:null,ended:false,handled:false});
+  assert.deepEqual(call('www.hidiindia.com','/api/cart','GET'),{status:null,headers:null,ended:false,handled:false});
+  assert.equal(call('thehidi.com','/checkout?step=payment','HEAD').headers.location,'https://hidiindia.com/checkout?step=payment');
+  assert.equal(call('www.thehidi.com','/products/example').status,308);
+  for(const host of ['hidiindia.com','thidigk.thehidi.com','localhost:3000','www.hidiindia.com.evil.example'])assert.deepEqual(call(host),{status:null,headers:null,ended:false,handled:false});
+});
+test('image eligibility is limited to exact published catalogue assets on the canonical host',()=>{
   const known=publishedImages[0];
   assert(isPublishedProductImage(known));
   assert(shouldIndexPublishedImage(200,'image/webp','hidiindia.com',known));
-  assert(shouldIndexPublishedImage(200,'image/jpeg; charset=binary','www.hidiindia.com',known));
+  assert(!shouldIndexPublishedImage(200,'image/jpeg; charset=binary','www.hidiindia.com',known));
   assert(shouldIndexPublishedImage(200,'image/svg+xml','hidiindia.com','/brand/hidi-logo-header.svg'));
   assert(!shouldIndexPublishedImage(200,'image/svg+xml','hidiindia.com','/brand/unknown.svg'));
   assert(!shouldIndexPublishedImage(200,'image/svg+xml','thidigk.thehidi.com','/brand/hidi-logo-header.svg'));

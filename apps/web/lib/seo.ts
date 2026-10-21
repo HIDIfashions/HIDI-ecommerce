@@ -1,11 +1,6 @@
 import type { ApiProduct } from "./api";
 
-const INDEXABLE_PRODUCTION_HOSTS = new Set([
-  "thehidi.com",
-  "www.thehidi.com",
-  "hidiindia.com",
-  "www.hidiindia.com",
-]);
+const INDEXABLE_PRODUCTION_HOST = "hidiindia.com";
 
 export function isSearchIndexingEnabled(env: Record<string, string | undefined> = process.env): boolean {
   // Launch is explicit. A validation/preview deployment can never opt in.
@@ -13,7 +8,7 @@ export function isSearchIndexingEnabled(env: Record<string, string | undefined> 
   if (env.ALLOW_PUBLIC_DOMAIN !== "true") return false;
   try {
     const url = new URL(env.SITE_URL || env.NEXT_PUBLIC_SITE_URL || "");
-    return url.protocol === "https:" && INDEXABLE_PRODUCTION_HOSTS.has(url.hostname.toLowerCase());
+    return url.protocol === "https:" && url.hostname.toLowerCase() === INDEXABLE_PRODUCTION_HOST;
   } catch {
     return false;
   }

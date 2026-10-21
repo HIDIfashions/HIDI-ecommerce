@@ -39,7 +39,7 @@ const DEFAULT_DETAILS: BusinessDetails = {
   address: "",
   consumerCareEmail: "",
   consumerCarePhone: "",
-  website: "thehidi.com",
+  website: "hidiindia.com",
   countryOfOrigin: "India",
 };
 const PRESETS: Record<PresetKey, { label: string; width: number; height: number; note: string }> = {
@@ -497,7 +497,7 @@ export function PriceTagPrinter({ initialProductId }: { initialProductId?: strin
             <label>Legal entity / marketed by<input value={details.legalName} onChange={(event: ChangeEvent<HTMLInputElement>) => setDetails((value) => ({ ...value, legalName: event.target.value }))} placeholder="Registered business / proprietor name" maxLength={120} /></label>
             <label>Country of origin<input value={details.countryOfOrigin} onChange={(event: ChangeEvent<HTMLInputElement>) => setDetails((value) => ({ ...value, countryOfOrigin: event.target.value }))} maxLength={80} /></label>
             <label className={styles.address}>Complete postal address<textarea value={details.address} onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setDetails((value) => ({ ...value, address: event.target.value }))} placeholder="Door / street, area, city, state and PIN code" rows={3} maxLength={320} /></label>
-            <label>Consumer-care email<input type="email" value={details.consumerCareEmail} onChange={(event: ChangeEvent<HTMLInputElement>) => setDetails((value) => ({ ...value, consumerCareEmail: event.target.value }))} placeholder="care@thehidi.com" maxLength={120} /></label>
+            <label>Consumer-care email<input type="email" value={details.consumerCareEmail} onChange={(event: ChangeEvent<HTMLInputElement>) => setDetails((value) => ({ ...value, consumerCareEmail: event.target.value }))} placeholder="care@hidiindia.com" maxLength={120} /></label>
             <label>Consumer-care phone<input value={details.consumerCarePhone} onChange={(event: ChangeEvent<HTMLInputElement>) => setDetails((value) => ({ ...value, consumerCarePhone: event.target.value }))} placeholder="+91 …" maxLength={40} /></label>
             <label>Website (optional)<input value={details.website} onChange={(event: ChangeEvent<HTMLInputElement>) => setDetails((value) => ({ ...value, website: event.target.value }))} maxLength={120} /></label>
           </div>

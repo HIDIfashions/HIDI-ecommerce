@@ -28,11 +28,42 @@ export function shouldIndexPublishedImage(status, contentType, hostname, pathnam
   const productImage = (/^image\/(?:jpeg|png|webp|avif)(?:;|$)/i.test(contentType) || cachedType) && isPublishedProductImage(pathname);
   // The existing Organization graph names this verified, public brand logo.
   const brandLogo = pathname === '/brand/hidi-logo-header.svg' && (/^image\/svg\+xml(?:;|$)/i.test(contentType) || cachedType);
-  return [200,304].includes(status) && ['hidiindia.com', 'www.hidiindia.com'].includes(hostname) && (productImage || brandLogo);
+  return [200,304].includes(status) && hostname === 'hidiindia.com' && (productImage || brandLogo);
 }
 export const canonicalOrigin = 'https://hidiindia.com';
 const legacyHosts = new Set(['thehidi.com', 'www.thehidi.com', 'thidigk.thehidi.com', 'azure-preview.thehidi.com', 'www.hidiindia.com', 'localhost', '127.0.0.1']);
 const identityKeys = new Set(['@id', 'url', 'logo', 'image', 'item', 'contentUrl']);
+export const verifiedBrandProfiles = Object.freeze([
+  'https://www.instagram.com/hidiindia/',
+  'https://www.facebook.com/profile.php?id=61594615364935',
+  'https://x.com/Hidiindia',
+  'https://www.youtube.com/@Hidiindia',
+]);
+export const brandDescription = 'HIDI is an Indian women’s wear brand offering kurta sets for work, everyday dressing and occasions.';
+
+function requestHostname(request) {
+  const forwarded = String(request?.headers?.['x-forwarded-host'] || '').split(',')[0].trim();
+  const raw = forwarded || String(request?.headers?.host || '').trim();
+  try { return new URL('https://' + raw).hostname.toLowerCase(); }
+  catch { return raw.replace(/:\d+$/, '').toLowerCase(); }
+}
+
+// Collapse public aliases for navigational requests before page routing. Mutating
+// requests and API traffic stay on the existing path so commerce integrations
+// and callbacks retain their current behavior.
+export function handleCanonicalHostRedirect(request, response) {
+  if (!['www.hidiindia.com', 'thehidi.com', 'www.thehidi.com'].includes(requestHostname(request))) return false;
+  const method = String(request?.method || 'GET').toUpperCase();
+  if (!['GET', 'HEAD'].includes(method)) return false;
+  const target = new URL(request?.url || '/', canonicalOrigin);
+  if (target.pathname === '/api' || target.pathname.startsWith('/api/')) return false;
+  response.writeHead(308, {
+    location: canonicalOrigin + target.pathname + target.search,
+    'cache-control': 'public, max-age=3600',
+  });
+  response.end();
+  return true;
+}
 
 // These describe existing public destinations only. No stock, price, composition,
 // service promises or unverified brand associations are introduced.
@@ -123,10 +154,17 @@ function normalizeGraph(value, key = '', brandHead = false) {
         if ([canonicalOrigin + '/assets/images/hidi-logo.png', canonicalOrigin + '/brand/hidi-logo-header.svg'].includes(graph.logo)) {
           graph.logo = canonicalOrigin + '/brand/hidi-logo-header.svg';
         }
-        // Verified through the storefront's outbound link and the public profile's
-        // reciprocal website link. Ananya's personal account is a separate entity.
+        // These are the existing official HIDI channels. Ananya's personal
+        // account remains a separate entity and is deliberately not included.
         const profiles = graph.sameAs === undefined ? [] : Array.isArray(graph.sameAs) ? graph.sameAs : [graph.sameAs];
-        graph.sameAs = [...new Set([...profiles, 'https://www.instagram.com/hidiindia/'])];
+        graph.sameAs = [...new Set([...profiles, ...verifiedBrandProfiles])];
+        if (graph.alternateName === undefined) graph.alternateName = 'HIDI India';
+        else if (Array.isArray(graph.alternateName)) {
+          if (!graph.alternateName.includes('HIDI India')) graph.alternateName = [...graph.alternateName, 'HIDI India'];
+        } else if (typeof graph.alternateName === 'string' && graph.alternateName !== 'HIDI India') {
+          graph.alternateName = [graph.alternateName, 'HIDI India'];
+        }
+        if (graph.description === undefined) graph.description = brandDescription;
       }
       if (graph['@type'] === 'WebSite') {
         if (graph.alternateName === undefined) graph.alternateName = 'HIDI India';
@@ -237,7 +275,9 @@ export const clientMetadataScript = '<script data-hidi-seo-identity="1">' +
   '(()=>{const canonicalOrigin=' + JSON.stringify(canonicalOrigin) +
   ';const legacyHosts=new Set(' + JSON.stringify([...legacyHosts]) +
   ');const identityKeys=new Set(' + JSON.stringify([...identityKeys]) +
-  ');const routeSearchMetadata=' + JSON.stringify(routeSearchMetadata) +
+  ');const verifiedBrandProfiles=' + JSON.stringify(verifiedBrandProfiles) +
+  ';const brandDescription=' + JSON.stringify(brandDescription) +
+  ';const routeSearchMetadata=' + JSON.stringify(routeSearchMetadata) +
   ';' + identityUrl.toString() + normalizeGraph.toString() + productRouteMetadata.toString() + '(' + guardMetadata.toString() + ')();})();</script>';
 
 function normalizeJsonLd(html, brandHead = false) {

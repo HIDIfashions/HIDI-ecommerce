@@ -16,14 +16,12 @@ function webSource(relative) {
 test("indexing requires an explicitly opened production domain", async () => {
   const { isSearchIndexingEnabled: enabled } = await load("seo.ts");
   assert.equal(enabled({}), false);
-  for (const host of ["thehidi.com", "www.thehidi.com", "hidiindia.com", "www.hidiindia.com"]) {
-    const env = { SITE_URL: `https://${host}`, ALLOW_PUBLIC_DOMAIN: "true" };
-    assert.equal(enabled(env), true);
-    assert.equal(enabled({ ...env, DEPLOYMENT_STAGE: "validation" }), false);
-    assert.equal(enabled({ ...env, VERCEL_ENV: "preview" }), false);
-    assert.equal(enabled({ ...env, ALLOW_PUBLIC_DOMAIN: "false" }), false);
-  }
-  for (const url of ["https://thidigk.thehidi.com", "https://azure-preview.thehidi.com", "http://thehidi.com", "http://hidiindia.com", "https://hidiindia.com.evil.example", "https://thehidi.com.evil.example", "invalid"]) {
+  const production = { SITE_URL: "https://hidiindia.com", ALLOW_PUBLIC_DOMAIN: "true" };
+  assert.equal(enabled(production), true);
+  assert.equal(enabled({ ...production, DEPLOYMENT_STAGE: "validation" }), false);
+  assert.equal(enabled({ ...production, VERCEL_ENV: "preview" }), false);
+  assert.equal(enabled({ ...production, ALLOW_PUBLIC_DOMAIN: "false" }), false);
+  for (const url of ["https://thehidi.com", "https://www.thehidi.com", "https://www.hidiindia.com", "https://thidigk.thehidi.com", "https://azure-preview.thehidi.com", "http://thehidi.com", "http://hidiindia.com", "https://hidiindia.com.evil.example", "https://thehidi.com.evil.example", "invalid"]) {
     assert.equal(enabled({ SITE_URL: url, ALLOW_PUBLIC_DOMAIN: "true" }), false);
   }
 });
@@ -43,8 +41,12 @@ test("primary HIDI domain can force canonical URLs for SEO consolidation", async
     assert.equal(getSiteUrl().toString(), "https://hidiindia.com/");
     assert.equal(absoluteUrl("/collections/all"), "https://hidiindia.com/collections/all");
 
+    process.env.HIDI_PRIMARY_DOMAIN = "https://www.thehidi.com/path";
+    assert.equal(getSiteUrl().toString(), "https://hidiindia.com/");
+    assert.equal(absoluteUrl("https://www.thehidi.com/products/style?source=legacy#fit"), "https://hidiindia.com/products/style?source=legacy#fit");
+
     process.env.HIDI_PRIMARY_DOMAIN = "https://unknown.example/path";
-    assert.equal(getSiteUrl().toString(), "https://thehidi.com/");
+    assert.equal(getSiteUrl().toString(), "https://hidiindia.com/");
   } finally {
     process.env = originalEnv;
   }
@@ -90,10 +92,34 @@ test("HIDI India domain is covered by launch gates and image optimizer allowlist
   assert.match(middleware, /"hidiindia\.com"/);
   assert.match(middleware, /"www\.hidiindia\.com"/);
   assert.match(middleware, /ALLOW_PUBLIC_DOMAIN !== "true"/);
-  assert.match(middleware, /HIDI_PRIMARY_DOMAIN/);
+  assert.match(middleware, /CANONICAL_HOST = "hidiindia\.com"/);
+  assert.match(middleware, /\["GET", "HEAD"\]\.includes\(request\.method\.toUpperCase\(\)\)/);
+  assert.match(middleware, /!pathname\.startsWith\("\/api\/"\)/);
+  assert.match(middleware, /url\.hostname = CANONICAL_HOST/);
+  assert.match(middleware, /url\.port = ""/);
   assert.match(middleware, /NextResponse\.redirect\(url, 308\)/);
 
   const nextConfig = webSource("next.config.ts");
   assert.match(nextConfig, /hostname: "hidiindia\.com"/);
   assert.match(nextConfig, /hostname: "www\.hidiindia\.com"/);
+});
+
+test("brand metadata and logo links use the consolidated HIDI India identity", () => {
+  const layout = webSource("app/layout.tsx");
+  assert.match(layout, /HIDI India \| Women’s Indian Wear and Kurta Sets/);
+  assert.match(layout, /alternateName: "HIDI India"/);
+  assert.ok(layout.includes("HIDI is an Indian women’s wear brand offering kurta sets for work, everyday dressing and occasions."));
+  for (const profile of ["instagram.com/hidiindia/", "facebook.com/profile.php?id=61594615364935", "x.com/Hidiindia", "youtube.com/@Hidiindia"]) {
+    assert.ok(layout.includes(profile), `missing verified profile ${profile}`);
+  }
+
+  for (const component of ["components/header.tsx", "components/site-footer.tsx"]) {
+    const source = webSource(component);
+    assert.match(source, /aria-label="HIDI India home"/);
+    assert.match(source, /alt="HIDI India — Wear the Feeling"/);
+  }
+
+  const tags = webSource("components/admin-products/price-tag-printer.tsx");
+  assert.match(tags, /website: "hidiindia\.com"/);
+  assert.doesNotMatch(tags, /thehidi\.com/);
 });
