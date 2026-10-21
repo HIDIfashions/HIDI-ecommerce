@@ -218,6 +218,9 @@ export async function POST(
       uploadKey = sha256Hex([imageSku, photoNumber, file.type, file.sha256].join("\u0000"));
     }
     await createUploadTicket(request, variantId, file);
+    // Every Azure original is retry-safe. Image-SKU uploads retain their mapping
+    // digest; ordinary uploads use the SHA-256 of the exact bytes received.
+    if (process.env.MEDIA_STORAGE_PROVIDER === "azure" && !uploadKey) uploadKey = file.sha256;
     let uploaded: R2UploadResult;
     if (process.env.MEDIA_STORAGE_PROVIDER === "azure") {
       const key = objectKey(variantId, file.type, uploadKey);
