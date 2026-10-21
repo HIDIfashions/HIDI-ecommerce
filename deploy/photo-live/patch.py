@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib,re,shutil,subprocess,os
 API='apps/api/dist/admin/admin-inventory.service.js'
 PIN_API='4ae2c0865fa3be640b845ab78f012e4a768be17b339f0bfe176a3284449db4fd'
-PIN_SERVER='d25c5bc3dfca427cfe0771ccc0444e69feb28e7a07249bd94fcc13156bb6f9a2'
+PIN_SERVER='7e73df019d242f79b7630dfd9a7f9aa35cecc01750ecef79813e7c22e6db8d35'
 PIN_IMAGES='0593c2d4b1ef740cf5fda2262b40c8e6fc392c4bca40d8c2552107251de822ac'
 PIN_DELETE_STORAGE_BLOB='0f70fd060d904cb3881c6f4090705869c37d3b33'
 ROOT=Path(__file__).resolve().parents[2]
