@@ -14,7 +14,9 @@ const stateText = JSON.stringify(state);
 
 globalThis.fetch = async (input, options = {}) => {
   const request = input instanceof Request ? input : null;
-  const url = new URL(request?.url || input);
+  let url;
+  try { url = new URL(request?.url || input); }
+  catch { return originalFetch(input, options); }
   const method = String(options.method || request?.method || 'GET').toUpperCase();
   if (url.pathname === '/hidi-seo-fixture-token') {
     if (method !== 'GET') throw new Error('Fixture identity is read-only');

@@ -6,6 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { probe } from './probes.mjs';
 import { foundationProbe } from '../seo-foundation/browser.mjs';
+import { catalogueStatus } from '../pricing/model.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
 import bodyConfig from './body-preservation-config.json' with {type:'json'};
 
@@ -14,9 +15,10 @@ const products = Array.from({ length: 3 }, (_, i) => ({
   id: 'bag-fixture-' + i, slug: 'bag-fixture-style-' + i, name: 'Bag catalogue fixture ' + (i + 1),
   status: 'ACTIVE', description: 'Read-only catalogue fixture.', shortDescription: 'Fixture.', fabric: 'Cotton', care: 'Fixture care',
   category: { id: 'fixture-category', name: 'Casual Wear', slug: 'casual-wear' }, collections: [], images: [{url:'https://hidiindia.com'+publishedImages[i]}],
-  minPricePaise: 100000 + i * 10000, maxPricePaise: 100000 + i * 10000, inStock: true,
-  variants: [{ id: 'bag-variant-' + i, sku: 'FIXTURE-BAG-' + i, size: 'M', color: 'Pink', available: 4, pricePaise: 100000 + i * 10000, mrpPaise: 140000 }],
+  minPricePaise: 119000, maxPricePaise: 119000, inStock: true,
+  variants: [{ id: 'bag-variant-' + i, sku: 'FIXTURE-BAG-' + i, size: 'M', color: 'Pink', available: 4, pricePaise: 119000, mrpPaise: 140000 }],
 }));
+assert(catalogueStatus(products).ready, 'Read-only catalogue fixture must retain the live 15% price campaign');
 const reads = [], writes = [];
 const upstream = createServer((req, res) => {
   const url = new URL(req.url, 'http://fixture'), path = url.pathname.replace(/^\/v1/, '');
