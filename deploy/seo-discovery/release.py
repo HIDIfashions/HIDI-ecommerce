@@ -120,14 +120,20 @@ def seal():
     assert foundation_report['liveWrites']==0
     assert all(value['appearancePreserved'] for value in foundation_report['results'])
     for value in foundation_report['results']:
-        failed=value['failedDeclaredNextPrefetches'];ignored=value['ignoredFailedDeclaredPrefetchErrors']
-        assert isinstance(failed,list) and len(failed)==len(set(failed))
-        assert isinstance(ignored,list) and len(ignored)==len(set(ignored))
+        active=value['routeChangeActiveDeclaredPrefetches'];ignored=value['ignoredRouteChangeDeclaredPrefetchErrors'];error_start=value['routeChangePageErrorStartIndex']
+        assert isinstance(active,list) and all(isinstance(url,str) for url in active) and len(active)==len(set(active))
+        assert isinstance(error_start,int) and error_start>=0
+        assert isinstance(ignored,list)
         if value['engine']!='webkit':assert ignored==[]
-        for message in ignored:
+        indexes=[]
+        for item in ignored:
+            assert isinstance(item,dict) and set(item)=={'message','index','url'}
+            message=item['message'];index=item['index'];recorded_url=item['url']
+            assert isinstance(index,int) and index>=error_start;indexes.append(index)
             match=re.fullmatch(r'Fetch API cannot load (.+) due to access control checks\.',message);assert match
             url=re.sub(r'^(https?):\s+/(?!/)',r'\1://',match.group(1),flags=re.I)
-            assert url in failed,'Ignored WebKit error must match an exact failed declared-prefetch URL'
+            assert recorded_url==url and url in active,'Ignored WebKit error must match an exact prefetch active when the deliberate route change began'
+        assert len(indexes)==len(set(indexes))
     body_report=read('candidate-body-preservation.json')
     assert body_report['readOnly'] and body_report['liveWrites']==0 and body_report['sampleCount']==3
     assert [route['route'] for route in body_report['routes']]==['/','/privacy']
