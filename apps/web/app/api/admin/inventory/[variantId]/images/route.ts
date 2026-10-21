@@ -1,4 +1,4 @@
-import { uploadProductImageFile } from "@/lib/azure-blob";
+import { ensureProductImageDerivatives, uploadProductImageFile } from "@/lib/azure-blob";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/api";
@@ -218,9 +218,19 @@ export async function POST(
       uploadKey = sha256Hex([imageSku, photoNumber, file.type, file.sha256].join("\u0000"));
     }
     await createUploadTicket(request, variantId, file);
-    const uploaded = process.env.MEDIA_STORAGE_PROVIDER === "azure"
-      ? await uploadProductImageFile(objectKey(variantId, file.type, uploadKey), file, file.type)
-      : await uploadToR2(variantId, file);
+    let uploaded: R2UploadResult;
+    if (process.env.MEDIA_STORAGE_PROVIDER === "azure") {
+      const key = objectKey(variantId, file.type, uploadKey);
+      uploaded = await uploadProductImageFile(key, file, file.type);
+      try {
+        await ensureProductImageDerivatives(key, file);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "unknown processing error";
+        throw new Error(`Photo original was stored, but shopper-ready images could not be prepared: ${detail}. Retry the upload; the original is immutable and safe.`);
+      }
+    } else {
+      uploaded = await uploadToR2(variantId, file);
+    }
 
     const response = await saveImageMetadata(request, variantId, {
       url: uploaded.url,
