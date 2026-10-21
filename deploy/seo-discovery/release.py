@@ -20,12 +20,47 @@ guard.setup()
 photo,cloud,images=guard.photo,guard.cloud,guard.images
 cloud.BASE='https://hidiindia.com'
 patcher=load('seo_discovery_patch',HERE/'patch-runtime.py')
+body_guard=load('seo_body_preservation',HERE/'body-preservation.py')
 PRIVATE,EVIDENCE=guard.PRIVATE,guard.EVIDENCE
 def save(name,value):guard.save(name,value)
 def read(name):return guard.read(name)
 def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def image_id(image):return json.loads(images.docker('image','inspect',image))[0]['Id']
 def own_tag():return images.REGISTRY+'/hidi-web:seo-discovery-'+guard.run_key()
+def retained_body_sample(path):
+    document=cloud.get(path,headers=body_guard.CONFIG['requestHeaders'])
+    normalized,evidence=body_guard.analyze(path,document)
+    return document,normalized,evidence
+def capture_retained_bodies():
+    report={'passed':False,'readOnly':True,'sampleCount':3,'requestHeaders':body_guard.CONFIG['requestHeaders'],'routes':[]}
+    expected={}
+    for path in body_guard.CONFIG['routes']:
+        samples=[retained_body_sample(path) for _ in range(report['sampleCount'])]
+        normalized=[sample[1] for sample in samples]
+        stable=all(value==normalized[0] for value in normalized)
+        key='home' if path=='/' else path.strip('/').replace('/','-')
+        retained=PRIVATE/('retained-body-'+key+'.bin');retained.write_bytes(normalized[0]);retained.chmod(0o600)
+        expected[path]={'sha256':body_guard.sha256(normalized[0]),'length':len(normalized[0]),'privateFile':retained.name}
+        report['routes'].append({'path':path,'normalizedStable':stable,'samples':[sample[2] for sample in samples]})
+    report['passed']=all(route['normalizedStable'] for route in report['routes'])
+    save('retained-body-before.json',report)
+    guard.write_private('retained-public-bodies.json',expected)
+    assert report['passed'],'Retained public baseline is not stable after exact reviewed normalization'
+def verify_retained_bodies(report_name='retained-body-after.json'):
+    expected=guard.private_json('retained-public-bodies.json')
+    report={'passed':False,'readOnly':True,'sampleCount':3,'requestHeaders':body_guard.CONFIG['requestHeaders'],'routes':[]}
+    for path,value in expected.items():
+        baseline=(PRIVATE/value['privateFile']).read_bytes()
+        assert body_guard.sha256(baseline)==value['sha256'] and len(baseline)==value['length'],'Private retained-body baseline changed'
+        samples=[retained_body_sample(path) for _ in range(report['sampleCount'])]
+        normalized=[sample[1] for sample in samples]
+        stable=all(item==normalized[0] for item in normalized)
+        exact=all(item==baseline for item in normalized)
+        difference=next((body_guard.first_difference(baseline,item) for item in normalized if item!=baseline),None)
+        report['routes'].append({'path':path,'normalizedStable':stable,'exactBaselineMatch':exact,'samples':[sample[2] for sample in samples],'firstDifference':difference})
+    report['passed']=all(route['normalizedStable'] and route['exactBaselineMatch'] for route in report['routes'])
+    save(report_name,report)
+    assert report['passed'],'Retained public body changed; see '+report_name
 def editorial_snapshot():
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self,*args):return None
@@ -49,7 +84,7 @@ def capture():
     value=subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image','hidi-web:backup-seo-discovery-'+guard.run_key(),'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
     assert value==image.split('@',1)[1],'Backup digest mismatch'
     save('web-backup.json',{'verified':True,'originalImage':image,'backupTag':tag,'digest':value,'settingsHash':before['hidi-web']['settingsHash']})
-    guard.write_private('retained-public-bodies.json',{p:hashlib.sha256(cloud.get(p).split(b'</head>',1)[1]).hexdigest() for p in ['/','/privacy']})
+    capture_retained_bodies()
     guard.write_private('retained-editorial-response.json',editorial_snapshot())
     guard.write_private('retained-analytics.json',{'sha256':hashlib.sha256(cloud.get('/hidi-analytics.js')).hexdigest()})
     photo.unchanged(before);assert guard.public_snapshot()==public
@@ -72,13 +107,17 @@ def compose():
     photo.unchanged(before);print('PASS: only reviewed SEO identity, canonical-host routing, footer clearance and current product-image allowlist changed; retained navigation and About copy preserved')
 def seal():
     photo.unchanged(photo.states());manifest={}
-    for name in ['candidate/report.json','foundation-candidate/report.json','patch.json','web-preservation.json']:
+    for name in ['candidate/report.json','foundation-candidate/report.json','candidate-body-preservation.json','patch.json','web-preservation.json']:
         value=read(name);assert value.get('passed') is True,name+' must pass';manifest[name]=digest(EVIDENCE/name)
     assert read('candidate/report.json')['engines']==['chromium','firefox','webkit'] and len(read('candidate/report.json')['results'])==12
     assert read('candidate/report.json')['liveWrites']==0
     assert len(read('foundation-candidate/report.json')['results'])==12
     assert read('foundation-candidate/report.json')['liveWrites']==0
     assert all(value['appearancePreserved'] for value in read('foundation-candidate/report.json')['results'])
+    body_report=read('candidate-body-preservation.json')
+    assert body_report['readOnly'] and body_report['liveWrites']==0 and body_report['sampleCount']==3
+    assert [route['route'] for route in body_report['routes']]==['/','/privacy']
+    assert all(route['prior']['normalizedStable'] and route['candidate']['normalizedStable'] and route['exactNormalizedMatch'] for route in body_report['routes'])
     save('candidate-regression.json',{'passed':True,'candidateImageId':image_id(own_tag()),'reportManifest':manifest,'sourceSha':os.environ['GITHUB_SHA']})
 def publish():
     seal();report=read('candidate-regression.json');subprocess.run(['docker','push',own_tag()],check=True)
@@ -102,8 +141,7 @@ def apply(image):
         guard.routes()
         subprocess.run(['node',str(HERE/'probes.mjs'),cloud.BASE,'evidence/seo-discovery/live'],check=True,timeout=1000)
         subprocess.run(['node',str(HERE.parent/'seo-foundation/browser.mjs'),cloud.BASE,'evidence/seo-discovery/foundation-live'],check=True,timeout=1000)
-        for path,expected in guard.private_json('retained-public-bodies.json').items():
-            assert hashlib.sha256(cloud.get(path).split(b'</head>',1)[1]).hexdigest()==expected, 'Retained public body changed: '+path
+        verify_retained_bodies()
         assert editorial_snapshot()==guard.private_json('retained-editorial-response.json'),'Retained editorial response changed'
         assert hashlib.sha256(cloud.get('/hidi-analytics.js')).hexdigest()==guard.private_json('retained-analytics.json')['sha256'], 'Newer analytics asset changed'
         assert guard.public_snapshot()==captured,'Published media, privacy or public config changed'
@@ -113,7 +151,7 @@ def apply(image):
     except Exception:
         marker=guard.private_json('forward-write.json');result=guard.reconcile_failure(image,before,captured,captured,suffix,bool(marker.get('mayComplete')));save('rollback.json',result);raise
 def recover(image):
-    before=photo.states();captured=guard.private_json('public-before.json');result=guard.reconcile_failure(image,before,captured,captured,'seodiscovery'+guard.run_key('a'),True);save('external-recovery.json',result);assert result.get('passed') is True
+    before=photo.states();captured=guard.private_json('public-before.json');result=guard.reconcile_failure(image,before,captured,captured,'seodiscovery'+guard.run_key('a'),True);save('external-recovery.json',result);assert result.get('passed') is True;verify_retained_bodies('retained-body-recovery.json')
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('mode',choices=['capture','compose','seal','publish','apply','recover']);parser.add_argument('--image');args=parser.parse_args()
     if args.mode in ['apply','recover']:globals()[args.mode](args.image)

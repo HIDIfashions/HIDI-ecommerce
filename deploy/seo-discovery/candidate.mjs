@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createServer } from 'node:http';
+import { createServer, request } from 'node:http';
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { probe } from './probes.mjs';
 import { foundationProbe } from '../seo-foundation/browser.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
+import bodyConfig from './body-preservation-config.json' with {type:'json'};
 
 const root = resolve(process.env.HIDI_CANDIDATE_RUNTIME);
 const products = Array.from({ length: 3 }, (_, i) => ({
@@ -40,24 +41,32 @@ await new Promise(done => upstream.listen(0, '127.0.0.1', done));
 const reserve = createServer(); await new Promise(done => reserve.listen(0, '127.0.0.1', done));
 const port = reserve.address().port; await new Promise(done => reserve.close(done));
 const api = 'http://127.0.0.1:' + upstream.address().port + '/v1';
+const privacyFixture = new URL('./privacy-store-fixture.mjs', import.meta.url).href;
+const runtimeEnvironment = {
+  ...process.env,
+  API_URL: api,
+  INTERNAL_API_URL: api,
+  NODE_OPTIONS: `${process.env.NODE_OPTIONS ? process.env.NODE_OPTIONS + ' ' : ''}--import=${privacyFixture}`,
+  IDENTITY_ENDPOINT: 'http://127.0.0.1/hidi-seo-fixture-token',
+  IDENTITY_HEADER: 'read-only-fixture',
+  AZURE_STORAGE_ACCOUNT: 'fixture',
+  AZURE_STORAGE_BLOB_ENDPOINT: 'https://fixture.blob.core.windows.net/',
+};
 const runtime = spawn(process.execPath, [join(root, 'server.mjs')], { cwd: root,
-  env: { ...process.env, PORT: String(port), API_URL: api, INTERNAL_API_URL: api }, stdio: ['ignore', 'pipe', 'pipe'] });
+  env: { ...runtimeEnvironment, PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'] });
 let logs = ''; runtime.stdout.on('data', c => logs += c); runtime.stderr.on('data', c => logs += c);
 const base = 'http://127.0.0.1:' + port;
 const priorReserve=createServer();await new Promise(done=>priorReserve.listen(0,'127.0.0.1',done));
 const priorPort=priorReserve.address().port;await new Promise(done=>priorReserve.close(done));
 const priorRoot=resolve(root,'../base-app');
-const priorRuntime=spawn(process.execPath,[join(priorRoot,'server.mjs')],{cwd:priorRoot,env:{...process.env,PORT:String(priorPort),STOREFRONT_ORIGIN:'http://127.0.0.1:3001',API_URL:api,INTERNAL_API_URL:api},stdio:['ignore','pipe','pipe']});
+const priorRuntime=spawn(process.execPath,[join(priorRoot,'server.mjs')],{cwd:priorRoot,env:{...runtimeEnvironment,PORT:String(priorPort),STOREFRONT_ORIGIN:'http://127.0.0.1:3001'},stdio:['ignore','pipe','pipe']});
 priorRuntime.stdout.on('data',c=>logs+=c);priorRuntime.stderr.on('data',c=>logs+=c);
 const priorBase='http://127.0.0.1:'+priorPort;
 
-const bodyEvidencePath = 'evidence/seo-discovery/body-preservation.json';
-const forwardedHeaders = {
-  'cache-control': 'no-cache',
-  'pragma': 'no-cache',
-  'x-forwarded-host': 'hidiindia.com',
-  'x-forwarded-proto': 'https',
-};
+const bodyEvidencePath = 'evidence/seo-discovery/candidate-body-preservation.json';
+const forwardedHeaders = bodyConfig.requestHeaders;
+const announcement = Buffer.from(bodyConfig.announcementHtml);
+const headMarker = Buffer.from('</head>');
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const firstDifference = (left, right) => {
   const shared = Math.min(left.length, right.length);
@@ -71,38 +80,84 @@ const firstDifference = (left, right) => {
     candidateSnippet: right.subarray(start, Math.min(right.length, end)).toString('utf8'),
   };
 };
+const countBytes = (value, needle) => {
+  let count = 0, offset = 0;
+  while ((offset = value.indexOf(needle, offset)) >= 0) { count++; offset += needle.length; }
+  return count;
+};
+const requestDocument = (origin, route) => new Promise((resolveRequest, reject) => {
+  const target = new URL(route, origin);
+  const req = request({ hostname: target.hostname, port: target.port, path: target.pathname + target.search,
+    method: 'GET', headers: forwardedHeaders }, response => {
+    const chunks = [];
+    response.on('data', chunk => chunks.push(chunk));
+    response.on('end', () => resolveRequest({
+      status: response.statusCode,
+      contentType: response.headers['content-type'] || '',
+      document: Buffer.concat(chunks),
+    }));
+  });
+  req.setTimeout(30000, () => req.destroy(new Error(`Timed out reading ${route}`)));
+  req.on('error', reject); req.end();
+});
 const sampleBody = async (origin, route) => {
-  const response = await fetch(origin + route, { headers: forwardedHeaders });
-  const document = Buffer.from(await response.arrayBuffer());
-  const marker = document.indexOf(Buffer.from('</head>'));
+  const response = await requestDocument(origin, route), document = response.document;
+  const marker = document.indexOf(headMarker), markerCount = countBytes(document, headMarker);
   assert.equal(response.status, 200, `${route} must return HTTP 200`);
-  assert(marker >= 0, `${route} must contain </head>`);
-  const body = document.subarray(marker + Buffer.byteLength('</head>'));
-  return { body, status: response.status, length: body.length, sha256: sha256(body) };
+  assert.match(response.contentType, /^text\/html\b/i, `${route} must return HTML`);
+  assert.equal(markerCount, 1, `${route} must contain exactly one lowercase </head>`);
+  const head = document.subarray(0, marker + headMarker.length);
+  const body = document.subarray(marker + headMarker.length);
+  const announcementCount = countBytes(body, announcement);
+  const optional = bodyConfig.routes[route]?.optionalAnnouncement;
+  assert.notEqual(optional, undefined, `Unreviewed retained-body route: ${route}`);
+  assert(optional ? announcementCount <= 1 : announcementCount === 0, `${route} has an unexpected HIDI price announcement`);
+  const announcementPosition = announcementCount ? body.indexOf(announcement) : null;
+  if (announcementCount) {
+    const bodyTag = /<body\b[^>]*>/i.exec(body.subarray(0, 1024).toString('utf8'));
+    assert(bodyTag, `${route} must contain a body start tag`);
+    const bodyTagEnd = Buffer.byteLength(bodyTag.input.slice(0, bodyTag.index) + bodyTag[0]);
+    assert.equal(announcementPosition, bodyTagEnd, 'Optional announcement must occur once immediately after <body>');
+  }
+  const normalized = announcementCount
+    ? Buffer.concat([body.subarray(0, announcementPosition), body.subarray(announcementPosition + announcement.length)])
+    : body;
+  return {
+    body, normalized,
+    evidence: {
+      status: response.status, contentType: response.contentType, markerCount,
+      document: { length: document.length, sha256: sha256(document) },
+      head: { length: head.length, sha256: sha256(head) },
+      body: { length: body.length, sha256: sha256(body) },
+      normalizedBody: { length: normalized.length, sha256: sha256(normalized) },
+      announcement: { count: announcementCount, position: announcementPosition, exactReviewedLiteral: announcementCount === 1 },
+    },
+  };
 };
 const compareRetainedBodies = async () => {
-  const report = { passed: false, readOnly: true, sampleCount: 3, routes: [] };
+  const report = { passed: false, readOnly: true, liveWrites: 0, sampleCount: 3,
+    requestHeaders: forwardedHeaders, normalization: 'Only the exact reviewed optional homepage price announcement is removed', routes: [] };
   for (const route of ['/', '/privacy']) {
     const prior = [], candidate = [];
     for (let i = 0; i < report.sampleCount; i++) {
       prior.push(await sampleBody(priorBase, route));
       candidate.push(await sampleBody(base, route));
     }
-    const priorStable = prior.every(sample => sample.sha256 === prior[0].sha256 && sample.length === prior[0].length);
-    const candidateStable = candidate.every(sample => sample.sha256 === candidate[0].sha256 && sample.length === candidate[0].length);
-    const difference = firstDifference(prior[0].body, candidate[0].body);
+    const priorRawStable = prior.every(sample => sample.evidence.body.sha256 === prior[0].evidence.body.sha256);
+    const candidateRawStable = candidate.every(sample => sample.evidence.body.sha256 === candidate[0].evidence.body.sha256);
+    const priorStable = prior.every(sample => sample.normalized.equals(prior[0].normalized));
+    const candidateStable = candidate.every(sample => sample.normalized.equals(candidate[0].normalized));
+    const difference = firstDifference(prior[0].normalized, candidate[0].normalized);
     report.routes.push({
       route,
-      status: { prior: prior[0].status, candidate: candidate[0].status },
-      prior: { sha256: prior[0].sha256, length: prior[0].length, samples: prior.map(({ sha256, length }) => ({ sha256, length })) },
-      candidate: { sha256: candidate[0].sha256, length: candidate[0].length, samples: candidate.map(({ sha256, length }) => ({ sha256, length })) },
-      priorStable,
-      candidateStable,
-      exactMatch: difference === null,
+      optionalAnnouncement: bodyConfig.routes[route].optionalAnnouncement,
+      prior: { rawStable: priorRawStable, normalizedStable: priorStable, samples: prior.map(sample => sample.evidence) },
+      candidate: { rawStable: candidateRawStable, normalizedStable: candidateStable, samples: candidate.map(sample => sample.evidence) },
+      exactNormalizedMatch: difference === null,
       firstDifference: difference,
     });
   }
-  report.passed = report.routes.every(route => route.priorStable && route.candidateStable && route.exactMatch);
+  report.passed = report.routes.every(route => route.prior.normalizedStable && route.candidate.normalizedStable && route.exactNormalizedMatch);
   await mkdir('evidence/seo-discovery', { recursive: true });
   await writeFile(bodyEvidencePath, JSON.stringify(report, null, 2) + '\n');
   assert(report.passed, `Retained public body comparison failed; see ${bodyEvidencePath}`);

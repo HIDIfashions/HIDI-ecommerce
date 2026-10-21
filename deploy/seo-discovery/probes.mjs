@@ -192,6 +192,12 @@ export async function probe(base, output) {
             const path={home:'/',catalogue:'/collections/all',product,bag:'/cart',checkout:'/checkout'}[key];
             assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
             const footer=page.locator('footer.site-footer, footer.footer').first();await footer.waitFor();
+            if(key==='home') {
+              const offer=page.locator('body > aside[data-hidi-price-announcement="true"][aria-label="HIDI price offer"]');
+              await offer.waitFor({state:'visible'});
+              assert.equal(await offer.count(),1,'Hydrated homepage must contain one exact price announcement');
+              assert.equal((await offer.textContent()).trim(),'15% off across HIDI · Prices already reduced · No code needed','Retained offer text must stay exact');
+            }
             if(key==='catalogue') {
               const link=page.locator('main article h3 a').first();await link.waitFor();
               product=await link.getAttribute('href');assert(product.startsWith('/products/'));

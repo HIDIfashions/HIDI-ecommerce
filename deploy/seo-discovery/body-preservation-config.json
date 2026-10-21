@@ -1,0 +1,21 @@
+{
+  "announcementHtml": "<aside class=\"hidi-price-announcement\" data-hidi-price-announcement=\"true\" aria-label=\"HIDI price offer\">15% off across HIDI · Prices already reduced · No code needed</aside>",
+  "requestHeaders": {
+    "accept": "text/html,application/xhtml+xml",
+    "accept-encoding": "identity",
+    "cache-control": "no-cache",
+    "host": "hidiindia.com",
+    "pragma": "no-cache",
+    "user-agent": "HIDI-SEO-Body-Preservation/1.0",
+    "x-forwarded-host": "hidiindia.com",
+    "x-forwarded-proto": "https"
+  },
+  "routes": {
+    "/": {
+      "optionalAnnouncement": true
+    },
+    "/privacy": {
+      "optionalAnnouncement": false
+    }
+  }
+}
