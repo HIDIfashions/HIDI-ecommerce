@@ -1,4 +1,4 @@
-name: Release HIDI technical SEO with storefront preservation
+name: Release HIDI technical SEO after storefront validation
 on:
   push:
     branches: [migration/azure-sql-blob]
