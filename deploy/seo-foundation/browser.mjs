@@ -116,15 +116,36 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await page.waitForURL('**/collections/all');
           assert.equal(await page.locator('main article h3 a').count()>0,true,'Existing Shop Now navigation remains functional');
           await settleReads(page);
-          assert.equal((await page.goto(base+'/about',{waitUntil:'domcontentloaded'})).status(),200);
-          const introduction=page.locator('p[class*="subtitle"]').first();
-          await introduction.waitFor();assert((await introduction.textContent()).includes('Introduced by actress Ananya Nagalla'),'Visible About association is factual and present');
-          assert.equal(await page.getByRole('heading',{level:1}).textContent(),'For every role you carry.','About heading/layout retained');
-          for(const path of ['/collections/work-wear','/collections/casual-wear'])assert(await page.locator(`a[href="${path}"]`).count()>0,'About collection links retained');
-          await page.waitForLoadState('networkidle');
-          await page.reload({waitUntil:'domcontentloaded'});await introduction.waitFor();
-          await page.waitForLoadState('networkidle');
-          assert((await introduction.textContent()).includes('Introduced by actress Ananya Nagalla'),'About copy survives rendering and reload');
+          const aboutMarker='Introduced by actress Ananya Nagalla';
+          const expectedIntroduction='Introduced by actress Ananya Nagalla, HIDI brings together women’s Indian wear for work, everyday dressing and occasions. Our point of view is simple: feel comfortable, look composed and be yourself.';
+          const readAbout=async p=>{
+            await p.getByRole('heading',{level:1}).waitFor();
+            await p.locator('main p').filter({hasText:aboutMarker}).first().waitFor();
+            await p.waitForLoadState('networkidle');
+            return p.locator('main').evaluate((main,marker)=>{
+              const clean=value=>value?.replace(/\s+/g,' ').trim()||'';
+              const introduction=[...main.querySelectorAll('p')].find(node=>node.textContent?.includes(marker));
+              return {
+                heading:clean(main.querySelector('h1')?.innerText),
+                introduction:clean(introduction?.innerText),
+                links:[...main.querySelectorAll('a')].map(link=>({text:clean(link.innerText),href:link.getAttribute('href')}))
+              };
+            },aboutMarker);
+          };
+          const aboutResponses=await Promise.all([
+            page.goto(base+'/about',{waitUntil:'domcontentloaded'}),
+            ...(prior?[prior.goto(baseline+'/about',{waitUntil:'domcontentloaded'})]:[])
+          ]);
+          for(const response of aboutResponses)assert.equal(response?.status(),200,'About page remains available');
+          const about=await readAbout(page);
+          if(prior)assert.deepEqual(about,await readAbout(prior),'About copy and destinations match the current Next page exactly');
+          assert.equal(about.heading,'Considered clothing. A clear point of view.','Current About heading remains intact');
+          assert.equal(about.introduction,expectedIntroduction,'Visible About association is factual and present');
+          for(const [text,href] of [['Explore HIDI','/collections/all'],['Talk to our team ↗','/contact'],['Read our returns policy ↗','/returns']]) {
+            assert(about.links.some(link=>link.text===text&&link.href===href),`${text} keeps its current destination`);
+          }
+          await page.reload({waitUntil:'domcontentloaded'});
+          assert.deepEqual(await readAbout(page),about,'About semantics survive rendering and reload');
           await page.screenshot({path:`${output}/${engine}-${width}-about.png`});
           const blocking=errors.filter(e=>!e.includes('Minified React error #418;'));
           assert.deepEqual(blocking,[],'No new shopping or DOM ownership errors');
