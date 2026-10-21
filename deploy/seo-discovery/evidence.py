@@ -1,5 +1,7 @@
 """Pure, read-only assertions for the SEO candidate evidence bundle."""
+from datetime import datetime
 import json
+import math
 from pathlib import Path
 
 
@@ -7,12 +9,75 @@ def _read(root, name):
     return json.loads((Path(root) / name).read_text())
 
 
+def _matrix():
+    return [
+        (engine, width, height)
+        for engine in ['chromium', 'firefox', 'webkit']
+        for width, height in (
+            [(390, 844), (1440, 900)]
+            + ([(320, 568), (620, 844), (621, 844), (568, 320), (844, 390), (768, 1024)] if engine == 'webkit' else [])
+        )
+    ]
+
+
+def _rectangle(prior, candidate):
+    assert (prior is None) == (candidate is None), 'Presentation element presence changed'
+    if prior is None:
+        return
+    for key in ['x', 'y', 'right', 'bottom', 'width', 'height']:
+        assert all(type(value[key]) in (int, float) and math.isfinite(value[key]) for value in [prior, candidate])
+        assert abs(prior[key] - candidate[key]) <= 1, 'Presentation geometry changed: ' + key
+
+
+def _footer(prior, candidate):
+    assert isinstance(prior['markup'], str) and prior['markup'].startswith('<footer')
+    assert isinstance(prior['styles']['paddingBottom'], str)
+    exclude = {'footer', 'bar', 'links'}
+    assert {key: value for key, value in candidate.items() if key not in exclude} == {
+        key: value for key, value in prior.items() if key not in exclude
+    }, 'Footer markup or styling changed'
+    assert prior['footer'] is not None
+    for key in ['footer', 'bar']:
+        _rectangle(prior[key], candidate[key])
+    assert len(prior['links']) == len(candidate['links']) == 4
+    for before, after in zip(prior['links'], candidate['links']):
+        assert {key: value for key, value in before.items() if key != 'rect'} == {
+            key: value for key, value in after.items() if key != 'rect'
+        }, 'Footer link or tappability changed'
+        _rectangle(before['rect'], after['rect'])
+
+
+def _collection(prior, candidate, body):
+    assert candidate['preserved'] is True
+    assert prior['raw'] == candidate['raw'], 'Crawler Shop All semantics changed'
+    assert prior['body'] == candidate['body'] == body, 'Streamed Shop All body digest changed'
+    for value in [prior['raw'], candidate['raw']]:
+        assert value['heading'] == value['breadcrumbLabel'] == 'All Products'
+        assert value['headerCount'] == 1 and value['headerStyle'] == ''
+        assert value['introCount'] == 0 and value['intro'] is None
+        assert value['productArticleCount'] == 54
+    geometry = {'header', 'headingBox', 'introBox', 'firstProduct'}
+    before, after = prior['rendered'], candidate['rendered']
+    for value in [before, after]:
+        assert value['headerCount'] == value['headingCount'] == 1
+        assert value['heading'] == value['breadcrumbLabel'] == 'All Products'
+        assert value['introCount'] == 0 and value['intro'] is None
+        assert value['headerDisplay'] == '' and value['collectionNavigationCount'] == 0
+        assert value['productArticleCount'] == 54
+    assert {key: value for key, value in before.items() if key not in geometry} == {
+        key: value for key, value in after.items() if key not in geometry
+    }, 'Rendered Shop All copy, visibility or styles changed'
+    for key in geometry:
+        _rectangle(before[key], after[key])
+
+
 def verify_candidate_evidence(root):
     root = Path(root)
     candidate_report = _read(root, 'candidate/report.json')
     assert candidate_report['passed'] is True
     assert candidate_report['engines'] == ['chromium', 'firefox', 'webkit']
-    assert len(candidate_report['results']) == 12
+    assert [(row['engine'], row['width'], row['height']) for row in candidate_report['results']] == _matrix()
+    assert all(row['passed'] is True for row in candidate_report['results'])
     assert candidate_report['liveWrites'] == 0
     assert candidate_report['catalogueProductCount'] == 54
     assert candidate_report['catalogueImageAssociations'] == 238
@@ -33,18 +98,66 @@ def verify_candidate_evidence(root):
         assert len(history) == 1
         assert history[0]['scenario'] == 'fresh-settled-pointer'
         assert history[0]['freshContext'] is True
-    assert candidate_report['collectionAllIntroVerified']
-    assert candidate_report['collectionAllBreadcrumbVerified']
-    assert candidate_report['collectionAllExactCopy']
+    for field in ['collectionAllBodyPreserved', 'collectionAllPresentationPreserved', 'collectionAllBreadcrumbPreserved',
+                  'footerLayoutPreserved', 'presentationBaselineVerified']:
+        assert candidate_report[field] is True
     assert candidate_report['collectionAllMatrixCases'] == 12
-    assert candidate_report['reviewedCollectionBodyDelta'] == '/collections/all exact search copy, breadcrumb label, header visibility and intro insertion'
-    assert all(any(
-        check['page'] == 'catalogue'
-        and check['collectionIntro']['heading'] == 'Women\u2019s Kurta Sets & Indian Wear'
-        and check['collectionIntro']['intro'] == 'Browse HIDI women\u2019s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.'
-        and check['collectionIntro']['breadcrumbLabel'] == 'Women\u2019s Kurta Sets & Indian Wear'
-        for check in result['checks']
-    ) for result in candidate_report['results'])
+    assert candidate_report['reviewedCollectionBodyDelta'] == 'none'
+
+    collection_report = _read(root, 'candidate-collection-body-delta.json')
+    assert collection_report['passed'] is True
+    assert collection_report['readOnly'] is True and collection_report['liveWrites'] == 0 and collection_report['sampleCount'] == 3
+    assert collection_report['route'] == '/collections/all'
+    assert collection_report['reviewedDelta'] == 'none'
+    assert collection_report['retainedExactBodyRoutes'] == ['/', '/privacy', '/collections/all']
+    assert collection_report['prior']['stable'] is True and collection_report['candidate']['stable'] is True
+    assert collection_report['exactBodyMatch'] is True
+    assert collection_report['fixtureCatalogue'] == {'products': 54, 'imageAssociations': 238}
+    assert collection_report['normalization'] == {'mode': 'none', 'operations': []}
+    assert collection_report['body']['prior'] == collection_report['body']['candidate']
+    retained_body = collection_report['body']['prior']
+    assert retained_body['length'] > 0 and len(retained_body['sha256']) == 64
+    assert all(value in '0123456789abcdef' for value in retained_body['sha256'])
+    for name in ['prior', 'candidate']:
+        samples = collection_report[name]['samples']
+        assert len(samples) == 3
+        for sample in samples:
+            assert sample['status'] == 200 and sample['contentType'].startswith('text/html')
+            assert sample['body'] == retained_body
+            assert sample['heading'] == sample['breadcrumbLabel'] == 'All Products'
+            assert sample['headerCount'] == 1 and sample['headerStyle'] == ''
+            assert sample['introCount'] == 0 and sample['intro'] is None and sample['introStyle'] is None
+            assert sample['productArticleCount'] == 54
+    assert collection_report['expected'] == {'heading': 'All Products', 'introCount': 0, 'breadcrumbLabel': 'All Products'}
+
+    # Check the saved independent snapshots as well as the probe's pass flags.
+    # This baseline is included in the release evidence manifest.
+    baseline = _read(root, 'candidate/prior/report.json')
+    assert baseline['schemaVersion'] == 1 and baseline['kind'] == 'hidi-seo-presentation-baseline'
+    assert baseline['passed'] is True and baseline['readOnly'] is True and baseline['liveWrites'] == 0
+    assert baseline['base'].startswith('http://127.0.0.1:')
+    assert datetime.fromisoformat(baseline['capturedAt'].replace('Z', '+00:00')).tzinfo is not None
+    assert candidate_report['presentationBaseline'] == {
+        'source': 'isolated-prior-runtime', 'base': baseline['base'],
+        'capturedAt': baseline['capturedAt'], 'matrixCases': 12,
+    }
+    assert [(row['engine'], row['width'], row['height']) for row in baseline['results']] == _matrix()
+    for prior, candidate in zip(baseline['results'], candidate_report['results']):
+        assert prior['passed'] is True
+        pages = ['home', 'catalogue', 'product', 'bag', 'checkout'] if prior['width'] in [390, 1440] else ['catalogue', 'product']
+        checks = [check for check in candidate['checks'] if check['page'] in pages]
+        assert [check['page'] for check in prior['checks']] == [check['page'] for check in checks] == pages
+        product = next(check['path'] for check in prior['checks'] if check['page'] == 'product')
+        assert product.startswith('/products/')
+        routes = {'home': '/', 'catalogue': '/collections/all', 'product': product, 'bag': '/cart', 'checkout': '/checkout'}
+        for before, after in zip(prior['checks'], checks):
+            assert before['passed'] is True and after['passed'] is True and after['footerLayoutPreserved'] is True
+            assert before['path'] == after['path'] == routes[before['page']]
+            _footer(before['footer'], after['footer'])
+            if before['page'] == 'catalogue':
+                _collection(before['collectionAll'], after['collectionAll'], retained_body)
+            else:
+                assert before['collectionAll'] is None and after['collectionAll'] is None
 
     foundation_report = _read(root, 'foundation-candidate/report.json')
     assert foundation_report['passed'] is True
@@ -59,34 +172,13 @@ def verify_candidate_evidence(root):
     assert [route['route'] for route in body_report['routes']] == ['/', '/privacy']
     assert all(route['prior']['normalizedStable'] and route['candidate']['normalizedStable'] and route['exactNormalizedMatch'] for route in body_report['routes'])
 
-    collection_report = _read(root, 'candidate-collection-body-delta.json')
-    assert collection_report['passed'] is True
-    assert collection_report['readOnly'] and collection_report['liveWrites'] == 0 and collection_report['sampleCount'] == 3
-    assert collection_report['route'] == '/collections/all'
-    assert collection_report['reviewedDelta'] == 'exact collection search copy, breadcrumb label, header visibility and intro insertion'
-    assert collection_report['retainedExactBodyRoutes'] == ['/', '/privacy']
-    assert collection_report['prior']['stable'] and collection_report['candidate']['stable'] and collection_report['exactNormalizedBodyMatch']
-    assert collection_report['fixtureCatalogue'] == {'products': 54, 'imageAssociations': 238}
-    assert all(sample['productArticleCount'] == 54 for sample in collection_report['candidate']['samples'])
-    expected_operations = [
-        'visible header, H1 and intro', 'serialized header, H1 and intro', 'document title',
-        'Open Graph title', 'Twitter title', 'document description', 'Open Graph description',
-        'Twitter description', 'visible BreadcrumbList position 2 label',
-        'serialized BreadcrumbList position 2 label',
-    ]
-    assert collection_report['normalization']['mode'] == 'count-locked inverse transforms followed by byte equality'
-    assert collection_report['normalization']['operations'] == [{'label': label, 'occurrences': 1} for label in expected_operations]
-    assert collection_report['normalizedBody']['prior'] == collection_report['normalizedBody']['candidateAfterApprovedTransforms']
-    assert all(sample['breadcrumbLabel'] == 'All Products' for sample in collection_report['prior']['samples'])
-    assert all(sample['breadcrumbLabel'] == 'Women\u2019s Kurta Sets & Indian Wear' for sample in collection_report['candidate']['samples'])
-    assert collection_report['expected'] == {
-        'title': 'Women\u2019s Kurta Sets & Indian Wear',
-        'description': 'Browse HIDI women\u2019s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.',
-    }
     return {
         'passed': True,
         'catalogueProductCount': candidate_report['catalogueProductCount'],
         'catalogueImageAssociations': candidate_report['catalogueImageAssociations'],
         'clientNavigationCases': candidate_report['clientNavigationCases'],
         'freshFirefoxClientNavigationCases': candidate_report['freshFirefoxClientNavigationCases'],
+        'collectionAllBodyPreserved': True,
+        'collectionAllPresentationPreserved': True,
+        'footerLayoutPreserved': True,
     }

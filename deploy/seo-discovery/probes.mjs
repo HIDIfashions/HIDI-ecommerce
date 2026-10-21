@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { isBlockedTelemetry } from '../button-states/request-policy.mjs';
 import publishedImages from './published-product-images.json' with {type:'json'};
 const verifiedBrandProfiles=['https://www.instagram.com/hidiindia/','https://www.facebook.com/profile.php?id=61594615364935','https://x.com/Hidiindia','https://www.youtube.com/@Hidiindia'];
 const brandDescription='HIDI is an Indian women’s wear brand offering kurta sets for work, everyday dressing and occasions.';
 import { productImageUrls } from './sitemap.mjs';
+import { priorCollectionTitle, assertPriorCollectionBody } from './collection-body-delta.mjs';
 
 const crawlerDocumentTimeoutMs = 30000;
 const crawlerDocumentLimit = 4 * 1024 * 1024;
@@ -107,63 +109,202 @@ const expectedTitles = {
   '/contact':'Contact & Help | HIDI',
   '/offers':'HIDI Privileges | HIDI',
 };
-const collectionAllTitle='Women’s Kurta Sets & Indian Wear';
-const collectionAllDescription='Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.';
-async function assertCollectionAllIntro(page,rawHtml) {
-  const rendered=await page.evaluate(({title,description})=>{
+export const PRESENTATION_MATRIX=Object.freeze(['chromium','firefox','webkit'].flatMap(engine=>
+  [[390,844],[1440,900],...(engine==='webkit'?[[320,568],[620,844],[621,844],[568,320],[844,390],[768,1024]]:[])]
+    .map(([width,height])=>Object.freeze({engine,width,height}))));
+const presentationPages=width=>width===390||width===1440?['home','catalogue','product','bag','checkout']:['catalogue','product'];
+const presentationRoute=(key,product)=>({home:'/',catalogue:'/collections/all',product,bag:'/cart',checkout:'/checkout'}[key]);
+const rectangleFields=['x','y','right','bottom','width','height'];
+
+function assertRectanglePreserved(prior,candidate,label) {
+  assert.equal(candidate===null,prior===null,label+' presence is preserved');
+  if(prior===null)return;
+  for(const field of rectangleFields) {
+    assert(Number.isFinite(prior[field])&&Number.isFinite(candidate[field]),label+' '+field+' is finite');
+    assert(Math.abs(candidate[field]-prior[field])<=1,label+' '+field+' is preserved within one CSS pixel');
+  }
+}
+
+export function assertCollectionPresentationPreserved(prior,candidate) {
+  assert(prior&&candidate,'Independent prior and candidate Shop All presentation evidence is required');
+  for(const value of [prior,candidate]) {
+    assert.equal(value.headerCount,1,'Shop All retains one collection header');
+    assert.equal(value.headingCount,1,'Shop All retains one H1');
+    assert.equal(value.heading,priorCollectionTitle,'Shop All H1 retains the current renderer copy');
+    assert.equal(value.introCount,0,'Technical SEO must not add a collection intro');
+    assert.equal(value.intro,null,'Technical SEO retains the absent collection intro');
+    assert.equal(value.breadcrumbLabel,priorCollectionTitle,'Shop All breadcrumb label remains exact');
+    assert.equal(value.headerDisplay,'','Technical SEO must not force header visibility');
+    assert.equal(value.collectionNavigationCount,0,'No duplicate collection navigation is introduced');
+  }
+  const geometry=['header','headingBox','introBox','firstProduct'];
+  const omitGeometry=value=>Object.fromEntries(Object.entries(value).filter(([key])=>!geometry.includes(key)));
+  assert.deepEqual(omitGeometry(candidate),omitGeometry(prior),'Shop All copy, visibility, styling and catalogue counts match the independent baseline');
+  for(const key of geometry)assertRectanglePreserved(prior[key],candidate[key],'Shop All '+key);
+  return {passed:true,prior,candidate};
+}
+
+async function readCollectionPresentation(page) {
+  return page.evaluate(()=>{
     const headers=[...document.querySelectorAll('main .collection-header')];
     const headings=[...document.querySelectorAll('main .collection-header h1')];
     const intros=[...document.querySelectorAll('main .hidi-collection-intro')];
     const header=headers[0],heading=headings[0],intro=intros[0],firstProduct=document.querySelector('main article');
     const box=node=>{const value=node?.getBoundingClientRect();return value?{x:value.x,y:value.y,right:value.right,bottom:value.bottom,width:value.width,height:value.height}:null;};
+    const style=node=>node?Object.fromEntries(['display','visibility','position','fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','color','backgroundColor','marginTop','marginBottom','paddingTop','paddingRight','paddingBottom','paddingLeft'].map(key=>[key,getComputedStyle(node)[key]])):null;
     const visible=node=>!!node&&getComputedStyle(node).display!=='none'&&getComputedStyle(node).visibility!=='hidden'&&box(node).width>0&&box(node).height>0;
     const values=[...document.querySelectorAll('script[type="application/ld+json"]')].flatMap(node=>{try{const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}});
     const breadcrumb=values.find(value=>value?.['@type']==='BreadcrumbList');
     return {headerCount:headers.length,headingCount:headings.length,introCount:intros.length,
-      heading:heading?.textContent?.trim(),intro:intro?.textContent?.trim(),
-      breadcrumbLabel:breadcrumb?.itemListElement?.find(value=>value?.position===2)?.name,
+      heading:heading?.textContent?.trim()||null,intro:intro?.textContent?.trim()||null,
+      breadcrumbLabel:breadcrumb?.itemListElement?.find(value=>value?.position===2)?.name||null,
       headerVisible:visible(header),headingVisible:visible(heading),introVisible:visible(intro),
-      headerDisplay:header?.style.display,introDisplay:intro?.style.display,
+      headerDisplay:header?.style.display??null,introDisplay:intro?.style.display??null,
       collectionNavigationCount:document.querySelectorAll('nav[aria-label="Explore HIDI collections"]').length,
       header:box(header),headingBox:box(heading),introBox:box(intro),firstProduct:box(firstProduct),
-      expected:{title,description}};
-  },{title:collectionAllTitle,description:collectionAllDescription});
-  assert.equal(rendered.headerCount,1,'Shop All renders one collection header');
-  assert.equal(rendered.headingCount,1,'Shop All renders one H1');
-  assert.equal(rendered.introCount,1,'Shop All renders one factual intro');
-  assert.equal(rendered.heading,collectionAllTitle,'Visible Shop All H1 matches the reviewed search intent');
-  assert.equal(rendered.intro,collectionAllDescription,'Visible Shop All intro matches the reviewed factual description');
-  assert.equal(rendered.breadcrumbLabel,collectionAllTitle,'Hydrated BreadcrumbList position 2 uses the reviewed Shop All label');
-  assert(rendered.headerVisible&&rendered.headingVisible&&rendered.introVisible,'Shop All heading and intro remain visible at this viewport');
-  assert.equal(rendered.headerDisplay,'block','Inline header gate overrides the retained small-screen hide rule');
-  assert.equal(rendered.introDisplay,'block','Inline intro gate overrides the retained global paragraph hide rule');
-  assert.equal(rendered.collectionNavigationCount,0,'No duplicate collection navigation is introduced');
-  assert(rendered.introBox.y>=rendered.headingBox.bottom-1,'Intro follows the heading without overlap');
-  assert(rendered.firstProduct&&rendered.firstProduct.y>=rendered.header.bottom-1,'Product grid follows the reviewed intro without overlap');
-  if(rawHtml) {
-    const raw=await page.evaluate(({html,title,description})=>{
-      const doc=new DOMParser().parseFromString(html,'text/html');
-      const headers=[...doc.querySelectorAll('main .collection-header')],headings=[...doc.querySelectorAll('main .collection-header h1')],intros=[...doc.querySelectorAll('main .hidi-collection-intro')];
-      const values=[...doc.querySelectorAll('script[type="application/ld+json"]')].flatMap(node=>{try{const value=JSON.parse(node.textContent);return Array.isArray(value)?value:(value['@graph']||[value]);}catch{return [];}});
-      const breadcrumb=values.find(value=>value?.['@type']==='BreadcrumbList');
-      return {headerCount:headers.length,headingCount:headings.length,introCount:intros.length,
-        heading:headings[0]?.textContent?.trim(),intro:intros[0]?.textContent?.trim(),
-        breadcrumbLabel:breadcrumb?.itemListElement?.find(value=>value?.position===2)?.name,
-        headerDisplay:headers[0]?.style.display,introDisplay:intros[0]?.style.display,
-        productCount:doc.querySelectorAll('main article').length,expected:{title,description}};
-    },{html:rawHtml,title:collectionAllTitle,description:collectionAllDescription});
-    assert.equal(raw.headerCount,1,'Crawler HTML contains one collection header');
-    assert.equal(raw.headingCount,1,'Crawler HTML contains one Shop All H1');
-    assert.equal(raw.introCount,1,'Crawler HTML contains one Shop All intro');
-    assert.equal(raw.heading,collectionAllTitle,'Crawler HTML contains the exact reviewed Shop All H1');
-    assert.equal(raw.intro,collectionAllDescription,'Crawler HTML contains the exact reviewed Shop All intro');
-    assert.equal(raw.breadcrumbLabel,collectionAllTitle,'Crawler HTML BreadcrumbList position 2 uses the reviewed Shop All label');
-    assert.equal(raw.headerDisplay,'block','Crawler HTML retains the visible header gate');
-    assert.equal(raw.introDisplay,'block','Crawler HTML retains the visible intro gate');
-    assert(raw.productCount>0,'Crawler HTML retains the product catalogue after the reviewed intro');
-  }
-  return rendered;
+      styles:{header:style(header),heading:style(heading),intro:style(intro)},
+      productArticleCount:document.querySelectorAll('main article').length};
+  });
 }
+
+export function assertFooterLayoutPreserved(prior,candidate) {
+  assert(prior&&candidate,'Independent prior and candidate footer evidence is required');
+  const nonGeometric=value=>({padding:value.padding,styles:value.styles,markup:value.markup,
+    pageHasPurchaseBar:value.pageHasPurchaseBar,documentWidth:value.documentWidth,viewportWidth:value.viewportWidth,
+    links:value.links.map(({rect,...link})=>link)});
+  assert.deepEqual(nonGeometric(candidate),nonGeometric(prior),'Footer markup, styling, links and tappability match the independent baseline');
+  assertRectanglePreserved(prior.footer,candidate.footer,'Footer');
+  assertRectanglePreserved(prior.bar,candidate.bar,'Mobile purchase bar');
+  assert.equal(candidate.links.length,prior.links.length,'Footer policy link count is preserved');
+  for(let i=0;i<prior.links.length;i++)assertRectanglePreserved(prior.links[i].rect,candidate.links[i].rect,'Footer link '+prior.links[i].text);
+  return {passed:true,prior,candidate};
+}
+
+async function settlePresentation(page) {
+  await page.waitForFunction(()=>document.fonts.status==='loaded',null,{timeout:30000});
+  await page.evaluate(()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,0);});
+  await page.waitForTimeout(300);
+}
+
+async function measureFooter(page) {
+  await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
+  await page.waitForTimeout(300);
+  await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
+  await page.waitForFunction(()=>Math.abs(document.documentElement.scrollHeight-innerHeight-scrollY)<2);
+  const measurement=await page.evaluate(()=>{
+    const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+    const footer=document.querySelector('footer.site-footer,footer.footer');
+    const bar=document.querySelector('[aria-label="Mobile purchase actions"]');
+    const visibleBar=bar&&getComputedStyle(bar).display!=='none'?bar:null;
+    const styles=['display','visibility','position','fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','color','backgroundColor','borderTopWidth','marginTop','marginBottom','paddingTop','paddingRight','paddingBottom','paddingLeft'];
+    const links=Array.from(footer.querySelectorAll('.footer-bottom a')).map(e=>{
+      const r=rect(e),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+      return {text:e.textContent.trim(),href:e.getAttribute('href'),rect:r,tappable:hit===e||e.contains(hit),cover:hit?.className??null};
+    });
+    return {footer:rect(footer),bar:visibleBar?rect(visibleBar):null,links,markup:footer.outerHTML,
+      padding:getComputedStyle(footer).paddingBottom,styles:Object.fromEntries(styles.map(key=>[key,getComputedStyle(footer)[key]])),
+      pageHasPurchaseBar:!!bar,documentWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth};
+  });
+  assert(measurement.documentWidth<=measurement.viewportWidth+1,'No horizontal overflow');
+  return measurement;
+}
+
+function collectionBodyEvidence(rawHtml) {
+  assert.equal((rawHtml.match(/<\/head>/g)||[]).length,1,'Shop All crawler HTML has exactly one head boundary');
+  const body=rawHtml.slice(rawHtml.indexOf('</head>')+7);
+  const raw=assertPriorCollectionBody(body);
+  assert.equal(raw.productArticleCount,54,'Shop All retains the complete reviewed product catalogue');
+  return {raw,body:{length:Buffer.byteLength(body),sha256:createHash('sha256').update(body).digest('hex')}};
+}
+
+export function validatePresentationBaseline(report,expectedBase) {
+  assert(report&&report.schemaVersion===1&&report.kind==='hidi-seo-presentation-baseline','A versioned independent presentation baseline is required');
+  assert.equal(report.passed,true,'Presentation baseline capture must have passed');
+  assert.equal(report.readOnly,true,'Presentation baseline must be read-only');
+  assert.equal(report.liveWrites,0,'Presentation baseline must not contain commerce writes');
+  assert.equal(report.base,expectedBase,'Presentation baseline origin must match the reviewed origin');
+  assert(Number.isFinite(Date.parse(report.capturedAt)),'Presentation baseline capture timestamp is required');
+  assert.equal(report.results?.length,PRESENTATION_MATRIX.length,'Presentation baseline must include every engine and viewport exactly once');
+  const seen=new Set();
+  for(const row of report.results) {
+    const key=`${row.engine}-${row.width}-${row.height}`;
+    assert(!seen.has(key),'Presentation baseline must not repeat an engine/viewport');seen.add(key);
+    assert(PRESENTATION_MATRIX.some(value=>value.engine===row.engine&&value.width===row.width&&value.height===row.height),'Unexpected presentation baseline engine/viewport');
+    assert.equal(row.passed,true,'Presentation baseline viewport must have passed');
+    const expectedPages=presentationPages(row.width);
+    assert.deepEqual(row.checks?.map(value=>value.page),expectedPages,'Presentation baseline must retain every required route in order');
+    const product=row.checks.find(value=>value.page==='product')?.path;
+    assert(/^\/products\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(product),'Presentation baseline must identify its exact product route');
+    for(const check of row.checks) {
+      assert.equal(check.path,presentationRoute(check.page,product),'Presentation baseline route identity must remain exact');
+      assert.equal(check.passed,true,'Presentation baseline route must have passed');
+      assert(check.footer&&typeof check.footer.markup==='string'&&check.footer.markup.startsWith('<footer'),'Presentation baseline footer markup is required');
+      assert(check.footer.styles&&typeof check.footer.styles.paddingBottom==='string','Presentation baseline computed footer styles are required');
+      assert(Array.isArray(check.footer.links)&&check.footer.links.length===4,'Presentation baseline must contain all four policy/support links');
+      assertFooterLayoutPreserved(check.footer,check.footer);
+      if(check.page==='catalogue') {
+        assert(check.collectionAll?.body&&/^[a-f0-9]{64}$/.test(check.collectionAll.body.sha256)&&check.collectionAll.body.length>0,'Presentation baseline needs its complete streamed Shop All body digest');
+        assert.equal(check.collectionAll.raw?.heading,priorCollectionTitle,'Presentation baseline retains crawler H1');
+        assert.equal(check.collectionAll.raw?.breadcrumbLabel,priorCollectionTitle,'Presentation baseline retains crawler breadcrumb');
+        assert.equal(check.collectionAll.raw?.introCount,0,'Presentation baseline retains absent crawler intro');
+        assert.equal(check.collectionAll.raw?.productArticleCount,54,'Presentation baseline retains all 54 crawler product cards');
+        assertCollectionPresentationPreserved(check.collectionAll.rendered,check.collectionAll.rendered);
+        assert.equal(check.collectionAll.rendered.productArticleCount,54,'Presentation baseline retains all 54 rendered product cards');
+      } else assert.equal(check.collectionAll,null,'Only the Shop All route has collection presentation evidence');
+    }
+  }
+  return report;
+}
+
+export async function capturePresentationBaseline(base,output) {
+  await mkdir(output,{recursive:true});
+  const rawResponse=await crawlerDocument(base,'/collections/all');
+  assert.equal(rawResponse.status,200,'Prior Shop All crawler document must load');
+  assert.match(rawResponse.headers.get('content-type')||'',/^text\/html\b/i,'Prior Shop All crawler document must be HTML');
+  const collectionRaw=collectionBodyEvidence(rawResponse.text);
+  const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
+  const results=[],writes=[];
+  const capturedAt=new Date().toISOString();
+  for(const engine of ['chromium','firefox','webkit']) {
+    const browser=await pw[engine].launch({headless:true,...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
+    try {
+      for(const {width,height} of PRESENTATION_MATRIX.filter(value=>value.engine===engine)) {
+        const context=await createReadOnlyContext(browser,engine,width,height,base,writes);
+        const page=await context.newPage();page.setDefaultTimeout(45000);
+        const checks=[];
+        let product=null;
+        try {
+          for(const key of presentationPages(width)) {
+            const path=presentationRoute(key,product);
+            assert(path,'Prior route must be resolved before it is visited');
+            assert((await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:45000}))?.ok(),'Prior presentation document must load');
+            await page.locator('footer.site-footer, footer.footer').first().waitFor();
+            if(key==='catalogue') {
+              const link=page.locator('main article h3 a').first();await link.waitFor();
+              product=await link.getAttribute('href');assert(product?.startsWith('/products/'));
+            }
+            if(key==='product'&&width<=620)await page.locator('[aria-label="Mobile purchase actions"]').waitFor({state:'visible'});
+            await settlePresentation(page);
+            const collectionAll=key==='catalogue'?{...collectionRaw,rendered:await readCollectionPresentation(page)}:null;
+            const footer=await measureFooter(page);
+            await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-${key}.png`});
+            checks.push({page:key,path,passed:true,collectionAll,footer});
+          }
+          results.push({engine,width,height,passed:true,checks});
+        } catch(error) {
+          await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-failure.png`}).catch(()=>{});
+          throw error;
+        } finally {await context.close();}
+      }
+    } finally {await browser.close();}
+  }
+  assert.deepEqual(writes,[],'Presentation baseline must not emit commerce writes');
+  const report={schemaVersion:1,kind:'hidi-seo-presentation-baseline',passed:true,readOnly:true,liveWrites:0,base,capturedAt,results};
+  validatePresentationBaseline(report,base);
+  await writeFile(output+'/report.json',JSON.stringify(report,null,2)+'\n');
+  return report;
+}
+
 async function assertCrawlerDirectives(page, privatePage = false, rawHtml) {
   await page.waitForFunction(expected=>{
     const nodes=[...document.querySelectorAll('meta[name="robots"],meta[name="googlebot"]')];
@@ -426,7 +567,15 @@ async function probeClientNavigation(page,base,scenario,output,filePrefix) {
   }
 }
 
-export async function probe(base, output) {
+export async function probe(base, output, {baseline,baselineReport}={}) {
+  assert(Boolean(baseline)!==Boolean(baselineReport),'Provide exactly one independent presentation baseline: prior runtime or pre-deployment report');
+  if(baseline) {
+    assert(base.startsWith('http://127.0.0.1:')&&baseline.startsWith('http://127.0.0.1:'),'An isolated prior runtime is required for a local baseline');
+    assert.notEqual(new URL(baseline).origin,new URL(base).origin,'Candidate cannot serve as its own presentation baseline');
+  }
+  const presentationBaseline=baseline
+    ?await capturePresentationBaseline(baseline,output+'/prior')
+    :validatePresentationBaseline(JSON.parse(await readFile(baselineReport,'utf8')),base);
   const seoHeaders={'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'};
   const aliasLive=base.startsWith('https://hidiindia.com');
   const alias=await fetch((aliasLive?'https://www.hidiindia.com':base)+'/collections/all?source=canonical-check',{
@@ -486,18 +635,22 @@ export async function probe(base, output) {
     const browser = await pw[engine].launch({headless:true,
       ...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
     try {
-      const sizes = [[390,844],[1440,900],...(engine==='webkit'?[[320,568],[620,844],[621,844],[568,320],[844,390],[768,1024]]:[])];
-      for (const [width,height] of sizes) {
+      const sizes = PRESENTATION_MATRIX.filter(value=>value.engine===engine);
+      for (const {width,height} of sizes) {
+        const priorResult=presentationBaseline.results.find(value=>value.engine===engine&&value.width===width&&value.height===height);
+        assert(priorResult,'An independent baseline is required for every engine/viewport');
         const context = await createReadOnlyContext(browser,engine,width,height,base,writes);
         const page=await context.newPage();page.setDefaultTimeout(45000);
         const headErrors=[];
         observeFrameworkHeadErrors(page,headErrors);
         const checks=[];
         try {
-          const pages=width===390||width===1440?['home','catalogue','product','bag','checkout']:['catalogue','product'];
+          const pages=presentationPages(width);
           for(const key of pages) {
-            const path={home:'/',catalogue:'/collections/all',product,bag:'/cart',checkout:'/checkout'}[key];
-            let collectionIntro=null;
+            const path=presentationRoute(key,product);
+            const priorCheck=priorResult.checks.find(value=>value.page===key);
+            assert.equal(path,priorCheck?.path,'Candidate and baseline must visit the same route');
+            let collectionAll=null;
             assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
             const footer=page.locator('footer.site-footer, footer.footer').first();await footer.waitFor();
             if(key==='home') {
@@ -509,7 +662,6 @@ export async function probe(base, output) {
             if(key==='catalogue') {
               const link=page.locator('main article h3 a').first();await link.waitFor();
               product=await link.getAttribute('href');assert(product.startsWith('/products/'));
-              collectionIntro=await assertCollectionAllIntro(page);
             }
             if(key==='product'&&width<=620)await page.locator('[aria-label="Mobile purchase actions"]').waitFor({state:'visible'});
             const expectedPrivate=['bag','checkout'].includes(key);
@@ -527,50 +679,28 @@ export async function probe(base, output) {
               assert.match(rawResponse.headers.get('content-type')||'',/^text\/html\b/i,'Public crawler response is HTML');
               const rawHtml=rawResponse.text;
               await assertSearchMetadata(page,path,rawHtml);
-              if(key==='catalogue')collectionIntro=await assertCollectionAllIntro(page,rawHtml);
+              if(key==='catalogue') {
+                const raw=collectionBodyEvidence(rawHtml);
+                assert.deepEqual(raw, {raw:priorCheck.collectionAll.raw,body:priorCheck.collectionAll.body},'Crawler Shop All body remains byte-exact with unchanged H1, intro and breadcrumb');
+                collectionAll=raw;
+              }
               for(const match of rawHtml.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi))assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(match[1]),'Initial HTML structured-data identities use the production origin');
               const graphs=await page.locator('script[type="application/ld+json"]').allTextContents();
               for(const graph of graphs)assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(graph),'Structured-data identities use the production origin');
             }
-            await page.waitForFunction(()=>document.fonts.status==='loaded',{}, {timeout:30000});
-            await page.evaluate(()=>{
-              document.documentElement.style.scrollBehavior='auto';
-              scrollTo(0,document.documentElement.scrollHeight);
-            });
-            await page.waitForTimeout(300);
-            await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
-            await page.waitForFunction(()=>Math.abs(document.documentElement.scrollHeight-innerHeight-scrollY)<2);
-            const measurement=await page.evaluate(()=>{
-              const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
-              const footer=document.querySelector('footer.site-footer,footer.footer');
-              const bar=document.querySelector('[aria-label="Mobile purchase actions"]');
-              const visibleBar=bar&&getComputedStyle(bar).display!=='none'?bar:null;
-              const links=Array.from(footer.querySelectorAll('.footer-bottom a')).map(e=>{
-                const r=rect(e),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
-                return {text:e.textContent.trim(),href:e.getAttribute('href'),rect:r,
-                  tappable:hit===e||e.contains(hit),cover:hit?.className};
-              });
-              return {footer:rect(footer),bar:visibleBar?rect(visibleBar):null,links,
-                padding:getComputedStyle(footer).paddingBottom,
-                pageHasPurchaseBar:!!bar,documentWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth};
-            });
-            assert(measurement.documentWidth<=measurement.viewportWidth+1,'No horizontal overflow');
-            if(key==='product'&&width<=620) {
-              assert(measurement.bar,'Mobile purchase bar must still be visible');
-              assert.equal(measurement.links.length,4,'All four bottom policy/support links remain');
-              for(const link of measurement.links) {
-                assert(link.rect.bottom<=measurement.bar.y-8,link.text+' must clear the purchase bar');
-                assert(link.tappable,link.text+' must be tappable');
-              }
-              assert(parseFloat(measurement.padding)>=126,'Footer reserves space for purchase bar and safe area');
-            } else if(key==='product') {
-              assert.equal(measurement.bar,null,'Desktop/tablet purchase layout remains unchanged');
-              assert.equal(parseFloat(measurement.padding),0,'Desktop footer receives no extra clearance');
-            } else {
-              assert.equal(measurement.pageHasPurchaseBar,false,'Clearance selector applies only to products');
+            await settlePresentation(page);
+            if(key==='catalogue') {
+              const rendered=await readCollectionPresentation(page);
+              assertCollectionPresentationPreserved(priorCheck.collectionAll.rendered,rendered);
+              collectionAll={...collectionAll,rendered,preserved:true};
             }
+            const measurement=await measureFooter(page);
+            assertFooterLayoutPreserved(priorCheck.footer,measurement);
+            if(key==='product'&&width<=620)assert(measurement.bar,'Existing mobile purchase bar remains visible');
+            else if(key==='product')assert.equal(measurement.bar,null,'Desktop/tablet purchase layout remains unchanged');
+            else assert.equal(measurement.pageHasPurchaseBar,false,'Purchase bar remains limited to product pages');
             await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-${key}.png`});
-            checks.push({page:key,path,passed:true,collectionIntro,...measurement});
+            checks.push({page:key,path,passed:true,collectionAll,footerLayoutPreserved:true,footer:measurement});
           }
           if(width===390||width===1440) {
             if(process.env.HIDI_SEO_LOOKBOOK_RETIRED==='1') {
@@ -631,7 +761,7 @@ export async function probe(base, output) {
           }
           assert.deepEqual(headErrors,[],'Metadata reconciliation must not break framework DOM ownership');
           results.push({engine,width,height,passed:true,checks});
-          console.log(`PASS: ${engine} ${width}x${height}: footer links clear the purchase bar; other layouts preserved`);
+          console.log(`PASS: ${engine} ${width}x${height}: retained collection and footer presentation match the independent baseline`);
         } catch(error) {
           await captureScreenshot(page,{path:`${output}/${engine}-${width}-${height}-failure.png`}).catch(()=>{});
           await writeFile(`${output}/${engine}-${width}-${height}-failure.txt`,page.url()+'\n'+await page.locator('body').innerText());
@@ -648,15 +778,28 @@ export async function probe(base, output) {
   const historyChecks=allChecks.filter(check=>check.page==='back-forward-reload-metadata');
   const freshFirefoxChecks=results.filter(result=>result.engine==='firefox').flatMap(result=>result.checks)
     .filter(check=>check.page==='client-navigation'&&check.freshContext);
-  const report={passed:true,engines,results,liveWrites:0,footerLinksAccessible:true,
+  const report={passed:true,engines,results,liveWrites:0,footerLayoutPreserved:true,presentationBaselineVerified:true,
+    presentationBaseline:{source:baseline?'isolated-prior-runtime':'pre-deployment-report',base:presentationBaseline.base,
+      capturedAt:presentationBaseline.capturedAt,matrixCases:presentationBaseline.results.length},
     catalogueProductCount,catalogueImageAssociations:imageAssociations,
     clientNavigationCases:clientNavigationChecks.length,freshFirefoxClientNavigationCases:freshFirefoxChecks.length,
     immediateFirefoxClientNavigationCases:freshFirefoxChecks.filter(check=>check.scenario==='fresh-immediate-pointer').length,
     settledFirefoxClientNavigationCases:freshFirefoxChecks.filter(check=>check.scenario==='fresh-settled-pointer').length,
     backForwardReloadCases:historyChecks.length,
-    collectionAllIntroVerified:true,collectionAllBreadcrumbVerified:true,collectionAllExactCopy:true,collectionAllMatrixCases:results.length,
-    reviewedCollectionBodyDelta:'/collections/all exact search copy, breadcrumb label, header visibility and intro insertion'};
+    collectionAllBodyPreserved:true,collectionAllPresentationPreserved:true,collectionAllBreadcrumbPreserved:true,collectionAllMatrixCases:results.length,
+    reviewedCollectionBodyDelta:'none'};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));
   return report;
 }
-if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);
+if(process.argv[1]===new URL(import.meta.url).pathname) {
+  const [base,output,mode,baselineReport,...extra]=process.argv.slice(2);
+  assert(base&&output&&extra.length===0,'Provide a base URL, output directory and explicit baseline mode');
+  if(mode==='--capture-presentation-baseline') {
+    assert.equal(baselineReport,undefined,'Capture mode does not accept a baseline report');
+    await capturePresentationBaseline(base,output);
+  } else {
+    assert.equal(mode,'--baseline-report','Live verification requires a pre-deployment presentation baseline');
+    assert(baselineReport,'A pre-deployment baseline report path is required');
+    await probe(base,output,{baselineReport});
+  }
+}
