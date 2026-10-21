@@ -7,7 +7,7 @@ const details={legalName:'HIDI Fashions',address:'12 Example Road, Hyderabad, Te
 export async function probe(base,mode='candidate',routePatch){
  const out='evidence/price-tag-release/'+mode;await mkdir(out,{recursive:true});const cases=[];
  for(const [engine,type] of Object.entries({chromium,firefox,webkit}).filter(([e])=>(process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',').includes(e))){const browser=await type.launch({headless:true});try{for(const width of [390,1440])for(const preset of ["50x50","50x40"]){
- const context=await browser.newContext({viewport:{width,height:1100}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ console.log('Checking',engine,width,preset);const context=await browser.newContext({viewport:{width,height:1100}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await context.addInitScript(({details})=>{localStorage.setItem('hidi.price-tags.business-details.v1',JSON.stringify(details));window.print=()=>{};},{details});
  await context.route('**/*',route=>new URL(route.request().url()).origin!==new URL(base).origin?route.abort():route.continue());
  await context.route('**/api/admin/**',async route=>{assert.equal(route.request().method(),'GET','No production mutations');const path=new URL(route.request().url()).pathname;let data;
