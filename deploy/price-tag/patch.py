@@ -40,25 +40,26 @@ def patch_runtime(base,overlay):
   for old,value in replacements.items():new=new.replace(old,value)
   if new!=text:files[name]=new
  # Existing price-tag stylesheet owns all preview selectors.
- found=0
+ extras=set()
  for path in (base/'apps/web/.next/static/css').glob('*.css'):
   text=path.read_text()
   if 'price-tags_previewTag__' not in text:continue
-  found+=1
   names=dict(re.findall(r'(price-tags_(preview\w+)__[\w-]+)',text))
   mapping={value:key for key,value in names.items()}
   extra=(HERE/'preview.css').read_text()
   for key,value in mapping.items():extra=extra.replace('.'+key,'.'+value)
-  for name in list(files):
-   if name.endswith('.js') and 'hidiPreset' in files[name]:
-    content=files[name]
-    preview=re.search(r'\(0,([$\w]+)\.jsxs\)\("div",\{className:[^,]+\.previewTag',content);assert preview
-    alias=preview[1]
-    anchor='},children:['
-    start=content.index('"data-square":hidiPreset')
-    pos=content.index(anchor,start)+len(anchor)
-    files[name]=content[:pos]+'(0,'+alias+'.jsx)("style",{children:'+json.dumps(extra)+'}),'+content[pos:]
- assert found==1,found
+  if any(mapping.get('previewTag','__unused__') in text for text in files.values()):extras.add(extra)
+ assert len(extras)==1, 'One active preview selector set required: '+str(len(extras))
+ extra=extras.pop()
+ for name in list(files):
+  if name.endswith('.js') and 'hidiPreset' in files[name]:
+   content=files[name]
+   preview=re.search(r'\(0,([$\w]+)\.jsxs\)\("div",\{className:[^,]+\.previewTag',content);assert preview
+   alias=preview[1]
+   anchor='},children:['
+   start=content.index('"data-square":hidiPreset')
+   pos=content.index(anchor,start)+len(anchor)
+   files[name]=content[:pos]+'(0,'+alias+'.jsx)("style",{children:'+json.dumps(extra)+'}),'+content[pos:]
  for name,text in files.items():
   dest=overlay/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_text(text,encoding='utf-8')
  return {'passed':True,'allowedFiles':sorted(files),'patchedFactories':patched,'immutableChunks':replacements}
