@@ -28,6 +28,12 @@ def compose():
   plan=patcher.patch(base,overlay,app);save(app+'-patch.json',plan)
   for name in plan['allowedFiles']:
    if name.endswith(('.js','.mjs','.cjs')):subprocess.run(['node','--check',str(overlay/name)],check=True)
+  if not plan['allowedFiles']:
+   assert app=='api' and plan.get('apiUnchanged') is True,'Only the reviewed API may be retained without an overlay'
+   shutil.copytree(base,candidate,dirs_exist_ok=True)
+   config=json.loads(r.images.docker('image','inspect',before['hidi-'+app]['image']))[0]
+   save(app+'-preservation.json',{'passed':True,'baseImage':before['hidi-'+app]['image'],'candidateImageId':config['Id'],'changedFiles':[],'retainedUnchanged':True})
+   continue
   (folder/'Dockerfile').write_text('FROM '+before['hidi-'+app]['image']+'\nCOPY --chown=node:node overlay/ /app/\n')
   subprocess.run(['docker','build','--pull=false','-t',r.tag(app),str(folder)],check=True)
   r.images.extract(r.tag(app),candidate)
@@ -49,13 +55,16 @@ def seal():
   p=Path('evidence/checkout-offers')/name;data=json.loads(p.read_text());assert data.get('passed') is True,name
   target=E/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,target)
   manifest[name]=hashlib.sha256(target.read_bytes()).hexdigest()
- save('sealed.json',{'passed':True,'manifest':manifest,'images':{app:r.guard.image_id(r.tag(app)) for app in ['api','web']},'sourceSha':os.environ['GITHUB_SHA'],'photoSourceSha':source_sha()})
+ save('sealed.json',{'passed':True,'manifest':manifest,'images':{'api':read('api-preservation.json')['candidateImageId'],'web':r.guard.image_id(r.tag('web'))},'sourceSha':os.environ['GITHUB_SHA'],'photoSourceSha':source_sha()})
 def publish():
  r.fresh_source();seal();sealed=read('sealed.json');result={}
  for app in ['api','web']:
-  subprocess.run(['docker','push',r.tag(app)],check=True)
-  image=r.images.REGISTRY+'/hidi-'+app+'@'+r.registry_digest(app)
-  subprocess.run(['docker','pull',image],check=True)
+  if app=='api':
+   image=read('api-preservation.json')['baseImage']
+  else:
+   subprocess.run(['docker','push',r.tag(app)],check=True)
+   image=r.images.REGISTRY+'/hidi-'+app+'@'+r.registry_digest(app)
+   subprocess.run(['docker','pull',image],check=True)
   assert r.guard.image_id(image)==sealed['images'][app],'Published artifact differs from tested image'
   result[app]=image
  save('published.json',{'passed':True,'images':result})
@@ -76,9 +85,10 @@ def apply():
  r.fresh_source();r.backups();published=verify();storage=read('azure-storage-test.json')
  assert storage['passed'] and storage.get('validationJobRemoved') is True and storage.get('photoSourceSha')==source_sha() and storage.get('image')==published['web'],'Real managed-identity storage validation and cleanup must pass for this exact source and image'
  before=r.photo.states();r.photo.unchanged(before);captured=r.guard.private_json('public-before.json')
+ assert published['api']==before['hidi-api']['image'],'This derivative release must not replace the API image'
  assert r.guard.public_snapshot()==captured;r.guard.install_interrupt_handler();deployed=dict(before)
  try:
-  for app,g in [('api',r.api_guard),('web',r.guard)]:
+  for app,g in [('web',r.guard)]:
    marker=app+'-forward.json';g.write_private(marker,{'attempted':False,'mayComplete':False})
    suffix='photostream'+app+r.guard.run_key('a')
    g.conditional_write_image(r.photo.originals()['hidi-'+app],published[app],suffix,marker)
