@@ -6,6 +6,7 @@ import {join,resolve} from 'node:path';
 import vm from 'node:vm';
 import * as streamed from '../apps/web/lib/photo-upload-stream.mjs';
 import {authorizePhotoUpload} from '../apps/web/lib/photo-upload-authorize.mjs';
+import {createAndUploadProductDerivatives} from '../apps/web/lib/photo-derivatives.mjs';
 const require=createRequire(resolve('apps/web/package.json'));
 const ts=require('typescript');
 export const {NextRequest}=require('next/server');
@@ -13,7 +14,7 @@ const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function createPhotoRouteFixture(directory,{apiBase='http://127.0.0.1:4219/v1'}={}){
  const temporary=join(directory,'temporary'),stored=join(directory,'stored');
  await mkdir(temporary,{recursive:true});await mkdir(stored,{recursive:true});
- const state={role:'OWNER',authStatus:200,ticketStatus:200,metadataStatus:200,reads:0,writes:0,tickets:0,metadata:[],files:new Map()};
+ const state={role:'OWNER',authStatus:200,ticketStatus:200,metadataStatus:200,reads:0,writes:0,derivativeWrites:0,tickets:0,metadata:[],files:new Map()};
  const send=async(url,options={})=>{
   if(!String(url).startsWith(apiBase+'/admin/'))throw new Error('Non-fixture API request blocked');
   if(String(url).endsWith('/admin/me'))return new Response(JSON.stringify(state.authStatus===200?{admin:{id:'fixture-staff',role:state.role}}:{message:'Fixture session rejected'}),{status:state.authStatus});
@@ -26,7 +27,15 @@ export async function createPhotoRouteFixture(directory,{apiBase='http://127.0.0
   const existing=state.files.get(key);if(existing&&existing.sha256!==photo.sha256)throw new Error('Conflicting saved image');
   const path=join(stored,digest(Buffer.from(key)));await copyFile(photo.path,path);state.writes++;
   state.files.set(key,{path,sha256:photo.sha256,size:photo.size,type});
-  return {url:'/media/'+key,storagePath:'azure://product-media/'+key};
+  const container={getBlockBlobClient:derivativeKey=>({
+   uploadData:async(derivativeBytes,options)=>{
+    const derivativePath=join(stored,digest(Buffer.from(derivativeKey)));
+    await writeFile(derivativePath,derivativeBytes);state.derivativeWrites++;
+    state.files.set(derivativeKey,{path:derivativePath,sha256:digest(derivativeBytes),size:derivativeBytes.length,type:options.blobHTTPHeaders.blobContentType});
+   }
+  })};
+  const derivatives=await createAndUploadProductDerivatives(container,key,photo);
+  return {url:'/media/'+key,storagePath:'azure://product-media/'+key,derivatives,imageReady:true};
  }};
  const aliases={'@/lib/azure-blob':storage,'@/lib/api':{API_URL:apiBase},
   '@/lib/photo-upload-stream.mjs':{...streamed,readStreamedPhotoForm:request=>{state.reads++;return streamed.readStreamedPhotoForm(request,{directory:temporary});}},
