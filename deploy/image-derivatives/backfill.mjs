@@ -1,5 +1,3 @@
-import {DefaultAzureCredential} from '@azure/identity';
-import {BlobServiceClient} from '@azure/storage-blob';
 import {photoToDisk} from '../collection-speed/photo-disk.mjs';
 import {
   PERSISTENT_DERIVATIVE_WIDTHS,
@@ -26,11 +24,16 @@ function collectImages(product){
 }
 const list=await json(origin+'/api/store/products');
 if(!Array.isArray(list))throw new Error('Published product list is not an array');
-const sources=new Set();
+const sources=new Set(),external=new Set();
 for(const card of list){
   if(typeof card?.slug!=='string'||!card.slug)continue;
   const product=await json(origin+'/api/store/products/'+encodeURIComponent(card.slug));
-  for(const source of collectImages(product))sources.add(source);
+  const images=[...(product.images||[]),...(product.variants||[]).flatMap(v=>v.images||[])];
+  for(const image of images){
+    const value=typeof image?.url==='string'?image.url:'';
+    const source=mediaPath(value);
+    if(source)sources.add(source);else if(value)external.add(value);
+  }
 }
 const selected=[...sources].slice(0,limit);
 const plan=selected.map(source=>{
@@ -42,7 +45,8 @@ const plan=selected.map(source=>{
   };
 });
 if(!apply){
-  console.log(JSON.stringify({mode:'dry-run',origin,publishedProducts:list.length,azureMediaSources:sources.size,selected:plan.length,plan},null,2));
+  const externalHosts=[...new Set([...external].map(value=>{try{return new URL(value,origin).hostname;}catch{return 'invalid';}}))].sort();
+  console.log(JSON.stringify({mode:'dry-run',origin,publishedProducts:list.length,azureMediaSources:sources.size,externalMediaReferences:external.size,externalHosts,selected:plan.length,plan},null,2));
   process.exit(0);
 }
 if(process.env.HIDI_ALLOW_PRODUCTION_IMAGE_BACKFILL!=='YES'){
@@ -50,6 +54,7 @@ if(process.env.HIDI_ALLOW_PRODUCTION_IMAGE_BACKFILL!=='YES'){
 }
 const account=(process.env.AZURE_STORAGE_ACCOUNT||'').trim();
 if(!/^[a-z0-9]{3,24}$/.test(account))throw new Error('AZURE_STORAGE_ACCOUNT is not configured');
+const [{DefaultAzureCredential},{BlobServiceClient}]=await Promise.all([import('@azure/identity'),import('@azure/storage-blob')]);
 const service=new BlobServiceClient('https://'+account+'.blob.core.windows.net',new DefaultAzureCredential());
 const container=service.getContainerClient('product-media');
 const results=[];
