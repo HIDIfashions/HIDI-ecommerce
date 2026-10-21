@@ -2,9 +2,9 @@
 
 This migration keeps the immutable original product photograph in the existing Azure `product-media` container and adds shopper-ready WebP derivatives under:
 
-`products/_derivatives/v1/<original-without-extension>/<width>.webp`
+`products/_derivatives/v1/<original-key-including-extension>/<width>.webp`
 
-Current persisted widths: 384, 640, 750, 828, 1080, 1200 and 1920.
+Current persisted widths: 384, 640, 750, 828, 1080, 1200 and 1920. Requests below 384px use the 384px persisted asset instead of invoking Sharp.
 
 ## Safety model
 
