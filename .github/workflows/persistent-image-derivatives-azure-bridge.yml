@@ -125,6 +125,40 @@ jobs:
           print(json.dumps(result,indent=2))
           PY
 
+      - name: Compare current live image runtime with candidate semantics
+        working-directory: candidate-source
+        run: |
+          env GITHUB_SHA="$HIDI_PRODUCTION_BASELINE_SHA" python - <<'PY'
+          import difflib,importlib.util,json
+          from pathlib import Path
+          p=Path('deploy/photo-live/release.py').resolve()
+          spec=importlib.util.spec_from_file_location('photo_compare',p)
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          root=Path(m.P)/'contract-diagnostic'
+          api=(root/'api'/'apps/api/dist/admin/admin-inventory.service.js').read_text()
+          api_lines=[line.strip()[:900] for line in api.splitlines() if any(x in line for x in ['sizeBytes','maxBytes','12 MB','12582912','2147483647','BigInt'])]
+          live_images=(root/'web'/'product-images/images.mjs').read_text().splitlines()
+          candidate_images=Path('deploy/collection-speed/images.mjs').read_text().splitlines()
+          image_diff=list(difflib.unified_diff(live_images,candidate_images,fromfile='live/product-images/images.mjs',tofile='candidate/deploy/collection-speed/images.mjs',n=2))
+          live_delete=(root/'web'/'admin-tools/product-delete-storage.mjs').read_text().splitlines()
+          candidate_delete=Path('deploy/admin-tools/product-delete-storage.mjs').read_text().splitlines()
+          delete_diff=list(difflib.unified_diff(live_delete,candidate_delete,fromfile='live/admin-tools/product-delete-storage.mjs',tofile='candidate/deploy/admin-tools/product-delete-storage.mjs',n=2))
+          report={
+            'apiRelevantLines':api_lines[:80],
+            'liveImageMarkers':{
+              key:sum(key in line for line in live_images)
+              for key in ['IMAGE_VERSION','SOURCE_LIMIT','PERSISTENT_DERIVATIVE_VERSION','persistentDerivativeBlobKey','createImageStore','resizedImage','maxPending','X-Hidi-Image-Version']
+            },
+            'imageDiffLines':len(image_diff),
+            'imageDiffPreview':image_diff[:220],
+            'deleteDiffLines':len(delete_diff),
+            'deleteDiffPreview':delete_diff[:180],
+          }
+          out=Path('evidence/photo-live/live-semantic-diff.json')
+          out.write_text(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          PY
+
       - name: Compose candidate over captured production runtime
         working-directory: candidate-source
         run: env GITHUB_SHA="$HIDI_PRODUCTION_BASELINE_SHA" python deploy/photo-live/release.py compose
