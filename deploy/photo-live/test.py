@@ -6,7 +6,7 @@ os.environ['HIDI_BROWSER_ENGINES']='chromium,firefox,webkit'
 report={'passed':False,'photoSourceSha':subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip(),'productionTrafficChanged':False,'suites':[]}
 commands=[
  ('retained-api-accounting',['node','--test',str(ROOT/'deploy/photo-live/api.test.mjs')],Path.cwd(),120),
- ('photo-stream-and-optimizer',['bash','-o','pipefail','-c','node --experimental-strip-types --test deploy/image-optimization/*.test.mjs deploy/launch-image-repair/recovery.test.mjs'],ROOT,300),
+ ('photo-stream-and-optimizer',['bash','-o','pipefail','-c','node --experimental-strip-types --test deploy/image-optimization/*.test.mjs deploy/image-derivatives/*.test.mjs deploy/launch-image-repair/recovery.test.mjs tests/admin-product-delete-handler.test.mjs'],ROOT,420),
  ('actual-bundle-and-retained-editor',['python',str(ROOT/'deploy/photo-live/retained-test.py')],Path.cwd(),420),
  ('retained-checkout-and-purchase',['node',str(ROOT/'deploy/checkout-offers/candidate.mjs')],Path.cwd(),480),
 ]
