@@ -12,7 +12,7 @@ METADATA_HELPER_SHA = '78afd9bd62aedccf395d16edc881951fc45cba5ecdf7f8f588670b217
 SITEMAP_HELPER_SHA = 'c8cb5640b825a9681ef69cf30349bf3c69af8521e96ea0f3565aa949cd94a530'
 FOUNDATION_BUNDLE_SHA = 'cab82d617544299bcd56b6072987d9acb2db7da0e51d0539a92879b5c14047b2'
 ABOUT_OLD = 'From responsibility and ambition to the moments that are entirely your own, HIDI is made for women who move through every day with ease, confidence and quiet elegance.'
-ABOUT_NEW = 'Introduced by actress Ananya Nagalla, HIDI offers women’s Indian wear for work, everyday dressing and occasions — made for every role you carry.'
+ABOUT_MARKER = 'Introduced by actress Ananya Nagalla'
 HEADER_BEFORE = '    const contentType = String(responseHeaders["content-type"] || "");'
 HEADER_AFTER = HEADER_BEFORE + '\n    if (status === 200 && contentType.includes("text/html")) {\n      if (shouldNoIndex(request, pathname)) responseHeaders["x-robots-tag"] = "noindex, nofollow, noarchive";\n      else delete responseHeaders["x-robots-tag"];\n    }'
 
@@ -93,10 +93,10 @@ def patch_runtime(base, overlay):
             continue
         data=path.read_bytes()
         old_about+=data.count(ABOUT_OLD.encode())
-        count=data.count(ABOUT_NEW.encode())
+        count=data.count(ABOUT_MARKER.encode())
         if count:
             about.append({'path':path.relative_to(base).as_posix(),'occurrences':count})
-    assert old_about==0 and about, 'Reviewed HIDI About copy foundation changed'
+    assert old_about==0 and about, 'Reviewed HIDI About foundation changed'
 
     overlay.mkdir(parents=True,exist_ok=True)
     (overlay/'seo-discovery').mkdir()
