@@ -29,8 +29,8 @@ export function productDerivativeKeys(value) {
   const key = safeKey(value);
   if (key.startsWith('products/_derivatives/')) return [];
   if (!/\.(?:jpg|jpeg|png|webp|avif)$/i.test(key)) return [];
-  const stem = key.replace(/\.(?:jpg|jpeg|png|webp|avif)$/i, '').slice('products/'.length);
-  return DERIVATIVE_WIDTHS.map(width => `products/_derivatives/${DERIVATIVE_VERSION}/${stem}/${width}.webp`);
+  const source = key.slice('products/'.length);
+  return DERIVATIVE_WIDTHS.map(width => `products/_derivatives/${DERIVATIVE_VERSION}/${source}/${width}.webp`);
 }
 
 /** Resolve only this account's product photos. Never fetch a database-supplied host. */
