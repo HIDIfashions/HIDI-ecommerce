@@ -1,0 +1,45 @@
+name: Diagnose live Firefox product navigation without changes
+
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths:
+      - deploy/seo-discovery/firefox-navigation-diagnostic.mjs
+      - deploy/seo-discovery/firefox-navigation-diagnostic.test.mjs
+      - .github/workflows/seo-firefox-navigation-diagnostic.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hidi-firefox-navigation-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-firefox-navigation/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-firefox-navigation-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Validate the read-only diagnostic contract
+        run: |
+          node --check deploy/seo-discovery/firefox-navigation-diagnostic.mjs
+          node --test deploy/seo-discovery/firefox-navigation-diagnostic.test.mjs
+      - name: Install isolated Firefox diagnostic tools
+        run: |
+          npm install --prefix /tmp/hidi-firefox-navigation --no-save playwright@1.56.1
+          node /tmp/hidi-firefox-navigation/node_modules/playwright/cli.js install --with-deps firefox
+      - name: Diagnose Firefox collection-to-product navigation on the recovered live baseline
+        run: timeout --signal=TERM --kill-after=1m 12m node deploy/seo-discovery/firefox-navigation-diagnostic.mjs https://hidiindia.com evidence/seo-discovery/firefox-navigation-diagnostic
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firefox-navigation-diagnostic-${{ github.run_id }}
+          path: evidence/seo-discovery/firefox-navigation-diagnostic
+          if-no-files-found: error
+          retention-days: 30
