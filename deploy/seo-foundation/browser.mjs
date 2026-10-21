@@ -122,8 +122,8 @@ export async function foundationProbe(base,output,{baseline}={}) {
           await page.locator('a.hidi-collection-link').first().focus();
           assert.equal(await page.locator('a.hidi-collection-link').first().getAttribute('tabindex'),'0','Carousel retains focus eligibility');
           await captureScreenshot(page,{path:`${output}/${engine}-${width}-home.png`});
-          const shop=page.locator('.campaign-shop-button');await shop.focus();await shop.press('Space');
-          await page.waitForURL('**/collections/all');
+          const shop=page.locator('.campaign-shop-button');await shop.focus();
+          await Promise.all([page.waitForURL('**/collections/all',{waitUntil:'domcontentloaded'}),shop.press('Space')]);
           assert.equal(await page.locator('main article h3 a').count()>0,true,'Existing Shop Now navigation remains functional');
           await settleReads(page);
           const aboutMarker='Introduced by actress Ananya Nagalla';
