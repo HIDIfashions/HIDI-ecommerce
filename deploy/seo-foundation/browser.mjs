@@ -128,7 +128,7 @@ export async function foundationProbe(base,output,{baseline}={}) {
               return {
                 heading:clean(main.querySelector('h1')?.innerText),
                 introduction:clean(introduction?.innerText),
-                links:[...main.querySelectorAll('a')].map(link=>({text:clean(link.innerText),href:link.getAttribute('href')}))
+                links:[...main.querySelectorAll('a')].map(link=>({text:clean(link.textContent),href:link.getAttribute('href')}))
               };
             },aboutMarker);
           };
