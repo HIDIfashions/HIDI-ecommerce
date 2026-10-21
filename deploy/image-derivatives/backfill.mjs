@@ -65,13 +65,32 @@ for(const item of plan){
     throw new Error('Unsupported original content type for '+item.originalKey);
   }
   let missing=0;
-  for(const key of item.derivatives){
+  const existingSourceHashes=new Set();
+  for(let index=0;index<item.derivatives.length;index++){
+    const key=item.derivatives[index],width=PERSISTENT_DERIVATIVE_WIDTHS[index];
     if(!key)throw new Error('Invalid derivative key for '+item.originalKey);
-    try{await container.getBlobClient(key).getProperties();}
-    catch(error){if(error?.statusCode===404)missing++;else throw error;}
+    try{
+      const ready=await container.getBlobClient(key).getProperties();
+      const meta=ready.metadata||{};
+      const valid=ready.contentType==='image/webp' &&
+        Number.isInteger(ready.contentLength) && ready.contentLength>0 && ready.contentLength<=10*1024*1024 &&
+        meta.hidi_derivative_version==='v1' && meta.hidi_width===String(width) && meta.hidi_format==='webp' &&
+        /^[a-f0-9]{64}$/.test(meta.hidi_source_sha256||'') &&
+        /^[a-f0-9]{64}$/.test(meta.hidi_derivative_sha256||'');
+      if(!valid)throw new Error('Existing immutable derivative metadata is invalid for '+key);
+      existingSourceHashes.add(meta.hidi_source_sha256);
+    }catch(error){
+      if(error?.statusCode===404)missing++;
+      else throw error;
+    }
+  }
+  if(existingSourceHashes.size>1)throw new Error('Existing derivative family has mixed source hashes for '+item.originalKey);
+  const originalSourceHash=properties.metadata?.hidi_source_sha256;
+  if(originalSourceHash&&existingSourceHashes.size===1&&!existingSourceHashes.has(originalSourceHash)){
+    throw new Error('Existing derivative family does not match original source metadata for '+item.originalKey);
   }
   if(!missing){
-    results.push({source:item.source,status:'already-ready'});
+    results.push({source:item.source,status:'already-ready',verifiedMetadata:true});
     continue;
   }
   const response=await original.download();
