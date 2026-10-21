@@ -13,6 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify-and-release:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[deploy-seo-product-facts]')
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
@@ -30,7 +31,7 @@ jobs:
           node --check deploy/seo-product-facts/image-probe.mjs
           node --check deploy/seo-product-facts/media-preload.mjs
           node --check deploy/seo-product-facts/parity.mjs
-          node --test deploy/seo-product-facts/sitemap-summary.test.mjs deploy/seo-document/discovery.test.mjs deploy/merchant-feed/feed.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs
+          node --test deploy/seo-product-facts/sitemap-summary.test.mjs deploy/seo-document/discovery.test.mjs deploy/merchant-feed/feed.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-discovery/crawler-document.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs
       - name: Install isolated browser engines and exact image backup tooling
         run: |
           sudo apt-get update -qq

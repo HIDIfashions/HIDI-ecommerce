@@ -257,6 +257,13 @@ export const CLIENT_NAVIGATION_CASES=Object.freeze([
 ]);
 const retainedNavigationCase=Object.freeze({name:'retained-context-pointer',settled:false,history:true,freshContext:false});
 
+export function isFixtureProductImageRequest(base,resourceType,rawUrl) {
+  if(!base.startsWith('http://127.0.0.1')||resourceType!=='image')return false;
+  const url=new URL(rawUrl);
+  const sourcePath=url.pathname==='/_next/image'?url.searchParams.get('url'):url.pathname;
+  return sourcePath?.startsWith('/media/products/')??false;
+}
+
 async function createReadOnlyContext(browser,engine,width,height,base,writes) {
   const context=await browser.newContext({viewport:{width,height},hasTouch:width<1000,
     isMobile:engine==='webkit'&&width<1000,reducedMotion:'reduce',extraHTTPHeaders:{'x-forwarded-host':'hidiindia.com','x-forwarded-proto':'https'}});
@@ -268,6 +275,10 @@ async function createReadOnlyContext(browser,engine,width,height,base,writes) {
       if(!isBlockedTelemetry(req.method(),req.url(),base))writes.push({method:req.method(),path:url.pathname});
       return route.abort();
     }
+    // Product media is covered by the exact reviewed image allowlist and the
+    // independent live-image audit. Do not let the isolated fixture's fake
+    // Azure media backend occupy browser connections needed by Next scripts.
+    if(isFixtureProductImageRequest(base,req.resourceType(),req.url()))return route.abort();
     if(req.resourceType()==='media'||/google-analytics|googletagmanager|facebook\.net/.test(url.hostname))return route.abort();
     return route.continue();
   });

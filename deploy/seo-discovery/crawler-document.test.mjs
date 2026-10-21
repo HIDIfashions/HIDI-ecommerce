@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import test from 'node:test';
-import {CLIENT_NAVIGATION_CASES, crawlerDocument} from './probes.mjs';
+import {CLIENT_NAVIGATION_CASES, crawlerDocument, isFixtureProductImageRequest} from './probes.mjs';
 
 async function withServer(handler, run) {
   const server = createServer(handler);
@@ -77,4 +77,32 @@ test('Firefox client navigation has fixed immediate and settled fresh-context ca
   assert.match(helper,/document\.fonts\.status==='loaded'.*timeout:30000/s);
   assert.doesNotMatch(helper,/\bretr(?:y|ies|ied)\b/i,'Navigation gate must not mask failures with retries');
   for(const match of helper.matchAll(/timeout:(\d+)/g))assert(Number(match[1])<=45000,'Navigation operation timeout must not exceed 45 seconds');
+});
+
+test('read-only browser probe isolates reviewed SEO checks from the fake Azure media backend', () => {
+  const optimized='http://127.0.0.1:4100/_next/image?url=%2Fmedia%2Fproducts%2F_display_v2%2Fitem.jpg&w=1080&q=75';
+  const direct='http://127.0.0.1:4100/media/products/_display_v2/item.jpg';
+  assert.equal(isFixtureProductImageRequest('http://127.0.0.1:4100','image',optimized),true);
+  assert.equal(isFixtureProductImageRequest('http://127.0.0.1:4100','image',direct),true);
+  assert.equal(isFixtureProductImageRequest('http://127.0.0.1:4100','image','http://127.0.0.1:4100/brand/hidi-logo-header.svg'),false);
+  assert.equal(isFixtureProductImageRequest('https://hidiindia.com','image','https://hidiindia.com/media/products/item.jpg'),false);
+  assert.equal(isFixtureProductImageRequest('http://127.0.0.1:4100','script',optimized),false);
+  const source=readFileSync(new URL('./probes.mjs',import.meta.url),'utf8');
+  const start=source.indexOf('async function createReadOnlyContext');
+  const end=source.indexOf('\nfunction observeFrameworkHeadErrors',start);
+  assert(start>=0&&end>start,'Read-only BrowserContext factory remains independently reviewable');
+  const helper=source.slice(start,end);
+  assert.match(helper,/if\(isFixtureProductImageRequest\(base,req\.resourceType\(\),req\.url\(\)\)\)return route\.abort\(\);/,
+    'Synthetic image fetches must not reach the intentionally unavailable fixture media backend');
+  assert.match(helper,/return route\.continue\(\);/,'Documents, scripts and styles still use the candidate runtime');
+});
+
+test('candidate catalogue and guarded product-fact release retain reviewed boundaries', () => {
+  const map=JSON.parse(readFileSync(new URL('./reviewed-product-image-map.json',import.meta.url),'utf8'));
+  assert.equal(Object.keys(map).length,54,'Candidate catalogue covers every reviewed live product');
+  assert.equal(new Set(Object.values(map).flatMap(product=>product.paths)).size,238,
+    'Candidate catalogue covers every reviewed live image association');
+  const workflow=readFileSync(new URL('../../.github/workflows/seo-product-facts-release.yml',import.meta.url),'utf8');
+  assert.match(workflow,/if: github\.event_name == 'workflow_dispatch' \|\| contains\(github\.event\.head_commit\.message, '\[deploy-seo-product-facts\]'\)/,
+    'Product-fact production release must require an explicit deploy token or manual dispatch');
 });
