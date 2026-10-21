@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { isBlockedTelemetry } from '../button-states/request-policy.mjs';
@@ -6,6 +8,82 @@ import publishedImages from './published-product-images.json' with {type:'json'}
 const verifiedBrandProfiles=['https://www.instagram.com/hidiindia/','https://www.facebook.com/profile.php?id=61594615364935','https://x.com/Hidiindia','https://www.youtube.com/@Hidiindia'];
 const brandDescription='HIDI is an Indian women’s wear brand offering kurta sets for work, everyday dressing and occasions.';
 import { productImageUrls } from './sitemap.mjs';
+
+const crawlerDocumentTimeoutMs = 30000;
+const crawlerDocumentLimit = 4 * 1024 * 1024;
+export const crawlerDocument = (base, path, {timeoutMs = crawlerDocumentTimeoutMs, limit = crawlerDocumentLimit} = {}) => new Promise((resolveDocument, rejectDocument) => {
+  const target = new URL(path, base);
+  const started = Date.now();
+  const requestDocument = target.protocol === 'https:' ? httpsRequest : httpRequest;
+  let settled = false;
+  const elapsed = () => Date.now() - started;
+  const fail = (phase, error) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(deadline);
+    rejectDocument(new Error(`Crawler document ${path} ${phase} after ${elapsed()}ms: ${error.message}`));
+  };
+  const req = requestDocument({
+    protocol: target.protocol,
+    hostname: target.hostname,
+    port: target.port || undefined,
+    method: 'GET',
+    path: target.pathname + target.search,
+    agent: false,
+    headers: {
+      host: 'hidiindia.com',
+      'x-forwarded-host': 'hidiindia.com',
+      'x-forwarded-proto': 'https',
+      accept: 'text/html,application/xhtml+xml',
+      'accept-encoding': 'identity',
+      'cache-control': 'no-cache',
+      pragma: 'no-cache',
+      'user-agent': 'HIDI-SEO-Crawler-Document/1.0',
+      connection: 'close',
+    },
+  }, response => {
+    const chunks = [];
+    let size = 0;
+    const declared = Number(response.headers['content-length'] || 0);
+    if (declared > limit) {
+      const error = new Error(`declared body exceeds ${limit} bytes`);
+      fail('rejected', error); response.destroy(error); return;
+    }
+    response.on('data', chunk => {
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += bytes.length;
+      if (size > limit) {
+        const error = new Error(`body exceeds ${limit} bytes`);
+        fail('rejected', error); response.destroy(error); req.destroy(error); return;
+      }
+      chunks.push(bytes);
+    });
+    response.once('aborted', () => fail('aborted', new Error('response ended before the end event')));
+    response.once('error', error => fail('response failed', error));
+    response.once('end', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(deadline);
+      const headers = new Headers();
+      for (const [name, value] of Object.entries(response.headers)) {
+        for (const item of Array.isArray(value) ? value : [value]) if (item !== undefined) headers.append(name, item);
+      }
+      const durationMs = elapsed();
+      console.log(`CRAWLER_DOCUMENT ${path} ${response.statusCode} ${size}B ${durationMs}ms`);
+      resolveDocument({ status: response.statusCode, headers, text: Buffer.concat(chunks).toString('utf8'), durationMs });
+    });
+  });
+  const deadline = setTimeout(() => {
+    const error = new Error(`request exceeded ${timeoutMs}ms`);
+    fail('timed out', error); req.destroy(error);
+  }, timeoutMs);
+  req.setTimeout(timeoutMs, () => {
+    const error = new Error(`socket was inactive for ${timeoutMs}ms`);
+    fail('socket timed out', error); req.destroy(error);
+  });
+  req.once('error', error => fail('request failed', error));
+  req.end();
+});
 
 const expectedTitles = {
   '/':'HIDI India | Women’s Indian Wear and Kurta Sets',
@@ -212,10 +290,11 @@ export async function probe(base, output) {
             assert.equal(seo.robots?.includes('noindex'),expectedPrivate,'Public pages index; utility pages retain noindex');
             await assertCrawlerDirectives(page,expectedPrivate);
             if(!expectedPrivate) {
-              const rawResponse=await fetch(base+path,{headers:seoHeaders});
+              const rawResponse=await crawlerDocument(base,path);
               assert.equal(rawResponse.status,200);
               assert(!rawResponse.headers.get('x-robots-tag')?.includes('noindex'),'Public HTTP response is indexable');
-              const rawHtml=await rawResponse.text();
+              assert.match(rawResponse.headers.get('content-type')||'',/^text\/html\b/i,'Public crawler response is HTML');
+              const rawHtml=rawResponse.text;
               await assertSearchMetadata(page,path,rawHtml);
               for(const match of rawHtml.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi))assert(!/https?:\/\/(?:thehidi\.com|thidigk\.thehidi\.com|localhost(?::\d+)?)[/]/.test(match[1]),'Initial HTML structured-data identities use the production origin');
               const graphs=await page.locator('script[type="application/ld+json"]').allTextContents();
@@ -286,10 +365,11 @@ export async function probe(base, output) {
             }
             if(base.startsWith('https://hidiindia.com')) {
               for(const method of ['GET','HEAD']){
-                const res=await fetch(base+'/privacy',{method,headers:seoHeaders});assert.equal(res.status,200);
+                const res=method==='GET'?await crawlerDocument(base,'/privacy'):await fetch(base+'/privacy',{method,headers:seoHeaders});assert.equal(res.status,200);
                 assert(!res.headers.get('x-robots-tag')?.includes('noindex'),'Published policy remains indexable');
                 if(method==='GET'){
-                  const html=await res.text();
+                  assert.match(res.headers.get('content-type')||'',/^text\/html\b/i,'Published policy crawler response is HTML');
+                  const html=res.text;
                   assert.equal((html.match(/rel="canonical" href="https:\/\/hidiindia\.com\/privacy"/g)||[]).length,1);
                 }
               }
@@ -298,8 +378,9 @@ export async function probe(base, output) {
             for(const path of ['/collections/work-wear','/collections/casual-wear','/collections/occasional-wear','/collections/ananyas-pick','/about','/shipping','/returns','/contact','/offers']) {
               assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());
               await page.locator('footer').first().waitFor({state:'attached'});
-              const raw=await fetch(base+path,{headers:seoHeaders});assert.equal(raw.status,200);
-              await assertSearchMetadata(page,path,await raw.text());
+              const raw=await crawlerDocument(base,path);assert.equal(raw.status,200);
+              assert.match(raw.headers.get('content-type')||'',/^text\/html\b/i,'Public crawler response is HTML');
+              await assertSearchMetadata(page,path,raw.text);
               checks.push({page:'collection-search-metadata',path,passed:true});
             }
             await page.goto(base+'/collections/all',{waitUntil:'domcontentloaded'});
