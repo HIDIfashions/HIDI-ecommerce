@@ -17,6 +17,7 @@ on:
       - 'apps/web/components/catalog-image.tsx'
       - 'deploy/collection-speed/images.*'
       - 'deploy/image-derivatives/**'
+      - 'deploy/image-optimization/**'
       - 'deploy/admin-tools/product-delete-storage.mjs'
       - 'deploy/photo-live/**'
       - 'deploy/checkout-offers/candidate.mjs'
