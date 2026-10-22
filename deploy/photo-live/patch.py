@@ -39,7 +39,8 @@ def patch(base,overlay,app):
             'allowedFiles':[],
             'apiUnchanged':True,
             'databaseSchemaUnchanged':True,
-            'ticketIntegerCapacityBytes':2147483647,
+            'legacyTicketIntegerCapacityBytes':2147483647,
+            'activeUploadTicketRequired':False,
         }
 
     assert app=='web'
