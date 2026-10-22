@@ -25,6 +25,11 @@ function normalizeInfo(text,expectedHash){
  if(expectedHash)assert.equal(createHash('sha256').update(initializer.getText(tree)).digest('hex'),expectedHash,'Page display helper must match the source compilation');
  return text.slice(0,initializer.getStart(tree))+'"APPROVED_PDP_PRESENTATION_HELPER"'+text.slice(initializer.end);
 }
+function stripApprovedIncludes(text){
+ const tree=ts.createSourceFile('page-display.js',text,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);let target;
+ function walk(n){if(ts.isBinaryExpression(n)&&n.operatorToken.kind===ts.SyntaxKind.AmpersandAmpersandToken&&n.getText(tree).includes('className:"hidi-pdp-includes"')){assert(!target,'One includes display expected');target=n;return;}ts.forEachChild(n,walk);}walk(tree);
+ assert(target,'Retained includes display expected');return text.slice(0,target.getStart(tree))+'null'+text.slice(target.end);
+}
 for(const [oldName,newName,count] of [[plan.retainedClientChunk,plan.newClientChunk,4],['apps/web/.next/server/app/products/[slug]/page.js','apps/web/.next/server/app/products/[slug]/page.js',5]]){
  const before=inventory(readFileSync(join(base,oldName),'utf8')),after=inventory(readFileSync(join(overlay,newName),'utf8'));
  assert.deepEqual([...before.keys()],[...after.keys()],'No webpack boundaries may be added, removed or renumbered');
@@ -33,7 +38,7 @@ for(const [oldName,newName,count] of [[plan.retainedClientChunk,plan.newClientCh
  const names=delta.map(id=>before.get(id));
  if(plan.kind==='isolated-component-refresh'){
   assert(names.some(text=>text.startsWith('(module,exports,__webpack_require__)=>{Object.assign(exports,')),'At least one isolated product component must change');
-  for(const id of delta){const original=before.get(id);assert(original.startsWith('(module,exports,__webpack_require__)=>{Object.assign(exports,') || (oldName.endsWith('/page.js') && original.includes('function HidiDetails(product)') && (plan.pageInfoInitializerHash?normalizeInfo(after.get(id),plan.pageInfoInitializerHash)===normalizeInfo(original.replace(plan.oldUrl,plan.newUrl)):after.get(id)===original.replace(plan.oldUrl,plan.newUrl))),'Every change must be an isolated component or the single stylesheet reference');}
+  for(const id of delta){const original=before.get(id);assert(original.startsWith('(module,exports,__webpack_require__)=>{Object.assign(exports,') || (oldName.endsWith('/page.js') && original.includes('function HidiDetails(product)') && (plan.pageInfoInitializerHash?normalizeInfo(after.get(id),plan.pageInfoInitializerHash)===normalizeInfo(plan.approvedIncludesRemoval?stripApprovedIncludes(original.replace(plan.oldUrl,plan.newUrl)):original.replace(plan.oldUrl,plan.newUrl)):after.get(id)===(plan.approvedIncludesRemoval?stripApprovedIncludes(original.replace(plan.oldUrl,plan.newUrl)):original.replace(plan.oldUrl,plan.newUrl)))),'Every change must be an isolated component or the single stylesheet reference');}
  }else for(const component of ['AddToCart','ProductMedia','ProductQualitySummary','ProductInfoAccordion'])assert(names.some(text=>text.includes(component+':')));
  for(const id of delta){const text=after.get(id);assert(!text.includes('process.env'),'No new environment substitutions');}
 }
