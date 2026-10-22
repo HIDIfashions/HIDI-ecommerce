@@ -14,7 +14,7 @@ def digest(p):
 
 def git_blob(p):
     data=Path(p).read_bytes()
-    return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+    return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\\0'+data).hexdigest()
 
 def write(root,name,text):
     p=root/name
