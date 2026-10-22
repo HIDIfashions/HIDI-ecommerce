@@ -1,6 +1,6 @@
 name: Persistent image derivatives Azure bridge validation
 # Final review gate: candidate and baseline are immutable for the duration of this run.
-# Validation trigger: 2026-10-22 complete capless candidate c326a528.
+# Validation trigger: 2026-10-22 corrected complete candidate c326a528; cancel stale validation.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: hidi-persistent-image-azure-bridge
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   validate:
