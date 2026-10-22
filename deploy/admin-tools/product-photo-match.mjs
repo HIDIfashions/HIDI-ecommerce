@@ -1,5 +1,5 @@
 // Shared by the browser preview and fixture tests. No uploads happen in this module.
-export const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
+export const MAX_PHOTO_BYTES = Number.MAX_SAFE_INTEGER;
 export const MAX_PHOTO_FILES = 1000;
 const MIME_BY_EXTENSION = new Map([['jpg', 'image/jpeg'], ['jpeg', 'image/jpeg'], ['png', 'image/png'], ['webp', 'image/webp'], ['avif', 'image/avif']]);
 const SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'XXXL', '4XL', 'XXXXL', '5XL'];
@@ -15,7 +15,7 @@ export function parsePhoto(file) {
   }
   row.skn = match[1]; row.sequence = Number(match[2]); row.isMain = Boolean(match[3]);
   row.mime = MIME_BY_EXTENSION.get(match[4].toLowerCase());
-  if (!Number.isInteger(row.size) || row.size < 1 || row.size > MAX_PHOTO_BYTES) row.error = 'Photo must be between 1 byte and 12 MB.';
+  if (!Number.isSafeInteger(row.size) || row.size < 1 || row.size > MAX_PHOTO_BYTES) row.error = 'Choose a valid non-empty photo.';
   else if (file.type && String(file.type).toLowerCase() !== row.mime) row.error = 'File type does not match its extension. Use JPEG, PNG, WebP or AVIF.';
   return row;
 }
