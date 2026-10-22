@@ -1,6 +1,6 @@
 name: Persistent image derivatives Azure bridge validation
 # Final review gate: candidate and baseline are immutable for the duration of this run.
-# Validation trigger: 2026-10-22 size-decoupled eligibility candidate e3e437b.
+# Validation trigger: 2026-10-22 per-request auth fixture candidate f3f7b15.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
-      CANDIDATE_SHA: e3e437b6ab0efec283f794a5d2cc250fd222bbf6
+      CANDIDATE_SHA: f3f7b154cc3707217cc0e7d0881f58bf11e0ace0
       DATABASE_URL: 'sqlserver://localhost:1433;database=fixture;user=build;password=build;encrypt=true'
       API_URL: http://127.0.0.1:4100/v1
       NEXT_TELEMETRY_DISABLED: '1'
