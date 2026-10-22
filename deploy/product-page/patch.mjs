@@ -1,3 +1,4 @@
+// Release retrigger: approved storefront cleanup verifier included.
 // Compile reviewed PDP components into their retained webpack boundaries.
 // React/Next imports resolve to the original factories; no second app/runtime.
 import {createRequire} from 'node:module';
