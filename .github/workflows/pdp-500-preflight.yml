@@ -1,0 +1,69 @@
+name: PDP 500 desktop preflight
+on:
+  push:
+    branches: [codex/pdp-desktop-500px-20261022]
+permissions:
+  contents: read
+concurrency:
+  group: hidi-pdp-500-preflight
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=fixture;password=fixture;encrypt=true
+      API_URL: http://127.0.0.1:4107/v1
+      INTERNAL_API_URL: http://127.0.0.1:4107/v1
+      NEXT_PUBLIC_WALLET_ENABLED: 'true'
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-pdp-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-pdp-browsers
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Install dependencies and generate database client
+        run: pnpm install --frozen-lockfile && pnpm db:generate
+      - name: Customer and domain regressions
+        run: |
+          set -euo pipefail
+          pnpm test:customer-experience
+          git fetch origin 04447f465df48f3a9be5b6a5e2cde693dffa7823
+          node --test $(find tests -maxdepth 1 -name '*.test.mjs' ! -name 'image-sku-runtime-keys.test.mjs' -print)
+          pnpm --filter @hidi/api build
+      - name: Production web build
+        run: |
+          set -euo pipefail
+          export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER="$(jq -r '.CUSTOMER_AUTH_PROVIDER // .NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER // "hidi"' deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL=sms
+          for key in API_KEY AUTH_DOMAIN PROJECT_ID APP_ID MESSAGING_SENDER_ID STORAGE_BUCKET; do
+            value="$(jq -r --arg key "FIREBASE_$key" '.[$key] // ""' deploy/public-auth.json)"
+            export "NEXT_PUBLIC_FIREBASE_$key=$value"
+          done
+          export NEXT_PUBLIC_API_URL=https://hidiindia.com/api/store
+          pnpm --filter @hidi/web build
+          node --test tests/image-sku-runtime-keys.test.mjs
+      - name: Install Chromium Firefox and WebKit
+        run: |
+          npm install --prefix /tmp/hidi-pdp-browser --no-save playwright@1.62.1
+          node /tmp/hidi-pdp-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Full storefront browser regression including PDP-500
+        run: node tests/editorial-storefront.browser.mjs
+      - name: Admin workspace regression in all engines
+        run: |
+          set -euo pipefail
+          for engine in chromium firefox webkit; do HIDI_BROWSER_ENGINE="$engine" node tests/admin-workspace.browser.mjs; done
+      - name: Customer OTP and account lifecycle regression
+        run: node tests/auth-otp-resend.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pdp-500-preflight-${{ github.run_id }}
+          path: test-results
+          retention-days: 30
