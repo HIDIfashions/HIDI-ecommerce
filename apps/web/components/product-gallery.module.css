@@ -193,3 +193,33 @@
  :global(.product-page) .galleryLayout .gallery .activeImage { height: clamp(340px, 58svh, 522px) !important; }
  :global(.product-page) .galleryLayout .thumbnails { padding: 2px 12px; }
 }
+
+/* Desktop PDP image sizing: larger editorial product view with responsive safeguards.
+   500px is the target maximum, not a rigid fixed width. Tablet/mobile rules stay untouched. */
+@media (min-width: 1001px) {
+  .galleryLayout {
+    --pdp-desktop-image-width: 500px;
+    grid-template-columns: 64px minmax(0, var(--pdp-desktop-image-width));
+    justify-content: start;
+  }
+
+  .galleryLayout .gallery {
+    width: min(var(--pdp-desktop-image-width), 100%);
+    max-width: var(--pdp-desktop-image-width);
+    justify-self: start;
+  }
+
+  .galleryLayout .gallery .activeImage {
+    width: 100% !important;
+    max-width: var(--pdp-desktop-image-width);
+    height: min(
+      666.67px,
+      calc(100svh - var(--pdp-gallery-top, 150px) - 40px)
+    ) !important;
+    aspect-ratio: 3 / 4;
+  }
+
+  .galleryCounter {
+    display: none;
+  }
+}
