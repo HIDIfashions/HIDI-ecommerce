@@ -101,12 +101,20 @@ def patch(base,overlay,app):
     else:
         raise AssertionError('Admin photo asset references did not converge')
 
+    reused_assets={}
     for name,text in final.items():
         if text==original[name]:
             continue
         target=mapping.get(name,name)
-        if target!=name:
-            assert not (base/target).exists(),'Generated admin photo asset collides with retained asset'
+        if target!=name and (base/target).exists():
+            # A content-addressed target may already be present in the retained
+            # runtime (for example from an earlier safe admin-photo build).
+            # Reuse it only when the bytes are exactly the bytes we just derived.
+            expected=text.encode()
+            actual=(base/target).read_bytes()
+            assert actual==expected,'Generated admin photo asset hash collides with different retained content'
+            reused_assets[name]=target
+            continue
         write(overlay,target,text)
 
     # Standalone admin helpers are outside the Next static graph. Patch only
@@ -173,6 +181,7 @@ def patch(base,overlay,app):
         'passed':True,
         'allowedFiles':files,
         'renamedAssets':mapping,
+        'reusedRetainedAssets':reused_assets,
         'validatorChanges':counts,
         'standaloneAdminFilesChanged':raw_changes,
         'oldAssetsRetained':True,
