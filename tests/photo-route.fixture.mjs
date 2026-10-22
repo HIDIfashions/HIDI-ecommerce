@@ -33,6 +33,10 @@ export async function createPhotoRouteFixture(directory,{apiBase='http://127.0.0
    const file=state.files.get(key);if(!file)throw {statusCode:404};
    return {contentLength:file.size,contentType:file.type,metadata:file.metadata||{}};
   },
+  downloadToBuffer:async()=>{
+   const file=state.files.get(key);if(!file)throw {statusCode:404};
+   return readFile(file.path);
+  },
  })};
  const storage={uploadProductImageFile:async(key,photo,type)=>{
   const bytes=await readFile(photo.path);if(digest(bytes)!==photo.sha256)throw new Error('Fixture source integrity mismatch');
