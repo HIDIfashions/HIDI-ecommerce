@@ -8,6 +8,7 @@ import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {photoToDisk,downloadPhotoToDisk} from '../collection-speed/photo-disk.mjs';
 import {readStreamedPhotoForm,acquirePhotoUploadSlot} from '../../apps/web/lib/photo-upload-stream.mjs';
+import {readPhotoForm as readPhotoFormCompat,MAX_PHOTO_BYTES as COMPAT_MAX_PHOTO_BYTES,MAX_PHOTO_BODY_BYTES as COMPAT_MAX_PHOTO_BODY_BYTES} from '../../apps/web/lib/product-photo-upload.mjs';
 import {uploadDiskPhotoToBlob} from '../../apps/web/lib/photo-azure-stream.mjs';
 import {photoDigest} from '../../apps/web/lib/photo-digest.mjs';
 import {resizedImage,createImageStore} from '../collection-speed/images.mjs';
@@ -25,6 +26,13 @@ for(const size of [12*1024*1024,40*1024*1024,40*1024*1024+1,60*1024*1024,100*102
  async function* body(){yield Buffer.from('--'+boundary+'\r\nContent-Disposition: form-data; name="file"; filename="photo.jpg"\r\nContent-Type: image/jpeg\r\n\r\n');yield jpeg;let remaining=size-jpeg.length;const chunk=Buffer.alloc(65536);while(remaining){const n=Math.min(remaining,chunk.length);yield chunk.subarray(0,n);remaining-=n;}yield Buffer.from('\r\n--'+boundary+'--\r\n');}
  const req=new Request('https://hidiindia.com/upload',{method:'POST',headers:{'content-type':'multipart/form-data; boundary='+boundary},body:Readable.toWeb(Readable.from(body())),duplex:'half'});
  const form=await readStreamedPhotoForm(req,{directory});assert.equal(form.get('file').size,size);assert.equal((await stat(form.get('file').path)).size,size);await form.cleanup();assert.deepEqual(await readdir(directory),[]);
+});
+test('legacy product-photo entrypoint has no fixed byte cap and stays disk-backed',async t=>{
+ const directory=await temp(t),bytes=await fixture();
+ assert.equal(COMPAT_MAX_PHOTO_BYTES,Number.MAX_SAFE_INTEGER);assert.equal(COMPAT_MAX_PHOTO_BODY_BYTES,Number.MAX_SAFE_INTEGER);
+ const form=await readPhotoFormCompat(request(bytes),{directory});const file=form.get('file');
+ assert.equal(file.size,bytes.length);assert.equal(file.sha256,hash(bytes));assert.deepEqual(await readFile(file.path),bytes);
+ await form.cleanup();assert.deepEqual(await readdir(directory),[]);
 });
 test('chunked source download also permits a photo above 40 MiB and bounds display output',async t=>{
  const directory=await temp(t),jpeg=await fixture();const size=41*1024*1024;
