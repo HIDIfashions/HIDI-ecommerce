@@ -15,10 +15,11 @@ const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function createPhotoRouteFixture(directory,{apiBase='http://127.0.0.1:4219/v1'}={}){
  const temporary=join(directory,'temporary'),stored=join(directory,'stored');
  await mkdir(temporary,{recursive:true});await mkdir(stored,{recursive:true});
- const state={role:'OWNER',authStatus:200,reauthStatus:200,authChecks:0,metadataStatus:200,reads:0,writes:0,derivativeWrites:0,cleanupCalls:0,metadata:[],files:new Map()};
+ const state={role:'OWNER',authStatus:200,reauthStatus:200,authChecks:0,ticketStatus:200,ticketRequests:[],metadataStatus:200,reads:0,writes:0,derivativeWrites:0,cleanupCalls:0,metadata:[],files:new Map()};
  const send=async(url,options={})=>{
   if(!String(url).startsWith(apiBase+'/admin/'))throw new Error('Non-fixture API request blocked');
   if(String(url).endsWith('/admin/me')){state.authChecks++;const status=state.authChecks===1?state.authStatus:state.reauthStatus;return new Response(JSON.stringify(status===200?{admin:{id:'fixture-staff',role:state.role}}:{message:'Fixture session rejected'}),{status});}
+  if(String(url).endsWith('/images/ticket')){const payload=JSON.parse(options.body);state.ticketRequests.push(payload);return new Response(JSON.stringify(state.ticketStatus===200?{token:'fixture-eligibility-token'}:{message:'Fixture target rejected'}),{status:state.ticketStatus});}
   if(/\/images$/.test(String(url))){const payload=JSON.parse(options.body);if(state.metadataStatus===200)state.metadata.push(payload);return new Response(JSON.stringify(state.metadataStatus===200?{ok:true,images:state.metadata}:{message:'Fixture metadata unavailable'}),{status:state.metadataStatus});}
   throw new Error('Unexpected fixture API request: '+url);
  };
