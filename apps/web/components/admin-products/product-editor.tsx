@@ -222,11 +222,11 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
     });
   }
 
-  function upload(variant: ProductVariant, files: File[]) {
+  async function upload(variant: ProductVariant, files: File[]) {
     if (!product || pending || !files.length) return;
     const productId = product.id;
     const applyToColor = photoForColor;
-    void run(async () => {
+    await run(async () => {
       let failure: Error | null = null;
       let uploaded = 0;
       try {
@@ -322,7 +322,7 @@ export function ProductEditor({ productId, onUse, onDirtyChange, onBusyChange }:
   shoulder: measurementCm(v.shoulderMm),
   sleeveLength: measurementCm(v.sleeveLengthMm),
   garmentLength: measurementCm(v.garmentLengthMm),
-})}>Edit SKU</button><label className={styles.fileButton} aria-disabled={busy || pending}>Add photos<input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" disabled={busy || pending} onChange={e => { const files = Array.from(e.currentTarget.files ?? []); e.currentTarget.value = ""; if (files.length) upload(v, files); }} /></label></div></td></tr>)}
+})}>Edit SKU</button><label className={styles.fileButton} aria-disabled={busy || pending}>Add photos<input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" disabled={busy || pending} onChange={async e => { const input = e.currentTarget; const files = Array.from(input.files ?? []); if (!files.length) return; try { await upload(v, files); } finally { input.value = ""; } }} /></label></div></td></tr>)}
         </tbody></table></div>
         {editing && <form onSubmit={saveVariant} className={styles.variantEdit}><h3>Edit {editing.variant.color} / {editing.variant.size}</h3><p>SKU, colour, size and stock remain unchanged.</p><fieldset disabled={busy} className={styles.fieldset}><div className={styles.grid}>
           <label>Selling price ₹<input required inputMode="decimal" value={editing.price} onChange={e => setEditing({ ...editing, price: e.target.value })} /></label><label>MRP ₹<input required inputMode="decimal" value={editing.mrp} onChange={e => setEditing({ ...editing, mrp: e.target.value })} /></label><label>Weight (grams)<input inputMode="numeric" value={editing.weight} onChange={e => setEditing({ ...editing, weight: e.target.value })} /></label><label className={styles.inlineCheck}><input type="checkbox" checked={editing.active} onChange={e => setEditing({ ...editing, active: e.target.checked })} />SKU enabled</label>
