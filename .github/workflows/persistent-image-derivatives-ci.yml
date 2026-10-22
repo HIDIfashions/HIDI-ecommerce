@@ -1,7 +1,7 @@
 name: Persistent image derivatives CI
 on:
   push:
-    branches: [feature/persistent-image-derivatives-v2-20261021]
+    branches: [feature/persistent-image-derivatives-v2-20261021, 'fix/image-*']
     paths:
       - '.github/workflows/persistent-image-derivatives-ci.yml'
       - 'apps/web/lib/azure-blob.ts'
@@ -14,6 +14,7 @@ on:
       - 'deploy/image-optimization/streaming-photo.test.mjs'
       - 'deploy/image-optimization/verify-web-upload.py'
       - 'apps/web/app/api/admin/inventory/**/images/route.ts'
+      - 'apps/web/components/admin-products/product-editor.tsx'
       - 'apps/web/components/catalog-image.tsx'
       - 'deploy/collection-speed/images.*'
       - 'deploy/image-derivatives/**'
