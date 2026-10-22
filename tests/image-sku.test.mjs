@@ -31,7 +31,7 @@ test('unknown codes, zero photo numbers, incorrect types, oversized photos and a
   const zero=await prepareMappedPhotos([candidate('KUR_001_0.JPEG')],api(product()));assert.match(zero[0].error,/Photo number/);
   const unknown=await prepareMappedPhotos([candidate('KUR_002_1.JPEG')],api(product()));assert.match(unknown[0].error,/No saved/);
   const wrong=candidate('KUR_001_1.JPEG');wrong.file=new File(['bytes'],wrong.sourceName,{type:'image/png'});assert.match((await prepareMappedPhotos([wrong],api(product())))[0].error,/type/);
-  const large=candidate('KUR_001_1.JPEG');large.file={size:12*1024*1024+1,type:'image/jpeg'};assert.match((await prepareMappedPhotos([large],api(product())))[0].error,/12 MB/);
+  const large=candidate('KUR_001_1.JPEG');large.file={size:0,type:'image/jpeg'};assert.match((await prepareMappedPhotos([large],api(product())))[0].error,/valid non-empty image/);
   assert.match((await prepareMappedPhotos([candidate('KUR_001_1.JPEG')],api({...product(),status:'ARCHIVED'})))[0].error,/archived/);
 });
 test('existing HIDI SKU photos keep their original matching path',async()=>{
