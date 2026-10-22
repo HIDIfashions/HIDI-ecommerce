@@ -79,6 +79,11 @@ if(retainedServer.includes('function HidiDetails(product)')){
  const infoTree=ts.createSourceFile('retained-page.js',server,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);let infoNode;
  function findInfo(n){if(ts.isVariableDeclaration(n)&&n.name.getText(infoTree)==='HidiInfo'){assert(!infoNode);infoNode=n.initializer;return;}ts.forEachChild(n,findInfo);}findInfo(infoTree);assert(infoNode);
  server=server.slice(0,infoNode.getStart(infoTree))+infoExpression+server.slice(infoNode.end);
+ // The approved compact PDP no longer renders the composition/includes sentence above price.
+ // Remove exactly that retained JSX expression and leave metadata/schema/product facts untouched.
+ const displayTree=ts.createSourceFile('retained-display.js',server,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);let includesNode;
+ function findIncludes(n){if(ts.isBinaryExpression(n)&&n.operatorToken.kind===ts.SyntaxKind.AmpersandAmpersandToken&&n.getText(displayTree).includes('className:"hidi-pdp-includes"')){assert(!includesNode,'One retained includes display required');includesNode=n;return;}ts.forEachChild(n,findIncludes);}findIncludes(displayTree);assert(includesNode,'Retained includes display required');
+ server=server.slice(0,includesNode.getStart(displayTree))+'null'+server.slice(includesNode.end);
 
  cssModule(resolve('apps/web/app/products/[slug]/product-page.module.css'));
  css.push('.hidi-pdp-includes{font-size:14px;color:#75695f;margin:0 0 14px}.hidi-pdp-services{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;padding:12px 0;border-bottom:1px solid #dfd3c6}.hidi-pdp-services a{color:#591d20}.hidi-pdp-description{border-block:1px solid #dfd3c6;padding:14px 0;font-size:14px;line-height:1.7}.hidi-pdp-description summary{cursor:pointer;font-weight:600}');
@@ -89,7 +94,7 @@ if(retainedServer.includes('function HidiDetails(product)')){
  const files=stylesOnly?{[retainedServerName]:server,[newCssName]:cssText}:{[retainedServerName]:server,[newClientName]:client,[newCssName]:cssText,[manifestName]:manifest.split(urlName(clientName)).join(urlName(newClientName))};
  if(stylesOnly)assert.equal(server,retainedServer.replace(oldUrl,newUrl),'A style-only refresh must preserve all product JavaScript');
  for(const [name,text] of Object.entries(files)){const file=join(overlay,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);}
- mkdirSync('evidence/product-page-release',{recursive:true});writeFileSync('evidence/product-page-release/patch.json',JSON.stringify({passed:true,kind:stylesOnly?'product-style-refresh':'isolated-component-refresh',allowedFiles:Object.keys(files).sort(),retainedClientChunk:clientName,newClientChunk:newClientName,oldUrl,newUrl,pageInfoInitializerHash:sha(infoExpression),oldAssetsRetained:true,sourceSha:process.env.GITHUB_SHA||null},null,2));exit(0);
+ mkdirSync('evidence/product-page-release',{recursive:true});writeFileSync('evidence/product-page-release/patch.json',JSON.stringify({passed:true,kind:stylesOnly?'product-style-refresh':'isolated-component-refresh',allowedFiles:Object.keys(files).sort(),retainedClientChunk:clientName,newClientChunk:newClientName,oldUrl,newUrl,pageInfoInitializerHash:sha(infoExpression),approvedIncludesRemoval:true,oldAssetsRetained:true,sourceSha:process.env.GITHUB_SHA||null},null,2));exit(0);
 }
 const serverName='apps/web/.next/server/app/products/[slug]/page.js';
 let server=readFileSync(join(base,serverName),'utf8');
