@@ -40,7 +40,8 @@ def patch(base,overlay,app):
             'apiUnchanged':True,
             'databaseSchemaUnchanged':True,
             'legacyTicketIntegerCapacityBytes':2147483647,
-            'activeUploadTicketRequired':False,
+            'ticketEligibilityOnly':True,
+            'ticketByteAccountingDecoupled':True,
         }
 
     assert app=='web'
