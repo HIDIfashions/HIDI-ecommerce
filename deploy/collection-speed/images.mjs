@@ -8,7 +8,6 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 export const IMAGE_VERSION = '3';
-export const SOURCE_LIMIT = 40 * 1024 * 1024;
 export const PIXEL_LIMIT = 100_000_000;
 const WIDTHS = new Set([16,32,48,64,96,128,256,384,640,750,828,1080,1200,1920,2048,3840]);
 export const PERSISTENT_DERIVATIVE_VERSION = 'v1';
@@ -92,34 +91,10 @@ async function atomic(file, bytes) {
   finally { await unlink(temp).catch(() => {}); }
 }
 
-/** Enforce the byte limit even when the upstream omits/lies about Content-Length. */
-export async function boundedBody(response) {
-  const declared = response.headers.get('content-length');
-  const type = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-  if (!response.ok || !response.body || (type && !TYPES.has(type)) ||
-      (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > SOURCE_LIMIT))) {
-    await response.body?.cancel().catch(() => {});
-    throw new Error('Product media unavailable or exceeds the 40 MiB limit');
-  }
-  const reader = response.body.getReader();
-  const parts = []; let count = 0;
-  try {
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      count += value.byteLength;
-      if (count > SOURCE_LIMIT) throw new Error('Product media exceeds the 40 MiB limit');
-      parts.push(value);
-    }
-  } finally { await reader.cancel().catch(() => {}); }
-  if (!count) throw new Error('Empty product photo');
-  return Buffer.concat(parts, count);
-}
-
 /** Resize without cropping, reorientation errors, upscaling, or original fallback. */
 export async function resizedImage(sharp, input, width, format, quality) {
   if (Buffer.isBuffer(input)) {
-    if (!input.length || input.length > SOURCE_LIMIT) throw new Error('Invalid in-memory photo size');
+    if (!input.length) throw new Error('Invalid in-memory photo size');
   } else if (typeof input === 'string') {
     const file = await stat(input); if (!file.isFile() || file.size < 1) throw new Error('Invalid product photo file');
   } else throw new Error('Invalid product photo input');
@@ -181,7 +156,7 @@ export function createImageStore({ sharp, fetchSource, cacheDir = join(tmpdir(),
     return single('master:' + key, async () => {
       const prior = await existing(join(cacheDir,key)); if (prior) return prior;
       // Fetch INSIDE the serial queue: concurrent visitors cannot accumulate many
-      // 40 MB originals while they wait for a decoder, including zoom requests.
+      // large originals while they wait for a decoder, including zoom requests.
       const original = await fetchSource(source);
       try {
         const bytes = await resizedImage(sharp,original?.path || original,width,'webp',92);
