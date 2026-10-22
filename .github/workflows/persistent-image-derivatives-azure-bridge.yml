@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
-      CANDIDATE_SHA: bf27412d5c1d0f361526022e1e81c36da304b42e
+      CANDIDATE_SHA: 4cd00f34fef2ab3f8ec213be021fc4fadc1629ea
       DATABASE_URL: 'sqlserver://localhost:1433;database=fixture;user=build;password=build;encrypt=true'
       API_URL: http://127.0.0.1:4100/v1
       NEXT_TELEMETRY_DISABLED: '1'
