@@ -213,7 +213,7 @@
     width: 100% !important;
     max-width: var(--pdp-desktop-image-width);
     height: min(
-      calc(var(--pdp-desktop-image-width) * 4 / 3),
+      666.67px,
       calc(100svh - var(--pdp-gallery-top, 150px) - 40px)
     ) !important;
     aspect-ratio: 3 / 4;
