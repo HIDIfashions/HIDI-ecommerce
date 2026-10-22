@@ -116,9 +116,19 @@ test('pre-storage reauthorization failure writes nothing and deterministic metad
  await h.assertClean();
 
  h.state.reauthStatus=200;
+ h.state.ticketStatus=403;
+ const targetDenied=await h.route.POST(request(bytes),context);
+ assert.equal(targetDenied.status,403);
+ assert.deepEqual(h.state.ticketRequests.at(-1),{mimeType:'image/jpeg',sizeBytes:1});
+ assert.equal(h.state.writes,0);
+ assert.equal(h.state.derivativeWrites,0);
+ await h.assertClean();
+
+ h.state.ticketStatus=200;
  h.state.metadataStatus=503;
  const ambiguous=await h.route.POST(request(bytes),context);
  assert.equal(ambiguous.status,503);
+ assert.deepEqual(h.state.ticketRequests.at(-1),{mimeType:'image/jpeg',sizeBytes:1});
  assert.equal(h.state.metadata.length,0);
  assert.equal(h.state.writes,1);
  assert.equal(h.state.derivativeWrites,7);
