@@ -193,3 +193,26 @@
  :global(.product-page) .galleryLayout .gallery .activeImage { height: clamp(340px, 58svh, 522px) !important; }
  :global(.product-page) .galleryLayout .thumbnails { padding: 2px 12px; }
 }
+
+/* Desktop PDP image sizing: keep tablet/mobile layout unchanged. */
+@media (min-width: 1001px) {
+  .galleryLayout {
+    grid-template-columns: 64px minmax(0, 500px);
+    justify-content: start;
+  }
+
+  .galleryLayout .gallery {
+    width: min(500px, 100%);
+    justify-self: start;
+  }
+
+  .galleryLayout .gallery .activeImage {
+    width: min(500px, 100%) !important;
+    height: auto !important;
+    aspect-ratio: 3 / 4;
+  }
+
+  .galleryCounter {
+    display: none;
+  }
+}
