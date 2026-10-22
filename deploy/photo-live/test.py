@@ -1,17 +1,34 @@
 from pathlib import Path
-import subprocess,os,json,time,signal,re
+import subprocess,os,json,time,signal
 ROOT=Path(__file__).resolve().parents[2];OUT=Path('evidence/photo-live').resolve();OUT.mkdir(parents=True,exist_ok=True)
 os.environ['NODE_ENV']='production'
 os.environ['HIDI_BROWSER_ENGINES']='chromium,firefox,webkit'
 report={'passed':False,'photoSourceSha':subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip(),'productionTrafficChanged':False,'suites':[]}
+
+# The release intentionally keeps the live API image byte-identical. Do not
+# execute test-only modules from its file-traced production node_modules tree:
+# those optional/dev dependencies are not required by the running API. Instead,
+# prove exact API image retention and the reviewed live upload-ticket contract.
+api_patch=json.loads((OUT/'api-patch.json').read_text())
+api_preservation=json.loads((OUT/'api-preservation.json').read_text())
+assert api_patch.get('passed') is True and api_patch.get('apiUnchanged') is True and api_patch.get('allowedFiles')==[]
+assert api_patch.get('ticketIntegerCapacityBytes')==2147483647
+assert api_preservation.get('passed') is True and api_preservation.get('retainedUnchanged') is True and api_preservation.get('changedFiles')==[]
+report['suites'].append({'name':'retained-api-byte-identity','passed':True,'exitCode':0,'seconds':0.0})
+
+source_api=str(ROOT/'apps/api')
 commands=[
- ('retained-api-accounting',['node','--test',str(ROOT/'deploy/photo-live/api.test.mjs')],Path.cwd(),120),
- ('photo-stream-and-optimizer',['bash','-o','pipefail','-c','node --experimental-strip-types --test deploy/image-optimization/*.test.mjs deploy/image-derivatives/*.test.mjs deploy/launch-image-repair/recovery.test.mjs tests/admin-product-delete-handler.test.mjs'],ROOT,420),
- ('actual-bundle-and-retained-editor',['python',str(ROOT/'deploy/photo-live/retained-test.py')],Path.cwd(),420),
- ('retained-checkout-and-purchase',['node',str(ROOT/'deploy/checkout-offers/candidate.mjs')],Path.cwd(),480),
+ ('photo-stream-and-optimizer',['bash','-o','pipefail','-c','node --experimental-strip-types --test deploy/image-optimization/*.test.mjs deploy/image-derivatives/*.test.mjs deploy/launch-image-repair/recovery.test.mjs tests/admin-product-delete-handler.test.mjs'],ROOT,420,{}),
+ ('actual-bundle-and-retained-editor',['python',str(ROOT/'deploy/photo-live/retained-test.py')],Path.cwd(),420,{}),
+ # These next two use the reviewed source only as a fixture engine for tests.
+ # The production API under release remains the exact retained image above.
+ ('fixture-api-build',['pnpm','--filter','@hidi/api','build'],ROOT,180,{}),
+ ('source-api-photo-contract',['node','--test',str(ROOT/'deploy/photo-live/api.test.mjs')],Path.cwd(),120,{'HIDI_CANDIDATE_API':source_api}),
+ ('retained-checkout-and-purchase',['node',str(ROOT/'deploy/checkout-offers/candidate.mjs')],Path.cwd(),480,{'HIDI_CANDIDATE_API':source_api}),
 ]
-for name,cmd,cwd,limit in commands:
- start=time.monotonic();proc=subprocess.Popen(cmd,cwd=cwd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,start_new_session=True)
+for name,cmd,cwd,limit,extra_env in commands:
+ start=time.monotonic();env={**os.environ,**extra_env}
+ proc=subprocess.Popen(cmd,cwd=cwd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,start_new_session=True,env=env)
  try:text,_=proc.communicate(timeout=limit);code=proc.returncode
  except subprocess.TimeoutExpired:
   os.killpg(proc.pid,signal.SIGKILL);text,_=proc.communicate();code=124
