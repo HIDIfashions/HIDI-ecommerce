@@ -17,7 +17,7 @@ P,E=r.P,r.E;save,read=r.save,r.read
 patcher=load('photo_live_patch',HERE/'patch.py')
 def source_sha():return subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
 def capture():
- r.capture();save('photo-scope.json',{'sourceSha':os.environ['GITHUB_SHA'],'photoSourceSha':source_sha(),'scope':'Retained-runtime photo-only overlay','sqlSchemaChanged':False,'ticketIntegerCapacityBytes':2147483647})
+ r.capture();save('photo-scope.json',{'sourceSha':os.environ['GITHUB_SHA'],'photoSourceSha':source_sha(),'scope':'Retained-runtime photo-only overlay','sqlSchemaChanged':False,'activeUploadTicketRequired':False,'legacyTicketIntegerCapacityBytes':2147483647})
  save('arm-state-readers.json',{'passed':True,'readers':state_readers,'snapshotRulesUnchanged':True,'conditionalWriteRulesUnchanged':True})
  r.guard.write_private('offers-before.json',json.loads(r.cloud.get('/api/hidi/offers')))
 def compose():
