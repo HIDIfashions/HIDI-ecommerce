@@ -24,7 +24,7 @@ function candidate(file: File, sourceName: string, variants: InventoryRowLite[])
   let error: string | null = null;
   if (!IMAGE_TYPES[ext]) error = "Unsupported image type.";
   else if (file.size < 1) error = "Image is empty.";
-  else if (!Number.isSafeInteger(file.size)) error = "Invalid image size.";
+
   else if (!matched) error = "Filename does not begin with a known SKU followed by _.";
   return { file, sourceName, sku: matched?.sku ?? null, variantId: matched?.variantId ?? null, error };
 }
