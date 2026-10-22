@@ -65,7 +65,7 @@ export async function prepareMappedPhotos(candidates, api = request) {
     let target, error = null;
     try {
       if (!parsed.mime) throw new Error('Use JPEG, JPG, WebP, PNG or AVIF images.');
-      if (item.file.size < 1 || item.file.size > 12 * 1024 * 1024) throw new Error('Each image must be between 1 byte and 12 MB.');
+      if (!Number.isSafeInteger(item.file.size) || item.file.size < 1) throw new Error('Choose a valid non-empty image.');
       if (item.file.type && item.file.type !== parsed.mime) throw new Error('Image type and filename extension do not match.');
       if (parsed.sequence < 1 || parsed.sequence > 9999) throw new Error('Photo number must be 1–9999. Example: KUR_001_1.jpeg.');
       if (!products.has(binding.productId)) products.set(binding.productId, await api('/api/admin/products/' + encodeURIComponent(binding.productId)));
