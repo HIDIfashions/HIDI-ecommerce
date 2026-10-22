@@ -31,7 +31,7 @@ export async function readProductPackage(file,onProgress=()=>{}){
     const extension=name.split('.').at(-1).toLowerCase(),type=types[extension],workbook=['xlsx','csv'].includes(extension);
     if(/(?:^|\/)(?:readme|instructions)(?:\.[a-z]+)?$/i.test(name)){requireValue(size<=64*1024,'Package instructions are too large.');continue;}
     requireValue(type||workbook,'Unsupported package file: '+name+'. Use JPEG, PNG, WebP or AVIF photos.');
-    requireValue(size>0&&size<=(workbook?64*1024*1024:MAX_PHOTO_BYTES),'File is empty or too large: '+name+'. Photos must be at most 12 MB each.');
+    requireValue(size>0&&size<=(workbook?64*1024*1024:MAX_PHOTO_BYTES),'File is empty or too large: '+name+'. Photos have no separate byte cap; workbook and total ZIP safeguards still apply.');
     total+=size;requireValue(total<=MAX_PACKAGE_BYTES,'Expanded package exceeds 512 MB. Split it into smaller packages.');
     entries.push({path:name,name:name.split('/').at(-1),type:type||(extension==='csv'?'text/csv':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),workbook,flags,method,crc,compressed,size,offset});
   }
