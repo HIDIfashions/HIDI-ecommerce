@@ -78,8 +78,13 @@ def patch(base,overlay,app):
         re.compile(r'(?P<size>[A-Za-z_$][\w$]*\.size)\s*<\s*1\s*\|\|\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*\s*<\s*(?P=size)'),
         re.compile(r'1\s*>\s*(?P<size>[A-Za-z_$][\w$]*\.size)\s*\|\|\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*\s*<\s*(?P=size)'),
     ]
+    # Browser File.size is browser-owned metadata. Client validation only rejects
+    # empty files; exact received-byte integrity and representability are enforced
+    # again by the disk-backed server parser.
+    browser_safe_integer=re.compile(r'!Number\\.isSafeInteger\\((?P<size>[A-Za-z_$][\\w$]*\\.size)\\)\\s*\\|\\|\\s*(?P=size)\\s*<\\s*1')
     touched=set()
     counts['symbolic']=0
+    counts['safeInteger']=0
     for name,text in original.items():
         changed,n1=forward_cap.subn(lambda m:m[1]+' > 9007199254740991',text)
         changed,n2=reverse_cap.subn(lambda m:'9007199254740991 < '+m[1],changed)
@@ -89,6 +94,9 @@ def patch(base,overlay,app):
             for pattern in symbolic_caps:
                 changed,n=pattern.subn(lambda m:'!Number.isSafeInteger('+m['size']+')||'+m['size']+'<1',changed)
                 counts['symbolic']+=n
+        if photo_text:
+            changed,n3=browser_safe_integer.subn(lambda m:m['size']+'<1',changed)
+            counts['safeInteger']+=n3
         if n1+n2 or photo_text or changed!=text:touched.add(name)
         for old_label,new_label in labels.items():
             counts['labels']+=changed.count(old_label)
