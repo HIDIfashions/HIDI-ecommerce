@@ -51,10 +51,10 @@ def seal():
  browser=json.loads((ROOT/'test-results/photo-web-upload/results.json').read_text())
  assert len(browser['results'])==24 and all(x['status']=='PASS' for x in browser['results'])
  assert {x['engine'] for x in browser['results']}=={'chromium','firefox','webkit'}
- for name in ['candidate/report.json','purchase-regression/report.json']:
-  p=Path('evidence/checkout-offers')/name;data=json.loads(p.read_text());assert data.get('passed') is True,name
-  target=E/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,target)
-  manifest[name]=hashlib.sha256(target.read_bytes()).hexdigest()
+ # The photo-only overlay must preserve all commerce/account bytes exactly.
+ web=read('web-preservation.json');assert web.get('passed') is True
+ protected=('checkout','cart','payment','order','offer','account','purchase')
+ assert not [name for name in web.get('changedFiles',[]) if any(part in name.lower() for part in protected)], 'Commerce/account files changed in photo-only candidate'
  save('sealed.json',{'passed':True,'manifest':manifest,'images':{'api':read('api-preservation.json')['candidateImageId'],'web':r.guard.image_id(r.tag('web'))},'sourceSha':os.environ['GITHUB_SHA'],'photoSourceSha':source_sha()})
 def publish():
  r.fresh_source();seal();sealed=read('sealed.json');result={}
