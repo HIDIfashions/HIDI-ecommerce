@@ -16,7 +16,7 @@ assert api_patch.get('ticketIntegerCapacityBytes')==2147483647
 assert api_preservation.get('passed') is True and api_preservation.get('retainedUnchanged') is True and api_preservation.get('changedFiles')==[]
 report['suites'].append({'name':'retained-api-byte-identity','passed':True,'exitCode':0,'seconds':0.0})
 
-source_api=str(ROOT/'apps/api')
+source_api=str(ROOT)
 commands=[
  ('photo-stream-and-optimizer',['bash','-o','pipefail','-c','node --experimental-strip-types --test deploy/image-optimization/*.test.mjs deploy/image-derivatives/*.test.mjs deploy/launch-image-repair/recovery.test.mjs tests/admin-product-delete-handler.test.mjs'],ROOT,420,{}),
  ('actual-bundle-and-retained-editor',['python',str(ROOT/'deploy/photo-live/retained-test.py')],Path.cwd(),420,{}),
