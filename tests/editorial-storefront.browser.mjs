@@ -188,6 +188,77 @@ try{
         if(width===390||width===1440)await page.screenshot({timeout:30000,path:resolve(output,`${engine}-home-${width}.png`),fullPage:true});
       }
     });
+    await scenario(browser,engine,'PDP-500','Desktop gallery targets 500px safely while tablet and mobile remain unchanged',async page=>{
+      const cases=[
+        {width:1024,height:768,desktop:true},
+        {width:1152,height:864,desktop:true},
+        {width:1280,height:720,desktop:true},
+        {width:1366,height:768,desktop:true},
+        {width:1440,height:900,desktop:true},
+        {width:1536,height:864,desktop:true},
+        {width:1920,height:1080,desktop:true},
+        {width:2560,height:1440,desktop:true},
+        {width:1000,height:800,desktop:false},
+        {width:960,height:720,desktop:false},
+        {width:768,height:1024,desktop:false},
+        {width:430,height:932,mobile:true},
+        {width:390,height:844,mobile:true},
+        {width:375,height:812,mobile:true},
+      ];
+      const gallery=page.locator('[class*="galleryLayout"]').first(),main=page.locator('.pdp-gallery').first(),active=main.locator('[class*="activeImage"]').first(),counter=active.locator('[class*="galleryCounter"]').first(),thumbs=page.getByRole('group',{name:'Product photographs'});
+      for(const item of cases){
+        await page.setViewportSize({width:item.width,height:item.height});
+        await page.evaluate(()=>scrollTo(0,0));
+        await until(()=>active.isVisible(),`active PDP image at ${item.width}x${item.height}`);
+        const state=await page.evaluate(({desktop,mobile})=>{
+          const layout=document.querySelector('[class*="galleryLayout"]'),main=document.querySelector('.pdp-gallery'),active=main?.querySelector('[class*="activeImage"]'),counter=active?.querySelector('[class*="galleryCounter"]'),img=active?.querySelector('img'),thumbs=document.querySelector('[aria-label="Product photographs"]');
+          const box=el=>el?el.getBoundingClientRect():null;
+          return {
+            desktop,mobile,
+            viewport:{width:innerWidth,height:innerHeight},
+            scrollWidth:document.documentElement.scrollWidth,
+            layout:box(layout),main:box(main),active:box(active),thumbs:box(thumbs),
+            counterDisplay:counter?getComputedStyle(counter).display:null,
+            activePosition:active?getComputedStyle(active).position:null,
+            imageObjectFit:img?getComputedStyle(img).objectFit:null,
+            layoutColumns:layout?getComputedStyle(layout).gridTemplateColumns:null,
+            layoutJustify:layout?getComputedStyle(layout).justifyContent:null,
+            galleryPosition:layout?getComputedStyle(layout).position:null,
+            desktopVar:layout?getComputedStyle(layout).getPropertyValue('--pdp-desktop-image-width').trim():'',
+          };
+        },{desktop:Boolean(item.desktop),mobile:Boolean(item.mobile)});
+        assert(state.scrollWidth<=state.viewport.width+1,`PDP horizontal overflow at ${item.width}x${item.height}: ${JSON.stringify(state)}`);
+        assert.equal(state.imageObjectFit,'contain',`Product image must remain uncropped at ${item.width}px`);
+        if(item.desktop){
+          assert.equal(state.desktopVar,'500px',`Desktop target missing at ${item.width}px`);
+          assert.equal(state.layoutJustify,'start',`Desktop gallery must align left at ${item.width}px`);
+          assert.equal(state.counterDisplay,'none',`Desktop image counter must be hidden at ${item.width}px`);
+          assert(state.active.width<=500.5,`Desktop image exceeded 500px at ${item.width}px: ${state.active.width}`);
+          assert(state.main.width<=500.5,`Desktop gallery exceeded 500px at ${item.width}px: ${state.main.width}`);
+          assert.equal(state.galleryPosition,'sticky',`Desktop gallery lost sticky behavior at ${item.width}px`);
+          assert(state.active.height<=item.height+1,`Desktop image frame exceeded viewport height at ${item.width}x${item.height}`);
+        } else {
+          assert.equal(state.desktopVar,'',`Desktop 500px rule leaked below 1001px at ${item.width}px`);
+          assert.notEqual(state.counterDisplay,'none',`Existing tablet/mobile counter behavior changed at ${item.width}px`);
+        }
+        if(item.mobile){
+          assert(Math.abs(state.main.width-state.layout.width)<=1,`Mobile gallery width changed at ${item.width}px`);
+          assert(state.thumbs.width>0,`Mobile thumbnails disappeared at ${item.width}px`);
+        }
+      }
+      await page.setViewportSize({width:1440,height:900});
+      const buttons=thumbs.getByRole('button');
+      assert.equal(await buttons.count(),2,'Fixture must expose both PDP thumbnails');
+      await buttons.nth(1).click();
+      assert.equal(await buttons.nth(1).getAttribute('aria-pressed'),'true','Second thumbnail must become active');
+      await until(()=>main.locator('[class*="activeImage"]').getAttribute('aria-label').then(v=>/Garment detail/.test(v||'')),'second PDP image active');
+      await main.locator('[class*="activeImage"]').click();
+      const zoom=page.getByRole('dialog',{name:/detailed image viewer/});
+      await zoom.waitFor();
+      await page.getByRole('button',{name:'Close image viewer'}).click();
+      await zoom.waitFor({state:'hidden'});
+    },{startPath:'/products/ira-beige-office-kurta-set'});
+
     await scenario(browser,engine,'HDR-01','Transparent header, scroll blur and home-logo return to top',async page=>{
       const header=page.locator('.site-header');assert.equal(await header.getAttribute('data-home'),'true');assert.equal(await header.evaluate(el=>getComputedStyle(el,'::before').backdropFilter),'none');
       await page.evaluate(()=>scrollTo(0,900));await until(()=>header.getAttribute('data-scrolled').then(v=>v==='true'),'scrolled header');assert.match(await header.evaluate(el=>getComputedStyle(el,'::before').backdropFilter),/blur\(12px\)/);
