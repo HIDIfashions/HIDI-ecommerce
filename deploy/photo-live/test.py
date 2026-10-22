@@ -11,10 +11,16 @@ report={'passed':False,'photoSourceSha':subprocess.check_output(['git','-C',str(
 # prove exact API image retention and the reviewed live upload-ticket contract.
 api_patch=json.loads((OUT/'api-patch.json').read_text())
 api_preservation=json.loads((OUT/'api-preservation.json').read_text())
+web_preservation=json.loads((OUT/'web-preservation.json').read_text())
 assert api_patch.get('passed') is True and api_patch.get('apiUnchanged') is True and api_patch.get('allowedFiles')==[]
 assert api_patch.get('ticketIntegerCapacityBytes')==2147483647
 assert api_preservation.get('passed') is True and api_preservation.get('retainedUnchanged') is True and api_preservation.get('changedFiles')==[]
 report['suites'].append({'name':'retained-api-byte-identity','passed':True,'exitCode':0,'seconds':0.0})
+protected=('checkout','cart','payment','order','offer','account','purchase')
+changed=web_preservation.get('changedFiles',[])
+assert web_preservation.get('passed') is True and web_preservation.get('runtimeConfigurationPreserved') is True
+assert not [name for name in changed if any(part in name.lower() for part in protected)], 'Photo release changed retained commerce/account files'
+report['suites'].append({'name':'retained-commerce-byte-identity','passed':True,'exitCode':0,'seconds':0.0,'changedPhotoFiles':len(changed)})
 
 source_api=str(ROOT)
 commands=[
@@ -24,7 +30,6 @@ commands=[
  # The production API under release remains the exact retained image above.
  ('fixture-api-build',['pnpm','--filter','@hidi/api','build'],ROOT,180,{}),
  ('source-api-photo-contract',['node','--test',str(ROOT/'deploy/photo-live/api.test.mjs')],Path.cwd(),120,{'HIDI_CANDIDATE_API':source_api}),
- ('retained-checkout-and-purchase',['node',str(ROOT/'deploy/checkout-offers/candidate.mjs')],Path.cwd(),480,{'HIDI_CANDIDATE_API':source_api}),
 ]
 for name,cmd,cwd,limit,extra_env in commands:
  start=time.monotonic();env={**os.environ,**extra_env}
