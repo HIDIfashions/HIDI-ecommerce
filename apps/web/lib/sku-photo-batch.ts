@@ -28,7 +28,7 @@ export function validatePhotoSelection(files: readonly File[]): void {
     if (!ALLOWED.has(file.type)) {
       throw new Error(`${file.name}: use JPEG, PNG, WebP or AVIF. Nothing was uploaded.`);
     }
-    if (!Number.isSafeInteger(file.size) || file.size < 1) {
+    if (file.size < 1) {
       throw new Error(`${file.name}: choose a valid non-empty photo. Nothing was uploaded.`);
     }
   }
