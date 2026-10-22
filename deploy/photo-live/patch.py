@@ -66,15 +66,22 @@ def patch(base,overlay,app):
         'up to 12 MB each':'without a fixed photo MB cap',
         'max 12 MB each':'no fixed photo MB cap',
     }
-    pattern=re.compile(r'([A-Za-z_$][\w$]*\.size)\s*>\s*12582912(?=[^\n]{0,160}(?:12 MB|Image exceeds))')
+    forward_cap=re.compile(r'([A-Za-z_$][\\w$]*\\.size)\\s*>\\s*12582912')
+    reverse_cap=re.compile(r'12582912\\s*<\\s*([A-Za-z_$][\\w$]*\\.size)')
+    touched=set()
     for name,text in original.items():
-        changed,n=pattern.subn(lambda m:m[1]+' > 9007199254740991',text)
-        counts['numeric']+=n
+        changed,n1=forward_cap.subn(lambda m:m[1]+' > 9007199254740991',text)
+        changed,n2=reverse_cap.subn(lambda m:'9007199254740991 < '+m[1],changed)
+        counts['numeric']+=n1+n2
+        if n1+n2 or any(label in text for label in labels):touched.add(name)
         for old_label,new_label in labels.items():
             counts['labels']+=changed.count(old_label)
             changed=changed.replace(old_label,new_label)
         semantic[name]=changed
     assert counts['numeric']>=3 and counts['labels']>=4,'Retained admin photo validators/labels changed: explicit review required'
+    for name in touched:
+        assert '12582912' not in semantic[name], 'A former 12 MiB photo guard remains in '+name
+        assert '12 MB' not in semantic[name], 'A former 12 MiB photo label remains in '+name
 
     # Next static JS is content-addressed. Rename every changed chunk and update
     # references until the hash mapping converges instead of mutating an immutable
@@ -183,6 +190,7 @@ def patch(base,overlay,app):
         'renamedAssets':mapping,
         'reusedRetainedAssets':reused_assets,
         'validatorChanges':counts,
+        'photoValidationBundlesReviewed':sorted(touched),
         'standaloneAdminFilesChanged':raw_changes,
         'oldAssetsRetained':True,
         'globalProxyLimitsUnchanged':True,
