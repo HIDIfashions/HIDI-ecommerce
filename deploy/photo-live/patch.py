@@ -82,7 +82,9 @@ def patch(base,overlay,app):
     # Browser File.size is browser-owned metadata. Client validation only rejects
     # empty files; exact received-byte integrity and representability are enforced
     # again by the disk-backed server parser.
-    browser_safe_integer=re.compile(r'!Number\\.isSafeInteger\\((?P<size>[A-Za-z_$][\\w$]*\\.size)\\)\\s*\\|\\|\\s*(?P=size)\\s*<\\s*1')
+    browser_safe_integer=re.compile(r'!Number\.isSafeInteger\((?P<size>[A-Za-z_$][\w$]*\.size)\)\s*\|\|\s*(?P=size)\s*<\s*1')
+    probe=browser_safe_integer.fullmatch('!Number.isSafeInteger(file.size)||file.size<1')
+    assert probe and probe['size']=='file.size','Capless browser-validator rewrite contract is invalid'
     touched=set()
     counts['symbolic']=0
     counts['safeInteger']=0
