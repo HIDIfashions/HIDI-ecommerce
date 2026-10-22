@@ -166,7 +166,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <WishlistButton slug={product.slug} compact />
         </div>
         {reviews.reviewCount > 0 && <a className={styles.rating} href="#reviews" aria-label={`${reviews.averageRating.toFixed(1)} out of 5, ${reviews.reviewCount} reviews`}><span aria-hidden="true">★</span> {reviews.averageRating.toFixed(1)} <span>({reviews.reviewCount} reviews)</span></a>}
-        {information.includes && <p className={styles.includes}>{information.includes}</p>}
         <ProductPurchaseSummary key={product.id} product={product} />
         <AddToCart key={product.id} product={product} />
         <div className={styles.services}><span>Free shipping</span><span>7-day returns on eligible items</span><Link href="/returns">View policy</Link></div>
