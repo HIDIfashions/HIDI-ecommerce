@@ -169,6 +169,28 @@ jobs:
         working-directory: candidate-source
         run: env GITHUB_SHA="$HIDI_PRODUCTION_BASELINE_SHA" python deploy/photo-live/release.py compose
 
+      - name: Diagnose composed admin photo validators
+        working-directory: candidate-source
+        run: |
+          python - <<'PY'
+          import os,pathlib,re
+          root=pathlib.Path(os.environ['HIDI_CANDIDATE_RUNTIME'])
+          needles=['choose a valid non-empty photo','Nothing was uploaded','12582912','9007199254740991']
+          for p in root.rglob('*.js'):
+              try:text=p.read_text()
+              except Exception:continue
+              if not any(n in text for n in needles):continue
+              print('FILE',p.relative_to(root))
+              for needle in needles:
+                  start=0
+                  while True:
+                      i=text.find(needle,start)
+                      if i<0:break
+                      print('NEEDLE',needle,'AT',i)
+                      print(text[max(0,i-700):i+900].replace('\\n',' '))
+                      start=i+len(needle)
+          PY
+
       - name: Run complete retained commerce and browser regression
         working-directory: candidate-source
         run: env GITHUB_SHA="$HIDI_PRODUCTION_BASELINE_SHA" python deploy/photo-live/test.py
