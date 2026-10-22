@@ -56,11 +56,14 @@ export async function probe(base, output) {
                 return {text:e.textContent.trim(),href:e.getAttribute('href'),rect:r,
                   tappable:hit===e||e.contains(hit),cover:hit?.className};
               });
+              const brandCopy=footer.querySelector('.footer-brand > .muted');
               return {footer:rect(footer),bar:visibleBar?rect(visibleBar):null,links,
                 padding:getComputedStyle(footer).paddingBottom,
+                brandCopyVisible:!!brandCopy&&getComputedStyle(brandCopy).display!=='none',
                 pageHasPurchaseBar:!!bar,documentWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth};
             });
             assert(measurement.documentWidth<=measurement.viewportWidth+1,'No horizontal overflow');
+            assert.equal(measurement.brandCopyVisible,false,'Footer brand description must be hidden on every storefront page');
             if(key==='product'&&width<=620) {
               assert(measurement.bar,'Mobile purchase bar must still be visible');
               assert.equal(measurement.links.length,4,'All four bottom policy/support links remain');
