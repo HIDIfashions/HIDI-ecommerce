@@ -13,7 +13,8 @@ api_patch=json.loads((OUT/'api-patch.json').read_text())
 api_preservation=json.loads((OUT/'api-preservation.json').read_text())
 web_preservation=json.loads((OUT/'web-preservation.json').read_text())
 assert api_patch.get('passed') is True and api_patch.get('apiUnchanged') is True and api_patch.get('allowedFiles')==[]
-assert api_patch.get('ticketIntegerCapacityBytes')==2147483647
+assert api_patch.get('legacyTicketIntegerCapacityBytes')==2147483647
+assert api_patch.get('activeUploadTicketRequired') is False
 assert api_preservation.get('passed') is True and api_preservation.get('retainedUnchanged') is True and api_preservation.get('changedFiles')==[]
 report['suites'].append({'name':'retained-api-byte-identity','passed':True,'exitCode':0,'seconds':0.0})
 protected=('checkout','cart','payment','order','offer','account','purchase')
