@@ -20,6 +20,7 @@ def run(name,cmd,timeout=300):
  (out/'results.json').write_text(json.dumps(data,indent=2));print(name,code,flush=True)
  return code==0
 run('current-route-and-client','node --experimental-strip-types --test tests/image-sku-runtime-keys.test.mjs tests/photo-digest.test.mjs tests/photo-upload-client.test.cjs tests/seo-images.test.cjs')
+run('streamed-photo-core','node --test deploy/image-optimization/streaming-photo.test.mjs',420)
 run('prisma-generate','pnpm db:generate')
 run('api-build','pnpm --filter @hidi/api build')
 run('api-regression','pnpm --filter @hidi/api test:customer-experience')
