@@ -68,17 +68,33 @@ def patch(base,overlay,app):
     }
     forward_cap=re.compile(r'([A-Za-z_$][\w$]*\.size)\s*>\s*12582912')
     reverse_cap=re.compile(r'12582912\s*<\s*([A-Za-z_$][\w$]*\.size)')
+    # The product editor imports MAX_PHOTO_BYTES from a helper, so minified
+    # production code can compare file.size to a symbol instead of the literal
+    # 12582912. Remove only the exact "non-empty OR over-cap" photo-validator
+    # shape; do not rewrite unrelated 12 MiB constants elsewhere in the app.
+    symbolic_caps=[
+        re.compile(r'(?P<size>[A-Za-z_$][\w$]*\.size)\s*<\s*1\s*\|\|\s*(?P=size)\s*>\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*'),
+        re.compile(r'1\s*>\s*(?P<size>[A-Za-z_$][\w$]*\.size)\s*\|\|\s*(?P=size)\s*>\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*'),
+        re.compile(r'(?P<size>[A-Za-z_$][\w$]*\.size)\s*<\s*1\s*\|\|\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*\s*<\s*(?P=size)'),
+        re.compile(r'1\s*>\s*(?P<size>[A-Za-z_$][\w$]*\.size)\s*\|\|\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*\s*<\s*(?P=size)'),
+    ]
     touched=set()
+    counts['symbolic']=0
     for name,text in original.items():
         changed,n1=forward_cap.subn(lambda m:m[1]+' > 9007199254740991',text)
         changed,n2=reverse_cap.subn(lambda m:'9007199254740991 < '+m[1],changed)
         counts['numeric']+=n1+n2
-        if n1+n2 or any(label in text for label in labels):touched.add(name)
+        photo_text=any(label in text for label in labels)
+        if photo_text:
+            for pattern in symbolic_caps:
+                changed,n=pattern.subn(lambda m:'!Number.isSafeInteger('+m['size']+')||'+m['size']+'<1',changed)
+                counts['symbolic']+=n
+        if n1+n2 or photo_text or changed!=text:touched.add(name)
         for old_label,new_label in labels.items():
             counts['labels']+=changed.count(old_label)
             changed=changed.replace(old_label,new_label)
         semantic[name]=changed
-    assert counts['numeric']>=3 and counts['labels']>=4,'Retained admin photo validators/labels changed: explicit review required'
+    assert counts['numeric']>=3 and counts['labels']>=4 and counts['symbolic']>=1,'Retained admin photo validators/labels changed: explicit review required'
     for name in touched:
         assert '12582912' not in semantic[name], 'A former 12 MiB photo guard remains in '+name
         assert '12 MB' not in semantic[name], 'A former 12 MiB photo label remains in '+name
