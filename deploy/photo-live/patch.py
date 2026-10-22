@@ -66,8 +66,8 @@ def patch(base,overlay,app):
         'up to 12 MB each':'without a fixed photo MB cap',
         'max 12 MB each':'no fixed photo MB cap',
     }
-    forward_cap=re.compile(r'([A-Za-z_$][\\w$]*\\.size)\\s*>\\s*12582912')
-    reverse_cap=re.compile(r'12582912\\s*<\\s*([A-Za-z_$][\\w$]*\\.size)')
+    forward_cap=re.compile(r'([A-Za-z_$][\w$]*\.size)\s*>\s*12582912')
+    reverse_cap=re.compile(r'12582912\s*<\s*([A-Za-z_$][\w$]*\.size)')
     touched=set()
     for name,text in original.items():
         changed,n1=forward_cap.subn(lambda m:m[1]+' > 9007199254740991',text)
