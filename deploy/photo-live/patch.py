@@ -68,7 +68,7 @@ def patch(base,overlay,app):
     }
     pattern=re.compile(r'([A-Za-z_$][\w$]*\.size)\s*>\s*12582912(?=[^\n]{0,160}(?:12 MB|Image exceeds))')
     for name,text in original.items():
-        changed,n=pattern.subn(lambda m:'!Number.isSafeInteger('+m[1]+')',text)
+        changed,n=pattern.subn(lambda m:m[1]+' > 9007199254740991',text)
         counts['numeric']+=n
         for old_label,new_label in labels.items():
             counts['labels']+=changed.count(old_label)
