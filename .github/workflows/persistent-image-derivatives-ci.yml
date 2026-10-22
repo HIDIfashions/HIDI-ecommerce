@@ -15,6 +15,7 @@ on:
       - 'deploy/image-derivatives/**'
       - 'deploy/admin-tools/product-delete-storage.mjs'
       - 'deploy/photo-live/**'
+      - 'deploy/checkout-offers/candidate.mjs'
       - 'tests/admin-product-delete-handler.test.mjs'
       - 'tests/photo-route-current.cases.mjs'
       - 'tests/photo-route.fixture.mjs'
