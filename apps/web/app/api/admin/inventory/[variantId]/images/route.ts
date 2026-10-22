@@ -36,23 +36,6 @@ async function saveImageMetadata(request: NextRequest, variantId: string, payloa
   });
 }
 
-async function createUploadTicket(request: NextRequest, variantId: string, file: DiskPhoto) {
-  const response = await fetch(
-    `${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images/ticket`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json", ...adminApiHeaders(request) },
-      body: JSON.stringify({ mimeType: file.type, sizeBytes: file.size }),
-      cache: "no-store",
-    },
-  );
-  const body = await response.json().catch(() => ({ message: "Unable to authorize image upload" }));
-  if (!response.ok || typeof body?.token !== "string") {
-    throw new Error(typeof body?.message === "string" ? body.message : "Unable to authorize image upload");
-  }
-  return body.token as string;
-}
-
 function getR2Config(): R2Config {
   const accountId = process.env.R2_ACCOUNT_ID?.trim() ?? "";
   const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim() ?? "";
@@ -217,7 +200,10 @@ export async function POST(
       if (process.env.MEDIA_STORAGE_PROVIDER !== "azure") return NextResponse.json({ message: "Image SKU uploads require the configured Azure photo storage" }, { status: 503 });
       uploadKey = sha256Hex([imageSku, photoNumber, file.type, file.sha256].join("\u0000"));
     }
-    await createUploadTicket(request, variantId, file);
+    // Recheck the exact catalog-write authorization immediately before storage.
+    // The old one-time ticket is no longer needed by the server-side Azure/R2
+    // uploader and its byte-accounting column must not become an upload ceiling.
+    await authorizePhotoUpload(request, API_URL, adminApiHeaders(request));
     // Every Azure original is retry-safe. Image-SKU uploads retain their mapping
     // digest; ordinary uploads use the SHA-256 of the exact bytes received.
     if (process.env.MEDIA_STORAGE_PROVIDER === "azure" && !uploadKey) uploadKey = file.sha256;
