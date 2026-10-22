@@ -1,5 +1,6 @@
 name: Persistent image derivatives Azure bridge validation
 # Final review gate: candidate and baseline are immutable for the duration of this run.
+# Validation trigger: 2026-10-22 final capless image architecture release gate.
 on:
   push:
     branches: [migration/azure-sql-blob]
