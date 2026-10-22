@@ -104,16 +104,18 @@ test('missing, expired, unauthorized and cross-origin sessions fail before readi
  await h.assertClean();
 });
 
-test('ticket failure writes nothing and deterministic metadata failure can be safely retried',async t=>{
+test('pre-storage reauthorization failure writes nothing and deterministic metadata failure can be safely retried',async t=>{
  const h=await fixture(t),bytes=await photo();
- h.state.ticketStatus=403;
+ h.state.reauthStatus=403;
  const denied=await h.route.POST(request(bytes),context);
  assert.equal(denied.ok,false);
+ assert.equal(h.state.authChecks,2);
+ assert.equal(h.state.reads,1);
  assert.equal(h.state.writes,0);
  assert.equal(h.state.derivativeWrites,0);
  await h.assertClean();
 
- h.state.ticketStatus=200;
+ h.state.reauthStatus=200;
  h.state.metadataStatus=503;
  const ambiguous=await h.route.POST(request(bytes),context);
  assert.equal(ambiguous.status,503);
