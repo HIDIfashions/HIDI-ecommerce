@@ -1,4 +1,5 @@
 name: Persistent image derivatives Azure bridge validation
+# Final review gate: candidate and baseline are immutable for the duration of this run.
 on:
   push:
     branches: [migration/azure-sql-blob]
