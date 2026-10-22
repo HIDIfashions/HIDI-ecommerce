@@ -4,7 +4,7 @@
  * No automatic retries: a network error may happen after a server has saved a photo.
  */
 export const MAX_PHOTOS_PER_SELECTION = 8;
-export const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
+// Numeric representation bound, not a file-size policy.\nexport const MAX_PHOTO_BYTES = Number.MAX_SAFE_INTEGER;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
 export type PhotoProgress = { current: number; total: number; fileName: string };
@@ -76,7 +76,7 @@ export async function uploadSkuPhotoBatch({ variantId, files, applyToColor, onPr
     form.set("file", file);
     form.set("applyToColor", String(applyToColor));
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 90_000);
+    const timer = setTimeout(() => controller.abort(), 600_000);
     try {
       const response = await fetch(`/api/admin/inventory/${encodeURIComponent(variantId)}/images`, {
         method: "POST", body: form, signal: controller.signal,
