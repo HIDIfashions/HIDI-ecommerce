@@ -36,6 +36,34 @@ async function saveImageMetadata(request: NextRequest, variantId: string, payloa
   });
 }
 
+async function authorizeVariantPhotoTarget(request: NextRequest, variantId: string, mimeType: string) {
+  let response: Response;
+  try {
+    response = await fetch(
+      `${API_URL}/admin/inventory/${encodeURIComponent(variantId)}/images/ticket`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", ...adminApiHeaders(request) },
+        // Eligibility only. The real photo byte count is intentionally not sent:
+        // streamed server ingestion/storage limits the actual transfer.
+        body: JSON.stringify({ mimeType, sizeBytes: 1 }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+  } catch {
+    throw new PhotoUploadError("Unable to verify the target SKU for photo upload. Please retry.", 503);
+  }
+  const body = await response.json().catch(() => null);
+  if (!response.ok || typeof body?.token !== "string") {
+    const status = [400, 401, 403, 404, 409].includes(response.status) ? response.status : 503;
+    const message = typeof body?.message === "string"
+      ? body.message
+      : "Unable to verify the target SKU for photo upload.";
+    throw new PhotoUploadError(message, status);
+  }
+}
+
 function getR2Config(): R2Config {
   const accountId = process.env.R2_ACCOUNT_ID?.trim() ?? "";
   const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim() ?? "";
@@ -200,10 +228,11 @@ export async function POST(
       if (process.env.MEDIA_STORAGE_PROVIDER !== "azure") return NextResponse.json({ message: "Image SKU uploads require the configured Azure photo storage" }, { status: 503 });
       uploadKey = sha256Hex([imageSku, photoNumber, file.type, file.sha256].join("\u0000"));
     }
-    // Recheck the exact catalog-write authorization immediately before storage.
-    // The old one-time ticket is no longer needed by the server-side Azure/R2
-    // uploader and its byte-accounting column must not become an upload ceiling.
+    // Recheck the current staff session and the exact target variant immediately
+    // before storage. The eligibility ticket always declares 1 byte, so its legacy
+    // integer column cannot cap the real streamed photo.
     await authorizePhotoUpload(request, API_URL, adminApiHeaders(request));
+    await authorizeVariantPhotoTarget(request, variantId, file.type);
     // Every Azure original is retry-safe. Image-SKU uploads retain their mapping
     // digest; ordinary uploads use the SHA-256 of the exact bytes received.
     if (process.env.MEDIA_STORAGE_PROVIDER === "azure" && !uploadKey) uploadKey = file.sha256;
