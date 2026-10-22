@@ -26,7 +26,7 @@ report['suites'].append({'name':'retained-commerce-byte-identity','passed':True,
 
 source_api=str(ROOT)
 commands=[
- ('photo-stream-and-optimizer',['bash','-o','pipefail','-c','node --experimental-strip-types --test deploy/image-optimization/*.test.mjs deploy/image-derivatives/*.test.mjs deploy/launch-image-repair/recovery.test.mjs tests/admin-product-delete-handler.test.mjs'],ROOT,420,{}),
+ ('photo-stream-and-optimizer',['bash','-o','pipefail','-c','node --experimental-strip-types --test deploy/image-optimization/*.test.mjs deploy/image-derivatives/*.test.mjs deploy/launch-image-repair/recovery.test.mjs tests/photo-route-current.cases.mjs tests/admin-product-delete-handler.test.mjs'],ROOT,420,{}),
  ('actual-bundle-and-retained-editor',['python',str(ROOT/'deploy/photo-live/retained-test.py')],Path.cwd(),420,{}),
  # These next two use the reviewed source only as a fixture engine for tests.
  # The production API under release remains the exact retained image above.
