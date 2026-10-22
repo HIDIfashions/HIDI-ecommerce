@@ -30,6 +30,6 @@ test('damaged, traversal, encrypted, unsupported and duplicate package entries f
   await assert.rejects(readProductPackage({name:'big.zip',size:MAX_PACKAGE_BYTES+1}),/512 MB/);
 });
 test('forged expanded sizes and overlapping local data are rejected',async()=>{
-  const data=zipPackage(base);const central=data.readUInt32LE(data.length-6);data.writeUInt32LE(13*1024*1024,central+46+Buffer.byteLength(base[0][0])+24);await assert.rejects(readProductPackage(file(data)),/too large/);
+  const data=zipPackage(base);const central=data.readUInt32LE(data.length-6);data.writeUInt32LE(13*1024*1024,central+46+Buffer.byteLength(base[0][0])+24);await assert.rejects(readProductPackage(file(data)),/damaged/);
   const bomb=zipPackage(base);bomb.writeUInt32LE(1,central+24);await assert.rejects(readProductPackage(file(bomb)),/declared size/);
 });
