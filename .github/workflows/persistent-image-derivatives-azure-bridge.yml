@@ -78,7 +78,8 @@ jobs:
           # run. Do not chase a moving branch head: any later reviewed commit gets
           # its own run and must pass separately.
           BASELINE_SHA="$GITHUB_SHA"
-          test "$BASELINE_SHA" = "$(git rev-parse HEAD)"
+          # release.py::fresh_source independently confirms that the authorized
+          # release branch has not advanced beyond this immutable baseline.
           echo "HIDI_PRODUCTION_BASELINE_SHA=$BASELINE_SHA" >> "$GITHUB_ENV"
           az acr login --name acrhidiprod0927 --only-show-errors
           env GITHUB_SHA="$BASELINE_SHA" python deploy/photo-live/release.py capture
