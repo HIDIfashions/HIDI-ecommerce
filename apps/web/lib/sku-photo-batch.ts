@@ -4,7 +4,8 @@
  * No automatic retries: a network error may happen after a server has saved a photo.
  */
 export const MAX_PHOTOS_PER_SELECTION = 8;
-// Numeric representation bound, not a file-size policy.\nexport const MAX_PHOTO_BYTES = Number.MAX_SAFE_INTEGER;
+// Numeric representation bound, not a file-size policy.
+export const MAX_PHOTO_BYTES = Number.MAX_SAFE_INTEGER;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
 export type PhotoProgress = { current: number; total: number; fileName: string };
@@ -27,8 +28,8 @@ export function validatePhotoSelection(files: readonly File[]): void {
     if (!ALLOWED.has(file.type)) {
       throw new Error(`${file.name}: use JPEG, PNG, WebP or AVIF. Nothing was uploaded.`);
     }
-    if (file.size < 1 || file.size > MAX_PHOTO_BYTES) {
-      throw new Error(`${file.name}: choose a non-empty photo no larger than 12 MB. Nothing was uploaded.`);
+    if (!Number.isSafeInteger(file.size) || file.size < 1) {
+      throw new Error(`${file.name}: choose a valid non-empty photo. Nothing was uploaded.`);
     }
   }
 }
