@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {mkdir,writeFile,copyFile,access} from 'node:fs/promises';
+import {mkdir,writeFile,copyFile,access,readFile} from 'node:fs/promises';
 import {resolve,join,relative} from 'node:path';
 const source=resolve(process.argv[2]),overlay=resolve(process.argv[3]);
 assert(process.argv[4],'The captured production runtime is required for dependency verification');
@@ -31,6 +31,8 @@ const sourceRequire=createRequire(join(source,'apps/web/package.json'));
 const {build}=require(process.env.HIDI_ESBUILD_MODULE);
 const feature=join(overlay,'photo-stream');await mkdir(feature,{recursive:true});
 await build({entryPoints:[join(source,'deploy/photo-live/entry.ts')],outfile:join(feature,'handler.mjs'),bundle:true,platform:'node',format:'esm',target:'node22',tsconfig:join(source,'apps/web/tsconfig.json'),external:['next','next/*','sharp','@azure/identity','@azure/storage-blob'],banner:{js:"import { createRequire as hidiCreateRequire } from 'node:module'; const require = hidiCreateRequire(import.meta.url);"},logLevel:'info'});
+const photoHandlerText=await readFile(join(feature,'handler.mjs'),'utf8');
+assert(!photoHandlerText.includes('/images/ticket'),'Active packaged upload handler must not depend on legacy size tickets');
 const retainedLoader="const {createRequire}=require('node:module');const {resolve}=require('node:path');const retained=createRequire(resolve(__dirname,'../../../apps/web/server.js'));\n";
 const shims={
  'next':{files:{'server.cjs':retainedLoader+"exports.NextRequest=retained('next/dist/server/web/spec-extension/request.js').NextRequest;exports.NextResponse=retained('next/dist/server/web/spec-extension/response.js').NextResponse;\n"},exports:{'./server':'./server.cjs'}},
