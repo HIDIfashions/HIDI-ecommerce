@@ -31,11 +31,113 @@ def patch(base,overlay,app):
     assert digest(base/'server.mjs')==PIN_SERVER,'Live storefront wrapper changed: explicit review is required'
     assert digest(base/'product-images/images.mjs')==PIN_IMAGES,'Live image processor changed: explicit review is required'
     assert git_blob(base/'admin-tools/product-delete-storage.mjs')==PIN_DELETE_STORAGE_BLOB,'Live product photo deletion storage changed: explicit review is required'
-    # Photo size/UI changes are already in the retained production image.
-    # This derivative release deliberately leaves every compiled storefront
-    # asset byte-identical; only server-side media delivery is overlaid.
+    # The live API already accepts streamed large photos, but the retained
+    # production admin bundle still contains the former 12 MiB browser guard.
+    # Patch only those exact validators/labels and retain all customer-facing
+    # commerce/layout behavior. Content-addressed JS chunks are renamed rather
+    # than overwriting an old immutable asset in place.
+    tree=base/'apps/web/.next'
+    original={p.relative_to(base).as_posix():p.read_text() for p in tree.rglob('*') if p.is_file() and not p.is_symlink() and p.suffix in {'.js','.json','.html','.rsc','.meta'}}
+    semantic={};counts={'numeric':0,'labels':0}
+    labels={
+      'choose a non-empty photo no larger than 12 MB':'choose a valid non-empty photo',
+      'Image exceeds 12 MB.':'Invalid photo size.',
+      'Image must be no larger than 12 MB':'Choose a valid non-empty photo',
+      'up to 12 MB each':'without a fixed photo MB cap',
+      'max 12 MB each':'no fixed photo MB cap',
+    }
+    pattern=re.compile(r'([A-Za-z_$][\\w$]*\\.size)\\s*>\\s*12582912(?=[^\\n]{0,160}(?:12 MB|Image exceeds))')
+    for name,text in original.items():
+        changed,n=pattern.subn(lambda m:'!Number.isSafeInteger('+m[1]+')',text);counts['numeric']+=n
+        for a,b in labels.items():counts['labels']+=changed.count(a);changed=changed.replace(a,b)
+        semantic[name]=changed
+    assert counts['numeric']>=3 and counts['labels']>=4,'Retained admin photo validators/labels changed: explicit review required'
     mapping={}
-    counts={'numeric':0,'labels':0}
+    for _ in range(16):
+        final={name:text for name,text in semantic.items()}
+        for name,text in list(final.items()):
+            for old_name,new_name in mapping.items():
+                old_hash=re.search(r'-([a-f0-9]{16})\\.js
+    delete_storage.parent.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(ROOT/'deploy/admin-tools/product-delete-storage.mjs',delete_storage)
+    server=(base/'server.mjs').read_text()
+    assert server.count('import { createProductImageHandler } from "./product-images/images.mjs";')==1,'Image handler wiring changed'
+    assert server.count('import { handlePhotoUpload } from "./photo-stream/handler.mjs";')==1,'Photo upload handler wiring changed'
+    assert server.count('if (await handlePhotoUpload(request, response, pathname)) return;')==1,'Photo upload route wiring changed'
+    assert server.count('if (await productImageHandler.handle(request, response, pathname)) return;')==1,'Product image route wiring changed'
+    # No server wrapper rewrite is needed: the existing imports point at paths
+    # that this overlay replaces with the derivative-aware implementations.
+    for name in ['images.mjs','photo-disk.mjs']:
+        dest=overlay/'product-images'/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/'deploy/collection-speed'/name,dest)
+    subprocess.run(['node',str(ROOT/'deploy/photo-live/build.mjs'),str(ROOT),str(overlay),str(base)],check=True)
+    files=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
+    return {'passed':True,'allowedFiles':files,'renamedAssets':mapping,'validatorChanges':counts,'oldAssetsRetained':True,'globalProxyLimitsUnchanged':True,'commerceAndLandingFilesUnchanged':True,'removedPhotoCapMiB':12,'databaseSchemaUnchanged':True}
+,old_name)
+                new_hash=re.search(r'-([a-f0-9]{16})\\.js
+    delete_storage.parent.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(ROOT/'deploy/admin-tools/product-delete-storage.mjs',delete_storage)
+    server=(base/'server.mjs').read_text()
+    assert server.count('import { createProductImageHandler } from "./product-images/images.mjs";')==1,'Image handler wiring changed'
+    assert server.count('import { handlePhotoUpload } from "./photo-stream/handler.mjs";')==1,'Photo upload handler wiring changed'
+    assert server.count('if (await handlePhotoUpload(request, response, pathname)) return;')==1,'Photo upload route wiring changed'
+    assert server.count('if (await productImageHandler.handle(request, response, pathname)) return;')==1,'Product image route wiring changed'
+    # No server wrapper rewrite is needed: the existing imports point at paths
+    # that this overlay replaces with the derivative-aware implementations.
+    for name in ['images.mjs','photo-disk.mjs']:
+        dest=overlay/'product-images'/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/'deploy/collection-speed'/name,dest)
+    subprocess.run(['node',str(ROOT/'deploy/photo-live/build.mjs'),str(ROOT),str(overlay),str(base)],check=True)
+    files=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
+    return {'passed':True,'allowedFiles':files,'renamedAssets':mapping,'validatorChanges':counts,'oldAssetsRetained':True,'globalProxyLimitsUnchanged':True,'commerceAndLandingFilesUnchanged':True,'removedPhotoCapMiB':12,'databaseSchemaUnchanged':True}
+,new_name)
+                if old_hash and new_hash:text=text.replace(old_hash[1],new_hash[1])
+            final[name]=text
+        newmap={}
+        for name,text in final.items():
+            if name.startswith('apps/web/.next/static/') and name.endswith('.js') and text!=original[name]:
+                match=re.search(r'-([a-f0-9]{16})\\.js
+    delete_storage.parent.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(ROOT/'deploy/admin-tools/product-delete-storage.mjs',delete_storage)
+    server=(base/'server.mjs').read_text()
+    assert server.count('import { createProductImageHandler } from "./product-images/images.mjs";')==1,'Image handler wiring changed'
+    assert server.count('import { handlePhotoUpload } from "./photo-stream/handler.mjs";')==1,'Photo upload handler wiring changed'
+    assert server.count('if (await handlePhotoUpload(request, response, pathname)) return;')==1,'Photo upload route wiring changed'
+    assert server.count('if (await productImageHandler.handle(request, response, pathname)) return;')==1,'Product image route wiring changed'
+    # No server wrapper rewrite is needed: the existing imports point at paths
+    # that this overlay replaces with the derivative-aware implementations.
+    for name in ['images.mjs','photo-disk.mjs']:
+        dest=overlay/'product-images'/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/'deploy/collection-speed'/name,dest)
+    subprocess.run(['node',str(ROOT/'deploy/photo-live/build.mjs'),str(ROOT),str(overlay),str(base)],check=True)
+    files=sorted(p.relative_to(overlay).as_posix() for p in overlay.rglob('*') if p.is_file())
+    return {'passed':True,'allowedFiles':files,'renamedAssets':mapping,'validatorChanges':counts,'oldAssetsRetained':True,'globalProxyLimitsUnchanged':True,'commerceAndLandingFilesUnchanged':True,'removedPhotoCapMiB':12,'databaseSchemaUnchanged':True}
+,name);assert match,'Changed admin photo asset must be content-addressed'
+                newmap[name]=name[:match.start(1)]+hashlib.sha256(text.encode()).hexdigest()[:16]+name[match.end(1):]
+        if newmap==mapping:break
+        mapping=newmap
+    else:raise AssertionError('Admin photo asset references did not converge')
+    for name,text in final.items():
+        if text==original[name]:continue
+        target=mapping.get(name,name)
+        if target!=name:assert not (base/target).exists(),'Generated admin photo asset collides with retained asset'
+        write(overlay,target,text)
+
+    # Standalone admin helpers are outside the Next static graph. Patch only
+    # reviewed legacy 12 MiB markers if they are present; already-correct files
+    # remain byte-identical and are not copied into the overlay.
+    raw=['admin-tools/image-sku-client.mjs','admin-tools/product-upload/model.mjs','admin-tools/product-upload/engine.mjs','admin-tools/product-upload/package.mjs','admin-tools/product-upload/page.html']
+    raw_changes=0
+    for name in raw:
+        text=(base/name).read_text();changed=text
+        if name.endswith('image-sku-client.mjs'):
+            changed=changed.replace('item.file.size < 1 || item.file.size > 12 * 1024 * 1024','!Number.isSafeInteger(item.file.size) || item.file.size < 1')
+            changed=changed.replace('Each image must be between 1 byte and 12 MB.','Choose a valid non-empty image.')
+        if name.endswith('model.mjs'):changed=changed.replace('MAX_PHOTO_BYTES = 12 * 1024 * 1024','MAX_PHOTO_BYTES = Number.MAX_SAFE_INTEGER')
+        changed=changed.replace('Photo must be between 1 byte and 12 MB: ','Choose a valid non-empty photo: ')
+        changed=changed.replace('Photos must be at most 12 MB each.','Photos must be non-empty; server storage capacity applies.')
+        changed=changed.replace('each photo: at most 12 MB','photos: no fixed MB cap').replace('each at most 12 MB','no fixed photo MB cap')
+        if changed!=text:
+            write(overlay,name,changed);raw_changes+=1
+    assert raw_changes>=1,'Expected at least one retained standalone admin photo validator to require the large-photo patch'
+
     delete_storage=overlay/'admin-tools/product-delete-storage.mjs'
     delete_storage.parent.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(ROOT/'deploy/admin-tools/product-delete-storage.mjs',delete_storage)
