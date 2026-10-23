@@ -12,7 +12,11 @@ const base=actual||snapshot.base;
 const products=JSON.parse((await snapshot.pull('/api/store/products')).body);
 const available=products.filter(p=>p.variants?.some(v=>v.available>0)&&p.images?.length);
 const results=[];let cartAdds=0;
-async function styles(page){return page.evaluate(()=>[...document.querySelectorAll('body,.site-header,footer.footer,main,button,input,summary,h1,h2,.cart-page,.checkout-page,.summary-total,.product-grid')].map(e=>{const c=getComputedStyle(e);return {tag:e.tagName,className:e.className,font:c.font,color:c.color,background:c.backgroundColor,padding:c.padding,margin:c.margin,display:c.display,border:c.border};}));}
+async function compareStyles(page){return page.evaluate(css=>{
+ const read=()=>[...document.querySelectorAll('body,.site-header,footer.footer,main,button,input,summary,h1,h2,.cart-page,.checkout-page,.summary-total,.product-grid')].map(e=>{const c=getComputedStyle(e);return {tag:e.tagName,className:e.className,font:c.font,color:c.color,background:c.backgroundColor,padding:c.padding,margin:c.margin,display:c.display,border:c.border};});
+ const before=read();const s=document.querySelector('style[data-hidi-storefront-layer-fix]');if(s)s.textContent=s.textContent.replace(css,'');
+ return {before,after:read()};
+},css);}
 try{
  for(const engine of (process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',')){
   const browser=await pw[engine].launch({headless:true,...(engine==='chromium'&&process.platform==='win32'?{channel:'chrome'}:{})});
@@ -62,9 +66,10 @@ try{
     const online=page.getByRole('radio',{name:/Pay online/});await online.check();assert(await online.isChecked());
     for(const path of ['/cart','/checkout','/collections/all','/','/account','/admin/sign-in']){
      assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());await page.waitForFunction(()=>document.fonts.status==='loaded');
-     const before=await styles(page);
-     await page.evaluate(css=>{const s=document.querySelector('style[data-hidi-storefront-layer-fix]');if(s)s.textContent=s.textContent.replace(css,'');},css);
-     const after=await styles(page);assert.deepEqual(after,before,'Unchanged non-PDP styles '+path);
+     if(path==='/checkout')await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();
+     if(path==='/cart')await page.waitForFunction(name=>document.querySelector('.cart-page')?.textContent.includes(name),product.name);
+     if(path==='/account')await page.locator('input[type="tel"]').first().waitFor();
+     const {before,after}=await compareStyles(page);assert.deepEqual(after,before,'Unchanged non-PDP styles '+path);
     }
     results.push({engine,width,products:available.slice(0,3).map(p=>p.slug),emptyHistory:true,buyNowNavigation:true,codAndOnlineChoice:true,unchangedPages:['cart','checkout','collections','home','account','admin-sign-in'],passed:true});
     console.log('PASS commerce '+engine+' '+width);
