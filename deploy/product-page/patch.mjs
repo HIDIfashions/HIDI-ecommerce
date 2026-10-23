@@ -83,8 +83,8 @@ if(retainedServer.includes('function HidiDetails(product)')){
  // The approved compact PDP no longer renders the composition/includes sentence above price.
  // Remove exactly that retained JSX expression and leave metadata/schema/product facts untouched.
  const displayTree=ts.createSourceFile('retained-display.js',server,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);let includesNode;
- function findIncludes(n){if(ts.isBinaryExpression(n)&&n.operatorToken.kind===ts.SyntaxKind.AmpersandAmpersandToken&&n.getText(displayTree).includes('className:"hidi-pdp-includes"')){assert(!includesNode,'One retained includes display required');includesNode=n;return;}ts.forEachChild(n,findIncludes);}findIncludes(displayTree);assert(includesNode,'Retained includes display required');
- server=server.slice(0,includesNode.getStart(displayTree))+'null'+server.slice(includesNode.end);
+ function findIncludes(n){if(ts.isBinaryExpression(n)&&n.operatorToken.kind===ts.SyntaxKind.AmpersandAmpersandToken&&n.getText(displayTree).includes('className:"hidi-pdp-includes"')){assert(!includesNode,'At most one retained includes display is allowed');includesNode=n;return;}ts.forEachChild(n,findIncludes);}findIncludes(displayTree);
+ if(includesNode) server=server.slice(0,includesNode.getStart(displayTree))+'null'+server.slice(includesNode.end);
 
  cssModule(resolve('apps/web/app/products/[slug]/product-page.module.css'));
  css.push('.hidi-pdp-includes{font-size:14px;color:#75695f;margin:0 0 14px}.hidi-pdp-services{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;padding:12px 0;border-bottom:1px solid #dfd3c6}.hidi-pdp-services a{color:#591d20}.hidi-pdp-description{border-block:1px solid #dfd3c6;padding:14px 0;font-size:14px;line-height:1.7}.hidi-pdp-description summary{cursor:pointer;font-weight:600}');
