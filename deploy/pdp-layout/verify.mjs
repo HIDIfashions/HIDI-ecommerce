@@ -132,6 +132,7 @@ try{
   const browser=await pw[engine].launch({headless:true,...(engine==='chromium'&&process.platform==='win32'?{channel:'chrome'}:{})});
   try{for(const [width,height] of viewports){
    const context=await browser.newContext({viewport:{width,height},reducedMotion:'reduce',hasTouch:width<=760});
+   await context.addInitScript(()=>{window.history.scrollRestoration='manual';});
    await context.addInitScript(history=>localStorage.setItem('hidi_recently_viewed_products_v1',JSON.stringify(history.map(p=>({slug:p.slug,viewedAt:Date.now()})))),history);
    const page=await context.newPage();page.setDefaultTimeout(30000);
    const pageErrors=[];page.on('pageerror',e=>pageErrors.push(e.message));
@@ -170,6 +171,7 @@ try{
     }
     console.log(JSON.stringify({engine,width,beforeGap:before.reviewGap,afterGap:after.reviewGap,beforeRecent:before.recentGap,afterRecent:after.recentGap,beforeFooter:before.footerGap,afterFooter:after.footerGap}));
     await page.reload({waitUntil:'domcontentloaded'});await ready(page);await requireApprovedStyle(page);
+    await page.evaluate(()=>scrollTo(0,0));await page.waitForFunction(()=>scrollY===0);
     const reloaded=await measure(page,true);validate(reloaded.before,reloaded.after,width);
     assert(Math.abs(reloaded.after.image.width-after.image.width)<1);
     const tabletStates=[];
