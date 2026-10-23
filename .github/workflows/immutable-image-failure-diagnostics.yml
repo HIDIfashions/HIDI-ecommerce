@@ -1,4 +1,4 @@
-name: Read platform memory and restart diagnostics
+name: Read detailed container exit and probe diagnostics
 on:
   push:
     branches: [migration/azure-sql-blob]

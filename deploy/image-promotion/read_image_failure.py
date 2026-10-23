@@ -118,7 +118,7 @@ def platform_diagnostics():
     entries=listing.get('value',[])
     summary=[{'name':item.get('name'),'metadata':item.get('properties',{}).get('metadata',{})} for item in entries]
     report['platformDetectorCatalog']=summary
-    relevant=[item for item in entries if re.search(r'memory|restart|crash|availability|termination',json.dumps(item.get('properties',{}).get('metadata',{}))+' '+str(item.get('name','')),re.I)]
+    relevant=[item for item in entries if item.get('name') in ['containerappscontainerexitevents','containerappshealthprobefailures']]
     def safe(value):
         if isinstance(value,list):return [safe(item) for item in value]
         if isinstance(value,dict):return {key:safe(item) for key,item in value.items()}
