@@ -59,7 +59,12 @@ def attest(r):
     assert storage['validationJobRemoved'] and storage['temporaryBlobFamilyDeleted']
     assert storage['databaseWrites'] == 0 and storage['productionTrafficChanged'] is False
     assert storage['persistentDerivativeCount'] == 7 and storage['sourceHashVerified']
-    for run, sha in [(39900235407, SOURCE), (39902561056, '3096b44f716dbcd090d5d22e6cbe87c975009eb4'), (39908365165, 'e5834bea31881fed41eae4dbd93db7ac485b303a')]:
+    audit = json.loads(Path('../storage-audit/uploaded-photo-storage.json').read_text())
+    assert audit['passed'] and audit['sourceSha'] == SOURCE and audit['image'] == WEB
+    assert audit['validationJobRemoved'] and audit['productionTrafficChanged'] is False
+    assert audit['databaseWrites'] == audit['blobWrites'] == 0
+    assert len(audit['details']['results']) == 2 and all(len(item['derivatives']) == 7 and item['originalUnchanged'] for item in audit['details']['results'])
+    for run, sha in [(39900235407, SOURCE), (39902561056, '3096b44f716dbcd090d5d22e6cbe87c975009eb4'), (39908365165, 'e5834bea31881fed41eae4dbd93db7ac485b303a'), (39918664062, '2cbddd609a3b29568154ab25bb348d1b0d3e4b4a')]:
         status = github('actions/runs/' + str(run))
         assert status['status'] == 'completed' and status['conclusion'] == 'success' and status['head_sha'] == sha, run
     for app, image in images.items():
@@ -85,6 +90,16 @@ def recover(r):
     print('ROLLBACK VERIFIED: previous image is healthy', flush=True)
 
 
+def rollback_baseline(original, captured, rollback):
+    assert captured == original, 'Rollback capture differs from tested baseline'
+    assert rollback['passed'] and rollback['webStatus'] == 'restored'
+    assert all(rollback.get(key) is True for key in ['apiUnchanged', 'webSettingsUnchangedFromCapture', 'publicSnapshotRestored'])
+    state = rollback['state']
+    assert state['ready'] == state['latest'] == 'hidi-web--rangefiverb39913626973a1'
+    assert {key: value for key, value in state.items() if key not in ['ready', 'latest']} == {key: value for key, value in original['hidi-web'].items() if key not in ['ready', 'latest']}, 'Only the verified rollback revision may differ'
+    return {**original, 'hidi-web': state}
+
+
 def live_checks(r, full=False):
     deployed = r.read('promotion-live.json')['states']
     r.r.photo.unchanged(deployed)
@@ -107,6 +122,8 @@ def live_checks(r, full=False):
 def prepare_and_deploy(r, do_apply=True):
     r.r.fresh_source()
     expected = attest(r)
+    rollback_root = Path('../rollback-evidence')
+    expected = rollback_baseline(expected, json.loads((rollback_root / 'before.json').read_text()), json.loads((rollback_root / 'promotion-rollback.json').read_text()))
     observed = {name: r.r.cloud.snapshot(r.r.cloud.app(name)) for name in expected}
     assert observed == expected, 'STOP: production baseline changed since tested composition'
     r.capture()

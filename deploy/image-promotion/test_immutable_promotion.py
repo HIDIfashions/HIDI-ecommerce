@@ -44,6 +44,11 @@ class PromotionSafetyTests(unittest.TestCase):
         for bad in [[], [photos[0],photos[0]], [{**photos[0], 'key':'../private/file'},photos[1]], [photos[0],{**photos[1],'bytes':1000000}]]:
             with self.assertRaises(AssertionError): validate_photos(bad)
 
+    def test_storage_audit_does_not_waive_live_large_upload_requirement(self):
+        photos=[{'key':'products/variants/approved/normal.jpg','sha256':'a'*64,'bytes':1000000},{'key':'products/variants/approved/medium.jpg','sha256':'b'*64,'bytes':24*1024*1024}]
+        validate_photos(photos,require_large=False)
+        with self.assertRaises(AssertionError):validate_photos(photos)
+
     def test_job_address_accepts_arm_casing_but_rejects_wrong_scope(self):
         app='/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod/providers/Microsoft.App/containerApps/hidi-web'
         expected='/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod/providers/Microsoft.App/jobs/image-smoke-123-1'
@@ -77,6 +82,19 @@ class PromotionSafetyTests(unittest.TestCase):
                 with self.assertRaisesRegex(AssertionError,'Live persisted serving'):
                     promotion.monitor(r)
                 recover.assert_called_once()
+
+    def test_owned_rollback_accepts_only_verified_revision_change(self):
+        import copy
+        original={'hidi-api':{'image':promotion.API},'hidi-web':{'image':'previous','settingsHash':'settings','mode':'Single','latest':'old','ready':'old'}}
+        rollback={'passed':True,'webStatus':'restored','apiUnchanged':True,'webSettingsUnchangedFromCapture':True,'publicSnapshotRestored':True,'state':{**original['hidi-web'],'latest':'hidi-web--rangefiverb39913626973a1','ready':'hidi-web--rangefiverb39913626973a1'}}
+        self.assertEqual(promotion.rollback_baseline(original,original,rollback)['hidi-api'],original['hidi-api'])
+        for key,value in [('image','different'),('settingsHash','different'),('mode','Multiple'),('ready','unowned')]:
+            bad=copy.deepcopy(rollback);bad['state'][key]=value
+            with self.assertRaises(AssertionError):promotion.rollback_baseline(original,original,bad)
+        for key in ['apiUnchanged','publicSnapshotRestored','passed']:
+            with self.assertRaises(AssertionError):promotion.rollback_baseline(original,original,{**rollback,key:False})
+        changed=copy.deepcopy(original);changed['hidi-api']['image']='different'
+        with self.assertRaises(AssertionError):promotion.rollback_baseline(original,changed,rollback)
 
 
 if __name__ == '__main__':

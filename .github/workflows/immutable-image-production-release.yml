@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 110
     env:
-      PROMOTE: 'true'
+      PROMOTE: 'false'
       CANDIDATE_SHA: 5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f
       GH_TOKEN: ${{ github.token }}
       PYTHONUNBUFFERED: '1'
@@ -46,6 +46,14 @@ jobs:
           unzip -q "$RUNNER_TEMP/bridge.zip" -d bridge-evidence
           curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12482386544/zip -o "$RUNNER_TEMP/commerce.zip"
           echo "e32109d8c1fff883f14a72ece2f947fdf4d28ba6432cf24e9613f735e48c8d86  $RUNNER_TEMP/commerce.zip" | sha256sum --check
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12484688548/zip -o "$RUNNER_TEMP/rollback.zip"
+          echo "6695dee8a03e05dc73325f8751808a56354158a86bd7b42dd3b2a5c52eac3b10  $RUNNER_TEMP/rollback.zip" | sha256sum --check
+          mkdir rollback-evidence
+          unzip -q "$RUNNER_TEMP/rollback.zip" -d rollback-evidence
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12485768358/zip -o "$RUNNER_TEMP/storage-audit.zip"
+          echo "b0f186e8dfa2698118df11f0959c2c120a6afdb5ea9989d320a97460d041dd96  $RUNNER_TEMP/storage-audit.zip" | sha256sum --check
+          mkdir storage-audit
+          unzip -q "$RUNNER_TEMP/storage-audit.zip" -d storage-audit
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
