@@ -1,0 +1,52 @@
+name: Close restored PDP release safely
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: ['.github/workflows/pdp-recommendations-close-restored.yml']
+permissions:
+  contents: read
+  actions: write
+  id-token: write
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait until live test subprocesses and cart cleanup have exited
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -u - <<'PY'
+          import os,json,time,urllib.request
+          url='https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/jobs/120543969699'
+          for _ in range(60):
+            req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            data=json.load(urllib.request.urlopen(req,timeout=30))
+            step=next(s for s in data['steps'] if s['name']=='Deploy web and run live regression with immediate rollback on failure')
+            print('Live-test step:',step['status'],step.get('conclusion'),flush=True)
+            if step['status']=='completed':break
+            time.sleep(15)
+          else:raise RuntimeError('Live tests still active; refusing cancellation')
+          PY
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Confirm restored baseline and close superseded release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -u - <<'PY'
+          import importlib.util,json,os,urllib.request,urllib.error
+          s=importlib.util.spec_from_file_location('release','deploy/pdp-recommendations/release.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+          state=m.cloud.snapshot(m.cloud.app('hidi-web'))
+          assert state['image']=='acrhidiprod0927.azurecr.io/hidi-web@sha256:8ea098e6ff728086a142ec5792c92a37ca8f8a014a1ec29d6f896e5251b1c083'
+          assert state['latest']==state['ready']=='hidi-web--pdpmanualrb39991456957a1'
+          assert state['settingsHash']=='c2f7f6552921035d187c5f0a2237ec03e08df6f01ee5b711501b643cb8b62f36'
+          url='https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/runs/39991456957/force-cancel'
+          req=urllib.request.Request(url,method='POST',data=b'{}',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'})
+          with urllib.request.urlopen(req,timeout=30) as response: print('Superseded release cancellation:',response.status,flush=True)
+          print('Production baseline confirmed healthy; no production writes',flush=True)
+          PY
