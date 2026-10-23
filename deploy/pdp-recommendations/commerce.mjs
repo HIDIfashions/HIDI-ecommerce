@@ -95,6 +95,7 @@ try{
      if(path==='/cart')await page.waitForFunction(name=>document.querySelector('.cart-page')?.textContent.includes(name),product.name);
      if(path!=='/admin/sign-in'){
       const footer=page.locator('footer.footer,footer.site-footer').first();await footer.waitFor({state:'visible'});
+      // The homepage uses Collections; checkout intentionally hides these navigation links.
       await footer.locator('a[href="/collections/casual-wear"]').first().waitFor({state:'attached'});
       assert.equal(await page.getByText(/Indian wear with a calm point of view/).count(),0,'Footer copy removed');
      }
