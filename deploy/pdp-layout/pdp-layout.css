@@ -1,0 +1,61 @@
+/* Product-page presentation only. Preserve image delivery and purchase state. */
+.product-page .pdp-purchase > [class*="selectionSummary"][aria-hidden="true"],
+.product-page .pdp-selected-detail:not(.sr-only) {
+  display: none !important;
+}
+
+/* Use the complete gallery column, rather than a 500px frame with a height cap
+   that makes contain-fit photography smaller again on short laptop screens. */
+@media (min-width: 1001px) {
+  .product-page [class*="product_gallery"][class*="galleryLayout"],
+  .product-page [class*="product-gallery"][class*="galleryLayout"] {
+    grid-template-columns: 64px minmax(0, 1fr) !important;
+  }
+
+  .product-page [class*="galleryLayout"] .pdp-gallery {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0;
+  }
+
+  .product-page [class*="galleryLayout"] .pdp-gallery .pdp-image[class*="activeImage"] {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    aspect-ratio: 3 / 4 !important;
+  }
+}
+
+/* Keep one compact separation at each section boundary. */
+.product-page #reviews {
+  margin: 40px 0 0 !important;
+  padding-top: 28px !important;
+  padding-bottom: 0 !important;
+  border-bottom: 0 !important;
+}
+
+.product-page .pdp-related,
+.product-page .pdp-recent {
+  margin-top: 32px !important;
+  padding-top: 24px !important;
+}
+
+.product-page {
+  padding-bottom: 40px !important;
+}
+
+@media (max-width: 620px) {
+  .product-page #reviews {
+    margin-top: 28px !important;
+    padding-top: 24px !important;
+  }
+  .product-page .pdp-related,
+  .product-page .pdp-recent {
+    margin-top: 24px !important;
+    padding-top: 20px !important;
+  }
+  .product-page {
+    padding-bottom: 24px !important;
+  }
+}

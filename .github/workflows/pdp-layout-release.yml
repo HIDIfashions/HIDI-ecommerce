@@ -1,0 +1,75 @@
+name: Deploy approved PDP image and spacing only
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [deploy/pdp-layout/**, .github/workflows/pdp-layout-release.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/migration/azure-sql-blob'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Test exact patch and rollback guard
+        run: |
+          python3 deploy/pdp-layout/test_patch.py
+          python3 deploy/pdp-layout/test_release.py
+          python3 -m py_compile deploy/pdp-layout/release.py deploy/pdp-layout/browser-runner.py
+          node --check deploy/pdp-layout/candidate.mjs
+          node --check deploy/pdp-layout/verify.mjs
+          node --check deploy/pdp-layout/commerce.mjs
+      - name: Install version-matched browser engines
+        timeout-minutes: 8
+        run: |
+          npm install --prefix "$RUNNER_TEMP/hidi-pdp-browser" --registry=https://registry.npmjs.org --fetch-timeout=30000 --fetch-retries=1 playwright@1.56.1
+          docker pull mcr.microsoft.com/playwright:v1.56.1-noble
+          echo "HIDI_BROWSER_PACKAGE=$RUNNER_TEMP/hidi-pdp-browser" >> "$GITHUB_ENV"
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture production and verify exact rollback image
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/pdp-layout/release.py capture
+      - name: Overlay only approved CSS and verify every retained file
+        run: |
+          python3 deploy/pdp-layout/release.py compose
+          echo "HIDI_CANDIDATE_IMAGE=acrhidiprod0927.azurecr.io/hidi-web:pdp-layout-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+      - name: Run final regression against exact candidate image
+        timeout-minutes: 25
+        run: |
+          node deploy/pdp-layout/candidate.mjs
+          python3 deploy/pdp-layout/release.py seal
+      - name: Publish the exact tested image by immutable digest
+        run: python3 deploy/pdp-layout/release.py publish
+      - name: Deploy web and run live regression with immediate rollback on failure
+        id: apply
+        timeout-minutes: 35
+        run: timeout --signal=TERM --kill-after=10m 25m python3 deploy/pdp-layout/release.py apply --image "$WEB_IMAGE"
+      - name: Recover interrupted owned rollout
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        timeout-minutes: 15
+        run: python3 deploy/pdp-layout/release.py recover --image "$WEB_IMAGE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pdp-layout-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            evidence/pdp-layout/*.json
+            evidence/pdp-layout/candidate/*.json
+            evidence/pdp-layout/candidate/*.png
+            evidence/pdp-layout/live/*.json
+            evidence/pdp-layout/live/*.png
+          retention-days: 30
