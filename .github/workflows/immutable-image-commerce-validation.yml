@@ -99,14 +99,67 @@ jobs:
           subprocess.run(['docker','pull',images['web']],check=True)
           assert r.r.guard.image_id(images['web'])==sealed['images']['web']
           r.r.images.extract(images['web'],target)
+          baseline_target=r.P/'baseline-commerce-web'
+          r.r.images.extract(observed['hidi-web']['image'],baseline_target)
           r.save('immutable-commerce-provenance.json',{'passed':True,'photoSourceSha':r.source_sha(),'image':images['web'],'imageId':sealed['images']['web'],'bridgeRun':39902561056,'baseline':observed,'productionTrafficChanged':False,'databaseWrites':0,'releaseImageRebuilt':False})
           with open(os.environ['GITHUB_ENV'],'a') as stream:
               stream.write('HIDI_CANDIDATE_RUNTIME='+str(target)+'\n')
               stream.write('HIDI_CANDIDATE_API='+str(Path.cwd())+'\n')
+              stream.write('HIDI_BASELINE_RUNTIME='+str(baseline_target)+'\n')
           PY
-      - name: Run existing retained commerce and purchase browser probes
+      - name: Diagnose unchanged commerce probes on baseline and candidate
         working-directory: candidate-source
-        run: node deploy/checkout-offers/candidate.mjs
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/commerce-diagnostics
+          cat > "$RUNNER_TEMP/commerce-playwright-diagnostics.mjs" <<'JS'
+          import {mkdir,writeFile} from 'node:fs/promises';
+          import {pathToFileURL} from 'node:url';
+          const real=await import(pathToFileURL(process.env.HIDI_REAL_PLAYWRIGHT_MODULE).href);
+          const root=process.env.HIDI_COMMERCE_DIAGNOSTICS;
+          function instrument(name){
+            const engine=real[name],launch=engine.launch.bind(engine);
+            engine.launch=async(...args)=>{
+              const browser=await launch(...args),pages=[],events=[];
+              const newContext=browser.newContext.bind(browser),close=browser.close.bind(browser);
+              browser.newContext=async(...args)=>{
+                const context=await newContext(...args),newPage=context.newPage.bind(context);
+                context.newPage=async(...args)=>{
+                  const page=await newPage(...args);pages.push(page);
+                  page.on('pageerror',error=>events.push({kind:'pageerror',message:error.message}));
+                  page.on('response',response=>{if(response.url().includes('/api/'))events.push({kind:'response',url:response.url(),status:response.status()});});
+                  return page;
+                };
+                return context;
+              };
+              browser.close=async(...args)=>{
+                try{
+                  await mkdir(root,{recursive:true});
+                  for(let i=0;i<pages.length;i++){
+                    const page=pages[i];if(page.isClosed())continue;
+                    await writeFile(root+'/'+name+'-'+i+'.json',JSON.stringify({url:page.url(),body:(await page.locator('body').innerText()).slice(0,16000),events},null,2));
+                    await page.screenshot({path:root+'/'+name+'-'+i+'.png',fullPage:true});
+                  }
+                }catch(error){console.error('Diagnostic capture failed:',error.message);}
+                return close(...args);
+              };
+              return browser;
+            };
+            return engine;
+          }
+          export const chromium=instrument('chromium'),firefox=instrument('firefox'),webkit=instrument('webkit');
+          JS
+          export HIDI_REAL_PLAYWRIGHT_MODULE="$HIDI_PLAYWRIGHT_MODULE"
+          export HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/commerce-playwright-diagnostics.mjs"
+          export HIDI_PUBLISHED_RUNTIME="$HIDI_CANDIDATE_RUNTIME"
+          set +e
+          HIDI_CANDIDATE_RUNTIME="$HIDI_BASELINE_RUNTIME" HIDI_COMMERCE_DIAGNOSTICS="$PWD/evidence/commerce-diagnostics/baseline" node deploy/checkout-offers/candidate.mjs > evidence/commerce-diagnostics/baseline.log 2>&1
+          baseline_status=$?
+          HIDI_CANDIDATE_RUNTIME="$HIDI_PUBLISHED_RUNTIME" HIDI_COMMERCE_DIAGNOSTICS="$PWD/evidence/commerce-diagnostics/candidate" node deploy/checkout-offers/candidate.mjs > evidence/commerce-diagnostics/candidate.log 2>&1
+          candidate_status=$?
+          cat evidence/commerce-diagnostics/baseline.log
+          cat evidence/commerce-diagnostics/candidate.log
+          test "$baseline_status" -eq 0 && test "$candidate_status" -eq 0
       - name: Require all three browsers and unchanged production state
         if: always()
         working-directory: candidate-source
@@ -136,4 +189,5 @@ jobs:
           path: |
             candidate-source/evidence/photo-live/
             candidate-source/evidence/checkout-offers/
+            candidate-source/evidence/commerce-diagnostics/
           retention-days: 30
