@@ -1,4 +1,4 @@
-name: Locate and verify exact live smoke photos in Azure
+name: Locate and verify exact live smoke photos in Azure (bounded diagnostics)
 on:
   push:
     branches: [migration/azure-sql-blob]

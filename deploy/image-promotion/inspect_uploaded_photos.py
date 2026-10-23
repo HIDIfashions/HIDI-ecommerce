@@ -153,14 +153,17 @@ def main(storage_only_states=None):
             if status in ['Succeeded', 'Failed', 'Stopped', 'Degraded']:
                 break
             time.sleep(5)
-        assert status == 'Succeeded', 'Uploaded photo storage validation failed: ' + status
+        report['executionStatus'] = status
         for _ in range(5):
             logs = subprocess.run(['az', 'containerapp', 'job', 'logs', 'show', '-g', 'rg-hidi-prod', '-n', name, '--execution', execution, '--container', 'photo', '--tail', '100', '--format', 'text', '--only-show-errors'], capture_output=True, text=True, timeout=45)
+            if status != 'Succeeded':
+                report['probeFailureLog'] = (logs.stdout + logs.stderr)[-6000:]
             lines = [line.split('HIDI_UPLOADED_PHOTOS ', 1)[1] for line in logs.stdout.splitlines() if 'HIDI_UPLOADED_PHOTOS ' in line]
             if lines:
                 report['details'] = json.JSONDecoder().raw_decode(lines[-1])[0]
                 break
             time.sleep(2)
+        assert status == 'Succeeded', 'Uploaded photo storage validation failed: ' + status
         assert report['details']['passed'] and len(report['details']['results']) == 2
         for result in report['details']['results'] if storage_only_states is None else []:
             # Persisted-serving assertion belongs on the freshly uploaded original.
