@@ -106,11 +106,22 @@ jobs:
           r.r.images.extract(images['web'],target)
           baseline_target=r.P/'baseline-commerce-web'
           r.r.images.extract(observed['hidi-web']['image'],baseline_target)
+          mirror=target/'paint-performance/asset-mirror.json'
+          assert mirror.is_file(),'Retained runtime mirror proof missing'
+          assert mirror.read_bytes()==(baseline_target/'paint-performance/asset-mirror.json').read_bytes(),'Image candidate changed mirror configuration'
+          mirror_proof=json.loads(mirror.read_text())
+          assert mirror_proof['passed'] and mirror_proof['bootOnce']
+          for asset,digest in mirror_proof['files'].items():
+              local=target/'dist'/asset.lstrip('/')
+              assert local.resolve().is_relative_to((target/'dist').resolve())
+              assert hashlib.sha256(local.read_bytes()).hexdigest()==digest,asset
+          r.save('immutable-commerce-asset-mirror.json',mirror_proof)
           r.save('immutable-commerce-provenance.json',{'passed':True,'photoSourceSha':r.source_sha(),'image':images['web'],'imageId':sealed['images']['web'],'bridgeRun':39902561056,'baseline':observed,'productionTrafficChanged':False,'databaseWrites':0,'releaseImageRebuilt':False})
           with open(os.environ['GITHUB_ENV'],'a') as stream:
               stream.write('HIDI_CANDIDATE_RUNTIME='+str(target)+'\n')
               stream.write('HIDI_CANDIDATE_API='+str(Path.cwd())+'\n')
               stream.write('HIDI_BASELINE_RUNTIME='+str(baseline_target)+'\n')
+              stream.write('HIDI_ASSET_MIRROR_PROOF_DIR='+str(mirror.parent)+'\n')
           PY
       - name: Run unchanged production-era commerce probes on both immutable images
         working-directory: production-tests
