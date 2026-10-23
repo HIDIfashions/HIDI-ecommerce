@@ -1,4 +1,4 @@
-name: Isolated concurrent image diagnosis after page readiness
+name: Isolated real Azure upload and concurrent image validation
 on:
   push:
     branches: [migration/azure-sql-blob]

@@ -1,4 +1,4 @@
-"""Owned isolated 1 GiB diagnostic job; never changes live app or Blob data."""
+"""Owned isolated 1 GiB validation job; temporary owned Blob namespace; live app unchanged."""
 import json,subprocess,sys,time,signal
 from pathlib import Path
 from immutable_image_promote import load_release,SOURCE,WEB
@@ -21,7 +21,7 @@ if not pulls:
     assert str(registry.get('identity','')).lower() in ['', 'system'];pulls=matches
 attached=sorted(set(matches+pulls))
 probe=Path(__file__).with_name('reproduce_fixture.mjs').read_text()
-body={'location':web['location'],'tags':{'hidi-image-smoke':run},'identity':{'type':'UserAssigned','userAssignedIdentities':{x:{} for x in attached}},'properties':{'environmentId':web['properties'].get('environmentId') or web['properties']['managedEnvironmentId'],'configuration':{'triggerType':'Manual','replicaTimeout':480,'replicaRetryLimit':0,'manualTriggerConfig':{'replicaCompletionCount':1,'parallelism':1},'registries':[{'server':r.r.images.REGISTRY,'identity':pulls[0]}]},'template':{'containers':[{'name':'photo','image':WEB,'command':['node'],'args':['--input-type=module','-e',probe],'resources':{'cpu':0.5,'memory':'1Gi'},'env':[{'name':key,'value':env[key]} for key in ['AZURE_STORAGE_ACCOUNT','AZURE_CLIENT_ID']]}]}}}
+body={'location':web['location'],'tags':{'hidi-image-smoke':run},'identity':{'type':'UserAssigned','userAssignedIdentities':{x:{} for x in attached}},'properties':{'environmentId':web['properties'].get('environmentId') or web['properties']['managedEnvironmentId'],'configuration':{'triggerType':'Manual','replicaTimeout':480,'replicaRetryLimit':0,'manualTriggerConfig':{'replicaCompletionCount':1,'parallelism':1},'registries':[{'server':r.r.images.REGISTRY,'identity':pulls[0]}]},'template':{'containers':[{'name':'photo','image':WEB,'command':['node'],'args':['--input-type=module','-e',probe],'resources':{'cpu':0.5,'memory':'1Gi'},'env':[{'name':key,'value':env[key]} for key in ['AZURE_STORAGE_ACCOUNT','AZURE_CLIENT_ID']]+[{'name':'HIDI_PHOTO_VALIDATION_RUN','value':run}]}]}}}
 if web['properties'].get('workloadProfileName'):body['properties']['workloadProfileName']=web['properties']['workloadProfileName']
 report={'diagnosticOnly':True,'sourceSha':SOURCE,'image':WEB,'job':name,'databaseWrites':0,'blobWrites':0,'productionTrafficChanged':False};attempted=False
 def owned(current):
@@ -55,14 +55,30 @@ try:
             if isinstance(output,bytes):output=output.decode('utf-8','replace')
             report.setdefault('logReadTimeouts',0);report['logReadTimeouts']+=1
         lines=[line.split('HIDI_FIXTURE_DIAGNOSTIC ',1)[1] for line in output.splitlines() if 'HIDI_FIXTURE_DIAGNOSTIC ' in line]
+        chunks=[]
+        for line in output.splitlines():
+            if 'HIDI_FIXTURE_CHUNK ' in line:
+                try:chunks.append(json.JSONDecoder().raw_decode(line.split('HIDI_FIXTURE_CHUNK ',1)[1])[0])
+                except ValueError:pass
+        if chunks:
+            parts={part['index']:part for part in chunks};total=chunks[-1]['total']
+            if len(parts)==total and set(parts)==set(range(total)):
+                lines=[''.join(parts[index]['data'] for index in range(total))]
         if lines:report['details']=json.JSONDecoder().raw_decode(lines[-1])[0];break
         report['diagnosticLog']=output[-10000:];time.sleep(2)
     assert status=='Succeeded' and report.get('details',{}).get('diagnosticCompleted'),'Diagnostic did not finish'
+    report['blobWrites']=report['details'].get('blobWrites',0)
+    report['validationBlobsRemoved']=report['details'].get('validationBlobsRemoved',False)
+    assert report['details'].get('realAzurePassed') and report['validationBlobsRemoved'],'Real Azure diagnostic failed'
     report['diagnosticCompleted']=True
 except Exception as error:report['error']=str(error);raise
 finally:
     try:
+        if 'details' in report:
+            report['blobWrites']=report['details'].get('blobWrites',0)
+            report['validationBlobsRemoved']=report['details'].get('validationBlobsRemoved',False)
         if attempted:report['validationJobRemoved']=cleanup_job(r.r.cloud,name,url,owned)
         r.r.photo.unchanged(expected);report['restoredProductionUnchanged']=True
     finally:r.save('fixture-memory-diagnostic.json',report);print(json.dumps(report,indent=2))
+
 
