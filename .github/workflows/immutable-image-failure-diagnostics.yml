@@ -1,0 +1,45 @@
+name: Read only failed image upload diagnostics after rollback
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/immutable-image-failure-diagnostics.yml]
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f
+          path: candidate-source
+      - name: Authenticate successful rollback evidence
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12487466057/zip -o "$RUNNER_TEMP/rollback.zip"
+          echo "7c707373bdd73f0505f583f4fecdd4e386ed7ed7a4c6bc40ae7da9ab41e77bbf  $RUNNER_TEMP/rollback.zip" | sha256sum --check
+          mkdir -p candidate-source/evidence/photo-live
+          unzip -q "$RUNNER_TEMP/rollback.zip" -d candidate-source/evidence/photo-live
+          python -m py_compile deploy/image-promotion/read_image_failure.py
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Read revision resources, bounded system logs and upload-window metrics
+        working-directory: candidate-source
+        run: python ../deploy/image-promotion/read_image_failure.py
+      - name: Preserve bounded diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: immutable-image-failure-diagnostics
+          path: candidate-source/evidence/photo-live/live-upload-diagnostics.json
+          retention-days: 30
