@@ -21,9 +21,9 @@ export async function runQualityChecks({browser,engine,scenario,until,base,outpu
    if(width<=760){assert(boxes.title.top>=boxes.image.bottom,'Copy never covers garment');assert(boxes.hero.height>=560&&boxes.hero.height<=640);}
   }await page.setViewportSize({width:390,height:844});await shots(page,'home');
  },phone);
- await run('QUAL-02','PDP selling price, selected size and deselection follow the exact variant without secondary price copy',async page=>{
+ await run('QUAL-02','PDP price, MRP, selected size and deselection follow the exact variant',async page=>{
   await pdp(page,1);assert.match(await summary(page).innerText(),/From ₹1,499/);assert(await actions(page).getByRole('button',{name:'Add to Cart',exact:true}).isEnabled());
-  for(const [name,price] of [['M','₹1,499'],['L','₹1,799']]){await size(page,name).click();await until(async()=>(await summary(page).innerText()).includes('Size '+name),'selected size reflected');const text=await summary(page).innerText();assert(text.includes(price));assert.doesNotMatch(text,/\bMRP\b|% OFF|Inclusive of all taxes/i);assert.equal(await size(page,name).getAttribute('aria-pressed'),'true');}
+  for(const [name,price] of [['M','₹1,499'],['L','₹1,799']]){await size(page,name).click();await until(async()=>(await summary(page).innerText()).includes('Size '+name),'selected size reflected');assert((await summary(page).innerText()).includes(price));assert.match(await summary(page).innerText(),/MRP ₹1,999/);assert.equal(await size(page,name).getAttribute('aria-pressed'),'true');}
   await size(page,'L').click();assert(await actions(page).getByRole('button',{name:'Buy Now',exact:true}).isEnabled());assert.match(await summary(page).innerText(),/Select a size/);await shots(page,'product');
  });
  await run('QUAL-03','Colour changes reset size and update price, specifications and colour-specific photography',async page=>{
