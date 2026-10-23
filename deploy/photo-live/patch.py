@@ -60,7 +60,7 @@ def patch(base,overlay,app):
         if p.is_file() and not p.is_symlink() and p.suffix in {'.js','.json','.html','.rsc','.meta'}
     }
     semantic={}
-    counts={'numeric':0,'labels':0,'lifecycleReset':0}
+    counts={'numeric':0,'labels':0,'lifecycleReset':0,'hexadecimal':0}
     labels={
         'choose a non-empty photo no larger than 12 MB':'choose a valid non-empty photo',
         'Image exceeds 12 MB.':'Invalid photo size.',
@@ -80,6 +80,9 @@ def patch(base,overlay,app):
         re.compile(r'(?P<size>[A-Za-z_$][\w$]*\.size)\s*<\s*1\s*\|\|\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*\s*<\s*(?P=size)'),
         re.compile(r'1\s*>\s*(?P<size>[A-Za-z_$][\w$]*\.size)\s*\|\|\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*\s*<\s*(?P=size)'),
     ]
+    # The captured live helper spells the same 12 MiB cap as 0xc00000.
+    # Match only its non-empty OR over-cap photo validator, not other constants.
+    hexadecimal_cap=re.compile(r'(?P<size>[A-Za-z_$][\w$]*\.size)\s*<\s*1\s*\|\|\s*(?P=size)\s*>\s*0[xX]0*[cC]00000(?![\w$.])')
     # Browser File.size is browser-owned metadata. Client validation only rejects
     # empty files; exact received-byte integrity and representability are enforced
     # again by the disk-backed server parser.
@@ -88,7 +91,8 @@ def patch(base,overlay,app):
     # before the async upload helper snapshots/serializes a large File. In all
     # three browser engines that can turn the selected File into a zero-byte
     # object before validation. Defer only that exact photo-input reset by one
-    # task turn; the input is still cleared for same-file reselection.
+    # task turn; the input is still cleared for same-file reselection. Capture
+    # the element synchronously because React clears event.currentTarget after dispatch.
     photo_input_reset=re.compile(r'(?P<target>[A-Za-z_$][\w$]*\.currentTarget)\.value\s*=\s*([\'\"])\2')
     probe=browser_safe_integer.fullmatch('!Number.isSafeInteger(file.size)||file.size<1')
     assert probe and probe['size']=='file.size','Capless browser-validator rewrite contract is invalid'
@@ -106,6 +110,8 @@ def patch(base,overlay,app):
             'Add photos',
         ])
         if photo_text:
+            changed,nhex=hexadecimal_cap.subn(lambda m:m['size']+'<1',changed)
+            counts['hexadecimal']+=nhex
             for pattern in symbolic_caps:
                 changed,n=pattern.subn(lambda m:'!Number.isSafeInteger('+m['size']+')||'+m['size']+'<1',changed)
                 counts['symbolic']+=n
@@ -113,7 +119,7 @@ def patch(base,overlay,app):
             changed,n3=browser_safe_integer.subn(lambda m:m['size']+'<1',changed)
             counts['safeInteger']+=n3
             changed,n4=photo_input_reset.subn(
-                lambda m:'setTimeout(()=>{'+m['target']+'.value=""},0)',
+                lambda m:'(hidiPhotoInput=>setTimeout(()=>{hidiPhotoInput.value=""},0))('+m['target']+')',
                 changed,
             )
             counts['lifecycleReset']+=n4
@@ -129,6 +135,7 @@ def patch(base,overlay,app):
     assert counts['lifecycleReset']>=1,'Retained admin photo input lifecycle anchor changed: explicit review required'
     for name in touched:
         assert '12582912' not in semantic[name], 'A former 12 MiB photo guard remains in '+name
+        assert not hexadecimal_cap.search(semantic[name]), 'A hexadecimal 12 MiB photo guard remains in '+name
         assert '12 MB' not in semantic[name], 'A former 12 MiB photo label remains in '+name
 
     # Next static JS is content-addressed. Rename every changed chunk and update
@@ -246,3 +253,4 @@ def patch(base,overlay,app):
         'removedPhotoCapMiB':12,
         'databaseSchemaUnchanged':True,
     }
+

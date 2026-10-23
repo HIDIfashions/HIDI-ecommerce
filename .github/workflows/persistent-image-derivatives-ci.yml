@@ -70,6 +70,7 @@ jobs:
       - name: Deployable photo-overlay source contract
         run: |
           python -m py_compile deploy/photo-live/azure-check.py deploy/photo-live/arm-state.py deploy/photo-live/patch.py deploy/photo-live/release.py deploy/photo-live/retained-test.py deploy/photo-live/test.py
+          python deploy/photo-live/patch.test.py
           python deploy/photo-live/azure-check.test.py
           python deploy/photo-live/arm-state.test.py
           python - <<'PY'
@@ -112,3 +113,4 @@ jobs:
           assert not failed, 'Persistent image end-to-end gate failed: '+str(failed)
           assert any(c.get('case')=='Uploaded photos render in the production-built product page as optimized images' and c.get('status')=='PASS' for c in data['cases'])
           PY
+
