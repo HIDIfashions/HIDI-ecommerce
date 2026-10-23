@@ -1,4 +1,4 @@
-"""Owned isolated 1 GiB validation job; temporary owned Blob namespace; live app unchanged."""
+"""Isolated sustained-load memory reproduction; read-only Azure Blob; live app unchanged."""
 import json,subprocess,sys,time,signal
 from pathlib import Path
 from immutable_image_promote import load_release,SOURCE,WEB
@@ -69,7 +69,7 @@ try:
     assert status=='Succeeded' and report.get('details',{}).get('diagnosticCompleted'),'Diagnostic did not finish'
     report['blobWrites']=report['details'].get('blobWrites',0)
     report['validationBlobsRemoved']=report['details'].get('validationBlobsRemoved',False)
-    assert report['details'].get('realAzurePassed') and report['validationBlobsRemoved'],'Real Azure diagnostic failed'
+    assert all(case['code']==0 and not case['timedOut'] for case in report['details']['results']),'Sustained-load reproduction failed; inspect retained runtime and cgroup evidence'
     report['diagnosticCompleted']=True
 except Exception as error:report['error']=str(error);raise
 finally:
