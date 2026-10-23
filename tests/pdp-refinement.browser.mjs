@@ -37,7 +37,7 @@ try { for (const width of [1440,1280,768,390,320]) {
  if(width>=1000){await page.evaluate(()=>scrollTo(0,320));await page.waitForFunction(()=>{const g=document.querySelector('[class*="galleryLayout"]')?.getBoundingClientRect(),h=document.querySelector('.site-header')?.getBoundingClientRect();return g&&h&&g.top>=h.bottom+12&&g.bottom<=innerHeight+1});await page.evaluate(()=>scrollTo(0,0));}
  if(width<=620){assert.equal(await page.locator('[class*="galleryHint"]').isVisible(),false);assert.equal(await page.getByRole('button',{name:'Buy Now',exact:true}).evaluate(el=>getComputedStyle(el).fontSize),'12px');}
  assert.equal(await page.locator('[data-hidi-selection-copy]:visible').count(),0,'No duplicate SKU paragraph above sizes');
- assert.equal(await page.locator('.pdp-price [data-hidi-price-badge]:visible').count(),0,'Only the native product discount is visible');
+ const priceText=await page.locator('.pdp-price').innerText();assert.match(priceText,/MRP|% OFF|Inclusive of all taxes/,'Original PDP pricing details remain visible');
  assert.equal(await page.getByText('Model information',{exact:true}).count(),0);
  const facts=page.locator('[aria-label="Product quality and fit summary"]');
  assert.equal(await facts.evaluate(el=>el.tagName),'DETAILS');
