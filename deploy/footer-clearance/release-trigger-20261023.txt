@@ -1,0 +1,3 @@
+HIDI footer brand-copy cleanup release trigger.
+Purpose: remove the legacy footer brand description from the retained production runtime only.
+Source footer already omits the copy; guarded runtime patch and browser regression checks must pass before release.
