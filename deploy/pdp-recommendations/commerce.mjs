@@ -66,6 +66,11 @@ try{
      await choice.press('Space');await selected(choice,false);
     }
     // An empty history must not leave a blank section or extra footer spacer.
+    await page.getByRole('link',{name:'Write a review',exact:true}).click();
+    await page.waitForURL('**/account/orders');
+    await page.locator('input[type="tel"]').first().waitFor();
+    await page.waitForLoadState('networkidle');
+    await page.goto(base+'/products/'+available[2].slug,{waitUntil:'domcontentloaded'});await productReady(page);
     await page.evaluate(()=>localStorage.removeItem('hidi_recently_viewed_products_v1'));
     await page.reload({waitUntil:'domcontentloaded'});await page.locator('.sizes button:enabled').first().waitFor();
     await productReady(page);

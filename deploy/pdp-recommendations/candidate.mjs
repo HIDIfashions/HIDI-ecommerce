@@ -5,7 +5,7 @@ import {spawn,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {resolve,join} from 'node:path';
 import {writeFile} from 'node:fs/promises';
-import {snapshotServer} from '../pdp-recommendations/snapshot-server.mjs';
+import {snapshotServer} from '../pdp-layout/snapshot-server.mjs';
 const execute=promisify(execFile);
 const out=resolve('evidence/pdp-recommendations/candidate');
 const source=await snapshotServer({directory:join(out,'public-api'),css:''});

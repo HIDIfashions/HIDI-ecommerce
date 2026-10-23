@@ -33,7 +33,7 @@ def verify_reports(stage):
         cart=json.loads((folder/'real-cart-report.json').read_text());assert cart['passed'] and len(cart['results'])==6 and all(r['testItemsRemoved'] for r in cart['results'])
     return {'passed': True, 'actualRuntime': True, 'cssSha256': CSS_SHA,
             'engines': ['chromium', 'firefox', 'webkit'], 'layoutCases': 36,
-            'commerceCases': 6, 'liveWrites': 0}
+            'commerceCases': 6, 'readOnlyRegressionUpstreamWrites': 0, 'realCartAdds': 6 if stage == 'live' else 0, 'realCartRemovals': 6 if stage == 'live' else 0, 'ordersCreated': 0}
 
 def run(stage, base):
     assert stage in ['candidate', 'live']
