@@ -1,0 +1,66 @@
+name: Locate and verify exact live smoke photos in Azure
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/immutable-image-live-storage-discovery.yml]
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 5ffe7e5ee5f7d6f4c8c68d4359a7229235b1da0e
+      - uses: actions/checkout@v4
+        with:
+          ref: 5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f
+          path: candidate-source
+      - name: Authenticate live deployment evidence
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12483617860/zip -o "$RUNNER_TEMP/live.zip"
+          echo "234d0a5811cc3b9f4ab4770a9a8e9725432bcb3b2480c62328d61cf9bb38e5b5  $RUNNER_TEMP/live.zip" | sha256sum --check
+          mkdir -p candidate-source/evidence/photo-live
+          unzip -q "$RUNNER_TEMP/live.zip" -d candidate-source/evidence/photo-live
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Read only exact recent originals and verify all persistent derivatives
+        working-directory: candidate-source
+        run: |
+          python - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path('../deploy/image-promotion').resolve()))
+          import inspect_uploaded_photos as check
+          insertion="\nconst matched=new Map();let listed=0,downloaded=0;\nfor await(const item of container.listBlobsFlat({prefix:'products/variants/'})){\n  if(++listed>20000)throw Error('Scoped storage discovery limit reached');\n  if(!/^products\\/variants\\/[a-zA-Z0-9_-]+\\/[a-zA-Z0-9_.-]+$/.test(item.name))continue;\n  if(new Date(item.properties.lastModified).getTime()<Date.parse('2026-10-23T06:52:00Z'))continue;\n  const wanted=photos.find(p=>p.bytes===item.properties.contentLength&&!matched.has(p.sha256));\n  if(!wanted)continue;\n  if(++downloaded>6)throw Error('Ambiguous recent upload candidates');\n  const stream=await container.getBlockBlobClient(item.name).download();const sum=createHash('sha256');let size=0;\n  for await(const chunk of stream.readableStreamBody){sum.update(chunk);size+=chunk.length;}\n  const hash=sum.digest('hex');\n  if(size===wanted.bytes&&hash===wanted.sha256)matched.set(hash,item.name);\n  if(matched.size===photos.length)break;\n}\nif(matched.size!==photos.length)throw Error('Could not locate both exact recent uploaded originals');\nfor(const photo of photos)photo.key=matched.get(photo.sha256);\nif(new Set(photos.map(p=>p.key.split('/')[2])).size!==1)throw Error('Uploads belong to different product variants');\n"
+          anchor='const widths=[384,640,750,828,1080,1200,1920];'
+          assert check.PROBE.count(anchor)==1
+          check.PROBE=check.PROBE.replace(anchor,insertion+'\n'+anchor)
+          Path('evidence/photo-live/discovery-probe.mjs').write_text(check.PROBE)
+          import subprocess
+          subprocess.run(['node','--check','evidence/photo-live/discovery-probe.mjs'],check=True)
+          photos=[
+          {'key':'products/variants/discovery/normal.jpg','bytes':10004869,'sha256':'36a94546e8bc48e876c48d78b162196e1ae20a8efa46fd89566829bf7eee5ddc'},
+          {'key':'products/variants/discovery/large.jpg','bytes':47185920,'sha256':'ca24601507789695e9637b5d123df823fd66f8cba9ec3e4ef065b124e6741568'}
+          ]
+          path=check.load_release().P/'discovery-input.json';path.write_text(json.dumps(photos));path.chmod(0o600)
+          sys.argv=['inspect_uploaded_photos.py',str(path)]
+          check.main()
+          PY
+      - name: Preserve bounded storage verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: immutable-image-live-storage-discovery
+          path: candidate-source/evidence/photo-live/uploaded-photo-storage.json
+          retention-days: 30
