@@ -1,0 +1,97 @@
+name: Immutable image production release with live rollback
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/immutable-image-production-release.yml]
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+concurrency:
+  group: hidi-immutable-image-production
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    env:
+      PROMOTE: 'false'
+      CANDIDATE_SHA: 5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f
+      GH_TOKEN: ${{ github.token }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          path: candidate-source
+          fetch-depth: 0
+      - name: Verify promotion coordinator safety tests
+        run: |
+          set -euo pipefail
+          python -m py_compile deploy/image-promotion/immutable_image_promote.py deploy/image-promotion/inspect_uploaded_photos.py
+          python deploy/image-promotion/test_immutable_promotion.py
+          python deploy/image-promotion/test_immutable_promotion.py --write-probe "$RUNNER_TEMP/uploaded-photo-probe.mjs"
+          node --check "$RUNNER_TEMP/uploaded-photo-probe.mjs"
+          sudo apt-get update -qq
+          sudo apt-get install -y skopeo
+      - name: Download exact immutable test attestations
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12479956399/zip -o "$RUNNER_TEMP/bridge.zip"
+          echo "abc20dae0caa36a6022859df530c6e73acf6f15162da78ba85190140c8ce2ec3  $RUNNER_TEMP/bridge.zip" | sha256sum --check
+          mkdir bridge-evidence
+          unzip -q "$RUNNER_TEMP/bridge.zip" -d bridge-evidence
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12482386544/zip -o "$RUNNER_TEMP/commerce.zip"
+          echo "e32109d8c1fff883f14a72ece2f947fdf4d28ba6432cf24e9613f735e48c8d86  $RUNNER_TEMP/commerce.zip" | sha256sum --check
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Prepare exact tested digest and rollback without deployment
+        if: env.PROMOTE != 'true'
+        working-directory: candidate-source
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python ../deploy/image-promotion/immutable_image_promote.py prepare
+      - name: Promote exact tested digest and verify live service health
+        if: env.PROMOTE == 'true'
+        working-directory: candidate-source
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python ../deploy/image-promotion/immutable_image_promote.py deploy
+      - name: Publish promotion readiness evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: immutable-image-promotion-readiness
+          path: candidate-source/evidence/photo-live/
+          retention-days: 30
+      - name: Monitor health and rollback while awaiting manual uploads
+        if: env.PROMOTE == 'true'
+        working-directory: candidate-source
+        run: python ../deploy/image-promotion/immutable_image_promote.py inspect
+      - name: Publish uploaded original and derivative verification
+        if: env.PROMOTE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: immutable-image-live-storage
+          path: candidate-source/evidence/photo-live/uploaded-photo-storage.json
+          retention-days: 30
+      - name: Monitor health until every manual smoke check passes
+        if: env.PROMOTE == 'true'
+        working-directory: candidate-source
+        run: python ../deploy/image-promotion/immutable_image_promote.py monitor
+      - name: Recover captured image unless smoke completion is verified
+        if: always() && env.PROMOTE == 'true'
+        working-directory: candidate-source
+        run: python ../deploy/image-promotion/immutable_image_promote.py recover
+      - name: Preserve final bounded release and rollback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: immutable-image-production-evidence
+          path: candidate-source/evidence/photo-live/
+          retention-days: 30
