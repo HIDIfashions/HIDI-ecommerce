@@ -1,0 +1,81 @@
+name: Immutable image production preflight
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/immutable-image-production-preflight.yml]
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+concurrency:
+  group: hidi-immutable-image-production
+  cancel-in-progress: false
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CANDIDATE_SHA: 5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Authenticate immutable evidence and compare final production baseline
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12479956399/zip -o "$RUNNER_TEMP/bridge.zip"
+          echo "abc20dae0caa36a6022859df530c6e73acf6f15162da78ba85190140c8ce2ec3  $RUNNER_TEMP/bridge.zip" | sha256sum --check
+          mkdir bridge-evidence
+          unzip -q "$RUNNER_TEMP/bridge.zip" -d bridge-evidence
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12482386544/zip -o "$RUNNER_TEMP/commerce.zip"
+          echo "e32109d8c1fff883f14a72ece2f947fdf4d28ba6432cf24e9613f735e48c8d86  $RUNNER_TEMP/commerce.zip" | sha256sum --check
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python - <<'PY'
+          import hashlib,importlib.util,json,os,subprocess,urllib.request
+          from pathlib import Path
+          p=Path('deploy/photo-live/release.py').resolve()
+          spec=importlib.util.spec_from_file_location('preflight',p)
+          r=importlib.util.module_from_spec(spec);spec.loader.exec_module(r)
+          r.r.fresh_source()
+          assert r.source_sha()==os.environ['CANDIDATE_SHA']
+          release=subprocess.check_output(['git','ls-remote','origin','refs/heads/release/image-persistent-derivatives-20261023'],text=True).split()[0]
+          assert release==os.environ['CANDIDATE_SHA']
+          for run in [39900235407,39902561056,39908365165]:
+              req=urllib.request.Request('https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/runs/'+str(run),headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as response: value=json.load(response)
+              assert value['conclusion']=='success' and value['status']=='completed',run
+          evidence=Path('bridge-evidence/evidence/photo-live')
+          read=lambda name:json.loads((evidence/name).read_text())
+          sealed=read('sealed.json')
+          assert sealed['passed'] and sealed['photoSourceSha']==os.environ['CANDIDATE_SHA'] and sealed['sourceSha']=='3096b44f716dbcd090d5d22e6cbe87c975009eb4'
+          for name,digest in sealed['manifest'].items(): assert hashlib.sha256((evidence/name).read_bytes()).hexdigest()==digest,name
+          observed={name:r.r.cloud.snapshot(r.r.cloud.app(name)) for name in ['hidi-api','hidi-web']}
+          for state in observed.values():r.r.cloud.ready(state)
+          result={'passed':observed==read('before.json'),'expected':read('before.json'),'observed':observed,'sourceSha':r.source_sha(),'coordinatorSha':os.environ['GITHUB_SHA'],'productionTrafficChanged':False,'databaseWrites':0}
+          r.save('final-preflight.json',result)
+          print(json.dumps(result,indent=2),flush=True)
+          assert result['passed'],'STOP: production baseline moved; exact candidate cannot be promoted'
+          images=read('published.json')['images']
+          assert images=={'web':'acrhidiprod0927.azurecr.io/hidi-web@sha256:506bdba05d969fe4aeb6176c22cca53d22b0eb653da70b306397dde41e014441','api':'acrhidiprod0927.azurecr.io/hidi-api@sha256:4d14ec2469e64f1b1478036d89a0305f938c06922145630f5ac5e71de3c69df3'}
+          for app,image in images.items():
+              subprocess.run(['docker','pull',image],check=True)
+              assert r.r.guard.image_id(image)==sealed['images'][app]
+          original=observed['hidi-web']['image']
+          subprocess.run(['docker','pull',original],check=True)
+          result.update({'publishedImagesVerified':True,'rollbackImageAvailable':True,'releaseImageRebuilt':False})
+          r.save('final-preflight.json',result)
+          print('PASS: exact tested images and previous web image available; no deployment performed',flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: immutable-image-production-preflight
+          path: evidence/photo-live/
+          retention-days: 30
