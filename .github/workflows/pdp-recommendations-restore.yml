@@ -1,0 +1,37 @@
+name: Restore production after live footer check
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: ['.github/workflows/pdp-recommendations-restore.yml']
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Restore exact verified baseline with ownership and settings guards
+        run: |
+          python3 -u - <<'PY'
+          import importlib.util,json
+          s=importlib.util.spec_from_file_location('release','deploy/pdp-recommendations/release.py')
+          m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+          baseline='acrhidiprod0927.azurecr.io/hidi-web@sha256:8ea098e6ff728086a142ec5792c92a37ca8f8a014a1ec29d6f896e5251b1c083'
+          data=m.cloud.app('hidi-web');current=m.cloud.snapshot(data)
+          print(json.dumps(current),flush=True)
+          assert current['latest']=='hidi-web--pdpreviews39991456957a1','Independent revision; refuse overwrite'
+          assert current['settingsHash']=='c2f7f6552921035d187c5f0a2237ec03e08df6f01ee5b711501b643cb8b62f36'
+          before={'hidi-web':current,'hidi-api':m.cloud.snapshot(m.cloud.app('hidi-api'))}
+          suffix='pdpmanualrb39991456957a1'
+          m.guard.conditional_write_image(data,baseline,suffix)
+          restored=m.cloud.snapshot(m.guard.wait_ready(baseline,suffix,before))
+          m.guard.routes()
+          print(json.dumps({'passed':True,'restored':restored,'apiUnchanged':m.cloud.snapshot(m.cloud.app('hidi-api'))==before['hidi-api']}),flush=True)
+          PY
