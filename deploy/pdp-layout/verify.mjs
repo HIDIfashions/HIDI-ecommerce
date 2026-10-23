@@ -31,14 +31,15 @@ async function decoded(page,selector,expected=null){
 }
 async function ready(page){
  await page.locator('.sizes button[aria-pressed]:enabled').first().waitFor();
+ await page.locator('.pdp-recent article').first().waitFor();
  await page.waitForFunction(()=>document.fonts.status==='loaded');
  await decoded(page,'[class*="activeImage"] img');
- await page.locator('.pdp-recent article').first().waitFor();
 }
-async function measure(page){return page.evaluate(()=>{
+async function measure(page){const handle=await page.waitForFunction(()=>{
  const box=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom,right:r.right};};
  const q=s=>document.querySelector(s), c=s=>getComputedStyle(q(s));
- const active=q('[class*="activeImage"]'),img=active.querySelector('img');
+ const active=q('[class*="activeImage"]'),img=active?.querySelector('img');
+ if(!img?.complete||!img.naturalWidth||!img.naturalHeight)return false;
  const review=q('#reviews'),related=q('.pdp-related'),recent=q('.pdp-recent');
  return {image:box(active),natural:[img.naturalWidth,img.naturalHeight],fit:getComputedStyle(img).objectFit,
   gallery:box(q('[class*="galleryLayout"]')),info:box(q('.pdp-info')),
@@ -52,7 +53,7 @@ async function measure(page){return page.evaluate(()=>{
   sizeLabels:[...document.querySelectorAll('.pdp-info .sizes button')].map(e=>({text:e.textContent,disabled:e.disabled})),
   header:[c('.site-header').height,c('.site-header').backgroundColor],
   footer:[c('footer.footer').paddingBottom,c('footer.footer').backgroundColor]};
-});}
+});try{return await handle.jsonValue();}finally{await handle.dispose();}}
 async function capture(page,name){
  await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:join(out,name+'-top.png')});
  await page.screenshot({path:join(out,name+'-full.png'),fullPage:true});
