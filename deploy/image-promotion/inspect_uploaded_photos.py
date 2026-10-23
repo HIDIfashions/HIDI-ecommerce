@@ -58,16 +58,40 @@ def validate_photos(photos):
     assert max(x['bytes'] for x in photos) > 40 * 1024 * 1024
 
 
-def main():
+def job_resource(app_id, name):
+    match = re.fullmatch(r'/subscriptions/([^/]+)/resourceGroups/([^/]+)/providers/Microsoft\.App/containerApps/hidi-web', app_id, re.I)
+    assert match, 'Expected the production web app resource ID'
+    subscription, group = match.groups()
+    assert subscription.lower() == '91d9572d-0f0b-47fe-802d-0eef36d7c719' and group.lower() == 'rg-hidi-prod'
+    assert re.fullmatch(r'image-smoke-[0-9]+-[0-9]+', name), 'Unexpected validation job name'
+    return '/subscriptions/' + subscription + '/resourceGroups/' + group + '/providers/Microsoft.App/jobs/' + name
+
+
+def cleanup_job(cloud, name, url, owned):
+    names = cloud.azure('containerapp', 'job', 'list', '-g', 'rg-hidi-prod', '--query', '[].name')
+    if name in names:
+        owned(cloud.azure('rest', '--method', 'get', '--url', url))
+        cloud.azure('rest', '--method', 'delete', '--url', url)
+        for _ in range(40):
+            names = cloud.azure('containerapp', 'job', 'list', '-g', 'rg-hidi-prod', '--query', '[].name')
+            if name not in names:
+                return True
+            time.sleep(3)
+        raise AssertionError('Owned smoke job cleanup not verified')
+    return True
+
+
+def main(storage_only_states=None):
     r = load_release()
     photos = json.loads(Path(sys.argv[1]).read_text())
     validate_photos(photos)
     run = r.r.guard.run_key()
     name = 'image-smoke-' + run
     web = r.r.cloud.app('hidi-web')
-    deployed = r.read('promotion-live.json')['states']
+    deployed = storage_only_states if storage_only_states is not None else r.read('promotion-live.json')['states']
     r.r.photo.unchanged(deployed)
-    assert r.r.cloud.snapshot(web)['image'] == WEB
+    if storage_only_states is None:
+        assert r.r.cloud.snapshot(web)['image'] == WEB
     entries = web['properties']['template']['containers'][0]['env']
     env = {x['name']: x.get('value', '') for x in entries if not x.get('secretRef')}
     identities = web['identity']['userAssignedIdentities']
@@ -85,15 +109,14 @@ def main():
         assert str(registry.get('identity', '')).lower() in ['', 'system']
         pulls = storage
     attached = sorted(set(storage + pulls))
-    root = web['id'].rsplit('/containerApps/', 1)[0]
-    resource = root + '/jobs/' + name
+    resource = job_resource(web['id'], name)
     url = 'https://management.azure.com' + resource + '?api-version=2025-07-01'
     options = {x: env[x] for x in ['AZURE_STORAGE_ACCOUNT', 'AZURE_CLIENT_ID']}
     options['HIDI_SMOKE_PHOTOS'] = json.dumps(photos)
     body = {'location': web['location'], 'tags': {'hidi-image-smoke': run}, 'identity': {'type': 'UserAssigned', 'userAssignedIdentities': {x: {} for x in attached}}, 'properties': {'environmentId': web['properties'].get('environmentId') or web['properties']['managedEnvironmentId'], 'configuration': {'triggerType': 'Manual', 'replicaTimeout': 480, 'replicaRetryLimit': 0, 'manualTriggerConfig': {'replicaCompletionCount': 1, 'parallelism': 1}, 'registries': [{'server': r.r.images.REGISTRY, 'identity': pulls[0]}]}, 'template': {'containers': [{'name': 'photo', 'image': WEB, 'command': ['node'], 'args': ['--input-type=module', '-e', PROBE], 'resources': {'cpu': 0.5, 'memory': '1Gi'}, 'env': [{'name': key, 'value': value} for key, value in options.items()]}]}}}
     if web['properties'].get('workloadProfileName'):
         body['properties']['workloadProfileName'] = web['properties']['workloadProfileName']
-    report = {'passed': False, 'sourceSha': SOURCE, 'image': WEB, 'job': name, 'databaseWrites': 0, 'blobWrites': 0}
+    report = {'passed': False, 'sourceSha': SOURCE, 'image': WEB, 'job': name, 'databaseWrites': 0, 'blobWrites': 0, 'persistedServingVerified': False, 'scope': 'storage-only' if storage_only_states is not None else 'live-storage-and-serving', 'appResourceId': web['id'], 'jobResourceId': resource}
     attempted = False
 
     def interrupt(signum, frame):
@@ -139,7 +162,7 @@ def main():
                 break
             time.sleep(2)
         assert report['details']['passed'] and len(report['details']['results']) == 2
-        for result in report['details']['results']:
+        for result in report['details']['results'] if storage_only_states is None else []:
             # Persisted-serving assertion belongs on the freshly uploaded original.
             path = '/_next/image?' + urlencode({'url': '/media/' + result['key'] + '?hidi_image=3', 'w': 640, 'q': 75})
             request = urllib.request.Request(r.r.cloud.BASE + path, headers={'Accept': 'image/webp'})
@@ -150,20 +173,24 @@ def main():
             derivative = next(x for x in result['derivatives'] if x['width'] == 640)
             assert hashlib.sha256(data).hexdigest() == derivative['sha256']
         r.r.photo.unchanged(deployed)
-        report.update({'passed': True, 'normalAndLargeVerified': True, 'persistedServingVerified': True})
+        report.update({'passed': True, 'normalAndLargeVerified': True, 'persistedServingVerified': storage_only_states is None})
+    except BaseException as error:
+        report['passed'] = False
+        report['error'] = str(error)
+        raise
     finally:
-        if attempted:
-            owned(r.r.cloud.azure('rest', '--method', 'get', '--url', url))
-            r.r.cloud.azure('rest', '--method', 'delete', '--url', url)
-            for _ in range(40):
-                names = r.r.cloud.azure('containerapp', 'job', 'list', '-g', 'rg-hidi-prod', '--query', '[].name')
-                if name not in names:
-                    report['validationJobRemoved'] = True
-                    break
-                time.sleep(3)
-            assert report.get('validationJobRemoved'), 'Owned smoke job cleanup not verified'
-        r.save('uploaded-photo-storage.json', report)
-        print(json.dumps(report), flush=True)
+        try:
+            if attempted:
+                report['validationJobRemoved'] = cleanup_job(r.r.cloud, name, url, owned)
+            r.r.photo.unchanged(deployed)
+            report['productionTrafficChanged'] = False
+        except BaseException as error:
+            report['passed'] = False
+            report['cleanupOrStateError'] = str(error)
+            raise
+        finally:
+            r.save('uploaded-photo-storage.json', report)
+            print(json.dumps(report), flush=True)
     assert report['passed'] and report['validationJobRemoved']
 
 

@@ -17,18 +17,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 5ffe7e5ee5f7d6f4c8c68d4359a7229235b1da0e
+          ref: ${{ github.sha }}
       - uses: actions/checkout@v4
         with:
           ref: 5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f
           path: candidate-source
-      - name: Authenticate live deployment evidence
+      - name: Authenticate exact successful rollback evidence
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12483617860/zip -o "$RUNNER_TEMP/live.zip"
-          echo "234d0a5811cc3b9f4ab4770a9a8e9725432bcb3b2480c62328d61cf9bb38e5b5  $RUNNER_TEMP/live.zip" | sha256sum --check
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12484688548/zip -o "$RUNNER_TEMP/live.zip"
+          echo "6695dee8a03e05dc73325f8751808a56354158a86bd7b42dd3b2a5c52eac3b10  $RUNNER_TEMP/live.zip" | sha256sum --check
           mkdir -p candidate-source/evidence/photo-live
           unzip -q "$RUNNER_TEMP/live.zip" -d candidate-source/evidence/photo-live
+      - name: Test resource addressing and fail-closed cleanup
+        run: python deploy/image-promotion/test_immutable_promotion.py
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
@@ -55,7 +57,14 @@ jobs:
           ]
           path=check.load_release().P/'discovery-input.json';path.write_text(json.dumps(photos));path.chmod(0o600)
           sys.argv=['inspect_uploaded_photos.py',str(path)]
-          check.main()
+          release=check.load_release()
+          rollback=release.read('promotion-rollback.json')
+          assert rollback['passed'] and rollback['webStatus']=='restored' and rollback['apiUnchanged'] and rollback['webSettingsUnchangedFromCapture'] and rollback['publicSnapshotRestored']
+          states=release.read('before.json')
+          assert rollback['state']['image']==states['hidi-web']['image'] and rollback['state']['settingsHash']==states['hidi-web']['settingsHash']
+          assert rollback['state']['ready']==rollback['state']['latest']=='hidi-web--rangefiverb39913626973a1'
+          states['hidi-web']=rollback['state']
+          check.main(storage_only_states=states)
           PY
       - name: Preserve bounded storage verification evidence
         if: always()

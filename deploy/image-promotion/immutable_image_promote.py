@@ -187,6 +187,7 @@ def monitor(r, until_storage=False):
                 storage = r.read('uploaded-photo-storage.json')
                 assert storage['passed'] and storage['sourceSha'] == SOURCE and storage['image'] == WEB
                 assert storage['normalAndLargeVerified'] and storage['validationJobRemoved']
+                assert storage.get('persistedServingVerified') is True, 'Live persisted serving evidence required'
                 live_checks(r, full=True)
                 r.save('promotion-complete.json', {'passed': True, 'sourceSha': SOURCE, 'image': WEB, 'manualChecks': command['checks'], 'storage': storage, 'states': r.read('promotion-live.json')['states']})
                 print('PASS: production smoke complete', flush=True)
