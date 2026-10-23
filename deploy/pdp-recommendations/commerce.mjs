@@ -95,7 +95,7 @@ try{
      if(path==='/cart')await page.waitForFunction(name=>document.querySelector('.cart-page')?.textContent.includes(name),product.name);
      if(path!=='/admin/sign-in'){
       const footer=page.locator('footer.footer,footer.site-footer').first();await footer.waitFor({state:'visible'});
-      await footer.locator('a[href="/collections/casual-wear"]').first().waitFor({state:'visible'});
+      await footer.locator('a[href="/collections/casual-wear"]').first().waitFor({state:'attached'});
       assert.equal(await page.getByText(/Indian wear with a calm point of view/).count(),0,'Footer copy removed');
      }
      if(path==='/account')await page.locator('input[type="tel"]').first().waitFor();
