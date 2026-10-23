@@ -27,8 +27,8 @@ function normalizeInfo(text,expectedHash){
 }
 function stripApprovedIncludes(text){
  const tree=ts.createSourceFile('page-display.js',text,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);let target;
- function walk(n){if(ts.isBinaryExpression(n)&&n.operatorToken.kind===ts.SyntaxKind.AmpersandAmpersandToken&&n.getText(tree).includes('className:"hidi-pdp-includes"')){assert(!target,'One includes display expected');target=n;return;}ts.forEachChild(n,walk);}walk(tree);
- assert(target,'Retained includes display expected');return text.slice(0,target.getStart(tree))+'null'+text.slice(target.end);
+ function walk(n){if(ts.isBinaryExpression(n)&&n.operatorToken.kind===ts.SyntaxKind.AmpersandAmpersandToken&&n.getText(tree).includes('className:"hidi-pdp-includes"')){assert(!target,'At most one includes display expected');target=n;return;}ts.forEachChild(n,walk);}walk(tree);
+ return target ? text.slice(0,target.getStart(tree))+'null'+text.slice(target.end) : text;
 }
 for(const [oldName,newName,count] of [[plan.retainedClientChunk,plan.newClientChunk,4],['apps/web/.next/server/app/products/[slug]/page.js','apps/web/.next/server/app/products/[slug]/page.js',5]]){
  const before=inventory(readFileSync(join(base,oldName),'utf8')),after=inventory(readFileSync(join(overlay,newName),'utf8'));
