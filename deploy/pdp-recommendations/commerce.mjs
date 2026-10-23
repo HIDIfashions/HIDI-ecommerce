@@ -89,15 +89,19 @@ try{
     if(width<=720&&await summary.count()&&await summary.evaluate(e=>e.open))await summary.locator('summary').click();
     const cod=page.getByRole('radio',{name:/Cash on delivery/});await cod.check();assert(await cod.isChecked());
     const online=page.getByRole('radio',{name:/Pay online/});await online.check();assert(await online.isChecked());
-    for(const path of ['/cart','/checkout','/collections/all','/','/account','/admin/sign-in']){
+    for(const path of ['/cart','/checkout','/collections/all','/','/shipping','/returns','/account','/admin/sign-in']){
      assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());await page.waitForFunction(()=>document.fonts.status==='loaded');
      if(path==='/checkout')await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();
      if(path==='/cart')await page.waitForFunction(name=>document.querySelector('.cart-page')?.textContent.includes(name),product.name);
-     if(path!=='/admin/sign-in')assert.equal(await page.getByText(/Indian wear with a calm point of view/).count(),0,'Footer copy removed');
+     if(path!=='/admin/sign-in'){
+      const footer=page.locator('footer.footer,footer.site-footer').first();await footer.waitFor({state:'visible'});
+      await footer.locator('a[href="/collections/casual-wear"]').first().waitFor({state:'visible'});
+      assert.equal(await page.getByText(/Indian wear with a calm point of view/).count(),0,'Footer copy removed');
+     }
      if(path==='/account')await page.locator('input[type="tel"]').first().waitFor();
      const {before,after}=await compareStyles(page);assert.deepEqual(after,before,'Unchanged non-PDP styles '+path);
     }
-    results.push({engine,width,products:available.slice(0,3).map(p=>p.slug),hydratedPurchaseControls:true,pointerAndKeyboardSizeSelection:true,emptyHistory:true,buyNowNavigation:true,codAndOnlineChoice:true,unchangedPages:['cart','checkout','collections','home','account','admin-sign-in'],passed:true});
+    results.push({engine,width,products:available.slice(0,3).map(p=>p.slug),hydratedPurchaseControls:true,pointerAndKeyboardSizeSelection:true,emptyHistory:true,buyNowNavigation:true,codAndOnlineChoice:true,renderedSharedFooters:true,unchangedPages:['cart','checkout','collections','home','shipping','returns','account','admin-sign-in'],passed:true});
     console.log('PASS commerce '+engine+' '+width);
    }catch(e){await page.screenshot({path:join(out,'commerce-'+engine+'-'+width+'-failure.png'),fullPage:true}).catch(()=>{});throw e;}
    finally{await context.close();}
