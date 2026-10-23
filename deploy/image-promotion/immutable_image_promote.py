@@ -7,8 +7,8 @@ import base64, hashlib, importlib.util, json, os, re, subprocess, sys, time
 import urllib.error, urllib.request
 from pathlib import Path
 
-SOURCE = '5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f'
-WEB = 'acrhidiprod0927.azurecr.io/hidi-web@sha256:506bdba05d969fe4aeb6176c22cca53d22b0eb653da70b306397dde41e014441'
+SOURCE = '9e809590651122dbf2b7c7ddfbbfe013a65f4364'
+WEB = 'acrhidiprod0927.azurecr.io/hidi-web@sha256:b544955b7937685db8472c70163685ef6a5fe243ae83f9099ca240b82ee439c8'
 API = 'acrhidiprod0927.azurecr.io/hidi-api@sha256:4d14ec2469e64f1b1478036d89a0305f938c06922145630f5ac5e71de3c69df3'
 CONTROL = 'deploy/image-promotion/control.json'
 BRANCH = 'migration/azure-sql-blob'
@@ -41,14 +41,44 @@ def control():
     return valid_control(json.loads(base64.b64decode(item['content'])), os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_SHA'])
 
 
+def verify_memory_acceptance(audit):
+    assert audit['passed'] and audit['sourceSha'] == SOURCE and audit['image'] == WEB
+    assert audit['validationJobRemoved'] and audit['validationBlobsRemoved'] and audit['restoredProductionUnchanged']
+    assert audit['productionTrafficChanged'] is False and audit['databaseWrites'] == 0
+    assert audit['memoryPressureGatePassed'] and audit['restartMonitorPreflight']['passed']
+    details = audit['details']
+    assert details['imageAllocatorArenaMax'] == '2'
+    assert details['realAzurePassed'] and details['originalUnchanged'] and details['exactFixtureHashVerified']
+    assert details['validationBlobsRemoved'] and details['validationBlobsDeleted'] == 16
+    results = details['realAzureResults']
+    assert len(results) == 16 and all(item['valid'] for item in results)
+    originals = [item for item in results if item['width'] is None]
+    hashes = {'824a87c8402d5cad8426905948cb85eb42d0af61bdc8240624a903452868fcc9': 24284792, 'ca24601507789695e9637b5d123df823fd66f8cba9ec3e4ef065b124e6741568': 47185920}
+    assert {item['hash']: item['bytes'] for item in originals} == hashes
+    assert all(item['sha256'] == item['hash'] for item in originals)
+    for source_hash in hashes:
+        assert {item['width'] for item in results if item['hash'] == source_hash and item['width']} == {384, 640, 750, 828, 1080, 1200, 1920}
+    assert len(details['results']) == 1
+    case = details['results'][0]
+    assert case['code'] == 0 and not case['timedOut']
+    before, after = case['eventsBefore'], case['eventsAfter']
+    fail = '/sys/fs/cgroup/memory/memory.failcnt'
+    oom = '/sys/fs/cgroup/memory/memory.oom_control'
+    assert int(after[fail]) == int(before[fail])
+    kills = lambda values: int(next(line.split()[1] for line in values[oom].splitlines() if line.startswith('oom_kill ')))
+    assert kills(after) == kills(before)
+    counts = case['stageCounts']
+    assert counts['preheat-response'] == 24 and counts['full-runtime-upload-response'] == 3 and counts['legacy-image-response'] == 3
+
+
 def attest(r):
     assert r.source_sha() == SOURCE, 'Wrong candidate checkout'
-    assert github('git/ref/heads/release/image-persistent-derivatives-20261023')['object']['sha'] == SOURCE
+    assert github('git/ref/heads/release/image-native-memory-20261023')['object']['sha'] == SOURCE
     root = Path('../bridge-evidence/evidence/photo-live')
     read = lambda name: json.loads((root / name).read_text())
     sealed = read('sealed.json')
     assert sealed['passed'] and sealed['photoSourceSha'] == SOURCE
-    assert sealed['sourceSha'] == '3096b44f716dbcd090d5d22e6cbe87c975009eb4'
+    assert sealed['sourceSha'] == '9dbbdf2e4fc05dd33635c43e1f64a48046545792'
     for name, digest in sealed['manifest'].items():
         assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, name
     images = read('published.json')['images']
@@ -59,17 +89,28 @@ def attest(r):
     assert storage['validationJobRemoved'] and storage['temporaryBlobFamilyDeleted']
     assert storage['databaseWrites'] == 0 and storage['productionTrafficChanged'] is False
     assert storage['persistentDerivativeCount'] == 7 and storage['sourceHashVerified']
-    audit = json.loads(Path('../storage-audit/uploaded-photo-storage.json').read_text())
-    assert audit['passed'] and audit['sourceSha'] == SOURCE and audit['image'] == WEB
-    assert audit['validationJobRemoved'] and audit['productionTrafficChanged'] is False
-    assert audit['databaseWrites'] == audit['blobWrites'] == 0
-    assert len(audit['details']['results']) == 2 and all(len(item['derivatives']) == 7 and item['originalUnchanged'] for item in audit['details']['results'])
-    for run, sha in [(39900235407, SOURCE), (39902561056, '3096b44f716dbcd090d5d22e6cbe87c975009eb4'), (39908365165, 'e5834bea31881fed41eae4dbd93db7ac485b303a'), (39918664062, '2cbddd609a3b29568154ab25bb348d1b0d3e4b4a')]:
+    verify_memory_acceptance(json.loads(Path('../memory-acceptance/fixture-memory-diagnostic.json').read_text()))
+    commerce = json.loads(Path('../commerce-evidence/candidate-source/evidence/photo-live/immutable-commerce-result.json').read_text())
+    assert commerce['passed'] and commerce['photoSourceSha'] == SOURCE and commerce['releaseImageRebuilt'] is False
+    assert commerce['databaseWrites'] == 0 and commerce['productionTrafficChanged'] is False
+    provenance = json.loads(Path('../commerce-evidence/candidate-source/evidence/photo-live/immutable-commerce-provenance.json').read_text())
+    assert provenance['passed'] and provenance['image'] == WEB and provenance['imageId'] == sealed['images']['web']
+    assert provenance['baseline'] == read('before.json') and provenance['bridgeRun'] == 39948285072
+    for target in ['baseline', 'candidate']:
+        for name, key, count in [('checkout','cases',24),('product','cases',15),('pricing','results',6),('shortMobile','cases',9)]:
+            suite = commerce['reports'][target][name]
+            assert suite['passed'] and len(suite[key]) == count
+            assert {case['engine'] for case in suite[key]} == {'chromium','firefox','webkit'}
+    for run, sha in [(39946130854, SOURCE), (39948285072, '9dbbdf2e4fc05dd33635c43e1f64a48046545792'), (39949630292, '7a6a301c699683a9016be8e4340e270c0085b09b'), (39951320606, 'ad55fed5c2cf17466c93ca6fb8ab5cad4d97414b')]:
         status = github('actions/runs/' + str(run))
         assert status['status'] == 'completed' and status['conclusion'] == 'success' and status['head_sha'] == sha, run
     for app, image in images.items():
         subprocess.run(['docker', 'pull', image], check=True)
         assert r.r.guard.image_id(image) == sealed['images'][app]
+    config = json.loads(subprocess.check_output(['docker', 'image', 'inspect', WEB], text=True))[0]['Config']
+    assert [entry for entry in config['Env'] if entry.startswith('MALLOC_ARENA_MAX=')] == ['MALLOC_ARENA_MAX=2']
+    assert hashlib.sha256(json.dumps(config,sort_keys=True,separators=(',',':')).encode()).hexdigest() == read('web-preservation.json')['runtimeConfigSha256']
+
     subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--entrypoint', 'node', WEB, '--input-type=module', '-e', "import {createRequire} from 'node:module'; import {persistentDerivativeBlobKey} from '/app/product-images/images.mjs'; const r=createRequire('/app/apps/web/server.js'); if(!r('next/dist/server/image-optimizer.js').getSharp(1,false)||!r('/app/photo-stream/node_modules/@azure/storage-blob/sdk.cjs').BlobServiceClient||!r('/app/photo-stream/node_modules/@azure/identity/sdk.cjs').DefaultAzureCredential||!persistentDerivativeBlobKey('products/variants/test/test.jpg',640,'webp')) throw Error('Storage probe dependencies missing'); console.log('PASS: immutable image read-only inspection dependencies');"], check=True)
     r.save('promotion-attestation.json', {'passed': True, 'sourceSha': SOURCE, 'coordinatorSha': os.environ['GITHUB_SHA'], 'bridgeCoordinatorSha': sealed['sourceSha'], 'images': images, 'releaseImageRebuilt': False, 'originalSealSha256': hashlib.sha256((root / 'sealed.json').read_bytes()).hexdigest()})
     return read('before.json')
@@ -91,13 +132,33 @@ def recover(r):
 
 
 def rollback_baseline(original, captured, rollback):
-    assert captured == original, 'Rollback capture differs from tested baseline'
     assert rollback['passed'] and rollback['webStatus'] == 'restored'
     assert all(rollback.get(key) is True for key in ['apiUnchanged', 'webSettingsUnchangedFromCapture', 'publicSnapshotRestored'])
     state = rollback['state']
-    assert state['ready'] == state['latest'] == 'hidi-web--rangefiverb39913626973a1'
-    assert {key: value for key, value in state.items() if key not in ['ready', 'latest']} == {key: value for key, value in original['hidi-web'].items() if key not in ['ready', 'latest']}, 'Only the verified rollback revision may differ'
-    return {**original, 'hidi-web': state}
+    assert state['ready'] == state['latest'] == 'hidi-web--rangefiverb39919863794a1'
+    assert original['hidi-web'] == state, 'Tested baseline is not the verified restored production revision'
+    assert original['hidi-api'] == captured['hidi-api'], 'API differs from rollback capture'
+    assert {key: value for key, value in state.items() if key not in ['ready', 'latest']} == {key: value for key, value in captured['hidi-web'].items() if key not in ['ready', 'latest']}, 'Only the verified rollback revision may differ'
+    return original
+
+
+def verify_web_replicas(payload, expected_names):
+    assert not payload.get('nextLink'), 'Candidate replica evidence requires additional pages'
+    replicas = payload.get('value')
+    assert isinstance(replicas, list) and replicas, 'Candidate web replica evidence missing'
+    assert expected_names, 'Candidate web container names missing'
+    result = []
+    for replica in replicas:
+        containers = replica.get('properties', {}).get('containers', [])
+        selected = [item for item in containers if item.get('name') in expected_names]
+        assert {item['name'] for item in selected} == expected_names, 'Candidate web container evidence incomplete'
+        for container in selected:
+            count = container.get('restartCount')
+            assert type(count) is int and count == 0, 'Candidate web container restarted or restart evidence missing'
+            assert container.get('ready') is True, 'Candidate web container not ready'
+            assert str(container.get('runningState', '')).lower() == 'running', 'Candidate web container not running'
+            result.append({'replica': replica['name'], 'container': container['name'], 'restartCount': count, 'ready': True})
+    return result
 
 
 def live_checks(r, full=False):
@@ -116,6 +177,12 @@ def live_checks(r, full=False):
         revision = r.r.cloud.azure('rest', '--method', 'get', '--url', url)['properties']
         assert revision.get('healthState') == 'Healthy', name + ': revision unhealthy'
         assert revision.get('runningState') == 'Running', name + ': revision not running'
+        if name == 'hidi-web':
+            replicas_url = url.replace('?api-version=', '/replicas?api-version=')
+            replicas = r.r.cloud.azure('rest', '--method', 'get', '--url', replicas_url)
+            names = {item['name'] for item in app['properties']['template']['containers']}
+            checks = verify_web_replicas(replicas, names)
+            r.save('promotion-replica-health.json', {'passed': True, 'revision': state['ready'], 'checkedAt': time.time(), 'containers': checks})
     return True
 
 
@@ -194,7 +261,7 @@ def monitor(r, until_storage=False):
                 path = r.P / 'uploaded-photo-input.json'
                 path.write_text(json.dumps(command['photos'])); path.chmod(0o600)
                 inspection = subprocess.Popen([sys.executable, str(Path(__file__).with_name('inspect_uploaded_photos.py')), str(path)])
-            if time.monotonic() - last_health > 45:
+            if time.monotonic() - last_health > 20:
                 live_checks(r)
                 last_health = time.monotonic()
                 print('HEALTH PASS; manual smoke pending', flush=True)
@@ -244,3 +311,4 @@ if __name__ == '__main__':
     else:
         r = load_release()
         {'prepare': lambda r: prepare_and_deploy(r, do_apply=False), 'deploy': prepare_and_deploy, 'inspect': lambda r: monitor(r, until_storage=True), 'monitor': monitor, 'recover': recover}[mode](r)
+

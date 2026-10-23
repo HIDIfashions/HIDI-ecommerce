@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 110
     env:
-      PROMOTE: 'true'
-      CANDIDATE_SHA: 5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f
+      PROMOTE: 'false'
+      CANDIDATE_SHA: 9e809590651122dbf2b7c7ddfbbfe013a65f4364
       GH_TOKEN: ${{ github.token }}
       PYTHONUNBUFFERED: '1'
     steps:
@@ -41,20 +41,22 @@ jobs:
       - name: Download exact immutable test attestations
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12479956399/zip -o "$RUNNER_TEMP/bridge.zip"
-          echo "abc20dae0caa36a6022859df530c6e73acf6f15162da78ba85190140c8ce2ec3  $RUNNER_TEMP/bridge.zip" | sha256sum --check
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12500315404/zip -o "$RUNNER_TEMP/bridge.zip"
+          echo "bece148beaef2aa49d54ca2707822dd09e457f0ddf65be700f9a63e261fa5a99  $RUNNER_TEMP/bridge.zip" | sha256sum --check
           mkdir bridge-evidence
           unzip -q "$RUNNER_TEMP/bridge.zip" -d bridge-evidence
-          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12482386544/zip -o "$RUNNER_TEMP/commerce.zip"
-          echo "e32109d8c1fff883f14a72ece2f947fdf4d28ba6432cf24e9613f735e48c8d86  $RUNNER_TEMP/commerce.zip" | sha256sum --check
-          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12484688548/zip -o "$RUNNER_TEMP/rollback.zip"
-          echo "6695dee8a03e05dc73325f8751808a56354158a86bd7b42dd3b2a5c52eac3b10  $RUNNER_TEMP/rollback.zip" | sha256sum --check
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12500680636/zip -o "$RUNNER_TEMP/commerce.zip"
+          echo "9c03d5f56fdd490307117fd5cef7502dbd5b395ff3754e97162edb135f01808b  $RUNNER_TEMP/commerce.zip" | sha256sum --check
+          mkdir commerce-evidence
+          unzip -q "$RUNNER_TEMP/commerce.zip" -d commerce-evidence
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12487466057/zip -o "$RUNNER_TEMP/rollback.zip"
+          echo "7c707373bdd73f0505f583f4fecdd4e386ed7ed7a4c6bc40ae7da9ab41e77bbf  $RUNNER_TEMP/rollback.zip" | sha256sum --check
           mkdir rollback-evidence
           unzip -q "$RUNNER_TEMP/rollback.zip" -d rollback-evidence
-          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12485768358/zip -o "$RUNNER_TEMP/storage-audit.zip"
-          echo "b0f186e8dfa2698118df11f0959c2c120a6afdb5ea9989d320a97460d041dd96  $RUNNER_TEMP/storage-audit.zip" | sha256sum --check
-          mkdir storage-audit
-          unzip -q "$RUNNER_TEMP/storage-audit.zip" -d storage-audit
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/HIDIfashions/HIDI-ecommerce/actions/artifacts/12500387689/zip -o "$RUNNER_TEMP/memory-acceptance.zip"
+          echo "ad1f87c38d3fd427ad9c35aec975372b1dfa65e1904b3190b3823d26f3cd08bd  $RUNNER_TEMP/memory-acceptance.zip" | sha256sum --check
+          mkdir memory-acceptance
+          unzip -q "$RUNNER_TEMP/memory-acceptance.zip" -d memory-acceptance
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af

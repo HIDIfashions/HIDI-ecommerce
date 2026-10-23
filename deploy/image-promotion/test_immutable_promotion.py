@@ -7,6 +7,44 @@ from inspect_uploaded_photos import validate_photos, PROBE, job_resource, cleanu
 
 
 class PromotionSafetyTests(unittest.TestCase):
+    def test_memory_acceptance_requires_full_storage_and_pressure_evidence(self):
+        import copy
+        hashes={'824a87c8402d5cad8426905948cb85eb42d0af61bdc8240624a903452868fcc9':24284792,'ca24601507789695e9637b5d123df823fd66f8cba9ec3e4ef065b124e6741568':47185920}
+        blobs=[]
+        for sha,size in hashes.items():
+            blobs.append({'hash':sha,'sha256':sha,'bytes':size,'width':None,'valid':True})
+            blobs.extend({'hash':sha,'width':width,'valid':True} for width in [384,640,750,828,1080,1200,1920])
+        events={'/sys/fs/cgroup/memory/memory.failcnt':'0','/sys/fs/cgroup/memory/memory.oom_control':'oom_kill 0'}
+        case={'code':0,'timedOut':False,'eventsBefore':events.copy(),'eventsAfter':events.copy(),'stageCounts':{'preheat-response':24,'full-runtime-upload-response':3,'legacy-image-response':3}}
+        details={'imageAllocatorArenaMax':'2','realAzurePassed':True,'originalUnchanged':True,'exactFixtureHashVerified':True,'validationBlobsRemoved':True,'validationBlobsDeleted':16,'realAzureResults':blobs,'results':[case]}
+        good={'passed':True,'sourceSha':promotion.SOURCE,'image':promotion.WEB,'validationJobRemoved':True,'validationBlobsRemoved':True,'restoredProductionUnchanged':True,'productionTrafficChanged':False,'databaseWrites':0,'memoryPressureGatePassed':True,'restartMonitorPreflight':{'passed':True},'details':details}
+        promotion.verify_memory_acceptance(good)
+        bad=copy.deepcopy(good);bad['details']['results'][0]['eventsAfter']['/sys/fs/cgroup/memory/memory.failcnt']='1'
+        with self.assertRaises(AssertionError):promotion.verify_memory_acceptance(bad)
+        bad=copy.deepcopy(good);bad['details']['realAzureResults'].pop()
+        with self.assertRaises(AssertionError):promotion.verify_memory_acceptance(bad)
+        for key,value in [('image','untested'),('validationJobRemoved',False),('productionTrafficChanged',True),('databaseWrites',1)]:
+            with self.assertRaises(AssertionError):promotion.verify_memory_acceptance({**good,key:value})
+
+    def test_web_restart_is_rejected_even_when_ready_again(self):
+        payload={'value':[{'name':'new-replica','properties':{'containers':[{'name':'web','ready':True,'runningState':'Running','restartCount':1}]}}]}
+        with self.assertRaisesRegex(AssertionError,'restarted'):
+            promotion.verify_web_replicas(payload,{'web'})
+        payload['value'][0]['properties']['containers'][0]['restartCount']=0
+        self.assertEqual(promotion.verify_web_replicas(payload,{'web'})[0]['restartCount'],0)
+
+    def test_missing_or_unhealthy_replica_evidence_is_rejected(self):
+        for container in [
+            {'name':'web','ready':True,'runningState':'Running'},
+            {'name':'web','ready':False,'runningState':'Running','restartCount':0},
+            {'name':'web','ready':True,'runningState':'Terminated','restartCount':0},
+            {'name':'different','ready':True,'runningState':'Running','restartCount':0},
+        ]:
+            with self.assertRaises(AssertionError):
+                promotion.verify_web_replicas({'value':[{'name':'replica','properties':{'containers':[container]}}]}, {'web'})
+        for payload in [{},{'value':[]}]:
+            with self.assertRaises(AssertionError):promotion.verify_web_replicas(payload,{'web'})
+
     def fake(self, deadline=None):
         guard = SimpleNamespace(install_interrupt_handler=Mock(), private_json=Mock(return_value={'deadline': time.time() + 300 if deadline is None else deadline}))
         return SimpleNamespace(r=SimpleNamespace(guard=guard), P=Path(tempfile.gettempdir()), E=Path(tempfile.gettempdir()) / 'nonexistent-hidi-smoke-evidence')
@@ -86,13 +124,15 @@ class PromotionSafetyTests(unittest.TestCase):
     def test_owned_rollback_accepts_only_verified_revision_change(self):
         import copy
         original={'hidi-api':{'image':promotion.API},'hidi-web':{'image':'previous','settingsHash':'settings','mode':'Single','latest':'old','ready':'old'}}
-        rollback={'passed':True,'webStatus':'restored','apiUnchanged':True,'webSettingsUnchangedFromCapture':True,'publicSnapshotRestored':True,'state':{**original['hidi-web'],'latest':'hidi-web--rangefiverb39913626973a1','ready':'hidi-web--rangefiverb39913626973a1'}}
-        self.assertEqual(promotion.rollback_baseline(original,original,rollback)['hidi-api'],original['hidi-api'])
+        captured=copy.deepcopy(original)
+        original['hidi-web'].update({'latest':'hidi-web--rangefiverb39919863794a1','ready':'hidi-web--rangefiverb39919863794a1'})
+        rollback={'passed':True,'webStatus':'restored','apiUnchanged':True,'webSettingsUnchangedFromCapture':True,'publicSnapshotRestored':True,'state':copy.deepcopy(original['hidi-web'])}
+        self.assertEqual(promotion.rollback_baseline(original,captured,rollback)['hidi-api'],original['hidi-api'])
         for key,value in [('image','different'),('settingsHash','different'),('mode','Multiple'),('ready','unowned')]:
             bad=copy.deepcopy(rollback);bad['state'][key]=value
-            with self.assertRaises(AssertionError):promotion.rollback_baseline(original,original,bad)
+            with self.assertRaises(AssertionError):promotion.rollback_baseline(original,captured,bad)
         for key in ['apiUnchanged','publicSnapshotRestored','passed']:
-            with self.assertRaises(AssertionError):promotion.rollback_baseline(original,original,{**rollback,key:False})
+            with self.assertRaises(AssertionError):promotion.rollback_baseline(original,captured,{**rollback,key:False})
         changed=copy.deepcopy(original);changed['hidi-api']['image']='different'
         with self.assertRaises(AssertionError):promotion.rollback_baseline(original,changed,rollback)
 
@@ -102,3 +142,4 @@ if __name__ == '__main__':
         Path(__import__('sys').argv[-1]).write_text(PROBE)
     else:
         unittest.main()
+
