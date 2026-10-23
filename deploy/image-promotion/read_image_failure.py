@@ -83,8 +83,34 @@ def historical_logs():
         if isinstance(value,dict):return {key:redact(item) for key,item in value.items()}
         if isinstance(value,str) and re.search(r'authorization|bearer |password|secret|cookie|connectionstring|access.?token',value,re.I):return '[sensitive log content omitted]'
         return value
+
+    base=query.split("| where TimeGenerated")[0]
+    for label,start,end,rev in [
+        ('candidateCompleteWindow','2026-10-23T07:48:00Z','2026-10-23T07:56:30Z','hidi-web--imageimmutable39919863794a1'),
+        ('restoredTerminationWindow','2026-10-23T10:33:00Z','2026-10-23T10:38:00Z','hidi-web--rangefiverb39919863794a1')
+    ]:
+        expanded=base+f"""| where TimeGenerated between (datetime({start}) .. datetime({end}))
+| where App == 'hidi-web' and Revision == '{rev}'
+| extend Reason=coalesce(column_ifexists('Reason_s',''),column_ifexists('Reason','')), Type=coalesce(column_ifexists('Type_s',''),column_ifexists('Type',''))
+| project TimeGenerated, SourceTable, Reason, Type, Message=substring(Message,0,2000)
+| order by TimeGenerated asc
+| take 120"""
+        attempt(label,lambda q=expanded:redact(r.r.cloud.azure('monitor','log-analytics','query','--workspace',workspace,'--analytics-query',q)))
     return redact(rows)
 attempt('historicalFailureLogs',historical_logs)
+
+def current_health():
+    results={}
+    for path in ['/health','/healthz','/api/store/health/ready','/']:
+        r.r.cloud.get(path)
+        results[path]='PASS'
+    for name,state in expected.items():
+        app=r.r.cloud.app(name)
+        props=r.r.cloud.azure('rest','--method','get','--url','https://management.azure.com'+app['id']+'/revisions/'+state['ready']+'?api-version=2025-07-01')['properties']
+        results[name]={key:props.get(key) for key in ['healthState','runningState','replicas','trafficWeight']}
+        assert props.get('healthState')=='Healthy' and props.get('runningState')=='Running',name+': current revision not healthy/running'
+    return results
+attempt('currentHealth',current_health)
 r.r.photo.unchanged(expected)
 report['restoredProductionUnchanged']=True
 report['restoredStates']=expected

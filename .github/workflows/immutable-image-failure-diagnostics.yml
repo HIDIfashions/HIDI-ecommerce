@@ -1,4 +1,4 @@
-name: Identify exact read only log access scope
+name: Compare upload termination and restored runtime logs
 on:
   push:
     branches: [migration/azure-sql-blob]
