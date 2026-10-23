@@ -47,10 +47,16 @@ try:
         time.sleep(5)
     report['executionStatus']=status
     for _ in range(5):
-        logs=subprocess.run(['az','containerapp','job','logs','show','-g','rg-hidi-prod','-n',name,'--execution',execution,'--container','photo','--tail','100','--format','text','--only-show-errors'],capture_output=True,text=True,timeout=45)
-        lines=[line.split('HIDI_FIXTURE_DIAGNOSTIC ',1)[1] for line in logs.stdout.splitlines() if 'HIDI_FIXTURE_DIAGNOSTIC ' in line]
+        try:
+            logs=subprocess.run(['az','containerapp','job','logs','show','-g','rg-hidi-prod','-n',name,'--execution',execution,'--container','photo','--tail','100','--format','text','--only-show-errors'],capture_output=True,text=True,timeout=45)
+            output=logs.stdout+logs.stderr
+        except subprocess.TimeoutExpired as error:
+            output=error.stdout or ''
+            if isinstance(output,bytes):output=output.decode('utf-8','replace')
+            report.setdefault('logReadTimeouts',0);report['logReadTimeouts']+=1
+        lines=[line.split('HIDI_FIXTURE_DIAGNOSTIC ',1)[1] for line in output.splitlines() if 'HIDI_FIXTURE_DIAGNOSTIC ' in line]
         if lines:report['details']=json.JSONDecoder().raw_decode(lines[-1])[0];break
-        report['diagnosticLog']=(logs.stdout+logs.stderr)[-10000:];time.sleep(2)
+        report['diagnosticLog']=output[-10000:];time.sleep(2)
     assert status=='Succeeded' and report.get('details',{}).get('diagnosticCompleted'),'Diagnostic did not finish'
     report['diagnosticCompleted']=True
 except Exception as error:report['error']=str(error);raise
@@ -59,3 +65,4 @@ finally:
         if attempted:report['validationJobRemoved']=cleanup_job(r.r.cloud,name,url,owned)
         r.r.photo.unchanged(expected);report['restoredProductionUnchanged']=True
     finally:r.save('fixture-memory-diagnostic.json',report);print(json.dumps(report,indent=2))
+
