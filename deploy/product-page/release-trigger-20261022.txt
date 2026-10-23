@@ -1,2 +1,3 @@
 HIDI PDP isolated release trigger for responsive 500px desktop gallery.
 Source candidate validated before release.
+Pricing revert live-test alignment retrigger 2026-10-23.
