@@ -21,6 +21,8 @@ def verify_reports(stage):
     assert layout['upstreamWrites'] == commerce['upstreamWrites'] == 0
     assert len(layout['results']) == 36 and len(layout['interactions']) == 6
     assert len(commerce['results']) == 6
+    assert all(r['pairedHeaderState'] and r['reloaded'] for r in layout['results'])
+    assert all(len(r['tabletStates']) == 2 for r in layout['results'] if 761 <= r['width'] <= 1000)
     for engine in ['chromium', 'firefox', 'webkit']:
         assert len([r for r in layout['results'] if r['engine'] == engine and r['passed']]) == 12
         assert len([r for r in commerce['results'] if r['engine'] == engine and r['passed']]) == 2

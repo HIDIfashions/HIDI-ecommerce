@@ -53,11 +53,15 @@ try{
     // An empty history must not leave a blank section or extra footer spacer.
     await page.evaluate(()=>localStorage.removeItem('hidi_recently_viewed_products_v1'));
     await page.reload({waitUntil:'domcontentloaded'});await page.locator('.sizes button:enabled').first().waitFor();
+    // The recent-history effect confirms client hydration after clearing storage.
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('hidi_recently_viewed_products_v1')||'[]').some(item=>location.pathname.endsWith('/'+item.slug)));
     await page.locator('[class*="activeImage"] img').evaluate(e=>e.decode());assert.equal(await page.locator('.pdp-recent').count(),0);
     const purchase=page.locator('.pdp-info .pdp-purchase');
-    await purchase.locator('.sizes button:enabled').first().click();
+    const size=purchase.locator('.sizes button[aria-pressed]:enabled').first();
+    await size.waitFor();assert.equal(await size.getAttribute('aria-pressed'),'false');
+    await size.click();await purchase.locator('.sizes button[aria-pressed="true"]').waitFor();
     await purchase.getByRole('button',{name:'Buy Now',exact:true}).click();
-    await page.waitForURL('**/checkout');
+    await page.waitForURL('**/checkout',{waitUntil:'domcontentloaded'});
     await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();
     const pin=page.getByRole('textbox',{name:'PIN code',exact:true});await pin.fill('500001');await pin.blur();
     const summary=page.locator('.checkout-mobile-summary');

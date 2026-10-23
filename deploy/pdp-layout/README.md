@@ -54,6 +54,13 @@ Both candidate and live checks run 36 layout cases and six commerce cases in
 Chromium, Firefox and WebKit. Live tests intercept commerce writes locally.
 The live browser suite verifies the exact CSS served by production; removing
 it temporarily in the test browser supplies the baseline comparison.
+Comparisons now run in one browser task, holding the dynamic header offset and
+scroll position constant. Test-only transition suppression prevents the retained
+0.01ms reduced-motion transition from returning an intermediate measurement.
+Each viewport repeats the paired comparison after a fresh reload. Tablet widths
+761 and 1000 also repeat after scrolling down and back to the top, require exact
+before/after image-height equality, and verify the existing viewport/header-offset
+height formula. The approved CSS remains byte-for-byte unchanged.
 Any post-write exception enters the existing guarded rollback immediately;
 an independent recovery step also handles an interrupted rollout. API, database,
 blob content, application settings, compiled bundles and image derivatives are
