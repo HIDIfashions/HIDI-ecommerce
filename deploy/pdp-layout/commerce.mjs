@@ -18,7 +18,7 @@ try{
   const browser=await pw[engine].launch({headless:true,...(engine==='chromium'&&process.platform==='win32'?{channel:'chrome'}:{})});
   try{for(const width of [390,1536]){
    const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'});
-   const page=await context.newPage();page.setDefaultTimeout(20000);
+   const page=await context.newPage();page.setDefaultTimeout(30000);
    const product=available[0],variant=product.variants.find(v=>v.available>0);
    const cart={items:[{id:'isolated-pdp-line',quantity:1,lineTotalPaise:variant.pricePaise,product:{id:product.id,slug:product.slug,name:product.name,image:product.images[0].url},variant:{id:variant.id,size:variant.size,color:variant.color,available:variant.available}}],itemCount:1,subtotalPaise:variant.pricePaise,shippingPaise:0,totalPaise:variant.pricePaise};
    await context.route('**/*',async route=>{
@@ -39,15 +39,17 @@ try{
    });
    try{
     for(const item of available.slice(0,3)){
-     await page.goto(base+'/products/'+item.slug,{waitUntil:'networkidle'});
+     assert((await page.goto(base+'/products/'+item.slug,{waitUntil:'domcontentloaded'})).ok());
      await page.locator('.sizes button:enabled').first().waitFor();
      assert.equal(await page.locator('.pdp-purchase > [class*="selectionSummary"]:visible,.pdp-selected-detail:not(.sr-only):visible').count(),0);
-     assert(await page.locator('[class*="activeImage"] img').evaluate(e=>e.complete&&e.naturalWidth>0));
+     await page.locator('[class*="activeImage"] img').evaluate(e=>e.decode());
+     assert(await page.locator('[class*="activeImage"] img').evaluate(e=>e.naturalWidth>0));
      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
     }
     // An empty history must not leave a blank section or extra footer spacer.
     await page.evaluate(()=>localStorage.removeItem('hidi_recently_viewed_products_v1'));
-    await page.reload({waitUntil:'networkidle'});assert.equal(await page.locator('.pdp-recent').count(),0);
+    await page.reload({waitUntil:'domcontentloaded'});await page.locator('.sizes button:enabled').first().waitFor();
+    await page.locator('[class*="activeImage"] img').evaluate(e=>e.decode());assert.equal(await page.locator('.pdp-recent').count(),0);
     const purchase=page.locator('.pdp-info .pdp-purchase');
     await purchase.locator('.sizes button:enabled').first().click();
     await purchase.getByRole('button',{name:'Buy Now',exact:true}).click();
@@ -59,7 +61,7 @@ try{
     const cod=page.getByRole('radio',{name:/Cash on delivery/});await cod.check();assert(await cod.isChecked());
     const online=page.getByRole('radio',{name:/Pay online/});await online.check();assert(await online.isChecked());
     for(const path of ['/cart','/checkout','/collections/all','/','/account','/admin/sign-in']){
-     await page.goto(base+path,{waitUntil:'networkidle'});await page.waitForFunction(()=>document.fonts.status==='loaded');
+     assert((await page.goto(base+path,{waitUntil:'domcontentloaded'})).ok());await page.waitForFunction(()=>document.fonts.status==='loaded');
      const before=await styles(page);
      await page.evaluate(css=>{const s=document.querySelector('style[data-hidi-storefront-layer-fix]');if(s)s.textContent=s.textContent.replace(css,'');},css);
      const after=await styles(page);assert.deepEqual(after,before,'Unchanged non-PDP styles '+path);

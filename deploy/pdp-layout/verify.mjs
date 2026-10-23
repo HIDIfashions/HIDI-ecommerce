@@ -93,8 +93,14 @@ try{
   try{for(const [width,height] of viewports){
    const context=await browser.newContext({viewport:{width,height},reducedMotion:'reduce',hasTouch:width<=760});
    await context.addInitScript(history=>localStorage.setItem('hidi_recently_viewed_products_v1',JSON.stringify(history.map(p=>({slug:p.slug,viewedAt:Date.now()})))),history);
-   const page=await context.newPage();page.setDefaultTimeout(15000);
+   const page=await context.newPage();page.setDefaultTimeout(30000);
    const pageErrors=[];page.on('pageerror',e=>pageErrors.push(e.message));
+   const pending=new Map(),networkErrors=[];
+   const safeUrl=req=>{const u=new URL(req.url());return u.origin+u.pathname;};
+   page.on('request',req=>pending.set(req,safeUrl(req)));
+   page.on('requestfinished',req=>pending.delete(req));
+   page.on('requestfailed',req=>{networkErrors.push({url:safeUrl(req),error:req.failure()?.errorText});pending.delete(req);});
+   page.on('response',res=>{if(res.status()>=400)networkErrors.push({url:safeUrl(res.request()),status:res.status()});});
    const cart={items:[],itemCount:0,subtotalPaise:0,shippingPaise:0,totalPaise:0};
    await context.route('**/*',async route=>{
     const req=route.request(),url=new URL(req.url());
@@ -111,7 +117,7 @@ try{
    });
    try{
     snapshot.setCandidate(false);
-    assert((await page.goto(base+'/products/'+slug,{waitUntil:'networkidle'})).ok());await ready(page);
+    assert((await page.goto(base+'/products/'+slug,{waitUntil:'domcontentloaded'})).ok());await ready(page);
     if(actual){
      await requireApprovedStyle(page);
      await page.evaluate(css=>{const s=document.querySelector('style[data-hidi-storefront-layer-fix]');s.textContent=s.textContent.replace(css,'');},css);
@@ -119,7 +125,7 @@ try{
     }
     const before=await measure(page),baselineErrors=pageErrors.slice();
     if(engine==='chromium'&&[390,1536,1920].includes(width))await capture(page,'before-'+width);
-    if(actual){await page.reload({waitUntil:'networkidle'});await ready(page);await requireApprovedStyle(page);}
+    if(actual){await page.reload({waitUntil:'domcontentloaded'});await ready(page);await requireApprovedStyle(page);}
     else await page.evaluate(css=>document.querySelector('style[data-hidi-storefront-layer-fix]').textContent+='\n'+css,css);
     await page.evaluate(()=>scrollTo(0,0));
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pdp-related')).marginTop===(innerWidth<=620?'24px':'32px'));
@@ -132,14 +138,17 @@ try{
     assert(after.footerGap<=41&&after.footerGap<before.footerGap,'Compact footer boundary');
     if(width>1000){assert(after.image.width>=before.image.width-1,'Desktop photo never shrinks');assert(Math.abs(after.image.width-(after.gallery.width-78))<2,'Image uses all available gallery width');assert(after.image.right<after.info.x,'No collision with purchase panel');}
     else {assert.equal(after.image.width,before.image.width,'Mobile/tablet image width retained');assert.equal(after.image.height,before.image.height,'Mobile/tablet image height retained');}
-    snapshot.setCandidate(true);await page.reload({waitUntil:'networkidle'});await ready(page);
+    snapshot.setCandidate(true);await page.reload({waitUntil:'domcontentloaded'});await ready(page);
     const served=await measure(page);assert.equal(served.selectedVisible,false);assert(Math.abs(served.image.width-after.image.width)<1);
     if(engine==='chromium'&&[390,1536,1920].includes(width))await capture(page,'after-'+width);
     if([390,1536].includes(width))await functional(page,engine,width);
     assert.deepEqual(pageErrors.filter(e=>!baselineErrors.includes(e)),[],'No new browser exceptions');
     results.push({engine,width,height,before,after,passed:true});
     console.log('PASS '+engine+' '+width+'x'+height+' image '+before.image.width.toFixed(0)+'→'+after.image.width.toFixed(0));
-   }catch(e){await page.screenshot({path:join(out,engine+'-'+width+'-failure.png'),fullPage:true}).catch(()=>{});throw e;}
+   }catch(e){
+    await writeFile(join(out,engine+'-'+width+'-network.json'),JSON.stringify({pageErrors,pending:[...pending.values()],networkErrors},null,2));
+    await page.screenshot({path:join(out,engine+'-'+width+'-failure.png'),fullPage:true}).catch(()=>{});throw e;
+   }
    finally{await context.close();}
   }}finally{await browser.close();}
  }
