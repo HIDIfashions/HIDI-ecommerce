@@ -1,6 +1,7 @@
 {
-  "runId": "39919564708",
-  "coordinatorSha": "4a9df92c0563c4a3c3a29f5c72e78735e7609527",
+  "runId": "39919863794",
+  "coordinatorSha": "65122eebd9472844af0b57e6e16be83e5564f62b",
   "sourceSha": "5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f",
-  "action": "wait"
+  "action": "rollback",
+  "reason": "User reported live upload failure: failed, got an error message. Immediate rollback required."
 }
