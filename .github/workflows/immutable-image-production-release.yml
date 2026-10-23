@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 110
     env:
-      PROMOTE: 'false'
+      PROMOTE: 'true'
       CANDIDATE_SHA: 9e809590651122dbf2b7c7ddfbbfe013a65f4364
       GH_TOKEN: ${{ github.token }}
       PYTHONUNBUFFERED: '1'
