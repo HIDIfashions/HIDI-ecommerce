@@ -2,17 +2,23 @@
   "runId": "39953002586",
   "coordinatorSha": "8342b0521f8e4a578e36b26cd8fd5b00408cec5b",
   "sourceSha": "9e809590651122dbf2b7c7ddfbbfe013a65f4364",
-  "action": "inspect",
-  "photos": [
-    {
-      "key": "products/variants/cmv9owalu00s701evyyeenjza/batch-36a94546e8bc48e876c48d78b162196e1ae20a8efa46fd89566829bf7eee5ddc.jpg",
-      "bytes": 10004869,
-      "sha256": "36a94546e8bc48e876c48d78b162196e1ae20a8efa46fd89566829bf7eee5ddc"
-    },
-    {
-      "key": "products/variants/cmv9owalu00s701evyyeenjza/batch-ca24601507789695e9637b5d123df823fd66f8cba9ec3e4ef065b124e6741568.jpg",
-      "bytes": 47185920,
-      "sha256": "ca24601507789695e9637b5d123df823fd66f8cba9ec3e4ef065b124e6741568"
-    }
-  ]
+  "action": "complete",
+  "checks": {
+    "normalUpload": "PASS",
+    "largeUpload": "PASS",
+    "attachment": "PASS",
+    "metadataUnchanged": "PASS",
+    "collection": "PASS",
+    "pdp": "PASS",
+    "mobile": "PASS",
+    "zoom": "PASS",
+    "noOverflow": "PASS",
+    "noBrokenImages": "PASS",
+    "legacyProduct": "PASS",
+    "cart": "PASS",
+    "pricesUnchanged": "PASS",
+    "checkout": "PASS",
+    "paymentOptions": "PASS",
+    "inventoryUnchanged": "PASS"
+  }
 }
