@@ -35,13 +35,22 @@ async function ready(page){
  await page.waitForFunction(()=>document.fonts.status==='loaded');
  await decoded(page,'[class*="activeImage"] img');
 }
-async function measure(page){const handle=await page.waitForFunction(()=>{
+async function measure(page,compare=false){
+ await decoded(page,'[class*="activeImage"] img');
+ await page.waitForFunction(()=>{const e=document.querySelector('[class*="activeImage"]'),top=parseFloat(getComputedStyle(e).getPropertyValue('--pdp-gallery-top'))||150;return innerWidth<761||innerWidth>1000||Math.abs(e.getBoundingClientRect().height-Math.min(820,innerHeight-top-40))<0.1;});
+ return page.evaluate(({css,compare})=>{
+ // The retained reduced-motion rules use 0.01ms transitions. Disable them in
+ // this test task so both stylesheet states are measured at their final size.
+ const noTransition=document.createElement('style');noTransition.textContent='*,*::before,*::after{transition:none!important}';document.head.append(noTransition);
+ try{
+ function read(){
  const box=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom,right:r.right};};
  const q=s=>document.querySelector(s), c=s=>getComputedStyle(q(s));
  const active=q('[class*="activeImage"]'),img=active?.querySelector('img');
  if(!img?.complete||!img.naturalWidth||!img.naturalHeight)return false;
  const review=q('#reviews'),related=q('.pdp-related'),recent=q('.pdp-recent');
  return {image:box(active),natural:[img.naturalWidth,img.naturalHeight],fit:getComputedStyle(img).objectFit,
+  viewportHeight:innerHeight,galleryTopOffset:parseFloat(getComputedStyle(active).getPropertyValue('--pdp-gallery-top'))||150,scrollY,
   gallery:box(q('[class*="galleryLayout"]')),info:box(q('.pdp-info')),
   reviewGap:box(related).y-box(review).bottom,relatedPadding:c('.pdp-related').paddingTop,
   recentGap:box(recent).y-box(related).bottom,recentPadding:c('.pdp-recent').paddingTop,
@@ -53,7 +62,27 @@ async function measure(page){const handle=await page.waitForFunction(()=>{
   sizeLabels:[...document.querySelectorAll('.pdp-info .sizes button')].map(e=>({text:e.textContent,disabled:e.disabled})),
   header:[c('.site-header').height,c('.site-header').backgroundColor],
   footer:[c('footer.footer').paddingBottom,c('footer.footer').backgroundColor]};
-});try{return await handle.jsonValue();}finally{await handle.dispose();}}
+ }
+ const after=read();
+ if(!after||!compare)return after;
+ const style=document.querySelector('style[data-hidi-storefront-layer-fix]'),original=style.textContent;
+ if(!original.includes(css))throw Error('Exact candidate CSS required for paired measurement');
+ try{style.textContent=original.replace(css,'');const before=read();return before?{before,after}:false;}
+ finally{style.textContent=original;}
+ }finally{noTransition.remove();}
+},{css,compare});}
+function validate(before,after,width){
+ for(const key of ['prices','photos','sizeLabels','header','footer','natural','fit','galleryTopOffset','scrollY'])assert.deepEqual(after[key],before[key],key+' unchanged');
+ assert(after.overflow<=1,'No horizontal overflow');assert.equal(after.selectedVisible,false);
+ assert(after.reviewGap<=33&&after.reviewGap<before.reviewGap,'Compact reviews boundary');
+ assert(after.recentGap<=33&&after.recentGap<before.recentGap,'Compact history boundary');
+ assert(after.footerGap<=41&&after.footerGap<before.footerGap,'Compact footer boundary');
+ if(width>1000){assert(after.image.width>=before.image.width-1,'Desktop photo never shrinks');assert(Math.abs(after.image.width-(after.gallery.width-78))<2,'Image uses all available gallery width');assert(after.image.right<after.info.x,'No collision with purchase panel');}
+ else {assert.equal(after.image.width,before.image.width,'Mobile/tablet image width retained');assert.equal(after.image.height,before.image.height,'Mobile/tablet image height retained');}
+ if(width>=761&&width<=1000){
+  for(const state of [before,after])assert(Math.abs(state.image.height-Math.min(820,state.viewportHeight-state.galleryTopOffset-40))<0.1,'Tablet height follows its current header offset');
+ }
+}
 async function capture(page,name){
  await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:join(out,name+'-top.png')});
  await page.screenshot({path:join(out,name+'-full.png'),fullPage:true});
@@ -127,36 +156,36 @@ try{
     return route.continue();
    });
    try{
-    snapshot.setCandidate(false);
+    snapshot.setCandidate(true);
     assert((await page.goto(base+'/products/'+slug,{waitUntil:'domcontentloaded'})).ok());await ready(page);
-    if(actual){
-     await requireApprovedStyle(page);
-     await page.evaluate(css=>{const s=document.querySelector('style[data-hidi-storefront-layer-fix]');s.textContent=s.textContent.replace(css,'');},css);
-     await page.waitForFunction(()=>parseFloat(getComputedStyle(document.querySelector('.pdp-related')).marginTop)>32);
+    await requireApprovedStyle(page);
+    const {before,after}=await measure(page,true),baselineErrors=pageErrors.slice();
+    validate(before,after,width);
+    if(engine==='chromium'&&[390,1536,1920].includes(width)){
+     const original=await page.locator('style[data-hidi-storefront-layer-fix]').textContent();
+     try{
+      await page.evaluate(css=>{const s=document.querySelector('style[data-hidi-storefront-layer-fix]');s.textContent=s.textContent.replace(css,'');},css);
+      await capture(page,'before-'+width);
+     }finally{await page.evaluate(original=>document.querySelector('style[data-hidi-storefront-layer-fix]').textContent=original,original);}
     }
-    const before=await measure(page),baselineErrors=pageErrors.slice();
-    if(engine==='chromium'&&[390,1536,1920].includes(width))await capture(page,'before-'+width);
-    if(actual){await page.reload({waitUntil:'domcontentloaded'});await ready(page);await requireApprovedStyle(page);}
-    else await page.evaluate(css=>document.querySelector('style[data-hidi-storefront-layer-fix]').textContent+='\n'+css,css);
-    await page.evaluate(()=>scrollTo(0,0));
-    await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pdp-related')).marginTop===(innerWidth<=620?'24px':'32px'));
-    const after=await measure(page);
-    for(const key of ['prices','photos','sizeLabels','header','footer','natural','fit'])assert.deepEqual(after[key],before[key],key+' unchanged');
-    assert(after.overflow<=1,'No horizontal overflow');assert.equal(after.selectedVisible,false);
     console.log(JSON.stringify({engine,width,beforeGap:before.reviewGap,afterGap:after.reviewGap,beforeRecent:before.recentGap,afterRecent:after.recentGap,beforeFooter:before.footerGap,afterFooter:after.footerGap}));
-    assert(after.reviewGap<=33&&after.reviewGap<before.reviewGap,'Compact reviews boundary');
-    assert(after.recentGap<=33&&after.recentGap<before.recentGap,'Compact history boundary');
-    assert(after.footerGap<=41&&after.footerGap<before.footerGap,'Compact footer boundary');
-    if(width>1000){assert(after.image.width>=before.image.width-1,'Desktop photo never shrinks');assert(Math.abs(after.image.width-(after.gallery.width-78))<2,'Image uses all available gallery width');assert(after.image.right<after.info.x,'No collision with purchase panel');}
-    else {assert.equal(after.image.width,before.image.width,'Mobile/tablet image width retained');assert.equal(after.image.height,before.image.height,'Mobile/tablet image height retained');}
-    snapshot.setCandidate(true);await page.reload({waitUntil:'domcontentloaded'});await ready(page);
-    const served=await measure(page);assert.equal(served.selectedVisible,false);assert(Math.abs(served.image.width-after.image.width)<1);
+    await page.reload({waitUntil:'domcontentloaded'});await ready(page);await requireApprovedStyle(page);
+    const reloaded=await measure(page,true);validate(reloaded.before,reloaded.after,width);
+    assert(Math.abs(reloaded.after.image.width-after.image.width)<1);
+    const tabletStates=[];
+    if(width>=761&&width<=1000){
+     for(const top of [100,0]){
+      await page.evaluate(async top=>{scrollTo(0,top);await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));},top);
+      const state=await measure(page,true);validate(state.before,state.after,width);tabletStates.push(state);
+     }
+    }
     if(engine==='chromium'&&[390,1536,1920].includes(width))await capture(page,'after-'+width);
     if([390,1536].includes(width))await functional(page,engine,width);
     assert.deepEqual(pageErrors.filter(e=>!baselineErrors.includes(e)),[],'No new browser exceptions');
-    results.push({engine,width,height,before,after,passed:true});
+    results.push({engine,width,height,before,after,reloaded,tabletStates,pairedHeaderState:true,passed:true});
     console.log('PASS '+engine+' '+width+'x'+height+' image '+before.image.width.toFixed(0)+'→'+after.image.width.toFixed(0));
    }catch(e){
+    await writeFile(join(out,engine+'-'+width+'-failure.html'),await page.content());
     await writeFile(join(out,engine+'-'+width+'-network.json'),JSON.stringify({pageErrors,pending:[...pending.values()],networkErrors},null,2));
     await page.screenshot({path:join(out,engine+'-'+width+'-failure.png'),fullPage:true}).catch(()=>{});throw e;
    }
