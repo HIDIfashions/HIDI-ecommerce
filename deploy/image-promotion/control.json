@@ -1,6 +1,7 @@
 {
+  "runId": "39913626973",
+  "coordinatorSha": "5ffe7e5ee5f7d6f4c8c68d4359a7229235b1da0e",
   "sourceSha": "5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f",
-  "runId": null,
-  "coordinatorSha": null,
-  "action": "wait"
+  "action": "rollback",
+  "reason": "Required live Azure storage verification run 39915939434 failed; user authorized immediate rollback on smoke failure."
 }
