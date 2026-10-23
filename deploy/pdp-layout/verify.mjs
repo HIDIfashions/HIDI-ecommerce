@@ -21,10 +21,18 @@ assert.equal(history.length,2);
 const viewports=[[320,740],[390,844],[620,844],[760,900],[761,900],[1000,900],[1001,768],[1024,768],[1280,720],[1366,768],[1536,864],[1920,1080]];
 const engines=(process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',');
 const results=[],interactions=[],unchanged=[],errors=[];let isolatedCartAdds=0;
+async function decoded(page,selector,expected=null){
+ await page.waitForFunction(async({selector,expected})=>{
+  const img=document.querySelector(selector);if(!img?.complete||!img.naturalWidth)return false;
+  const src=img.currentSrc,url=new URL(src,location.href),source=url.searchParams.get('url')||url.pathname;
+  if(expected&&source!==expected)return false;
+  try{await img.decode();return img===document.querySelector(selector)&&img.currentSrc===src&&img.naturalWidth>0;}catch{return false;}
+ },{selector,expected});
+}
 async function ready(page){
  await page.locator('.sizes button[aria-pressed]:enabled').first().waitFor();
  await page.waitForFunction(()=>document.fonts.status==='loaded');
- await page.locator('[class*="activeImage"] img').evaluate(e=>e.decode());
+ await decoded(page,'[class*="activeImage"] img');
  await page.locator('.pdp-recent article').first().waitFor();
 }
 async function measure(page){return page.evaluate(()=>{
@@ -71,8 +79,9 @@ async function functional(page,engine,width){
  await guide.click();assert.equal(await guide.getAttribute('aria-expanded'),'true');await guide.click();
  const thumbs=page.getByRole('button',{name:/^View product image /});
  for(let i=0;i<await thumbs.count();i++){
+  const source=await thumbs.nth(i).locator('img').evaluate(img=>{const u=new URL(img.currentSrc||img.src,location.href);return u.searchParams.get('url')||u.pathname;});
   await thumbs.nth(i).click();assert.equal(await thumbs.nth(i).getAttribute('aria-pressed'),'true');
-  await page.locator('[class*="activeImage"] img').evaluate(e=>e.decode());
+  await decoded(page,'[class*="activeImage"] img',source);
  }
  await thumbs.first().click();
  await page.locator('.pdp-image[class*="activeImage"]').click();
@@ -81,8 +90,9 @@ async function functional(page,engine,width){
  await page.getByRole('button',{name:'Next product image',exact:true}).click();
  await page.keyboard.press('ArrowLeft');await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
  const review=page.locator('#reviews summary');await review.click();assert(await review.evaluate(e=>e.parentElement.open));await review.click();
- await size.click();const before=isolatedCartAdds;await add.click();
- await page.waitForFunction(()=>document.body.innerText.includes('Added')||document.querySelector('[role="dialog"]')!==null).catch(()=>{});
+ await size.click();const before=isolatedCartAdds;
+ const added=page.waitForResponse(response=>response.request().method()==='POST'&&new URL(response.url()).pathname.startsWith('/api/store/carts/'));
+ await add.click();assert((await added).ok(),'Isolated cart request succeeds');
  assert.equal(isolatedCartAdds,before+1,'One isolated cart request');
  assert.equal(await page.locator('.pdp-purchase > [class*="selectionSummary"]:visible').count(),0);
  interactions.push({engine,width,thumbnails:true,zoom:true,keyboardAndEscape:true,sizeToggle:true,sizeGuide:true,reviews:true,cart:true,buyNowEnabledAfterSize:true});
