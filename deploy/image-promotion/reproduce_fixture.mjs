@@ -43,11 +43,12 @@ try{
   }finally{await file.close();}
   if((await stat(fixture)).size!==47185920||await digest(fixture)!==fixtureHash)throw Error('Fixture is not byte-identical to failed upload');
   report.exactFixtureHashVerified=true;
+  report.runtimeAllocator={node:process.version,glibc:process.report.getReport().header.glibcVersionRuntime||null,imageDefaultArenaMax:process.env.MALLOC_ARENA_MAX||null,testArenaMax:'2'};
   const workerPath=join(directory,'worker.mjs');await writeFile(workerPath,worker,{mode:0o600});await writeFile(join(directory,'bootstrap.mjs'),bootstrap,{mode:0o600});
   report.runtimeWiring=(await readFile('/app/server.mjs','utf8')).split('\n').filter(line=>/spawn\(|fork\(|sharp|cache\(|PhotoUpload|listen\(/.test(line));
-  for(const [label,paths] of [['sustained-load-with-3840-zoom-and-45MiB-upload',[original,fixture,fixture]]]){
+  for(const [label,paths] of [['arena2-sustained-load-with-3840-zoom-and-45MiB-upload',[original,fixture,fixture]]]){
     const beforeEvents=await events();const lines=[];
-    const child=spawn(process.execPath,[workerPath,...paths],{stdio:['ignore','pipe','pipe'],detached:true});
+    const child=spawn(process.execPath,[workerPath,...paths],{stdio:['ignore','pipe','pipe'],detached:true,env:{...process.env,MALLOC_ARENA_MAX:'2'}});
     let text='',pending='',peakCgroupBytes=0;const responses=[],stageCounts={};
     const collect=chunk=>{text=(text+chunk).slice(-3000);pending+=chunk;const lines=pending.split('\n');pending=lines.pop();for(const line of lines){try{const event=JSON.parse(line);if(event.stage)stageCounts[event.stage]=(stageCounts[event.stage]||0)+1;peakCgroupBytes=Math.max(peakCgroupBytes,Number(event.cgroup?.max_usage_in_bytes||0));if(/response|runtime-exit|complete|warmed|pages-ready/.test(event.stage||''))responses.push(event);}catch{}}};
     child.stdout.on('data',collect);child.stderr.on('data',collect);

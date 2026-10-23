@@ -1,4 +1,4 @@
-name: Isolated warm-runtime zoom and upload memory reproduction
+name: Isolated allocator comparison under warm zoom and upload load
 on:
   push:
     branches: [migration/azure-sql-blob]

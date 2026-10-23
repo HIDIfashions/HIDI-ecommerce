@@ -70,6 +70,14 @@ try:
     report['blobWrites']=report['details'].get('blobWrites',0)
     report['validationBlobsRemoved']=report['details'].get('validationBlobsRemoved',False)
     assert all(case['code']==0 and not case['timedOut'] for case in report['details']['results']),'Sustained-load reproduction failed; inspect retained runtime and cgroup evidence'
+    for case in report['details']['results']:
+        before=case['eventsBefore'];after=case['eventsAfter']
+        fail='/sys/fs/cgroup/memory/memory.failcnt';oom='/sys/fs/cgroup/memory/memory.oom_control'
+        assert int(after[fail])==int(before[fail]),'Memory limit hit under supported image workload'
+        def kills(values):
+            return int(next(line.split()[1] for line in values[oom].splitlines() if line.startswith('oom_kill ')))
+        assert kills(after)==kills(before),'Container OOM kill under supported image workload'
+    report['memoryPressureGatePassed']=True
     report['diagnosticCompleted']=True
 except Exception as error:report['error']=str(error);raise
 finally:
