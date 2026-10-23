@@ -20,7 +20,12 @@ assert api_preservation.get('passed') is True and api_preservation.get('retained
 report['suites'].append({'name':'retained-api-byte-identity','passed':True,'exitCode':0,'seconds':0.0})
 protected=('checkout','cart','payment','order','offer','account','purchase')
 changed=web_preservation.get('changedFiles',[])
-assert web_preservation.get('passed') is True and web_preservation.get('runtimeConfigurationPreserved') is True
+assert web_preservation.get('passed') is True and web_preservation.get('runtimeConfigurationPreservedExceptPhotoAllocator') is True
+allocator=web_preservation.get('photoAllocator',{})
+assert allocator=={'name':'MALLOC_ARENA_MAX','before':allocator.get('before'),'after':'2','allOtherRuntimeConfigurationPreserved':True} and allocator.get('before') in (None,'2'), 'Unexpected allocator configuration delta'
+# The extracted-runtime harness must use the same allocator policy as the image.
+os.environ['MALLOC_ARENA_MAX']='2'
+report['photoAllocator']=allocator
 assert not [name for name in changed if any(part in name.lower() for part in protected)], 'Photo release changed retained commerce/account files'
 report['suites'].append({'name':'retained-commerce-byte-identity','passed':True,'exitCode':0,'seconds':0.0,'changedPhotoFiles':len(changed)})
 

@@ -15,6 +15,7 @@ r.P=r.guard.PRIVATE;r.E=r.guard.EVIDENCE;r.api_guard.photo.PRIVATE=r.P
 r.tag=lambda app,backup=False:r.images.REGISTRY+'/hidi-'+app+(':backup-photo-stream-' if backup else ':photo-stream-')+r.guard.run_key()
 P,E=r.P,r.E;save,read=r.save,r.read
 patcher=load('photo_live_patch',HERE/'patch.py')
+allocator=load('photo_live_allocator',HERE/'allocator-config.py')
 def source_sha():return subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
 def capture():
  r.capture();save('photo-scope.json',{'sourceSha':os.environ['GITHUB_SHA'],'photoSourceSha':source_sha(),'scope':'Retained-runtime photo-only overlay','sqlSchemaChanged':False,'ticketEligibilityOnly':True,'ticketByteAccountingDecoupled':True,'legacyTicketIntegerCapacityBytes':2147483647})
@@ -22,6 +23,7 @@ def capture():
  r.guard.write_private('offers-before.json',json.loads(r.cloud.get('/api/hidi/offers')))
 def compose():
  r.fresh_source();r.backups();before=r.photo.states();r.photo.unchanged(before)
+ allocator.verify_app_override(r.cloud.app('hidi-web')['properties']['template']['containers'][0].get('env',[]))
  for app in ['api','web']:
   folder=P/app;folder.mkdir(exist_ok=True);base,overlay,candidate=(folder/n for n in ['base-app','overlay','candidate-app'])
   r.images.extract(before['hidi-'+app]['image'],base)
@@ -34,11 +36,14 @@ def compose():
    config=json.loads(r.images.docker('image','inspect',before['hidi-'+app]['image']))[0]
    save(app+'-preservation.json',{'passed':True,'baseImage':before['hidi-'+app]['image'],'candidateImageId':config['Id'],'changedFiles':[],'retainedUnchanged':True})
    continue
-  (folder/'Dockerfile').write_text('FROM '+before['hidi-'+app]['image']+'\nCOPY --chown=node:node overlay/ /app/\n')
+  assert app=='web','Only the image-processing web runtime may receive the allocator setting'
+  (folder/'Dockerfile').write_text('FROM '+before['hidi-'+app]['image']+'\nENV MALLOC_ARENA_MAX=2\nCOPY --chown=node:node overlay/ /app/\n')
   subprocess.run(['docker','build','--pull=false','-t',r.tag(app),str(folder)],check=True)
   r.images.extract(r.tag(app),candidate)
   configs=json.loads(r.images.docker('image','inspect',before['hidi-'+app]['image'],r.tag(app)))
-  report=r.guard.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),configs)
+  expected_configs,allocator_delta=allocator.preservation_configs(configs)
+  report=r.guard.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),expected_configs)
+  report.update({'runtimeConfigurationPreserved':configs[0]['Config']==configs[1]['Config'],'runtimeConfigurationPreservedExceptPhotoAllocator':True,'photoAllocator':allocator_delta,'runtimeConfigSha256':hashlib.sha256(json.dumps(configs[1]['Config'],sort_keys=True,separators=(',',':')).encode()).hexdigest()})
   report.update({'baseImage':before['hidi-'+app]['image'],'candidateImageId':configs[1]['Id']});save(app+'-preservation.json',report)
  r.photo.unchanged(before)
  with open(os.environ['GITHUB_ENV'],'a') as f:

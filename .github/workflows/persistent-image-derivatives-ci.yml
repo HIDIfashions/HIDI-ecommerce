@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      MALLOC_ARENA_MAX: '2'
       DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
       API_URL: http://127.0.0.1:4100/v1
       NEXT_PUBLIC_API_URL: /api/store
@@ -70,6 +71,7 @@ jobs:
       - name: Deployable photo-overlay source contract
         run: |
           python -m py_compile deploy/photo-live/azure-check.py deploy/photo-live/arm-state.py deploy/photo-live/patch.py deploy/photo-live/release.py deploy/photo-live/retained-test.py deploy/photo-live/test.py
+          python deploy/photo-live/allocator-config.test.py
           python deploy/photo-live/patch.test.py
           python deploy/photo-live/azure-check.test.py
           python deploy/photo-live/arm-state.test.py
