@@ -4,6 +4,7 @@ import {resolve,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 import {snapshotServer} from '../pdp-layout/snapshot-server.mjs';
+import {captureDocumentErrors,verifyErrorCapture} from './document-errors.mjs';
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
 const out=resolve(process.env.HIDI_TEST_OUTPUT||'outputs/pdp-recommendations');await mkdir(out,{recursive:true});
 const css=await readFile(new URL('../../apps/web/app/pdp-recommendations.css',import.meta.url),'utf8');
@@ -131,12 +132,15 @@ async function functional(page,engine,width){
 try{
  for(const engine of engines){
   const browser=await pw[engine].launch({headless:true,...(engine==='chromium'&&process.platform==='win32'?{channel:'chrome'}:{})});
+  await verifyErrorCapture(browser);
   try{for(const [width,height] of viewports){
    const context=await browser.newContext({viewport:{width,height},reducedMotion:'reduce',hasTouch:width<=760});
+   await context.addInitScript(captureDocumentErrors);
    await context.addInitScript(()=>{window.history.scrollRestoration='manual';});
    await context.addInitScript(history=>localStorage.setItem('hidi_recently_viewed_products_v1',JSON.stringify(history.map(p=>({slug:p.slug,viewedAt:Date.now()})))),history);
    const page=await context.newPage();page.setDefaultTimeout(30000);
-   const pageErrors=[];page.on('pageerror',e=>pageErrors.push(e.message));
+   const pageErrors=[],reloadErrors=[];let reloading=false;
+   page.on('pageerror',e=>{pageErrors.push(e.message);if(reloading)reloadErrors.push(e.message);});
    const pending=new Map(),networkErrors=[];
    const safeUrl=req=>{const u=new URL(req.url());return u.origin+u.pathname;};
    page.on('request',req=>pending.set(req,safeUrl(req)));
@@ -171,7 +175,13 @@ try{
      }finally{await page.evaluate(original=>document.querySelector('style[data-hidi-storefront-layer-fix]').textContent=original,original);}
     }
     console.log(JSON.stringify({engine,width,beforeGap:before.reviewGap,afterGap:after.reviewGap,beforeRecent:before.recentGap,afterRecent:after.recentGap,beforeFooter:before.footerGap,afterFooter:after.footerGap}));
-    await page.reload({waitUntil:'domcontentloaded'});await ready(page);await requireApprovedStyle(page);
+    // Let automatic collection prefetches finish before intentionally destroying
+    // this document; WebKit reports cancelled in-flight prefetches as page errors.
+    await page.waitForLoadState('networkidle');
+    assert.deepEqual(await page.evaluate(()=>window.__hidiDocumentErrors),[],'No JavaScript errors before reload');
+    reloading=true;
+    try{await page.reload({waitUntil:'domcontentloaded'});await ready(page);}finally{reloading=false;}
+    await requireApprovedStyle(page);
     await page.evaluate(()=>scrollTo(0,0));await page.waitForFunction(()=>scrollY===0);
     const reloaded=await measure(page,true);validate(reloaded.before,reloaded.after,width);
     assert(Math.abs(reloaded.after.image.width-after.image.width)<1);
@@ -184,8 +194,13 @@ try{
     }
     if(engine==='chromium'&&[390,1536,1920].includes(width))await capture(page,'after-'+width);
     if([390,1536].includes(width))await functional(page,engine,width);
-    assert.deepEqual(pageErrors.filter(e=>!baselineErrors.includes(e)),[],'No new browser exceptions');
-    results.push({engine,width,height,before,after,reloaded,tabletStates,pairedHeaderState:true,passed:true});
+    const documentErrors=await page.evaluate(()=>window.__hidiDocumentErrors);
+    assert.deepEqual(documentErrors,[],'No JavaScript errors in the reloaded document');
+    // WebKit can emit an old document's cancelled Next prefetch after unloading it.
+    // Keep those events in evidence; any error from the current document still fails above.
+    const disposedPrefetchErrors=engine==='webkit'?reloadErrors.filter(e=>e.startsWith('/'+new URL(base).host+'/collections/')&&/[?&]_rsc=[^ ]+ due to access control checks\.$/.test(e)):[];
+    assert.deepEqual(pageErrors.filter(e=>!baselineErrors.includes(e)&&!disposedPrefetchErrors.includes(e)),[],'No new browser exceptions');
+    results.push({engine,width,height,before,after,reloaded,tabletStates,documentErrors,disposedPrefetchErrors,pairedHeaderState:true,passed:true});
     console.log('PASS '+engine+' '+width+'x'+height+' image '+before.image.width.toFixed(0)+'→'+after.image.width.toFixed(0));
    }catch(e){
     await writeFile(join(out,engine+'-'+width+'-network.json'),JSON.stringify({pageErrors,pending:[...pending.values()],networkErrors},null,2));
