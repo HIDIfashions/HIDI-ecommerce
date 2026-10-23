@@ -38,7 +38,7 @@ async function ready(page){
 async function measure(page,compare=false){
  await decoded(page,'[class*="activeImage"] img');
  await page.waitForFunction(()=>{const e=document.querySelector('[class*="activeImage"]'),top=parseFloat(getComputedStyle(e).getPropertyValue('--pdp-gallery-top'))||150;return innerWidth<761||innerWidth>1000||Math.abs(e.getBoundingClientRect().height-Math.min(820,innerHeight-top-40))<0.1;});
- return page.evaluate(({css,compare})=>{
+ const handle=await page.waitForFunction(({css,compare})=>{
  // The retained reduced-motion rules use 0.01ms transitions. Disable them in
  // this test task so both stylesheet states are measured at their final size.
  const noTransition=document.createElement('style');noTransition.textContent='*,*::before,*::after{transition:none!important}';document.head.append(noTransition);
@@ -70,7 +70,7 @@ async function measure(page,compare=false){
  try{style.textContent=original.replace(css,'');const before=read();return before?{before,after}:false;}
  finally{style.textContent=original;}
  }finally{noTransition.remove();}
-},{css,compare});}
+},{css,compare});try{return await handle.jsonValue();}finally{await handle.dispose();}}
 function validate(before,after,width){
  for(const key of ['prices','photos','sizeLabels','header','footer','natural','fit','galleryTopOffset','scrollY'])assert.deepEqual(after[key],before[key],key+' unchanged');
  assert(after.overflow<=1,'No horizontal overflow');assert.equal(after.selectedVisible,false);
@@ -185,7 +185,6 @@ try{
     results.push({engine,width,height,before,after,reloaded,tabletStates,pairedHeaderState:true,passed:true});
     console.log('PASS '+engine+' '+width+'x'+height+' image '+before.image.width.toFixed(0)+'→'+after.image.width.toFixed(0));
    }catch(e){
-    await writeFile(join(out,engine+'-'+width+'-failure.html'),await page.content());
     await writeFile(join(out,engine+'-'+width+'-network.json'),JSON.stringify({pageErrors,pending:[...pending.values()],networkErrors},null,2));
     await page.screenshot({path:join(out,engine+'-'+width+'-failure.png'),fullPage:true}).catch(()=>{});throw e;
    }

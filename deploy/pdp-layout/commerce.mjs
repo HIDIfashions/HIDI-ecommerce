@@ -57,7 +57,7 @@ try{
     const purchase=page.locator('.pdp-info .pdp-purchase');
     await purchase.locator('.sizes button:enabled').first().click();
     await purchase.getByRole('button',{name:'Buy Now',exact:true}).click();
-    await page.waitForURL('**/checkout');
+    await page.waitForURL('**/checkout',{waitUntil:'domcontentloaded'});
     await page.getByRole('textbox',{name:'Mobile number',exact:true}).waitFor();
     const pin=page.getByRole('textbox',{name:'PIN code',exact:true});await pin.fill('500001');await pin.blur();
     const summary=page.locator('.checkout-mobile-summary');
