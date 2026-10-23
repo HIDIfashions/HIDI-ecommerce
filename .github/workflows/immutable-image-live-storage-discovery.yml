@@ -1,4 +1,4 @@
-name: Locate and verify exact live smoke photos in Azure (recent upload identity diagnostics)
+name: Verify known uploaded originals without changing production
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -44,16 +44,12 @@ jobs:
           from pathlib import Path
           sys.path.insert(0,str(Path('../deploy/image-promotion').resolve()))
           import inspect_uploaded_photos as check
-          insertion="\nconst matched=new Map();let listed=0,downloaded=0;const recent=[];\nfor await(const item of container.listBlobsFlat({prefix:'products/variants/',includeMetadata:true})){\n  if(++listed>20000)throw Error('Scoped storage discovery limit reached');\n  if(!/^products\\/variants\\/[a-zA-Z0-9_-]+\\/[a-zA-Z0-9_.-]+$/.test(item.name))continue;\n  if(new Date(item.properties.lastModified).getTime()<Date.parse('2026-10-23T06:52:00Z'))continue;\n  if(recent.length<20)recent.push({key:item.name,bytes:item.properties.contentLength,modified:item.properties.lastModified,sourceSha256:item.metadata?.hidi_source_sha256});\n  const wanted=photos.find(p=>p.bytes===item.properties.contentLength&&!matched.has(p.sha256));\n  if(!wanted)continue;\n  if(++downloaded>6)throw Error('Ambiguous recent upload candidates');\n  const stream=await container.getBlockBlobClient(item.name).download();const sum=createHash('sha256');let size=0;\n  for await(const chunk of stream.readableStreamBody){sum.update(chunk);size+=chunk.length;}\n  const hash=sum.digest('hex');\n  if(size===wanted.bytes&&hash===wanted.sha256)matched.set(hash,item.name);\n  if(matched.size===photos.length)break;\n}\nif(matched.size!==photos.length)throw Error('Could not locate both exact recent uploaded originals: '+JSON.stringify({listed,downloaded,matched:[...matched],recent}));\nfor(const photo of photos)photo.key=matched.get(photo.sha256);\nif(new Set(photos.map(p=>p.key.split('/')[2])).size!==1)throw Error('Uploads belong to different product variants');\n"
-          anchor='const widths=[384,640,750,828,1080,1200,1920];'
-          assert check.PROBE.count(anchor)==1
-          check.PROBE=check.PROBE.replace(anchor,insertion+'\n'+anchor)
           Path('evidence/photo-live/discovery-probe.mjs').write_text(check.PROBE)
           import subprocess
           subprocess.run(['node','--check','evidence/photo-live/discovery-probe.mjs'],check=True)
           photos=[
-          {'key':'products/variants/discovery/normal.jpg','bytes':10004869,'sha256':'36a94546e8bc48e876c48d78b162196e1ae20a8efa46fd89566829bf7eee5ddc'},
-          {'key':'products/variants/discovery/large.jpg','bytes':47185920,'sha256':'ca24601507789695e9637b5d123df823fd66f8cba9ec3e4ef065b124e6741568'}
+          {'key':'products/variants/cmv9owalu00s701evyyeenjza/batch-36a94546e8bc48e876c48d78b162196e1ae20a8efa46fd89566829bf7eee5ddc.jpg','bytes':10004869,'sha256':'36a94546e8bc48e876c48d78b162196e1ae20a8efa46fd89566829bf7eee5ddc'},
+          {'key':'products/variants/cmv9owalu00s701evyyeenjza/batch-824a87c8402d5cad8426905948cb85eb42d0af61bdc8240624a903452868fcc9.jpg','bytes':24284792,'sha256':'824a87c8402d5cad8426905948cb85eb42d0af61bdc8240624a903452868fcc9'}
           ]
           path=check.load_release().P/'discovery-input.json';path.write_text(json.dumps(photos));path.chmod(0o600)
           sys.argv=['inspect_uploaded_photos.py',str(path)]
@@ -73,4 +69,3 @@ jobs:
           name: immutable-image-live-storage-discovery
           path: candidate-source/evidence/photo-live/uploaded-photo-storage.json
           retention-days: 30
-

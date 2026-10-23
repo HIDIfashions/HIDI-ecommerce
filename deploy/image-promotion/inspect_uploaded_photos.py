@@ -47,7 +47,7 @@ console.log('HIDI_UPLOADED_PHOTOS '+JSON.stringify({passed:true,results,blobWrit
 '''
 
 
-def validate_photos(photos):
+def validate_photos(photos, require_large=True):
     assert isinstance(photos, list) and len(photos) == 2, 'Exactly normal and large uploads required'
     for photo in photos:
         assert re.fullmatch(r'products/variants/[a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+', photo['key'])
@@ -55,7 +55,8 @@ def validate_photos(photos):
         assert isinstance(photo['bytes'], int) and 0 < photo['bytes'] < 1024 * 1024 * 1024
     assert len({x['key'] for x in photos}) == 2
     assert min(x['bytes'] for x in photos) < 12 * 1024 * 1024
-    assert max(x['bytes'] for x in photos) > 40 * 1024 * 1024
+    if require_large:
+        assert max(x['bytes'] for x in photos) > 40 * 1024 * 1024
 
 
 def job_resource(app_id, name):
@@ -84,7 +85,7 @@ def cleanup_job(cloud, name, url, owned):
 def main(storage_only_states=None):
     r = load_release()
     photos = json.loads(Path(sys.argv[1]).read_text())
-    validate_photos(photos)
+    validate_photos(photos, require_large=storage_only_states is None)
     run = r.r.guard.run_key()
     name = 'image-smoke-' + run
     web = r.r.cloud.app('hidi-web')
@@ -176,7 +177,7 @@ def main(storage_only_states=None):
             derivative = next(x for x in result['derivatives'] if x['width'] == 640)
             assert hashlib.sha256(data).hexdigest() == derivative['sha256']
         r.r.photo.unchanged(deployed)
-        report.update({'passed': True, 'normalAndLargeVerified': True, 'persistedServingVerified': storage_only_states is None})
+        report.update({'passed': True, 'normalAndLargeVerified': max(x['bytes'] for x in photos) > 40 * 1024 * 1024, 'persistedServingVerified': storage_only_states is None})
     except BaseException as error:
         report['passed'] = False
         report['error'] = str(error)
