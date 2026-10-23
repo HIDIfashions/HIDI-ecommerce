@@ -1,4 +1,4 @@
-name: Compare upload termination and restored runtime logs
+name: Read platform memory and restart diagnostics
 on:
   push:
     branches: [migration/azure-sql-blob]

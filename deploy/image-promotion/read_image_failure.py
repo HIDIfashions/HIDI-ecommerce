@@ -111,6 +111,37 @@ def current_health():
         assert props.get('healthState')=='Healthy' and props.get('runningState')=='Running',name+': current revision not healthy/running'
     return results
 attempt('currentHealth',current_health)
+
+def platform_diagnostics():
+    root='https://management.azure.com'+web['id']+'/detectors'
+    listing=r.r.cloud.azure('rest','--method','get','--url',root+'?api-version=2025-07-01')
+    entries=listing.get('value',[])
+    summary=[{'name':item.get('name'),'metadata':item.get('properties',{}).get('metadata',{})} for item in entries]
+    report['platformDetectorCatalog']=summary
+    relevant=[item for item in entries if re.search(r'memory|restart|crash|availability|termination',json.dumps(item.get('properties',{}).get('metadata',{}))+' '+str(item.get('name','')),re.I)]
+    def safe(value):
+        if isinstance(value,list):return [safe(item) for item in value]
+        if isinstance(value,dict):return {key:safe(item) for key,item in value.items()}
+        if isinstance(value,str) and re.search(r'authorization|bearer |password|secret|cookie|connectionstring|access.?token',value,re.I):return '[sensitive diagnostic content omitted]'
+        return value
+    results={}
+    for item in relevant[:6]:
+        name=item['name']
+        assert re.fullmatch(r'[A-Za-z0-9_.-]+',name),'Invalid detector name'
+        try:
+            result=r.r.cloud.azure('rest','--method','get','--url',root+'/'+name+'?api-version=2025-07-01')
+            props=result.get('properties',{})
+            for dataset in props.get('dataset',[]):
+                table=dataset.get('table') or {}
+                if len(table.get('rows',[]))>600:
+                    table['totalRows']=len(table['rows'])
+                    table['rows']=table['rows'][:600]
+                    table['truncated']=True
+            results[name]=safe(props)
+        except Exception as error:
+            results[name]={'error':str(error)[-1600:]}
+    return results
+attempt('platformDiagnostics',platform_diagnostics)
 r.r.photo.unchanged(expected)
 report['restoredProductionUnchanged']=True
 report['restoredStates']=expected
