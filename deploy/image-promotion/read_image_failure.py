@@ -27,16 +27,15 @@ def revision_state():
 
 attempt('failedRevision',revision_state)
 def metrics():
-    definitions=r.r.cloud.azure('monitor','metrics','list-definitions','--resource',web['id'])
+    definitions=r.r.cloud.azure('monitor','metrics','list-definitions','--resource',web['id'],'--namespace','Microsoft.App/containerApps')
     report['metricDefinitions']=[d['name']['value'] for d in definitions]
     rows=[]
     for metric in ['WorkingSetBytes','RestartCount','Requests']:
         definition=next((d for d in definitions if d['name']['value'].lower()==metric.lower()),None)
-        if not definition:continue
-        metric=definition['name']['value']
-        dimensions=[d['value'] for d in definition.get('dimensions',[])]
-        revision_dimension=next((d for d in dimensions if d.lower()=='revisionname'),None)
-        args=['monitor','metrics','list','--resource',web['id'],'--metric',metric,'--start-time','2026-10-23T07:48:00Z','--end-time','2026-10-23T07:56:00Z','--interval','PT1M','--aggregation','Maximum' if metric!='Requests' else 'Total']
+        metric=definition['name']['value'] if definition else metric
+        dimensions=[d['value'] for d in definition.get('dimensions',[])] if definition else ['revisionName']
+        revision_dimension=next((d for d in dimensions if d.lower()=='revisionname'),'revisionName')
+        args=['monitor','metrics','list','--resource',web['id'],'--namespace','Microsoft.App/containerApps','--metric',metric,'--start-time','2026-10-23T07:48:00Z','--end-time','2026-10-23T07:56:00Z','--interval','PT1M','--aggregation','Maximum' if metric!='Requests' else 'Total']
         if revision_dimension:args+=['--filter',revision_dimension+" eq '"+revision+"'"]
         try:rows.append({'metric':metric,'dimensions':dimensions,'result':r.r.cloud.azure(*args)})
         except Exception as error:rows.append({'metric':metric,'error':str(error)[-1200:]})
@@ -52,3 +51,4 @@ report['restoredProductionUnchanged']=True
 report['restoredStates']=expected
 r.save('live-upload-diagnostics.json',report)
 print(json.dumps(report,indent=2))
+
