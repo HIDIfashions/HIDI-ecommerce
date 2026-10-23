@@ -1,4 +1,4 @@
-name: Isolated allocator comparison under warm zoom and upload load
+name: Immutable memory candidate real Azure sustained-load acceptance
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: 5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f
+          ref: 9e809590651122dbf2b7c7ddfbbfe013a65f4364
           path: candidate-source
       - name: Authenticate successful rollback evidence
         run: |
@@ -33,10 +33,10 @@ jobs:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Exercise exact compiled handler sequentially inside isolated 1 GiB job
+      - name: Verify baked allocator, real Azure uploads and warm zoom under 1 GiB
         working-directory: candidate-source
         run: python ../deploy/image-promotion/run_fixture_diagnostic.py
-      - name: Preserve bounded diagnostics
+      - name: Preserve immutable memory and storage acceptance
         if: always()
         uses: actions/upload-artifact@v4
         with:
