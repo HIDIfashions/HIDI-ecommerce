@@ -1,4 +1,4 @@
-name: Read only failed image upload metrics with explicit namespace
+name: Read only historical logs for failed image upload
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -43,5 +43,6 @@ jobs:
           name: immutable-image-failure-diagnostics
           path: candidate-source/evidence/photo-live/live-upload-diagnostics.json
           retention-days: 30
+
 
 

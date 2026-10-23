@@ -1,5 +1,5 @@
 """Read-only, bounded diagnostics for the failed image release; no app or data writes."""
-import json,subprocess,sys
+import json,subprocess,sys,re
 from pathlib import Path
 sys.path.insert(0,str(Path('../deploy/image-promotion').resolve()))
 from immutable_image_promote import load_release,WEB
@@ -46,6 +46,35 @@ def system_logs():
     assert result.returncode==0,result.stderr[-1200:]
     return [line[:1500] for line in result.stdout.splitlines() if revision in line or any(term in line.lower() for term in ['oom','out of memory','exit code','unhealthy','failed','error'])][-60:]
 attempt('systemLogs',system_logs)
+def historical_logs():
+    environment=web['properties'].get('environmentId') or web['properties']['managedEnvironmentId']
+    data=r.r.cloud.azure('rest','--method','get','--url','https://management.azure.com'+environment+'?api-version=2025-07-01')
+    config=data['properties'].get('appLogsConfiguration') or {}
+    workspace=(config.get('logAnalyticsConfiguration') or {}).get('customerId')
+    report['logDestination']=config.get('destination')
+    if not workspace:
+        settings=r.r.cloud.azure('rest','--method','get','--url','https://management.azure.com'+environment+'/providers/microsoft.insights/diagnosticSettings?api-version=2021-05-01-preview')
+        targets={item['properties']['workspaceId'] for item in settings.get('value',[]) if item.get('properties',{}).get('workspaceId')}
+        assert len(targets)==1,'A single existing Log Analytics destination was not found'
+        workspace_data=r.r.cloud.azure('rest','--method','get','--url','https://management.azure.com'+next(iter(targets))+'?api-version=2023-09-01')
+        workspace=workspace_data['properties']['customerId']
+    assert re.fullmatch(r'[a-fA-F0-9-]{36}',workspace),'Invalid workspace identifier'
+    query="""union isfuzzy=true withsource=SourceTable ContainerAppSystemLogs_CL, ContainerAppConsoleLogs_CL, ContainerAppSystemLogs, ContainerAppConsoleLogs
+| extend App=coalesce(column_ifexists('ContainerAppName_s',''),column_ifexists('ContainerAppName','')), Revision=coalesce(column_ifexists('RevisionName_s',''),column_ifexists('RevisionName','')), Message=coalesce(column_ifexists('Log_s',''),column_ifexists('Log',''))
+| where TimeGenerated between (datetime(2026-10-23T07:48:00Z) .. datetime(2026-10-23T07:56:30Z))
+| where App == 'hidi-web' and Revision == 'hidi-web--imageimmutable39919863794a1'
+| where SourceTable contains 'System' or Message has_any ('memory','heap','Killed','SIGKILL','FATAL','Error','unhealthy','timeout')
+| project TimeGenerated, SourceTable, Message=substring(Message,0,1500)
+| order by TimeGenerated asc
+| take 60"""
+    rows=r.r.cloud.azure('monitor','log-analytics','query','--workspace',workspace,'--analytics-query',query)
+    def redact(value):
+        if isinstance(value,list):return [redact(item) for item in value]
+        if isinstance(value,dict):return {key:redact(item) for key,item in value.items()}
+        if isinstance(value,str) and re.search(r'authorization|bearer |password|secret|cookie|connectionstring|access.?token',value,re.I):return '[sensitive log content omitted]'
+        return value
+    return redact(rows)
+attempt('historicalFailureLogs',historical_logs)
 r.r.photo.unchanged(expected)
 report['restoredProductionUnchanged']=True
 report['restoredStates']=expected
