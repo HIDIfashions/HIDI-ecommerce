@@ -87,7 +87,7 @@ if(retainedServer.includes('function HidiDetails(product)')){
  server=server.slice(0,includesNode.getStart(displayTree))+'null'+server.slice(includesNode.end);
 
  cssModule(resolve('apps/web/app/products/[slug]/product-page.module.css'));
- css.push('.hidi-pdp-includes{font-size:14px;color:#75695f;margin:0 0 14px}.hidi-pdp-services{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;padding:12px 0;border-bottom:1px solid #dfd3c6}.hidi-pdp-services a{color:#591d20}.hidi-pdp-description{border-block:1px solid #dfd3c6;padding:14px 0;font-size:14px;line-height:1.7}.hidi-pdp-description summary{cursor:pointer;font-weight:600}.pdp-price [data-hidi-price-badge]{display:none!important}');
+ css.push('.hidi-pdp-includes{font-size:14px;color:#75695f;margin:0 0 14px}.hidi-pdp-services{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;padding:12px 0;border-bottom:1px solid #dfd3c6}.hidi-pdp-services a{color:#591d20}.hidi-pdp-description{border-block:1px solid #dfd3c6;padding:14px 0;font-size:14px;line-height:1.7}.hidi-pdp-description summary{cursor:pointer;font-weight:600}');
  const cssText=css.join('\n'),newCssName='apps/web/.next/static/css/hidi-product-page-'+sha(cssText).slice(0,16)+'.css',newUrl='/_next/'+newCssName.split('/.next/')[1];
  assert.equal(server.split(oldUrl).length-1,1);server=server.replace(oldUrl,newUrl);
  const newClientName=clientName.replace(/-[a-f0-9]{16}\.js$/,'-'+sha(client).slice(0,16)+'.js');const stylesOnly=clientName===newClientName;
@@ -126,7 +126,7 @@ page=once(page,'HidiDetails(e).includes&&(0,d.jsx)("p",','f.reviewCount>0&&(0,d.
 cssModule(resolve('apps/web/app/products/[slug]/product-page.module.css'));
 const layoutStyles=styles.get(resolve('apps/web/app/products/[slug]/product-page.module.css'));
 page=once(page,'className:"pdp-grid"','className:"pdp-grid '+layoutStyles.layout+'"');
-css.push('.hidi-pdp-includes{font-size:14px;color:#75695f;margin:0 0 14px}.hidi-pdp-services{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;padding:12px 0;border-bottom:1px solid #dfd3c6}.hidi-pdp-services a{color:#591d20}.hidi-pdp-description{border-block:1px solid #dfd3c6;padding:14px 0;font-size:14px;line-height:1.7}.hidi-pdp-description summary{cursor:pointer;font-weight:600}.pdp-price [data-hidi-price-badge]{display:none!important}');
+css.push('.hidi-pdp-includes{font-size:14px;color:#75695f;margin:0 0 14px}.hidi-pdp-services{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;padding:12px 0;border-bottom:1px solid #dfd3c6}.hidi-pdp-services a{color:#591d20}.hidi-pdp-description{border-block:1px solid #dfd3c6;padding:14px 0;font-size:14px;line-height:1.7}.hidi-pdp-description summary{cursor:pointer;font-weight:600}');
 const cssText=css.join('\n'),cssName='apps/web/.next/static/css/hidi-product-page-'+sha(cssText).slice(0,16)+'.css';
 page=once(page,'className:"breadcrumbs",children:[','className:"breadcrumbs",children:[(0,d.jsx)("link",{rel:"stylesheet",href:"/_next/'+cssName.split('/.next/')[1]+'"}),');
 server=server.slice(0,pageNode.getStart(pageTree))+page+server.slice(pageNode.end);
