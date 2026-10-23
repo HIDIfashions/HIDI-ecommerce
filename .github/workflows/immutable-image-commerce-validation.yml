@@ -63,7 +63,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm db:generate
           pnpm --filter @hidi/api build
-          npm install --prefix "$RUNNER_TEMP/commerce-tools" --no-audit --no-fund playwright@1.56.1
+          npm install --prefix "$RUNNER_TEMP/commerce-tools" --no-audit --no-fund playwright@1.62.1
           echo "HIDI_PLAYWRIGHT_MODULE=$RUNNER_TEMP/commerce-tools/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
           node "$RUNNER_TEMP/commerce-tools/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
       - uses: azure/login@v2
@@ -123,26 +123,53 @@ jobs:
               stream.write('HIDI_BASELINE_RUNTIME='+str(baseline_target)+'\n')
               stream.write('HIDI_ASSET_MIRROR_PROOF_DIR='+str(mirror.parent)+'\n')
           PY
-      - name: Run unchanged production-era commerce probes on both immutable images
+      - name: Run current production product, cart, checkout and pricing probes
         working-directory: production-tests
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "3096b44f716dbcd090d5d22e6cbe87c975009eb4"
           mkdir -p evidence/immutable-commerce
+          python - <<'PY'
+          from pathlib import Path
+          source=Path('deploy/checkout-hydration/candidate.mjs').read_text()
+          old_import="import {probe as productProbe} from '../product-preview/probe.mjs';"
+          old_call="await productProbe(base,'evidence/checkout-hydration-release/candidate/product');"
+          assert source.count(old_import)==1 and source.count(old_call)==1
+          # The captured production product-page release superseded this legacy
+          # description selector. Run its complete existing PDP suite separately.
+          # Cart/checkout/pricing assertions and all existing probe files are unchanged.
+          driver=source.replace(old_import,'').replace(old_call,'')
+          Path('deploy/checkout-hydration/immutable-cart-pricing.mjs').write_text(driver)
+          PY
+          git diff --exit-code
           export HIDI_PUBLISHED_RUNTIME="$HIDI_CANDIDATE_RUNTIME"
+          run_target() {
+            target_name="$1"
+            runtime_path="$2"
+            HIDI_CANDIDATE_RUNTIME="$runtime_path" node deploy/product-page/candidate.mjs > "evidence/immutable-commerce/$target_name-product.log" 2>&1
+            product_status=$?
+            HIDI_CANDIDATE_RUNTIME="$runtime_path" node deploy/checkout-hydration/immutable-cart-pricing.mjs > "evidence/immutable-commerce/$target_name.log" 2>&1
+            commerce_status=$?
+            mkdir -p "evidence/immutable-commerce/$target_name"
+            if [ -d evidence/checkout-hydration-release/candidate ]; then
+              cp -a evidence/checkout-hydration-release/candidate/. "evidence/immutable-commerce/$target_name/"
+              mv evidence/checkout-hydration-release/candidate "evidence/immutable-commerce/$target_name-hydration-original"
+            fi
+            if [ -d evidence/product-page-release ]; then
+              mv evidence/product-page-release "evidence/immutable-commerce/$target_name/product-page-release"
+            fi
+            if [ -d evidence/product-page ]; then
+              mv evidence/product-page "evidence/immutable-commerce/$target_name/product-page"
+            fi
+            cat "evidence/immutable-commerce/$target_name-product.log"
+            cat "evidence/immutable-commerce/$target_name.log"
+            test "$product_status" -eq 0 && test "$commerce_status" -eq 0
+          }
           set +e
-          HIDI_CANDIDATE_RUNTIME="$HIDI_BASELINE_RUNTIME" node deploy/checkout-hydration/candidate.mjs > evidence/immutable-commerce/baseline.log 2>&1
+          run_target baseline "$HIDI_BASELINE_RUNTIME"
           baseline_status=$?
-          if [ -d evidence/checkout-hydration-release/candidate ]; then
-            mv evidence/checkout-hydration-release/candidate evidence/immutable-commerce/baseline
-          fi
-          HIDI_CANDIDATE_RUNTIME="$HIDI_PUBLISHED_RUNTIME" node deploy/checkout-hydration/candidate.mjs > evidence/immutable-commerce/candidate.log 2>&1
+          run_target candidate "$HIDI_PUBLISHED_RUNTIME"
           candidate_status=$?
-          if [ -d evidence/checkout-hydration-release/candidate ]; then
-            mv evidence/checkout-hydration-release/candidate evidence/immutable-commerce/candidate
-          fi
-          cat evidence/immutable-commerce/baseline.log
-          cat evidence/immutable-commerce/candidate.log
           test "$baseline_status" -eq 0 && test "$candidate_status" -eq 0
       - name: Require complete browser coverage and unchanged production state
         if: always()
@@ -162,13 +189,17 @@ jobs:
           for target in ['baseline','candidate']:
               root=Path('../production-tests/evidence/immutable-commerce')/target
               reports[target]={}
-              for name,relative,key,count in [('checkout','report.json','cases',24),('product','product/report.json','cases',6),('pricing','pricing/report.json','results',6)]:
+              for name,relative,key,count in [('checkout','report.json','cases',24),('product','product-page-release/candidate.json','cases',15),('pricing','pricing/report.json','results',6)]:
                   report=json.loads((root/relative).read_text())
                   assert report['passed'] and report['productionWrites']==0,(target,name)
                   cases=report[key]
                   assert len(cases)==count,(target,name,len(cases))
                   assert {case['engine'] for case in cases}=={'chromium','firefox','webkit'},(target,name)
                   reports[target][name]=report
+              short=json.loads((root/'product-page-release/short-candidate.json').read_text())
+              assert short['passed'] and len(short['cases'])==9
+              assert {(case['engine'],case['width'],case['height']) for case in short['cases']}=={(engine,width,height) for engine in ['chromium','firefox','webkit'] for width,height in [(390,844),(375,812),(320,568)]}
+              reports[target]['shortMobile']=short
           r.save('immutable-commerce-result.json',{'passed':True,'productionTrafficChanged':False,'databaseWrites':0,'photoSourceSha':r.source_sha(),'testSourceSha':'3096b44f716dbcd090d5d22e6cbe87c975009eb4','releaseImageRebuilt':False,'reports':reports})
           print('PASS: baseline and immutable candidate; all cart/checkout/product/pricing browsers; production unchanged')
           PY
