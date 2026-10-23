@@ -60,7 +60,7 @@ def patch(base,overlay,app):
         if p.is_file() and not p.is_symlink() and p.suffix in {'.js','.json','.html','.rsc','.meta'}
     }
     semantic={}
-    counts={'numeric':0,'labels':0}
+    counts={'numeric':0,'labels':0,'lifecycleReset':0}
     labels={
         'choose a non-empty photo no larger than 12 MB':'choose a valid non-empty photo',
         'Image exceeds 12 MB.':'Invalid photo size.',
@@ -84,6 +84,12 @@ def patch(base,overlay,app):
     # empty files; exact received-byte integrity and representability are enforced
     # again by the disk-backed server parser.
     browser_safe_integer=re.compile(r'!Number\.isSafeInteger\((?P<size>[A-Za-z_$][\w$]*\.size)\)\s*\|\|\s*(?P=size)\s*<\s*1')
+    # Retained production bundles may still clear the file input synchronously
+    # before the async upload helper snapshots/serializes a large File. In all
+    # three browser engines that can turn the selected File into a zero-byte
+    # object before validation. Defer only that exact photo-input reset by one
+    # task turn; the input is still cleared for same-file reselection.
+    photo_input_reset=re.compile(r'(?P<target>[A-Za-z_$][\w$]*\.currentTarget)\.value\s*=\s*([\'\"])\2')
     probe=browser_safe_integer.fullmatch('!Number.isSafeInteger(file.size)||file.size<1')
     assert probe and probe['size']=='file.size','Capless browser-validator rewrite contract is invalid'
     touched=set()
@@ -93,7 +99,12 @@ def patch(base,overlay,app):
         changed,n1=forward_cap.subn(lambda m:m[1]+' > 9007199254740991',text)
         changed,n2=reverse_cap.subn(lambda m:'9007199254740991 < '+m[1],changed)
         counts['numeric']+=n1+n2
-        photo_text=any(label in text for label in labels)
+        photo_text=any(label in text for label in labels) or any(marker in text for marker in [
+            'Nothing was uploaded',
+            'choose a valid non-empty photo',
+            'no fixed file-size cap',
+            'Add photos',
+        ])
         if photo_text:
             for pattern in symbolic_caps:
                 changed,n=pattern.subn(lambda m:'!Number.isSafeInteger('+m['size']+')||'+m['size']+'<1',changed)
@@ -101,6 +112,11 @@ def patch(base,overlay,app):
         if photo_text:
             changed,n3=browser_safe_integer.subn(lambda m:m['size']+'<1',changed)
             counts['safeInteger']+=n3
+            changed,n4=photo_input_reset.subn(
+                lambda m:'setTimeout(()=>{'+m['target']+'.value=""},0)',
+                changed,
+            )
+            counts['lifecycleReset']+=n4
         if n1+n2 or photo_text or changed!=text:touched.add(name)
         for old_label,new_label in labels.items():
             counts['labels']+=changed.count(old_label)
@@ -110,6 +126,7 @@ def patch(base,overlay,app):
     # patched when present, but some valid retained builds inline the 12 MiB constant
     # instead, so do not require a symbolic occurrence that is absent from the pinned build.
     assert counts['numeric']>=3 and counts['labels']>=4,'Retained admin photo validators/labels changed: explicit review required'
+    assert counts['lifecycleReset']>=1,'Retained admin photo input lifecycle anchor changed: explicit review required'
     for name in touched:
         assert '12582912' not in semantic[name], 'A former 12 MiB photo guard remains in '+name
         assert '12 MB' not in semantic[name], 'A former 12 MiB photo label remains in '+name
