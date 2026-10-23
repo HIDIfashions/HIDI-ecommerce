@@ -59,6 +59,16 @@ def historical_logs():
         workspace_data=r.r.cloud.azure('rest','--method','get','--url','https://management.azure.com'+next(iter(targets))+'?api-version=2023-09-01')
         workspace=workspace_data['properties']['customerId']
     assert re.fullmatch(r'[a-fA-F0-9-]{36}',workspace),'Invalid workspace identifier'
+    report['logWorkspaceCustomerId']=workspace
+    report['managedEnvironmentResourceId']=environment
+    report['deploymentClientId']='3d62eb64-29dc-48ee-ab35-093312bd50af'
+    def workspace_scope():
+        rows=r.r.cloud.azure('monitor','log-analytics','workspace','list','-g','rg-hidi-prod')
+        matches=[item for item in rows if str(item.get('customerId') or item.get('properties',{}).get('customerId','')).lower()==workspace.lower()]
+        assert len(matches)==1,'Workspace scope not found in production resource group'
+        return {'id':matches[0]['id'],'name':matches[0]['name']}
+    attempt('logWorkspaceScope',workspace_scope)
+    attempt('deploymentPrincipal',lambda:r.r.cloud.azure('ad','sp','show','--id',report['deploymentClientId'],'--query','{id:id,displayName:displayName,appId:appId}'))
     query="""union isfuzzy=true withsource=SourceTable ContainerAppSystemLogs_CL, ContainerAppConsoleLogs_CL, ContainerAppSystemLogs, ContainerAppConsoleLogs
 | extend App=coalesce(column_ifexists('ContainerAppName_s',''),column_ifexists('ContainerAppName','')), Revision=coalesce(column_ifexists('RevisionName_s',''),column_ifexists('RevisionName','')), Message=coalesce(column_ifexists('Log_s',''),column_ifexists('Log',''))
 | where TimeGenerated between (datetime(2026-10-23T07:48:00Z) .. datetime(2026-10-23T07:56:30Z))
