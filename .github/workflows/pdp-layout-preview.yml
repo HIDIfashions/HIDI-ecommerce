@@ -1,0 +1,34 @@
+name: PDP layout preview regression (no deployment)
+on:
+  push:
+    branches: [fix/pdp-image-spacing-preview-20261023]
+    paths: ['deploy/pdp-layout/**', '.github/workflows/pdp-layout-preview.yml']
+permissions:
+  contents: read
+jobs:
+  browser-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated browser tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pdp-tools" playwright@1.62.1
+          node "$RUNNER_TEMP/pdp-tools/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Guarded CSS patch tests
+        run: python3 deploy/pdp-layout/test_patch.py
+      - name: Three-engine responsive and functional regression
+        run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/pdp-tools/node_modules/playwright/index.mjs" node deploy/pdp-layout/verify.mjs
+      - name: Additional commerce and page isolation checks
+        run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/pdp-tools/node_modules/playwright/index.mjs" node deploy/pdp-layout/commerce.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pdp-layout-preview-evidence
+          path: |
+            outputs/pdp-layout/*.json
+            outputs/pdp-layout/*.png
+          retention-days: 14
