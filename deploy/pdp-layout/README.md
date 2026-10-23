@@ -61,6 +61,15 @@ Each viewport repeats the paired comparison after a fresh reload. Tablet widths
 761 and 1000 also repeat after scrolling down and back to the top, require exact
 before/after image-height equality, and verify the existing viewport/header-offset
 height formula. The approved CSS remains byte-for-byte unchanged.
+Purchase tests wait for ProductPageShell's existing `data-hidi-hydrated="true"`
+signal before clicking. The recent-history effect can finish while the product
+tree is still hydrating, leaving visible buttons unable to handle early clicks.
+Read-only diagnosis reproduced this on the restored production baseline as well
+as the CSS preview. Waiting for the product signal passed ten consecutive
+Chromium/WebKit runs with one click per selection and no retry. Commerce checks
+also exercise pointer and keyboard selection/deselection on three products per
+browser/viewport before testing Buy Now after reload. These are test-only changes;
+the production purchase code and approved stylesheet are unchanged.
 Any post-write exception enters the existing guarded rollback immediately;
 an independent recovery step also handles an interrupted rollout. API, database,
 blob content, application settings, compiled bundles and image derivatives are

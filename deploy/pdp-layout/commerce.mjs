@@ -12,6 +12,14 @@ const base=actual||snapshot.base;
 const products=JSON.parse((await snapshot.pull('/api/store/products')).body);
 const available=products.filter(p=>p.variants?.some(v=>v.available>0)&&p.images?.length);
 const results=[];let cartAdds=0;
+async function productReady(page){
+ // ProductPageShell sets this only after the product tree hydrates. The
+ // recently-viewed effect can run earlier and is not a purchase readiness gate.
+ await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor();
+ await page.waitForFunction(()=>document.fonts.status==='loaded');
+ await page.locator('[class*="activeImage"] img').evaluate(e=>e.decode());
+}
+async function selected(size,value){await size.page().waitForFunction(({selector,value})=>document.querySelector(selector)?.getAttribute('aria-pressed')===String(value),{selector:'.pdp-info .pdp-purchase .sizes button[aria-pressed]:enabled',value});}
 async function compareStyles(page){return page.evaluate(css=>{
  const read=()=>[...document.querySelectorAll('body,.site-header,footer.footer,main,button,input,summary,h1,h2,.cart-page,.checkout-page,.summary-total,.product-grid')].map(e=>{const c=getComputedStyle(e);return {tag:e.tagName,className:e.className,font:c.font,color:c.color,background:c.backgroundColor,padding:c.padding,margin:c.margin,display:c.display,border:c.border};});
  const before=read();const s=document.querySelector('style[data-hidi-storefront-layer-fix]');if(s)s.textContent=s.textContent.replace(css,'');
@@ -44,15 +52,23 @@ try{
    try{
     for(const item of available.slice(0,3)){
      assert((await page.goto(base+'/products/'+item.slug,{waitUntil:'domcontentloaded'})).ok());
+     await productReady(page);
      await page.locator('.sizes button:enabled').first().waitFor();
      assert.equal(await page.locator('.pdp-purchase > [class*="selectionSummary"]:visible,.pdp-selected-detail:not(.sr-only):visible').count(),0);
      await page.locator('[class*="activeImage"] img').evaluate(e=>e.decode());
      assert(await page.locator('[class*="activeImage"] img').evaluate(e=>e.naturalWidth>0));
      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+     const choice=page.locator('.pdp-info .pdp-purchase .sizes button[aria-pressed]:enabled').first();
+     assert.equal(await choice.getAttribute('aria-pressed'),'false');
+     await choice.click();await selected(choice,true);
+     await choice.click();await selected(choice,false);
+     await choice.focus();await choice.press('Enter');await selected(choice,true);
+     await choice.press('Space');await selected(choice,false);
     }
     // An empty history must not leave a blank section or extra footer spacer.
     await page.evaluate(()=>localStorage.removeItem('hidi_recently_viewed_products_v1'));
     await page.reload({waitUntil:'domcontentloaded'});await page.locator('.sizes button:enabled').first().waitFor();
+    await productReady(page);
     // The recent-history effect confirms client hydration after clearing storage.
     await page.waitForFunction(()=>JSON.parse(localStorage.getItem('hidi_recently_viewed_products_v1')||'[]').some(item=>location.pathname.endsWith('/'+item.slug)));
     await page.locator('[class*="activeImage"] img').evaluate(e=>e.decode());assert.equal(await page.locator('.pdp-recent').count(),0);
@@ -75,7 +91,7 @@ try{
      if(path==='/account')await page.locator('input[type="tel"]').first().waitFor();
      const {before,after}=await compareStyles(page);assert.deepEqual(after,before,'Unchanged non-PDP styles '+path);
     }
-    results.push({engine,width,products:available.slice(0,3).map(p=>p.slug),emptyHistory:true,buyNowNavigation:true,codAndOnlineChoice:true,unchangedPages:['cart','checkout','collections','home','account','admin-sign-in'],passed:true});
+    results.push({engine,width,products:available.slice(0,3).map(p=>p.slug),hydratedPurchaseControls:true,pointerAndKeyboardSizeSelection:true,emptyHistory:true,buyNowNavigation:true,codAndOnlineChoice:true,unchangedPages:['cart','checkout','collections','home','account','admin-sign-in'],passed:true});
     console.log('PASS commerce '+engine+' '+width);
    }catch(e){await page.screenshot({path:join(out,'commerce-'+engine+'-'+width+'-failure.png'),fullPage:true}).catch(()=>{});throw e;}
    finally{await context.close();}

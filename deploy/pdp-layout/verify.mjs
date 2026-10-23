@@ -30,6 +30,7 @@ async function decoded(page,selector,expected=null){
  },{selector,expected});
 }
 async function ready(page){
+ await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor();
  await page.locator('.sizes button[aria-pressed]:enabled').first().waitFor();
  await page.locator('.pdp-recent article').first().waitFor();
  await page.waitForFunction(()=>document.fonts.status==='loaded');
