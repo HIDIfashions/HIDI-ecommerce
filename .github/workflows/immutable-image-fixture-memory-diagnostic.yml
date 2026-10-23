@@ -1,4 +1,4 @@
-name: Isolated sustained image load and upload memory reproduction
+name: Isolated warm-runtime zoom and upload memory reproduction
 on:
   push:
     branches: [migration/azure-sql-blob]
