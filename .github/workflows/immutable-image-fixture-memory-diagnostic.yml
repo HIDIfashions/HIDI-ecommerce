@@ -1,4 +1,4 @@
-name: Isolated full retained runtime upload diagnosis
+name: Isolated warmed admin and storefront upload diagnosis
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -43,6 +43,7 @@ jobs:
           name: immutable-image-fixture-memory-diagnostic
           path: candidate-source/evidence/photo-live/fixture-memory-diagnostic.json
           retention-days: 30
+
 
 
 
