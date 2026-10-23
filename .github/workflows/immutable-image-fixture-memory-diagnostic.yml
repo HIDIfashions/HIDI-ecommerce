@@ -1,4 +1,4 @@
-name: Isolated exact image fixture memory diagnostic
+name: Isolated image fixture diagnostic and failed upload storage state
 on:
   push:
     branches: [migration/azure-sql-blob]

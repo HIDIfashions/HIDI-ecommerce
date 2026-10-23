@@ -7,6 +7,7 @@ import {pipeline} from 'node:stream/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawn} from 'node:child_process';
+import {persistentDerivativeBlobKey} from '/app/product-images/images.mjs';
 const require=createRequire('/app/apps/web/server.js');
 const {BlobServiceClient}=require('/app/photo-stream/node_modules/@azure/storage-blob/sdk.cjs');
 const {DefaultAzureCredential}=require('/app/photo-stream/node_modules/@azure/identity/sdk.cjs');
@@ -16,7 +17,7 @@ const fixtureHash='ca24601507789695e9637b5d123df823fd66f8cba9ec3e4ef065b124e6741
 const directory=await mkdtemp(join(tmpdir(),'hidi-isolated-fixture-'));
 const report={kind:'isolated-exact-fixture-memory-diagnostic',diagnosticOnly:true,blobWrites:0,databaseWrites:0,results:[]};
 const digest=async path=>{const h=createHash('sha256');for await(const chunk of createReadStream(path))h.update(chunk);return h.digest('hex');};
-const events=async()=>{try{return await readFile('/sys/fs/cgroup/memory.events','utf8');}catch{return 'unavailable';}};
+const events=async()=>{const values={};for(const path of ['/sys/fs/cgroup/memory.events','/sys/fs/cgroup/memory/memory.oom_control','/sys/fs/cgroup/memory/memory.failcnt','/sys/fs/cgroup/memory/memory.limit_in_bytes']){try{values[path]=await readFile(path,'utf8');}catch{}}return values;};
 const worker=String.raw`
 import {createRequire} from 'node:module';
 import {readFile} from 'node:fs/promises';
@@ -42,6 +43,13 @@ await stage('complete');
 `;
 try{
   const blob=new BlobServiceClient('https://'+process.env.AZURE_STORAGE_ACCOUNT+'.blob.core.windows.net',new DefaultAzureCredential()).getContainerClient('product-media').getBlockBlobClient(key);
+  const container=new BlobServiceClient('https://'+process.env.AZURE_STORAGE_ACCOUNT+'.blob.core.windows.net',new DefaultAzureCredential()).getContainerClient('product-media');
+  const failedKey='products/variants/cmv9owalu00s701evyyeenjza/batch-'+fixtureHash+'.jpg';
+  report.failedUploadStorage=[];
+  for(const item of [{width:null,key:failedKey},...[384,640,750,828,1080,1200,1920].map(width=>({width,key:persistentDerivativeBlobKey(failedKey,width,'webp')}))]){
+    try{const props=await container.getBlockBlobClient(item.key).getProperties();report.failedUploadStorage.push({...item,exists:true,bytes:props.contentLength,lastModified:props.lastModified,sourceSha256:props.metadata?.hidi_source_sha256});}
+    catch(error){if(error.statusCode!==404)throw error;report.failedUploadStorage.push({...item,exists:false});}
+  }
   const before=await blob.getProperties();
   if(before.contentLength!==24284792)throw Error('Approved source size changed');
   const original=join(directory,'original.jpg');
