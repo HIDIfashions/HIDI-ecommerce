@@ -29,6 +29,11 @@ jobs:
           ref: ${{ env.CANDIDATE_SHA }}
           path: candidate-source
           fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: 3096b44f716dbcd090d5d22e6cbe87c975009eb4
+          path: production-tests
+          fetch-depth: 0
       - name: Download and authenticate the exact green bridge evidence
         env:
           GH_TOKEN: ${{ github.token }}
@@ -107,79 +112,54 @@ jobs:
               stream.write('HIDI_CANDIDATE_API='+str(Path.cwd())+'\n')
               stream.write('HIDI_BASELINE_RUNTIME='+str(baseline_target)+'\n')
           PY
-      - name: Diagnose unchanged commerce probes on baseline and candidate
-        working-directory: candidate-source
+      - name: Run unchanged production-era commerce probes on both immutable images
+        working-directory: production-tests
         run: |
           set -euo pipefail
-          mkdir -p evidence/commerce-diagnostics
-          cat > "$RUNNER_TEMP/commerce-playwright-diagnostics.mjs" <<'JS'
-          import {mkdir,writeFile} from 'node:fs/promises';
-          import {pathToFileURL} from 'node:url';
-          const real=await import(pathToFileURL(process.env.HIDI_REAL_PLAYWRIGHT_MODULE).href);
-          const root=process.env.HIDI_COMMERCE_DIAGNOSTICS;
-          function instrument(name){
-            const engine=real[name],launch=engine.launch.bind(engine);
-            engine.launch=async(...args)=>{
-              const browser=await launch(...args),pages=[],events=[];
-              const newContext=browser.newContext.bind(browser),close=browser.close.bind(browser);
-              browser.newContext=async(...args)=>{
-                const context=await newContext(...args),newPage=context.newPage.bind(context);
-                context.newPage=async(...args)=>{
-                  const page=await newPage(...args);pages.push(page);
-                  page.on('pageerror',error=>events.push({kind:'pageerror',message:error.message}));
-                  page.on('response',response=>{if(response.url().includes('/api/'))events.push({kind:'response',url:response.url(),status:response.status()});});
-                  return page;
-                };
-                return context;
-              };
-              browser.close=async(...args)=>{
-                try{
-                  await mkdir(root,{recursive:true});
-                  for(let i=0;i<pages.length;i++){
-                    const page=pages[i];if(page.isClosed())continue;
-                    await writeFile(root+'/'+name+'-'+i+'.json',JSON.stringify({url:page.url(),body:(await page.locator('body').innerText()).slice(0,16000),events},null,2));
-                    await page.screenshot({path:root+'/'+name+'-'+i+'.png',fullPage:true});
-                  }
-                }catch(error){console.error('Diagnostic capture failed:',error.message);}
-                return close(...args);
-              };
-              return browser;
-            };
-            return engine;
-          }
-          export const chromium=instrument('chromium'),firefox=instrument('firefox'),webkit=instrument('webkit');
-          JS
-          export HIDI_REAL_PLAYWRIGHT_MODULE="$HIDI_PLAYWRIGHT_MODULE"
-          export HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/commerce-playwright-diagnostics.mjs"
+          test "$(git rev-parse HEAD)" = "3096b44f716dbcd090d5d22e6cbe87c975009eb4"
+          mkdir -p evidence/immutable-commerce
           export HIDI_PUBLISHED_RUNTIME="$HIDI_CANDIDATE_RUNTIME"
           set +e
-          HIDI_CANDIDATE_RUNTIME="$HIDI_BASELINE_RUNTIME" HIDI_COMMERCE_DIAGNOSTICS="$PWD/evidence/commerce-diagnostics/baseline" node deploy/checkout-offers/candidate.mjs > evidence/commerce-diagnostics/baseline.log 2>&1
+          HIDI_CANDIDATE_RUNTIME="$HIDI_BASELINE_RUNTIME" node deploy/checkout-hydration/candidate.mjs > evidence/immutable-commerce/baseline.log 2>&1
           baseline_status=$?
-          HIDI_CANDIDATE_RUNTIME="$HIDI_PUBLISHED_RUNTIME" HIDI_COMMERCE_DIAGNOSTICS="$PWD/evidence/commerce-diagnostics/candidate" node deploy/checkout-offers/candidate.mjs > evidence/commerce-diagnostics/candidate.log 2>&1
+          if [ -d evidence/checkout-hydration-release/candidate ]; then
+            mv evidence/checkout-hydration-release/candidate evidence/immutable-commerce/baseline
+          fi
+          HIDI_CANDIDATE_RUNTIME="$HIDI_PUBLISHED_RUNTIME" node deploy/checkout-hydration/candidate.mjs > evidence/immutable-commerce/candidate.log 2>&1
           candidate_status=$?
-          cat evidence/commerce-diagnostics/baseline.log
-          cat evidence/commerce-diagnostics/candidate.log
+          if [ -d evidence/checkout-hydration-release/candidate ]; then
+            mv evidence/checkout-hydration-release/candidate evidence/immutable-commerce/candidate
+          fi
+          cat evidence/immutable-commerce/baseline.log
+          cat evidence/immutable-commerce/candidate.log
           test "$baseline_status" -eq 0 && test "$candidate_status" -eq 0
-      - name: Require all three browsers and unchanged production state
+      - name: Require complete browser coverage and unchanged production state
         if: always()
         working-directory: candidate-source
         run: |
           python - <<'PY'
           import importlib.util,json
           from pathlib import Path
-          commerce=json.loads(Path('evidence/checkout-offers/candidate/report.json').read_text())
-          purchase=json.loads(Path('evidence/checkout-offers/purchase-regression/report.json').read_text())
-          assert commerce['passed'] and purchase['passed']
-          assert commerce['engines']==['chromium','firefox','webkit']
-          assert len(commerce['results'])==6 and commerce['productionWrites']==0
           p=Path('deploy/photo-live/release.py').resolve()
           spec=importlib.util.spec_from_file_location('immutable_commerce_final',p)
           r=importlib.util.module_from_spec(spec);spec.loader.exec_module(r)
           prior=json.loads(Path('../bridge-evidence/evidence/photo-live/before.json').read_text())
           observed={app:r.r.cloud.snapshot(r.r.cloud.app(app)) for app in prior}
           assert observed==prior,'Production baseline changed during validation'
-          r.save('immutable-commerce-result.json',{'passed':True,'productionTrafficChanged':False,'databaseWrites':0,'photoSourceSha':r.source_sha(),'commerce':commerce,'purchase':purchase})
-          print('PASS: immutable-container commerce/purchase probes; production traffic unchanged')
+          r.save('immutable-commerce-state.json',{'passed':True,'productionTrafficChanged':False,'databaseWrites':0,'baseline':observed})
+          reports={}
+          for target in ['baseline','candidate']:
+              root=Path('../production-tests/evidence/immutable-commerce')/target
+              reports[target]={}
+              for name,relative,key,count in [('checkout','report.json','cases',24),('product','product/report.json','cases',6),('pricing','pricing/report.json','results',6)]:
+                  report=json.loads((root/relative).read_text())
+                  assert report['passed'] and report['productionWrites']==0,(target,name)
+                  cases=report[key]
+                  assert len(cases)==count,(target,name,len(cases))
+                  assert {case['engine'] for case in cases}=={'chromium','firefox','webkit'},(target,name)
+                  reports[target][name]=report
+          r.save('immutable-commerce-result.json',{'passed':True,'productionTrafficChanged':False,'databaseWrites':0,'photoSourceSha':r.source_sha(),'testSourceSha':'3096b44f716dbcd090d5d22e6cbe87c975009eb4','releaseImageRebuilt':False,'reports':reports})
+          print('PASS: baseline and immutable candidate; all cart/checkout/product/pricing browsers; production unchanged')
           PY
       - name: Preserve supplemental evidence
         if: always()
@@ -188,6 +168,5 @@ jobs:
           name: immutable-image-commerce-evidence
           path: |
             candidate-source/evidence/photo-live/
-            candidate-source/evidence/checkout-offers/
-            candidate-source/evidence/commerce-diagnostics/
+            production-tests/evidence/immutable-commerce/
           retention-days: 30
