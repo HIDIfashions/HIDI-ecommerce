@@ -3,7 +3,7 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
-import {snapshotServer} from '../pdp-layout/snapshot-server.mjs';
+import {snapshotServer} from './snapshot-server.mjs';
 import {captureDocumentErrors,verifyErrorCapture} from './document-errors.mjs';
 const pw=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
 const out=resolve(process.env.HIDI_TEST_OUTPUT||'outputs/pdp-recommendations');await mkdir(out,{recursive:true});

@@ -23,6 +23,7 @@ jobs:
       - name: Test exact patch and rollback guard
         run: |
           node deploy/pdp-recommendations/test-transform.mjs
+          node deploy/pdp-recommendations/test-snapshot.mjs
           python3 deploy/pdp-recommendations/test_release.py
           python3 -m py_compile deploy/pdp-recommendations/release.py deploy/pdp-recommendations/browser-runner.py
           node --check deploy/pdp-recommendations/candidate.mjs
