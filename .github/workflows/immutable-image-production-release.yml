@@ -1,3 +1,4 @@
+# Keep coordinator branch stationary until promotion readiness; bind smoke control afterward.
 name: Immutable image production release with live rollback
 on:
   push:
