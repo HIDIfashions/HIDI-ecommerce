@@ -47,6 +47,9 @@ exact rollback backup, and adds only the approved CSS (SHA-256
 `0d97628e83dfedadc34cbee8d55ee96842bb9fda062890456cfe748664cdbd77`).
 It verifies every retained file, Docker configuration and existing layer before
 testing the actual candidate container against a read-only public API snapshot.
+The isolated candidate reads its public photo bytes through a read-only browser
+fixture because production Blob credentials are not copied into the test runtime.
+Live tests use the site's actual media routes, without that fixture.
 Both candidate and live checks run 36 layout cases and six commerce cases in
 Chromium, Firefox and WebKit. Live tests intercept commerce writes locally.
 The live browser suite verifies the exact CSS served by production; removing

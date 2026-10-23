@@ -103,6 +103,9 @@ try{
      return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(cart)});
     }
     if(!['GET','HEAD'].includes(req.method())||/googletagmanager|google-analytics|facebook\.net|razorpay/.test(url.hostname)||req.resourceType()==='media')return route.abort();
+    if(process.env.HIDI_MEDIA_READONLY_ORIGIN&&url.origin===base&&(url.pathname.startsWith('/media/')||url.pathname==='/_next/image')){
+     const r=await snapshot.pull(process.env.HIDI_MEDIA_READONLY_ORIGIN+url.pathname+url.search);return route.fulfill({status:r.status,contentType:r.contentType,body:r.body});
+    }
     if(url.origin!==base){const r=await snapshot.pull(url.href);return route.fulfill({status:r.status,contentType:r.contentType,body:r.body});}
     return route.continue();
    });
@@ -140,6 +143,6 @@ try{
    finally{await context.close();}
   }}finally{await browser.close();}
  }
- await writeFile(join(out,'report.json'),JSON.stringify({passed:true,actualRuntime:!!actual,cssSha256:createHash('sha256').update(css).digest('hex'),results,interactions,unchanged,isolatedCartAdds,upstreamWrites:0,deploymentPerformed:false},null,2));
+ await writeFile(join(out,'report.json'),JSON.stringify({passed:true,actualRuntime:!!actual,publicMediaFixture:!!process.env.HIDI_MEDIA_READONLY_ORIGIN,cssSha256:createHash('sha256').update(css).digest('hex'),results,interactions,unchanged,isolatedCartAdds,upstreamWrites:0,deploymentPerformed:false},null,2));
 }catch(e){await writeFile(join(out,'failure.json'),JSON.stringify({passed:false,error:e.stack,results,interactions},null,2));throw e;}
 finally{await snapshot.save();await snapshot.close();}

@@ -16,6 +16,7 @@ def verify_reports(stage):
     commerce = json.loads((folder / 'commerce-report.json').read_text())
     assert layout['passed'] and commerce['passed']
     assert layout['actualRuntime'] and commerce['actualRuntime']
+    assert layout['publicMediaFixture'] == commerce['publicMediaFixture'] == (stage == 'candidate')
     assert layout['cssSha256'] == CSS_SHA
     assert layout['upstreamWrites'] == commerce['upstreamWrites'] == 0
     assert len(layout['results']) == 36 and len(layout['interactions']) == 6
@@ -36,6 +37,7 @@ def run(stage, base):
             '-v', os.environ['HIDI_BROWSER_PACKAGE'] + ':/browser:ro', '-w', '/work',
             '-e', 'HIDI_PLAYWRIGHT_MODULE=/browser/node_modules/playwright/index.mjs',
             '-e', 'HIDI_RUNTIME_BASE=' + base, '-e', 'HIDI_TEST_OUTPUT=/evidence/' + stage,
+            '-e', 'HIDI_MEDIA_READONLY_ORIGIN=' + ('https://hidiindia.com' if stage == 'candidate' else ''),
             BROWSER_IMAGE, 'node', 'deploy/pdp-layout/' + script], check=True, timeout=900)
     (EVIDENCE / stage / 'summary.json').write_text(json.dumps(verify_reports(stage), indent=2))
 

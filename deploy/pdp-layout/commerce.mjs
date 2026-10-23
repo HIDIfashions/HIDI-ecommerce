@@ -31,6 +31,9 @@ try{
     if(url.pathname==='/api/store/checkout/delivery-serviceability')return route.fulfill({json:{cod:true,serviceable:true,city:'Hyderabad',stateCode:'Telangana'}});
     if(url.pathname==='/api/admin/session')return route.fulfill({status:401,json:{message:'Admin session required'}});
     if(!['GET','HEAD'].includes(req.method())||/googletagmanager|google-analytics|facebook\.net|razorpay/.test(url.hostname)||req.resourceType()==='media')return route.abort();
+    if(process.env.HIDI_MEDIA_READONLY_ORIGIN&&url.origin===base&&(url.pathname.startsWith('/media/')||url.pathname==='/_next/image')){
+     const r=await snapshot.pull(process.env.HIDI_MEDIA_READONLY_ORIGIN+url.pathname+url.search);return route.fulfill({status:r.status,contentType:r.contentType,body:r.body});
+    }
     if(url.origin!==base){const r=await snapshot.pull(url.href);return route.fulfill({status:r.status,contentType:r.contentType,body:r.body});}
     return route.continue();
    });
@@ -67,6 +70,6 @@ try{
    finally{await context.close();}
   }}finally{await browser.close();}
  }
- await writeFile(join(out,'commerce-report.json'),JSON.stringify({passed:true,actualRuntime:!!actual,results,isolatedCartAdds:cartAdds,upstreamWrites:0,deploymentPerformed:false},null,2));
+ await writeFile(join(out,'commerce-report.json'),JSON.stringify({passed:true,actualRuntime:!!actual,publicMediaFixture:!!process.env.HIDI_MEDIA_READONLY_ORIGIN,results,isolatedCartAdds:cartAdds,upstreamWrites:0,deploymentPerformed:false},null,2));
 }catch(e){await writeFile(join(out,'commerce-failure.json'),JSON.stringify({passed:false,error:e.stack,results},null,2));throw e;}
 finally{await snapshot.save();await snapshot.close();}
