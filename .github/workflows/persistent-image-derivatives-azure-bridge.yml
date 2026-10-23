@@ -1,6 +1,6 @@
 name: Persistent image derivatives Azure bridge validation
 # Final review gate: candidate and baseline are immutable for the duration of this run.
-# Validation trigger: 2026-10-23 source-green native allocator memory candidate.
+# Validation trigger: 2026-10-23 source-green native allocator memory candidate; bounded setup retry.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -48,6 +48,7 @@ jobs:
           cache-dependency-path: candidate-source/pnpm-lock.yaml
 
       - name: Install candidate and isolated release tooling
+        timeout-minutes: 10
         working-directory: candidate-source
         run: |
           set -euo pipefail
