@@ -28,10 +28,12 @@ def revision_state():
 attempt('failedRevision',revision_state)
 def metrics():
     definitions=r.r.cloud.azure('monitor','metrics','list-definitions','--resource',web['id'])
+    report['metricDefinitions']=[d['name']['value'] for d in definitions]
     rows=[]
     for metric in ['WorkingSetBytes','RestartCount','Requests']:
-        definition=next((d for d in definitions if d['name']['value']==metric),None)
+        definition=next((d for d in definitions if d['name']['value'].lower()==metric.lower()),None)
         if not definition:continue
+        metric=definition['name']['value']
         dimensions=[d['value'] for d in definition.get('dimensions',[])]
         revision_dimension=next((d for d in dimensions if d.lower()=='revisionname'),None)
         args=['monitor','metrics','list','--resource',web['id'],'--metric',metric,'--start-time','2026-10-23T07:48:00Z','--end-time','2026-10-23T07:56:00Z','--interval','PT1M','--aggregation','Maximum' if metric!='Requests' else 'Total']
@@ -41,7 +43,7 @@ def metrics():
     return rows
 attempt('metrics',metrics)
 def system_logs():
-    result=subprocess.run(['az','containerapp','logs','show','-g','rg-hidi-prod','-n','hidi-web','--type','system','--tail','100','--format','text','--only-show-errors'],capture_output=True,text=True,timeout=45)
+    result=subprocess.run(['az','containerapp','logs','show','-g','rg-hidi-prod','-n','hidi-web','--type','system','--tail','100','--format','json','--only-show-errors'],capture_output=True,text=True,timeout=45)
     assert result.returncode==0,result.stderr[-1200:]
     return [line[:1500] for line in result.stdout.splitlines() if revision in line or any(term in line.lower() for term in ['oom','out of memory','exit code','unhealthy','failed','error'])][-60:]
 attempt('systemLogs',system_logs)

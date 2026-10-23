@@ -1,4 +1,4 @@
-name: Read only failed image upload diagnostics after rollback
+name: Read only failed image upload diagnostics with JSON system logs
 on:
   push:
     branches: [migration/azure-sql-blob]
