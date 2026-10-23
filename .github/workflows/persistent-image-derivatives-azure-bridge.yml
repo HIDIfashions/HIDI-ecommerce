@@ -1,6 +1,6 @@
 name: Persistent image derivatives Azure bridge validation
 # Final review gate: candidate and baseline are immutable for the duration of this run.
-# Validation trigger: 2026-10-23 source-green retained hexadecimal-cap candidate.
+# Validation trigger: 2026-10-23 source-green native allocator memory candidate.
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
-      CANDIDATE_SHA: 5f756d31cdbb2203ddc1ad8107b4f6fae7b6259f
+      CANDIDATE_SHA: 9e809590651122dbf2b7c7ddfbbfe013a65f4364
       DATABASE_URL: 'sqlserver://localhost:1433;database=fixture;user=build;password=build;encrypt=true'
       API_URL: http://127.0.0.1:4100/v1
       NEXT_TELEMETRY_DISABLED: '1'
