@@ -1,0 +1,38 @@
+name: PDP Firefox preview verification (no deployment)
+on:
+  push:
+    branches: [fix/pdp-image-spacing-preview-20261023]
+    paths: ['.github/workflows/pdp-layout-firefox.yml']
+permissions:
+  contents: read
+jobs:
+  firefox-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated Playwright package
+        timeout-minutes: 3
+        run: npm install --prefix "$RUNNER_TEMP/pdp-tools" --registry=https://registry.npmjs.org --fetch-timeout=30000 --fetch-retries=1 playwright@1.62.1
+      - name: Install Firefox browser
+        timeout-minutes: 3
+        run: node "$RUNNER_TEMP/pdp-tools/node_modules/playwright/cli.js" install firefox
+      - name: Verify layout and commerce
+        env:
+          HIDI_BROWSER_ENGINES: firefox
+        run: |
+          export HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/pdp-tools/node_modules/playwright/index.mjs"
+          python3 deploy/pdp-layout/test_patch.py
+          node deploy/pdp-layout/verify.mjs
+          node deploy/pdp-layout/commerce.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pdp-firefox-preview-evidence
+          path: |
+            outputs/pdp-layout/*.json
+            outputs/pdp-layout/*.png
+          retention-days: 14
