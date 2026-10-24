@@ -19,7 +19,7 @@ export async function probe(base,output,{baseline}={}){
  for(const path of ['/','/about']){
   const raw=await get(path);
   checkGraph([...raw.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)].flatMap(m=>flatten(JSON.parse(m[1]))));
-  assert(raw.includes('property="og:site_name" content="HIDI India"'));
+  assert(raw.includes('property="og:site_name" content="HIDI India"'),path+' raw site-name tag: '+raw.match(/<meta[^>]*og:site_name[^>]*>/g));
   assert(!/name="(?:robots|googlebot)" content="[^"]*noindex/.test(raw));
   assert(raw.includes('href="https://hidiindia.com'+(path==='/'?'/':path)+'"'));
   if(path==='/')assert(raw.includes('<title>'+title+'</title>'));

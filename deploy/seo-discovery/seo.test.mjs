@@ -293,3 +293,17 @@ test('sitemap reads are GET-only, omit customer credentials and are cached; HEAD
 test('catalogue failure returns an uncached 503 rather than a misleading partial sitemap',async()=>{
   const handler=createSeoSitemap({catalogueUrl:'https://api.example/v1/products',isProductionRequest:()=>true,fetcher:async()=>({ok:false})});const res=response();await handler({method:'GET'},res);assert.equal(res.status,503);assert.equal(res.headers['Cache-Control'],'no-store');
 });
+
+
+test('streamed public head metadata is corrected across byte boundaries before JavaScript, with visible body preserved',async()=>{
+ const body='<body><h1>Contact HIDI</h1><p>Phone: +91 70937 09353</p></body>';
+ const input='<html><head><title>Contact &amp; Help | HIDI</title><meta property="og:site_name" content="HIDI"><meta name="description" content="Old"></head>'+body+'</html>';
+ for(const size of [1,7,50,1000]) {
+  const bytes=Buffer.from(input),chunks=[];for(let i=0;i<bytes.length;i+=size)chunks.push(bytes.subarray(i,i+size));
+  let result='';for await(const chunk of Readable.from(chunks).pipe(seoIdentityTransform('/contact')))result+=chunk.toString();
+  assert(result.includes('<title>Contact HIDI India | Official Store Support</title>'));
+  assert(result.includes('property="og:site_name" content="HIDI India"'));
+  assert(result.endsWith(body+'</html>'));
+ }
+ for(const path of [undefined,'/checkout']){let result='';for await(const chunk of Readable.from([input]).pipe(seoIdentityTransform(path)))result+=chunk.toString();assert.equal(result,input);}
+});

@@ -299,6 +299,7 @@ function normalizeJsonLd(html, brandHead = false) {
 export function seoIdentityTransform(pathname) {
   const brandPage = pathname === '/' || pathname === '/about';
   const decoder=new StringDecoder('utf8');let pending='';
+  let headPending='', headDone=!Object.hasOwn(routeSearchMetadata, pathname);
   function consume(stream,text,final=false) {
     pending+=text;
     while(pending) {
@@ -317,7 +318,24 @@ export function seoIdentityTransform(pathname) {
       if(!final)return;
     }
   }
-  return new Transform({transform(chunk,encoding,done){try{consume(this,decoder.write(chunk));done();}catch(error){done(error);}},flush(done){try{consume(this,decoder.end(),true);done();}catch(error){done(error);}}});
+  function receive(stream,text,final=false) {
+    if (headDone) return consume(stream,text,final);
+    headPending+=text;
+    const end=/<\/head\s*>/i.exec(headPending);
+    if(end) {
+      const boundary=end.index+end[0].length;
+      const head=normalizeSeoIdentity(headPending.slice(0,boundary),pathname);
+      const rest=headPending.slice(boundary);headPending='';headDone=true;
+      return consume(stream,head+rest,final);
+    }
+    // Some responses are body-only fragments. Never hold an unbounded response
+    // waiting for a head that is absent or malformed.
+    if(final || /<body\b/i.test(headPending) || headPending.length>=262144) {
+      const content=headPending;headPending='';headDone=true;
+      consume(stream,content,final);
+    }
+  }
+  return new Transform({transform(chunk,encoding,done){try{receive(this,decoder.write(chunk));done();}catch(error){done(error);}},flush(done){try{receive(this,decoder.end(),true);done();}catch(error){done(error);}}});
 }
 
 export function createSeoIdentityStream(incoming, pathname) {
