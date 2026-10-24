@@ -1,0 +1,123 @@
+name: Connect HIDI Meta Pixel
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/meta-pixel-config.yml]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Inspect current runtime and connect only the approved pixel
+        shell: bash
+        run: |
+          python3 -u - <<'PY'
+          import copy, hashlib, json, os, re, subprocess, time, urllib.request
+          from pathlib import Path
+          PIXEL='1317252903766794'
+          RG='rg-hidi-prod'
+          KEY='META_PIXEL_ID'
+          suffix='metapixel'+os.environ['GITHUB_RUN_ID']+'a'+os.environ['GITHUB_RUN_ATTEMPT']
+          private=Path(os.environ['RUNNER_TEMP'])/'hidi-meta-pixel-private'
+          private.mkdir(mode=0o700,exist_ok=True)
+          def az(*args):
+              return json.loads(subprocess.check_output(['az',*args,'--only-show-errors','-o','json'],text=True))
+          def app(name):
+              return az('containerapp','show','-g',RG,'-n',name)
+          def get(path,base='https://hidiindia.com'):
+              with urllib.request.urlopen(base+path,timeout=45) as response:
+                  assert response.status==200
+                  return response.read()
+          def envmap(template):
+              return {item['name']:item for item in template['containers'][0].get('env',[])}
+          def stable(template):
+              result=copy.deepcopy(template)
+              result.pop('revisionSuffix',None)
+              result['containers'][0]['env']=sorted(result['containers'][0].get('env',[]),key=lambda item:item['name'])
+              return result
+          def wait_ready(target,image):
+              for attempt in range(60):
+                  live=app('hidi-web')
+                  assert live['properties']['template']['containers'][0]['image']==image,'Concurrent image change'
+                  if live['properties'].get('latestReadyRevisionName')==target:
+                      return live
+                  time.sleep(5)
+              raise AssertionError('Revision did not become ready')
+          before=app('hidi-web')
+          bp=before['properties']; bt=bp['template']
+          api=app('hidi-api')['properties']['template']
+          assert len(bt['containers'])==1
+          image=bt['containers'][0]['image']
+          assert re.fullmatch(r'acrhidiprod0927.azurecr.io/hidi-web@sha256:[a-f0-9]{64}',image)
+          assert bp['latestRevisionName']==bp['latestReadyRevisionName'],'Existing rollout must settle first'
+          assert bp['configuration']['activeRevisionsMode']=='Single'
+          previous=envmap(bt).get(KEY)
+          assert previous is None or previous.get('value')==PIXEL,'Another pixel is configured'
+          (private/'before.json').write_text(json.dumps(before))
+          os.chmod(private/'before.json',0o600)
+          # Read the exact deployed server; do not infer its environment key.
+          subprocess.run(['az','acr','login','--name','acrhidiprod0927','--only-show-errors','-o','none'],check=True)
+          subprocess.run(['docker','pull',image],check=True,stdout=subprocess.DEVNULL)
+          container=subprocess.check_output(['docker','create',image],text=True).strip()
+          try:
+              subprocess.run(['docker','cp',container+':/app/server.mjs',str(private/'server.mjs')],check=True)
+          finally:
+              subprocess.run(['docker','rm',container],check=True,stdout=subprocess.DEVNULL)
+          server=(private/'server.mjs').read_text()
+          assert re.search(r'process\.env\.META_PIXEL_ID\b',server),'Runtime does not expose expected Meta setting; no changes made'
+          config=json.loads(get('/api/hidi/analytics-config'))
+          assert config.get('enabled') is True
+          assert config.get('metaPixelId') in [None,PIXEL]
+          assert config.get('ga4MeasurementId')=='G-Z45WSHLDHG','Preserve existing GA4 property'
+          script=get('/hidi-analytics.js')
+          assert all(token.encode() in script for token in ['PageView','AddToCart','Purchase','purchaseParams','CAPTURED','purchasesSent'])
+          paths=['/','/collections/all','/cart','/checkout','/account','/hidi-analytics.js']
+          pages={path:hashlib.sha256(get(path)).hexdigest() for path in paths}
+          expected=copy.deepcopy(bt)
+          expected['containers'][0]['env']=[item for item in bt['containers'][0].get('env',[]) if item['name']!=KEY]+[{'name':KEY,'value':PIXEL}]
+          current=app('hidi-web')
+          assert current['properties']['template']==bt and current['properties']['configuration']==bp['configuration'],'Concurrent configuration change'
+          print('META_PREFLIGHT',json.dumps({'pixelId':PIXEL,'image':image,'oldRevision':bp['latestReadyRevisionName'],'trackingCodePresent':True}))
+          try:
+              subprocess.run(['az','containerapp','update','-g',RG,'-n','hidi-web','--set-env-vars',KEY+'='+PIXEL,'--revision-suffix',suffix,'--only-show-errors','-o','none'],check=True,timeout=500)
+              live=wait_ready('hidi-web--'+suffix,image)
+              lp=live['properties']
+              assert stable(lp['template'])==stable(expected),'Unexpected template change'
+              assert lp['configuration']==bp['configuration'],'Unexpected app configuration change'
+              assert app('hidi-api')['properties']['template']==api,'API changed concurrently'
+              for attempt in range(20):
+                  after=json.loads(get('/api/hidi/analytics-config'))
+                  if after.get('metaPixelId')==PIXEL and after.get('enabled'):break
+                  time.sleep(4)
+              else:raise AssertionError('Pixel is not exposed by production configuration')
+              assert after.get('ga4MeasurementId')==config.get('ga4MeasurementId')
+              for path,digest in pages.items():
+                  assert hashlib.sha256(get(path)).hexdigest()==digest,'Unexpected response change: '+path
+              test=json.loads(get('/api/hidi/analytics-config','https://thidigk.thehidi.com'))
+              assert test.get('enabled') is False,'Test-host tracking must stay disabled'
+              summary={'pixelId':PIXEL,'revision':lp['latestReadyRevisionName'],'imageUnchanged':True,'apiUnchanged':True,'pagesUnchanged':True,'ga4Unchanged':True,'testHostTracking':False}
+              print('META_CONFIGURED',json.dumps(summary))
+              Path(os.environ['GITHUB_STEP_SUMMARY']).write_text('Meta Pixel configured\n\n'+json.dumps(summary,indent=2)+'\n\nReal events still require verification in Events Manager. No order was placed by this workflow.')
+          except BaseException:
+              current=app('hidi-web');cp=current['properties']
+              if cp.get('latestRevisionName')=='hidi-web--'+suffix and stable(cp['template'])==stable(expected) and cp['configuration']==bp['configuration']:
+                  args=['az','containerapp','update','-g',RG,'-n','hidi-web','--revision-suffix',suffix+'rb','--only-show-errors','-o','none']
+                  args+=['--remove-env-vars',KEY] if previous is None else ['--set-env-vars',KEY+'='+previous['value']]
+                  subprocess.run(args,check=True,timeout=500)
+                  restored=wait_ready('hidi-web--'+suffix+'rb',image)
+                  assert stable(restored['properties']['template'])==stable(bt)
+                  assert json.loads(get('/api/hidi/analytics-config')).get('metaPixelId')==config.get('metaPixelId')
+                  print('META_ROLLBACK_VERIFIED')
+              raise
+          PY
