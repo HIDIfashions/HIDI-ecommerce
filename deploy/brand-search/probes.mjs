@@ -45,13 +45,14 @@ export async function probe(base,output,{baseline}={}){
    for(const path of ['/','/about','/contact']){
     await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:60000});
     await page.waitForFunction(()=>window.__hidiSeoIdentityGuard===true);
+    await page.locator('[data-hidi-price-announcement]').waitFor({state:'visible'});
     if(path==='/')await page.waitForFunction(expected=>document.title===expected,title);
     const state=await page.evaluate(()=>({title:document.title,site:document.querySelector('meta[property="og:site_name"]')?.content,canonical:document.querySelector('link[rel="canonical"]')?.href,graph:[...document.querySelectorAll('script[type="application/ld+json"]')].map(n=>JSON.parse(n.textContent)),text:document.body.innerText}));
     assert.equal(state.site,'HIDI India');assert.equal(state.canonical,'https://hidiindia.com'+path);
     if(path!=='/contact')checkGraph(state.graph.flatMap(flatten));
     assert(state.text.includes('HIDI'));
     if(path==='/')await page.screenshot({path:output+'/'+engine+'-'+viewport.width+'.png',animations:'disabled'});
-    if(baseline){const prior=await context.newPage();await prior.goto(baseline+path,{waitUntil:'domcontentloaded',timeout:60000});await prior.waitForFunction(()=>window.__hidiSeoIdentityGuard===true);const clean=s=>s.replace(/\s+/g,' ').trim();
+    if(baseline){const prior=await context.newPage();await prior.goto(baseline+path,{waitUntil:'domcontentloaded',timeout:60000});await prior.waitForFunction(()=>window.__hidiSeoIdentityGuard===true);await prior.locator('[data-hidi-price-announcement]').waitFor({state:'visible'});const clean=s=>s.replace(/\s+/g,' ').trim();
      // About and contact are server rendered: compare visible copy independently.
      if(path!=='/')assert.equal(clean(await prior.locator('body').innerText()),clean(state.text),'Visible '+path+' copy changed');
      await prior.close();}
