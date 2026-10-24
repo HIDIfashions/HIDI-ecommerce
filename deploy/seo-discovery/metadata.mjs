@@ -69,7 +69,7 @@ export function handleCanonicalHostRedirect(request, response) {
 // These describe existing public destinations only. No stock, price, composition,
 // service promises or unverified brand associations are introduced.
 export const routeSearchMetadata = {
-  '/': {title: 'HIDI India | Women’s Indian Wear and Kurta Sets', description: 'Explore HIDI women’s Indian wear for work, everyday dressing and occasions. Browse kurta sets, product details and size information.'},
+  '/': {title: 'HIDI India Official Store | Women’s Kurta Sets', description: 'Shop the official HIDI India store. Introduced by Ananya Nagalla, HIDI offers women’s kurta sets and Indian wear for work, everyday dressing and occasions.'},
   '/collections/all': {title: 'Women’s Kurta Sets & Indian Wear | HIDI India', description: 'Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.'},
   '/collections/work-wear': {title: 'Work Wear Kurta Sets for Women | HIDI India', description: 'Explore HIDI’s Work Wear edit of women’s kurta sets. Compare product details, current prices and size information for your working wardrobe.'},
   '/collections/casual-wear': {title: 'Casual Wear Kurta Sets for Women | HIDI India', description: 'Browse HIDI’s Casual Wear edit of women’s kurta sets and Indian wear. Explore printed and embroidered styles, product details and size information.'},
@@ -78,7 +78,7 @@ export const routeSearchMetadata = {
   '/about': {title: 'About HIDI & Ananya Nagalla | HIDI India', description: 'Introduced by actress Ananya Nagalla, HIDI offers women’s Indian wear for work, everyday dressing and occasions. Discover HIDI India.'},
   '/shipping': {title: 'Shipping Policy | HIDI', description: 'Read HIDI’s shipping policy, including delivery information and order support. Check the current policy before placing your order.'},
   '/returns': {title: 'Returns & Exchanges | HIDI', description: 'Read HIDI’s returns and exchanges policy. Review eligibility, the process and support information before placing your order.'},
-  '/contact': {title: 'Contact & Help | HIDI', description: 'Find HIDI’s contact and help information for product questions, orders and support. View the current ways to reach the HIDI team.'},
+  '/contact': {title: 'Contact HIDI India | Official Store Support', description: 'Contact HIDI India for product questions and order support. Find our official email, telephone, WhatsApp and Hyderabad contact address.'},
   '/offers': {title: 'HIDI Privileges | HIDI', description: 'Explore HIDI’s current offers and privileges. Review the published terms and eligibility information before choosing an offer.'},
 };
 
@@ -113,7 +113,8 @@ function applySearchMetadata(head, metadata) {
     .replace(/<meta\b[^>]*>/gi, tag => {
       const field = /\b(?:name|property)\s*=\s*(["'])(.*?)\1/i.exec(tag)?.[2]?.toLowerCase();
       const value = ['og:title', 'twitter:title'].includes(field) ? metadata.title
-        : ['description', 'og:description', 'twitter:description'].includes(field) ? metadata.description : null;
+        : ['description', 'og:description', 'twitter:description'].includes(field) ? metadata.description
+        : field === 'og:site_name' ? 'HIDI India' : null;
       if (value === null) return tag;
       return tag.replace(/\bcontent\s*=\s*(["'])(.*?)\1/i, (_, quote) => 'content=' + quote + escapeMetadata(value).replace(/'/g, '&#39;') + quote);
     });
@@ -150,7 +151,7 @@ function normalizeGraph(value, key = '', brandHead = false) {
     const graph = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalizeGraph(v, k, brandHead)]));
     // Align the existing public HIDI identity, without introducing another graph,
     // a founder assertion, unverified profiles or changes to garment records.
-    if (brandHead && graph.name === 'HIDI' && [canonicalOrigin, canonicalOrigin + '/'].includes(graph.url)) {
+    if (brandHead && ['HIDI', 'HIDI India'].includes(graph.name) && [canonicalOrigin, canonicalOrigin + '/'].includes(graph.url)) {
       if (graph['@type'] === 'Organization') {
         if ([canonicalOrigin + '/assets/images/hidi-logo.png', canonicalOrigin + '/brand/hidi-logo-header.svg'].includes(graph.logo)) {
           graph.logo = canonicalOrigin + '/brand/hidi-logo-header.svg';
@@ -166,14 +167,17 @@ function normalizeGraph(value, key = '', brandHead = false) {
           graph.alternateName = [graph.alternateName, 'HIDI India'];
         }
         if (graph.description === undefined) graph.description = brandDescription;
+        // Public customer-service details from /contact; this is a contact
+        // address, not an assertion that customers can visit a retail store.
+        graph.email = 'Contact@hidiindia.com';
+        graph.telephone = '+917093709353';
+        graph.address = {'@type':'PostalAddress', streetAddress:'Flat No. 704, Hyma Arcade Khanamet, Ayyappa Society, Madhapur', addressLocality:'Hyderabad', addressRegion:'Telangana', postalCode:'500081', addressCountry:'IN'};
+        graph.contactPoint = {'@type':'ContactPoint', contactType:'customer service', email:graph.email, telephone:graph.telephone, url:canonicalOrigin + '/contact'};
       }
       if (graph['@type'] === 'WebSite') {
-        if (graph.alternateName === undefined) graph.alternateName = 'HIDI India';
-        else if (Array.isArray(graph.alternateName)) {
-          if (!graph.alternateName.includes('HIDI India')) graph.alternateName = [...graph.alternateName, 'HIDI India'];
-        } else if (typeof graph.alternateName === 'string' && graph.alternateName !== 'HIDI India') {
-          graph.alternateName = [graph.alternateName, 'HIDI India'];
-        }
+        graph.name = 'HIDI India';
+        const aliases = Array.isArray(graph.alternateName) ? graph.alternateName : typeof graph.alternateName === 'string' ? [graph.alternateName] : [];
+        graph.alternateName = [...new Set([...aliases.filter(name => name !== 'HIDI India'), 'HIDI', 'hidiindia.com'])];
       }
     }
     return graph;
@@ -205,6 +209,9 @@ function guardMetadata() {
       metadata = productRouteMetadata(values, path);
     }
     if (metadata) {
+      for (const node of document.head.querySelectorAll('meta[property="og:site_name"]')) {
+        if (node.content !== 'HIDI India') node.content = 'HIDI India';
+      }
       // The retained framework caches references to these nodes. Preserve node
       // and text-node identities; reconcile every copy instead of removing one.
       const titles = [...document.head.querySelectorAll('title')];

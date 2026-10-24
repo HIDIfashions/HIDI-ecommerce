@@ -21,7 +21,7 @@ test('verified HIDI brand identity is consistent across retained head graphs wit
     assert.deepEqual(values[0].sameAs,verifiedBrandProfiles);
     assert.equal(values[0].alternateName,'HIDI India');
     assert.equal(values[0].description,brandDescription);
-    assert.equal(values[1].alternateName,'HIDI India');
+    assert.equal(values[1].name,'HIDI India'); assert.deepEqual(values[1].alternateName,['HIDI','hidiindia.com']); assert.equal(values[0].telephone,'+917093709353'); assert.equal(values[0].address.addressCountry,'IN');
     assert.deepEqual(values[2],product);assert.deepEqual(values[3],unrelated);
     assert.equal(output.slice(output.indexOf('<body>')),body);
     assert.equal(normalizeSeoIdentity(output,'/about'),output);
@@ -29,7 +29,7 @@ test('verified HIDI brand identity is consistent across retained head graphs wit
   const siteWithAliases={...site,url:'https://hidiindia.com/',alternateName:['HiDi']};
   const input='<head><script type="application/ld+json">'+JSON.stringify(siteWithAliases)+'</script></head>';
   const result=JSON.parse(normalizeSeoIdentity(input).match(/application\/ld\+json">(.*?)<\/script>/)[1]);
-  assert.deepEqual(result.alternateName,['HiDi','HIDI India']);
+  assert.deepEqual(result.alternateName,['HiDi','HIDI','hidiindia.com']);
 });
 
 test('brand graph correction survives client hydration while retaining framework nodes and body graph bytes',()=>{
@@ -39,10 +39,10 @@ test('brand graph correction survives client hydration while retaining framework
   const document={title:'About HIDI | HIDI',documentElement:{},head:{contains:n=>n===node,querySelectorAll:selector=>selector.includes('robots')?[robots]:[]},querySelectorAll:()=>[node,body],addEventListener:()=>{}};
   const location={pathname:'/lookbook'},window={addEventListener:(event,fn)=>events[event]=fn};
   runInNewContext(clientMetadataScript.replace(/^<script[^>]*>|<\/script>$/g,''),{document,window,location,queueMicrotask:fn=>fn(),MutationObserver:class{observe(){}}});
-  const check=()=>{const graph=JSON.parse(node.textContent)['@graph'];assert.equal(graph[0].logo,'https://hidiindia.com/brand/hidi-logo-header.svg');assert.deepEqual(graph[0].sameAs,verifiedBrandProfiles);assert.equal(graph[0].alternateName,'HIDI India');assert.equal(graph[0].description,brandDescription);assert.equal(graph[1].alternateName,'HIDI India');};
+  const check=()=>{const graph=JSON.parse(node.textContent)['@graph'];assert.equal(graph[0].logo,'https://hidiindia.com/brand/hidi-logo-header.svg');assert.deepEqual(graph[0].sameAs,verifiedBrandProfiles);assert.equal(graph[0].alternateName,'HIDI India');assert.equal(graph[0].description,brandDescription);assert.equal(graph[1].name,'HIDI India'); assert.deepEqual(graph[1].alternateName,['HIDI','hidiindia.com']);};
   check();assert.equal(body.textContent,bodyBefore);location.pathname='/about';node.textContent=JSON.stringify({'@type':'WebSite',name:'HIDI',url:'https://hidiindia.com/'});events.popstate();
-  assert.equal(JSON.parse(node.textContent).alternateName,'HIDI India');
-  assert.equal(JSON.parse(body.textContent)['@graph'][1].alternateName,'HIDI India');
+  assert.deepEqual(JSON.parse(node.textContent).alternateName,['HIDI','hidiindia.com']);
+  assert.deepEqual(JSON.parse(body.textContent)['@graph'][1].alternateName,['HIDI','hidiindia.com']);
 });
 
 test('streamed Lookbook body keeps its existing brand graph exact while new head signals are reconciled',async()=>{
@@ -56,7 +56,7 @@ test('streamed Lookbook body keeps its existing brand graph exact while new head
   const stream=Readable.from([body.slice(0,45),body.slice(45,150),body.slice(150)]).pipe(seoIdentityTransform('/about'));
   let result='';for await(const chunk of stream)result+=chunk.toString();
   const changed=JSON.parse(result.match(/application\/ld\+json">(.*?)<\/script>/)[1]);
-  assert.equal(changed['@graph'][1].alternateName,'HIDI India');
+  assert.deepEqual(changed['@graph'][1].alternateName,['HIDI','hidiindia.com']);
   assert.deepEqual(changed['@graph'][0].sameAs,verifiedBrandProfiles);
   assert.equal(changed['@graph'][0].alternateName,'HIDI India');
   assert.equal(changed['@graph'][0].description,brandDescription);
@@ -152,9 +152,9 @@ test('homepage and collection search/social fields change together; creative bod
   const head='<head><title>HIDI — Wear the feeling.</title><meta name="description" content="Old"><meta property="og:title" content="Old"><meta name="twitter:title" content="Old"><meta property="og:description" content="Old"><meta name="twitter:description" content="Old"><meta name="robots" content="index, follow"></head>';
   const changed=normalizeSeoIdentity(head+body,'/');
   assert.equal(changed.slice(changed.indexOf('<body>')),body);
-  assert(changed.includes('<title>HIDI India | Women’s Indian Wear and Kurta Sets</title>'));
-  assert.equal((changed.match(/HIDI India \| Women’s Indian Wear and Kurta Sets/g)||[]).length,3);
-  assert.equal((changed.match(/Browse kurta sets, product details and size information\./g)||[]).length,3);
+  assert(changed.includes('<title>HIDI India Official Store | Women’s Kurta Sets</title>'));
+  assert.equal((changed.match(/HIDI India Official Store \| Women’s Kurta Sets/g)||[]).length,3);
+  assert.equal((changed.match(/Shop the official HIDI India store\./g)||[]).length,3);
   assert(changed.includes('<meta name="robots" content="index, follow">'));
   assert.equal(normalizeSeoIdentity(changed,'/'),changed);
   const duplicate=normalizeSeoIdentity(head.replace('</head>','<meta name="description" content="Duplicate"></head>')+body,'/');
