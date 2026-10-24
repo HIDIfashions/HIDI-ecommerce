@@ -298,8 +298,8 @@ test('catalogue failure returns an uncached 503 rather than a misleading partial
 test('streamed public head metadata is corrected across byte boundaries before JavaScript, with visible body preserved',async()=>{
  const body='<body><h1>Contact HIDI</h1><p>Phone: +91 70937 09353</p></body>';
  const input='<html><head><title>Contact &amp; Help | HIDI</title><meta property="og:site_name" content="HIDI"><meta name="description" content="Old"></head>'+body+'</html>';
- for(const size of [1,7,50,1000]) {
-  const bytes=Buffer.from(input),chunks=[];for(let i=0;i<bytes.length;i+=size)chunks.push(bytes.subarray(i,i+size));
+ for(const size of [1,7,50,1000]) for(const source of [input,input.replace('<meta property="og:site_name" content="HIDI">','')]) {
+  const bytes=Buffer.from(source),chunks=[];for(let i=0;i<bytes.length;i+=size)chunks.push(bytes.subarray(i,i+size));
   let result='';for await(const chunk of Readable.from(chunks).pipe(seoIdentityTransform('/contact')))result+=chunk.toString();
   assert(result.includes('<title>Contact HIDI India | Official Store Support</title>'));
   assert(result.includes('property="og:site_name" content="HIDI India"'));

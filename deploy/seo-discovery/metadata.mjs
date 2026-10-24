@@ -107,7 +107,7 @@ function escapeMetadata(value) {
 
 function applySearchMetadata(head, metadata) {
   if (!metadata || /<title\b[^>]*>\s*(?:404\b|not found)/i.test(head)) return head;
-  return head.replace(/(<title\b[^>]*>)[\s\S]*?(<\/title>)/gi, (_, open, close) => {
+  const updated = head.replace(/(<title\b[^>]*>)[\s\S]*?(<\/title>)/gi, (_, open, close) => {
     return open + escapeMetadata(metadata.title) + close;
   })
     .replace(/<meta\b[^>]*>/gi, tag => {
@@ -118,6 +118,8 @@ function applySearchMetadata(head, metadata) {
       if (value === null) return tag;
       return tag.replace(/\bcontent\s*=\s*(["'])(.*?)\1/i, (_, quote) => 'content=' + quote + escapeMetadata(value).replace(/'/g, '&#39;') + quote);
     });
+  return /<meta\b[^>]*\bproperty\s*=\s*(["'])og:site_name\1/i.test(updated)
+    ? updated : updated + '<meta property="og:site_name" content="HIDI India">';
 }
 
 // A crawler-specific restriction overrides the general robots allowance.

@@ -18,6 +18,7 @@ export async function probe(base,output,{baseline}={}){
  const get=async(path,origin=base)=>{const r=await fetch(origin+path,{headers,signal:AbortSignal.timeout(60000)});assert.equal(r.status,200,path);return r.text();};
  for(const path of ['/','/about']){
   const raw=await get(path);
+  await writeFile(output+'/raw-'+(path==='/'?'home':'about')+'.html',raw);
   checkGraph([...raw.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)].flatMap(m=>flatten(JSON.parse(m[1]))));
   assert(raw.includes('property="og:site_name" content="HIDI India"'),path+' raw site-name tag: '+raw.match(/<meta[^>]*og:site_name[^>]*>/g));
   assert(!/name="(?:robots|googlebot)" content="[^"]*noindex/.test(raw));
