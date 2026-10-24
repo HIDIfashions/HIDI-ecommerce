@@ -38,7 +38,9 @@ export async function probe(base,output,{baseline}={}){
    await context.route('**/*',route=>{
     const r=route.request();
     if(new URL(r.url()).pathname==='/api/hidi/performance') {blockedPerformanceBeacons++;return route.abort();}
-    if(isBlockedTelemetry(r.method(),r.url(),base)||r.resourceType()==='media')return route.abort();
+    const url=new URL(r.url());
+    const cloudflareBeacon=r.method()==='POST'&&url.origin==='https://cloudflareinsights.com'&&url.pathname==='/cdn-cgi/rum';
+    if(isBlockedTelemetry(r.method(),r.url(),base)||cloudflareBeacon||r.resourceType()==='media')return route.abort();
     if(!['GET','HEAD','OPTIONS'].includes(r.method())){writes.push(r.method()+' '+new URL(r.url()).pathname);return route.fulfill({status:403,body:'Read-only SEO verification'});}
     return route.continue();
    });

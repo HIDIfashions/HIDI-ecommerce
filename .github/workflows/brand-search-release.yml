@@ -9,7 +9,7 @@ permissions:
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event.head_commit.message == 'Cover verified Cloudflare analytics in read-only brand checks' }}
 jobs:
   release:
     if: github.ref == 'refs/heads/migration/azure-sql-blob'
