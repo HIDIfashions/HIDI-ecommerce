@@ -30,13 +30,14 @@ export async function probe(base,output,{baseline}={}){
   const raw=await get(path);if(baseline)assert.equal(raw,await get(path,baseline),path+' must remain unchanged');
  }
  const playwright=await import(pathToFileURL(resolve(process.env.HIDI_PLAYWRIGHT_MODULE)).href);
- const results=[],writes=[];
+ const results=[],writes=[];let blockedPerformanceBeacons=0;
  for(const engine of ['chromium','firefox','webkit']){
   const browser=await playwright[engine].launch({headless:true});
   try {for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    const context=await browser.newContext({viewport,extraHTTPHeaders:headers});
    await context.route('**/*',route=>{
     const r=route.request();
+    if(new URL(r.url()).pathname==='/api/hidi/performance') {blockedPerformanceBeacons++;return route.abort();}
     if(isBlockedTelemetry(r.url())||r.resourceType()==='media')return route.abort();
     if(!['GET','HEAD','OPTIONS'].includes(r.method())){writes.push(r.method()+' '+new URL(r.url()).pathname);return route.fulfill({status:403,body:'Read-only SEO verification'});}
     return route.continue();
@@ -62,7 +63,7 @@ export async function probe(base,output,{baseline}={}){
   }} finally {await browser.close();}
  }
  assert.deepEqual(writes,[]);
- await writeFile(output+'/report.json',JSON.stringify({passed:true,engines:['chromium','firefox','webkit'],results,baselineCompared:Boolean(baseline),liveWrites:0},null,2));
+ await writeFile(output+'/report.json',JSON.stringify({passed:true,engines:['chromium','firefox','webkit'],results,baselineCompared:Boolean(baseline),liveWrites:0,blockedPerformanceBeacons},null,2));
  console.log('PASS: official-store metadata, organization details, hydration, redirects and retained public feeds');
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)await probe(process.argv[2],process.argv[3]);

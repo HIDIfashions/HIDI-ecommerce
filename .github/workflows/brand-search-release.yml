@@ -9,7 +9,7 @@ permissions:
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
-  cancel-in-progress: ${{ github.event.head_commit.message == 'Retry stalled brand browser setup with bounded downloads' }}
+  cancel-in-progress: false
 jobs:
   release:
     if: github.ref == 'refs/heads/migration/azure-sql-blob'
