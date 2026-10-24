@@ -55,6 +55,15 @@ export function exactMatch(item,catalog){
 }
 export function identityConflict(item,record){return Boolean((item.id&&item.id!==record.id)||(item.skn&&item.skn!==String(record.skn??''))||(item.slug&&item.slug!==record.slug)||(item.sku&&!record.variants?.some(v=>v.sku===item.sku)));}
 export const slugify=v=>normalize(v).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80).replace(/-+$/,'');
+function newProductSlug(name,supplied){
+  supplied=normalize(supplied);
+  if(/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(supplied)&&supplied.length<=100&&!supplied.startsWith('hidi-internal-deleted-'))return supplied;
+  const generated=slugify(name);
+  if(generated)return generated.startsWith('hidi-internal-deleted-')?'product-'+generated:generated;
+  // Names without Latin letters or digits still need a stable URL on upload retries.
+  let hash=2166136261;for(const byte of new TextEncoder().encode(canonical(name)))hash=Math.imul(hash^byte,16777619)>>>0;
+  return 'product-'+hash.toString(16).padStart(8,'0');
+}
 export function categoryCollectionSlug(name){
   const key=canonical(name).replace(/[.]+$/,'').trim().replace(/[\s-]+/g,'');
   return ({casualwear:'everyday',casual:'everyday',everyday:'everyday',workwear:'work-edit',work:'work-edit',workedit:'work-edit',occasionalwear:'occasion',occasionwear:'occasion',occasional:'occasion',occasion:'occasion'})[key]??null;
@@ -86,7 +95,7 @@ export function batchPayload(item,defaults={},options={}){
     if(!sizeList.length||sizeList.length>15||sizeList.some(s=>s.length>20||!slugify(s)))throw new Error('New draft needs 1–15 valid sizes.');
     if(new Set(sizeList.map(slugify)).size!==sizeList.length)throw new Error('Sizes produce duplicate SKUs.');
     const price=pricePaise(item.price||defaults.price||''),mrp=pricePaise(item.mrp||defaults.mrp||'');if(price>mrp)throw new Error('Selling price cannot exceed MRP.');
-    const slug=item.slug||slugify(body.name);if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||slug.length>100)throw new Error('Set a valid product_slug in the file.');
+    const slug=newProductSlug(body.name,item.slug);
     Object.assign(body,{colors:[{name:color,hex:null}],sizes:sizeList,pricePaise:price,mrpPaise:mrp,weightGrams:null,slug});
   }
   return body;

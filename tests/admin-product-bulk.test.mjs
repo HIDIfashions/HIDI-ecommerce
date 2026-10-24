@@ -13,6 +13,31 @@ test('conflicting explicit IDs, URLs or HIDI SKUs require a manual decision',()=
 test('missing details keep values and batch edits satisfy actual API contract',()=>{const row=parse('product_id,fabric,care\nproduct1,Cotton,')[0];row.record=original;const body=batchPayload(row);assert.equal(body.care,original.care);assert.equal(body.name,original.name);assert.deepEqual(body.collectionIds,['retain']);assert.equal(parseEdit(body).fabric,'Cotton');for(const key of ['stock','pricePaise','status','variants','slug'])assert.equal(body[key],undefined);});
 test('new products require approved values and explicit mode, with API-compatible payloads',async()=>{const row=parse('action,product_name,color,sizes,selling_price,mrp\nNEW,New Kurta,Cream,"L,XL",1999,2999')[0];const body=batchPayload(row);body.requestId=await creationId(body);assert.equal(parseCreate(body).pricePaise,199900);assert.deepEqual(body.sizes,['L','XL']);assert.equal(body.stock,undefined);assert.throws(()=>batchPayload({...row,price:'4999'}),/cannot exceed/);assert.throws(()=>batchPayload({...row,color:''}),/colour/);assert.throws(()=>batchPayload({...row,mode:'UPDATE'}),/Choose/);});
 test('common values fill missing new-draft prices and sizes only',()=>{const row=parse('product_name,color\nNew Kurta,Cream','NEW')[0];const body=batchPayload(row,{color:'Blue',sizes:'L, XL',price:'1999',mrp:'2999'});assert.equal(body.colors[0].name,'Cream');assert.equal(body.pricePaise,199900);assert.deepEqual(body.sizes,['L','XL']);});
+test('new upload replaces missing or invalid slugs with a name-derived URL accepted by the API',async()=>{
+  const row=parse('action,product_name,color,sizes,selling_price,mrp\nNEW,Crème Floral / Kurta & Dupatta!,Cream,L,1999,2999')[0];
+  for(const slug of ['', 'MixedCase', 'has space', 'KUR_001', 'https://example.com/product', '-leading', 'trailing-', 'double--hyphen', 'x'.repeat(101), 'hidi-internal-deleted-test']){
+    const body=batchPayload({...row,slug});body.requestId=await creationId(body);
+    assert.equal(body.slug,'creme-floral-kurta-dupatta',slug);assert.equal(parseCreate(body).slug,body.slug);
+    assert.equal(await creationId(batchPayload({...row,slug})),body.requestId);
+  }
+  assert.equal(batchPayload({...row,slug:'custom-kurta-001'}).slug,'custom-kurta-001');
+  row.fields.name='Updated Kurta';assert.equal(batchPayload({...row,slug:'INVALID VALUE'}).slug,'updated-kurta');
+});
+test('long, non-Latin and reserved-prefix names automatically produce stable valid URLs',async()=>{
+  const row=parse('product_name,color,sizes,selling_price,mrp\nKurta,Cream,L,1999,2999','NEW')[0];
+  const generated=[];
+  for(const name of ['Long Kurta '.repeat(14),'कुर्ता','పట్టు చీర','✨','HIDI Internal Deleted Kurta']){
+    const item={...row,fields:{...row.fields,name}},body=batchPayload(item);body.requestId=await creationId(body);
+    assert.equal(parseCreate(body).slug,body.slug);assert.ok(body.slug.length<=100);assert.equal(batchPayload(item).slug,body.slug);generated.push(body.slug);
+  }
+  assert.equal(new Set(generated).size,generated.length);
+});
+test('generated URL collisions remain blocked and UPDATE identifiers are not repaired',()=>{
+  const rows=parse('action,product_name,product_slug,color,sizes,selling_price,mrp\nNEW,Floral Kurta,INVALID,Cream,L,1999,2999\nNEW,Floral Kurta,,Pink,M,1999,2999');
+  assert.equal(duplicateTargets(rows,rows.map(row=>batchPayload(row))).size,2);
+  const update=parse('product_id,product_slug,product_name\nproduct1,Existing Product,Renamed Product')[0];update.record=original;
+  assert.equal(update.slug,'Existing Product');assert.equal(identityConflict(update,original),true);assert.equal(batchPayload(update).slug,undefined);
+});
 test('duplicate targets, invalid modes and oversized fields fail before batch writes',()=>{const a=parse('product_id,fabric\nproduct1,Cotton')[0];a.record=original;const b={...a};assert.equal(duplicateTargets([a,b],[batchPayload(a),batchPayload(b)]).size,2);assert.throws(()=>batchPayload(parse('action,product_name\nSTOCK,Name')[0]),/Action/);a.fields.fabric='x'.repeat(301);assert.throws(()=>batchPayload(a),/maximum 300/);});
 test('creation retry IDs are stable UUIDv4 and differ if approved content changes',async()=>{const p=batchPayload(parse('product_name,color,sizes,selling_price,mrp\nNew Kurta,Cream,L,1999,2999','NEW')[0]);const id=await creationId(p);assert.match(id,/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);assert.equal(await creationId(p),id);assert.notEqual(await creationId({...p,care:'Hand wash'}),id);});
 test('uncertain update retries recognise an already-saved response without extra writes',()=>{const row=parse('product_id,fabric\nproduct1,Cotton')[0];row.record=original;const body=batchPayload(row);assert.ok(alreadyApplied({...original,fabric:'Cotton'},body));assert.ok(!alreadyApplied({...original,fabric:'Cotton',care:'Changed by another admin'},body));});
