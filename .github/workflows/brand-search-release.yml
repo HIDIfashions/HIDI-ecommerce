@@ -9,7 +9,7 @@ permissions:
   id-token: write
 concurrency:
   group: hidi-hero-guarded-release
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event.head_commit.message == 'Retry stalled brand browser setup with bounded downloads' }}
 jobs:
   release:
     if: github.ref == 'refs/heads/migration/azure-sql-blob'
@@ -29,9 +29,11 @@ jobs:
           node --check deploy/brand-search/candidate.mjs
           python3 -m py_compile deploy/brand-search/patch-runtime.py deploy/brand-search/release.py
       - name: Install exact backup and browser tooling
+        timeout-minutes: 8
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y skopeo
-          npm install --prefix /tmp/hidi-brand-browser --no-save playwright@1.56.1
+          printf 'Acquire::Retries "1";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' | sudo tee /etc/apt/apt.conf.d/99hidi-download-timeouts >/dev/null
+          command -v skopeo || (sudo apt-get update -qq && sudo apt-get install -y skopeo)
+          npm install --prefix /tmp/hidi-brand-browser --no-save --registry=https://registry.npmjs.org --fetch-timeout=30000 --fetch-retries=1 playwright@1.56.1
           node /tmp/hidi-brand-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
