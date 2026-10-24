@@ -38,12 +38,14 @@ export async function probe(base,output,{baseline}={}){
    await context.route('**/*',route=>{
     const r=route.request();
     if(new URL(r.url()).pathname==='/api/hidi/performance') {blockedPerformanceBeacons++;return route.abort();}
-    if(isBlockedTelemetry(r.url())||r.resourceType()==='media')return route.abort();
+    if(isBlockedTelemetry(r.method(),r.url(),base)||r.resourceType()==='media')return route.abort();
     if(!['GET','HEAD','OPTIONS'].includes(r.method())){writes.push(r.method()+' '+new URL(r.url()).pathname);return route.fulfill({status:403,body:'Read-only SEO verification'});}
     return route.continue();
    });
-   const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
    for(const path of ['/','/about','/contact']){
+    // A fresh tab scopes errors to the active document. WebKit can emit failed
+    // RSC-prefetch errors from a disposed page during a later hard navigation.
+    const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:60000});
     await page.waitForFunction(()=>window.__hidiSeoIdentityGuard===true);
     await page.locator('[data-hidi-price-announcement]').waitFor({state:'visible'});
@@ -57,8 +59,9 @@ export async function probe(base,output,{baseline}={}){
      // About and contact are server rendered: compare visible copy independently.
      if(path!=='/')assert.equal(clean(await prior.locator('body').innerText()),clean(state.text),'Visible '+path+' copy changed');
      await prior.close();}
+    assert.deepEqual(errors,[],'Browser script error in '+path);
+    await page.close();
    }
-   assert.deepEqual(errors,[],'Browser script error');
    results.push({engine,width:viewport.width,passed:true});await context.close();
   }} finally {await browser.close();}
  }
