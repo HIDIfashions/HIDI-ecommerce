@@ -26,3 +26,4 @@ jobs:
           name: delivery-sync-inspection
           path: evidence/delivery-sync-inspect
           retention-days: 7
+          include-hidden-files: true
