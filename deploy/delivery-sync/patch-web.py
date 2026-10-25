@@ -6,6 +6,7 @@ import posixpath
 import re
 import subprocess
 import tempfile
+from urllib.parse import unquote
 
 HERE = Path(__file__).resolve().parent
 def sha(value): return hashlib.sha256(value.encode()).hexdigest()
@@ -15,7 +16,7 @@ def patch_runtime(base, overlay):
                 if p.is_file() and not p.is_symlink() and p.suffix in {'.js','.json','.html','.rsc','.meta'}}
     semantic = dict(original)
     page_path = 'apps/web/.next/server/app/admin/orders/[orderNumber]/page.js'
-    manifest = original[page_path.removesuffix('.js') + '_client-reference-manifest.js']
+    manifest = unquote(original[page_path.removesuffix('.js') + '_client-reference-manifest.js'])
     active_browser = {'apps/web/.next/' + value for value in re.findall(r'static/chunks/app/admin/orders/\[orderNumber\]/page-[a-f0-9]{16}\.js', manifest)}
     assert len(active_browser)==1, 'Exactly one current admin/orders/[orderNumber] browser chunk required'
     patched = []
