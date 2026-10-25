@@ -15,6 +15,10 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://fixture');
   const json = (body, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
   try {
+    if(['/admin/products','/admin/products/aashi'].includes(url.pathname)){
+      res.writeHead(200,{'content-type':'text/html'});
+      return res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><aside><nav aria-label="Admin navigation"><a href="/admin/products">Products</a></nav></aside><main><h1>Product</h1><table><tbody><tr><td><a href="/admin/products/aashi">Aashi</a></td><td></td></tr></tbody></table></main><script src="/admin-tools-assets/navigation.js"></script></body></html>');
+    }
     if (url.pathname.startsWith('/api/admin/')) {
       if (!state.auth) return json({ message: 'Admin session expired' }, 401);
       if (req.method === 'GET') {
@@ -65,6 +69,12 @@ try {
     try {
       const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
       const errors = []; page.on('pageerror', error => errors.push(error.message));
+      await page.goto(base+'/admin/products');
+      await page.getByRole('link',{name:'Edit product page',exact:true}).waitFor();
+      assert.equal(await page.getByRole('link',{name:'Edit product page',exact:true}).getAttribute('href'),'/admin/product-page?product=aashi');
+      await page.getByRole('link',{name:'Product Page Editor',exact:true}).waitFor();
+      await page.goto(base+'/admin/products/aashi');
+      await page.getByRole('link',{name:'Edit like the storefront →',exact:true}).waitFor();
       state.record = clone(original); state.auth = true; state.stale = false;
       await page.goto(base + '/admin/product-page?product=aashi');
       await page.waitForFunction(() => !document.getElementById('workspace').hidden);

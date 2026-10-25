@@ -45,7 +45,7 @@ def compose():
     before=photo.states();backups();photo.unchanged(before)
     folder=PRIVATE/'web';folder.mkdir();base,overlay,candidate=(folder/n for n in ['base-app','overlay','candidate-app'])
     images.extract(before['hidi-web']['image'],base)
-    plan=load('product_page_patch',HERE.parent/'product-page/patch-runtime.py').patch_runtime(base,overlay);save('patch.json',plan)
+    plan=load('product_page_patch',HERE/'patch-runtime.py').patch_runtime(base,overlay);save('patch.json',plan)
     for name in plan['allowedFiles']:
         if name.endswith(('.js','.mjs')): subprocess.run(['node','--check',str(overlay/name)],check=True)
     (folder/'Dockerfile').write_text('FROM '+before['hidi-web']['image']+'\nCOPY --chown=node:node overlay/ /app/\n')

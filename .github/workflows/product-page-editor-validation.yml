@@ -5,7 +5,7 @@ on:
       - 'deploy/admin-tools/product-page*'
       - 'deploy/admin-tools/handler.mjs'
       - 'deploy/admin-tools/navigation.js'
-      - 'deploy/product-page/**'
+      - 'deploy/admin-product-editor/**'
       - 'tests/product-page-*'
       - '.github/workflows/product-page-editor-validation.yml'
   workflow_dispatch:

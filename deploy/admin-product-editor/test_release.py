@@ -17,6 +17,12 @@ os.environ['GITHUB_RUN_ATTEMPT'] = '1'
 os.environ['GITHUB_SHA'] = 'test-source'
 
 class ReleaseTests(unittest.TestCase):
+    def test_delivery_must_be_enabled_before_editor_release(self):
+        for env in [[],[{'name':'DELHIVERY_SYNC_ENABLED','value':'false'}]]:
+            with patch.object(release.photo,'originals',return_value={'hidi-api':{'properties':{'template':{'containers':[{'env':env}]}}}}):
+                with self.assertRaisesRegex(AssertionError,'Delivery automation'): release.require_delivery_complete()
+        with patch.object(release.photo,'originals',return_value={'hidi-api':{'properties':{'template':{'containers':[{'env':[{'name':'DELHIVERY_SYNC_ENABLED','value':'true'}]}]}}}}):
+            release.require_delivery_complete()
     def exercise(self, failure=None):
         before = {'hidi-api': {'image': 'api-original'}, 'hidi-web': {'image': 'web-original', 'settingsHash': 'same'}}
         after = {'image': 'web-candidate', 'settingsHash': 'same'}

@@ -6,7 +6,7 @@ import sys
 sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('product_page_patch', ROOT / 'deploy/product-page/patch-runtime.py')
+spec = importlib.util.spec_from_file_location('product_page_patch', ROOT / 'deploy/admin-product-editor/patch-runtime.py')
 patch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(patch)
 

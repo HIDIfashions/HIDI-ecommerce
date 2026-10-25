@@ -4,7 +4,7 @@ on:
     branches: [test/admin-release-20261025, migration/azure-sql-blob]
     paths:
       - 'deploy/admin-product-editor/**'
-      - 'deploy/product-page/patch-runtime.py'
+      - 'deploy/admin-product-editor/patch-runtime.py'
       - 'deploy/admin-tools/product-page*'
       - 'tests/product-page-*'
       - '.github/workflows/admin-product-editor-release.yml'
