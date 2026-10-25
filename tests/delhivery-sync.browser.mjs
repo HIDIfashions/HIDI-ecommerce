@@ -39,7 +39,36 @@ const upstream = createServer(async (req, res) => {
   return send({ message: 'Unmatched fixture route' }, 404);
 });
 await new Promise(resolve => upstream.listen(upstreamPort, '127.0.0.1', resolve));
-const server = spawn(process.execPath, [resolve('apps/web/node_modules/next/dist/bin/next'), 'dev', '--webpack', '-H', '127.0.0.1', '-p', String(port)], {
+// Compare errors with the untouched retained image: its existing outer HTML
+// injector currently produces a React hydration warning, which this change must not increase.
+const baselineErrors = [];
+if (process.env.HIDI_BASELINE_WEB) {
+  const baselineName='delivery-browser-baseline';
+  const baseline=spawn('docker',['run','--rm','--name',baselineName,'--network','host','-e',`PORT=${port}`,
+    '-e',`API_URL=http://127.0.0.1:${upstreamPort}/v1`,'-e',`INTERNAL_API_URL=http://127.0.0.1:${upstreamPort}/v1`,process.env.HIDI_BASELINE_WEB],{stdio:'ignore'});
+  let baselineBrowser;
+  try {
+    let ready=false;
+    for(let i=0;i<90;i++){try{if((await fetch(`${base}/api/admin/session`)).status===401){ready=true;break;}}catch{} await new Promise(r=>setTimeout(r,1000));}
+    assert(ready,'Retained baseline must start');
+    baselineBrowser=await chromium.launch({headless:true});
+    const context=await baselineBrowser.newContext();
+    await context.addCookies([{name:'hidi_admin_access',value:'fixture-only',url:base}]);
+    await context.route('**/*',route=>['127.0.0.1','localhost'].includes(new URL(route.request().url()).hostname)?route.continue():route.abort());
+    const page=await context.newPage();page.on('pageerror',error=>baselineErrors.push(error.message));
+    await page.goto(`${base}/admin/orders/HIDI-DELIVERY-TEST`);
+    await page.getByRole('heading',{name:'CREATED',exact:true}).waitFor();
+    await page.waitForTimeout(500);
+  } finally {
+    if(baselineBrowser)await baselineBrowser.close();
+    await new Promise(r=>spawn('docker',['rm','-f',baselineName],{stdio:'ignore'}).on('close',r));baseline.kill();
+  }
+}
+const candidateImage = process.env.HIDI_CANDIDATE_WEB;
+const candidateName = 'delivery-browser-fixture';
+const server = spawn(candidateImage ? 'docker' : process.execPath, candidateImage ? ['run', '--rm', '--name', candidateName, '--network', 'host',
+  '-e', `PORT=${port}`, '-e', `API_URL=http://127.0.0.1:${upstreamPort}/v1`, '-e', `INTERNAL_API_URL=http://127.0.0.1:${upstreamPort}/v1`, candidateImage]
+  : [resolve('apps/web/node_modules/next/dist/bin/next'), 'dev', '--webpack', '-H', '127.0.0.1', '-p', String(port)], {
   cwd: resolve('apps/web'), windowsHide: true, env: { ...process.env, API_URL: `http://127.0.0.1:${upstreamPort}/v1`, INTERNAL_API_URL: `http://127.0.0.1:${upstreamPort}/v1`, NEXT_TELEMETRY_DISABLED: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -77,10 +106,12 @@ try {
   await page.getByRole('button', { name: 'Confirm COD collection' }).click();
   await page.getByRole('heading', { name: 'COD collected', exact: true }).waitFor();
   assert.equal(requests.filter(r => r.path.endsWith('/cod-collection')).length, 1);
-  assert.deepEqual(errors, []);
+  assert.deepEqual(errors, baselineErrors, 'candidate must introduce no browser errors beyond the retained baseline');
+  await writeFile(resolve(directory,'browser-errors.json'),JSON.stringify({baselineErrors,candidateErrors:errors,introduced:0},null,2));
   console.log('PASS: delivery independent of COD, exact-amount confirmation, authenticated proxy, rejected unconfirmed requests, desktop/mobile layout');
 } finally {
   await writeFile(resolve(directory, 'server.log'), log);
   if (browser) await browser.close();
+  if (candidateImage) await new Promise(resolve => { const stop=spawn('docker',['rm','-f',candidateName]);stop.on('close',resolve); });
   server.kill(); await new Promise(resolve => upstream.close(resolve));
 }
