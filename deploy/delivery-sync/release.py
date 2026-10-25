@@ -55,7 +55,7 @@ def test():
     command=['docker','run','--rm','--network','host','--entrypoint','node','-e','TRACKING_TEST_SQL_HOST=127.0.0.1','-e','TRACKING_TEST_SQL_PASSWORD='+os.environ['TRACKING_TEST_SQL_PASSWORD'],
         '-v',str(pathlib.Path('tests').resolve())+':/app/tests:ro','-v',str(pathlib.Path('apps/api/prisma').resolve())+':/app/apps/api/prisma:ro',tag,'/app/tests/delhivery-sync.sqlserver.mjs']
     subprocess.run(command,check=True,timeout=180)
-    env={**os.environ,'HIDI_CANDIDATE_WEB':read('web-preservation.json')['candidateTag']}
+    env={**os.environ,'HIDI_CANDIDATE_WEB':read('web-preservation.json')['candidateTag'],'HIDI_BASELINE_WEB':read('web-preservation.json')['baseImage']}
     subprocess.run(['node','tests/delhivery-sync.browser.mjs'],env=env,check=True,timeout=240)
     save('candidate-tests.json',{'passed':True,'actualRetainedImages':True,'sqlServer':True,'desktopMobile':True,'independentCod':True})
 def publish():
