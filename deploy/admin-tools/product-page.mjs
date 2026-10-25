@@ -159,17 +159,16 @@ for (const [id, status] of [['publish', 'ACTIVE'], ['draft', 'DRAFT'], ['archive
   void run(async () => { accept(await api('/' + encodeURIComponent(product.id) + '/status', 'POST', { status, expectedUpdatedAt: product.updatedAt })); say('Publication status saved: ' + product.status + '.', 'success'); });
 };
 $('photos').onchange = event => {
-  const files = [...event.target.files]; event.target.value = ''; if (!files.length || dirty || skuDirty || uncertain) return;
+  const input = event.target, files = [...input.files]; if (!files.length || dirty || skuDirty || uncertain) return;
   void run(async () => {
-    if (files.length > 8) throw new Error('Choose up to 8 photos. Nothing was uploaded.');
-    for (const file of files) if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type) || file.size < 1 || file.size > 12 * 1024 * 1024) throw new Error(file.name + ': use a non-empty JPEG, PNG, WebP or AVIF photo up to 12 MB. Nothing was uploaded.');
+    for (const file of files) if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type) || file.size < 1) throw new Error(file.name + ': use a non-empty JPEG, PNG, WebP or AVIF photo. Nothing was uploaded.');
     const color = $('galleryColor').value, owner = product.variants.find(v => v.color === color && v.active) || product.variants.find(v => v.color === color);
     if (!owner) throw new Error('Add a colour and size before uploading photos.');
     let uploaded = 0;
     try {
       for (const file of files) { say('Uploading ' + (uploaded + 1) + ' of ' + files.length + ' · ' + file.name); const form = new FormData(); form.set('file', file); form.set('applyToColor', 'true'); form.set('alt', product.name + ' · ' + color); await request('/api/admin/inventory/' + encodeURIComponent(owner.id) + '/images', { method: 'POST', body: form }); uploaded++; }
     } catch (error) { uncertain = true; throw new Error(uploaded + ' of ' + files.length + ' photos confirmed saved. ' + error.message + ' Check the gallery before reselecting files.'); }
-    await refreshAfterWrite(); say(uploaded + ' photos saved to all existing ' + color + ' sizes.', 'success');
+    await refreshAfterWrite(); input.value = ''; say(uploaded + ' photos saved to all existing ' + color + ' sizes.', 'success');
   });
 };
 window.addEventListener('beforeunload', event => { if (dirty || skuDirty || busy) { event.preventDefault(); event.returnValue = ''; } });

@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 const { chromium, firefox, webkit } = createRequire(import.meta.url)('playwright');
-import { handleQuickTools } from '../deploy/admin-tools/handler.mjs';
+const {handleQuickTools}=await import(process.env.HIDI_ADMIN_TOOLS_ROOT?pathToFileURL(process.env.HIDI_ADMIN_TOOLS_ROOT+'/handler.mjs').href:'../deploy/admin-tools/handler.mjs');
 import { parseEdit, parseVariantEdit, parseStatus } from '../apps/api/src/admin/products/product-input.ts';
 const clone = value => structuredClone(value);
 const original = { id: 'aashi', skn: '12345', name: 'Aashi Sky Blue Floral Kurta Set', slug: 'aashi-sky-blue-floral-kurta-set', status: 'ACTIVE', updatedAt: '2026-10-13T00:00:00.000Z', categoryId: 'cotton', category: { id: 'cotton', name: 'Casual Wear', slug: 'casual-wear' }, collections: [{ collectionId: 'old-inactive', collection: { id: 'old-inactive', name: 'Retained collection', slug: 'retained' } }], shortDescription: 'Three piece cotton set.\nIncludes: old fallback', description: 'Supplier code: AA_123\nFit: Straight', fabric: 'Cotton', care: 'Gentle Hand Wash / Dry Clean', images: [], variants: ['M', 'L', 'XL', 'XXL'].map((size, index) => ({ id: 'variant-' + size, sku: 'HIDI-KEEP-' + size, size, color: 'Sky Blue with White Floral Print', pricePaise: 199900, mrpPaise: 249900, active: true, weightGrams: 350, bustMm: 1016 + index * 50, waistMm: 965, hipMm: 1067, shoulderMm: 381, sleeveLengthMm: 559, garmentLengthMm: 1143, inventory: { onHand: 8, reserved: 2 }, images: [] })) };
@@ -23,6 +24,7 @@ const server = createServer(async (req, res) => {
       }
       let raw = ''; for await (const data of req) raw += data;
       if (req.method === 'POST' && url.pathname.endsWith('/images')) {
+        if(state.holdUpload)await new Promise(resolve=>{state.releaseUpload=resolve;});
         state.uploads++;
         state.record.variants.forEach(v => v.images.push({ id: 'photo-' + state.uploads + '-' + v.id, url: '/fixture.png?photo=' + state.uploads, position: v.images.length, alt: 'Fixture product photo' }));
         return json({ saved: true });
@@ -101,17 +103,27 @@ try {
       const beforeUploads = state.uploads;
       await page.locator('#photos').setInputFiles([{ name: 'not-a-photo.txt', mimeType: 'text/plain', buffer: Buffer.from('invalid') }]);
       await page.waitForFunction(() => document.getElementById('status').textContent.includes('Nothing was uploaded')); assert.equal(state.uploads, beforeUploads);
-      await page.locator('#photos').setInputFiles([{ name: 'fixture.png', mimeType: 'image/png', buffer: photoBytes }]);
+      state.holdUpload=true;
+      await page.locator('#photos').setInputFiles([{ name: 'fixture.png', mimeType: 'image/png', buffer: Buffer.concat([photoBytes,Buffer.alloc(13*1024*1024)]) }]);
+      for(let i=0;!state.releaseUpload&&i<200;i++)await new Promise(r=>setTimeout(r,50));
+      assert(state.releaseUpload,'Large photo was submitted without the old 12 MB cap');
+      assert.equal(await page.locator('#photos').evaluate(el=>el.files.length),1,'File selection survives until upload confirmation');
+      state.holdUpload=false;state.releaseUpload();state.releaseUpload=null;
       await page.waitForFunction(() => document.getElementById('status').textContent.startsWith('1 photos saved'));
       assert.equal(await page.locator('#gallery img').count(), 1); assert(state.record.variants.every(v => v.images.length === 1));
       page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Publish storefront', exact: true }).click();
       await page.waitForFunction(() => document.getElementById('status').textContent === 'Publication status saved: ACTIVE.'); assert.equal(state.record.status, 'ACTIVE');
       page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Remove from this colour', exact: true }).click();
       await page.waitForFunction(() => document.getElementById('status').textContent === 'Photo removed from this colour.'); assert(state.record.variants.every(v => v.images.length === 0));
+      await page.locator('#photos').setInputFiles(Array.from({length:9},(_,i)=>({name:`fixture-${i}.png`,mimeType:'image/png',buffer:photoBytes})));
+      await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('9 photos saved'));
+      assert.equal(await page.locator('#photos').evaluate(el=>el.files.length),0);
+      assert(state.record.variants.every(v=>v.images.length===9));
       state.auth = false; await page.reload(); await page.waitForFunction(() => !document.getElementById('auth').hidden); assert(await page.getByRole('button', { name: 'Find product' }).isDisabled()); assert(await page.locator('#workspace').isHidden());
       assert.deepEqual(errors, []); console.log(engine + ': persistence, facts clearing, SKU preservation, stale save, lost response, mobile layout, photo preflight and auth passed');
     } finally { await browser.close(); }
   }
   const response = await fetch(base + '/admin/product-page'); assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow, noarchive'); assert(response.headers.get('content-security-policy').includes("script-src 'self'"));
   assert.equal((await fetch(base + '/admin/product-page', { method: 'POST' })).status, 405);
+  await writeFile('evidence/product-page/browser.json',JSON.stringify({passed:true,engines,candidateAssets:!!process.env.HIDI_ADMIN_TOOLS_ROOT,productionWrites:0,largePhotoAndBatchVerified:true},null,2));
 } finally { await new Promise(resolve => server.close(resolve)); }
