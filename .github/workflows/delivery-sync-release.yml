@@ -1,0 +1,61 @@
+name: Deploy six-hour delivery and COD reconciliation
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/delivery-sync-release.yml, 'deploy/delivery-sync/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Disposable-CI-Only_2026!
+        ports: ['1433:1433']
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=fixture;user=fixture;password=fixture;encrypt=true
+      TRACKING_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.15.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hidi/api build
+      - run: pnpm --filter @hidi/api test:customer-experience
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - run: az acr login --name acrhidiprod0927 --only-show-errors
+      - name: Prepare minimal retained production images
+        run: python3 deploy/delivery-sync/release.py prepare
+      - name: Verify exact candidates with SQL Server and browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/delivery-browser" --no-save playwright@1.62.1
+          node "$RUNNER_TEMP/delivery-browser/node_modules/playwright/cli.js" install --with-deps chromium
+          HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/delivery-browser/node_modules/playwright/index.mjs" python3 deploy/delivery-sync/release.py test
+      - name: Publish tested immutable images
+        run: python3 deploy/delivery-sync/release.py publish
+      - name: Deploy and enable six-hour delivery and COD checks
+        run: python3 deploy/delivery-sync/release.py apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: delivery-release-evidence
+          path: |
+            evidence/delivery-release
+            test-results/delhivery-sync
+          retention-days: 14

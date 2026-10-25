@@ -39,7 +39,11 @@ const upstream = createServer(async (req, res) => {
   return send({ message: 'Unmatched fixture route' }, 404);
 });
 await new Promise(resolve => upstream.listen(upstreamPort, '127.0.0.1', resolve));
-const server = spawn(process.execPath, [resolve('apps/web/node_modules/next/dist/bin/next'), 'dev', '--webpack', '-H', '127.0.0.1', '-p', String(port)], {
+const candidateImage = process.env.HIDI_CANDIDATE_WEB;
+const candidateName = 'delivery-browser-fixture';
+const server = spawn(candidateImage ? 'docker' : process.execPath, candidateImage ? ['run', '--rm', '--name', candidateName, '--network', 'host',
+  '-e', `PORT=${port}`, '-e', `API_URL=http://127.0.0.1:${upstreamPort}/v1`, '-e', `INTERNAL_API_URL=http://127.0.0.1:${upstreamPort}/v1`, candidateImage]
+  : [resolve('apps/web/node_modules/next/dist/bin/next'), 'dev', '--webpack', '-H', '127.0.0.1', '-p', String(port)], {
   cwd: resolve('apps/web'), windowsHide: true, env: { ...process.env, API_URL: `http://127.0.0.1:${upstreamPort}/v1`, INTERNAL_API_URL: `http://127.0.0.1:${upstreamPort}/v1`, NEXT_TELEMETRY_DISABLED: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -82,5 +86,6 @@ try {
 } finally {
   await writeFile(resolve(directory, 'server.log'), log);
   if (browser) await browser.close();
+  if (candidateImage) await new Promise(resolve => { const stop=spawn('docker',['rm','-f',candidateName]);stop.on('close',resolve); });
   server.kill(); await new Promise(resolve => upstream.close(resolve));
 }
