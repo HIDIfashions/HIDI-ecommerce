@@ -32,26 +32,26 @@ try {
  const variant=await db.productVariant.create({data:{productId:product.id,sku:'CI-M',size:'M',color:'Ivory',pricePaise:100000,mrpPaise:100000,inventory:{create:{onHand:20}}}});
  async function input(walletPaise=0,paymentMethod='RAZORPAY'){
   const sessionId=randomUUID(),checkoutToken=randomUUID();await db.cart.create({data:{sessionId,items:{create:{productId:product.id,variantId:variant.id,quantity:1,unitPricePaise:100000}}}});
-  return {sessionId,checkoutToken,walletPaise,paymentMethod,customerEmail:'ci@example.test',customerPhone:'9000000000',expectedTotalPaise:100000,expectedPayableTotalPaise:109900,shippingAddress:{firstName:'CI',phone:'9000000000',line1:'Fixture',city:'Hyderabad',state:'Telangana',postalCode:'500001'}};
+  return {sessionId,checkoutToken,walletPaise,paymentMethod,customerEmail:'ci@example.test',customerPhone:'9000000000',expectedTotalPaise:100000,expectedPayableTotalPaise:100000,shippingAddress:{firstName:'CI',phone:'9000000000',line1:'Fixture',city:'Hyderabad',state:'Telangana',postalCode:'500001'}};
  }
- const fullInput=await input(109900),full=await checkout.prepare(fullInput,auth);assert.equal(full.provider,'WALLET');assert.equal(full.captured,true);assert.equal((await checkout.prepare(fullInput,auth)).orderNumber,full.orderNumber);
- assert.equal((await db.walletAccount.findUnique({where:{id:account.id}})).balancePaise,190100);
+ const fullInput=await input(100000),full=await checkout.prepare(fullInput,auth);assert.equal(full.provider,'WALLET');assert.equal(full.captured,true);assert.equal((await checkout.prepare(fullInput,auth)).orderNumber,full.orderNumber);
+ assert.equal((await db.walletAccount.findUnique({where:{id:account.id}})).balancePaise,200000);
  const mixed=await checkout.prepare(await input(10000),auth),payment=await db.payment.findFirst({where:{orderId:mixed.hidiOrderId}});
  const captures=await Promise.all([payments.captureOrder(payment.id,'pay_ci','upi'),payments.captureOrder(payment.id,'pay_ci','upi')]);assert(captures.every(x=>x.captured));
  assert.equal(await db.walletLedger.count({where:{orderId:mixed.hidiOrderId,kind:'REDEEM'}}),1);
- const capturedBalance=(await db.walletAccount.findUnique({where:{id:account.id}})).balancePaise;assert.equal(capturedBalance,180100);
+ const capturedBalance=(await db.walletAccount.findUnique({where:{id:account.id}})).balancePaise;assert.equal(capturedBalance,190000);
  const codInput=await input(0,'COD'),cod=await checkout.prepare(codInput,auth);assert.equal(cod.captured,false);assert.equal(cod.confirmed,true);assert.equal((await checkout.prepare(codInput,auth)).orderNumber,cod.orderNumber);
  assert.equal((await wallet.reconcileOrder(cod.hidiOrderId)).status,'PENDING');
  await db.shipment.create({data:{orderId:cod.hidiOrderId,provider:'FIXTURE',awb:'CI-AWB',trackingUrl:'https://example.test/fixture',status:'SHIPPED'}});await db.order.update({where:{id:cod.hidiOrderId},data:{status:'SHIPPED'}});
  await admin.updateStatus(cod.orderNumber,'DELIVERED',actor);assert.equal((await db.payment.findFirst({where:{orderId:cod.hidiOrderId}})).status,'CREATED');
  await assert.rejects(admin.confirmCodCollection(cod.orderNumber,1,actor),/details changed/);
- await admin.confirmCodCollection(cod.orderNumber,109900,actor);assert.equal((await db.payment.findFirst({where:{orderId:cod.hidiOrderId}})).status,'CAPTURED');
+ await admin.confirmCodCollection(cod.orderNumber,100000,actor);assert.equal((await db.payment.findFirst({where:{orderId:cod.hidiOrderId}})).status,'CAPTURED');
  assert.equal((await wallet.reconcileOrder(cod.hidiOrderId)).status,'PENDING');
  const createdAt=new Date(Date.now()-10*86400000),deliveredAt=new Date(Date.now()-8*86400000);
  await db.order.update({where:{id:cod.hidiOrderId},data:{createdAt}});await db.shipment.updateMany({where:{orderId:cod.hidiOrderId},data:{deliveredAt}});
  await Promise.all([wallet.reconcileOrder(cod.hidiOrderId),wallet.reconcileOrder(cod.hidiOrderId)]);assert.equal(await db.walletLedger.count({where:{orderId:cod.hidiOrderId,kind:'EARN'}}),1);
  await db.order.update({where:{id:cod.hidiOrderId},data:{status:'RETURNED'}});await Promise.all([wallet.reconcileOrder(cod.hidiOrderId),wallet.reconcileOrder(cod.hidiOrderId)]);assert.equal(await db.walletLedger.count({where:{orderId:cod.hidiOrderId,kind:'REVERSE_EARN'}}),1);
  assert.equal((await db.walletAccount.findUnique({where:{id:account.id}})).balancePaise,capturedBalance);
- const insufficient=await input(109900);await db.walletAccount.update({where:{id:account.id},data:{balancePaise:100}});await assert.rejects(checkout.prepare(insufficient,auth));assert.equal(await db.order.count({where:{checkoutToken:insufficient.checkoutToken}}),0);
+ const insufficient=await input(100000);await db.walletAccount.update({where:{id:account.id},data:{balancePaise:100}});await assert.rejects(checkout.prepare(insufficient,auth));assert.equal(await db.order.count({where:{checkoutToken:insufficient.checkoutToken}}),0);
  console.log('PASS: real SQL enrollment concurrency, full-wallet/split capture, COD collection, seven-day maturation, duplicate/restart safety, return reversal and rollback');
 } finally {await db.$disconnect();}
