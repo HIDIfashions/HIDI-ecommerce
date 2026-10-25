@@ -234,8 +234,13 @@ export class DelhiveryService {
     return { waybill, status, remarks, raw: body };
   }
 
+  trackingConfigured() {
+    // Production reconciliation must never consume staging delivery simulations.
+    return Boolean(this.token()) && this.baseUrl() === "https://track.delhivery.com";
+  }
+
   async track(waybill: string) {
-    this.assertBaseConfig();
+    if (!this.token()) throw new BadRequestException("Missing Delhivery configuration: DELHIVERY_API_TOKEN");
     if (!waybill.trim()) throw new BadRequestException("AWB is required");
 
     const url = `${this.baseUrl()}/api/v1/packages/json/?waybill=${encodeURIComponent(waybill.trim())}`;
@@ -244,6 +249,7 @@ export class DelhiveryService {
       response = await fetch(url, {
         method: "GET",
         headers: this.headers({ "Content-Type": "application/json" }),
+        signal: AbortSignal.timeout(20_000),
       });
     } catch {
       throw new BadGatewayException("Unable to connect to Delhivery tracking API");

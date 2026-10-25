@@ -39,12 +39,14 @@ type AdminOrder = {
     method?: string | null;
     provider: string;
     providerPaymentId?: string | null;
+    amountPaise: number;
   };
   shipment: null | {
     status: string;
     provider?: string | null;
     awb?: string | null;
     trackingUrl?: string | null;
+    deliveredAt?: string | null;
   };
   itemCount: number;
   returnCount?: number;
@@ -93,7 +95,8 @@ function money(value: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(value / 100);
 }
 
@@ -113,6 +116,7 @@ function auditTitle(eventType: string) {
     ORDER_CREATED: "Order created",
     CURRENT_STATE_BASELINE: "Existing order state recorded",
     PAYMENT_CAPTURED: "Payment captured",
+    COD_COLLECTION_REVIEW_REQUIRED: "COD collection needs review",
     ORDER_CONFIRMED: "Order confirmed",
     PAYMENT_REVIEW_REQUIRED: "Payment review required",
     ORDER_PACKED: "Order packed",
@@ -175,6 +179,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
   const [awb, setAwb] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
   const [codCollected, setCodCollected] = useState(false);
+  const [confirmingCod, setConfirmingCod] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,6 +190,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
       if (!response.ok) throw new Error(body?.message ?? "Unable to load order");
       const loaded = body.order ?? null;
       setOrder(loaded);
+      setCodCollected(false);
       if (loaded?.shipment) {
         setProvider(loaded.shipment.provider ?? "");
         setAwb(loaded.shipment.awb ?? "");
@@ -288,7 +294,7 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.orderNumber)}/status`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status: next, codCollected }),
+        body: JSON.stringify({ status: next }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message ?? "Unable to update order");
@@ -299,6 +305,25 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
     } finally {
       setUpdating(false);
     }
+  }
+
+  async function confirmCodCollection() {
+    if (!order?.payment || !codCollected) return;
+    setConfirmingCod(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.orderNumber)}/cod-collection`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirmed: true, amountPaise: order.payment.amountPaise }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.message ?? "Unable to confirm COD collection");
+      setNotice("COD collection recorded. This does not confirm bank remittance.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to confirm COD collection");
+    } finally { setConfirmingCod(false); }
   }
 
   if (loading) {
@@ -407,12 +432,26 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
         <aside className={styles.sideColumn}>
           <section className={styles.card}>
             <p className={styles.eyebrow}>PAYMENT</p>
-            <h2>{order.payment ? label(order.payment.status) : "No payment"}</h2>
+            <h2>{order.payment?.provider === "COD" && order.payment.status === "CREATED" ? "Collection pending"
+              : order.payment?.provider === "COD" && order.payment.status === "CAPTURED" ? "COD collected"
+              : order.payment ? label(order.payment.status) : "No payment"}</h2>
             <dl className={styles.metaList}>
               <div><dt>Provider</dt><dd>{order.payment?.provider ?? "—"}</dd></div>
               <div><dt>Method</dt><dd>{order.payment?.method?.toUpperCase() ?? "—"}</dd></div>
-              <div><dt>Amount</dt><dd>{money(order.totalPaise)}</dd></div>
+              <div><dt>Amount</dt><dd>{money(order.payment?.amountPaise ?? order.totalPaise)}</dd></div>
             </dl>
+            {order.payment?.provider === "COD" && <p className={styles.shipmentHint}>Customer collection and bank remittance are separate. Collection confirmation does not confirm a bank transfer.</p>}
+            {canManage && order.payment?.provider === "COD" && order.payment.status === "CREATED" && order.status === "DELIVERED" && (
+              <div className={styles.shippingForm}>
+                {(order.auditEvents ?? []).some(event => event.eventType === "COD_COLLECTION_REVIEW_REQUIRED") && (
+                  <p className={styles.error}>Courier COD details are missing or do not match the amount due. Verify collection before confirming.</p>
+                )}
+                <label className={styles.codConfirmation}><input type="checkbox" checked={codCollected} onChange={event => setCodCollected(event.target.checked)} /> I verified that the full COD amount of {money(order.payment.amountPaise)} was collected.</label>
+                <button className={styles.secondaryAction} type="button" disabled={!codCollected || confirmingCod} onClick={() => void confirmCodCollection()}>
+                  {confirmingCod ? "Confirming…" : "Confirm COD collection"}
+                </button>
+              </div>
+            )}
           </section>
 
           <section className={styles.card}>
@@ -484,17 +523,17 @@ export function AdminOrderDetailClient({ orderNumber }: { orderNumber: string })
                 <span>Courier: <strong>{order.shipment.provider ?? "—"}</strong></span>
                 <span>AWB: <strong>{order.shipment.awb ?? "—"}</strong></span>
                 <span>Status: <strong>{label(order.shipment.status)}</strong></span>
+                {order.shipment.deliveredAt && <span>Delivered: <strong>{dateTime(order.shipment.deliveredAt)}</strong></span>}
                 {order.shipment.trackingUrl && <a href={order.shipment.trackingUrl} target="_blank" rel="noreferrer">Open tracking ↗</a>}
               </div>
             )}
 
-            {canManage && next === "DELIVERED" && order.payment?.provider === "COD" && order.payment.status === "CREATED" && <label><input type="checkbox" checked={codCollected} onChange={(event) => setCodCollected(event.target.checked)} /> I confirm the full COD amount of {money(order.totalPaise)} was collected.</label>}
             {canManage && (next ? (
               <button
                 className={styles.primaryAction}
                 type="button"
                 onClick={() => void advanceStatus()}
-                disabled={updating || (next === "SHIPPED" && !shipmentReady) || (next === "DELIVERED" && order.payment?.provider === "COD" && order.payment.status === "CREATED" && !codCollected)}
+                disabled={updating || (next === "SHIPPED" && !shipmentReady)}
                 title={next === "SHIPPED" && !shipmentReady ? "Create or save shipping details first" : undefined}
               >
                 {updating ? "Updating…" : next === "SHIPPED" && !shipmentReady ? "Create shipment first" : `Mark as ${label(next)}`}

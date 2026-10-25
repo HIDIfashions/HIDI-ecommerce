@@ -1,0 +1,56 @@
+name: Delivery reconciliation regression
+on:
+  push:
+    branches: [fix/delivery-sync-20261025]
+  pull_request:
+    paths:
+      - 'apps/api/src/delhivery/**'
+      - 'apps/api/src/admin/admin.service.ts'
+      - 'apps/api/src/admin/admin.controller.ts'
+      - 'apps/web/app/admin/orders/**'
+      - 'apps/web/app/api/admin/orders/**'
+      - 'tests/delhivery-sync*'
+      - '.github/workflows/delivery-reconciliation-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Disposable-CI-Only_2026!
+        ports: ['1433:1433']
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=fixture;user=fixture;password=fixture;encrypt=true
+      TRACKING_TEST_SQL_HOST: 127.0.0.1
+      TRACKING_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+      COD_TEST_SQL_HOST: 127.0.0.1
+      COD_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.15.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hidi/api build
+      - run: pnpm --filter @hidi/api test:customer-experience
+      - run: pnpm --filter @hidi/web exec tsc --noEmit
+      - run: node tests/delhivery-sync.sqlserver.mjs
+      - run: node tests/cod-rewards.sqlserver.mjs
+      - name: Verify separate delivery and COD controls in a browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/delivery-browser" --no-save playwright@1.62.1
+          node "$RUNNER_TEMP/delivery-browser/node_modules/playwright/cli.js" install --with-deps chromium
+          HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/delivery-browser/node_modules/playwright/index.mjs" node tests/delhivery-sync.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: delivery-reconciliation-browser
+          path: test-results/delhivery-sync
+          if-no-files-found: ignore

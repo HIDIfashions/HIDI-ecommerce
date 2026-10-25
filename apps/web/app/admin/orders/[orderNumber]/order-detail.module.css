@@ -315,6 +315,29 @@
 }
 
 .shippingForm textarea { min-height: 96px; padding: 10px 11px; resize: vertical; font: inherit; }
+.shippingForm .codConfirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.codConfirmation input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--ink);
+}
+
+.codConfirmation input:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
 
 .shipmentHint {
   margin: 0 !important;

@@ -43,8 +43,9 @@ try {
  const codInput=await input(0,'COD'),cod=await checkout.prepare(codInput,auth);assert.equal(cod.captured,false);assert.equal(cod.confirmed,true);assert.equal((await checkout.prepare(codInput,auth)).orderNumber,cod.orderNumber);
  assert.equal((await wallet.reconcileOrder(cod.hidiOrderId)).status,'PENDING');
  await db.shipment.create({data:{orderId:cod.hidiOrderId,provider:'FIXTURE',awb:'CI-AWB',trackingUrl:'https://example.test/fixture',status:'SHIPPED'}});await db.order.update({where:{id:cod.hidiOrderId},data:{status:'SHIPPED'}});
- await assert.rejects(admin.updateStatus(cod.orderNumber,'DELIVERED',actor),/COD amount/);assert.equal((await db.payment.findFirst({where:{orderId:cod.hidiOrderId}})).status,'CREATED');
- await admin.updateStatus(cod.orderNumber,'DELIVERED',actor,true);assert.equal((await db.payment.findFirst({where:{orderId:cod.hidiOrderId}})).status,'CAPTURED');
+ await admin.updateStatus(cod.orderNumber,'DELIVERED',actor);assert.equal((await db.payment.findFirst({where:{orderId:cod.hidiOrderId}})).status,'CREATED');
+ await assert.rejects(admin.confirmCodCollection(cod.orderNumber,1,actor),/details changed/);
+ await admin.confirmCodCollection(cod.orderNumber,109900,actor);assert.equal((await db.payment.findFirst({where:{orderId:cod.hidiOrderId}})).status,'CAPTURED');
  assert.equal((await wallet.reconcileOrder(cod.hidiOrderId)).status,'PENDING');
  const createdAt=new Date(Date.now()-10*86400000),deliveredAt=new Date(Date.now()-8*86400000);
  await db.order.update({where:{id:cod.hidiOrderId},data:{createdAt}});await db.shipment.updateMany({where:{orderId:cod.hidiOrderId},data:{deliveredAt}});

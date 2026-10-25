@@ -43,6 +43,7 @@ export class AdminService {
             method: order.payments[0].method,
             provider: order.payments[0].provider,
             providerPaymentId: order.payments[0].providerPaymentId,
+            amountPaise: order.payments[0].amountPaise,
             createdAt: order.payments[0].createdAt,
           }
         : null,
@@ -54,6 +55,7 @@ export class AdminService {
             trackingUrl: order.shipments[0].trackingUrl,
             createdAt: order.shipments[0].createdAt,
             updatedAt: order.shipments[0].updatedAt,
+            deliveredAt: order.shipments[0].deliveredAt,
           }
         : null,
       returnCount: order.returnRequests?.length ?? 0,
@@ -391,7 +393,33 @@ export class AdminService {
     }
   }
 
-  async updateStatus(orderNumber: string, nextStatus: string, actor: AdminActor, codCollected = false) {
+  async confirmCodCollection(orderNumber: string, expectedAmountPaise: number, actor: AdminActor) {
+    if (!Number.isSafeInteger(expectedAmountPaise) || expectedAmountPaise <= 0) {
+      throw new BadRequestException("Confirm the exact COD amount collected");
+    }
+    return this.prisma.$transaction(async tx => {
+      const order = await tx.order.findUnique({ where: { orderNumber }, select: { id: true } });
+      if (!order) throw new NotFoundException("Order not found");
+      await tx.$queryRaw`SELECT [id] FROM [dbo].[Order] WITH (UPDLOCK,HOLDLOCK,ROWLOCK) WHERE [id]=${order.id}`;
+      const fresh = await tx.order.findUnique({ where: { id: order.id }, include: { payments: { orderBy: { createdAt: "desc" } } } });
+      if (fresh?.status !== "DELIVERED") throw new BadRequestException("Confirm delivery before recording COD collection");
+      const payment = fresh.payments[0];
+      if (!payment || payment.provider !== "COD" || payment.amountPaise !== expectedAmountPaise) {
+        throw new BadRequestException("COD payment details changed. Refresh the order and confirm the amount");
+      }
+      if (payment.status === "CAPTURED") return { collected: true };
+      if (payment.status !== "CREATED") throw new BadRequestException("This payment cannot be marked as collected");
+      const changed = await tx.payment.updateMany({ where: { id: payment.id, status: "CREATED" }, data: { status: "CAPTURED" } });
+      if (!changed.count) throw new BadRequestException("Payment status changed. Refresh the order");
+      await appendOrderAudit(tx, { orderId: order.id, eventType: "PAYMENT_CAPTURED", actorType: "ADMIN", actorId: actor.id,
+        entityType: "PAYMENT", entityId: payment.id, fromStatus: "CREATED", toStatus: "CAPTURED", amountPaise: payment.amountPaise,
+        eventKey: `cod-payment:${payment.id}:collected`, source: "ADMIN_PORTAL",
+        metadata: { provider: "COD", collectionConfirmed: true, bankRemittanceConfirmed: false } });
+      return { collected: true };
+    });
+  }
+
+  async updateStatus(orderNumber: string, nextStatus: string, actor: AdminActor) {
     if (!ALLOWED_STATUSES.includes(nextStatus as ManagedOrderStatus)) {
       throw new BadRequestException("Unsupported order status");
     }
@@ -432,15 +460,6 @@ export class AdminService {
       await tx.$queryRaw`SELECT "id" FROM "Order" WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE "id" = ${order.id}`;
       const fresh = await tx.order.findUnique({ where: { id: order.id } });
       if (fresh?.status !== current) throw new BadRequestException("Order status changed. Refresh the order before continuing.");
-      if (requested === "DELIVERED") {
-        const codPayment = await tx.payment.findFirst({ where: { orderId: order.id, provider: "COD", status: "CREATED" } });
-        if (codPayment) {
-          if (!codCollected) throw new BadRequestException("Confirm that the full COD amount was collected before marking this order delivered");
-          await tx.payment.update({ where: { id: codPayment.id }, data: { status: "CAPTURED" } });
-          await appendOrderAudit(tx, { orderId: order.id, eventType: "PAYMENT_CAPTURED", actorType: "ADMIN", actorId: actor.id, entityType: "PAYMENT", entityId: codPayment.id, fromStatus: "CREATED", toStatus: "CAPTURED", amountPaise: codPayment.amountPaise, eventKey: `cod-payment:${codPayment.id}:collected`, source: "ADMIN_PORTAL", metadata: { provider: "COD", collectionConfirmed: true } });
-        }
-      }
-
       if (requested === "SHIPPED" && shipment) {
         await tx.shipment.update({
           where: { id: shipment.id },

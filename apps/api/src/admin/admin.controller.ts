@@ -216,14 +216,27 @@ export class AdminController {
     return this.admin.saveShipment(orderNumber, body ?? {}, actor);
   }
 
+  @Post("orders/:orderNumber/cod-collection")
+  @RequireAdminPermissions("order:write")
+  confirmCodCollection(
+    @CurrentAdmin() actor: AdminActor,
+    @Param("orderNumber") orderNumber: string,
+    @Body() body: { confirmed?: boolean; amountPaise?: number },
+  ) {
+    if (body?.confirmed !== true || typeof body.amountPaise !== "number") {
+      throw new BadRequestException("Confirm the full COD amount collected");
+    }
+    return this.admin.confirmCodCollection(orderNumber, body.amountPaise, actor);
+  }
+
   @Patch("orders/:orderNumber/status")
   @RequireAdminPermissions("order:write")
   updateStatus(
     @CurrentAdmin() actor: AdminActor,
     @Param("orderNumber") orderNumber: string,
-    @Body() body: { status?: string; codCollected?: boolean },
+    @Body() body: { status?: string },
   ) {
     if (!body?.status) throw new BadRequestException("Status is required");
-    return this.admin.updateStatus(orderNumber, body.status, actor, body.codCollected === true);
+    return this.admin.updateStatus(orderNumber, body.status, actor);
   }
 }
