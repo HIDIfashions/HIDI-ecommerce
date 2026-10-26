@@ -36,6 +36,13 @@ the audit and wallet ledger tables. The migration installs a constrained stored
 procedure that only unlinks wallet entries and removes audit rows for a validated
 archived order set inside the sales-deletion transaction. It grants execution of
 that procedure, without removing either direct-write denial.
+The ledger trigger permits only clearing an archived order reference during
+that procedure. It rejects deletion and changes to ledger identity, amount,
+kind, event key, wallet or creation time. The procedure clears its scoped
+archive context on success and failure. The audit trigger only permits removal
+of archived events in that same procedure; audit updates remain blocked. Live
+verification covers both archives, a linked ledger entry, unchanged wallet
+balance and the retained direct-write denials.
 
 The SQL owner migration was applied successfully on 26 October 2026 using
 normal browser-based Azure CLI authentication as fashionshidi@gmail.com and the

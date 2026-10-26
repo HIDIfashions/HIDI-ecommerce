@@ -52,8 +52,72 @@ BEGIN
     THROW 50001, ''Archived order set does not match the locked cutoff'', 1;
   -- Static statements retain same-owner ownership chaining. The runtime still
   -- cannot directly mutate ledger values or delete unrelated audit records.
-  UPDATE l SET [orderId]=NULL FROM [dbo].[WalletLedger] l JOIN @orders a ON a.[id]=l.[orderId];
-  DELETE e FROM [dbo].[OrderAuditEvent] e JOIN @orders a ON a.[id]=e.[orderId];
+  EXEC sys.sp_set_session_context @key=N''hidi_sales_archive'', @value=@archiveId;
+  BEGIN TRY
+    UPDATE l SET [orderId]=NULL FROM [dbo].[WalletLedger] l JOIN @orders a ON a.[id]=l.[orderId];
+    DELETE e FROM [dbo].[OrderAuditEvent] e JOIN @orders a ON a.[id]=e.[orderId];
+    EXEC sys.sp_set_session_context @key=N''hidi_sales_archive'', @value=NULL;
+  END TRY
+  BEGIN CATCH
+    EXEC sys.sp_set_session_context @key=N''hidi_sales_archive'', @value=NULL;
+    THROW;
+  END CATCH;
+END;');
+
+-- Preserve the ledger's immutable financial history. Its only allowed update
+-- is removing the order FK through the validated, archived deletion procedure.
+-- Direct UPDATE/DELETE remain denied to the runtime principal.
+DECLARE @ledgerTrigger nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'dbo.WalletLedger_immutable'));
+IF @ledgerTrigger IS NULL OR
+   (@ledgerTrigger<>N'CREATE TRIGGER [dbo].[WalletLedger_immutable] ON [dbo].[WalletLedger] INSTEAD OF UPDATE, DELETE AS BEGIN SET NOCOUNT ON; THROW 51000, ''WalletLedger is append-only; record a compensating event instead'', 1; END'
+    AND @ledgerTrigger NOT LIKE N'%HIDI archived order unlink only%')
+  THROW 50001, 'Unrecognized wallet ledger protection; review before migration', 1;
+EXEC(N'CREATE OR ALTER TRIGGER [dbo].[WalletLedger_immutable]
+ON [dbo].[WalletLedger] INSTEAD OF UPDATE, DELETE AS
+BEGIN
+  SET NOCOUNT ON;
+  -- HIDI archived order unlink only. Never delete a ledger entry or change money.
+  IF NOT EXISTS(SELECT 1 FROM inserted) AND NOT EXISTS(SELECT 1 FROM deleted) RETURN;
+  DECLARE @archiveId varchar(64)=TRY_CONVERT(varchar(64),SESSION_CONTEXT(N''hidi_sales_archive''));
+  DECLARE @archive nvarchar(max);
+  SELECT @archive=[archiveJson] FROM [dbo].[AdminSalesDeletion]
+    WHERE [id]=@archiveId AND [actorEmail]=N''fashionshidi@gmail.com'';
+  IF @@TRANCOUNT=0 OR @archive IS NULL OR ISJSON(@archive)<>1 OR
+     (SELECT COUNT(*) FROM inserted)<>(SELECT COUNT(*) FROM deleted) OR
+     EXISTS(SELECT 1 FROM inserted WHERE [orderId] IS NOT NULL) OR
+     EXISTS(SELECT [id],[walletId],[kind],[deltaPaise],[eventKey],[createdAt] FROM inserted
+            EXCEPT SELECT [id],[walletId],[kind],[deltaPaise],[eventKey],[createdAt] FROM deleted) OR
+     EXISTS(SELECT [id],[walletId],[kind],[deltaPaise],[eventKey],[createdAt] FROM deleted
+            EXCEPT SELECT [id],[walletId],[kind],[deltaPaise],[eventKey],[createdAt] FROM inserted) OR
+     EXISTS(SELECT 1 FROM deleted d WHERE d.[orderId] IS NULL OR NOT EXISTS(
+       SELECT 1 FROM OPENJSON(@archive,''$.WalletLedger'')
+         WITH ([id] nvarchar(64) ''$.id'',[orderId] nvarchar(64) ''$.orderId'') a
+         WHERE a.[id]=d.[id] AND a.[orderId]=d.[orderId]))
+    THROW 51000, ''WalletLedger is append-only; record a compensating event instead'', 1;
+  UPDATE l SET [orderId]=NULL FROM [dbo].[WalletLedger] l JOIN inserted i ON i.[id]=l.[id];
+END;');
+DECLARE @auditTrigger nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'dbo.OrderAuditEvent_immutable'));
+IF @auditTrigger IS NULL OR
+   (@auditTrigger<>N'CREATE TRIGGER [dbo].[OrderAuditEvent_immutable] ON [dbo].[OrderAuditEvent] INSTEAD OF UPDATE, DELETE AS BEGIN SET NOCOUNT ON; THROW 51000, ''OrderAuditEvent is append-only; record a compensating event instead'', 1; END'
+    AND @auditTrigger NOT LIKE N'%HIDI archived order audit only%')
+  THROW 50001, 'Unrecognized order audit protection; review before migration', 1;
+EXEC(N'CREATE OR ALTER TRIGGER [dbo].[OrderAuditEvent_immutable]
+ON [dbo].[OrderAuditEvent] INSTEAD OF UPDATE, DELETE AS
+BEGIN
+  SET NOCOUNT ON;
+  -- HIDI archived order audit only. Updates and unarchived deletions stay blocked.
+  IF NOT EXISTS(SELECT 1 FROM inserted) AND NOT EXISTS(SELECT 1 FROM deleted) RETURN;
+  DECLARE @archiveId varchar(64)=TRY_CONVERT(varchar(64),SESSION_CONTEXT(N''hidi_sales_archive''));
+  DECLARE @archive nvarchar(max);
+  SELECT @archive=[archiveJson] FROM [dbo].[AdminSalesDeletion]
+    WHERE [id]=@archiveId AND [actorEmail]=N''fashionshidi@gmail.com'';
+  IF @@TRANCOUNT=0 OR @archive IS NULL OR ISJSON(@archive)<>1 OR EXISTS(SELECT 1 FROM inserted) OR
+     EXISTS(SELECT 1 FROM deleted d WHERE NOT EXISTS(
+       SELECT 1 FROM OPENJSON(@archive,''$.OrderAuditEvent'')
+         WITH ([id] nvarchar(64) ''$.id'',[orderId] nvarchar(64) ''$.orderId'') a
+         WHERE a.[id]=d.[id] AND a.[orderId]=d.[orderId]))
+    THROW 51000, ''OrderAuditEvent is append-only; record a compensating event instead'', 1;
+  DELETE e FROM [dbo].[OrderAuditEvent] e JOIN deleted d ON d.[id]=e.[id];
 END;');
 GRANT SELECT, INSERT, UPDATE, DELETE ON OBJECT::[dbo].[AdminLoginSession] TO [id-hidi-api];
 GRANT SELECT, INSERT ON OBJECT::[dbo].[AdminSalesDeletion] TO [id-hidi-api];

@@ -28,9 +28,14 @@ export async function run(mode) {
         for(const who of [{...actor,email:'other@example.invalid'},{...actor,role:'SUPPORT'},{...actor,authMode:'LEGACY_KEY'}]){await assert.rejects(()=>service.preview('2026-10-10',who));checks++;}
         // Exercise real SQL archive/FK deletes, then roll the entire probe back.
         const prefix='SECURITY-ROLLBACK-'+Date.now();
-        const create=createdAt=>tx.order.create({data:{orderNumber:prefix+createdAt.getTime(),createdAt,subtotalPaise:100,totalPaise:100,customerPhone:'0000000000',shippingAddress:'rollback fixture'}});
+        const create=createdAt=>tx.order.create({data:{orderNumber:prefix+createdAt.getTime(),createdAt,subtotalPaise:100,totalPaise:100,customerPhone:'0000000000',shippingAddress:JSON.stringify({name:'Rollback fixture',line1:'Verification only',city:'Test',state:'Test',pincode:'000000',country:'IN'})}});
         const older=await create(new Date('2000-01-01T18:29:59.999Z')),boundary=await create(new Date('2000-01-01T18:30:00Z'));
-        await tx.orderAuditEvent.create({data:{orderId:older.id,eventType:'SECURITY_ROLLBACK',actorType:'ADMIN'}});
+        const audit=await tx.orderAuditEvent.create({data:{orderId:older.id,eventType:'SECURITY_ROLLBACK',actorType:'ADMIN'}});
+        const user=await tx.user.create({data:{email:prefix.toLowerCase()+'@example.invalid'}});
+        const wallet=await tx.walletAccount.create({data:{userId:user.id,authSubject:prefix,balancePaise:100}});
+        const ledger=await tx.walletLedger.create({data:{walletId:wallet.id,orderId:older.id,kind:'EARN',deltaPaise:100,eventKey:prefix}});
+        const [rights]=await tx.$queryRawUnsafe("SELECT HAS_PERMS_BY_NAME('dbo.WalletLedger','OBJECT','UPDATE') AS ledgerUpdate,HAS_PERMS_BY_NAME('dbo.WalletLedger','OBJECT','DELETE') AS ledgerDelete,HAS_PERMS_BY_NAME('dbo.OrderAuditEvent','OBJECT','DELETE') AS auditDelete");
+        assert(Object.values(rights).every(value=>value===0));checks++;
         const candidates=await tx.$queryRaw`SELECT TOP (1) [id] FROM [dbo].[Inventory] WHERE [onHand]-[reserved]-[safetyStock]>=2 ORDER BY [id]`;
         assert(candidates.length,'Stock fixture required');
         const inventory=await tx.inventory.findUnique({where:{id:candidates[0].id},include:{variant:true}});
@@ -43,6 +48,13 @@ export async function run(mode) {
         assert.equal(await tx.order.findUnique({where:{id:older.id}}),null);assert(await tx.order.findUnique({where:{id:boundary.id}}));checks+=4;
         const afterInventory=await tx.inventory.findUnique({where:{id:inventory.id}});
         assert.equal(afterInventory.reserved,inventory.reserved);assert.equal(afterInventory.onHand,inventory.onHand);checks+=2;
+        assert.deepEqual(await tx.walletLedger.findUnique({where:{id:ledger.id}}),{...ledger,orderId:null});
+        assert.deepEqual(await tx.walletAccount.findUnique({where:{id:wallet.id}}),wallet);
+        const [context]=await tx.$queryRawUnsafe("SELECT CONVERT(varchar(64),SESSION_CONTEXT(N'hidi_sales_archive')) AS archiveId");assert.equal(context.archiveId,null);checks+=3;
+        const [saved]=await tx.$queryRaw`SELECT [archiveJson] FROM [dbo].[AdminSalesDeletion] WHERE [id]=${removed.archiveId}`;
+        const archive=JSON.parse(saved.archiveJson);
+        assert(archive.OrderAuditEvent.some(row=>row.id===audit.id&&row.orderId===older.id));
+        assert(archive.WalletLedger.some(row=>row.id===ledger.id&&row.orderId===older.id&&row.deltaPaise===100));checks+=2;
         throw rollback;
       },{timeout:120000});}catch(error){if(error!==rollback)throw error;}
       console.log('HIDI_SECURITY_LIVE::'+JSON.stringify({passed:true,checks,rollbackOnly:true,idleExpiryVerified:true,revocationVerified:true,cutoffBoundaryVerified:true}));return;

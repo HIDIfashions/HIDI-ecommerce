@@ -39,11 +39,14 @@ pool=await new sql.ConnectionPool({server:process.env.AZURE_SQL_SERVER,database:
 const rights=(await pool.request().query("SELECT IS_ROLEMEMBER('db_owner') AS isOwner,HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL') AS canControl")).recordset[0];
 if(rights.isOwner!==1&&rights.canControl!==1)throw new Error('SQL_OWNER_REQUIRED');
 if(APPLY)await pool.request().batch(SCHEMA);
+const guards=GUARD_PROBES;
 const objects=(await pool.request().query("SELECT CASE WHEN OBJECT_ID('dbo.AdminLoginSession','U') IS NOT NULL THEN 1 ELSE 0 END AS sessions,CASE WHEN OBJECT_ID('dbo.AdminSalesDeletion','U') IS NOT NULL THEN 1 ELSE 0 END AS archives,CASE WHEN OBJECT_ID('dbo.AdminSalesPrepareDeletion','P') IS NOT NULL THEN 1 ELSE 0 END AS procedureReady")).recordset[0];
 if(APPLY&&Object.values(objects).some(x=>x!==1))throw new Error('SCHEMA_VERIFICATION_FAILED');
-console.log('HIDI_OWNER_LOCAL_RESULT::'+JSON.stringify({passed:true,ownerAccessVerified:true,schemaApplied:APPLY,objects}));
+console.log('HIDI_OWNER_LOCAL_RESULT::'+JSON.stringify({passed:true,ownerAccessVerified:true,schemaApplied:APPLY,objects,guards}));
 }catch(e){console.log('HIDI_OWNER_LOCAL_RESULT::'+JSON.stringify({passed:false,code:e.code??'OWNER_CHECK',number:e.number??null,message:['SQL_OWNER_REQUIRED','SCHEMA_VERIFICATION_FAILED'].includes(e.message)?e.message:'SQL owner operation failed'}));process.exitCode=1;}finally{if(pool)await pool.close();}})();"""
 source=source.replace('APPLY','true' if apply else 'false').replace('SCHEMA);',json.dumps(schema)+');').replace('TOKEN',json.dumps(token))
+probe=base64.b64encode(Path('deploy/admin-security/guard-probes.mjs').read_bytes()).decode()
+source=source.replace('GUARD_PROBES',"await import('data:text/javascript;base64,"+probe+"').then(m=>m.verifyGuards(pool,sql))" if '--verify-guards' in sys.argv else 'null')
 packed=base64.b64encode(gzip.compress(source.encode(),mtime=0)).decode()
 del token,source
 lines=["stty -echo", "node --input-type=commonjs <<'HIDI_OWNER_LOCAL_NODE'",'const packed=[']
