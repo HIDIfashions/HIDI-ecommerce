@@ -61,7 +61,10 @@ try{
     assert(await row.locator('input[value="OWNER"]').isDisabled(),'A saved three-role selection also prevents a fourth role');
     await row.locator('input[value="OPERATIONS"]').uncheck();await row.locator('input[value="CATALOG"]').uncheck();await row.locator('input[value="SUPPORT"]').uncheck();
     const before=writes.length;await row.getByRole('button',{name:'Save roles',exact:true}).click();await page.getByText('Choose between one and three roles.',{exact:true}).waitFor();assert.equal(writes.length,before);
-    await row.locator('input[value="SUPPORT"]').check();await row.getByRole('button',{name:'Save roles',exact:true}).click();await page.getByText('Staff roles updated.',{exact:true}).waitFor();assert.deepEqual(writes.at(-1).roles,['SUPPORT']);
+    await row.locator('input[value="SUPPORT"]').check();
+    const savedRoleResponse=page.waitForResponse(response=>response.request().method()==='PATCH'&&response.url().includes('/api/admin/staff/'));
+    await row.getByRole('button',{name:'Save roles',exact:true}).click();assert.equal((await savedRoleResponse).status(),200);
+    await row.locator('small').filter({hasText:/^SUPPORT · Active/}).waitFor();assert.deepEqual(writes.at(-1).roles,['SUPPORT']);
     assert.equal(await page.locator('#staff-list article').filter({hasText:'fashionshidi@gmail.com'}).getByRole('button').count(),0);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:output+`/staff-${width}.png`,fullPage:true});
     if(root){
