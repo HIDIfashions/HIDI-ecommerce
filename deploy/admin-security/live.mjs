@@ -37,9 +37,18 @@ export async function run(mode) {
         const prefix='SECURITY-ROLLBACK-'+Date.now();
         const create=createdAt=>tx.order.create({data:{orderNumber:prefix+createdAt.getTime(),createdAt,subtotalPaise:100,totalPaise:100,customerPhone:'0000000000',shippingAddress:'rollback fixture'}});
         const older=await create(new Date('2000-01-01T18:29:59.999Z')),boundary=await create(new Date('2000-01-01T18:30:00Z'));
+        const candidates=await tx.$queryRaw`SELECT TOP (1) [id] FROM [dbo].[Inventory] WHERE [onHand]-[reserved]-[safetyStock]>=2 ORDER BY [id]`;
+        assert(candidates.length,'Stock fixture required');
+        const inventory=await tx.inventory.findUnique({where:{id:candidates[0].id},include:{variant:true}});
+        const item=await tx.orderItem.create({data:{orderId:older.id,productId:inventory.variant.productId,variantId:inventory.variantId,productName:'Rollback fixture',sku:inventory.variant.sku,size:inventory.variant.size,color:inventory.variant.color,quantity:1,unitPricePaise:100,totalPaise:100}});
+        await tx.inventory.update({where:{id:inventory.id},data:{reserved:{increment:2}}});
+        await tx.inventoryReservation.create({data:{orderId:older.id,variantId:inventory.variantId,quantity:1,status:'ACTIVE',expiresAt:new Date(Date.now()+3600000)}});
+        await tx.returnRequest.create({data:{orderId:older.id,orderItemId:item.id,type:'EXCHANGE',reason:'Rollback fixture',quantity:1,requestedVariantId:inventory.variantId,status:'APPROVED',exchangeReservationStatus:'ACTIVE'}});
         const preview=await service.preview('2000-01-02',actor);assert.equal(preview.count,1);
         const removed=await service.remove({before:preview.before,snapshot:preview.snapshot,confirmation:'DELETE BEFORE 2000-01-02'},actor);assert.equal(removed.deleted,1);
         assert.equal(await tx.order.findUnique({where:{id:older.id}}),null);assert(await tx.order.findUnique({where:{id:boundary.id}}));checks+=4;
+        const afterInventory=await tx.inventory.findUnique({where:{id:inventory.id}});
+        assert.equal(afterInventory.reserved,inventory.reserved);assert.equal(afterInventory.onHand,inventory.onHand);checks+=2;
         throw rollback;
       },{timeout:120000});}catch(error){if(error!==rollback)throw error;}
       console.log('HIDI_SECURITY_LIVE::'+JSON.stringify({passed:true,checks,rollbackOnly:true,idleExpiryVerified:true,revocationVerified:true,cutoffBoundaryVerified:true}));return;

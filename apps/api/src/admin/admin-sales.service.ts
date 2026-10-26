@@ -52,6 +52,12 @@ export class AdminSalesService {
         const changed=await tx.inventory.updateMany({where:{variantId:row.variantId,reserved:{gte:row.quantity}},data:{reserved:{decrement:row.quantity}}});
         if(changed.count!==1) throw new ConflictException('Inventory reservation mismatch; no sales were deleted');
       }
+      const exchanges=await tx.returnRequest.findMany({where:{order:{createdAt:{lt:cutoff}},exchangeReservationStatus:'ACTIVE'}});
+      for (const row of exchanges) {
+        if(!row.requestedVariantId) throw new ConflictException('Exchange reservation mismatch; no sales were deleted');
+        const changed=await tx.inventory.updateMany({where:{variantId:row.requestedVariantId,reserved:{gte:row.quantity}},data:{reserved:{decrement:row.quantity}}});
+        if(changed.count!==1) throw new ConflictException('Exchange reservation mismatch; no sales were deleted');
+      }
       const holds=await tx.walletHold.findMany({where:{order:{createdAt:{lt:cutoff}},status:'ACTIVE'}});
       for (const row of holds) {
         const changed=await tx.walletAccount.updateMany({where:{id:row.walletId,reservedPaise:{gte:row.amountPaise}},data:{reservedPaise:{decrement:row.amountPaise}}});
