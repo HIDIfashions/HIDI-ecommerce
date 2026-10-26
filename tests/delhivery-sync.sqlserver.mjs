@@ -69,4 +69,21 @@ try {
   assert.equal(await db.orderAuditEvent.count({ where: { orderId: order.id, eventType: 'PAYMENT_CAPTURED' } }), 1);
   assert.equal((await worker.candidates()).length, 0, 'resolved orders stop polling');
   console.log('PASS: real SQL six-hour schedule, multi-replica claims, restart safety, independent delivery/COD, audit deduplication and manual/automatic race');
+  for (const [expected, reported, accepted] of [[187765,187700,true],[187800,187700,true],[187800,187900,true],[187800,187699,false],[187800,187901,false]]) {
+    const reference = `TOLERANCE-${expected}-${reported}`;
+    const row=await db.order.create({data:{orderNumber:reference,status:'DELIVERED',subtotalPaise:expected,totalPaise:expected,customerPhone:'9000000000',shippingAddress:'{}',createdAt:new Date(Date.now()-86400000),
+      payments:{create:{provider:'COD',amountPaise:expected,status:'CREATED'}},shipments:{create:{provider:'DELHIVERY',awb:reference,status:'DELIVERED',shippedAt:new Date(Date.now()-7200000)}}},include:{shipments:true,payments:true}});
+    const target={id:row.shipments[0].id,orderId:row.id,awb:reference};
+    const proof={awb:reference,deliveredAt,orderType:'COD',codAmountPaise:reported};
+    const outcome=await worker.reconcileCod(target,proof);
+    assert.equal(outcome,accepted?'collected':'review');
+    const payment=await db.payment.findUnique({where:{id:row.payments[0].id}});
+    assert.equal(payment.status,accepted?'CAPTURED':'CREATED');assert.equal(payment.amountPaise,expected);
+    if(accepted){
+      assert.equal(await worker.reconcileCod(target,proof),'skipped');
+      const events=await db.orderAuditEvent.findMany({where:{orderId:row.id,eventType:'PAYMENT_CAPTURED'}});assert.equal(events.length,1);
+      const metadata=JSON.parse(events[0].metadata);assert.equal(metadata.reportedAmountPaise,reported);assert.equal(metadata.differencePaise,reported-expected);assert.equal(metadata.tolerancePaise,100);
+    }
+  }
+  console.log('PASS: SQL COD tolerance accepts 65p and +/-100p; rejects +/-101p; retains original amounts and audits actual collection once');
 } finally { await db.$disconnect(); }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { deliveryEvidence, rupeesToPaise } from "../apps/api/src/delhivery/tracking-evidence.js";
 import { DelhiveryService } from "../apps/api/src/delhivery/delhivery.service.js";
-import { DelhiverySyncService, TRACKING_INTERVAL_HOURS } from "../apps/api/src/delhivery/delhivery-sync.service.js";
+import { DelhiverySyncService, TRACKING_INTERVAL_HOURS, COD_AMOUNT_TOLERANCE_PAISE } from "../apps/api/src/delhivery/delhivery-sync.service.js";
 import { AdminService } from "../apps/api/src/admin/admin.service.js";
 import { AdminController } from "../apps/api/src/admin/admin.controller.js";
 
@@ -119,14 +119,33 @@ test("concurrent/repeated delivery updates create a single audit event", async (
   assert.equal(f.events.length, 1);
 });
 
-test("COD mismatch or missing evidence leaves a delivered order unpaid and flags review", async () => {
-  for (const changes of [{ codAmountPaise: null }, { codAmountPaise: 187700 }, { orderType: "Pre-paid" }]) {
+test("COD differences above one rupee or invalid evidence leave payment pending", async () => {
+  for (const changes of [null, 187699, 187901, 0, -1, 187800.5, NaN, Infinity].map(codAmountPaise => ({ codAmountPaise })).concat([{ orderType: "Pre-paid" } as any])) {
     const f = fixture();
     await f.service.applyDelivery(candidate, evidence);
     assert.equal(await f.service.reconcileCod(candidate, { ...evidence, ...changes }), "review");
     assert.equal(f.order.status, "DELIVERED");
     assert.equal(f.order.payments[0].status, "CREATED");
     assert.equal(f.events.at(-1).eventType, "COD_COLLECTION_REVIEW_REQUIRED");
+  }
+});
+
+test("COD accepts up to one rupee either way and audits actual collection without changing the payment amount", async () => {
+  assert.equal(COD_AMOUNT_TOLERANCE_PAISE, 100);
+  for (const differencePaise of [-100, -65, 0, 65, 100]) {
+    const f = fixture({ status: "DELIVERED" });
+    const reportedAmountPaise = 187800 + differencePaise;
+    const results = await Promise.all([f.service.reconcileCod(candidate, { ...evidence, codAmountPaise: reportedAmountPaise }), f.service.reconcileCod(candidate, { ...evidence, codAmountPaise: reportedAmountPaise })]);
+    assert.deepEqual(results, ["collected", "skipped"]);
+    assert.equal(f.order.payments[0].amountPaise, 187800);
+    const events = f.events.filter(e => e.eventType === "PAYMENT_CAPTURED");
+    assert.equal(events.length, 1);
+    const metadata = JSON.parse(events[0].metadata);
+    assert.equal(metadata.expectedAmountPaise, 187800);
+    assert.equal(metadata.reportedAmountPaise, reportedAmountPaise);
+    assert.equal(metadata.differencePaise, differencePaise);
+    assert.equal(metadata.tolerancePaise, 100);
+    assert.equal(metadata.bankRemittanceConfirmed, false);
   }
 });
 

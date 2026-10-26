@@ -7,6 +7,7 @@ import { DelhiveryService } from "./delhivery.service.js";
 import { deliveryEvidence, type DeliveryEvidence } from "./tracking-evidence.js";
 
 export const TRACKING_INTERVAL_HOURS = 6;
+export const COD_AMOUNT_TOLERANCE_PAISE = 100;
 const BATCH_SIZE = 25;
 type Candidate = { id: string; orderId: string; awb: string };
 
@@ -140,9 +141,13 @@ export class DelhiverySyncService implements OnModuleInit, OnModuleDestroy {
       const pending = order.payments.filter(payment => payment.provider === "COD" && payment.status === "CREATED");
       if (!pending.length) return "skipped";
       const payment = pending[0];
+      const reportedAmountPaise = evidence.codAmountPaise;
+      const differencePaise = reportedAmountPaise === null ? null : reportedAmountPaise - payment.amountPaise;
       const matches = pending.length === 1 && order.currency === "INR" && payment.amountPaise > 0
         && !order.payments.some(p => ["CAPTURED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(p.status))
-        && evidence.orderType === "COD" && evidence.codAmountPaise === payment.amountPaise;
+        && evidence.orderType === "COD" && reportedAmountPaise !== null
+        && Number.isSafeInteger(reportedAmountPaise) && reportedAmountPaise > 0
+        && differencePaise !== null && Math.abs(differencePaise) <= COD_AMOUNT_TOLERANCE_PAISE;
       if (!matches) {
         const eventKey = `cod-review:${payment.id}:${candidate.id}`;
         const recorded = await tx.orderAuditEvent.findUnique({ where: { eventKey }, select: { id: true } });
@@ -161,7 +166,10 @@ export class DelhiverySyncService implements OnModuleInit, OnModuleDestroy {
         entityType: "PAYMENT", entityId: payment.id, fromStatus: "CREATED", toStatus: "CAPTURED", amountPaise: payment.amountPaise,
         eventKey: `cod-payment:${payment.id}:collected`, source: "DELHIVERY_TRACKING_SYNC",
         metadata: { provider: "COD", awb: evidence.awb, collectionConfirmed: true,
-          evidence: "DELIVERED_COD_AMOUNT_MATCH", collectedAt: evidence.deliveredAt.toISOString(), bankRemittanceConfirmed: false } });
+          evidence: differencePaise === 0 ? "DELIVERED_COD_AMOUNT_MATCH" : "DELIVERED_COD_AMOUNT_WITHIN_TOLERANCE",
+          expectedAmountPaise: payment.amountPaise, reportedAmountPaise, differencePaise,
+          tolerancePaise: COD_AMOUNT_TOLERANCE_PAISE,
+          collectedAt: evidence.deliveredAt.toISOString(), bankRemittanceConfirmed: false } });
       return "collected";
     });
   }

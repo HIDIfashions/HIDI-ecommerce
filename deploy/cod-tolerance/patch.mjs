@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {resolve,dirname} from 'node:path';
+const ts=createRequire(resolve('apps/api/package.json'))('typescript');
+const relative='apps/api/dist/delhivery/delhivery-sync.service.js';
+const parse=s=>ts.createSourceFile('module.js',s,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
+const original=readFileSync(resolve(process.argv[2],relative),'utf8'),tree=parse(original);
+const baseline=parse(ts.transpileModule(execFileSync('git',['show','acac0ef70dc11eccebf78e6e32d1a19e47dc64f2:apps/api/src/delhivery/delhivery-sync.service.ts'],{encoding:'utf8'}),{compilerOptions:{target:ts.ScriptTarget.ES2023,module:ts.ModuleKind.ESNext,experimentalDecorators:true,emitDecoratorMetadata:true,removeComments:true}}).outputText);
+const updated=parse(readFileSync(relative,'utf8'));
+function method(root){const matches=[];const visit=n=>{if(ts.isMethodDeclaration(n)&&n.name.getText(root)==='reconcileCod')matches.push(n);ts.forEachChild(n,visit)};visit(root);assert.equal(matches.length,1);return matches[0]}
+const before=method(tree),expected=method(baseline),after=method(updated);
+const canonical=n=>ts.createPrinter({removeComments:true}).printNode(ts.EmitHint.Unspecified,n,n.getSourceFile());
+assert.equal(canonical(before),canonical(expected),'Retained COD implementation changed independently');
+assert(!original.includes('COD_AMOUNT_TOLERANCE_PAISE'));
+const constant=updated.statements.find(n=>n.getText(updated)==='export const COD_AMOUNT_TOLERANCE_PAISE = 100;');assert(constant);
+const output=constant.getText(updated)+'\n'+original.slice(0,before.getStart(tree))+after.getText(updated)+original.slice(before.end);
+assert.equal(parse(output).parseDiagnostics.length,0);
+const dest=resolve(process.argv[3],relative);mkdirSync(dirname(dest),{recursive:true});writeFileSync(dest,output);
+console.log(JSON.stringify({passed:true,allowedFiles:[relative],unrelatedMethodsPreserved:true,tolerancePaise:100}));
