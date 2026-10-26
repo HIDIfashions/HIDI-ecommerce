@@ -20,6 +20,8 @@ export const DETAIL_FIELDS = [
   field('ornamentation', 'Embellishment / ornamentation', 'Design & construction', ['None', 'Thread embroidery', 'Zari', 'Gota patti', 'Mirror work', 'Sequins', 'Beads', 'Lace', 'Tassels', 'Applique']),
   field('occasion', 'Occasion', 'Design & construction', ['Everyday', 'Work', 'Casual', 'Festive', 'Wedding', 'Party', 'Evening', 'Travel']),
   field('closure', 'Top closure', 'Design & construction', ['Pull-on', 'Buttons', 'Zip', 'Hook and eye', 'Tie-up', 'Drawstring']),
+  field('frontDetail', 'Front detail', 'Design & construction', [], 'Verified placket, panels or front detailing'),
+  field('sideDetail', 'Side detail', 'Design & construction', [], 'Verified side construction or detailing'),
   field('hemline', 'Hemline', 'Design & construction', ['Straight', 'Curved', 'Flared', 'Asymmetric', 'High-low', 'Scalloped']),
   field('slits', 'Slit details', 'Design & construction', ['No slits', 'Side slits', 'Front slit', 'Multiple slits']),
   field('pockets', 'Pockets', 'Design & construction', ['No pockets', '1 pocket', '2 pockets', 'Side pockets', 'Patch pockets']),

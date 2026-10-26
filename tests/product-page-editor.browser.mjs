@@ -82,7 +82,7 @@ try {
       await page.getByLabel('Lining', { exact: true }).fill('Unlined');
       await page.getByLabel('Neckline', {exact:true}).fill('Mandarin collar');
       await page.getByLabel('Pockets', {exact:true}).fill('Two concealed pockets');
-      assert.equal(await page.locator('#facts input').count(),36);
+      assert.equal(await page.locator('#facts input').count(),38);
       assert.equal(await page.locator('#facts input[required]').count(),0,'Product details are optional');
       await page.getByLabel('Model information', { exact: true }).fill('168 cm; wears M');
       await page.getByRole('button', { name: 'Preview product page', exact: true }).click();

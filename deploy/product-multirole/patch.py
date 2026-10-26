@@ -16,7 +16,7 @@ def patch_runtime(base,overlay,app):
     else:
         # Standalone editor and team assets retain the installed activity observer.
         for folder,names in {
-            'admin-tools':['product-page.html','product-page.mjs','product-page.css','product-page-model.mjs','product-detail-fields.mjs','product-copy.mjs'],
+            'admin-tools':['product-page.html','product-page.mjs','product-page.css','product-page-model.mjs','product-detail-fields.mjs','product-copy.mjs','product-editor-review.mjs','product-editor-review-data.mjs'],
             'support-staff':['admin.html','admin.mjs'],
         }.items():
             for name in names:
@@ -29,7 +29,7 @@ def patch_runtime(base,overlay,app):
         put(path,(base/path).read_text()+'\n'+(HERE/'roles.css').read_text())
         path='admin-tools/handler.mjs';text=(base/path).read_text()
         anchor="'product-page-model.mjs',"
-        put(path,once(text,anchor,anchor+"'product-detail-fields.mjs',"))
+        put(path,once(text,anchor,anchor+"'product-detail-fields.mjs','product-editor-review.mjs','product-editor-review-data.mjs',"))
         path='admin-tools/image-sku-handler.mjs';text=(base/path).read_text()
         old="!['OWNER', 'CATALOG'].includes(identity.admin.role)"
         new="!(identity.admin.roles ?? [identity.admin.role]).some(role => ['OWNER', 'CATALOG'].includes(role))"

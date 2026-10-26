@@ -1,5 +1,6 @@
 // Match the existing storefront's labelled-fact contract without a SQL migration.
 import { DETAIL_FIELDS, detailLine, stripDetailLines, readDetailValues } from './product-detail-fields.mjs';
+import { reviewedEditorFields, REVIEWED_DETAIL_KEYS } from './product-editor-review.mjs';
 export const FACTS = DETAIL_FIELDS;
 export const narrative = stripDetailLines;
 export function readFields(product) {
@@ -9,6 +10,8 @@ export function readFields(product) {
   result.shortDescription = narrative(product.shortDescription);
   result.collectionIds = (product.collections ?? []).map(item => item.collectionId);
   Object.assign(result, readDetailValues(product));
+  const explicit=new Set([product.description,product.shortDescription].filter(Boolean).join('\n').split(/\r?\n/).map(detailLine).filter(Boolean).map(fact=>fact.key));
+  for(const [key,value] of Object.entries(reviewedEditorFields(product)))if(!explicit.has(key))result[key]=value;
   return result;
 }
 function validate(value, label, max, required = false, singleLine = false) {
@@ -24,6 +27,7 @@ export function detailsPayload(product, fields) {
   }
   const factsChanged = FACTS.some(fact => fields[fact.key] !== before[fact.key]);
   const narrativeChanged = fields.description !== before.description || fields.shortDescription !== before.shortDescription;
+  const preserveReviewed=Object.keys(reviewedEditorFields(product)).length>0&&(fields.name!==before.name||fields.fabric!==before.fabric);
   for (const fact of FACTS) validate(fields[fact.key], fact.label, 1000, false, true);
   if (String(fields.description).split(/\r?\n/).some(detailLine) || String(fields.shortDescription).split(/\r?\n/).some(detailLine)) throw new Error('Use the separate Product details fields for labelled facts.');
   // Unrelated changes preserve original bytes, duplicate legacy facts and nulls.
@@ -31,9 +35,12 @@ export function detailsPayload(product, fields) {
   // Includes cannot unexpectedly reveal an old value from shortDescription.
   payload.shortDescription = !factsChanged && fields.shortDescription === before.shortDescription
     ? product.shortDescription ?? null : validate(fields.shortDescription, 'Short description', 400);
-  if (!factsChanged && !narrativeChanged) payload.description = product.description ?? null;
+  if (!factsChanged && !narrativeChanged && !preserveReviewed) payload.description = product.description ?? null;
   else {
-    const lines = [validate(fields.description, 'Full description', 10000), ...FACTS.filter(fact => fields[fact.key].trim()).map(fact => fact.stored + ': ' + fields[fact.key].trim())].filter(Boolean);
+    // Keep a blank marker when a reviewed fact is deliberately cleared. Without
+    // it, reverting to the original description could resurrect the old review.
+    const blankReviews=new Set([product.description,product.shortDescription].filter(Boolean).join('\n').split(/\r?\n/).map(detailLine).filter(fact=>fact&&!fact.value&&REVIEWED_DETAIL_KEYS.has(fact.key)).map(fact=>fact.key));
+    const lines = [validate(fields.description, 'Full description', 10000), ...FACTS.filter(fact => fields[fact.key].trim() || (REVIEWED_DETAIL_KEYS.has(fact.key) && (before[fact.key].trim() || blankReviews.has(fact.key)))).map(fact => fact.stored + ': ' + fields[fact.key].trim())].filter(Boolean);
     payload.description = validate(lines.join('\n'), 'Full description including specifications', 10000);
   }
   payload.categoryId = fields.categoryId || null;

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFields, detailsPayload, variantPayload, gallery } from '../deploy/admin-tools/product-page-model.mjs';
 import { parseEdit, parseVariantEdit } from '../apps/api/src/admin/products/product-input.ts';
 import { DETAIL_FIELDS } from '../deploy/admin-tools/product-detail-fields.mjs';
+import {readFile} from 'node:fs/promises';
+import reviewedEditorData from '../deploy/admin-tools/product-editor-review-data.mjs';
 const record = () => ({ name: 'Aashi', categoryId: 'cotton', shortDescription: 'Three piece set\nIncludes: old fallback', description: 'Original narrative\r\n Includes : kurta, pants, dupatta\r\nFit: Straight\r\nFit: duplicate legacy\r\nSupplier code: AA_123', fabric: 'Cotton', care: null, updatedAt: '2026-10-13T00:00:00.000Z', collections: [{ collectionId: 'old-inactive' }], variants: [], images: [] });
 
 test('all optional product details accept custom values, round-trip, and can be cleared', () => {
@@ -15,6 +17,23 @@ test('all optional product details accept custom values, round-trip, and can be 
   const cleared=detailsPayload(updated,saved);parseEdit(cleared);
   for(const field of DETAIL_FIELDS)assert.equal(readFields({...updated,...cleared})[field.key],'');
   assert(cleared.description.includes('Supplier code: AA_123'));
+});
+
+test('existing reviewed details survive edits, and clearing them does not resurrect a fallback', async()=>{
+  const sample=JSON.parse(await readFile(new URL('./fixtures/pdp-refinement/product.json',import.meta.url),'utf8'));
+  const p={...sample,updatedAt:'2026-10-27T00:00:00.000Z',categoryId:sample.category.id,collections:[]},fields=readFields(p);
+  assert.equal(fields.neckline,'Mandarin Collar with V-Slit');assert.equal(fields.sleeveLength,'Three-Quarter Sleeves');
+  fields.pockets='Two pockets';const body=detailsPayload(p,fields);parseEdit(body);
+  const saved={...p,...body};assert.equal(readFields(saved).neckline,fields.neckline);assert.equal(readFields(saved).sleeveLength,fields.sleeveLength);
+  const clear=readFields(saved);clear.neckline='';const cleared={...saved,...detailsPayload(saved,clear)};assert.equal(readFields(cleared).neckline,'');
+  const again=readFields(cleared);again.description+='\nVerified narrative update';assert.equal(readFields({...cleared,...detailsPayload(cleared,again)}).neckline,'');
+  const renamed=readFields(p);renamed.name='Renamed product';assert.equal(readFields({...p,...detailsPayload(p,renamed)}).sleeveLength,fields.sleeveLength);
+});
+
+test('editor review data exactly matches the approved storefront snapshot without source annotations',async()=>{
+  const reviewed=JSON.parse(await readFile(new URL('../apps/web/lib/pdp-reviewed-specifications.json',import.meta.url),'utf8'));
+  for(const row of Object.values(reviewed))row.specifications=row.specifications.map(({label,value})=>({label,value}));
+  assert.deepEqual(reviewedEditorData,reviewed);
 });
 test('an unrelated edit preserves raw descriptions, unknown supplier fields, nulls and inactive collections', () => {
   const p = record(), f = readFields(p); f.name = 'Renamed'; const body = detailsPayload(p, f);
