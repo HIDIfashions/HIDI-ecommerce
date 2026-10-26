@@ -34,6 +34,12 @@ export function AdminWorkspace({ children }: { children: React.ReactNode }) {
 }
 function AuthenticatedWorkspace({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  useEffect(() => {
+    if (document.querySelector('script[data-hidi-session-policy]')) return;
+    const policy = document.createElement('script');
+    policy.type = 'module'; policy.src = '/admin-security-assets/activity.mjs';
+    policy.dataset.hidiSessionPolicy = 'true'; document.head.append(policy);
+  }, []);
   const [admin, setAdmin] = useState<Staff | null>(null);
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState('');

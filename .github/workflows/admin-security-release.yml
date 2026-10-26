@@ -53,6 +53,7 @@ jobs:
       - name: Test exact compiled candidate and desktop and mobile login and deletion
         run: |
           node deploy/admin-security/api-test.mjs
+          node deploy/admin-security/runtime-smoke.mjs
           node deploy/admin-security/candidate.mjs
           python3 deploy/admin-security/release.py seal
           python3 deploy/admin-security/release.py publish

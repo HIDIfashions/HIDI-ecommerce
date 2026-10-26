@@ -1,7 +1,9 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { PRIMARY_OWNER_EMAIL, type AdminActor } from './admin-auth.js';
+import type { AdminActor } from './admin-auth.js';
+// Keep the primary-owner boundary self-contained for retained API runtimes.
+const PRIMARY_OWNER_EMAIL = 'fashionshidi@gmail.com';
 
 export function salesCutoff(value: unknown) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new BadRequestException('Choose a valid cutoff date');

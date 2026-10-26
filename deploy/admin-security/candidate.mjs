@@ -31,6 +31,7 @@ const browser=await chromium.launch();
 try{
   for(const width of [390,1440]){
     active=false;deleted=false;const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+    page.setDefaultTimeout(20000);page.setDefaultNavigationTimeout(20000);
     await page.goto(base+'/admin/sign-in');await page.locator('#email').fill(actor.email);await page.locator('#send').click();await page.locator('#otp').fill('12345678');await page.locator('#verify').click();
     await page.waitForURL(base+'/admin');await page.getByRole('link',{name:'Delete sales'}).click();await page.waitForURL(base+'/admin/sales-delete');
     await page.locator('#preview-button').click();await page.locator('#orders tr').waitFor();assert.equal(await page.locator('#delete-button').isDisabled(),true);
@@ -41,7 +42,8 @@ try{
     await page.screenshot({path:`evidence/admin-security/login-${width}.png`,fullPage:true});
     // A second login on the same browser requires entering a new code.
     await page.locator('#email').fill(actor.email);await page.locator('#send').click();await page.locator('#otp').fill('87654321');await page.locator('#verify').click();await page.waitForURL(base+'/admin');
-    await page.clock.install();await page.clock.fastForward(3600001);await page.waitForURL(/\/admin\/sign-in/);assert.equal(active,false);
+    await page.getByRole('link',{name:'Delete sales'}).waitFor();
+    await page.clock.install();await page.clock.fastForward(3601000);await page.waitForURL(/\/admin\/sign-in/);assert.equal(active,false);
     await context.close();results.push({engine:'chromium',width});
   }
   await writeFile('evidence/admin-security/candidate.json',JSON.stringify({passed:true,results,productionWrites:0,idleUiVerified:true,sameDeviceOtpVerified:true}));

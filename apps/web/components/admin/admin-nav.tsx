@@ -20,9 +20,6 @@ export function AdminNav() {
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const policy = document.createElement('script');
-    policy.type = 'module'; policy.src = '/admin-security-assets/activity.mjs';
-    document.head.append(policy);
     void fetch("/api/admin/session", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : null)
       .then((body) => setRole(body?.admin?.role ?? null))

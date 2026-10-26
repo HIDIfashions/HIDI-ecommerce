@@ -39,7 +39,7 @@ def compose():
  photo.unchanged(before)
 def seal():
  photo.unchanged(photo.states());manifest={}
- for name in ['api-patch.json','web-patch.json','api-preservation.json','web-preservation.json','candidate.json','compiled-api.json']:
+ for name in ['api-patch.json','web-patch.json','api-preservation.json','web-preservation.json','candidate.json','compiled-api.json','runtime-smoke.json']:
   value=read(name);assert value['passed'] is True,name;manifest[name]=hashlib.sha256((E/name).read_bytes()).hexdigest()
  report=read('candidate.json');assert {(row['engine'],row['width']) for row in report['results']}=={(engine,width) for engine in ['chromium'] for width in [390,1440]}
  assert report['productionWrites']==0
