@@ -1,7 +1,7 @@
 # MSG91 WhatsApp ordering
 
-Status on 2026-10-26: local implementation and automated tests complete. No live
-deployment, MSG91 number onboarding, webhook configuration or real delivery test
+Status on 2026-10-26: implementation and CI regression complete. The owner
+completed Meta embedded onboarding. No live code deployment or real delivery test
 has been completed in this chat. Keep the feature disabled until the checks below
 pass. Existing unrelated work in this checkout must not be deployed with it.
 
@@ -17,7 +17,18 @@ they do not establish the reason the number is inactive.
 The number's Sync action did not change its Inactive status. Add Number opened
 Meta embedded onboarding for "MSG91 and Haptik". The owner was asked to review
 the Meta/WhatsApp terms and complete the connection for the existing account and
-number; no Meta terms or permission grants were accepted by the agent.
+number; no Meta terms or permission grants were accepted by the agent. The owner
+reported completion, and a refresh showed the same number linked to WABA
+`1661718732234798` (replacing the initially observed WABA), still **Inactive**.
+Account Settings continued to show no WABA IDs. MSG91 documents delayed Meta
+activation as one possible cause; the exact reason has not been established.
+
+Created and reopened to verify one provider webhook **HIDI ordering inbound**:
+POST `https://hidiindia.com/api/store/whatsapp/msg91/webhook`, On Inbound Report
+Received, JSON payload as below, status **Disabled**. No test run or outgoing
+message was sent. The shared-secret header is deliberately not configured yet:
+stage it in Azure and set the same value in this webhook before enabling it.
+The public endpoint still requires the code deployment and live routing check.
 
 ## Customer flow
 
@@ -80,8 +91,9 @@ authorized private API console with the expected database name.
    The web deployment also needs the narrow custom-header forwarding change in
    `apps/web/app/api/store/[...path]/route.ts`; check whether the live custom
    server handles this route before selecting the precise runtime patch.
-   Local tests use a transactional in-memory fixture; they do not prove live SQL
-   locking or live MSG91 delivery. Keep the prior image digest for rollback.
+   Local tests use a transactional in-memory fixture; CI additionally verifies
+   real SQL Server concurrent processing and transaction rollback. Neither proves
+   live MSG91 delivery. Keep the prior image digest for rollback.
 4. Verify the public storefront forwards the callback to the private API and
    retains the custom header. Proposed public callback:
    `https://hidiindia.com/api/store/whatsapp/msg91/webhook`.
@@ -103,7 +115,7 @@ authorized private API console with the expected database name.
    ```json
    {
      "direction": "0",
-     "eventName": "{{eventName}}",
+     "eventName": "delivered",
      "integratedNumber": "{{integratedNumber}}",
      "customerNumber": "{{customerNumber}}",
      "contentType": "{{contentType}}",
@@ -111,8 +123,9 @@ authorized private API console with the expected database name.
    }
    ```
 
-   The direction is a constant because this webhook subscribes only to inbound
-   reports. Do not attach outbound events to this configuration. Validate the
+   Direction and eventName are constants because this webhook subscribes only to
+   delivered inbound reports. The live provider editor did not list eventName in
+   its default inbound payload. Do not attach outbound events to this configuration. Validate the
    real callback's native message ID, text, from and timestamp against the parser
    before enabling it for customers. Check for provider-side webhook auto-pause.
 7. With the test-phone restriction in place, enable the bot and complete a real
@@ -134,7 +147,13 @@ authorized private API console with the expected database name.
 - Full API/customer-experience TypeScript test suite: 406 passing.
 - Proxy tests validate callback credentials/body forwarding and preserve Razorpay
   signature forwarding; the callback token is not forwarded to other API routes.
-- No real customer message, payment, provider API send or live configuration change.
+- No real customer message, payment, provider API send or live code deployment.
+
+Latest-source CI: [MSG91 ordering regression, run 40257912893](https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/40257912893)
+passed API build, **442 tests**, and the disposable SQL Server regression. Real SQL
+checks covered duplicate callbacks, concurrent conversation decisions, one send
+claim across replicas, cart/item rollback after a database failure, replay recovery,
+and zero order/payment creation. Provider sends were stubbed.
 
 ## Provider references checked
 
