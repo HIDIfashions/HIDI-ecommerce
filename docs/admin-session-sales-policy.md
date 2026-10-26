@@ -37,16 +37,21 @@ procedure that only unlinks wallet entries and removes audit rows for a validate
 archived order set inside the sales-deletion transaction. It grants execution of
 that procedure, without removing either direct-write denial.
 
-Deployment is currently blocked: the runtime cannot create tables, and the
-existing migration job identity cannot log into the live database. No sales have
-been deleted and neither new application image has been activated. An existing
-SQL owner must execute the complete `deploy/admin-security/schema.sql` against
-`hidi-sql-validation` on `sql-hidi-prod-0927.database.windows.net` through their
-authorized private connection. Then dispatch **Admin OTP, idle expiry and owner
-delete option** on branch `migration/azure-sql-blob`. The workflow checks runtime
-permissions, deploys tested images, performs rollback-only live verification,
-without deleting existing sales. Do not change the SQL Entra
-administrator, open network access, or give the runtime DDL permissions.
+The SQL owner migration was applied successfully on 26 October 2026 using
+normal browser-based Azure CLI authentication as fashionshidi@gmail.com and the
+existing private API terminal. Microsoft Entra security defaults had blocked the
+device-code route with error 530035. Security defaults, SQL networking, the SQL
+administrator and runtime DDL restrictions were preserved. The helper
+`deploy/admin-security/owner-local.py` acquires its delegated SQL token in memory
+and never writes it to an artifact or command argument. Seven-day PITR was
+verified immediately before migration; the bounded local result is saved in
+`evidence/admin-security/owner-local-migration.json`.
+
+Dispatch **Admin OTP, idle expiry and owner delete option** on branch
+`migration/azure-sql-blob`. The workflow checks runtime permissions, deploys tested
+images and performs rollback-only live verification without deleting existing
+sales. Do not change the SQL Entra administrator, open network access, or give
+the runtime DDL permissions.
 
 The release preserves the currently deployed API and web images and patches only
 the authentication integration, new modules and relevant admin pages. The live
@@ -57,5 +62,5 @@ On 26 October 2026, the user cancelled the one-time deletion of orders before
 10 October 2026 after Microsoft denied the interactive device sign-in. The
 automatic cleanup step and its executable mode have been removed. Do not revive
 that deletion without a new explicit request. Existing orders remain untouched.
-The prepared owner delete option and session-security changes remain undeployed
-pending authorized database-owner access.
+The owner delete option and session-security changes are deployed separately
+from that cancelled cleanup; their release never deletes existing orders.
