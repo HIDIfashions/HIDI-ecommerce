@@ -1,0 +1,24 @@
+name: MSG91 rollout read-only status
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/whatsapp-msg91-status.yml]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Read image, provisioning, health and revision state only
+        run: |
+          for app in hidi-api hidi-web; do
+            az rest --method get --url "https://management.azure.com/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod/providers/Microsoft.App/containerApps/$app?api-version=2025-07-01" --query '{name:name,image:properties.template.containers[0].image,provisioning:properties.provisioningState,running:properties.runningStatus,latest:properties.latestRevisionName,ready:properties.latestReadyRevisionName}' --only-show-errors -o json
+            az containerapp revision list -g rg-hidi-prod -n "$app" --query '[?properties.active].{name:name,health:properties.healthState,provisioning:properties.provisioningState,running:properties.runningState,replicas:properties.replicas,details:properties.provisioningError}' --only-show-errors -o json
+          done
