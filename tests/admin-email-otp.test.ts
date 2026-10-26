@@ -94,7 +94,7 @@ test("staff disabled after code delivery cannot establish an admin session", asy
   try {
     await f.service.requestEmailCode({ email: staff.email });
     staff.active = false;
-    await assert.rejects(() => f.service.resolveActor({ authorization: "Bearer verified" }), /not authorized/);
+    await assert.rejects(() => f.service.resolveVerifiedIdentity({ authorization: "Bearer verified" }), /not authorized/);
   } finally { f.restore(); }
 });
 

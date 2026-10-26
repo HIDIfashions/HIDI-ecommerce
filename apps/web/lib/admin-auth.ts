@@ -82,16 +82,12 @@ export const adminCookieOptions = {
 };
 
 export function adminAccessCookieOptions(expiresInSeconds?: number) {
-  const requested = Number(expiresInSeconds ?? 3600);
-  const maxAge = Number.isFinite(requested)
-    ? Math.max(60, Math.min(Math.floor(requested) - 30, 60 * 60 * 8))
-    : 60 * 60;
   return {
     httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge,
+
   };
 }
 

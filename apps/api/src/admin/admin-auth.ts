@@ -15,6 +15,7 @@ import { Reflector } from "@nestjs/core";
 import { timingSafeEqual } from "node:crypto";
 import { SupabaseAuthService } from "../auth/supabase-auth.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { resolveAdminSession } from './admin-session.js';
 
 export type AdminRole = "OWNER" | "OPERATIONS" | "SUPPORT" | "CATALOG";
 export const PRIMARY_OWNER_EMAIL = "fashionshidi@gmail.com";
@@ -168,6 +169,10 @@ export class AdminAuthService {
   }
 
   async resolveActor(input: { authorization?: string; adminKey?: string }): Promise<AdminActor> {
+    return resolveAdminSession(this.prisma, input.authorization);
+  }
+
+  async resolveVerifiedIdentity(input: { authorization?: string; adminKey?: string }): Promise<AdminActor> {
     if (input.authorization?.startsWith("Bearer ")) {
       const user = await this.supabaseAuth.requireUser(input.authorization);
       const email = user.email?.trim().toLowerCase() ?? "";

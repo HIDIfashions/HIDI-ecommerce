@@ -1,182 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
-import { API_URL } from "@/lib/api";
-import {
-  ADMIN_ACCESS_COOKIE_NAME,
-  ADMIN_COOKIE_NAME,
-  ADMIN_REFRESH_COOKIE_NAME,
-  adminAccessCookieOptions,
-  adminApiHeaders,
-  adminCookieOptions,
-  adminRefreshCookieOptions,
-  adminRefreshToken,
-  adminSessionToken,
-  hasDashboardSecret,
-  isAdminRequest,
-  isLegacyAdminRequest,
-  legacyAdminEnabled,
-  verifyDashboardKey,
-} from "@/lib/admin-auth";
-
-async function verifyAdmin(headers: Record<string, string>) {
-  try {
-    const response = await fetch(`${API_URL}/admin/me`, {
-      cache: "no-store",
-      headers,
-    });
-    const body = await response.json().catch(() => ({}));
-    return { response, body };
-  } catch {
-    return {
-      response: new Response(null, { status: 502 }),
-      body: { message: "Unable to reach the HIDI API." },
-    };
-  }
+import { NextRequest, NextResponse } from 'next/server';
+import { API_URL } from '@/lib/api';
+import { adminApiHeaders, adminAccessCookieOptions, ADMIN_ACCESS_COOKIE_NAME } from '@/lib/admin-auth';
+const clear = (r: NextResponse) => { for (const name of ['hidi_admin_access','hidi_admin_refresh','hidi_admin_session']) r.cookies.set(name,'',{...adminAccessCookieOptions(),maxAge:0}); return r; };
+function sameOrigin(request: NextRequest) {
+  if (request.headers.get('sec-fetch-site') === 'cross-site') return false;
+  try { return new URL(request.headers.get('origin') ?? '').host === request.headers.get('host'); } catch { return false; }
 }
-
-function supabaseConfig() {
-  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, "");
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
-  return { url, key };
-}
-
-function clearAdminCookies(response: NextResponse) {
-  response.cookies.set(ADMIN_COOKIE_NAME, "", { ...adminCookieOptions, maxAge: 0 });
-  response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, "", { ...adminAccessCookieOptions(), maxAge: 0 });
-  response.cookies.set(ADMIN_REFRESH_COOKIE_NAME, "", { ...adminRefreshCookieOptions, maxAge: 0 });
-}
-
 export async function GET(request: NextRequest) {
-  if (!isAdminRequest(request)) {
-    return NextResponse.json({ message: "Admin session required" }, { status: 401 });
-  }
-
-  const headers = adminApiHeaders(request);
-  const { response, body } = await verifyAdmin(headers);
-  return NextResponse.json(body, { status: response.status });
+  try { const r=await fetch(`${API_URL}/admin/me`,{headers:adminApiHeaders(request),cache:'no-store'}); const response=NextResponse.json(await r.json(),{status:r.status}); return r.status===401?clear(response):response; }
+  catch { return NextResponse.json({message:'Admin service temporarily unavailable'},{status:503}); }
 }
-
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
-
-  const accessToken = typeof body?.accessToken === "string" ? body.accessToken.trim() : "";
-  if (accessToken) {
-    const refreshToken = typeof body?.refreshToken === "string" ? body.refreshToken.trim() : "";
-    const { response: verifyResponse, body: verifyBody } = await verifyAdmin({
-      Authorization: `Bearer ${accessToken}`,
-    });
-    if (!verifyResponse.ok) {
-      return NextResponse.json(
-        { message: verifyBody?.message ?? "This account is not authorized for HIDI Admin" },
-        { status: verifyResponse.status },
-      );
-    }
-
-    const response = NextResponse.json({ ok: true, ...verifyBody });
-    response.cookies.set(
-      ADMIN_ACCESS_COOKIE_NAME,
-      accessToken,
-      adminAccessCookieOptions(body?.expiresIn),
-    );
-    if (refreshToken) {
-      response.cookies.set(ADMIN_REFRESH_COOKIE_NAME, refreshToken, adminRefreshCookieOptions);
-    }
-    response.cookies.set(ADMIN_COOKIE_NAME, "", { ...adminCookieOptions, maxAge: 0 });
-    return response;
-  }
-
-  const key = typeof body?.key === "string" ? body.key.trim() : "";
-  if (!legacyAdminEnabled()) {
-    return NextResponse.json(
-      { message: "Admin staff sign-in is required. Legacy admin key access is disabled." },
-      { status: 401 },
-    );
-  }
-  if (!hasDashboardSecret()) {
-    return NextResponse.json(
-      { message: "Legacy admin key is enabled but not configured." },
-      { status: 500 },
-    );
-  }
-  if (!verifyDashboardKey(key)) {
-    return NextResponse.json({ message: "Incorrect admin key" }, { status: 401 });
-  }
-
-  const response = NextResponse.json({ ok: true, legacy: true });
-  response.cookies.set(ADMIN_COOKIE_NAME, adminSessionToken(), adminCookieOptions);
-  response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, "", {
-    ...adminAccessCookieOptions(),
-    maxAge: 0,
-  });
-  response.cookies.set(ADMIN_REFRESH_COOKIE_NAME, "", {
-    ...adminRefreshCookieOptions,
-    maxAge: 0,
-  });
-  return response;
-}
-
-export async function PUT(request: NextRequest) {
-  if (isLegacyAdminRequest(request)) {
-    return NextResponse.json({ ok: true, legacy: true });
-  }
-
-  const refreshToken = adminRefreshToken(request);
-  if (!refreshToken) {
-    const response = NextResponse.json({ message: "Admin session expired" }, { status: 401 });
-    clearAdminCookies(response);
-    return response;
-  }
-
-  const { url, key } = supabaseConfig();
-  if (!url || !key) {
-    return NextResponse.json({ message: "Admin authentication is not configured" }, { status: 503 });
-  }
-
+  if (!sameOrigin(request)) return NextResponse.json({message:'Same-origin request required'},{status:403});
+  const body=await request.json().catch(()=>null);
+  if (!body || Object.keys(body).some(k=>!['email','token'].includes(k))) return NextResponse.json({message:'A fresh email OTP is required for every login'},{status:401});
   try {
-    const tokenResponse = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
-      method: "POST",
-      headers: {
-        apikey: key,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-      cache: "no-store",
-    });
-    const tokenBody = await tokenResponse.json().catch(() => ({}));
-    if (!tokenResponse.ok || typeof tokenBody?.access_token !== "string") {
-      const response = NextResponse.json({ message: "Admin session expired" }, { status: 401 });
-      clearAdminCookies(response);
-      return response;
-    }
-
-    const { response: verifyResponse, body: verifyBody } = await verifyAdmin({
-      Authorization: `Bearer ${tokenBody.access_token}`,
-    });
-    if (!verifyResponse.ok) {
-      const response = NextResponse.json(
-        { message: verifyBody?.message ?? "Admin access is no longer authorized" },
-        { status: verifyResponse.status },
-      );
-      clearAdminCookies(response);
-      return response;
-    }
-
-    const response = NextResponse.json({ ok: true, ...verifyBody });
-    response.cookies.set(
-      ADMIN_ACCESS_COOKIE_NAME,
-      tokenBody.access_token,
-      adminAccessCookieOptions(tokenBody.expires_in),
-    );
-    if (typeof tokenBody.refresh_token === "string" && tokenBody.refresh_token) {
-      response.cookies.set(ADMIN_REFRESH_COOKIE_NAME, tokenBody.refresh_token, adminRefreshCookieOptions);
-    }
-    return response;
-  } catch {
-    return NextResponse.json({ message: "Unable to refresh admin session" }, { status: 502 });
-  }
+    const r=await fetch(`${API_URL}/auth/admin/otp/verify`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
+    const data=await r.json(); if(!r.ok)return NextResponse.json({message:data.message},{status:r.status});
+    await fetch(`${API_URL}/auth/admin/session`,{method:'DELETE',headers:adminApiHeaders(request),cache:'no-store'});
+    const response=clear(NextResponse.json({ok:true,admin:data.admin,idleTimeoutSeconds:3600}));
+    response.cookies.set(ADMIN_ACCESS_COOKIE_NAME,data.sessionToken,adminAccessCookieOptions());return response;
+  } catch { return NextResponse.json({message:'Unable to verify admin OTP'},{status:503}); }
 }
-
-export async function DELETE() {
-  const response = NextResponse.json({ ok: true });
-  clearAdminCookies(response);
-  return response;
+export async function PUT(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({message:'Same-origin request required'},{status:403});
+  return GET(request);
+}
+export async function DELETE(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({message:'Same-origin request required'},{status:403});
+  try { const r=await fetch(`${API_URL}/auth/admin/session`,{method:'DELETE',headers:adminApiHeaders(request),cache:'no-store'}); if(!r.ok)throw Error(); return clear(NextResponse.json({ok:true})); }
+  catch { return NextResponse.json({message:'Unable to sign out; retry shortly'},{status:503}); }
 }

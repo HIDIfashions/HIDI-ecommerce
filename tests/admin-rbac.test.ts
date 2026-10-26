@@ -54,7 +54,7 @@ function fixture(input: {
 
 test("verified staff email claims the Supabase subject once and returns the configured role", async () => {
   const f = fixture();
-  const actor = await f.service.resolveActor({ authorization: "Bearer valid" });
+  const actor = await f.service.resolveVerifiedIdentity({ authorization: "Bearer valid" });
   assert.equal(actor.id, "admin-1");
   assert.equal(actor.authSubject, "auth-admin-1");
   assert.equal(actor.role, "OWNER");
@@ -68,14 +68,14 @@ test("sign-in never bootstraps an unlisted owner, even with a matching configure
   try {
     process.env.ADMIN_BOOTSTRAP_EMAIL = "owner@example.test";
     const f = fixture({ staff: [] });
-    await assert.rejects(() => f.service.resolveActor({ authorization: "Bearer valid" }), { name: "ForbiddenException" });
+    await assert.rejects(() => f.service.resolveVerifiedIdentity({ authorization: "Bearer valid" }), { name: "ForbiddenException" });
     assert.equal(f.staff.length, 0);
 
     const denied = fixture({
       staff: [],
       user: { id: "auth-other", email: "other@example.test", emailVerified: true, metadata: {} },
     });
-    await assert.rejects(() => denied.service.resolveActor({ authorization: "Bearer valid" }), { name: "ForbiddenException" });
+    await assert.rejects(() => denied.service.resolveVerifiedIdentity({ authorization: "Bearer valid" }), { name: "ForbiddenException" });
     assert.equal(denied.staff.length, 0);
   } finally {
     if (before === undefined) delete process.env.ADMIN_BOOTSTRAP_EMAIL;
@@ -85,17 +85,17 @@ test("sign-in never bootstraps an unlisted owner, even with a matching configure
 
 test("disabled, unknown and subject-conflicting staff cannot enter admin", async () => {
   await assert.rejects(
-    () => fixture({ staff: [{ id: "a", authSubject: null, email: "owner@example.test", displayName: "Owner", role: "OWNER", active: false }] }).service.resolveActor({ authorization: "Bearer valid" }),
+    () => fixture({ staff: [{ id: "a", authSubject: null, email: "owner@example.test", displayName: "Owner", role: "OWNER", active: false }] }).service.resolveVerifiedIdentity({ authorization: "Bearer valid" }),
     { name: "ForbiddenException" },
   );
 
   await assert.rejects(
-    () => fixture({ staff: [] }).service.resolveActor({ authorization: "Bearer valid" }),
+    () => fixture({ staff: [] }).service.resolveVerifiedIdentity({ authorization: "Bearer valid" }),
     { name: "ForbiddenException" },
   );
 
   await assert.rejects(
-    () => fixture({ staff: [{ id: "a", authSubject: "different-subject", email: "owner@example.test", displayName: "Owner", role: "OWNER", active: true }] }).service.resolveActor({ authorization: "Bearer valid" }),
+    () => fixture({ staff: [{ id: "a", authSubject: "different-subject", email: "owner@example.test", displayName: "Owner", role: "OWNER", active: true }] }).service.resolveVerifiedIdentity({ authorization: "Bearer valid" }),
     { name: "ForbiddenException" },
   );
 });
@@ -123,11 +123,11 @@ test("a linked auth subject does not authorise a different email outside the sta
     id: "admin-1", authSubject: "auth-admin-1", email: "old@example.test",
     displayName: "Owner", role: "OWNER", active: true,
   }] });
-  await assert.rejects(() => f.service.resolveActor({ authorization: "Bearer valid" }), { name: "ForbiddenException" });
+  await assert.rejects(() => f.service.resolveVerifiedIdentity({ authorization: "Bearer valid" }), { name: "ForbiddenException" });
   assert.equal(f.staff[0].email, "old@example.test");
 });
 
-test("legacy shared key is disabled by default and requires an explicit break-glass flag", async () => {
+test("legacy shared key cannot bypass mandatory email OTP", async () => {
   const beforeKey = process.env.ADMIN_API_KEY;
   const beforeLegacy = process.env.ADMIN_LEGACY_KEY_ENABLED;
   try {
@@ -140,9 +140,7 @@ test("legacy shared key is disabled by default and requires an explicit break-gl
     );
 
     process.env.ADMIN_LEGACY_KEY_ENABLED = "true";
-    const emergency = await fixture().service.resolveActor({ adminKey: "test-admin-key" });
-    assert.equal(emergency.role, "OWNER");
-    assert.equal(emergency.authMode, "LEGACY_KEY");
+    await assert.rejects(() => fixture().service.resolveActor({ adminKey: "test-admin-key" }), { name: "UnauthorizedException" });
   } finally {
     if (beforeKey === undefined) delete process.env.ADMIN_API_KEY; else process.env.ADMIN_API_KEY = beforeKey;
     if (beforeLegacy === undefined) delete process.env.ADMIN_LEGACY_KEY_ENABLED; else process.env.ADMIN_LEGACY_KEY_ENABLED = beforeLegacy;

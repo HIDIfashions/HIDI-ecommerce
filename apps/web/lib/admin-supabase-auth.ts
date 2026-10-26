@@ -45,24 +45,9 @@ export async function verifyAdminEmailOtp(emailValue: string, tokenValue: string
   const token = tokenValue.trim();
   if (!/^\d{8}$/.test(token)) throw new Error("Enter the 8-digit sign-in code");
 
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({ type: "email", email, token }),
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok || typeof body?.access_token !== "string") {
-    throw new Error(body?.msg ?? body?.message ?? "That admin code is invalid or has expired");
-  }
-
-  const sessionResponse = await fetch("/api/admin/session", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      accessToken: body.access_token,
-      refreshToken: body.refresh_token,
-      expiresIn: body.expires_in,
-    }),
+  const sessionResponse = await fetch('/api/admin/session', {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({email,token}),
   });
   const sessionBody = await sessionResponse.json().catch(() => ({}));
   if (!sessionResponse.ok) {

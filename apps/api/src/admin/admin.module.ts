@@ -12,8 +12,9 @@ import { AdminReturnsService } from './admin-returns.service.js';
 import { WalletModule } from '../wallet/wallet.module.js';
 import { RazorpayModule } from '../razorpay/razorpay.module.js';
 import { AdminSecurityModule } from './admin-security.module.js';
+import { AdminSalesModule } from './admin-sales.module.js';
 @Module({
-  imports: [AdminSecurityModule, AdminProductsModule, DelhiveryModule, WalletModule, RazorpayModule],
+  imports: [AdminSalesModule, AdminSecurityModule, AdminProductsModule, DelhiveryModule, WalletModule, RazorpayModule],
   controllers: [AdminController, AdminDashboardController, PackingScannerController],
   providers: [AdminService, PackingScannerService, AdminInventoryService, ReviewFollowUpService, AdminReturnsService],
 })
