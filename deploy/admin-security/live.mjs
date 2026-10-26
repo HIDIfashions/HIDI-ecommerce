@@ -8,20 +8,12 @@ export async function run(mode) {
       assert(Object.values(permissions).every(value=>value===1),'SQL owner must apply deploy/admin-security/schema.sql before deployment');
       console.log('HIDI_SECURITY_LIVE::'+JSON.stringify({passed:true,schemaReady:true}));return;
     }
-    if(mode==='cleanup'||mode==='verify'){
+    if(mode==='verify'){
       const {AdminSalesService}=await import('file:///app/apps/api/dist/admin/admin-sales.service.js');
       const {resolveAdminSession,revokeAdminSession}=await import('file:///app/apps/api/dist/admin/admin-session.js');
       const {createHash,randomBytes}=await import('node:crypto');
       const staff=await db.adminStaff.findFirst({where:{email:'fashionshidi@gmail.com',active:true}});
       assert(staff?.role==='OWNER');const actor={...staff,authMode:'SUPABASE'};
-      if(mode==='cleanup'){
-        const service=new AdminSalesService(db),preview=await service.preview('2026-10-10',actor);
-        const retained=await db.order.findMany({where:{createdAt:{gte:new Date('2026-10-09T18:30:00Z')}},orderBy:{id:'asc'}});
-        const result=await service.remove({before:'2026-10-10',snapshot:preview.snapshot,confirmation:'DELETE BEFORE 2026-10-10'},actor);
-        for(const row of retained)assert.deepEqual(await db.order.findUnique({where:{id:row.id}}),row);
-        assert.equal(await db.order.count({where:{createdAt:{lt:new Date('2026-10-09T18:30:00Z')}}}),0);
-        console.log('HIDI_SECURITY_LIVE::'+JSON.stringify({passed:true,...result,retained:retained.length,retainedRecordsUnchanged:true}));return;
-      }
       const rollback=new Error('EXPECTED_ROLLBACK');let checks=0;
       try{await db.$transaction(async tx=>{
         const token='hidi_admin_'+randomBytes(32).toString('hex'),digest=createHash('sha256').update(token).digest('hex');

@@ -1,4 +1,4 @@
-name: Admin OTP, idle expiry and owner sales cleanup
+name: Admin OTP, idle expiry and owner delete option
 on:
   # Dispatch only after the SQL owner applies deploy/admin-security/schema.sql.
   workflow_dispatch:
@@ -63,8 +63,6 @@ jobs:
       - name: Deploy and verify real database expiry and deletion with rollback-only fixtures
         id: apply
         run: python3 deploy/admin-security/release.py apply
-      - name: Clean up authorised sales strictly before 10 October 2026 IST
-        run: python3 deploy/admin-security/live.py cleanup
       - name: Recover only an interrupted owned deployment
         if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
         run: python3 deploy/admin-security/release.py recover

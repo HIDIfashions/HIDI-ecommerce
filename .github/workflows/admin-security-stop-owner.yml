@@ -1,4 +1,4 @@
-name: Stop paused admin security owner sign-in
+name: Stop cancelled admin security owner sign-in
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -18,5 +18,5 @@ jobs:
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Stop only this chat's pending one-time owner job
         run: |
-          az containerapp job stop -g rg-hidi-prod -n job-hidi-validation --job-execution-name job-hidi-validation-cgikggj --only-show-errors -o none
-          az containerapp job execution list -g rg-hidi-prod -n job-hidi-validation --query "[?name=='job-hidi-validation-cgikggj'].{name:name,status:properties.status}" --only-show-errors -o json
+          az containerapp job stop -g rg-hidi-prod -n job-hidi-validation --job-execution-name job-hidi-validation-ehz91f4 --only-show-errors -o none
+          az containerapp job execution list -g rg-hidi-prod -n job-hidi-validation --query "[?name=='job-hidi-validation-ehz91f4'].{name:name,status:properties.status}" --only-show-errors -o json

@@ -5,7 +5,7 @@ def load(name,path):
  spec=importlib.util.spec_from_file_location(name,path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
 cloud=load('support_live_cloud',Path('deploy/privacy-policy/rollout.py'))
 terminal=load('support_live_terminal',Path('deploy/admin-delete/schema-readiness.py'))
-mode=sys.argv[1];assert mode in ['inspect','schema','cleanup','verify']
+mode=sys.argv[1];assert mode in ['inspect','schema','verify']
 data=cloud.app('hidi-api');cloud.ready(cloud.snapshot(data))
 script=Path('deploy/admin-security/live.mjs').read_text()
 packed=base64.b64encode(gzip.compress(script.encode(),mtime=0)).decode()

@@ -43,17 +43,19 @@ been deleted and neither new application image has been activated. An existing
 SQL owner must execute the complete `deploy/admin-security/schema.sql` against
 `hidi-sql-validation` on `sql-hidi-prod-0927.database.windows.net` through their
 authorized private connection. Then dispatch **Admin OTP, idle expiry and owner
-sales cleanup** on branch `migration/azure-sql-blob`. The workflow checks runtime
+delete option** on branch `migration/azure-sql-blob`. The workflow checks runtime
 permissions, deploys tested images, performs rollback-only live verification,
-and only then deletes sales before 10 October 2026. Do not change the SQL Entra
+without deleting existing sales. Do not change the SQL Entra
 administrator, open network access, or give the runtime DDL permissions.
 
 The release preserves the currently deployed API and web images and patches only
 the authentication integration, new modules and relevant admin pages. The live
 verification uses rollback-only fixtures to check revocation, expired sessions,
-owner access and the India-time cutoff boundary before any real cleanup.
+owner access and the India-time cutoff boundary without committing fixture data.
 
-The requested one-time cleanup uses `2026-10-10`, equivalent to the exclusive
-UTC cutoff `2026-10-09T18:30:00Z`. Its result is recorded in the release workflow's
-`cleanup.json`; records on or after the cutoff are checked individually for
-unchanged values. A repeat run finds no matching records and deletes nothing.
+On 26 October 2026, the user cancelled the one-time deletion of orders before
+10 October 2026 after Microsoft denied the interactive device sign-in. The
+automatic cleanup step and its executable mode have been removed. Do not revive
+that deletion without a new explicit request. Existing orders remain untouched.
+The prepared owner delete option and session-security changes remain undeployed
+pending authorized database-owner access.
