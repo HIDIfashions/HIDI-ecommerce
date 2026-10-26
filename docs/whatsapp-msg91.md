@@ -3,8 +3,9 @@
 Status on 2026-10-26: ordering code is deployed to production, with automated
 replies disabled. The callback credential is staged in Azure, and the owner's
 distinct customer test number is configured as the only allowed number. No real
-WhatsApp delivery test has completed. Keep replies disabled until provider
-registration, API authentication and callback header configuration are verified.
+WhatsApp delivery test has completed. API authentication and the persisted
+callback header are verified. Keep replies disabled until provider registration
+is complete, then refresh the cutoff and run the restricted delivery test.
 
 [Production deployment run 40262058505](https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/40262058505)
 passed. It reused the exact candidate images tested in run 40260169477, including
@@ -19,7 +20,7 @@ Deployed images:
 - API: `acrhidiprod0927.azurecr.io/hidi-api@sha256:580992d770b060692e6e58f64720ccdec715eb0f74e5ef47bf22e7227d5c46ff`
 - Web: `acrhidiprod0927.azurecr.io/hidi-web@sha256:3d22821d368b82934a124173549f1fa058e246510bd47915f3da9dee15080d2d`
 
-Current blockers:
+Provider status and remaining work:
 
 - Meta shows phone-number ID `1293090520558969`, WABA `1661718732234798`,
   number `917093709353` as **Pending**. Its tooltip says: "Please register this
@@ -38,15 +39,11 @@ Current blockers:
   Azure's declared outbound set is larger. Stable outbound networking still
   needs review before wider rollout; this correction does not cover every
   possible future Azure address. No security setting was changed by the agent.
-- The existing provider webhook still needs its custom credential header. A
-  protected local handoff file contains the staged value; no plaintext credential
-  is committed or included in workflow artifacts. The owner must enter this
-  authentication setting in MSG91. The owner reported saving it, but reopening
-  Headers showed empty Key/Value fields. They were asked to click **Add Header**
-  and then **Update**, and reopen to verify persistence. A second owner-reported
-  save was checked again: the persisted Headers tab remains empty in both the
-  accessibility tree and screenshot. The form is left open for exact entry and
-  immediate verification. Keep Disabled until ready.
+- The owner saved the callback header. Reopening **HIDI ordering inbound** now
+  confirms `x-hidi-whatsapp-token` persists and its value exactly matches the
+  Azure-staged credential (compared privately without logging its value). The
+  webhook remains **Disabled** and its POST URL, inbound event and JSON payload
+  are unchanged. No plaintext credential is committed or included in artifacts.
 
 Refresh the UTC activation cutoff immediately before the restricted live test.
 Do not remove the test-number restriction before end-to-end delivery is verified.
@@ -77,9 +74,9 @@ repeat prompt was cancelled without accepting terms or changing the connection.
 Created and reopened to verify one provider webhook **HIDI ordering inbound**:
 POST `https://hidiindia.com/api/store/whatsapp/msg91/webhook`, On Inbound Report
 Received, JSON payload as below, status **Disabled**. No test run or outgoing
-message was sent. The shared-secret header is not configured in MSG91 yet:
-set the Azure-staged value in this webhook before enabling it. The public endpoint
-has now passed the deployed routing and credential checks described above.
+message was sent. The shared-secret header is now configured in MSG91 and verified
+against the Azure-staged value. The public endpoint has passed the deployed
+routing and credential checks described above. Keep disabled pending registration.
 
 ## Customer flow
 
