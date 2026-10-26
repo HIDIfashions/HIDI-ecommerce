@@ -58,6 +58,7 @@ try{
     await row.locator('input[value="OPERATIONS"]').check();assert(await row.locator('input[value="OWNER"]').isDisabled());
     await row.getByRole('button',{name:'Save roles',exact:true}).click();await page.getByText('Staff roles updated.',{exact:true}).waitFor();
     assert.deepEqual(new Set(writes.at(-1).roles),new Set(['SUPPORT','OPERATIONS','CATALOG']));
+    assert(await row.locator('input[value="OWNER"]').isDisabled(),'A saved three-role selection also prevents a fourth role');
     await row.locator('input[value="OPERATIONS"]').uncheck();await row.locator('input[value="CATALOG"]').uncheck();await row.locator('input[value="SUPPORT"]').uncheck();
     const before=writes.length;await row.getByRole('button',{name:'Save roles',exact:true}).click();await page.getByText('Choose between one and three roles.',{exact:true}).waitFor();assert.equal(writes.length,before);
     await row.locator('input[value="SUPPORT"]').check();await row.getByRole('button',{name:'Save roles',exact:true}).click();await page.getByText('Staff roles updated.',{exact:true}).waitFor();assert.deepEqual(writes.at(-1).roles,['SUPPORT']);
