@@ -3,6 +3,10 @@ import copy, importlib.util, json, os, pathlib, secrets, subprocess, sys, urllib
 ROOT=pathlib.Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('wa_stage_helpers',ROOT.parent/'delivery-sync/release.py');helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
 cloud=helper.cloud
+def app(name):
+    assert name in {'hidi-api','hidi-web'}
+    return cloud.azure('rest','--method','get','--url','https://management.azure.com/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod/providers/Microsoft.App/containerApps/'+name+'?api-version=2025-07-01')
+cloud.app=app
 PRIVATE=pathlib.Path(os.environ['RUNNER_TEMP'])/'wa-stage';PRIVATE.mkdir(mode=0o700,exist_ok=True);helper.PRIVATE=PRIVATE
 EVIDENCE=pathlib.Path('evidence/whatsapp-stage');EVIDENCE.mkdir(parents=True,exist_ok=True)
 KEY='msg91-ordering-webhook'
@@ -13,7 +17,8 @@ def main():
     assert env.get('WHATSAPP_CHATBOT_ENABLED',{}).get('value')=='false'
     assert env.get('WHATSAPP_CHATBOT_PROVIDER',{}).get('value')=='msg91'
     assert env.get('MSG91_WHATSAPP_INTEGRATED_NUMBER',{}).get('value')=='917093709353'
-    assert api['properties']['latestReadyRevisionName'].startswith('hidi-api--whatsappapi40260169477'),'Expected verified ordering release'
+    assert cloud.snapshot(api)['image']=='acrhidiprod0927.azurecr.io/hidi-api@sha256:580992d770b060692e6e58f64720ccdec715eb0f74e5ef47bf22e7227d5c46ff','Expected verified ordering API'
+    assert cloud.snapshot(original['hidi-web'])['image']=='acrhidiprod0927.azurecr.io/hidi-web@sha256:3d22821d368b82934a124173549f1fa058e246510bd47915f3da9dee15080d2d','Expected verified callback runtime'
     existing=cloud.azure('containerapp','secret','list','-g','rg-hidi-prod','-n','hidi-api','--show-values')
     match=next((v for v in existing if v['name']==KEY),None)
     token=match.get('value') if match else secrets.token_urlsafe(48)

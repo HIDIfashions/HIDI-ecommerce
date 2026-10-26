@@ -3,6 +3,10 @@ import copy, importlib.util, json, os, pathlib, shutil, subprocess, sys
 ROOT=pathlib.Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('wa_helpers',ROOT.parent/'delivery-sync/release.py');helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
 cloud,images=helper.cloud,helper.images
+def app(name):
+    assert name in {'hidi-api','hidi-web'}
+    return cloud.azure('rest','--method','get','--url','https://management.azure.com/subscriptions/91d9572d-0f0b-47fe-802d-0eef36d7c719/resourceGroups/rg-hidi-prod/providers/Microsoft.App/containerApps/'+name+'?api-version=2025-07-01')
+cloud.app=app
 PRIVATE=pathlib.Path(os.environ['RUNNER_TEMP'])/'whatsapp-release';PRIVATE.mkdir(exist_ok=True,mode=0o700)
 EVIDENCE=pathlib.Path('evidence/whatsapp-release');EVIDENCE.mkdir(parents=True,exist_ok=True)
 helper.PRIVATE=PRIVATE
