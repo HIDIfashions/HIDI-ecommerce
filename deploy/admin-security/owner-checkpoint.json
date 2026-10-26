@@ -1,9 +1,9 @@
 {
   "source": "Signed-in Azure Portal database overview and server Backups pages",
-  "capturedAt": "2026-10-26T05:24:00Z",
+  "capturedAt": "2026-10-26T08:40:19.570Z",
   "server": "sql-hidi-prod-0927.database.windows.net",
   "database": "hidi-sql-validation",
   "status": "Online",
-  "earliestRestoreDate": "2026-10-19T05:24:00Z",
+  "earliestRestoreDate": "2026-10-19T08:40:00Z",
   "retentionDays": 7
 }
