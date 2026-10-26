@@ -1,5 +1,8 @@
 name: Optional product details and multiple staff roles
 on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/product-details-multirole.yml]
   workflow_dispatch:
     inputs:
       deploy:
