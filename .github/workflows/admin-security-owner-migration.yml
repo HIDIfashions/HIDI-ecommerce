@@ -1,4 +1,5 @@
 name: Private SQL owner migration for admin security
+# Uses fresh backup metadata observed by the existing SQL owner in Azure Portal.
 on:
   push:
     branches: [migration/azure-sql-blob]

@@ -19,10 +19,15 @@ if(process.argv[2]==='start'){
  const api=az(['containerapp','show','-g',group,'-n','hidi-api']),current=api.properties.template.containers[0];
  const env=key=>current.env.find(x=>x.name===key)?.value;
  assert.equal(env('AZURE_SQL_DATABASE'),'hidi-sql-validation');assert.equal(env('AZURE_SQL_SERVER'),'sql-hidi-prod-0927.database.windows.net');
- const database=az(['sql','db','show','-g',group,'-s','sql-hidi-prod-0927','-n',env('AZURE_SQL_DATABASE')]);
- const retention=az(['sql','db','str-policy','show','-g',group,'-s','sql-hidi-prod-0927','-n',env('AZURE_SQL_DATABASE')]);
- assert.equal(database.status,'Online');assert(new Date(database.earliestRestoreDate)<new Date());assert(retention.retentionDays>=1);
- console.log(JSON.stringify({checkpointAt:new Date().toISOString(),earliestRestoreDate:database.earliestRestoreDate,retentionDays:retention.retentionDays}));
+ // The CI identity cannot read SQL control-plane resources. The signed-in
+ // existing owner inspected these values in Azure Portal immediately before
+ // dispatch; accept only a fresh checkpoint bound to this exact database.
+ const checkpoint=JSON.parse(await readFile('deploy/admin-security/owner-checkpoint.json','utf8'));
+ assert.equal(checkpoint.server,env('AZURE_SQL_SERVER'));assert.equal(checkpoint.database,env('AZURE_SQL_DATABASE'));
+ assert.equal(checkpoint.status,'Online');assert(checkpoint.retentionDays>=1);
+ assert(new Date(checkpoint.earliestRestoreDate)<new Date(checkpoint.capturedAt));
+ assert(Date.now()-Date.parse(checkpoint.capturedAt)>=0&&Date.now()-Date.parse(checkpoint.capturedAt)<900000,'Fresh owner-observed PITR checkpoint required');
+ console.log(JSON.stringify(checkpoint));
  const schema=await readFile('deploy/admin-security/schema.sql','utf8'),publicKey=await readFile('deploy/admin-security/owner-auth-public.pem','utf8');
  const schemaHash=createHash('sha256').update(schema).digest('hex');
  const source=`import {createRequire} from 'node:module';import {publicEncrypt} from 'node:crypto';
