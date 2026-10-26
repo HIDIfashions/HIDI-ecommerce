@@ -16,8 +16,9 @@ import { timingSafeEqual } from "node:crypto";
 import { SupabaseAuthService } from "../auth/supabase-auth.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { resolveAdminSession } from './admin-session.js';
+import { isAdminRole, validateRoles, readStaffRoles, writeStaffRoles, type AdminRole } from './admin-roles.js';
 
-export type AdminRole = "OWNER" | "OPERATIONS" | "SUPPORT" | "CATALOG";
+export type { AdminRole } from './admin-roles.js';
 export const PRIMARY_OWNER_EMAIL = "fashionshidi@gmail.com";
 export type AdminPermission =
   | "support:write"
@@ -39,6 +40,7 @@ export type AdminActor = {
   email: string | null;
   displayName: string;
   role: AdminRole;
+  roles?: AdminRole[];
   authMode: "SUPABASE" | "LEGACY_KEY";
 };
 
@@ -92,10 +94,6 @@ function safeEqual(leftValue: string, rightValue: string) {
   const left = Buffer.from(leftValue);
   const right = Buffer.from(rightValue);
   return left.length === right.length && timingSafeEqual(left, right);
-}
-
-function isAdminRole(value: string): value is AdminRole {
-  return value === "OWNER" || value === "OPERATIONS" || value === "SUPPORT" || value === "CATALOG";
 }
 
 export const RequireAdminPermissions = (...permissions: AdminPermission[]) =>
@@ -209,12 +207,13 @@ export class AdminAuthService {
             data: { authSubject: user.id, email, lastLoginAt: new Date() },
           });
 
+      const roles = await readStaffRoles(this.prisma, linked.id);
       return {
         id: linked.id,
         authSubject: linked.authSubject,
         email: linked.email,
         displayName: linked.displayName,
-        role: linked.role as AdminRole,
+        role: roles[0], roles,
         authMode: "SUPABASE",
       };
     }
@@ -238,7 +237,7 @@ export class AdminAuthService {
   }
 
   async listStaff() {
-    return this.prisma.adminStaff.findMany({
+    const staff = await this.prisma.adminStaff.findMany({
       orderBy: [{ active: "desc" }, { createdAt: "asc" }],
       select: {
         id: true,
@@ -252,19 +251,23 @@ export class AdminAuthService {
         updatedAt: true,
       },
     });
+    return Promise.all(staff.map(async member => ({...member,roles:await readStaffRoles(this.prisma,member.id)})));
   }
 
-  async createStaff(input: { email?: unknown; displayName?: unknown; role?: unknown }) {
+  async createStaff(input: { email?: unknown; displayName?: unknown; role?: unknown; roles?: unknown }) {
     const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
     const displayName = typeof input.displayName === "string" ? input.displayName.trim() : "";
-    const role = typeof input.role === "string" ? input.role.trim().toUpperCase() : "";
+    if (input.role !== undefined && input.roles !== undefined) throw new BadRequestException('Send roles or a single role, not both');
+    const roles = validateRoles(input.roles ?? [typeof input.role === 'string' ? input.role.trim().toUpperCase() : '']);
+    const role = roles[0];
 
     if (!/^\S+@\S+\.\S+$/.test(email)) throw new BadRequestException("Enter a valid admin email");
     if (displayName.length < 2 || displayName.length > 120) throw new BadRequestException("Enter a valid admin display name");
     if (!isAdminRole(role)) throw new BadRequestException("Choose a valid admin role");
 
     try {
-      return await this.prisma.adminStaff.create({
+      return await this.prisma.$transaction(async tx => {
+      const staff = await tx.adminStaff.create({
         data: { email, displayName, role, active: true },
         select: {
           id: true,
@@ -278,6 +281,9 @@ export class AdminAuthService {
           updatedAt: true,
         },
       });
+      await writeStaffRoles(tx,staff.id,roles);
+      return {...staff,roles};
+      });
     } catch (error: unknown) {
       const code = typeof error === "object" && error !== null && "code" in error
         ? String((error as { code?: unknown }).code ?? "")
@@ -289,10 +295,13 @@ export class AdminAuthService {
 
   async updateStaff(
     staffId: string,
-    input: { displayName?: unknown; role?: unknown; active?: unknown },
+    input: { displayName?: unknown; role?: unknown; roles?: unknown; active?: unknown },
     actor: AdminActor,
   ) {
-    const current = await this.prisma.adminStaff.findUnique({ where: { id: staffId } });
+    return this.prisma.$transaction(async tx => {
+    // Serialize edits to one member so changes cannot mix role sets.
+    await tx.$queryRaw`SELECT [id] FROM [dbo].[AdminStaff] WITH (UPDLOCK,HOLDLOCK) WHERE [id]=${staffId}`;
+    const current = await tx.adminStaff.findUnique({ where: { id: staffId } });
     if (!current) throw new BadRequestException("Admin staff account not found");
 
     const nextDisplayName = input.displayName === undefined
@@ -300,11 +309,11 @@ export class AdminAuthService {
       : typeof input.displayName === "string"
         ? input.displayName.trim()
         : "";
-    const nextRole = input.role === undefined
-      ? current.role
-      : typeof input.role === "string"
-        ? input.role.trim().toUpperCase()
-        : "";
+    const currentRoles = await readStaffRoles(tx,current.id);
+    if (input.role !== undefined && input.roles !== undefined) throw new BadRequestException('Send roles or a single role, not both');
+    const nextRoles = input.roles !== undefined ? validateRoles(input.roles) : input.role !== undefined
+      ? validateRoles([typeof input.role === 'string' ? input.role.trim().toUpperCase() : '']) : currentRoles;
+    const nextRole = nextRoles[0];
     const nextActive = input.active === undefined ? current.active : input.active === true;
 
     if (nextDisplayName.length < 2 || nextDisplayName.length > 120) {
@@ -316,16 +325,16 @@ export class AdminAuthService {
       throw new ConflictException("The primary HIDI Owner cannot be disabled or demoted");
     }
 
-    if (actor.id === current.id && (!nextActive || nextRole !== current.role)) {
+    if (actor.id === current.id && (!nextActive || JSON.stringify(nextRoles) !== JSON.stringify(currentRoles))) {
       throw new ConflictException("You cannot deactivate or change your own admin role");
     }
 
     if (current.role === "OWNER" && current.active && (!nextActive || nextRole !== "OWNER")) {
-      const activeOwners = await this.prisma.adminStaff.count({ where: { role: "OWNER", active: true } });
+      const activeOwners = await tx.adminStaff.count({ where: { role: "OWNER", active: true } });
       if (activeOwners <= 1) throw new ConflictException("HIDI must keep at least one active owner");
     }
 
-    return this.prisma.adminStaff.update({
+    const member = await tx.adminStaff.update({
       where: { id: current.id },
       data: {
         displayName: nextDisplayName,
@@ -344,11 +353,16 @@ export class AdminAuthService {
         updatedAt: true,
       },
     });
+    await writeStaffRoles(tx,current.id,nextRoles);
+    return {...member,roles:nextRoles};
+    },{isolationLevel:'Serializable'});
   }
 
   hasPermission(actor: AdminActor, permission: AdminPermission) {
-    return ROLE_PERMISSIONS[actor.role].has(permission);
+    return (actor.roles ?? [actor.role]).some(role => ROLE_PERMISSIONS[role]?.has(permission));
   }
+
+  permissions(actor: AdminActor) { return [...new Set((actor.roles ?? [actor.role]).flatMap(role => [...ROLE_PERMISSIONS[role]]))]; }
 }
 
 @Injectable()

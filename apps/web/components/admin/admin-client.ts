@@ -1,7 +1,8 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 
-export type Staff = { id: string; displayName: string; email: string | null; role: 'OWNER' | 'OPERATIONS' | 'SUPPORT' | 'CATALOG' };
+export type StaffRole = 'OWNER' | 'OPERATIONS' | 'SUPPORT' | 'CATALOG';
+export type Staff = { id: string; displayName: string; email: string | null; role: StaffRole; roles?: StaffRole[]; permissions?: string[] };
 export type OrderRow = { id: string; orderNumber: string; status: string; totalPaise: number; createdAt: string; customerPhone: string; customerEmail?: string | null; itemCount: number; payments: { status: string }[]; shipments: { provider: string | null; awb: string | null; status: string; shippedAt: string | null; deliveredAt: string | null; updatedAt: string }[] };
 export type ReturnRow = { id: string; type: string; status: string; reason: string; quantity: number; refundPaise: number; createdAt: string; order: { orderNumber: string; customerPhone: string }; orderItem: { productName: string; size: string } };
 export type SeriesRow = { day: string; orders: number; salesPaise: number; previousSalesPaise: number; previousOrders: number };

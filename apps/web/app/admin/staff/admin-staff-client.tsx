@@ -12,6 +12,7 @@ type Staff = {
   email: string;
   displayName: string;
   role: StaffRole;
+  roles?: StaffRole[];
   active: boolean;
   authSubject?: string | null;
   lastLoginAt?: string | null;
@@ -20,6 +21,16 @@ type Staff = {
 };
 
 const ROLES: StaffRole[] = ["OWNER", "OPERATIONS", "SUPPORT", "CATALOG"];
+
+function RolePicker({roles,onChange,disabled=false}: {roles:StaffRole[];onChange:(roles:StaffRole[])=>void;disabled?:boolean}) {
+  return <fieldset><legend>Roles</legend><small>Choose 1–3 roles. Their permissions are combined.</small>{ROLES.map(role=><label key={role}><input type="checkbox" checked={roles.includes(role)} disabled={disabled || (!roles.includes(role) && roles.length >= 3)} onChange={event=>onChange(event.target.checked?[...roles,role]:roles.filter(value=>value!==role))}/>{label(role)}</label>)}</fieldset>;
+}
+function StaffRoleEditor({member,saving,save}: {member:Staff;saving:boolean;save:(roles:StaffRole[])=>void}) {
+  const [roles,setRoles]=useState(member.roles ?? [member.role]);
+  useEffect(()=>setRoles(member.roles ?? [member.role]),[member]);
+  const protectedOwner=member.email.toLowerCase()==='fashionshidi@gmail.com';
+  return <div><RolePicker roles={roles} onChange={setRoles} disabled={saving || protectedOwner}/><button type="button" disabled={saving || protectedOwner || roles.length===0} onClick={()=>save(roles)}>Save roles</button></div>;
+}
 
 function label(value: string) {
   return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -35,7 +46,7 @@ export function AdminStaffClient() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<StaffRole>("OPERATIONS");
+  const [roles, setRoles] = useState<StaffRole[]>(["SUPPORT"]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -73,13 +84,13 @@ export function AdminStaffClient() {
       const response = await fetch("/api/admin/staff", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ displayName, email, role }),
+        body: JSON.stringify({ displayName, email, roles }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message ?? "Unable to add staff member");
       setDisplayName("");
       setEmail("");
-      setRole("OPERATIONS");
+      setRoles(["SUPPORT"]);
       setNotice("Staff member added. They can now sign in with their verified email.");
       await load();
     } catch (caught) {
@@ -89,7 +100,7 @@ export function AdminStaffClient() {
     }
   }
 
-  async function updateStaff(member: Staff, changes: Partial<Pick<Staff, "role" | "active" | "displayName">>) {
+  async function updateStaff(member: Staff, changes: Partial<Pick<Staff, "roles" | "active" | "displayName">>) {
     setSaving(true);
     setError("");
     setNotice("");
@@ -146,13 +157,8 @@ export function AdminStaffClient() {
               <span>Verified email</span>
               <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="name@hidi.in" />
             </label>
-            <label>
-              <span>Role</span>
-              <select value={role} onChange={(event) => setRole(event.target.value as StaffRole)}>
-                {ROLES.map((option) => <option key={option} value={option}>{label(option)}</option>)}
-              </select>
-            </label>
-            <button type="submit" disabled={saving}>{saving ? "Saving…" : "Add staff"}</button>
+            <RolePicker roles={roles} onChange={setRoles} disabled={saving}/>
+            <button type="submit" disabled={saving || roles.length===0}>{saving ? "Saving…" : "Add staff"}</button>
           </form>
           <div className={styles.roleHelp}>
             <span><strong>Owner</strong> Full access including staff management.</span>
@@ -180,19 +186,10 @@ export function AdminStaffClient() {
                   <span>Last sign-in: {dateTime(member.lastLoginAt)}</span>
                 </div>
                 <div className={styles.actions}>
-                  <label>
-                    <span>Role</span>
-                    <select
-                      value={member.role}
-                      disabled={saving}
-                      onChange={(event) => void updateStaff(member, { role: event.target.value as StaffRole })}
-                    >
-                      {ROLES.map((option) => <option key={option} value={option}>{label(option)}</option>)}
-                    </select>
-                  </label>
+                  <StaffRoleEditor member={member} saving={saving} save={roles=>void updateStaff(member,{roles})}/>
                   <button
                     type="button"
-                    disabled={saving}
+                    disabled={saving || member.email.toLowerCase()==='fashionshidi@gmail.com'}
                     onClick={() => void updateStaff(member, { active: !member.active })}
                   >
                     {member.active ? "Disable access" : "Restore access"}

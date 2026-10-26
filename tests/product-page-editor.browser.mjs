@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
-const { chromium, firefox, webkit } = createRequire(import.meta.url)('playwright');
+const { chromium, firefox, webkit } = process.env.HIDI_PLAYWRIGHT_MODULE ? await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href) : createRequire(import.meta.url)('playwright');
 const {handleQuickTools}=await import(process.env.HIDI_ADMIN_TOOLS_ROOT?pathToFileURL(process.env.HIDI_ADMIN_TOOLS_ROOT+'/handler.mjs').href:'../deploy/admin-tools/handler.mjs');
 import { parseEdit, parseVariantEdit, parseStatus } from '../apps/api/src/admin/products/product-input.ts';
 const clone = value => structuredClone(value);
@@ -80,6 +80,10 @@ try {
       await page.waitForFunction(() => !document.getElementById('workspace').hidden);
       await page.getByLabel('Included pieces / set contents').fill('1 kurta + 1 pair of pants + 1 dupatta');
       await page.getByLabel('Lining', { exact: true }).fill('Unlined');
+      await page.getByLabel('Neckline', {exact:true}).fill('Mandarin collar');
+      await page.getByLabel('Pockets', {exact:true}).fill('Two concealed pockets');
+      assert.equal(await page.locator('#facts input').count(),36);
+      assert.equal(await page.locator('#facts input[required]').count(),0,'Product details are optional');
       await page.getByLabel('Model information', { exact: true }).fill('168 cm; wears M');
       await page.getByRole('button', { name: 'Preview product page', exact: true }).click();
       assert(await page.locator('#previewFacts').textContent().then(text => text.includes('1 dupatta')));
@@ -88,6 +92,8 @@ try {
       await page.getByRole('button', { name: 'Save product fields', exact: true }).click();
       await page.waitForFunction(() => document.getElementById('status').className === 'success');
       assert(state.record.description.includes('Includes: 1 kurta + 1 pair of pants + 1 dupatta'));
+      assert(state.record.description.includes('Neckline: Mandarin collar'));
+      assert(state.record.description.includes('Pockets: Two concealed pockets'));
       assert(state.record.description.includes('Supplier code: AA_123')); assert.equal(state.record.status, 'ACTIVE'); assert.deepEqual(state.record.variants, original.variants);
       await page.reload(); await page.waitForFunction(() => !document.getElementById('workspace').hidden);
       assert.equal(await page.getByLabel('Included pieces / set contents').inputValue(), '1 kurta + 1 pair of pants + 1 dupatta');

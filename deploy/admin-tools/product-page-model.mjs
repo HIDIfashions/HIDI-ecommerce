@@ -1,25 +1,14 @@
 // Match the existing storefront's labelled-fact contract without a SQL migration.
-export const FACTS = [
-  { key: 'includes', label: 'Included pieces / set contents', stored: 'Includes', placeholder: '1 kurta + 1 pair of pants + 1 dupatta' },
-  { key: 'fit', label: 'Fit', stored: 'Fit', placeholder: 'Straight fit; refer to the verified garment measurements' },
-  { key: 'lining', label: 'Lining', stored: 'Lining', placeholder: 'Unlined, or describe the actual lining fabric' },
-  { key: 'model', label: 'Model information', stored: 'Model', placeholder: 'Model height and the size worn in these photographs' },
-];
-const labelled = /^\s*(Includes|Fit|Lining|Model)\s*:\s*(.*)$/i;
-export function narrative(value) {
-  return String(value ?? '').split(/\r?\n/).filter(line => !labelled.test(line)).join('\n').trim();
-}
+import { DETAIL_FIELDS, detailLine, stripDetailLines, readDetailValues } from './product-detail-fields.mjs';
+export const FACTS = DETAIL_FIELDS;
+export const narrative = stripDetailLines;
 export function readFields(product) {
   const result = {};
   for (const key of ['name', 'categoryId', 'fabric', 'care']) result[key] = product[key] ?? '';
   result.description = narrative(product.description);
   result.shortDescription = narrative(product.shortDescription);
   result.collectionIds = (product.collections ?? []).map(item => item.collectionId);
-  const lines = [product.description, product.shortDescription].filter(Boolean).join('\n').split(/\r?\n/);
-  for (const fact of FACTS) {
-    const match = lines.find(line => new RegExp('^\\s*' + fact.stored + '\\s*:', 'i').test(line));
-    result[fact.key] = match?.match(labelled)?.[2]?.trim() || '';
-  }
+  Object.assign(result, readDetailValues(product));
   return result;
 }
 function validate(value, label, max, required = false, singleLine = false) {
@@ -36,7 +25,7 @@ export function detailsPayload(product, fields) {
   const factsChanged = FACTS.some(fact => fields[fact.key] !== before[fact.key]);
   const narrativeChanged = fields.description !== before.description || fields.shortDescription !== before.shortDescription;
   for (const fact of FACTS) validate(fields[fact.key], fact.label, 1000, false, true);
-  if (String(fields.description).split(/\r?\n/).some(line => labelled.test(line)) || String(fields.shortDescription).split(/\r?\n/).some(line => labelled.test(line))) throw new Error('Use the separate Included pieces, Fit, Lining and Model fields for labelled facts.');
+  if (String(fields.description).split(/\r?\n/).some(detailLine) || String(fields.shortDescription).split(/\r?\n/).some(detailLine)) throw new Error('Use the separate Product details fields for labelled facts.');
   // Unrelated changes preserve original bytes, duplicate legacy facts and nulls.
   // A fact edit removes its old copies from BOTH fallback sources, so clearing
   // Includes cannot unexpectedly reveal an old value from shortDescription.

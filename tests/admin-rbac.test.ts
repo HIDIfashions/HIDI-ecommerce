@@ -24,7 +24,12 @@ function fixture(input: {
     metadata: {},
   };
   const db: any = {
+    $queryRaw: async (_query: any, id: string) => staff.filter(row => row.id === id).map(row => structuredClone(row)),
+    $executeRaw: async (_query: any, json: string, id: string) => { const row=staff.find(row=>row.id===id); if(!row)return 0; row.rolesJson=json;return 1; },
+    $transaction: async (work: any) => work(db),
     adminStaff: {
+      findUnique: async ({where}: any) => structuredClone(staff.find(row=>row.id===where.id) ?? null),
+      findMany: async () => structuredClone(staff),
       findFirst: async (args: any) => {
         return staff.find((row) =>
           args.where.OR.some((condition: any) =>
@@ -38,7 +43,7 @@ function fixture(input: {
         Object.assign(row, args.data);
         return structuredClone(row);
       },
-      count: async () => staff.length,
+      count: async ({where}: any) => staff.filter(row => row.role===where.role && row.active===where.active).length,
       create: async (args: any) => {
         const row = { id: `admin-${staff.length + 1}`, lastLoginAt: null, ...args.data };
         staff.push(row);
@@ -61,6 +66,35 @@ test("verified staff email claims the Supabase subject once and returns the conf
   assert.equal(actor.authMode, "SUPABASE");
   assert.equal(f.staff[0].authSubject, "auth-admin-1");
   assert.ok(f.staff[0].lastLoginAt instanceof Date);
+});
+
+test('multiple roles grant their union without Owner permissions, and persist through staff reads', async () => {
+  const f=fixture();
+  const created=await f.service.createStaff({email:'catalog-support@example.test',displayName:'Combined Staff',roles:['CATALOG','SUPPORT']});
+  assert.deepEqual(created.roles,['SUPPORT','CATALOG']);assert.equal(created.role,'SUPPORT');
+  const actor={...created,authMode:'SUPABASE'} as any;
+  assert.equal(f.service.hasPermission(actor,'catalog:write'),true);
+  assert.equal(f.service.hasPermission(actor,'support:write'),true);
+  for(const permission of ['staff:manage','support:approve','order:write','return:write'] as const)assert.equal(f.service.hasPermission(actor,permission),false);
+  assert.deepEqual((await f.service.listStaff()).find(row=>row.id===created.id)?.roles,created.roles);
+  const updated=await f.service.updateStaff(created.id,{roles:['CATALOG','SUPPORT','OPERATIONS']},{id:'admin-1'} as any);
+  assert.deepEqual(updated.roles,['OPERATIONS','SUPPORT','CATALOG']);assert.equal(updated.role,'OPERATIONS');
+  assert.equal(f.service.hasPermission({...actor,...updated},'order:write'),true);
+  assert.equal(f.service.hasPermission({...actor,...updated},'staff:manage'),false);
+});
+
+test('role selection rejects empty, duplicate, unknown, oversized and conflicting requests', async () => {
+  const service=fixture().service;
+  for(const roles of [[],['SUPPORT','SUPPORT'],['ADMIN'],['OWNER','OPERATIONS','SUPPORT','CATALOG'],'SUPPORT'])
+    await assert.rejects(()=>service.createStaff({email:'staff@example.test',displayName:'Staff',roles}),{name:'BadRequestException'});
+  await assert.rejects(()=>service.createStaff({email:'staff@example.test',displayName:'Staff',role:'OWNER',roles:['SUPPORT']}),{name:'BadRequestException'});
+});
+
+test('role edits preserve self and primary Owner protections', async () => {
+  const f=fixture({staff:[{id:'owner',email:'fashionshidi@gmail.com',displayName:'Owner',role:'OWNER',active:true}]});
+  await assert.rejects(()=>f.service.updateStaff('owner',{roles:['SUPPORT','CATALOG']},{id:'other'} as any),{name:'ConflictException'});
+  await assert.rejects(()=>f.service.updateStaff('owner',{roles:['OWNER','CATALOG']},{id:'owner'} as any),{name:'ConflictException'});
+  assert.equal(f.staff[0].role,'OWNER');
 });
 
 test("sign-in never bootstraps an unlisted owner, even with a matching configured email", async () => {

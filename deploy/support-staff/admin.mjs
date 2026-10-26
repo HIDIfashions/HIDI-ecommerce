@@ -83,22 +83,32 @@ async function loadStaff() {
   const {staff=[]}=await api('/api/admin/staff');$('staff-list').replaceChildren();
   for(const member of staff) {
     const row=element('article',null,'entry'),protectedOwner=member.email.toLowerCase()===primary;
-    row.append(element('strong',member.displayName),element('p',member.email),element('small',`${protectedOwner?'Super admin / primary Owner':label(member.role)} · ${member.active?'Active':'Disabled'} · Last sign-in: ${member.lastLoginAt?time(member.lastLoginAt):'Never'}`));
+    row.append(element('strong',member.displayName),element('p',member.email),element('small',`${protectedOwner?'Super admin / primary Owner':(member.roles ?? [member.role]).map(label).join(' + ')} · ${member.active?'Active':'Disabled'} · Last sign-in: ${member.lastLoginAt?time(member.lastLoginAt):'Never'}`));
     if(!protectedOwner&&member.id!==actor.id){
-      const select=element('select');select.setAttribute('aria-label','Role for '+member.email);
-      for(const role of ['SUPPORT','OPERATIONS','CATALOG','OWNER']){const option=element('option',label(role));option.value=role;select.append(option);}select.value=member.role;
-      const save=element('button','Save role');save.addEventListener('click',()=>void action(async()=>{await api('/api/admin/staff/'+encodeURIComponent(member.id),'PATCH',{role:select.value});await loadStaff();message('Staff role updated.');}));
+      const select=rolePicker(member.roles ?? [member.role], 'Roles for '+member.email);
+      const save=element('button','Save roles');save.addEventListener('click',()=>void action(async()=>{await api('/api/admin/staff/'+encodeURIComponent(member.id),'PATCH',{roles:selectedRoles(select)});await loadStaff();message('Staff roles updated.');}));
       const active=element('button',member.active?'Disable access':'Restore access');active.addEventListener('click',()=>void action(async()=>{await api('/api/admin/staff/'+encodeURIComponent(member.id),'PATCH',{active:!member.active});await loadStaff();message('Staff access updated.');}));
       row.append(select,save,active);
     }
     $('staff-list').append(row);
   }
 }
-$('create-staff').addEventListener('submit',event=>{event.preventDefault();void action(async()=>{await api('/api/admin/staff','POST',{displayName:$('staff-name').value,email:$('staff-email').value,role:$('staff-role').value});$('create-staff').reset();await loadStaff();message('User ID created. The staff member can sign in with their email and a verification code.');});});
+function rolePicker(selected, title) {
+  const group=element('fieldset',null,'role-picker');group.append(element('legend',title),element('small','Choose 1–3 roles. Permissions from the selected roles are combined.'));
+  for(const role of ['SUPPORT','OPERATIONS','CATALOG','OWNER']) {
+    const caption=element('label'),input=element('input');input.type='checkbox';input.value=role;input.checked=selected.includes(role);input.defaultChecked=input.checked;
+    caption.append(input,document.createTextNode(label(role)));group.append(caption);
+  }
+  group.addEventListener('change',()=>{const count=group.querySelectorAll('input:checked').length;for(const input of group.querySelectorAll('input'))input.disabled=!input.checked&&count>=3;});
+  return group;
+}
+function selectedRoles(group) {const roles=[...group.querySelectorAll('input:checked')].map(input=>input.value);if(roles.length<1||roles.length>3)throw new Error('Choose between one and three roles.');return roles;}
+$('staff-role').replaceWith(Object.assign(rolePicker(['SUPPORT'],'Roles'),{id:'staff-role'}));
+$('create-staff').addEventListener('submit',event=>{event.preventDefault();void action(async()=>{await api('/api/admin/staff','POST',{displayName:$('staff-name').value,email:$('staff-email').value,roles:selectedRoles($('staff-role'))});$('create-staff').reset();$('staff-role').dispatchEvent(new Event('change'));await loadStaff();message('User ID created. The staff member can sign in with their email and a verification code.');});});
 $('sign-out').addEventListener('click',()=>void action(async()=>{await api('/api/admin/session','DELETE');location.href='/admin/sign-in';}));
 try {
   const session=await api('/api/admin/session');actor=session.admin;if(!actor)throw new Error('Staff sign-in required');
-  $('identity').textContent=actor.displayName+' · '+(actor.email?.toLowerCase()===primary?'Super admin / Owner':label(actor.role));$('team-link').hidden=actor.role!=='OWNER';
+  $('identity').textContent=actor.displayName+' · '+(actor.email?.toLowerCase()===primary?'Super admin / Owner':(actor.roles ?? [actor.role]).map(label).join(' + '));$('team-link').hidden=actor.role!=='OWNER';
   if(location.pathname==='/admin/staff') {
     if(actor.role!=='OWNER')throw new Error('Only the Owner can create admin users');
     $('title').textContent='Team & access';$('intro').textContent='Create individual admin user IDs and control their roles.';$('staff-view').hidden=false;await loadStaff();message('Owner access verified.');

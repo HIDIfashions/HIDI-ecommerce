@@ -2,7 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFields, detailsPayload, variantPayload, gallery } from '../deploy/admin-tools/product-page-model.mjs';
 import { parseEdit, parseVariantEdit } from '../apps/api/src/admin/products/product-input.ts';
+import { DETAIL_FIELDS } from '../deploy/admin-tools/product-detail-fields.mjs';
 const record = () => ({ name: 'Aashi', categoryId: 'cotton', shortDescription: 'Three piece set\nIncludes: old fallback', description: 'Original narrative\r\n Includes : kurta, pants, dupatta\r\nFit: Straight\r\nFit: duplicate legacy\r\nSupplier code: AA_123', fabric: 'Cotton', care: null, updatedAt: '2026-10-13T00:00:00.000Z', collections: [{ collectionId: 'old-inactive' }], variants: [], images: [] });
+
+test('all optional product details accept custom values, round-trip, and can be cleared', () => {
+  const p=record(),fields=readFields(p);
+  for(const field of DETAIL_FIELDS)fields[field.key]='Verified custom '+field.key;
+  const body=detailsPayload(p,fields);parseEdit(body);
+  const updated={...p,...body},saved=readFields(updated);
+  for(const field of DETAIL_FIELDS)assert.equal(saved[field.key],fields[field.key]);
+  for(const field of DETAIL_FIELDS)saved[field.key]='';
+  const cleared=detailsPayload(updated,saved);parseEdit(cleared);
+  for(const field of DETAIL_FIELDS)assert.equal(readFields({...updated,...cleared})[field.key],'');
+  assert(cleared.description.includes('Supplier code: AA_123'));
+});
 test('an unrelated edit preserves raw descriptions, unknown supplier fields, nulls and inactive collections', () => {
   const p = record(), f = readFields(p); f.name = 'Renamed'; const body = detailsPayload(p, f);
   assert.equal(body.description, p.description); assert.equal(body.shortDescription, p.shortDescription); assert.equal(body.care, null); assert.deepEqual(body.collectionIds, ['old-inactive']);

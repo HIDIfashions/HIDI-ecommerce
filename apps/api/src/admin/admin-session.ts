@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { AdminActor, AdminAuthService } from './admin-auth.js';
+import { storedRoles } from './admin-roles.js';
 
 export const ADMIN_IDLE_MS = 60 * 60 * 1000;
 const hash = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -22,13 +23,13 @@ export async function resolveAdminSession(db: PrismaService, authorization?: str
       AND [lastActivityAt] > DATEADD(hour,-1,SYSUTCDATETIME())`;
     if (changed !== 1) throw expired();
   }
-  const rows = await db.$queryRaw<(AdminActor & { active: boolean })[]>`SELECT s.[id], s.[authSubject], s.[email], s.[displayName], s.[role], s.[active]
+  const rows = await db.$queryRaw<(AdminActor & { active: boolean; rolesJson: string | null })[]>`SELECT s.[id], s.[authSubject], s.[email], s.[displayName], s.[role], s.[rolesJson], s.[active]
     FROM [dbo].[AdminLoginSession] a JOIN [dbo].[AdminStaff] s ON s.[id] = a.[staffId]
     WHERE a.[tokenHash] = ${digest} AND a.[revokedAt] IS NULL
       AND a.[lastActivityAt] > DATEADD(hour,-1,SYSUTCDATETIME())`;
   const staff = rows[0];
   if (!staff?.active || !['OWNER','OPERATIONS','SUPPORT','CATALOG'].includes(staff.role)) throw expired();
-  return {id:staff.id, authSubject:staff.authSubject, email:staff.email, displayName:staff.displayName, role:staff.role, authMode:'SUPABASE'};
+  return {id:staff.id, authSubject:staff.authSubject, email:staff.email, displayName:staff.displayName, role:staff.role, roles:storedRoles(staff.role,staff.rolesJson), authMode:'SUPABASE'};
 }
 
 export async function verifyAdminCode(db: PrismaService, auth: AdminAuthService, value: unknown) {

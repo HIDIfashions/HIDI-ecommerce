@@ -36,6 +36,8 @@ export class AdminController {
         email: actor.email,
         displayName: actor.displayName,
         role: actor.role,
+        roles: actor.roles ?? [actor.role],
+        permissions: this.adminAuth.permissions(actor),
         authMode: actor.authMode,
       },
     };
@@ -49,7 +51,7 @@ export class AdminController {
 
   @Post("staff")
   @RequireAdminPermissions("staff:manage")
-  async createStaff(@Body() body: { email?: unknown; displayName?: unknown; role?: unknown }) {
+  async createStaff(@Body() body: { email?: unknown; displayName?: unknown; role?: unknown; roles?: unknown }) {
     return { staff: await this.adminAuth.createStaff(body ?? {}) };
   }
 
@@ -58,7 +60,7 @@ export class AdminController {
   async updateStaff(
     @CurrentAdmin() actor: AdminActor,
     @Param("staffId") staffId: string,
-    @Body() body: { displayName?: unknown; role?: unknown; active?: unknown },
+    @Body() body: { displayName?: unknown; role?: unknown; roles?: unknown; active?: unknown },
   ) {
     return { staff: await this.adminAuth.updateStaff(staffId, body ?? {}, actor) };
   }

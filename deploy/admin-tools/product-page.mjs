@@ -130,8 +130,8 @@ function renderPreview() {
   $('previewPrice').textContent = variants.length ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(minPrice / 100) + ' · inclusive of taxes' : 'No enabled sizes';
   $('previewColor').textContent = color;
   $('previewSizes').replaceChildren(...variants.map(v => { const node = document.createElement('span'); node.textContent = v.size; return node; }));
-  const rows = [['Fabric', f.fabric], ['Included pieces', f.includes], ['Fit', f.fit], ['Lining', f.lining], ['Colour', color], ['Care', f.care], ['Model information', f.model]];
-  addRows($('previewFacts'), rows); addRows($('previewSpecifications'), rows.filter(([label]) => !['Fabric', 'Care'].includes(label)));
+  const rows = [['Fabric / composition', f.fabric], ['Colour', color], ...FACTS.map(fact => [fact.label, f[fact.key]]), ['Care', f.care]];
+  addRows($('previewFacts'), rows); addRows($('previewSpecifications'), rows.filter(([label]) => !['Fabric / composition', 'Care'].includes(label)));
   $('previewMaterial').textContent = 'Fabric: ' + (f.fabric || 'Fabric information is not published for this style yet.');
   $('previewCare').textContent = 'Care: ' + (f.care || 'Follow the care label attached to the garment.');
   const gaps = contentGaps(product, f); $('gaps').textContent = gaps.length ? 'Information to complete: ' + gaps.join(' · ') : 'Product content and verified size measurements are complete.';
@@ -140,7 +140,18 @@ async function refreshAfterWrite() {
   try { accept(await api('/' + encodeURIComponent(product.id))); }
   catch (error) { uncertain = true; throw new Error('The change was submitted, but saved values could not refresh. Reload before retrying. ' + error.message); }
 }
-for (const fact of FACTS) { const label = document.createElement('label'), input = document.createElement('input'); label.textContent = fact.label; input.name = fact.key; input.maxLength = 1000; input.placeholder = fact.placeholder; label.append(input); $('facts').append(label); }
+for (const group of [...new Set(FACTS.map(fact => fact.group))]) {
+  const section = document.createElement('fieldset'), legend = document.createElement('legend'), grid = document.createElement('div');
+  section.className = 'detail-group'; legend.textContent = group; grid.className = 'detail-grid'; section.append(legend, grid);
+  for (const fact of FACTS.filter(item => item.group === group)) {
+    const label = document.createElement('label'), input = document.createElement('input');
+    label.textContent = fact.label; input.name = fact.key; input.maxLength = 1000; input.placeholder = fact.placeholder || 'Optional — choose or type';
+    label.append(input);
+    grid.append(label);
+    if (fact.choices.length) { const list = document.createElement('datalist'); list.id = 'choices-' + fact.key; input.setAttribute('list', list.id); list.replaceChildren(...fact.choices.map(value => makeOption(value,value))); grid.append(list); }
+  }
+  $('facts').append(section);
+}
 for (const [key, text] of MEASUREMENTS) { const label = document.createElement('label'), input = document.createElement('input'); label.textContent = text + ' (cm)'; input.name = key; input.inputMode = 'decimal'; input.placeholder = key === 'bustMm' ? '101.6' : 'Verified measurement'; label.append(input); $('measurements').append(label); }
 details.addEventListener('input', () => { dirty = true; renderPreview(); synchronize(); });
 details.addEventListener('change', () => { dirty = true; renderPreview(); synchronize(); });

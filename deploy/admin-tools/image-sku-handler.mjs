@@ -32,7 +32,7 @@ export function createImageSkuHandler({env = process.env, hasStorefront, request
       if (request.method === 'POST' && !sameOrigin(request)) throw fail(403, 'Request origin is not allowed.');
       const identity = await backend(request, 'me');
       if (!identity?.admin || !['OWNER', 'CATALOG', 'OPERATIONS', 'SUPPORT'].includes(identity.admin.role)) throw fail(403, 'Staff access required.');
-      if (request.method === 'POST' && !['OWNER', 'CATALOG'].includes(identity.admin.role)) throw fail(403, 'Catalogue write access is required.');
+      if (request.method === 'POST' && !(identity.admin.roles ?? [identity.admin.role]).some(role => ['OWNER', 'CATALOG'].includes(role))) throw fail(403, 'Catalogue write access is required.');
       const saved = await storage.read(); validateRegistry(saved.bindings);
       if (request.method === 'GET') {send(response, 200, {bindings: saved.bindings}); return true;}
       const body = await jsonBody(request);

@@ -1,0 +1,91 @@
+name: Optional product details and multiple staff roles
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy after the SQL owner migration and all candidate checks pass
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: hidi-hero-guarded-release
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=hidi;user=fixture;password=fixture;encrypt=true
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-details-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-details-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - name: Build and verify optional details and role permissions
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @hidi/api build
+          pnpm --filter @hidi/api test:customer-experience
+          pnpm --filter @hidi/web exec tsc --noEmit
+          node --test tests/product-page-editor.test.mjs
+          node --test deploy/admin-security/handler.test.mjs
+          python3 -m py_compile deploy/product-multirole/*.py
+      - name: Prepare backups and browser verification tools
+        timeout-minutes: 5
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y skopeo
+          npm install --prefix /tmp/hidi-details-browser --no-save playwright@1.62.1
+          node /tmp/hidi-details-browser/node_modules/playwright/cli.js install chromium
+          node --input-type=module -e 'const {chromium}=await import(process.env.HIDI_PLAYWRIGHT_MODULE); const browser=await chromium.launch(); await browser.close();'
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Back up current production and compose scoped changes
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/product-multirole/release.py capture
+          python3 deploy/product-multirole/release.py compose
+          echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-product-multirole-private/api/candidate-app" >> "$GITHUB_ENV"
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-product-multirole-private/web/candidate-app" >> "$GITHUB_ENV"
+          echo "HIDI_ADMIN_TOOLS_ROOT=$RUNNER_TEMP/hidi-product-multirole-private/web/candidate-app/admin-tools" >> "$GITHUB_ENV"
+      - name: Verify compiled candidates in desktop and mobile browsers
+        run: |
+          node deploy/product-multirole/api-test.mjs
+          node deploy/product-multirole/runtime-smoke.mjs
+          node tests/product-page-editor.browser.mjs
+          node deploy/product-multirole/candidate.mjs
+          node deploy/admin-security/candidate.mjs
+          python3 deploy/product-multirole/release.py seal
+      - name: Publish verified images
+        if: inputs.deploy
+        run: python3 deploy/product-multirole/release.py publish
+      - uses: azure/login@v2
+        if: inputs.deploy
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Deploy and verify real SQL roles using rollback-only fixtures
+        id: apply
+        if: inputs.deploy
+        run: python3 deploy/product-multirole/release.py apply
+      - name: Recover only an interrupted owned deployment
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        run: python3 deploy/product-multirole/release.py recover
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: product-details-multirole-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            evidence/product-multirole
+            evidence/product-page
+            evidence/admin-security
+          retention-days: 30

@@ -1,3 +1,4 @@
+import { stripDetailLines } from '../../../deploy/admin-tools/product-detail-fields.mjs';
 // Restricted catalogue formatting: raw HTML and links are always escaped.
 export function escapeCopy(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -20,5 +21,5 @@ export function renderProductCopy(value) {
   flush();close();return html;
 }
 export function narrativeCopy(value) {
-  return String(value ?? '').split(/\r?\n/).filter(line=>!/^\s*(?:Includes|Fit|Lining|Model)\s*:/i.test(line)).join('\n').trim();
+  return stripDetailLines(value);
 }

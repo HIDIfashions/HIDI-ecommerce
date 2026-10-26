@@ -1,4 +1,5 @@
 import type { ApiProduct } from "./api";
+import { readDetailValues, stripDetailLines } from '../../../deploy/admin-tools/product-detail-fields.mjs';
 const text = (value?: string | null) => value?.trim() || null;
 /** Read explicit catalogue statements; never infer contents from a photo or title. */
 export function productFacts(product: ApiProduct) {
@@ -13,7 +14,7 @@ export function productFacts(product: ApiProduct) {
     !/\b(?:not|excluding|without|optional|may|or)\b/i.test(line)
   );
   const bulletIncludes = text(description.match(/(?:^|\n)\s*[-*•]\s*Includes\s*:\s*([^\n]+)/i)?.[1]);
-  return { fabric: text(product.fabric), care: text(product.care), includes: label("Includes") || bulletIncludes || text(statedSet), fit: label("Fit"), lining: label("Lining"), model: label("Model") };
+  return { fabric: text(product.fabric), care: text(product.care), includes: label("Includes") || bulletIncludes || text(statedSet), fit: label("Fit"), lining: label("Lining"), model: label("Model"), details: readDetailValues(product) };
 }
 export function productContentGaps(product: ApiProduct): string[] {
   const facts = productFacts(product), gaps: string[] = [];
@@ -27,5 +28,5 @@ export function productContentGaps(product: ApiProduct): string[] {
 }
 
 export function productNarrative(description?: string | null): string {
-  return (description ?? "").split(/\r?\n/).filter(line => !/^\s*(?:Includes|Fit|Lining|Model)\s*:/i.test(line)).join("\n").trim();
+  return stripDetailLines(description);
 }
