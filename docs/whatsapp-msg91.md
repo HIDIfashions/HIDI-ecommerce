@@ -27,15 +27,25 @@ Current blockers:
   register the phone number." MSG91 still shows **Inactive**. The owner approved
   a registration request to `support@msg91.com`; it was sent and the support bot
   assigned it to their team. No human resolution or activation is confirmed.
-- The read-only number-list API request from the live API returned HTTP **401**
-  using the existing provider key. Key presence alone is not proof of access.
-  The precise rejection cause remains unconfirmed; inspect WhatsApp access and
-  provider IP restrictions before changing anything. MSG91's Authkey page
-  currently requires owner mobile verification.
+- The owner completed Authkey mobile verification. The existing active HIDIOTP
+  key matches the live server's masked hint and its rule allows WhatsApp sending.
+  The live read-only number-list request returned **401** at 03:21 UTC, then
+  **200** with the HIDI number at 03:24 UTC, without rotating or modifying the key.
+  [Latest provider check](https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/40263843990).
+  This proves one successful authenticated request, not consistent delivery.
+  Key-level IP security is ON and permits six addresses. Azure's declared
+  outbound set is larger. MSG91 reports a rejected non-whitelisted call from
+  `4.213.194.154`, which is in Azure's outbound list but absent from the key's
+  six entries. The owner was asked to add that known missing address while
+  retaining current entries and IP security. Stable outbound networking still
+  needs review before wider rollout; this correction does not cover every
+  possible future Azure address. No security setting was changed by the agent.
 - The existing provider webhook still needs its custom credential header. A
   protected local handoff file contains the staged value; no plaintext credential
   is committed or included in workflow artifacts. The owner must enter this
-  authentication setting in MSG91. Keep the webhook Disabled until ready.
+  authentication setting in MSG91. The owner reported saving it, but reopening
+  Headers showed empty Key/Value fields. They were asked to click **Add Header**
+  and then **Update**, and reopen to verify persistence. Keep Disabled until ready.
 
 Refresh the UTC activation cutoff immediately before the restricted live test.
 Do not remove the test-number restriction before end-to-end delivery is verified.
