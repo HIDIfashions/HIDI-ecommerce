@@ -22,6 +22,9 @@ reported completion, and a refresh showed the same number linked to WABA
 `1661718732234798` (replacing the initially observed WABA), still **Inactive**.
 Account Settings continued to show no WABA IDs. MSG91 documents delayed Meta
 activation as one possible cause; the exact reason has not been established.
+After a further refresh, the same WABA and Inactive status persisted. Selecting
+Sync on the newly linked number opened Meta embedded onboarding again; that
+repeat prompt was cancelled without accepting terms or changing the connection.
 
 Created and reopened to verify one provider webhook **HIDI ordering inbound**:
 POST `https://hidiindia.com/api/store/whatsapp/msg91/webhook`, On Inbound Report
