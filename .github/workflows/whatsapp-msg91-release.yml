@@ -1,0 +1,55 @@
+name: Deploy MSG91 ordering disabled
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/whatsapp-msg91-release.yml, deploy/whatsapp-msg91/release.py, deploy/whatsapp-msg91/candidate.mjs, deploy/whatsapp-msg91/handler.mjs]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-hero-guarded-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: contains(github.event.head_commit.message, '[deploy-wa-ordering]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Disposable-CI-Only_2026!
+        ports: ['1433:1433']
+    env:
+      DATABASE_URL: sqlserver://localhost:1433;database=fixture;user=fixture;password=fixture;encrypt=true
+      WHATSAPP_TEST_SQL_PASSWORD: Disposable-CI-Only_2026!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hidi/api build
+      - run: node --test tests/whatsapp-runtime-proxy.test.mjs
+      - run: python3 -m py_compile deploy/whatsapp-msg91/release.py
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - run: az extension add --name containerapp --upgrade --only-show-errors
+      - run: az acr login --name acrhidiprod0927 --only-show-errors
+      - name: Compose minimal images with rollback snapshots and byte preservation checks
+        run: python3 deploy/whatsapp-msg91/release.py prepare
+      - name: Test actual candidate images with disposable SQL and local callback fixture
+        run: python3 deploy/whatsapp-msg91/release.py test
+      - name: Deploy disabled ordering and verify production routing
+        run: python3 deploy/whatsapp-msg91/release.py apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: whatsapp-ordering-release-${{ github.run_id }}
+          path: evidence/whatsapp-release
+          retention-days: 30
