@@ -37,6 +37,10 @@ async function proxy(
     const signature = request.headers.get("x-razorpay-signature");
     if (signature) headers.set("x-razorpay-signature", signature);
   }
+  if (path.join("/") === "whatsapp/msg91/webhook") {
+    const token = request.headers.get("x-hidi-whatsapp-token");
+    if (token) headers.set("x-hidi-whatsapp-token", token);
+  }
 
   const method = request.method.toUpperCase();
   const body = method === "GET" || method === "HEAD"

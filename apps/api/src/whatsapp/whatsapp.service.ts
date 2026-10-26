@@ -92,7 +92,7 @@ export class WhatsAppService {
         providerMessageSid,
         direction,
         body,
-        status: direction === "INBOUND" ? "RECEIVED" : "SENT",
+        status: direction === "INBOUND" ? "RECEIVED" : providerMessageSid.startsWith("msg91:") ? "MSG91_PENDING_SEND" : "SENT",
       },
       update: {},
     });
@@ -107,7 +107,7 @@ export class WhatsAppService {
 
   private async reply(conversationId: string, providerSid: string, message: string) {
     await this.rememberMessage(conversationId, providerSid + ":reply", "OUTBOUND", message);
-    return twiml(message);
+    return message;
   }
 
   private menu() {
@@ -144,6 +144,17 @@ export class WhatsAppService {
       data: { lastInboundAt: new Date() },
     });
 
+    return twiml(await this.respond(conversation, phone, message, providerSid));
+  }
+
+  // Called only inside the MSG91 worker's database transaction, after it has
+  // locked this conversation and claimed the durable inbound message.
+  async handleQueuedMessage(conversation: { id: string; state: string; context: unknown }, phone: string, message: string, providerSid: string) {
+    return this.respond(conversation, phone, message, providerSid);
+  }
+
+  private async respond(conversation: { id: string; state: string; context: unknown }, phone: string, message: string, providerSid: string) {
+
     const normalized = message.trim().toUpperCase();
 
     if (["STOP", "UNSUBSCRIBE", "CANCEL SUBSCRIPTION"].includes(normalized)) {
@@ -165,6 +176,15 @@ export class WhatsAppService {
         providerSid,
         "WhatsApp support is available. Marketing messages remain off unless you enable them in your HIDI account.\n\n" + this.menu(),
       );
+    }
+
+    // Keep the bot quiet while a team member handles the conversation.
+    if (conversation.state === "HUMAN_HANDOFF" && !["MENU", "START"].includes(normalized)) return "";
+
+    if (normalized === "4" || normalized.includes("HUMAN") || normalized.includes("AGENT")) {
+      await this.setState(conversation.id, "HUMAN_HANDOFF");
+      return this.reply(conversation.id, providerSid,
+        "I’ve marked this chat for human support. Please include your question and order number, if relevant. Reply MENU to return to automated ordering.");
     }
 
     const sku = parseSku(message);
@@ -369,15 +389,6 @@ export class WhatsAppService {
         conversation.id,
         providerSid,
         "Tell me the product name or SKU and the size you usually wear. For the most accurate help, open the product on HIDI and tap Order on WhatsApp.",
-      );
-    }
-
-    if (normalized === "4" || normalized.includes("HUMAN") || normalized.includes("AGENT")) {
-      await this.setState(conversation.id, "HUMAN_HANDOFF");
-      return this.reply(
-        conversation.id,
-        providerSid,
-        "I’ve marked this chat for human support. A HIDI team member can continue from here. Please include your question and, if relevant, your order number.",
       );
     }
 
