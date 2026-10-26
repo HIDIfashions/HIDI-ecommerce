@@ -31,10 +31,14 @@ jobs:
           node --test deploy/admin-security/handler.test.mjs
           python3 -m py_compile deploy/admin-security/*.py
       - name: Prepare immutable backups and browser verification tools
+        timeout-minutes: 5
         run: |
           sudo apt-get update -qq && sudo apt-get install -y skopeo
           npm install --prefix /tmp/hidi-security-browser --no-save playwright@1.62.1
-          node /tmp/hidi-security-browser/node_modules/playwright/cli.js install --with-deps chromium
+          node /tmp/hidi-security-browser/node_modules/playwright/cli.js install chromium
+          # Verify the runner's shared libraries before building any images.
+          # Missing dependencies fail here with Chromium's concrete error.
+          node --input-type=module -e 'const {chromium}=await import(process.env.HIDI_PLAYWRIGHT_MODULE); const browser=await chromium.launch(); await browser.close();'
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
