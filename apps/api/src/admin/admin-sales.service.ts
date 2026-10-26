@@ -63,9 +63,11 @@ export class AdminSalesService {
         const changed=await tx.walletAccount.updateMany({where:{id:row.walletId,reservedPaise:{gte:row.amountPaise}},data:{reservedPaise:{decrement:row.amountPaise}}});
         if(changed.count!==1) throw new ConflictException('Wallet reservation mismatch; no sales were deleted');
       }
-      await tx.$executeRaw`UPDATE l SET [orderId]=NULL FROM [dbo].[WalletLedger] l JOIN [dbo].[Order] o ON o.[id]=l.[orderId] WHERE o.[createdAt]<${cutoff}`;
+      // The SQL owner installs a narrowly scoped module. Direct ledger updates
+      // and audit deletes remain denied to the application identity.
+      await tx.$executeRaw`EXEC [dbo].[AdminSalesPrepareDeletion] @archiveId=${archiveId}`;
       await tx.$executeRaw`DELETE r FROM [dbo].[PaymentRefund] r JOIN [dbo].[Payment] p ON p.[id]=r.[paymentId] JOIN [dbo].[Order] o ON o.[id]=p.[orderId] WHERE o.[createdAt]<${cutoff}`;
-      for (const table of tables.filter(t=>t!=='WalletLedger')) await tx.$executeRawUnsafe(`DELETE t FROM [dbo].[${table}] t JOIN [dbo].[Order] o ON o.[id]=t.[orderId] WHERE o.[createdAt]<@P1`,cutoff);
+      for (const table of tables.filter(t=>!['WalletLedger','OrderAuditEvent'].includes(t))) await tx.$executeRawUnsafe(`DELETE t FROM [dbo].[${table}] t JOIN [dbo].[Order] o ON o.[id]=t.[orderId] WHERE o.[createdAt]<@P1`,cutoff);
       const removed=await tx.order.deleteMany({where:{createdAt:{lt:cutoff}}});
       if(removed.count!==orders.length) throw new ConflictException('Sales changed; deletion rolled back');
       return {deleted:removed.count,before:input.before,archiveId};

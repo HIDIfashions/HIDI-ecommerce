@@ -4,7 +4,8 @@ export async function run(mode) {
   const db = new PrismaService(); await db.$connect();
   try {
     if(mode==='schema'){
-      await db.$executeRawUnsafe(SCHEMA_PLACEHOLDER);
+      const [permissions]=await db.$queryRawUnsafe("SELECT HAS_PERMS_BY_NAME('dbo.AdminLoginSession','OBJECT','SELECT') AS sessionRead,HAS_PERMS_BY_NAME('dbo.AdminLoginSession','OBJECT','INSERT') AS sessionInsert,HAS_PERMS_BY_NAME('dbo.AdminLoginSession','OBJECT','UPDATE') AS sessionUpdate,HAS_PERMS_BY_NAME('dbo.AdminSalesDeletion','OBJECT','SELECT') AS archiveRead,HAS_PERMS_BY_NAME('dbo.AdminSalesDeletion','OBJECT','INSERT') AS archiveInsert,HAS_PERMS_BY_NAME('dbo.AdminSalesPrepareDeletion','OBJECT','EXECUTE') AS prepareDelete");
+      assert(Object.values(permissions).every(value=>value===1),'SQL owner must apply deploy/admin-security/schema.sql before deployment');
       console.log('HIDI_SECURITY_LIVE::'+JSON.stringify({passed:true,schemaReady:true}));return;
     }
     if(mode==='cleanup'||mode==='verify'){
@@ -37,6 +38,7 @@ export async function run(mode) {
         const prefix='SECURITY-ROLLBACK-'+Date.now();
         const create=createdAt=>tx.order.create({data:{orderNumber:prefix+createdAt.getTime(),createdAt,subtotalPaise:100,totalPaise:100,customerPhone:'0000000000',shippingAddress:'rollback fixture'}});
         const older=await create(new Date('2000-01-01T18:29:59.999Z')),boundary=await create(new Date('2000-01-01T18:30:00Z'));
+        await tx.orderAuditEvent.create({data:{orderId:older.id,eventType:'SECURITY_ROLLBACK',actorType:'ADMIN'}});
         const candidates=await tx.$queryRaw`SELECT TOP (1) [id] FROM [dbo].[Inventory] WHERE [onHand]-[reserved]-[safetyStock]>=2 ORDER BY [id]`;
         assert(candidates.length,'Stock fixture required');
         const inventory=await tx.inventory.findUnique({where:{id:candidates[0].id},include:{variant:true}});

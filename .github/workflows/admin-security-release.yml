@@ -1,8 +1,6 @@
 name: Admin OTP, idle expiry and owner sales cleanup
 on:
-  push:
-    branches: [migration/azure-sql-blob]
-    paths: [deploy/admin-security/**, apps/api/src/admin/admin-session.ts, apps/api/src/admin/admin-sales*, apps/api/src/admin/admin-login.controller.ts, .github/workflows/admin-security-release.yml]
+  # Dispatch only after the SQL owner applies deploy/admin-security/schema.sql.
   workflow_dispatch:
 permissions:
   contents: read

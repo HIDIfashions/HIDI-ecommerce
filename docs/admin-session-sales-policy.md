@@ -30,7 +30,24 @@ balances. It does not call a payment/refund or courier API. The archive contains
 customer data and is never returned by the public or admin API. Existing database
 access restrictions apply. Do not publish archive contents in CI evidence.
 
-`deploy/admin-security/schema.sql` is the idempotent Azure SQL schema addition.
+`deploy/admin-security/schema.sql` is the idempotent Azure SQL owner migration.
+The application has no DDL rights and retains explicit direct-write denials on
+the audit and wallet ledger tables. The migration installs a constrained stored
+procedure that only unlinks wallet entries and removes audit rows for a validated
+archived order set inside the sales-deletion transaction. It grants execution of
+that procedure, without removing either direct-write denial.
+
+Deployment is currently blocked: the runtime cannot create tables, and the
+existing migration job identity cannot log into the live database. No sales have
+been deleted and neither new application image has been activated. An existing
+SQL owner must execute the complete `deploy/admin-security/schema.sql` against
+`hidi-sql-validation` on `sql-hidi-prod-0927.database.windows.net` through their
+authorized private connection. Then dispatch **Admin OTP, idle expiry and owner
+sales cleanup** on branch `migration/azure-sql-blob`. The workflow checks runtime
+permissions, deploys tested images, performs rollback-only live verification,
+and only then deletes sales before 10 October 2026. Do not change the SQL Entra
+administrator, open network access, or give the runtime DDL permissions.
+
 The release preserves the currently deployed API and web images and patches only
 the authentication integration, new modules and relevant admin pages. The live
 verification uses rollback-only fixtures to check revocation, expired sessions,
