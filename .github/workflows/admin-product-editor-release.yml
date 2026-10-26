@@ -51,7 +51,9 @@ jobs:
             evidence/product-page
             evidence/support-staff
   release:
-    if: github.ref == 'refs/heads/migration/azure-sql-blob'
+    # Keep push validation; deploy editor/role changes together through the
+    # migration-aware product-details-multirole workflow.
+    if: github.ref == 'refs/heads/migration/azure-sql-blob' && github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 45
