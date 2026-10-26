@@ -134,7 +134,7 @@ function renderPreview() {
   addRows($('previewFacts'), rows); addRows($('previewSpecifications'), rows.filter(([label]) => !['Fabric / composition', 'Care'].includes(label)));
   $('previewMaterial').textContent = 'Fabric: ' + (f.fabric || 'Fabric information is not published for this style yet.');
   $('previewCare').textContent = 'Care: ' + (f.care || 'Follow the care label attached to the garment.');
-  const gaps = contentGaps(product, f); $('gaps').textContent = gaps.length ? 'Information to complete: ' + gaps.join(' · ') : 'Product content and verified size measurements are complete.';
+  const gaps = contentGaps(product, f); $('gaps').textContent = gaps.length ? 'Suggestions (not required to save): ' + gaps.join(' · ') : 'Product content and verified size measurements are complete.';
 }
 async function refreshAfterWrite() {
   try { accept(await api('/' + encodeURIComponent(product.id))); }

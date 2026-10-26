@@ -94,7 +94,7 @@ async function loadStaff() {
   }
 }
 function rolePicker(selected, title) {
-  const group=element('fieldset',null,'role-picker');group.append(element('legend',title),element('small','Choose 1–3 roles. Permissions from the selected roles are combined.'));
+  const group=element('fieldset',null,'role-picker');group.append(element('legend',title),element('small','Choose 1–3 roles. Permissions from the selected roles are combined. Owner grants full access, including staff management and approvals.'));
   for(const role of ['SUPPORT','OPERATIONS','CATALOG','OWNER']) {
     const caption=element('label'),input=element('input');input.type='checkbox';input.value=role;input.checked=selected.includes(role);input.defaultChecked=input.checked;
     caption.append(input,document.createTextNode(label(role)));group.append(caption);

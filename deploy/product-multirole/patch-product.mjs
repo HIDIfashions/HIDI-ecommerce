@@ -88,7 +88,7 @@ if(retainedServer.includes('function HidiDetails(product)')){
  const files=stylesOnly?{[retainedServerName]:server,[newCssName]:cssText}:{[retainedServerName]:server,[newClientName]:client,[newCssName]:cssText,[manifestName]:manifest.split(urlName(clientName)).join(urlName(newClientName))};
  if(stylesOnly)assert.equal(server,retainedServer.replace(oldUrl,newUrl),'A style-only refresh must preserve all product JavaScript');
  for(const [name,text] of Object.entries(files)){const file=join(overlay,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);}
- mkdirSync('evidence/product-multirole',{recursive:true});writeFileSync('evidence/product-multirole/product-patch.json',JSON.stringify({passed:true,kind:stylesOnly?'product-style-refresh':'isolated-component-refresh',allowedFiles:Object.keys(files).sort(),retainedClientChunk:clientName,newClientChunk:newClientName,oldUrl,newUrl,pageInfoInitializerHash:sha(infoExpression),approvedIncludesRemoval:true,oldAssetsRetained:true,sourceSha:process.env.GITHUB_SHA||null},null,2));exit(0);
+ mkdirSync('evidence/product-multirole',{recursive:true});writeFileSync('evidence/product-multirole/product-patch.json',JSON.stringify({passed:true,kind:stylesOnly?'product-style-refresh':'isolated-component-refresh',allowedFiles:Object.keys(files).sort(),retainedClientChunk:clientName,newClientChunk:newClientName,oldUrl,newUrl,pageInfoInitializerHash:sha(infoExpression),approvedIncludesRemoval:false,oldAssetsRetained:true,sourceSha:process.env.GITHUB_SHA||null},null,2));exit(0);
 }
 
 throw Error('Expected the existing isolated product detail runtime');

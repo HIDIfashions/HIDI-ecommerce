@@ -6,15 +6,24 @@ const { default: ts } = await import(process.env.HIDI_TYPESCRIPT_MODULE ? pathTo
 const read = path => readFile(new URL(path,import.meta.url),'utf8');
 const compile = code => ts.transpileModule(code,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
 const url = code => 'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
-const facts= url(compile(await read('../apps/web/lib/product-facts.ts')));
+const detailFields=url(await read('../deploy/admin-tools/product-detail-fields.mjs'));
+const detailImport=source=>source.replace("'../../../deploy/admin-tools/product-detail-fields.mjs'",JSON.stringify(detailFields));
+const facts= url(compile(detailImport(await read('../apps/web/lib/product-facts.ts'))));
 const reviewed=JSON.parse(await read('../apps/web/lib/pdp-reviewed-specifications.json'));
 let source=await read('../apps/web/lib/pdp-information.ts');
-source=source.replace('"./product-facts"',JSON.stringify(facts));
+source=detailImport(source).replace('"./product-facts"',JSON.stringify(facts));
 const {pdpInformation: baseInformation}=await import(url(compile(source)));
 const reviewSource=(await read('../apps/web/lib/pdp-source-specifications.ts')).replace('import reviewedSpecifications from "./pdp-reviewed-specifications.json";', 'const reviewedSpecifications = '+JSON.stringify(reviewed)+';');
 const {reviewedPdpSpecifications}=await import(url(compile(reviewSource)));
 const pdpInformation=product=>baseInformation(product,reviewedPdpSpecifications(product));
 const sample=JSON.parse(await read('./fixtures/pdp-refinement/product.json'));
+
+test('maintained optional details override older specifications and blank values stay absent',()=>{
+ const product={...sample,slug:'optional-details',description:'Verified narrative\nNeckline: Custom collar\nPockets: Two concealed pockets\nFit: \nSupplier code: KEEP',shortDescription:null};
+ const info=baseInformation(product,[{label:'Neckline',value:'Older collar'}]);
+ assert.deepEqual(info.specifications,[{label:'Neckline',value:'Custom collar'},{label:'Pockets',value:'Two concealed pockets'}]);
+ assert.equal(info.fit,null);assert.equal(info.lining,null);assert.equal(info.narrative,'Verified narrative\nSupplier code: KEEP');
+});
 test('fuchsia page adds six workbook specifications without resolving disputed fabric or fit',()=>{
  const info=pdpInformation(sample);
  assert.equal(info.specifications.length,6);

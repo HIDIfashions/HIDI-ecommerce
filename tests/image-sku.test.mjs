@@ -58,13 +58,18 @@ test('an unconfirmed upload is not blindly retried',async()=>{
   globalThis.fetch=async()=>{writes++;return new Response('{}',{status:500});};
   try{await assert.rejects(uploadMappedPhotoCandidate(item,api(data)),/Check the product photos/);await assert.rejects(uploadMappedPhotoCandidate(item,api(data)),/previous upload/);assert.equal(writes,1);}finally{globalThis.fetch=original;}
 });
-function harness({role='OWNER',bindings=[],onWrite}={}){
+function harness({role='OWNER',roles,bindings=[],onWrite}={}){
   let saved=structuredClone(bindings),writes=0,etag=1;const data=product();
-  const handler=createImageSkuHandler({hasStorefront:true,env:{},apiCall:async({path})=>path==='me'?{admin:{role}}:data,storage:{read:async()=>({bindings:structuredClone(saved),etag:String(etag)}),write:async(values,expected)=>{writes++;if(onWrite)await onWrite({saved,values,writes});assert.equal(expected,String(etag));saved=structuredClone(values);etag++;}}});
+  const handler=createImageSkuHandler({hasStorefront:true,env:{},apiCall:async({path})=>path==='me'?{admin:{role,roles}}:data,storage:{read:async()=>({bindings:structuredClone(saved),etag:String(etag)}),write:async(values,expected)=>{writes++;if(onWrite)await onWrite({saved,values,writes});assert.equal(expected,String(etag));saved=structuredClone(values);etag++;}}});
   return {data,get saved(){return saved;},get writes(){return writes;},call:async(method,path,body,headers={})=>{const request=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);request.method=method;request.headers={host:'hidi.test',origin:'https://hidi.test',cookie:'hidi_admin_access=fixture','content-type':'application/json',...headers};let status,result;
     const response={writeHead:code=>status=code,end:value=>result=JSON.parse(value)};await handler(request,response,path);return {status,result};}};
 }
 const endpoint='/api/hidi/product-image-skus';const payload={imageSku:'KUR_001',productId:'p1',color:'Magenta',expectedUpdatedAt:'2026-10-10T00:00:00.000Z'};
+
+test('Catalog combined with Support or Operations permits product mapping without Owner',async()=>{
+ for(const role of ['SUPPORT','OPERATIONS'])assert.equal((await harness({role,roles:[role,'CATALOG']}).call('POST',endpoint,payload)).status,200);
+ assert.equal((await harness({role:'OPERATIONS',roles:['OPERATIONS','SUPPORT']}).call('POST',endpoint,payload)).status,403);
+});
 test('mapping persists, repeated size registrations are idempotent, and existing mappings cannot be reassigned',async()=>{
   const h=harness();assert.equal((await h.call('POST',endpoint,payload)).status,200);assert.equal((await h.call('POST',endpoint,payload)).result.alreadySaved,true);assert.equal(h.writes,1);assert.deepEqual(h.saved,[binding]);
   const conflict=harness({bindings:[{...binding,productId:'another'}]});assert.equal((await conflict.call('POST',endpoint,payload)).status,409);assert.equal(conflict.writes,0);

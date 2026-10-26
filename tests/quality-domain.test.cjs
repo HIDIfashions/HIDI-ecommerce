@@ -63,7 +63,7 @@ test('empty and punctuation-only search never matches the entire store', () => {
 test('SKU search works without a product name', () => assert(matchesProductSearch(a,'HIDI a-xl')));
 test('unknown price/sort controls do not mutate or discard catalogue', () => assert.deepEqual(ids(filterCatalogue(products,{...base,sort:'unrecognized'})),ids(products)));
 
-const {productFacts, productContentGaps, productNarrative} = load('lib/product-facts.ts');
+const {productFacts, productContentGaps, productNarrative} = load('lib/product-facts.ts', {'../../../deploy/admin-tools/product-detail-fields.mjs':require('../deploy/admin-tools/product-detail-fields.mjs')});
 const guidance = load('lib/shopping-guidance.ts');
 const factsProduct = {...a,description:'A studio piece.\nIncludes: Kurta and trousers\nFit: Relaxed\nLining: Unlined\nModel: 174 cm, wearing M',care:'Gentle hand wash',images:[{url:'owned.jpg'}],variants:[{...a.variants[0],bustMm:1100,garmentLengthMm:1120}]};
 test('explicit labelled catalogue facts are used without inferring from the name', () => {const f=productFacts(factsProduct);assert.equal(f.includes,'Kurta and trousers');assert.equal(f.fit,'Relaxed');assert.equal(f.lining,'Unlined');assert.equal(f.model,'174 cm, wearing M');});

@@ -36,7 +36,7 @@ jobs:
           pnpm --filter @hidi/api build
           pnpm --filter @hidi/api test:customer-experience
           pnpm --filter @hidi/web exec tsc --noEmit
-          node --test tests/product-page-editor.test.mjs
+          node --test tests/product-page-editor.test.mjs tests/pdp-information.test.mjs tests/quality-domain.test.cjs tests/product-copy.test.mjs tests/image-sku.test.mjs
           node --test deploy/admin-security/handler.test.mjs
           python3 -m py_compile deploy/product-multirole/*.py
       - name: Prepare backups and browser verification tools

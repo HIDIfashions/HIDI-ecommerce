@@ -7,8 +7,12 @@ const ts=createRequire(import.meta.url)(resolve('apps/web/node_modules/typescrip
 const [baseArg,overlayArg]=process.argv.slice(2),base=resolve(baseArg),overlay=resolve(overlayArg);
 const files=[];function walkFiles(dir){for(const entry of readdirSync(dir,{withFileTypes:true})){const path=join(dir,entry.name);if(entry.isDirectory())walkFiles(path);else if(/\.(js|json|html|rsc|meta)$/.test(entry.name))files.push(path);}}
 walkFiles(join(base,'apps/web/.next'));
+const adminManifest=readFileSync(join(base,'apps/web/.next/server/app/admin/orders/page_client-reference-manifest.js'),'utf8');
+const activeLayouts=files.filter(path=>/\/static\/chunks\/app\/admin\/layout-[a-f0-9]{16}\.js$/.test(path.replaceAll('\\','/'))&&adminManifest.includes(path.replaceAll('\\','/').split('/.next/')[1]));
+assert.equal(activeLayouts.length,1,'Exactly one layout referenced by the live admin route');
 const outputs=new Map(),renames=[],patched=[];
 for(const path of files.filter(file=>file.endsWith('.js'))){
+  if(path.replaceAll('\\','/').includes('/.next/static/')&&!activeLayouts.includes(path))continue;
   const original=readFileSync(path,'utf8');if(!original.includes('catalogWrite')||!original.includes('Bulk imports'))continue;
   const tree=ts.createSourceFile(path,original,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS),edits=[];
   function visit(node){

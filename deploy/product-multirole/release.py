@@ -42,7 +42,11 @@ def seal():
  for name in ['api-patch.json','web-patch.json','api-preservation.json','web-preservation.json','candidate.json','compiled-api.json','runtime-smoke.json']:
   value=read(name);assert value['passed'] is True,name;manifest[name]=hashlib.sha256((E/name).read_bytes()).hexdigest()
  report=read('candidate.json');assert {(row['engine'],row['width']) for row in report['results']}=={(engine,width) for engine in ['chromium'] for width in [390,1440]}
- assert report['productionWrites']==0
+ assert report['productionWrites']==0 and report['actualRuntime']
+ for name,path in [('product-editor',Path('evidence/product-page/browser.json')),('security-regression',Path('evidence/admin-security/candidate.json'))]:
+  value=json.loads(path.read_text());assert value['passed'] and value['productionWrites']==0
+  if name=='product-editor':assert value['candidateAssets']
+  save(name+'.json',value);manifest[name+'.json']=hashlib.sha256((E/(name+'.json')).read_bytes()).hexdigest()
  save('sealed.json',{'passed':True,'manifest':manifest,'images':{app:guard.image_id(tag(app)) for app in ['api','web']},'sourceSha':os.environ['GITHUB_SHA']})
 def publish():
  seal();result={}
