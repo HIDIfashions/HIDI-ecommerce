@@ -1,5 +1,6 @@
 """Stage a callback credential without enabling replies; export only an encrypted handoff."""
 import copy, importlib.util, json, os, pathlib, secrets, subprocess, sys, urllib.request, urllib.error
+from datetime import datetime, timezone
 ROOT=pathlib.Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('wa_stage_helpers',ROOT.parent/'delivery-sync/release.py');helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
 cloud=helper.cloud
@@ -41,6 +42,13 @@ def main():
     assert not prior or prior.get('secretRef')==KEY,'Unexpected existing callback credential'
     entries[:]=[v for v in entries if v['name']!='MSG91_WHATSAPP_WEBHOOK_TOKEN']
     entries.append({'name':'MSG91_WHATSAPP_WEBHOOK_TOKEN','secretRef':KEY})
+    test_number=os.environ.get('HIDI_WHATSAPP_TEST_NUMBERS','').strip()
+    if test_number:
+        assert test_number.isdigit() and 8<=len(test_number)<=15 and test_number!='917093709353','Use a distinct international test number'
+        first_origin=env.get('WEB_ORIGIN',{}).get('value','').split(',')[0].strip()
+        assert first_origin in ['https://hidiindia.com','https://www.hidiindia.com','https://thidigk.thehidi.com'],'Review live checkout origin before test staging'
+        entries[:]=[v for v in entries if v['name'] not in ['WHATSAPP_CHATBOT_TEST_NUMBERS','WHATSAPP_CHATBOT_START_AT']]
+        entries.extend([{'name':'WHATSAPP_CHATBOT_TEST_NUMBERS','value':test_number},{'name':'WHATSAPP_CHATBOT_START_AT','value':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}])
     value=helper.write(current,cloud.snapshot(current)['image'],'wasecret'+helper.RUN,restore=desired)
     helper.unchanged({'hidi-api':value,'hidi-web':original['hidi-web']})
     request=urllib.request.Request('https://hidiindia.com/api/store/whatsapp/msg91/webhook',data=b'{}',headers={'content-type':'application/json','x-hidi-whatsapp-token':token},method='POST')
@@ -52,7 +60,7 @@ def main():
     encrypted=subprocess.run(['openssl','pkeyutl','-encrypt','-pubin','-inkey',str(ROOT/'handoff-public.pem'),'-pkeyopt','rsa_padding_mode:oaep','-pkeyopt','rsa_oaep_md:sha256'],input=token.encode(),capture_output=True)
     assert encrypted.returncode==0,'Encrypted handoff failed; secret remains safely staged'
     (EVIDENCE/'callback-token.enc').write_bytes(encrypted.stdout)
-    (EVIDENCE/'status.json').write_text(json.dumps({'passed':True,'orderingEnabled':False,'callbackSecretStaged':True,'validCredentialGetsDisabled503':True,'imagesUnchanged':True,'webUnchanged':True,'api':cloud.snapshot(value)},indent=2))
+    (EVIDENCE/'status.json').write_text(json.dumps({'passed':True,'orderingEnabled':False,'callbackSecretStaged':True,'testNumberRestricted':bool(test_number),'validCredentialGetsDisabled503':True,'imagesUnchanged':True,'webUnchanged':True,'api':cloud.snapshot(value)},indent=2))
     print('PASS: callback secret staged; authenticated public route reaches disabled worker; encrypted handoff saved')
 if __name__=='__main__':
     try:main()

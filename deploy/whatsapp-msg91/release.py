@@ -62,8 +62,9 @@ def test():
     subprocess.run(['docker','run','--rm','--network','host','--entrypoint','node','-e','WHATSAPP_TEST_SQL_HOST=127.0.0.1','-e','WHATSAPP_TEST_SQL_PASSWORD='+os.environ['WHATSAPP_TEST_SQL_PASSWORD'],'-v',str(pathlib.Path('tests').resolve())+':/app/tests:ro','-v',str(pathlib.Path('apps/api/prisma').resolve())+':/app/apps/api/prisma:ro',api,'/app/tests/whatsapp-msg91.sqlserver.mjs'],check=True,timeout=180)
     subprocess.run(['node',str(ROOT/'candidate.mjs')],env={**os.environ,'HIDI_CANDIDATE_WEB':web},check=True,timeout=240)
     save('tests.json',{'passed':True,'actualCandidateSqlServer':True,'actualRuntimeCallbackProxy':True,'noLiveSends':True})
-def stage(data):
+def stage(data,image):
     staged=copy.deepcopy(data);env=staged['properties']['template']['containers'][0].setdefault('env',[])
+    staged['properties']['template']['containers'][0]['image']=image
     settings={'WHATSAPP_CHATBOT_ENABLED':'false','WHATSAPP_CHATBOT_PROVIDER':'msg91','MSG91_WHATSAPP_INTEGRATED_NUMBER':'917093709353'}
     env[:]=[v for v in env if v['name'] not in settings]
     env.extend({'name':key,'value':value} for key,value in settings.items())
@@ -77,7 +78,8 @@ def apply():
         targets['hidi-'+kind]=digest
     helper.guard.install_interrupt_handler();current=dict(original)
     try:
-        current['hidi-api']=helper.write(current['hidi-api'],targets['hidi-api'],'whatsappapi'+RUN,restore=stage(current['hidi-api']))
+        staged=stage(current['hidi-api'],targets['hidi-api'])
+        current['hidi-api']=helper.write(current['hidi-api'],targets['hidi-api'],'whatsappapi'+RUN,restore=staged)
         helper.unchanged(current)
         current['hidi-web']=helper.write(current['hidi-web'],targets['hidi-web'],'whatsappweb'+RUN)
         for route in ['/health','/api/store/health/ready','/','/cart','/checkout','/account']:cloud.get(route)
