@@ -1,9 +1,44 @@
 # MSG91 WhatsApp ordering
 
-Status on 2026-10-26: implementation and CI regression complete. The owner
-completed Meta embedded onboarding. No live code deployment or real delivery test
-has been completed in this chat. Keep the feature disabled until the checks below
-pass. Existing unrelated work in this checkout must not be deployed with it.
+Status on 2026-10-26: ordering code is deployed to production, with automated
+replies disabled. The callback credential is staged in Azure, and the owner's
+distinct customer test number is configured as the only allowed number. No real
+WhatsApp delivery test has completed. Keep replies disabled until provider
+registration, API authentication and callback header configuration are verified.
+
+[Production deployment run 40262058505](https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/40262058505)
+passed. It reused the exact candidate images tested in run 40260169477, including
+actual SQL Server concurrency/rollback tests and the retained web runtime's
+callback/checkout tests. Unrelated live application files and configuration were
+preserved. Live checks confirmed the module is installed, the sender matches,
+invalid callback credentials return 401, valid credentials reach the disabled
+worker (503), and health/account/cart/checkout routes remain available.
+
+Deployed images:
+
+- API: `acrhidiprod0927.azurecr.io/hidi-api@sha256:580992d770b060692e6e58f64720ccdec715eb0f74e5ef47bf22e7227d5c46ff`
+- Web: `acrhidiprod0927.azurecr.io/hidi-web@sha256:3d22821d368b82934a124173549f1fa058e246510bd47915f3da9dee15080d2d`
+
+Current blockers:
+
+- Meta shows phone-number ID `1293090520558969`, WABA `1661718732234798`,
+  number `917093709353` as **Pending**. Its tooltip says: "Please register this
+  phone number using the registration API or reach out to your partner to
+  register the phone number." MSG91 still shows **Inactive**. The owner approved
+  a registration request to `support@msg91.com`; it was sent and the support bot
+  assigned it to their team. No human resolution or activation is confirmed.
+- The read-only number-list API request from the live API returned HTTP **401**
+  using the existing provider key. Key presence alone is not proof of access.
+  The precise rejection cause remains unconfirmed; inspect WhatsApp access and
+  provider IP restrictions before changing anything. MSG91's Authkey page
+  currently requires owner mobile verification.
+- The existing provider webhook still needs its custom credential header. A
+  protected local handoff file contains the staged value; no plaintext credential
+  is committed or included in workflow artifacts. The owner must enter this
+  authentication setting in MSG91. Keep the webhook Disabled until ready.
+
+Refresh the UTC activation cutoff immediately before the restricted live test.
+Do not remove the test-number restriction before end-to-end delivery is verified.
 
 Live MSG91 inspection after owner sign-in: number `917093709353`, WABA
 `1407554044821006`, client name `HIdi`, number status **Inactive**, HELLO integration
@@ -11,8 +46,9 @@ listed, messaging limit 250 customers/24 hours. Account Settings reports
 "No WABA IDs found in whatsapp status." Billing shows an **Active** Titan plan,
 zero WhatsApp balance used and ₹500 prepaid balance remaining. The existing plan
 shows ₹0/month for two months and ₹500 from 2026-12-01; no billing changes were made.
-These observations establish an inactive number despite an active subscription;
-they do not establish the reason the number is inactive.
+These initial observations established an inactive number despite an active
+subscription. The subsequent Meta registration tooltip above identifies the
+remaining registration step.
 
 The number's Sync action did not change its Inactive status. Add Number opened
 Meta embedded onboarding for "MSG91 and Haptik". The owner was asked to review
@@ -21,7 +57,8 @@ number; no Meta terms or permission grants were accepted by the agent. The owner
 reported completion, and a refresh showed the same number linked to WABA
 `1661718732234798` (replacing the initially observed WABA), still **Inactive**.
 Account Settings continued to show no WABA IDs. MSG91 documents delayed Meta
-activation as one possible cause; the exact reason has not been established.
+activation as one possible cause; the later Meta inspection above confirms
+registration remains pending.
 After a further refresh, the same WABA and Inactive status persisted. Selecting
 Sync on the newly linked number opened Meta embedded onboarding again; that
 repeat prompt was cancelled without accepting terms or changing the connection.
@@ -29,9 +66,9 @@ repeat prompt was cancelled without accepting terms or changing the connection.
 Created and reopened to verify one provider webhook **HIDI ordering inbound**:
 POST `https://hidiindia.com/api/store/whatsapp/msg91/webhook`, On Inbound Report
 Received, JSON payload as below, status **Disabled**. No test run or outgoing
-message was sent. The shared-secret header is deliberately not configured yet:
-stage it in Azure and set the same value in this webhook before enabling it.
-The public endpoint still requires the code deployment and live routing check.
+message was sent. The shared-secret header is not configured in MSG91 yet:
+set the Azure-staged value in this webhook before enabling it. The public endpoint
+has now passed the deployed routing and credential checks described above.
 
 ## Customer flow
 
@@ -100,7 +137,7 @@ authorized private API console with the expected database name.
 4. Verify the public storefront forwards the callback to the private API and
    retains the custom header. Proposed public callback:
    `https://hidiindia.com/api/store/whatsapp/msg91/webhook`.
-   This URL is a candidate until tested against the live proxy; do not expose the
+   This URL passed the live proxy checks on 2026-10-26; do not expose the
    private API publicly as a workaround. Confirm that live checkout supports
    `?waCart=` and that the product WhatsApp button uses the same business number.
 5. Set the values from `deploy/whatsapp-msg91/env.example`. Set
@@ -150,7 +187,8 @@ authorized private API console with the expected database name.
 - Full API/customer-experience TypeScript test suite: 406 passing.
 - Proxy tests validate callback credentials/body forwarding and preserve Razorpay
   signature forwarding; the callback token is not forwarded to other API routes.
-- No real customer message, payment, provider API send or live code deployment.
+- No real customer message, payment or provider API send. Production code was
+  subsequently deployed disabled as documented above.
 
 Latest-source CI: [MSG91 ordering regression, run 40257912893](https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/40257912893)
 passed API build, **442 tests**, and the disposable SQL Server regression. Real SQL
