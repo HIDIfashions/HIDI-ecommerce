@@ -17,10 +17,14 @@ jobs:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - run: python3 deploy/admin-runtime-inspect/read.py
+      - run: python3 deploy/admin-runtime-inspect/permissions.py
+      - name: Inspect existing migration route without changing privileges
+        continue-on-error: true
+        run: az containerapp job show -g rg-hidi-prod -n job-hidi-validation --query '{name:name,identity:identity,trigger:properties.configuration.triggerType}' --only-show-errors -o json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: admin-security-inspection
           path: evidence/admin-security
+
 
