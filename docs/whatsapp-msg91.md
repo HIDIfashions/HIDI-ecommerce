@@ -32,12 +32,10 @@ Current blockers:
   The live read-only number-list request returned **401** at 03:21 UTC, then
   **200** with the HIDI number at 03:24 UTC, without rotating or modifying the key.
   [Latest provider check](https://github.com/HIDIfashions/HIDI-ecommerce/actions/runs/40263843990).
-  This proves one successful authenticated request, not consistent delivery.
-  Key-level IP security is ON and permits six addresses. Azure's declared
-  outbound set is larger. MSG91 reports a rejected non-whitelisted call from
-  `4.213.194.154`, which is in Azure's outbound list but absent from the key's
-  six entries. The owner was asked to add that known missing address while
-  retaining current entries and IP security. Stable outbound networking still
+  After the owner added the missing IP, the same workflow's second attempt also
+  returned **200**; job `121384202410` succeeded. Reopening the key confirms all
+  six original IPs plus `4.213.194.154` are saved and IP security remains ON.
+  Azure's declared outbound set is larger. Stable outbound networking still
   needs review before wider rollout; this correction does not cover every
   possible future Azure address. No security setting was changed by the agent.
 - The existing provider webhook still needs its custom credential header. A
@@ -45,7 +43,10 @@ Current blockers:
   is committed or included in workflow artifacts. The owner must enter this
   authentication setting in MSG91. The owner reported saving it, but reopening
   Headers showed empty Key/Value fields. They were asked to click **Add Header**
-  and then **Update**, and reopen to verify persistence. Keep Disabled until ready.
+  and then **Update**, and reopen to verify persistence. A second owner-reported
+  save was checked again: the persisted Headers tab remains empty in both the
+  accessibility tree and screenshot. The form is left open for exact entry and
+  immediate verification. Keep Disabled until ready.
 
 Refresh the UTC activation cutoff immediately before the restricted live test.
 Do not remove the test-number restriction before end-to-end delivery is verified.
