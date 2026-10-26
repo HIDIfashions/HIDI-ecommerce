@@ -32,8 +32,8 @@ def patch_runtime(base,overlay,app):
         # The newer admin workspace returns before the legacy admin navigation
         # injector. Its final HTML still passes through this shared layer hook.
         # Match only actual Next admin documents, preserving all public pages.
-        anchor='function injectStorefrontLayerFix(html) {'
-        source=once(source,anchor,anchor+'\n  if (html.includes("/_next/static/chunks/app/admin/") && !html.includes("data-hidi-session-policy")) html = html.replace(/<\\/head>/i, \'<script type="module" data-hidi-session-policy src="/admin-security-assets/activity.mjs"></script></head>\');')
+        anchor='function injectStorefrontLayerFix(html, pathname) {'
+        source=once(source,anchor,anchor+'\n  if (pathname?.startsWith("/admin") && !html.includes("data-hidi-session-policy")) html = html.replace(/<\\/head>/i, \'<script type="module" data-hidi-session-policy src="/admin-security-assets/activity.mjs"></script></head>\');')
         put(path,source)
         for name in ['handler.mjs','activity.mjs','login.html','login.mjs','sales.html','sales.mjs','styles.css']:put('admin-security/'+name,(HERE/name).read_text())
         # Standalone runtime pages bypass injectOffers; install the same activity
@@ -45,3 +45,4 @@ def patch_runtime(base,overlay,app):
                 if '/admin' in text and '</head>' in text:
                     put(file.relative_to(base).as_posix(),once(text,'</head>','<script type="module" data-hidi-session-policy src="/admin-security-assets/activity.mjs"></script></head>'))
     return {'passed':True,'allowedFiles':sorted(allowed),'retainedApplicationPreserved':True}
+
