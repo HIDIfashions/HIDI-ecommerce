@@ -1,0 +1,145 @@
+# MSG91 WhatsApp ordering
+
+Status on 2026-10-26: local implementation and automated tests complete. No live
+deployment, MSG91 number onboarding, webhook configuration or real delivery test
+has been completed in this chat. Keep the feature disabled until the checks below
+pass. Existing unrelated work in this checkout must not be deployed with it.
+
+Live MSG91 inspection after owner sign-in: number `917093709353`, WABA
+`1407554044821006`, client name `HIdi`, number status **Inactive**, HELLO integration
+listed, messaging limit 250 customers/24 hours. Account Settings reports
+"No WABA IDs found in whatsapp status." Billing shows an **Active** Titan plan,
+zero WhatsApp balance used and ₹500 prepaid balance remaining. The existing plan
+shows ₹0/month for two months and ₹500 from 2026-12-01; no billing changes were made.
+These observations establish an inactive number despite an active subscription;
+they do not establish the reason the number is inactive.
+
+The number's Sync action did not change its Inactive status. Add Number opened
+Meta embedded onboarding for "MSG91 and Haptik". The owner was asked to review
+the Meta/WhatsApp terms and complete the connection for the existing account and
+number; no Meta terms or permission grants were accepted by the agent.
+
+## Customer flow
+
+Product page selection → WhatsApp message containing SKU and quantity → fresh
+stock/price response → customer replies YES → secure HIDI checkout link → existing
+checkout handles delivery details, shipping, payment and COD eligibility. A bag is
+created at YES; an order is not confirmed just by sending a WhatsApp message.
+
+This connects the existing ordering flow to MSG91. It does not change SMS OTP,
+marketing, paid-order confirmations or the Razorpay/payment code. Those use their
+own switches and, where applicable, approved templates. Customer-started session
+replies do not use the order-confirmation template.
+
+## Implementation
+
+- `POST /v1/whatsapp/msg91/webhook` accepts the custom JSON contract below, using
+  the `x-hidi-whatsapp-token` header. The token must contain at least 32 characters
+  of securely generated random material; store it as an Azure secret reference.
+- Sender, event, direction, customer phone, native message ID and timestamp are
+  checked. Only delivered inbound text messages are processed. Non-text messages
+  remain for staff in the provider inbox. No media URLs are downloaded.
+- A hashed native message ID provides a unique durable queue key. The webhook
+  returns after the database insert; it does not wait for MSG91 to send a reply.
+- The worker locks each conversation in a transaction and commits the bag,
+  conversation state, reply and processed marker together. Failed processing
+  rolls back and leaves the incoming message queued. Old/out-of-order messages
+  cannot rewind a newer conversation. Messages before activation are ignored.
+- A conditional database update claims each outgoing reply once across replicas.
+  Session replies expire after 24 hours from the original inbound timestamp.
+  The transport uses MSG91's documented session-message POST query parameters;
+  request URLs contain message content and must not be logged by instrumentation.
+- `MSG91_ACCEPTED` means provider acceptance, not delivery. `MSG91_REJECTED`,
+  `MSG91_UNKNOWN` and `MSG91_SENDING` after a crash require inspection in provider
+  logs. They are never resent automatically. Do not reset statuses blindly.
+- Human support sets `HUMAN_HANDOFF`; the bot stays quiet until MENU or START.
+  STOP still withdraws the existing WhatsApp consent. Staff must monitor the
+  MSG91/Hello inbox; this change does not provision a staff alert or inbox.
+
+Existing `WhatsAppConversation` and `WhatsAppMessage` tables are reused. No schema
+migration is introduced. The optional read-only runtime probe is
+`deploy/whatsapp-msg91/readiness.mjs`; execute it only through the existing
+authorized private API console with the expected database name.
+
+## Provider setup and activation
+
+1. In MSG91 → WhatsApp → Numbers, confirm the HIDI business number is connected
+   and ready. Inspect its Meta status, display name and any remaining onboarding
+   steps. Do not migrate a number, remove its current WhatsApp app connection or
+   purchase a subscription without reviewing the actual provider requirements.
+2. Confirm an existing WhatsApp-enabled auth key can access that number. Store it
+   as `MSG91_WHATSAPP_AUTHKEY`, or use the existing `MSG91_AUTHKEY`. Verify any
+   provider IP restrictions against the live application's outbound connection.
+   Earlier SMS IP-whitelisting work does not establish WhatsApp readiness.
+3. Package only the five WhatsApp TypeScript modules over a snapshot of the exact
+   live API image. Preserve all other application files, dependencies, settings,
+   secrets, identities, health probes and images. Check live schema compatibility
+   and actual SQL Server concurrent-claim/rollback behaviour before activation.
+   Verify at least one API/worker replica stays running; a timer-based queue
+   worker cannot drain while the application is scaled to zero.
+   The web deployment also needs the narrow custom-header forwarding change in
+   `apps/web/app/api/store/[...path]/route.ts`; check whether the live custom
+   server handles this route before selecting the precise runtime patch.
+   Local tests use a transactional in-memory fixture; they do not prove live SQL
+   locking or live MSG91 delivery. Keep the prior image digest for rollback.
+4. Verify the public storefront forwards the callback to the private API and
+   retains the custom header. Proposed public callback:
+   `https://hidiindia.com/api/store/whatsapp/msg91/webhook`.
+   This URL is a candidate until tested against the live proxy; do not expose the
+   private API publicly as a workaround. Confirm that live checkout supports
+   `?waCart=` and that the product WhatsApp button uses the same business number.
+5. Set the values from `deploy/whatsapp-msg91/env.example`. Set
+   `WHATSAPP_CHATBOT_START_AT` to the actual UTC activation time and preserve it
+   through restarts. Set `WHATSAPP_CHATBOT_TEST_NUMBERS` to the owner's test phone
+   (international digits, no plus), and select `WHATSAPP_CHATBOT_PROVIDER=msg91`.
+   `WEB_ORIGIN` must begin with the public HTTPS storefront origin. Stage secrets
+   privately; never put the webhook token in a URL or paste it in chat.
+6. In MSG91 → WhatsApp → Webhook (New), create one webhook named
+   `HIDI ordering inbound`. Select **On Inbound Report Received** only. Use POST,
+   application/json, the verified public callback URL, and custom header
+   `x-hidi-whatsapp-token` with the same secret. Configure this JSON using MSG91's
+   parameter picker (it must escape the stringified `messages` array correctly):
+
+   ```json
+   {
+     "direction": "0",
+     "eventName": "{{eventName}}",
+     "integratedNumber": "{{integratedNumber}}",
+     "customerNumber": "{{customerNumber}}",
+     "contentType": "{{contentType}}",
+     "messages": "{{messages}}"
+   }
+   ```
+
+   The direction is a constant because this webhook subscribes only to inbound
+   reports. Do not attach outbound events to this configuration. Validate the
+   real callback's native message ID, text, from and timestamp against the parser
+   before enabling it for customers. Check for provider-side webhook auto-pause.
+7. With the test-phone restriction in place, enable the bot and complete a real
+   incoming HI → product SKU/quantity → YES → checkout test from that phone.
+   Verify actual receipt, bag contents, current price/stock, no order/payment
+   created before checkout, CANCEL, repeated callbacks, human handoff and MENU.
+   Test the normal customer checkout separately without initiating a charge.
+8. Remove the test-phone restriction only after the owner test passes. Keep order
+   confirmations disabled until their distinct sender/template/delivery checks
+   pass. Disable ordering immediately with `WHATSAPP_CHATBOT_ENABLED=false` if
+   necessary; retain queued rows and the activation cutoff for reconciliation.
+
+## Validation completed locally
+
+- API TypeScript check: `node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json`
+  from `apps/api`.
+- Focused integration/unit fixture tests: `node --import tsx --test ../../tests/whatsapp-msg91.test.ts`
+  from `apps/api` (9 passing).
+- Full API/customer-experience TypeScript test suite: 406 passing.
+- Proxy tests validate callback credentials/body forwarding and preserve Razorpay
+  signature forwarding; the callback token is not forwarded to other API routes.
+- No real customer message, payment, provider API send or live configuration change.
+
+## Provider references checked
+
+- [MSG91 WhatsApp API overview](https://docs.msg91.com/whatsapp)
+- [Session-message API](https://docs.msg91.com/en/whatsapp/send-message-in-text)
+  (request metadata in the published documentation specifies POST and query
+  parameters `integrated_number`, `recipient_number`, `content_type`, `text`).
+- [MSG91 inbound webhook fields and custom headers](https://msg91.com/help/webhook-new/how-to-receive-whatsapp-delivery-reports-via-webhook-new)
