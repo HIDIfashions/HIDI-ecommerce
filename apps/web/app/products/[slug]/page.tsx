@@ -21,6 +21,8 @@ import { reviewedPdpSpecifications } from "@/lib/pdp-source-specifications";
 import styles from "./product-page.module.css";
 import { DeliveryCheck } from "@/components/delivery-check";
 import { ProductPageShell } from "@/components/product-page-shell";
+import { renderProductCopy } from "@/lib/product-copy.mjs";
+import "../../product-short-description.css";
 
 export const dynamic = "force-dynamic";
 
@@ -166,6 +168,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <WishlistButton slug={product.slug} compact />
         </div>
         {reviews.reviewCount > 0 && <a className={styles.rating} href="#reviews" aria-label={`${reviews.averageRating.toFixed(1)} out of 5, ${reviews.reviewCount} reviews`}><span aria-hidden="true">★</span> {reviews.averageRating.toFixed(1)} <span>({reviews.reviewCount} reviews)</span></a>}
+        {product.shortDescription?.trim() && <div className="hidi-pdp-short-description" dangerouslySetInnerHTML={{ __html: renderProductCopy(product.shortDescription) }} />}
         <ProductPurchaseSummary key={product.id} product={product} />
         <AddToCart key={product.id} product={product} />
         <div className={styles.services}><span>Free shipping</span><span>7-day returns on eligible items</span><Link href="/returns">View policy</Link></div>

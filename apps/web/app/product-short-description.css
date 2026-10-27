@@ -1,0 +1,5 @@
+.hidi-pdp-short-description { margin: 12px 0 0; color: #675c53; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.hidi-pdp-short-description p { margin: 0 0 .65em; }
+.hidi-pdp-short-description > :last-child { margin-bottom: 0; }
+.hidi-pdp-short-description ul, .hidi-pdp-short-description ol { margin: 0 0 .65em; padding-left: 1.4em; }
+.hidi-pdp-short-description h3 { font-size: 1.05em; line-height: 1.4; margin: .65em 0; }
