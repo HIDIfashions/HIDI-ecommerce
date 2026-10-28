@@ -1,0 +1,37 @@
+<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Typography | HIDI Admin</title><link rel="stylesheet" href="/typography/assets/editor.css"><script type="module" src="/typography/assets/editor.js"></script></head><body><div id="hidi-type-studio" aria-label="HIDI typography settings preview">
+  <header class="ht-top"><span class="ht-brand">HIDI <span>ADMIN</span></span><span class="ht-demo">Owner workspace</span></header>
+  <div class="ht-shell">
+    <aside class="ht-sidebar"><span class="ht-muted">WORKSPACE</span><a href="/admin">Overview</a><a href="/admin/products">Products</a><a href="/admin/orders">Orders</a><hr><span class="ht-muted">BRAND SETTINGS</span><span class="ht-active">Typography</span><a href="/admin/privacy-policy">Privacy policy</a></aside>
+    <main class="ht-main">
+      <div class="ht-title"><div><span class="ht-overline">BRAND / TYPOGRAPHY</span><h1>Give every word a voice.</h1></div><span class="ht-pill" id="ht-revision">Loading settings</span></div>
+      <div class="ht-profile" role="group" aria-label="Typography profile"><button type="button" data-profile="storefront" aria-pressed="true">Storefront</button><button type="button" data-profile="admin" aria-pressed="false">Admin interface</button></div>
+      <div class="ht-workbench">
+        <fieldset class="ht-settings" id="ht-controls" disabled aria-label="Font selection">
+          <label for="ht-preset">Font pairing<select id="ht-preset"><option value="editorial">Editorial · Lora + Inter</option><option value="modern">Modern · Manrope + Inter</option><option value="classic">Current · System sans</option><option value="custom" disabled>Custom pairing</option></select></label>
+          <hr>
+          <label for="ht-heading">Headings <span class="ht-muted">Page & section titles</span><select id="ht-heading" data-font-role="heading"></select></label>
+          <label for="ht-body">Body text <span class="ht-muted">Descriptions & forms</span><select id="ht-body" data-font-role="body"></select></label>
+          <label for="ht-product">Product names <span class="ht-muted">Cards & product details</span><select id="ht-product" data-font-role="product"></select></label>
+          <label for="ht-ui">Buttons & navigation<select id="ht-ui" data-font-role="ui"></select></label>
+          
+        </fieldset>
+        <section class="ht-preview-region" aria-label="Typography samples">
+          <div class="ht-preview-toolbar"><span id="ht-preview-label">Storefront preview</span><div class="ht-view" role="group" aria-label="Preview state"><button type="button" data-view="draft" aria-pressed="true">Draft</button><button type="button" data-view="published" aria-pressed="false">Published</button></div></div>
+          <div class="ht-sample" id="ht-sample">
+            <div class="ht-store" id="ht-store">
+              <div class="ht-store-nav"><span class="ht-store-mark">HIDI</span><span class="ht-ui">New arrivals &nbsp; / &nbsp; Collections</span></div>
+              <div class="ht-editorial"><span class="ht-kicker ht-ui">THE EVERYDAY EDIT</span><h2 class="ht-heading">Made for your<br>every day.</h2><p class="ht-body">Thoughtful details. Effortless silhouettes.<br>Indian wear that moves with you.</p></div>
+              <div class="ht-product"><span class="ht-product-label">Aara Sage Kurta Set</span><span class="ht-body">Soft cotton · Sizes XS–XXL</span><span class="ht-price ht-ui">₹1,490 <span>Inclusive of all taxes</span></span><div class="ht-shop-actions"><span class="ht-cta ht-ui">Add to bag</span><span class="ht-secondary ht-ui">View details</span></div></div>
+            </div>
+            <div class="ht-admin" id="ht-admin" hidden>
+              <span class="ht-kicker ht-ui">PRODUCT WORKSPACE</span><h2 class="ht-heading">Your catalogue.</h2><p class="ht-body">Keep product details clear, consistent and ready for your customers.</p><label class="ht-body">Product name<span class="ht-faux-input ht-product-label">Aara Sage Kurta Set</span></label><div class="ht-admin-row"><span class="ht-body">Available stock</span><span class="ht-ui">24 units</span></div><div class="ht-admin-row"><span class="ht-body">Selling price</span><span class="ht-ui">₹1,490</span></div><span class="ht-cta ht-ui">Save product</span>
+            </div>
+          </div>
+          <div class="ht-caption"><span id="ht-pairing">Lora / Inter / Lora / Inter</span><span>Heading / Body / Product / UI</span></div>
+        </section>
+      </div>
+      <footer class="ht-bottom"><div id="ht-status" role="status" aria-live="polite">Verifying your owner session…</div><div class="ht-actions"><button id="ht-rollback" type="button" disabled>Restore previous</button><button id="ht-reload" type="button">Reload settings</button><button id="ht-save" type="button">Save draft</button><button class="ht-primary" id="ht-publish" type="button">Publish fonts</button></div></footer>
+    <details class="ht-history"><summary>Publication history</summary><ol id="ht-history"></ol></details></main>
+  </div>
+</div>
+</body></html>

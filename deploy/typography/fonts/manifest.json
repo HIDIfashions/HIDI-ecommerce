@@ -1,0 +1,26 @@
+[
+  {
+    "name": "inter",
+    "package": "@fontsource-variable/inter",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/inter/-/inter-5.3.0.tgz",
+    "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62",
+    "bytes": 48256
+  },
+  {
+    "name": "lora",
+    "package": "@fontsource-variable/lora",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/lora/-/lora-5.3.0.tgz",
+    "sha256": "ddb8c66035104e233fc024669183aad3738b6daa16deee2ebb1241bd0f98ace1",
+    "bytes": 37788
+  },
+  {
+    "name": "manrope",
+    "package": "@fontsource-variable/manrope",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/manrope/-/manrope-5.3.0.tgz",
+    "sha256": "a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972",
+    "bytes": 24836
+  }
+]

@@ -2,7 +2,7 @@ name: Typography settings release
 on:
   push:
     branches: [migration/azure-sql-blob]
-    paths: [deploy/typography/**, .github/workflows/typography-release.yml]
+    paths: [deploy/typography/**, tests/typography*, .github/workflows/typography-release.yml]
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,29 +11,61 @@ concurrency:
   group: hidi-hero-guarded-release
   cancel-in-progress: false
 jobs:
-  inspect:
+  verify-and-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-type-builder/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-type-browsers
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Install isolated browser and backup tooling
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y skopeo
+          npm install --prefix /tmp/hidi-type-builder --no-save typescript@5.9.3 playwright@1.62.1
+          mkdir -p node_modules
+          ln -s /tmp/hidi-type-builder/node_modules/typescript node_modules/typescript
+          mkdir -p apps/web/node_modules
+          ln -s /tmp/hidi-type-builder/node_modules/typescript apps/web/node_modules/typescript
+          node /tmp/hidi-type-builder/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Test settings, storage, authentication and existing regressions
+        run: node deploy/typography/unit.mjs
+      - name: Verify settings interface and real HTTP persistence in three browsers
+        run: node deploy/typography/verify.mjs
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Inspect current retained runtime without deployment
+      - name: Back up production and compose only typography additions
         run: |
           az acr login --name acrhidiprod0927 --only-show-errors
-          image=$(az containerapp show -g rg-hidi-prod -n hidi-web --query 'properties.template.containers[0].image' -o tsv)
-          docker pull "$image"
-          id=$(docker create "$image")
-          mkdir -p evidence/typography/runtime
-          docker cp "$id:/app/server.mjs" evidence/typography/runtime/server.mjs
-          docker cp "$id:/app/admin-tools/navigation.js" evidence/typography/runtime/navigation.js
-          docker rm "$id"
+          python3 deploy/typography/release.py capture
+          python3 deploy/typography/release.py compose
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-typography-private/web/candidate-app" >> "$GITHUB_ENV"
+      - name: Verify exact retained candidate in three browsers before deployment
+        run: |
+          node deploy/typography/verify.mjs
+          python3 deploy/typography/release.py seal
+      - name: Publish exact tested image
+        run: python3 deploy/typography/release.py publish
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Deploy with exact-state checks and roll back if live regression fails
+        id: apply
+        timeout-minutes: 25
+        run: timeout --signal=TERM --kill-after=10m 20m python3 deploy/typography/release.py apply
+      - name: Recover interrupted owned rollout
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        run: python3 deploy/typography/release.py recover
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: typography-runtime
-          path: evidence/typography/runtime
-          retention-days: 7
+          name: typography-release-${{ github.run_id }}
+          path: evidence/typography
+          retention-days: 30
