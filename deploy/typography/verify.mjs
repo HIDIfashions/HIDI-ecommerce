@@ -34,15 +34,16 @@ try{
  for(const engine of (process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',')){
   const browser=await engines[engine].launch();
   try{
+   const anonymous=await browser.newPage();await anonymous.goto(base+'/admin/typography');await anonymous.getByText(/Sign in as the owner/).waitFor();assert(await anonymous.locator('#ht-heading').isDisabled(),'Anonymous font selector is disabled');assert(await anonymous.locator('#ht-publish').isDisabled(),'Anonymous publication is disabled');await anonymous.close();
    const context=await browser.newContext();
    await context.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(!live&&!['127.0.0.1','localhost'].includes(url.hostname))return route.abort();if(!['GET','HEAD','OPTIONS'].includes(req.method())&&(live||url.pathname!=='/api/hidi/typography/admin')){blockedWrites++;return route.fulfill({status:204,body:''});}return route.continue();});
    if(!live)await context.addCookies([{name:'typography-owner',value:'1',url:base}]);
    for(const width of [390,768,1440]){
     const editor=await context.newPage();await editor.setViewportSize({width,height:1000});const errors=[];editor.on('pageerror',e=>errors.push(e.message));
     await editor.goto(base+'/admin/typography');await editor.locator('#ht-heading').waitFor();
-    if(live){await editor.getByText(/Sign in as the owner/).waitFor();assert(await editor.locator('#ht-controls').isDisabled());}
+    if(live){await editor.getByText(/Sign in as the owner/).waitFor();assert(await editor.locator('#ht-heading').isDisabled());}
     else{
-     await until(()=>editor.locator('#ht-controls').isEnabled(),'owner settings loaded');
+     await until(()=>editor.locator('#ht-heading').isEnabled(),'owner settings loaded');
      // Start each case from a known published System profile.
      await editor.locator('#ht-preset').selectOption('classic');await editor.locator('#ht-save').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'saved classic draft');await editor.locator('#ht-publish').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'classic publish complete');
      const visitor=await context.newPage();await visitor.setViewportSize({width,height:1000});
