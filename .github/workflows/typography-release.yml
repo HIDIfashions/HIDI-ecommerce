@@ -32,6 +32,9 @@ jobs:
           node /tmp/hidi-type-builder/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - name: Test settings, storage, authentication and existing regressions
         run: node deploy/typography/unit.mjs
+      - name: Check current production routes in three browsers before any deployment
+        timeout-minutes: 5
+        run: node deploy/typography/verify.mjs --baseline
       - name: Verify settings interface and real HTTP persistence in three browsers
         run: node deploy/typography/verify.mjs
       - uses: azure/login@v2
