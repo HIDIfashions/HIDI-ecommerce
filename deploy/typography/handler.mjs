@@ -47,7 +47,7 @@ export function createTypographyHandler({origin, hasStorefront = true, store = c
       if (state.profiles[scope].published) validateConfig(state.profiles[scope].published);
       if (state.profiles[scope].previous?.config) validateConfig(state.profiles[scope].previous.config);
     }
-    lastGood = structuredClone(state);
+    if (!lastGood || state.revision >= lastGood.revision) lastGood = structuredClone(state);
     return {...loaded, value:structuredClone(state)};
   }
   async function owner(request) {

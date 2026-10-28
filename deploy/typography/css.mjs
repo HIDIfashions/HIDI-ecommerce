@@ -16,7 +16,8 @@ export function publishedCss(state) {
     const group = (selectors, role) => `@media screen{${selectors.map(selector => root + ' ' + selector).join(',')}{font-family:${family(role)}!important}}\n`;
     css += group(['body','body :where(p,div,span,li,td,th,label,legend,summary,small,a,input,select,textarea)'], 'body');
     css += group(['body :where(h1,h2,h3,h4,h5,h6)','body :where(h1,h2,h3,h4,h5,h6) :where(span,a,em,strong)'], 'heading');
-    css += group(['body :where(.product-name,.product-title,.pdp-title,.pdp-title-row h1,[data-typography="product"],[class*="product-card"] h3,[class*="product-card"] h3 a,[class*="editorial-product-card"] h3)'], 'product');
+    const product = 'body :where(.product-name,.product-title,.pdp-title,.pdp-title-row h1,[data-typography="product"],[class*="product-card"] h3,[class*="editorial-product-card"] h3)';
+    css += group([product, product + ' :where(span,a,em,strong)'], 'product');
     css += group(['body :where(button,.button,[role="button"],nav a,.header-actions a,.price,.pdp-price,[data-typography="ui"])','body :where(button,.button,[role="button"],nav a) :where(span,strong)'], 'ui');
   }
   return css;

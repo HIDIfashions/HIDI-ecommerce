@@ -8,7 +8,7 @@ const engines=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).hre
 const live=process.argv.includes('--live'),candidate=Boolean(process.env.HIDI_CANDIDATE_RUNTIME)&&!live;
 const base=live?'https://hidiindia.com':candidate?'http://127.0.0.1:3199':'http://127.0.0.1:3198';
 const out=resolve('evidence/typography');await mkdir(out,{recursive:true});
-const cases=[];let child,upstream,diagnostics='',blockedWrites=0;
+const cases=[], routes=[];let child,upstream,diagnostics='',blockedWrites=0;
 const slug='hidi-043-dusty-pink-embroidered-kurta-set-with-dupatta';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn,label){for(let i=0;i<80;i++){if(await fn())return;await sleep(100);}throw Error('Timed out: '+label);}
@@ -50,23 +50,23 @@ try{
      const title=visitor.locator('.pdp-title-row h1');await title.waitFor();
      if(candidate)await visitor.locator('[data-hidi-hydrated=true]').waitFor();
      const original=await title.evaluate(e=>getComputedStyle(e).fontFamily);
-     const input=visitor.locator('input').first();const hasInput=await input.count()>0;if(hasInput)await input.fill('600001').catch(()=>{});
-     await editor.locator('#ht-preset').selectOption('editorial');await editor.locator('#ht-save').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'editorial saved');
+     const input=visitor.locator('input').first();const inputBefore=await input.count()?await input.inputValue():null;
+     await editor.locator('#ht-preset').selectOption('editorial');await editor.locator('#ht-product').selectOption('manrope');await editor.locator('#ht-ui').selectOption('lora');await editor.locator('#ht-save').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'editorial saved');
      await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await sleep(150);assert.equal(await title.evaluate(e=>getComputedStyle(e).fontFamily),original,'Save draft must not alter visitor fonts');
      await editor.locator('#ht-publish').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'editorial published');
-     await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await until(async()=>/HIDI Lora/.test(await title.evaluate(e=>getComputedStyle(e).fontFamily)),'published product font propagates without reload');
+     await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await until(async()=>/HIDI Manrope/.test(await title.evaluate(e=>getComputedStyle(e).fontFamily)),'published product font propagates without reload');
      assert.match(await visitor.locator('body').evaluate(e=>getComputedStyle(e).fontFamily),/HIDI Inter/);
-     assert(await visitor.evaluate(async()=>{await document.fonts.ready;return document.fonts.check('16px "HIDI Lora"');}));
-     assert.equal(await visitor.locator('#hidi-published-typography').count(),1,'Exactly one applied stylesheet');
+     assert(await visitor.evaluate(async()=>{await document.fonts.ready;return document.fonts.check('16px "HIDI Manrope"');}));
+     assert.equal(await visitor.locator('#hidi-published-typography').count(),1,'Exactly one applied stylesheet');if(inputBefore!==null)assert.equal(await input.inputValue(),inputBefore,'Font refresh preserves form input');assert.match(await visitor.locator('button').first().evaluate(e=>getComputedStyle(e).fontFamily),/HIDI Lora/,'Button font is independent of body and product roles');
      if(candidate){const size=visitor.locator('.sizes button:not(:disabled)').first();await size.click();await visitor.locator('.sizes button.selected').waitFor();}
-     await visitor.reload();await until(async()=>/HIDI Lora/.test(await title.evaluate(e=>getComputedStyle(e).fontFamily)),'published font survives reload');
+     await visitor.reload();await until(async()=>/HIDI Manrope/.test(await title.evaluate(e=>getComputedStyle(e).fontFamily)),'published font survives reload');
      await editor.locator('[data-profile=admin]').click();await editor.locator('#ht-preset').selectOption('modern');await editor.locator('#ht-save').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'admin draft saved');await editor.locator('#ht-publish').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'admin published');
      await editor.evaluate(()=>window.dispatchEvent(new Event('focus')));await until(async()=>/HIDI Manrope/.test(await editor.locator('h1').evaluate(e=>getComputedStyle(e).fontFamily)),'admin font applied');
-     await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await sleep(150);assert.match(await title.evaluate(e=>getComputedStyle(e).fontFamily),/HIDI Lora/,'Admin publication leaves storefront profile unchanged');
+     await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await sleep(150);assert.match(await title.evaluate(e=>getComputedStyle(e).fontFamily),/HIDI Manrope/,'Admin publication leaves storefront profile unchanged');
      await editor.locator('[data-profile=storefront]').click();editor.once('dialog',d=>d.accept());await editor.locator('#ht-rollback').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'rollback complete');
-     await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await until(async()=>!/HIDI Lora/.test(await title.evaluate(e=>getComputedStyle(e).fontFamily)),'rollback propagates');
+     await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await until(async()=>!/HIDI Manrope/.test(await title.evaluate(e=>getComputedStyle(e).fontFamily)),'rollback propagates');
      // Re-publish and simulate stylesheet download failure; the visitor keeps its old fonts.
-     await visitor.route('**/typography/published.css?*',route=>route.abort());await editor.locator('#ht-publish').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'republish');await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await sleep(300);assert.doesNotMatch(await title.evaluate(e=>getComputedStyle(e).fontFamily),/HIDI Lora/);await visitor.unroute('**/typography/published.css?*');await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await until(async()=>/HIDI Lora/.test(await title.evaluate(e=>getComputedStyle(e).fontFamily)),'retry after stylesheet failure');
+     await visitor.route('**/typography/published.css?*',route=>route.abort());await editor.locator('#ht-publish').click();await until(()=>editor.locator('#ht-publish').isEnabled(),'republish');await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await sleep(300);assert.doesNotMatch(await title.evaluate(e=>getComputedStyle(e).fontFamily),/HIDI Manrope/);await visitor.unroute('**/typography/published.css?*');await visitor.evaluate(()=>window.dispatchEvent(new Event('focus')));await until(async()=>/HIDI Manrope/.test(await title.evaluate(e=>getComputedStyle(e).fontFamily)),'retry after stylesheet failure');
      assert.equal(await visitor.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'No product page overflow');
      await visitor.close();
     }
@@ -75,12 +75,12 @@ try{
     await editor.screenshot({path:out+'/'+(live?'live':'candidate')+'-'+engine+'-'+width+'.png',fullPage:true});
     cases.push({engine,width,editor:true,publishedPropagation:!live,rollback:!live,failedStylesheetRetention:!live,profileIsolation:!live});await editor.close();
    }
-   if(candidate||live){for(const path of ['/','/collections/all','/cart','/checkout','/account','/admin','/admin/products']){const page=await context.newPage();await page.goto(base+path,{waitUntil:'domcontentloaded'});await page.locator('#hidi-published-typography').waitFor();assert.equal(await page.locator('html').getAttribute('data-hidi-type-scope'),path.startsWith('/admin')?'admin':'storefront');await page.close();}}
+   if(candidate||live){for(const path of ['/','/collections/all','/cart','/checkout','/account','/admin','/admin/products']){const page=await context.newPage();await page.goto(base+path,{waitUntil:'domcontentloaded'});await page.locator('#hidi-published-typography').waitFor();assert.equal(await page.locator('html').getAttribute('data-hidi-type-scope'),path.startsWith('/admin')?'admin':'storefront');if(candidate)await until(async()=>/HIDI Inter/.test(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)),'published body font on '+path);for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Overflow '+path+' at '+width);routes.push({engine,path,width,fonts:!live});}await page.close();}}
    const nojs=await browser.newPage({javaScriptEnabled:false});await nojs.goto(base+(candidate||live?'/products/'+slug:'/product'));assert.equal(await nojs.locator('#hidi-published-typography').count(),1,'CSS is present before JavaScript');await nojs.close();
    await context.close();
   }finally{await browser.close();}
  }
  if(live){const after=await fetch(base+'/api/hidi/typography').then(r=>r.json());assert.deepEqual(after,publicBefore,'Live checks must not modify typography');}
- const result={passed:true,cases,actualRuntime:candidate,serverRendered:true,productionWrites:0,blockedWrites,mode:live?'live':candidate?'candidate':'fixture'};
+ const result={passed:true,cases,routes,actualRuntime:candidate,serverRendered:true,productionWrites:0,blockedWrites,mode:live?'live':candidate?'candidate':'fixture'};
  await writeFile(out+'/'+(live?'live':candidate?'candidate':'fixture')+'.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result));
 }finally{if(child&&child.exitCode===null)child.kill('SIGTERM');if(upstream){upstream.closeAllConnections();await new Promise(done=>upstream.close(done));}}
