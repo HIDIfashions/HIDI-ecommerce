@@ -1,0 +1,32 @@
+name: Typography read-only browser check
+on:
+  workflow_dispatch:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [.github/workflows/typography-live-check.yml]
+permissions:
+  contents: read
+jobs:
+  live-browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-type-live/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-type-live-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Install browser tooling
+        run: |
+          npm install --prefix /tmp/hidi-type-live --no-save playwright@1.62.1
+          node /tmp/hidi-type-live/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Verify settled navigation without production writes
+        timeout-minutes: 4
+        run: node deploy/typography/verify.mjs --live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: typography-live-${{ github.run_id }}
+          path: evidence/typography
+          retention-days: 14
