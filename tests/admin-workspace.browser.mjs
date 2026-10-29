@@ -98,7 +98,38 @@ try {
   }
   passed('real Next.js BFF denies missing and forged sessions; forwards only allowed filters');
   browser = await pw[engine].launch({ headless: true });
-  const signedOut = await browser.newPage(); await settledGoto(signedOut, base + '/admin'); await waitText(signedOut, 'Secure staff access'); assert.equal(await signedOut.getByRole('heading', { name: 'Overview', exact: true }).count(), 0); await signedOut.close(); passed('signed-out workspace does not render operational data');
+  // The session policy redirects rejected sessions past the workspace gate to
+  // the email sign-in page. Assert the settled authentication boundary, rather
+  // than a transient "Secure staff access" heading that may never be painted.
+  for (const token of [null, 'ci-invalid-token']) {
+    const signedOutContext = await browser.newContext(); contexts.push(signedOutContext);
+    if (token) await signedOutContext.addCookies([{ name: 'hidi_admin_access', value: token, url: base, httpOnly: true }]);
+    const signedOut = await signedOutContext.newPage(), signedOutErrors = [], signedOutRequests = [];
+    signedOut.on('pageerror', error => signedOutErrors.push(error.message));
+    await signedOutContext.route('**/*', route => {
+      const url = new URL(route.request().url());
+      if (url.origin !== base) return route.abort();
+      signedOutRequests.push(url.pathname);
+      return route.continue();
+    });
+    await settledGoto(signedOut, base + '/admin');
+    await signedOut.waitForURL(url => url.pathname === '/admin/sign-in' && url.searchParams.get('expired') === '1');
+    await signedOut.getByRole('heading', { name: 'Staff sign in', exact: true }).waitFor();
+    await signedOut.getByRole('textbox', { name: 'Staff email', exact: true }).waitFor();
+    await signedOut.waitForFunction(() => {
+      const button = document.querySelector('form button[type="submit"]');
+      return button?.textContent === 'Send secure code' && !button.disabled;
+    });
+    await settleFixtureNetwork(signedOut);
+    assert.equal(await signedOut.getByRole('heading', { name: 'Overview', exact: true }).count(), 0);
+    assert.equal(await signedOut.getByText('Booked order value', { exact: true }).count(), 0);
+    assert(!signedOutRequests.some(path => path.startsWith('/api/admin/dashboard/')), 'Rejected sessions must not request operational data');
+    assert(!(await signedOutContext.cookies()).some(cookie => cookie.name === 'hidi_admin_access'), 'Rejected access cookies must be cleared');
+    assert.deepEqual(signedOutErrors, []);
+    await signedOut.screenshot({ path: resolve(output, token ? 'invalid-session-sign-in.png' : 'signed-out-sign-in.png'), fullPage: true });
+    await signedOutContext.close();
+    passed(`${token ? 'forged' : 'missing'} session redirects to the usable email sign-in form without operational data`);
+  }
   const { page, context, state, errors } = await fixtureContext();
   await settledGoto(page, base + '/admin'); await waitText(page, 'Booked order value'); await noOverflow(page);
   assert(await page.getByText('₹5,998.00', { exact: true }).count() >= 1);
