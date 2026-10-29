@@ -55,9 +55,12 @@
   if(!panel){panel=el('section',null,'hidi-checkout-coupons');panel.dataset.hidiCheckoutCoupons='true';panel.setAttribute('aria-label','Checkout coupon');}
   if(!place())return;
   const focused=document.activeElement?.id==='hidi-coupon-code',cursor=focused?document.activeElement.selectionStart:null;
-  const label=el('label','Have a coupon?');label.htmlFor='hidi-coupon-code';const row=el('div',null,'hidi-coupon-input-row'),input=el('input');input.id='hidi-coupon-code';input.type='text';input.placeholder='WELCOME250';input.autocomplete='off';input.maxLength=32;input.value=codeDraft;input.disabled=busy||syncing||locked;input.setAttribute('aria-describedby','hidi-coupon-status');input.addEventListener('input',()=>{codeDraft=input.value;});input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();apply();}});row.append(input,button(busy?'Checking…':'Apply',apply));
+  const label=el('label','Have a coupon?');label.htmlFor='hidi-coupon-code';const row=el('div',null,'hidi-coupon-input-row'),input=el('input');input.id='hidi-coupon-code';input.type='text';input.placeholder='Enter coupon code';input.autocomplete='off';input.maxLength=32;input.value=codeDraft;input.disabled=busy||syncing||locked;input.setAttribute('aria-describedby','hidi-coupon-status');input.addEventListener('input',()=>{codeDraft=input.value;});input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();apply();}});row.append(input,button(busy?'Checking…':'Apply',apply));
   const status=el('p',notice||'Shop for 1499 to avail the discount','hidi-coupon-status'+(noticeError?' is-error':''));status.id='hidi-coupon-status';status.setAttribute('role',noticeError?'alert':'status');status.setAttribute('aria-live','polite');
-  panel.replaceChildren(label,row,status);
+  const hints=el('div',null,'hidi-coupon-hints');hints.setAttribute('aria-label','Coupon codes');
+  const welcome=el('div');welcome.append(el('strong','WELCOME250'),el('span','₹250 off your first order'));
+  const dress=el('div');dress.append(el('strong','GET1'),el('span','₹1 dress on ₹3,999 · Coming soon'));hints.append(welcome,dress);
+  panel.replaceChildren(label,row,hints,status);
   if(activeCode){
    const details=el('div',null,'hidi-coupon-applied');details.append(el('strong',activeCode));
    if(quote?.gift)details.append(el('span',quote.gift.name+' · Size '+quote.gift.size+' · ₹1'));
