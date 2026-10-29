@@ -59,7 +59,7 @@
   const status=el('p',notice||'Shop for 1499 to avail the discount','hidi-coupon-status'+(noticeError?' is-error':''));status.id='hidi-coupon-status';status.setAttribute('role',noticeError?'alert':'status');status.setAttribute('aria-live','polite');
   const hints=el('div',null,'hidi-coupon-hints');hints.setAttribute('aria-label','Coupon codes');
   const welcome=el('div');welcome.append(el('strong','WELCOME250'),el('span','₹250 off your first order'));
-  const dress=el('div');dress.append(el('strong','GET1'),el('span','₹1 dress on ₹3,999 · Coming soon'));hints.append(welcome,dress);
+  hints.append(welcome);
   panel.replaceChildren(label,row,hints,status);
   if(activeCode){
    const details=el('div',null,'hidi-coupon-applied');details.append(el('strong',activeCode));
