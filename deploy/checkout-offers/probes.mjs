@@ -22,7 +22,8 @@ export async function probe(base,output,{setSubtotal,offerWrites}){
    });
    const page=await context.newPage();page.setDefaultTimeout(30000);
    const coupon=()=>page.locator('[data-hidi-checkout-coupons]');
-   const apply=async code=>{await coupon().getByLabel('Have a coupon?',{exact:true}).fill(code);await coupon().getByRole('button',{name:'Apply',exact:true}).click();};
+   const settled=()=>page.waitForFunction(()=>{const input=document.querySelector('#hidi-coupon-code');return input&&!input.disabled;});
+   const apply=async code=>{await coupon().getByLabel('Have a coupon?',{exact:true}).fill(code);await coupon().getByRole('button',{name:'Apply',exact:true}).click();await settled();};
    const status=()=>page.locator('#hidi-coupon-status');
    const waitMoney=value=>page.waitForFunction(text=>document.querySelector('main')?.innerText.includes(text),value);
    const fillAddress=async()=>{await page.locator('#hidi-checkout-form').getByLabel('Email address',{exact:true}).fill('fixture@example.invalid');await page.getByLabel('First name',{exact:true}).fill('Fixture');await page.getByLabel('House, building and street address').fill('Fixture street');const pin=page.getByLabel(/PIN code/i).first();await pin.fill('500001');await pin.press('Tab');const phone=page.locator('input[aria-label="Mobile number"]:visible');if(await phone.count())await phone.fill('9000000001');await page.getByLabel('City',{exact:true}).fill('Hyderabad');await page.getByLabel('State',{exact:true}).fill('Telangana');};
