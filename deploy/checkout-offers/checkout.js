@@ -57,9 +57,8 @@
   const focused=document.activeElement?.id==='hidi-coupon-code',cursor=focused?document.activeElement.selectionStart:null;
   const label=el('label','Have a coupon?');label.htmlFor='hidi-coupon-code';const row=el('div',null,'hidi-coupon-input-row'),input=el('input');input.id='hidi-coupon-code';input.type='text';input.placeholder='Enter coupon code';input.autocomplete='off';input.maxLength=32;input.value=codeDraft;input.disabled=busy||syncing||locked;input.setAttribute('aria-describedby','hidi-coupon-status');input.addEventListener('input',()=>{codeDraft=input.value;});input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();apply();}});row.append(input,button(busy?'Checking…':'Apply',apply));
   const status=el('p',notice||'Shop for 1499 to avail the discount','hidi-coupon-status'+(noticeError?' is-error':''));status.id='hidi-coupon-status';status.setAttribute('role',noticeError?'alert':'status');status.setAttribute('aria-live','polite');
-  const hints=el('div',null,'hidi-coupon-hints');hints.setAttribute('aria-label','Coupon codes');
-  const welcome=el('div');welcome.append(el('strong','WELCOME250'),el('span','₹250 off your first order'));
-  hints.append(welcome);
+  const hints=el('div',null,'hidi-coupon-hint');hints.setAttribute('aria-label','Available coupon');
+  hints.append(el('span','First order? Save ₹250 with'),button('WELCOME250',()=>{codeDraft='WELCOME250';notice='';noticeError=false;render();panel.querySelector('#hidi-coupon-code').focus();},'hidi-coupon-link'));
   panel.replaceChildren(label,row,hints,status);
   if(activeCode){
    const details=el('div',null,'hidi-coupon-applied');details.append(el('strong',activeCode));
