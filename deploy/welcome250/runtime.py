@@ -24,11 +24,16 @@ def unpack():
         manifest_bytes = subprocess.check_output(['skopeo', 'inspect', '--raw', '--authfile', str(authfile), 'docker://' + original])
         assert 'sha256:' + hashlib.sha256(manifest_bytes).hexdigest() == original.split('@')[1]
         manifest = json.loads(manifest_bytes)
+        config_bytes = subprocess.check_output(['skopeo', 'inspect', '--config', '--authfile', str(authfile), 'docker://' + original])
+        original_config = json.loads(config_bytes)
         subprocess.run(['skopeo', 'copy', '--format', 'oci', '--authfile', str(authfile), 'docker://' + original, 'oci:' + str(layout) + ':runtime'], check=True)
         index = json.loads((layout / 'index.json').read_text())
         copied = json.loads((layout / 'blobs/sha256' / index['manifests'][0]['digest'].split(':')[1]).read_text())
-        # Media-type conversion changes the manifest digest, never its config or layers.
-        assert copied['config']['digest'] == manifest['config']['digest']
+        # OCI removes Docker-specific build metadata. Require identical runtime
+        # settings and uncompressed filesystem identities, not metadata encoding.
+        copied_config = json.loads((layout / 'blobs/sha256' / copied['config']['digest'].split(':')[1]).read_text())
+        for key in ['architecture', 'os', 'variant', 'config', 'rootfs']:
+            assert copied_config.get(key) == original_config.get(key), 'OCI changed runtime configuration: ' + key
         assert [x['digest'] for x in copied['layers']] == [x['digest'] for x in manifest['layers']]
         subprocess.run(['umoci', 'unpack', '--rootless', '--image', str(layout) + ':runtime', str(bundle)], check=True)
         runtime = bundle / 'rootfs/app'
