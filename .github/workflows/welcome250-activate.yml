@@ -34,14 +34,14 @@ jobs:
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
       - name: Install isolated regression and backup tooling
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y skopeo
+          sudo apt-get update -qq && sudo apt-get install -y skopeo umoci
           npm install --prefix /tmp/hidi-offers-browser --no-save playwright@1.56.1
           node /tmp/hidi-offers-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - name: Back up live images and prepare exact runtime copies
         run: |
           az acr login --name acrhidiprod0927 --only-show-errors
           python3 deploy/checkout-offers/release.py capture
-          python3 deploy/checkout-offers/release.py compose
+          python3 deploy/welcome250/runtime.py unpack
           echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-checkout-offers-private/api/candidate-app" >> "$GITHUB_ENV"
           echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-checkout-offers-private/web/candidate-app" >> "$GITHUB_ENV"
       - name: Verify retained pricing, payments, checkout, admin and purchase flows
@@ -49,7 +49,7 @@ jobs:
           node deploy/checkout-offers/api-test.mjs
           node deploy/welcome250/api-check.mjs
           node deploy/welcome250/browser-check.mjs
-          python3 deploy/checkout-offers/release.py seal
+          python3 deploy/welcome250/runtime.py verify
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
