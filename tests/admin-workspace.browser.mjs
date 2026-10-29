@@ -1,9 +1,11 @@
 /** Isolated browser fixtures: no real staff, orders, shipments or refunds are created. */
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { createServer, request as httpRequest } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
+import { spawn, execFileSync } from 'node:child_process';
+import { mkdir, writeFile, mkdtemp, readFile, unlink, rmdir } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
 const engine = process.env.HIDI_BROWSER_ENGINE || 'chromium';
@@ -16,7 +18,7 @@ await new Promise(resolve => upstream.listen(upstreamPort, '127.0.0.1', resolve)
 const server = spawn(process.execPath, [resolve('apps/web/node_modules/next/dist/bin/next'), 'start', '-H', '127.0.0.1', '-p', String(port)], { cwd: resolve('apps/web'), env: { ...process.env, API_URL: `http://127.0.0.1:${upstreamPort}/v1`, INTERNAL_API_URL: `http://127.0.0.1:${upstreamPort}/v1`, NODE_ENV: 'production' }, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = ''; server.stdout.on('data', b => { log += b; }); server.stderr.on('data', b => { log += b; });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-let browser; let passes = 0;
+let browser, authProxy, certificateDirectory; let passes = 0;
 const passed = name => { passes++; diagnostics.push(`PASS ${passes}: ${name}`); console.log(diagnostics.at(-1)); };
 const istToday = () => new Date(Date.now() + 19800000).toISOString().slice(0, 10);
 const order = { id: 'ci-order-1', orderNumber: 'HIDI-CI-1042', status: 'CONFIRMED', totalPaise: 599800, createdAt: new Date().toISOString(), customerPhone: '9999999999', customerEmail: 'fixture@example.test', itemCount: 2, payments: [{ status: 'CAPTURED' }], shipments: [] };
@@ -97,8 +99,53 @@ try {
     assert.equal(deniedInventory.status, 401, 'inventory preserves the upstream authentication status');
   }
   passed('real Next.js BFF denies missing and forged sessions; forwards only allowed filters');
+  // Production cookies are Secure. Use local TLS for real cookie lifecycle
+  // assertions: WebKit correctly ignores Secure Set-Cookie over plain HTTP.
+  certificateDirectory = await mkdtemp(join(tmpdir(), 'hidi-admin-browser-'));
+  const keyPath = join(certificateDirectory, 'key.pem'), certPath = join(certificateDirectory, 'cert.pem');
+  execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', keyPath, '-out', certPath, '-subj', '/CN=localhost', '-addext', 'subjectAltName=IP:127.0.0.1', '-days', '1'], { stdio: 'ignore' });
+  authProxy = createHttpsServer({ key: await readFile(keyPath), cert: await readFile(certPath) }, (req, res) => {
+    const forwarded = httpRequest({ hostname: '127.0.0.1', port, path: req.url, method: req.method, headers: req.headers }, response => {
+      res.writeHead(response.statusCode, response.headers); response.pipe(res);
+    });
+    forwarded.on('error', () => { res.writeHead(502); res.end('Local authentication fixture unavailable'); });
+    req.pipe(forwarded);
+  });
+  await new Promise(resolve => authProxy.listen(0, '127.0.0.1', resolve));
+  const authBase = `https://127.0.0.1:${authProxy.address().port}`;
   browser = await pw[engine].launch({ headless: true });
-  const signedOut = await browser.newPage(); await settledGoto(signedOut, base + '/admin'); await waitText(signedOut, 'Secure staff access'); assert.equal(await signedOut.getByRole('heading', { name: 'Overview', exact: true }).count(), 0); await signedOut.close(); passed('signed-out workspace does not render operational data');
+  // The session policy redirects rejected sessions past the workspace gate to
+  // the email sign-in page. Assert the settled authentication boundary, rather
+  // than a transient "Secure staff access" heading that may never be painted.
+  for (const token of [null, 'ci-invalid-token']) {
+    const signedOutContext = await browser.newContext({ ignoreHTTPSErrors: true }); contexts.push(signedOutContext);
+    if (token) await signedOutContext.addCookies([{ name: 'hidi_admin_access', value: token, url: authBase, httpOnly: true, secure: true, sameSite: 'Lax' }]);
+    const signedOut = await signedOutContext.newPage(), signedOutErrors = [], signedOutRequests = [];
+    signedOut.on('pageerror', error => signedOutErrors.push(error.message));
+    await signedOutContext.route('**/*', route => {
+      const url = new URL(route.request().url());
+      if (url.origin !== authBase) return route.abort();
+      signedOutRequests.push(url.pathname);
+      return route.continue();
+    });
+    await settledGoto(signedOut, authBase + '/admin');
+    await signedOut.waitForURL(url => url.pathname === '/admin/sign-in' && url.searchParams.get('expired') === '1');
+    await signedOut.getByRole('heading', { name: 'Staff sign in', exact: true }).waitFor();
+    await signedOut.getByRole('textbox', { name: 'Staff email', exact: true }).waitFor();
+    await signedOut.waitForFunction(() => {
+      const button = document.querySelector('form button[type="submit"]');
+      return button?.textContent === 'Send secure code' && !button.disabled;
+    });
+    await settleFixtureNetwork(signedOut);
+    assert.equal(await signedOut.getByRole('heading', { name: 'Overview', exact: true }).count(), 0);
+    assert.equal(await signedOut.getByText('Booked order value', { exact: true }).count(), 0);
+    assert(!signedOutRequests.some(path => path.startsWith('/api/admin/dashboard/')), 'Rejected sessions must not request operational data');
+    assert(!(await signedOutContext.cookies()).some(cookie => cookie.name === 'hidi_admin_access'), 'Rejected access cookies must be cleared');
+    assert.deepEqual(signedOutErrors, []);
+    await signedOut.screenshot({ path: resolve(output, token ? 'invalid-session-sign-in.png' : 'signed-out-sign-in.png'), fullPage: true });
+    await signedOutContext.close();
+    passed(`${token ? 'forged' : 'missing'} session redirects to the usable email sign-in form without operational data`);
+  }
   const { page, context, state, errors } = await fixtureContext();
   await settledGoto(page, base + '/admin'); await waitText(page, 'Booked order value'); await noOverflow(page);
   assert(await page.getByText('₹5,998.00', { exact: true }).count() >= 1);
@@ -142,4 +189,14 @@ try {
     diagnostics.push(await page.locator('body').innerText().catch(() => 'Body unavailable'));
   }
   throw error;
-} finally { await writeFile(resolve(output, 'browser-diagnostics.txt'), diagnostics.join('\n\n')); if (browser) await browser.close(); server.kill('SIGTERM'); await new Promise(resolve => upstream.close(resolve)); await writeFile(resolve(output, 'next-server.log'), log); }
+} finally {
+  await writeFile(resolve(output, 'browser-diagnostics.txt'), diagnostics.join('\n\n'));
+  if (browser) await browser.close();
+  if (authProxy) { authProxy.closeAllConnections(); await new Promise(resolve => authProxy.close(resolve)); }
+  if (certificateDirectory) {
+    for (const name of ['key.pem', 'cert.pem']) await unlink(join(certificateDirectory, name)).catch(error => { if (error.code !== 'ENOENT') throw error; });
+    await rmdir(certificateDirectory);
+  }
+  server.kill('SIGTERM'); await new Promise(resolve => upstream.close(resolve));
+  await writeFile(resolve(output, 'next-server.log'), log);
+}
