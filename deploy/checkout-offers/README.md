@@ -2,18 +2,30 @@
 
 Owner controls: `/admin/offers`. Save drafts, select a private test audience or
 everyone, and publish. Each offer has its own enable checkbox; the master checkout
-checkbox controls redemption. Legacy drafts display the new models with checkout
-off and no selected gift products. The old 15% checkout discount is unsupported.
+checkbox controls redemption. Upgrading to coupon entry leaves checkout off and
+preserves the current approved product selection. Earlier MRP-based collections
+are not imported. The deployment does not publish or activate either coupon.
 
-* `WELCOME200`: ₹200 off current selling-price merchandise at ₹1,499 or above,
+* `WELCOME250`: ₹250 off current selling-price merchandise at ₹1,499 or above,
   once per new customer. Verified phone identity, prior paid/refunded orders and
   active orders are checked on the server.
-* `DRESS1`: at ₹2,999 or above, add one selected available variant for ₹1. Delivery
+* `GET1` (internal kind `DRESS1`): at ₹3,999 or above, add one selected available variant for ₹1. Delivery
   and the additional dress do not qualify toward the threshold. First 25 orders,
   one per verified customer. The owner maps the below-₹550 purchase-cost list to
   website products; MRP is not a purchase-cost proxy.
 * One offer per order; wallet reward redemption cannot stack. Existing merchandise
   prices and shipping policy are preserved. Taxes remain included in prices.
+
+The generic coupon field is visible in checkout without advertising unpublished
+codes. It does not fetch offer policy or alter normal prepare requests when no
+coupon is applied. Codes normalize case and whitespace. GET1 opens the selected
+collection only after Apply; styles group their available size/color variants,
+with sold-out variants disabled. Selection is mandatory before payment, and
+Remove restores the regular basket. Cart, identity, publication and stock changes
+revalidate or remove the coupon with an explicit message. Applying another coupon
+replaces the first; typed invalid codes do not silently discard a valid selection.
+The coupon-version gate prevents older published offer settings from activating
+the revised amounts. Already-prepared legacy payments retain their stored terms.
 
 The serializable checkout transaction takes a SQL Server transaction-owned
 `sp_getapplock` before checking redemption history and creating the order/stock
@@ -36,3 +48,6 @@ Runtime checks: `HIDI_CANDIDATE_API` points to an extracted candidate `/app`, th
 `node deploy/checkout-offers/api-test.mjs`. The fixture covers amount boundaries,
 provider amounts, saved discounts, stock, identity, rewards, retries, the 25-order
 cap, pending holds, returns and concurrent attempts using serialized transactions.
+Browser regression additionally covers Apply/Remove, malformed codes, exact
+₹1,499/₹3,999 thresholds, 14 selected styles, sold-out sizes, mandatory selection,
+changing dresses, basket edits, logout, pause, and ordinary provider totals.

@@ -27,7 +27,7 @@ type AddressInput = {
 };
 
 type PrepareInput = {
-  offer?: { kind: string; version?: number; variantId?: string };
+  offer?: { kind: string; version?: number; variantId?: string; code?: string };
   paymentMethod?: "RAZORPAY" | "COD";
   sessionId?: string;
   checkoutToken?: string;
