@@ -1,13 +1,13 @@
 (() => {
  if(window.__hidiCheckoutOffers)return;window.__hidiCheckoutOffers=true;
  const original=window.fetch.bind(window),KEY='hidi_supabase_session';
- let choice={kind:'NONE'},quote=null,codeDraft='WELCOME250',activeCode='',sessionId=null,cartPresent=false,busy=false,syncing=false,locked=false,revision=0,panel=null,notice='',noticeError=false,lastPath=location.pathname,openPicker=false;
+ let choice={kind:'NONE'},quote=null,codeDraft='',activeCode='',sessionId=null,cartPresent=false,busy=false,syncing=false,locked=false,revision=0,panel=null,notice='',noticeError=false,lastPath=location.pathname,openPicker=false;
  const money=p=>'₹'+(p/100).toLocaleString('en-IN',{minimumFractionDigits:p%100?2:0,maximumFractionDigits:2});
  const token=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');return s?.expires_at>Date.now()/1000?s.access_token:null;}catch{return null;}};
  const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(cls)e.className=cls;return e;};
  const button=(text,action,cls)=>{const b=el('button',text,cls);b.type='button';b.disabled=busy||syncing||locked;b.addEventListener('click',action);return b;};
  function closePicker(){document.querySelectorAll('.hidi-offer-dialog').forEach(d=>{d.close();d.remove();});}
- function reset(message=''){closePicker();choice={kind:'NONE'};quote=null;activeCode='';codeDraft='WELCOME250';busy=false;syncing=false;locked=false;revision++;openPicker=false;notice=message;noticeError=false;}
+ function reset(message=''){closePicker();choice={kind:'NONE'};quote=null;activeCode='';codeDraft='';busy=false;syncing=false;locked=false;revision++;openPicker=false;notice=message;noticeError=false;}
  const refresh=()=>window.dispatchEvent(new Event('hidi-cart-updated'));
  async function getQuote(id,selection,code,signal){
   const bearer=token(),offer=selection.kind==='DRESS1'&&!selection.variantId?{kind:'NONE'}:selection;
@@ -55,7 +55,7 @@
   if(!panel){panel=el('section',null,'hidi-checkout-coupons');panel.dataset.hidiCheckoutCoupons='true';panel.setAttribute('aria-label','Checkout coupon');}
   if(!place())return;
   const focused=document.activeElement?.id==='hidi-coupon-code',cursor=focused?document.activeElement.selectionStart:null;
-  const label=el('label','Have a coupon?');label.htmlFor='hidi-coupon-code';const row=el('div',null,'hidi-coupon-input-row'),input=el('input');input.id='hidi-coupon-code';input.type='text';input.placeholder='Enter coupon code';input.autocomplete='off';input.maxLength=32;input.value=codeDraft;input.disabled=busy||syncing||locked;input.setAttribute('aria-describedby','hidi-coupon-status');input.addEventListener('input',()=>{codeDraft=input.value;});input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();apply();}});row.append(input,button(busy?'Checking…':'Apply',apply));
+  const label=el('label','Have a coupon?');label.htmlFor='hidi-coupon-code';const row=el('div',null,'hidi-coupon-input-row'),input=el('input');input.id='hidi-coupon-code';input.type='text';input.placeholder='WELCOME250';input.autocomplete='off';input.maxLength=32;input.value=codeDraft;input.disabled=busy||syncing||locked;input.setAttribute('aria-describedby','hidi-coupon-status');input.addEventListener('input',()=>{codeDraft=input.value;});input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();apply();}});row.append(input,button(busy?'Checking…':'Apply',apply));
   const status=el('p',notice||'Shop for 1499 to avail the discount','hidi-coupon-status'+(noticeError?' is-error':''));status.id='hidi-coupon-status';status.setAttribute('role',noticeError?'alert':'status');status.setAttribute('aria-live','polite');
   panel.replaceChildren(label,row,status);
   if(activeCode){
