@@ -52,7 +52,15 @@ export async function compose(base,overlay){
   await mkdir(join(overlay,'admin-tools'),{recursive:true});
   await writeFile(join(overlay,'admin-tools/navigation.js'),patchNavigation(await readFile(join(base,'admin-tools/navigation.js'),'utf8'),{allowInstalled:upgrade}));
   const allowedFiles=['server.mjs','admin-tools/navigation.js',...files.map(f=>'typography/'+f),...(await readdir(join(here,'fonts'))).map(f=>'typography/fonts/'+f)];
-  const protectedFiles=['server.mjs','admin-tools/navigation.js',...['storage.mjs','wrap.mjs','refresh.js','editor.html','editor.js','editor.css'].map(f=>'typography/'+f),...['inter','lora','manrope'].flatMap(f=>['typography/fonts/'+f+'.woff2','typography/fonts/'+f+'-LICENSE.txt'])];
+  const protectedFiles=['server.mjs','admin-tools/navigation.js',...['storage.mjs','wrap.mjs','refresh.js','editor.html','editor.js','editor.css'].map(f=>'typography/'+f)];
+  if(upgrade){
+    const previousManifest=JSON.parse(await readFile(join(base,'typography/fonts/manifest.json'),'utf8'));
+    const nextManifest=JSON.parse(await readFile(join(overlay,'typography/fonts/manifest.json'),'utf8'));
+    for(const previous of previousManifest){
+      assert.deepEqual(nextManifest.find(entry=>entry.name===previous.name),previous,'Installed font provenance changed: '+previous.name);
+      protectedFiles.push('typography/fonts/'+previous.name+'-LICENSE.txt',...(previous.files||[{file:previous.name+'.woff2'}]).map(face=>'typography/fonts/'+face.file));
+    }
+  }
   if(upgrade)for(const name of protectedFiles)assert.deepEqual(await readFile(join(base,name)),await readFile(join(overlay,name)),'Protected file changed: '+name);
   return {passed:true,mode:upgrade?'upgrade':'install',allowedFiles,protectedFiles:upgrade?protectedFiles:[],protectedFilesUnchanged:true,unchangedRuntimeRestoredExactly:true,clientBundlesUnchanged:true};
 }

@@ -12,6 +12,18 @@ export const fonts = Object.freeze({
   'dm-sans': { name: 'DM Sans', stack: '"HIDI DM Sans", Arial, sans-serif', file: 'dm-sans.woff2', weight: '100 1000' },
   'nunito-sans': { name: 'Nunito Sans', stack: '"HIDI Nunito Sans", Arial, sans-serif', file: 'nunito-sans.woff2', weight: '200 1000' },
   'source-sans-3': { name: 'Source Sans 3', stack: '"HIDI Source Sans 3", Arial, sans-serif', file: 'source-sans-3.woff2', weight: '200 900' },
+  'bodoni-moda': { name: 'Bodoni Moda', stack: '"HIDI Bodoni Moda", Georgia, serif', file: 'bodoni-moda.woff2', weight: '400 900' },
+  'dm-serif-display': { name: 'DM Serif Display', stack: '"HIDI DM Serif Display", Georgia, serif', file: 'dm-serif-display-400.woff2', weight: '400' },
+  prata: { name: 'Prata', stack: '"HIDI Prata", Georgia, serif', file: 'prata-400.woff2', weight: '400' },
+  italiana: { name: 'Italiana', stack: '"HIDI Italiana", Georgia, serif', file: 'italiana-400.woff2', weight: '400' },
+  fraunces: { name: 'Fraunces', stack: '"HIDI Fraunces", Georgia, serif', file: 'fraunces.woff2', weight: '100 900' },
+  merriweather: { name: 'Merriweather', stack: '"HIDI Merriweather", Georgia, serif', file: 'merriweather.woff2', weight: '300 900' },
+  outfit: { name: 'Outfit', stack: '"HIDI Outfit", Arial, sans-serif', file: 'outfit.woff2', weight: '100 900' },
+  raleway: { name: 'Raleway', stack: '"HIDI Raleway", Arial, sans-serif', file: 'raleway.woff2', weight: '100 900' },
+  'work-sans': { name: 'Work Sans', stack: '"HIDI Work Sans", Arial, sans-serif', file: 'work-sans.woff2', weight: '100 900' },
+  'plus-jakarta-sans': { name: 'Plus Jakarta Sans', stack: '"HIDI Plus Jakarta Sans", Arial, sans-serif', file: 'plus-jakarta-sans.woff2', weight: '200 800' },
+  urbanist: { name: 'Urbanist', stack: '"HIDI Urbanist", Arial, sans-serif', file: 'urbanist.woff2', weight: '100 900' },
+  lato: { name: 'Lato', stack: '"HIDI Lato", Arial, sans-serif', faces: [100,300,400,700,900].map(weight=>({file:`lato-${weight}.woff2`,weight:String(weight)})) },
 });
 export const fontSources = font => font.faces || (font.file ? [{file:font.file,weight:font.weight}] : []);
 export const presets = Object.freeze({

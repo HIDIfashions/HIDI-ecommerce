@@ -4,11 +4,15 @@ Owner portal: `/admin/typography`. Save a draft, then publish it to the storefro
 or admin profile. Restoring the previous publication creates a new revision.
 Installation preserves the existing font styles until the owner first publishes.
 
-Both profiles share 12 choices: System sans, Inter, Lora, Manrope, Playfair
+Both profiles share 24 choices: System sans, Inter, Lora, Manrope, Playfair
 Display, Cormorant Garamond, Libre Baskerville, Poppins, Montserrat, DM Sans,
-Nunito Sans and Source Sans 3. WOFF2 files and their OFL licenses are bundled
+Nunito Sans, Source Sans 3, Bodoni Moda, DM Serif Display, Prata, Italiana,
+Fraunces, Merriweather, Outfit, Raleway, Work Sans, Plus Jakarta Sans, Urbanist
+and Lato. WOFF2 files and their OFL licenses are bundled
 under `fonts/`; no visitor contacts a third-party font service. Poppins supplies
-nine static weights; the other installed families use variable fonts. Versions,
+nine static weights and Lato five. DM Serif Display, Prata and Italiana have a
+single regular face; heavier CSS text may use browser synthesis. The other
+installed families use variable fonts. Versions,
 package integrity and file checksums are recorded in the manifest. Font IDs are
 validated against the registry. Headings,
 body copy, product names and controls have independent roles. Published CSS sets
@@ -44,7 +48,8 @@ Firefox and WebKit at phone/tablet/desktop widths. The API image, SQL database,
 commerce data, original client bundles and image settings stay intact. Deploy
 only the sealed tested digest; live regressions trigger owned rollback.
 An upgrade verifies the installed runtime hooks without adding them twice,
-protects original font binaries, and compares the published settings and CSS
+protects every previously installed font binary, license and manifest entry,
+and compares the published settings and CSS
 before and after deployment. It does not save or publish any production settings.
 Automatic rollback is withheld if an owner independently changes typography
 during the rollout, because the previous image may not support that selection.
@@ -54,7 +59,7 @@ Tests: `node deploy/typography/unit.mjs` and
 Set `HIDI_CANDIDATE_RUNTIME` to the extracted candidate for retained-runtime
 integration. Candidate tests mock external identity/storage/catalogue services,
 exercise the actual handler and UI, and block production commerce writes.
-The added-font matrix publishes all eight families in both profiles on all three
+The added-font matrix publishes all twenty additions in both profiles on all three
 engines, loads real font weights, checks profile isolation, and exercises tabs
 using the pre-upgrade font catalogue. It also checks persistence after reload.
 `--live` verifies public assets, route coverage, auth denial and responsive UI

@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {fonts,fontSources,roles} from './registry.mjs';
 import {fontFaces} from './css.mjs';
 
-export const additions=['playfair-display','cormorant-garamond','libre-baskerville','poppins','montserrat','dm-sans','nunito-sans','source-sans-3'];
+export const additions=['playfair-display','cormorant-garamond','libre-baskerville','poppins','montserrat','dm-sans','nunito-sans','source-sans-3','bodoni-moda','dm-serif-display','prata','italiana','fraunces','merriweather','outfit','raleway','work-sans','plus-jakarta-sans','urbanist','lato'];
 const wait=async(fn,label)=>{for(let n=0;n<100;n++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw Error('Timed out: '+label);};
 const focus=page=>page.evaluate(()=>window.dispatchEvent(new Event('focus')));
 const family=(page,selector)=>page.locator(selector).first().evaluate(el=>getComputedStyle(el).fontFamily);
@@ -33,7 +33,7 @@ export async function verifyFontLibrary({context,engine,base,productPath}){
   assert((await family(observer,'h1')).includes(expected));assert((await family(observer,'button')).includes(expected));
   assert((await observer.locator('html').evaluate(el=>getComputedStyle(el).getPropertyValue('--font-product'))).includes(expected));
   if(profile==='storefront')assert((await family(observer,'.pdp-title-row h1')).includes(expected));
-  const weights=id==='poppins'?[100,200,300,400,500,600,700,800,900]:[400,700];
+  const weights=[...new Set(fontSources(fonts[id]).flatMap(face=>face.weight.includes(' ')?[400,700]:[Number(face.weight)]))];
   const loaded=await observer.evaluate(async({expected,weights})=>{const counts=[];for(const weight of weights)counts.push((await document.fonts.load(weight+' 16px '+JSON.stringify(expected),'Aara Sage Kurta Set 0123456789')).filter(face=>face.status==='loaded').length);return counts;},{expected,weights});
   assert(loaded.every(count=>count>0),'Real font faces decoded at every tested weight');
   assert.equal(navigations.get(observer),navBefore,'Font publication must not reload an open page');
@@ -42,7 +42,7 @@ export async function verifyFontLibrary({context,engine,base,productPath}){
   assert.equal(await observer.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
   report.push({engine,font:id,profile,preUpgradeTab:true,fontLoaded:true,weights});
  }
- for(const page of [visitor,admin]){await page.reload({waitUntil:'domcontentloaded'});await wait(async()=>(await family(page,'body')).includes('HIDI Source Sans 3'),'new selection persists after reload');await page.close();}
+ for(const page of [visitor,admin]){await page.reload({waitUntil:'domcontentloaded'});await wait(async()=>(await family(page,'body')).includes('HIDI '+fonts[additions.at(-1)].name),'new selection persists after reload');await page.close();}
  await editor.close();return report;
 }
 export async function verifyLiveFontAssets(base){

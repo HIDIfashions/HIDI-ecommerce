@@ -22,9 +22,9 @@ test('public stale fallback contains the last successful publication only',async
 test('fresh process without storage returns failure rather than a success-shaped default',async()=>fixture(async({base,store})=>{store.failLoad=true;assert.equal((await fetch(base+'/typography/published.css')).status,503);}));
 test('assets allow only known filenames and read methods; all font weights are self-hosted WOFF2',async()=>fixture(async({base})=>{for(const face of Object.values(fonts).flatMap(fontSources)){const r=await fetch(base+'/typography/assets/fonts/'+face.file);assert.equal(r.status,200);assert.equal(Buffer.from(await r.arrayBuffer()).subarray(0,4).toString(),'wOF2');}assert.equal((await fetch(base+'/typography/assets/storage.mjs')).status,404);assert.equal((await fetch(base+'/typography/assets/editor.js',{method:'POST'})).status,405);const head=await fetch(base+'/typography/published.css',{method:'HEAD'});assert.equal(await head.text(),'');}));
 
-test('all eight additions persist and publish independently in both profiles with selected font faces',async()=>fixture(async({base,call,store})=>{
+test('all twenty additions persist and publish independently in both profiles with selected font faces',async()=>fixture(async({base,call,store})=>{
  let state=(await call()).data;
- const additions=['playfair-display','cormorant-garamond','libre-baskerville','poppins','montserrat','dm-sans','nunito-sans','source-sans-3'];
+ const additions=Object.keys(fonts).filter(id=>!['system','inter','lora','manrope'].includes(id));assert.equal(additions.length,20);
  for(const profile of ['storefront','admin'])for(const id of additions){
   const other=profile==='admin'?'storefront':'admin',unchanged=structuredClone(state.profiles[other]);
   const beforeCss=await fetch(base+'/typography/published.css').then(r=>r.text());
@@ -36,7 +36,7 @@ test('all eight additions persist and publish independently in both profiles wit
   for(const face of fontSources(fonts[id]))assert(css.includes('/typography/assets/fonts/'+face.file));
   assert.deepEqual((await store.load()).value.profiles[profile].published,Object.fromEntries(roles.map(role=>[role,id])));
  }
- assert.equal(state.revision,16);
+ assert.equal(state.revision,40);
 }));
 
 test('legacy saved profiles and publication history survive a library upgrade unchanged',async()=>fixture(async({base,store,call})=>{

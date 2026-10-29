@@ -18,11 +18,19 @@ test('all bundled faces match their pinned provenance and accompanying license',
    const bytes=await readFile(new URL(file.file,folder));assert.equal(bytes.subarray(0,4).toString(),'wOF2');assert.equal(hash(bytes),file.sha256);assert.equal(bytes.length,file.bytes);recorded.add(file.file);
   }
  }
- assert.deepEqual(recorded,catalogFiles);assert.equal(manifest.length,11);assert.equal(Object.keys(fonts).length,12);
+ assert.deepEqual(recorded,catalogFiles);assert.equal(manifest.length,23);assert.equal(Object.keys(fonts).length,24);
 });
 test('original font binaries remain byte-identical to the deployed library',async()=>{
- const expected={inter:'3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62',lora:'ddb8c66035104e233fc024669183aad3738b6daa16deee2ebb1241bd0f98ace1',manrope:'a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972'};
- for(const [id,digest] of Object.entries(expected))assert.equal(hash(await readFile(new URL(id+'.woff2',folder))),digest);
+ const expected=JSON.parse(await readFile(new URL('fixtures/typography-installed-fonts.json',import.meta.url),'utf8'));
+ for(const [file,digest] of Object.entries(expected))assert.equal(hash(await readFile(new URL(file,folder))),digest);
+});
+test('single-weight display faces and all Lato weights advertise only their real weights',()=>{
+ for(const id of ['dm-serif-display','prata','italiana']){
+  assert.deepEqual(fontSources(fonts[id]),[{file:id+'-400.woff2',weight:'400'}]);
+  const css=fontFaces('',[id]);assert.equal((css.match(/@font-face/g)||[]).length,1);assert(css.includes('font-weight:400;'));assert(!css.includes('700'));
+ }
+ assert.deepEqual(fontSources(fonts.lato).map(face=>Number(face.weight)),[100,300,400,700,900]);
+ const css=fontFaces('', ['lato']);assert.equal((css.match(/@font-face/g)||[]).length,5);
 });
 test('static Poppins uses separate real faces and newly published CSS carries only required additions',()=>{
  const faces=fontFaces('', ['poppins']);assert.equal((faces.match(/@font-face/g)||[]).length,9);

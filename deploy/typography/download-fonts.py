@@ -3,6 +3,8 @@ import argparse, base64, hashlib, io, json, pathlib, tarfile, urllib.request
 
 folder=pathlib.Path(__file__).resolve().parent/'fonts'
 approved=['poppins','montserrat','dm-sans','nunito-sans','source-sans-3','playfair-display','cormorant-garamond','libre-baskerville']
+approved+=['bodoni-moda','dm-serif-display','prata','italiana','fraunces','merriweather','outfit','raleway','work-sans','plus-jakarta-sans','urbanist','lato']
+static_weights={'poppins':list(range(100,1000,100)),'dm-serif-display':[400],'prata':[400],'italiana':[400],'lato':[100,300,400,700,900]}
 parser=argparse.ArgumentParser();parser.add_argument('--cache-dir',type=pathlib.Path);args=parser.parse_args()
 manifest=json.loads((folder/'manifest.json').read_text())
 def retain(path,content):
@@ -10,7 +12,7 @@ def retain(path,content):
     else:path.write_bytes(content)
 for name in approved:
     version='5.3.1' if name=='source-sans-3' else '5.3.0'
-    package=('@fontsource/' if name=='poppins' else '@fontsource-variable/')+name
+    package=('@fontsource/' if name in static_weights else '@fontsource-variable/')+name
     metadata=json.load(urllib.request.urlopen('https://registry.npmjs.org/'+package+'/'+version,timeout=30))
     assert metadata['license']=='OFL-1.1'
     cached=args.cache_dir/(name+'.tgz') if args.cache_dir else None
@@ -19,7 +21,8 @@ for name in approved:
     assert integrity==metadata['dist']['integrity']
     files=[]
     with tarfile.open(fileobj=io.BytesIO(archive),mode='r:gz') as tar:
-        sources=[(f'package/files/{name}-latin-{w}-normal.woff2',f'{name}-{w}.woff2') for w in range(100,1000,100)] if name=='poppins' else [(f'package/files/{name}-latin-wght-normal.woff2',name+'.woff2')]
+        axes='standard' if name in ['bodoni-moda','fraunces','merriweather'] else 'wght'
+        sources=[(f'package/files/{name}-latin-{w}-normal.woff2',f'{name}-{w}.woff2') for w in static_weights[name]] if name in static_weights else [(f'package/files/{name}-latin-{axes}-normal.woff2',name+'.woff2')]
         for source,target in sources:
             data=tar.extractfile(source).read();assert data[:4]==b'wOF2';retain(folder/target,data)
             files.append({'file':target,'source':source,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})

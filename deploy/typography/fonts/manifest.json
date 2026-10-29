@@ -206,5 +206,233 @@
         "bytes": 33872
       }
     ]
+  },
+  {
+    "name": "bodoni-moda",
+    "package": "@fontsource-variable/bodoni-moda",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/bodoni-moda/-/bodoni-moda-5.3.0.tgz",
+    "integrity": "sha512-yTDXk4+/J8I20KjtkHBbXDQNeE5PR3BZa0gv/YRza+kyxsz+mmg0la/n/hsr6+WvSfVP7Lc8lRTjHGIYwBW43A==",
+    "license": "OFL-1.1",
+    "licenseSha256": "6c64f717433eadd29b058d6254fe25c1ee2d249ce3772f843bb21f73285779c2",
+    "files": [
+      {
+        "file": "bodoni-moda.woff2",
+        "source": "package/files/bodoni-moda-latin-standard-normal.woff2",
+        "sha256": "c032219ef636f7b4932f7d1dc91bdab602c970f090770b546bea4effaab3463c",
+        "bytes": 46260
+      }
+    ]
+  },
+  {
+    "name": "dm-serif-display",
+    "package": "@fontsource/dm-serif-display",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource/dm-serif-display/-/dm-serif-display-5.3.0.tgz",
+    "integrity": "sha512-ecRclUcYeto9fB7ghkB36H4MtUoaUYFjjornWYYeLCMHzaWEDPk2kIWgZOq0mKBNRxclRSieKcFeLonlMYDTKg==",
+    "license": "OFL-1.1",
+    "licenseSha256": "e9d4ced9825bf03a6b634c37fe8ae974f6d1b80fbb0bd3ae9b089987e4dc541b",
+    "files": [
+      {
+        "file": "dm-serif-display-400.woff2",
+        "source": "package/files/dm-serif-display-latin-400-normal.woff2",
+        "sha256": "fdf61e20fd2c0108e0ea28da4daca0035205b4b7fc031a3974b865b704de160a",
+        "bytes": 24744
+      }
+    ]
+  },
+  {
+    "name": "prata",
+    "package": "@fontsource/prata",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource/prata/-/prata-5.3.0.tgz",
+    "integrity": "sha512-8f3WPCd930Cv1QoP1dSX/b86psNNIWd/8R7Dd1HmWn95Am5X795bqkEpinPJofcTBxPfleszkM5c0vc2amg2Ew==",
+    "license": "OFL-1.1",
+    "licenseSha256": "e64944abf1756debf967a589d31f3b7d5ad933bc7c55a053fb742b3b02b1723e",
+    "files": [
+      {
+        "file": "prata-400.woff2",
+        "source": "package/files/prata-latin-400-normal.woff2",
+        "sha256": "1b85a8c794709747c9f689b791984c430a2d9716a5cf9440d955bd7d20dad9d0",
+        "bytes": 19224
+      }
+    ]
+  },
+  {
+    "name": "italiana",
+    "package": "@fontsource/italiana",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource/italiana/-/italiana-5.3.0.tgz",
+    "integrity": "sha512-B8+XUGaaNXlfll5aqFlCVd/4kboQJWIy/laWO73CN00F8E08vPu07Cqn4NTQcmQvzJU3+FIBdThvpqto0+M9mQ==",
+    "license": "OFL-1.1",
+    "licenseSha256": "660ba7b883357ad0e8d8293e8eb1b418949a3c94520b9e746a9f444050b4b8d2",
+    "files": [
+      {
+        "file": "italiana-400.woff2",
+        "source": "package/files/italiana-latin-400-normal.woff2",
+        "sha256": "5079c87a4e86c58e8cd4f18ec2d3255918b7d565708ed934b15c4710301f838c",
+        "bytes": 10100
+      }
+    ]
+  },
+  {
+    "name": "fraunces",
+    "package": "@fontsource-variable/fraunces",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/fraunces/-/fraunces-5.3.0.tgz",
+    "integrity": "sha512-9BYGySn4AHEJdgp9Z28tQ3X+laJMEOITXkQarZXeloWQZDq5oOvXJ3kDA8c7MGIfpogIaZfjrQBqmda8POOCKA==",
+    "license": "OFL-1.1",
+    "licenseSha256": "cd3384cafac6f2bddc3955273958a2e029f97027c8037ac539ef5744a77b579e",
+    "files": [
+      {
+        "file": "fraunces.woff2",
+        "source": "package/files/fraunces-latin-standard-normal.woff2",
+        "sha256": "7234ed860a9cc83045413c4faee63c960a8f2d1917adcf728119307d56e0d783",
+        "bytes": 67304
+      }
+    ]
+  },
+  {
+    "name": "merriweather",
+    "package": "@fontsource-variable/merriweather",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/merriweather/-/merriweather-5.3.0.tgz",
+    "integrity": "sha512-wK7S4NtPXWUWll/sZCdub93pqSCnFkpKFbnoOE8fh+9Ut6JFjgkc9UlBxHJ0RVMkDpoWwGwMwYYTMvd3G9aAXA==",
+    "license": "OFL-1.1",
+    "licenseSha256": "aa677c3f7682d9c4f7aa48fae3f3b9d0f8d70ac6ab47b9bc20a9cc2879e15af0",
+    "files": [
+      {
+        "file": "merriweather.woff2",
+        "source": "package/files/merriweather-latin-standard-normal.woff2",
+        "sha256": "e37716cc58c779ac4ed74fe7587fed534a579736bbc3836a331a5c34ad0eb9ca",
+        "bytes": 368920
+      }
+    ]
+  },
+  {
+    "name": "outfit",
+    "package": "@fontsource-variable/outfit",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/outfit/-/outfit-5.3.0.tgz",
+    "integrity": "sha512-fPb5XnYK0k7SbR++HEmm4+ZqDszmLKQ+sPRUr8oQ/KNC0vy6r6hazJFe8iYozv4cqlHbvJ/JECkJWrfDodUMVQ==",
+    "license": "OFL-1.1",
+    "licenseSha256": "0e5fcef5d93bfcae273c11c00f0bb453d3b5491860e1ac8b658767b7577c938f",
+    "files": [
+      {
+        "file": "outfit.woff2",
+        "source": "package/files/outfit-latin-wght-normal.woff2",
+        "sha256": "6c18d579fd87c3776be068b762cbc83fde3acb543d49eabd3ade842eb987e887",
+        "bytes": 32292
+      }
+    ]
+  },
+  {
+    "name": "raleway",
+    "package": "@fontsource-variable/raleway",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/raleway/-/raleway-5.3.0.tgz",
+    "integrity": "sha512-aSV2k+V6Zz+od0dHpBOzkVxEzmgEdiXcxDfant39jLOx+T89dielQRrZylukwK3Fp+FY255gPqz67ruOfs1rqA==",
+    "license": "OFL-1.1",
+    "licenseSha256": "7bda8fcb7cfe5a162bb615e16bf4f94c7ef78de6f82ee44d219bf24a013b7ba2",
+    "files": [
+      {
+        "file": "raleway.woff2",
+        "source": "package/files/raleway-latin-wght-normal.woff2",
+        "sha256": "b1bef1f03a77a36fc257c5525e32a1dd621bb6f935b743a419da7ed0b18dc8f5",
+        "bytes": 48264
+      }
+    ]
+  },
+  {
+    "name": "work-sans",
+    "package": "@fontsource-variable/work-sans",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/work-sans/-/work-sans-5.3.0.tgz",
+    "integrity": "sha512-le8h/OIIuhm5Z7TdvuMw0yKg2gaCZUiMec8zaumsVVjzeJRBPEF0bQI/MkaZDHCVzZDvZoP/O2LiGOSfDLSbaw==",
+    "license": "OFL-1.1",
+    "licenseSha256": "e7c426573d51f3d2e5e92254878c862344ffa0b9272f79a880f9f99010f002c7",
+    "files": [
+      {
+        "file": "work-sans.woff2",
+        "source": "package/files/work-sans-latin-wght-normal.woff2",
+        "sha256": "1dd49afc07fb2231b2ff686cbf007725fb2742271bb1f28ebd98f22a0d817343",
+        "bytes": 50316
+      }
+    ]
+  },
+  {
+    "name": "plus-jakarta-sans",
+    "package": "@fontsource-variable/plus-jakarta-sans",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/plus-jakarta-sans/-/plus-jakarta-sans-5.3.0.tgz",
+    "integrity": "sha512-/l/4r0yyWK9JzAlmA0LiYgGgmJe/Gswt4jTJEzr5QhJfwMbvJZDmYWyW0M4X7yCK69BajMVlV/Lx8g7WDc1+sw==",
+    "license": "OFL-1.1",
+    "licenseSha256": "e07fd1167c2aaaa6fb965dd66e1e73b13c9c95b76b2d648b6e938780f30b37af",
+    "files": [
+      {
+        "file": "plus-jakarta-sans.woff2",
+        "source": "package/files/plus-jakarta-sans-latin-wght-normal.woff2",
+        "sha256": "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79",
+        "bytes": 27348
+      }
+    ]
+  },
+  {
+    "name": "urbanist",
+    "package": "@fontsource-variable/urbanist",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/urbanist/-/urbanist-5.3.0.tgz",
+    "integrity": "sha512-riHbcRgoOhEdCwVw3n3R1JLEwvRD1N9GlXtBcwl/UJ2KabfyDBuryE2Yq10308QJgbXw3F/IFF+VoMuuqwVfIA==",
+    "license": "OFL-1.1",
+    "licenseSha256": "d8c6282d9c21c49ecf65ed1f98e4eaefff8d6cd32e9725bb3c7360fe47d32f47",
+    "files": [
+      {
+        "file": "urbanist.woff2",
+        "source": "package/files/urbanist-latin-wght-normal.woff2",
+        "sha256": "7981ef90c246352c7c217081b8d9337b9c95e9d17ae126bf56b0d3753d1e5ffb",
+        "bytes": 27752
+      }
+    ]
+  },
+  {
+    "name": "lato",
+    "package": "@fontsource/lato",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource/lato/-/lato-5.3.0.tgz",
+    "integrity": "sha512-0WhF/4rhrw+ErIyneKvhHn2YAl+xf8GDtllgOgOzDmeaSlLQtjpChXaQOpWhG2BchQW0WJy2zLV12Hdg0ndOMw==",
+    "license": "OFL-1.1",
+    "licenseSha256": "9648253641ec1d1f8ba2fbe8997909f7bfc48cc38537946f6272321788465b84",
+    "files": [
+      {
+        "file": "lato-100.woff2",
+        "source": "package/files/lato-latin-100-normal.woff2",
+        "sha256": "a79b4c65b454a795ff3868156f54be09ac8360b9fd3ba21431b5c48fd9b66afa",
+        "bytes": 21508
+      },
+      {
+        "file": "lato-300.woff2",
+        "source": "package/files/lato-latin-300-normal.woff2",
+        "sha256": "115f6a626ca115d4ad5581b59275327e0e860b30330a52b0f785561332dd2429",
+        "bytes": 23236
+      },
+      {
+        "file": "lato-400.woff2",
+        "source": "package/files/lato-latin-400-normal.woff2",
+        "sha256": "918b7dc3e2e2d015c16ce08b57bcb64d2253bafc1707658f361e72865498e537",
+        "bytes": 23580
+      },
+      {
+        "file": "lato-700.woff2",
+        "source": "package/files/lato-latin-700-normal.woff2",
+        "sha256": "c447dd7677b419db7b21dbdfc6277c7816a913ffda76fd2e52702df538de0e49",
+        "bytes": 23040
+      },
+      {
+        "file": "lato-900.woff2",
+        "source": "package/files/lato-latin-900-normal.woff2",
+        "sha256": "08664859baab5ed98f0bf818ed77e38464ff1826dc6406d5ecbd651409afbd92",
+        "bytes": 22504
+      }
+    ]
   }
 ]

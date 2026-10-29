@@ -36,7 +36,7 @@ def compose():
     folder=P/'web';folder.mkdir();base,overlay,candidate=(folder/n for n in ['base-app','overlay','candidate-app'])
     images.extract(before['hidi-web']['image'],base)
     subprocess.run(['node',str(HERE/'patch.mjs'),str(base),str(overlay)],check=True)
-    plan=read('patch.json');assert len(plan['allowedFiles']) == 42 and plan['mode']=='upgrade' and plan['protectedFilesUnchanged'] and plan['unchangedRuntimeRestoredExactly'] and plan['clientBundlesUnchanged']
+    plan=read('patch.json');assert len(plan['allowedFiles']) == 70 and plan['mode']=='upgrade' and plan['protectedFilesUnchanged'] and plan['unchangedRuntimeRestoredExactly'] and plan['clientBundlesUnchanged']
     assert all(n in ['server.mjs','admin-tools/navigation.js'] or n.startswith('typography/') for n in plan['allowedFiles'])
     for name in plan['allowedFiles']:
         if name.endswith(('.js','.mjs')):subprocess.run(['node','--check',str(overlay/name)],check=True)
@@ -52,6 +52,7 @@ def seal():
     assert {(c['engine'],c['width']) for c in report['cases']}=={(e,w) for e in ['chromium','firefox','webkit'] for w in [390,768,1440]}
     assert report['actualRuntime'] and report['serverRendered']
     expected_fonts={'playfair-display','cormorant-garamond','libre-baskerville','poppins','montserrat','dm-sans','nunito-sans','source-sans-3'}
+    expected_fonts.update({'bodoni-moda','dm-serif-display','prata','italiana','fraunces','merriweather','outfit','raleway','work-sans','plus-jakarta-sans','urbanist','lato'})
     assert {(c['engine'],c['font'],c['profile']) for c in report['fontLibrary']} == {(engine,font,profile) for engine in ['chromium','firefox','webkit'] for font in expected_fonts for profile in ['admin','storefront']}
     assert all(c['preUpgradeTab'] and c['fontLoaded'] for c in report['fontLibrary'])
     save('sealed.json',{'passed':True,'sourceSha':os.environ['GITHUB_SHA'],'imageId':g.image_id(tag()),'manifest':manifest})
