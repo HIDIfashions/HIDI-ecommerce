@@ -1,70 +1,123 @@
 (() => {
  if(window.__hidiCheckoutOffers)return;window.__hidiCheckoutOffers=true;
- const original=window.fetch.bind(window),KEY='hidi_supabase_session';let choice={kind:'NONE'},quote=null,busy=false,revision=0,panel=null,lastCelebration=null,locked=false,lastPath=location.pathname;
+ const original=window.fetch.bind(window),KEY='hidi_supabase_session';
+ let choice={kind:'NONE'},quote=null,codeDraft='',activeCode='',sessionId=null,cartPresent=false,busy=false,syncing=false,locked=false,revision=0,panel=null,notice='',noticeError=false,lastPath=location.pathname,openPicker=false;
  const money=p=>'₹'+(p/100).toLocaleString('en-IN',{minimumFractionDigits:p%100?2:0,maximumFractionDigits:2});
  const token=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');return s?.expires_at>Date.now()/1000?s.access_token:null;}catch{return null;}};
- function clear(){document.querySelectorAll('.hidi-offer-dialog').forEach(d=>{d.close();d.remove();});busy=false;choice={kind:'NONE'};quote=null;revision++;panel?.remove();panel=null;lastCelebration=null;locked=false;}
- async function getQuote(sessionId,selection,signal){const bearer=token();const response=await original('/api/store/checkout/offers/quote',{method:'POST',cache:'no-store',credentials:'same-origin',signal,headers:{'Content-Type':'application/json',...(bearer?{Authorization:'Bearer '+bearer}:{})},body:JSON.stringify({sessionId,offer:selection})});const data=await response.json();if(!response.ok)throw Error(data.message||'Offer could not be confirmed');return data;}
- function imageSource(source){try{const u=new URL(source,location.origin),hosts=new Set(['thehidi.com','www.thehidi.com','hidiindia.com','www.hidiindia.com','thidigk.thehidi.com','azure-preview.thehidi.com']);if(u.protocol==='https:'&&hosts.has(u.hostname)&&u.pathname.startsWith('/media/products/'))return u.pathname.replace(/^\/media\/products\/(?:_display_v2\/)?/,'/media/products/_display_v2/')+u.search;if(source.startsWith('/media/products/'))return u.pathname.replace(/^\/media\/products\/(?:_display_v2\/)?/,'/media/products/_display_v2/')+u.search;return u.protocol==='https:'?u.href:null;}catch{return null;}}
- const element=(tag,text,className)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(className)e.className=className;return e;};
- const button=(text,action)=>{const b=element('button',text);b.type='button';b.disabled=busy||locked;b.addEventListener('click',action);return b;};
- function changed(next){if(locked||busy)return;choice=next;quote=null;revision++;busy=true;render();window.dispatchEvent(new Event('hidi-cart-updated'));}
- function picker(){if(!quote?.dressUnlocked||!quote.candidates.length||locked)return;const modal=element('dialog',null,'hidi-offer-dialog'),heading=element('h2','Congratulations! You’ve unlocked the ₹1 dress offer');modal.setAttribute('aria-label','Choose your ₹1 dress');modal.append(heading,element('p','Pick one eligible dress and an available size. One offer per order.'));
- const grid=element('div',null,'hidi-offer-dress-grid');
- for(const dress of quote.candidates){const card=element('article');if(dress.image&&imageSource(dress.image)){const img=element('img');img.src=imageSource(dress.image);img.alt=dress.name;img.loading='lazy';card.append(img);}card.append(element('h3',dress.name),element('p','MRP '+money(dress.mrpPaise)+' · '+dress.color+' · Size '+dress.size),button('Choose size '+dress.size+' for ₹1',()=>{const version=quote.version;modal.close();modal.remove();changed({kind:'DRESS1',variantId:dress.id,version});}));grid.append(card);}
- if(!grid.childElementCount)grid.append(element('p','The ₹1 dresses are currently unavailable. The welcome offer may be available if this is your first order.'));
- modal.append(grid,button('Close',()=>{modal.close();modal.remove();}));modal.addEventListener('cancel',()=>modal.remove());document.body.append(modal);modal.showModal();
- if(!matchMedia('(prefers-reduced-motion: reduce)').matches){const celebration=element('div',null,'hidi-offer-confetti');celebration.setAttribute('aria-hidden','true');for(let i=0;i<24;i++){const dot=element('i');dot.style.setProperty('--x',((i*47)%100)+'%');dot.style.setProperty('--delay',(i%6)/10+'s');celebration.append(dot);}modal.append(celebration);setTimeout(()=>celebration.remove(),2200);}}
+ const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(cls)e.className=cls;return e;};
+ const button=(text,action,cls)=>{const b=el('button',text,cls);b.type='button';b.disabled=busy||syncing||locked;b.addEventListener('click',action);return b;};
+ function closePicker(){document.querySelectorAll('.hidi-offer-dialog').forEach(d=>{d.close();d.remove();});}
+ function reset(message=''){closePicker();choice={kind:'NONE'};quote=null;activeCode='';codeDraft='';busy=false;syncing=false;locked=false;revision++;openPicker=false;notice=message;noticeError=false;}
+ const refresh=()=>window.dispatchEvent(new Event('hidi-cart-updated'));
+ async function getQuote(id,selection,code,signal){
+  const bearer=token(),offer=selection.kind==='DRESS1'&&!selection.variantId?{kind:'NONE'}:selection;
+  const response=await original('/api/store/checkout/offers/quote',{method:'POST',cache:'no-store',credentials:'same-origin',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(12000)]):AbortSignal.timeout(12000),headers:{'Content-Type':'application/json',...(bearer?{Authorization:'Bearer '+bearer}:{})},body:JSON.stringify({sessionId:id,offer,...(code?{couponCode:code}:{})})});
+  const data=await response.json();if(!response.ok)throw Error(typeof data.message==='string'?data.message:'Coupon could not be confirmed');return data;
+ }
+ async function apply(){
+  if(busy||syncing||locked||!sessionId)return;
+  if(!codeDraft.trim()){notice='Enter a coupon code.';noticeError=true;render();return;}
+  const id=++revision,auth=token(),session=sessionId;busy=true;notice='Checking your coupon…';noticeError=false;render();
+  try{
+   const result=await getQuote(session,{kind:'NONE'},codeDraft);
+   if(id!==revision||auth!==token()||session!==sessionId)return;
+   if(!result.available||!result.choice?.code)throw Error('This coupon is not currently available.');
+   choice=result.choice;quote=result;activeCode=choice.code;codeDraft=activeCode;syncing=true;openPicker=result.selectionRequired===true;
+   notice=result.selectionRequired?'GET1 unlocked. Choose a dress and size to finish applying it.':activeCode+' applied. You saved '+money(result.discountPaise)+'.';
+   refresh();
+  }catch(error){if(id===revision){notice=error.message||'Coupon could not be confirmed. Please retry.';noticeError=true;}}
+  finally{if(id===revision){busy=false;render();}}
+ }
+ function remove(){if(busy||syncing||locked)return;reset('Coupon removed.');syncing=true;render();refresh();}
+ function choose(dress){if(busy||syncing||locked)return;choice={kind:'DRESS1',version:quote.version,variantId:dress.id,code:'GET1'};activeCode='GET1';codeDraft='GET1';revision++;syncing=true;closePicker();notice='Confirming your dress and updated total…';noticeError=false;render();refresh();}
+ function imageSource(source){try{const u=new URL(source,location.origin);return u.protocol==='https:'||u.origin===location.origin?u.href:null;}catch{return null;}}
+ function picker(){
+  if(!quote?.dressUnlocked||!activeCode||busy||syncing||locked)return;closePicker();
+  const modal=el('dialog',null,'hidi-offer-dialog hidi-coupon-dialog');modal.setAttribute('aria-labelledby','hidi-coupon-picker-title');
+  const title=el('h2','Choose your extra dress for ₹1');title.id='hidi-coupon-picker-title';modal.append(title,el('p','GET1 · '+quote.selectedProductCount+' selected styles. Choose an available size.'));
+  const products=new Map();for(const v of quote.collection||quote.candidates){if(!products.has(v.productId))products.set(v.productId,[]);products.get(v.productId).push(v);}
+  const grid=el('div',null,'hidi-offer-dress-grid');
+  for(const variants of products.values()){
+   const first=variants[0],card=el('article');card.dataset.offerStyle=first.productId;
+   if(first.image&&imageSource(first.image)){const image=el('img');image.src=imageSource(first.image);image.alt=first.name;image.loading='lazy';card.append(image);}
+   card.append(el('h3',first.name));const sizes=el('div',null,'hidi-offer-sizes');
+   for(const dress of variants){const b=button(dress.size+' · '+dress.color,()=>choose(dress));b.setAttribute('aria-label','Choose '+dress.name+' size '+dress.size+' '+dress.color+' for ₹1');b.disabled=dress.available<1;b.title=dress.available<1?'Out of stock':'Choose this size';sizes.append(b);}card.append(sizes);if(variants.every(v=>v.available<1))card.append(el('p','Currently out of stock'));grid.append(card);
+  }
+  modal.append(grid,button('Close picker',()=>{closePicker();render();},'hidi-coupon-link'));modal.addEventListener('cancel',()=>{modal.remove();render();});document.body.append(modal);modal.showModal();
+ }
+ function place(){
+  const main=document.querySelector('main'),form=main?.querySelector('#hidi-checkout-form');if(!main||!form)return false;
+  const items=main.querySelector('.checkout-summary-items');const target=matchMedia('(min-width:721px)').matches&&items?items:form;
+  if(target===items){if(panel.previousElementSibling!==items)items.after(panel);}else if(form.previousElementSibling!==panel)form.before(panel);return true;
+ }
  function render(){
- if(location.pathname!=='/checkout'||!quote?.available){panel?.remove();panel=null;return;}
- if(!panel){const main=document.querySelector('main');if(!main)return;panel=element('section',null,'hidi-checkout-offers');panel.dataset.hidiCheckoutOffers='true';panel.setAttribute('aria-label','Choose your HIDI offer');const form=main.querySelector('form');if(form)form.before(panel);else main.append(panel);}
- panel.replaceChildren(element('h2','Choose your HIDI offer'),element('p','One offer per order · No coupon needed'));
- const actions=element('div');actions.append(button((choice.kind==='WELCOME200'?'✓ ':'')+'₹200 welcome discount',()=>changed({kind:'WELCOME200',version:quote.version})),button((choice.kind==='DRESS1'?'✓ ':'')+'Choose a dress for ₹1',picker),button('Continue without an offer',()=>changed({kind:'NONE'})));actions.children[0].hidden=!quote.welcomeEnabled;actions.children[1].hidden=!quote.dressEnabled;actions.children[0].disabled=busy||locked||!quote.welcomeEligible;actions.children[1].disabled=busy||locked||!quote.dressUnlocked||!quote.candidates.length;panel.append(actions);
- if(quote.dressUnlocked&&!quote.candidates.length)panel.append(element('p','₹1 offer dresses are currently unavailable. The welcome offer may be available if this is your first order.'));
- if(quote.dressEnabled&&!quote.dressUnlocked&&!quote.requiresSignIn&&!quote.dressUsed&&quote.dressRemaining>0)panel.append(element('p','Shop ₹2,999 on regular items to unlock the ₹1 dress.'));
- if(quote.requiresSignIn)panel.append(element('p','Sign in with your verified mobile number to unlock offers.'));
- if(quote.welcomeEnabled&&!quote.requiresSignIn&&!quote.welcomeEligible)panel.append(element('p',quote.welcomeUsed?'Welcome offer unavailable: a previous or pending order already exists.':'Shop ₹1,499 to get ₹200 off your first order.'));
- if(quote.dressEnabled&&quote.dressUsed)panel.append(element('p','Your ₹1 dress offer has already been used or reserved.'));
- if(quote.dressEnabled&&quote.dressRemaining===0)panel.append(element('p','All 25 ₹1 dress places are used or currently reserved.'));
- if(choice.kind==='WELCOME200')panel.append(element('strong','₹200 welcome discount applied · You save '+money(quote.discountPaise)));
- if(choice.kind==='DRESS1')panel.append(element('strong','Congratulations! You have availed the ₹1 dress offer. '+quote.gift.name+' · Size '+quote.gift.size));
- if(choice.kind!=='NONE')panel.append(element('p','Regular items '+money(quote.originalSubtotalPaise)+(choice.kind==='DRESS1'?' + Offer dress ₹1':' · Offer savings '+money(quote.discountPaise))+' · Shipping '+money(quote.shippingPaise)+' · Total '+money(quote.totalPaise)));
- if(locked)panel.append(element('p','Offer selection is locked for this payment attempt. Retry the same payment, or reload checkout to start again.'));
- if(quote.dressUnlocked&&quote.candidates.length&&lastCelebration!==localStorage.getItem('hidi_cart_session')&&choice.kind==='NONE'){lastCelebration=localStorage.getItem('hidi_cart_session');queueMicrotask(picker);}
+  if(location.pathname!=='/checkout'||!cartPresent){panel?.remove();panel=null;return;}
+  if(!panel){panel=el('section',null,'hidi-checkout-coupons');panel.dataset.hidiCheckoutCoupons='true';panel.setAttribute('aria-label','Checkout coupon');}
+  if(!place())return;
+  const focused=document.activeElement?.id==='hidi-coupon-code',cursor=focused?document.activeElement.selectionStart:null;
+  const label=el('label','Have a coupon?');label.htmlFor='hidi-coupon-code';const row=el('div',null,'hidi-coupon-input-row'),input=el('input');input.id='hidi-coupon-code';input.type='text';input.placeholder='Enter coupon code';input.autocomplete='off';input.maxLength=32;input.value=codeDraft;input.disabled=busy||syncing||locked;input.setAttribute('aria-describedby','hidi-coupon-status');input.addEventListener('input',()=>{codeDraft=input.value;});input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();apply();}});row.append(input,button(busy?'Checking…':'Apply',apply));
+  const status=el('p',notice||'One coupon per order.','hidi-coupon-status'+(noticeError?' is-error':''));status.id='hidi-coupon-status';status.setAttribute('role',noticeError?'alert':'status');status.setAttribute('aria-live','polite');
+  panel.replaceChildren(label,row,status);
+  if(activeCode){
+   const details=el('div',null,'hidi-coupon-applied');details.append(el('strong',activeCode));
+   if(quote?.gift)details.append(el('span',quote.gift.name+' · Size '+quote.gift.size+' · ₹1'));
+   if(activeCode==='WELCOME250'&&quote)details.append(el('span','Coupon discount −'+money(quote.discountPaise)));
+   details.append(button('Remove coupon',remove,'hidi-coupon-link'));panel.append(details);
+   if(activeCode==='GET1')panel.append(button(quote?.gift?'Change ₹1 dress':'Choose your ₹1 dress',picker));
+   if(quote?.selectionRequired)panel.append(el('p','Choose your dress before paying, or remove GET1.'));
+  }
+  if(locked)panel.append(el('p','Coupon locked for this payment attempt. Retry the same payment, or reload checkout.'));
+  if(focused&&!input.disabled){input.focus({preventScroll:true});if(cursor!==null)input.setSelectionRange(cursor,cursor);}
  }
  window.fetch=async function(resource,options){
- const raw=typeof resource==='string'?resource:resource instanceof URL?resource.href:resource.url,u=new URL(raw,location.href),method=(options?.method||resource?.method||'GET').toUpperCase();
- if(location.pathname!=='/checkout'||u.origin!==location.origin)return original(resource,options);
- const cartMatch=u.pathname.match(/^\/api\/store\/carts\/([^/]+)$/);
- if(cartMatch&&method==='GET'){
-  const id=++revision,auth=token(),selected=structuredClone(choice),response=await original(resource,options);if(!response.ok)return response;
-  const cart=await response.clone().json();if(!cart.items?.length){clear();return response;}
-  let result;try{result=await getQuote(decodeURIComponent(cartMatch[1]),selected,options?.signal);}catch(error){if(options?.signal?.aborted)throw error;if(selected.kind!=='NONE'){choice={kind:'NONE'};result=await getQuote(decodeURIComponent(cartMatch[1]),choice,options?.signal);}else result={available:false};}
-  if(id!==revision||auth!==token())throw Error('Your account or offer changed. Review checkout again.');
-  busy=false;quote=result;if(!result.available){choice={kind:'NONE'};document.querySelectorAll('.hidi-offer-dialog').forEach(d=>{d.close();d.remove();});}render();
-  if(!result.available||choice.kind==='NONE')return response;
-  const data={...cart,subtotalPaise:result.netSubtotalPaise,shippingPaise:result.shippingPaise,totalPaise:result.totalPaise};
-  if(result.gift){data.itemCount+=1;data.items=[...data.items,{id:'hidi-offer-'+result.gift.id,quantity:1,lineTotalPaise:100,product:{name:result.gift.name+' (₹1 offer)',slug:result.gift.slug,image:result.gift.image},variant:{id:result.gift.id,size:result.gift.size,color:result.gift.color}}];}
-  return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
- }
- if(u.pathname==='/api/store/checkout/prepare'&&method==='POST'){
-  if(busy)throw Error('Please wait while your offer total is confirmed.');
-  if(typeof options?.body!=='string')return original(resource,options);
-  const body=JSON.parse(options.body);
-  if(choice.kind!=='NONE'){
-   if((body.walletPaise||0)>0)throw Error('Choose either this offer or reward redemption. They cannot be combined.');
-   if(!quote?.available||body.expectedPayableTotalPaise!==quote.totalPaise||body.expectedTotalPaise!==quote.netSubtotalPaise)throw Error('Review your updated offer total before paying.');
-   body.offer=choice;body.expectedTotalPaise=quote.originalSubtotalPaise;
-  }else body.offer={kind:'NONE'};
-  locked=true;render();
-  const result=await original(resource,{...options,body:JSON.stringify(body)});
-  if(!result.ok){const error=await result.clone().json().catch(()=>({}));if(result.status===409&&error.message!=='This checkout attempt has ended. Please retry payment.') {locked=false;choice={kind:'NONE'};quote=null;window.dispatchEvent(new Event('hidi-cart-updated'));}render();}
-  return result;
- }
- return original(resource,options);
+  const raw=typeof resource==='string'?resource:resource instanceof URL?resource.href:resource.url,u=new URL(raw,location.href),method=(options?.method||resource?.method||'GET').toUpperCase();
+  if(location.pathname!=='/checkout'||u.origin!==location.origin)return original(resource,options);
+  const cartMatch=u.pathname.match(/^\/api\/store\/carts\/([^/]+)$/);
+  if(cartMatch&&method==='GET'){
+   const auth=token(),session=decodeURIComponent(cartMatch[1]);
+   if(sessionId&&sessionId!==session)reset('Your bag changed. Apply your coupon again.');sessionId=session;
+   const id=++revision,selected=structuredClone(choice),code=activeCode,response=await original(resource,options);if(!response.ok)return response;
+   const cart=await response.clone().json();if(id!==revision||auth!==token())throw Error('Your account or coupon changed. Review checkout again.');
+   cartPresent=!!cart.items?.length;if(!cartPresent){reset();render();return response;}
+   if(!code){busy=false;syncing=false;render();return response;}
+   let result;
+   try{result=await getQuote(session,selected,code,options?.signal);}catch(error){
+    if(options?.signal?.aborted)throw error;
+    if(id!==revision||auth!==token())throw Error('Your account or coupon changed. Review checkout again.');
+    reset((error.message||'Coupon could not be confirmed.')+' Coupon removed.');noticeError=true;render();return response;
+   }
+   if(id!==revision||auth!==token())throw Error('Your account or coupon changed. Review checkout again.');
+   busy=false;syncing=false;quote=result;choice=result.choice;activeCode=choice.code;codeDraft=activeCode;
+   notice=result.selectionRequired?'GET1 unlocked. Choose a dress and size to finish applying it.':result.gift?'GET1 applied. '+result.gift.name+' · Size '+result.gift.size+' added for ₹1.':activeCode+' applied. You saved '+money(result.discountPaise)+'.';noticeError=false;render();
+   if(openPicker&&result.selectionRequired){openPicker=false;queueMicrotask(picker);}
+   const data={...cart,subtotalPaise:result.netSubtotalPaise,shippingPaise:result.shippingPaise,totalPaise:result.totalPaise};
+   if(result.gift){data.itemCount+=1;data.items=[...data.items,{id:'hidi-offer-'+result.gift.id,quantity:1,lineTotalPaise:100,product:{name:result.gift.name+' (GET1 · ₹1)',slug:result.gift.slug,image:result.gift.image},variant:{id:result.gift.id,size:result.gift.size,color:result.gift.color}}];}
+   return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+  }
+  if(u.pathname==='/api/store/checkout/prepare'&&method==='POST'){
+   if(busy||syncing)throw Error('Please wait while your coupon total is confirmed.');
+   if(typeof options?.body!=='string')return original(resource,options);
+   if(!activeCode){
+    // Do not allow a coupon to change an already-prepared full-price payment.
+    // Forward ordinary, rewards and COD request bodies byte-for-byte.
+    locked=true;render();const result=await original(resource,options);
+    if(!result.ok&&[400,401,403,409].includes(result.status)){const error=await result.clone().json().catch(()=>({}));if(error.message!=='This checkout attempt has ended. Please retry payment.'){locked=false;render();}}
+    return result;
+   }
+   const body=JSON.parse(options.body);
+   if(quote?.selectionRequired)throw Error('Choose your GET1 dress and size, or remove the coupon before paying.');
+   if((body.walletPaise||0)>0)throw Error('Choose either this coupon or reward redemption. They cannot be combined.');
+   if(!quote?.available||body.expectedPayableTotalPaise!==quote.totalPaise||body.expectedTotalPaise!==quote.netSubtotalPaise)throw Error('Review your updated coupon total before paying.');
+   body.offer=choice;body.expectedTotalPaise=quote.originalSubtotalPaise;locked=true;render();
+   const result=await original(resource,{...options,body:JSON.stringify(body)});
+   if(!result.ok){const error=await result.clone().json().catch(()=>({}));if([400,401,403,409].includes(result.status)&&error.message!=='This checkout attempt has ended. Please retry payment.'){reset((error.message||'Coupon unavailable.')+' Please review your bag.');noticeError=true;render();refresh();}}
+   return result;
+  }
+  return original(resource,options);
  };
- window.addEventListener('hidi-auth-updated',()=>{clear();if(location.pathname==='/checkout')window.dispatchEvent(new Event('hidi-cart-updated'));});
- window.addEventListener('storage',e=>{if(e.key===KEY||e.key==='hidi_cart_session'||e.key===null){clear();if(location.pathname==='/checkout')window.dispatchEvent(new Event('hidi-cart-updated'));}});
- setInterval(()=>{if(location.pathname==='/checkout'&&!document.hidden&&!locked&&!busy)window.dispatchEvent(new Event('hidi-cart-updated'));},15000);
- const observer=new MutationObserver(()=>{if(lastPath!==location.pathname){lastPath=location.pathname;clear();}if(panel&&!panel.isConnected)panel=null;if(quote)renderIfDetached();});const renderIfDetached=()=>{if(!panel)render();};observer.observe(document.documentElement,{childList:true,subtree:true});
+ const authChanged=()=>{reset('Your account changed. Apply your coupon again.');render();if(location.pathname==='/checkout')refresh();};
+ window.addEventListener('hidi-auth-updated',authChanged);window.addEventListener('storage',e=>{if(e.key===KEY||e.key==='hidi_cart_session'||e.key===null)authChanged();});
+ window.addEventListener('resize',()=>{if(panel)place();});
+ setInterval(()=>{if(location.pathname==='/checkout'&&activeCode&&!document.hidden&&!locked&&!busy&&!syncing)refresh();},15000);
+ new MutationObserver(()=>{if(lastPath!==location.pathname){lastPath=location.pathname;reset();cartPresent=false;panel?.remove();panel=null;}if(panel&&!panel.isConnected){panel=null;render();}else if(!panel&&cartPresent)render();}).observe(document.documentElement,{childList:true,subtree:true});
 })();

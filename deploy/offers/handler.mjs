@@ -53,11 +53,11 @@ export function createOffersHandler({origin,store=createAzureOfferStore(),reques
         if(!['GET','HEAD'].includes(req.method))throw fail(405,'Method not allowed');
         const loaded=await store.load();
         const published=loaded.value?.published;
-        if(published?.config?.ruleSet===RULE_SET)validate(published.config,{publishing:true});
+        if(published?.config?.ruleSet===RULE_SET&&published?.config?.couponVersion===1)validate(published.config,{publishing:true});
         // No campaign, or HIDDEN, requires no customer or business-data lookup.
         let result=publicOffer(published,null,now());
         if(!result.visible&&published?.config?.audience==='SELECTED')result=publicOffer(published,await customer(req),now());
-        if(path===POLICY){const config=published?.config;send(req,res,200,result.visible&&config?.checkoutEnabled===true?{available:true,version:published.version,ruleSet:RULE_SET,rules,welcomeEnabled:config.welcomeEnabled===true,dressEnabled:config.dressEnabled===true,eligibleProductIds:validate(config,{publishing:true}).eligibleProductIds}:{available:false});}
+        if(path===POLICY){const config=published?.config;send(req,res,200,result.visible&&config?.checkoutEnabled===true?{available:true,version:published.version,ruleSet:RULE_SET,couponVersion:1,rules,welcomeEnabled:config.welcomeEnabled===true,dressEnabled:config.dressEnabled===true,eligibleProductIds:validate(config,{publishing:true}).eligibleProductIds}:{available:false});}
         else send(req,res,200,result);return true;
       }
       if(!['GET','HEAD','POST'].includes(req.method))throw fail(405,'Method not allowed');

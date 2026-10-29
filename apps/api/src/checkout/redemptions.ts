@@ -1,7 +1,7 @@
 // @ts-nocheck -- shared promotion engine; tested against the compiled checkout service.
 import {ConflictException} from '@nestjs/common';
 export const RULE_SET='hidi-welcome-dress-20261029';
-export const RULES=Object.freeze({welcomeMinimumPaise:149900,welcomeDiscountPaise:20000,dressMinimumPaise:299900,dressPricePaise:100,dressLimit:25});
+export const RULES=Object.freeze({welcomeMinimumPaise:149900,welcomeDiscountPaise:25000,dressMinimumPaise:399900,dressPricePaise:100,dressLimit:25});
 const PAID=['CAPTURED','PARTIALLY_REFUNDED','REFUNDED'];
 export function verifiedPhone(auth){
  if(auth?.phoneVerified!==true||typeof auth.phone!=='string')return null;
@@ -34,8 +34,9 @@ export async function usage(db,phone,userId=null){
  return summarizeUsage(orders.map(o=>({...o,customerPhone:phone&&[phone,digits,local].includes(o.user?.phone)?phone:o.customerPhone})),phone,userId);
 }
 export function assertEligibility(choice,config,stats){
- if(choice.kind==='WELCOME200'&&(!config.welcomeEnabled||stats.welcomeUsed))throw new ConflictException('The welcome offer is for your first order only. Another order may already be pending.');
- if(choice.kind==='DRESS1'&&(!config.dressEnabled||stats.dressUsed||stats.dressRemaining<1))throw new ConflictException(stats.dressUsed?'You have already used or reserved the ₹1 dress offer.':'All 25 ₹1 dress places are used or currently reserved.');
+ if(choice.kind==='WELCOME250'&&!config.welcomeEnabled||choice.kind==='DRESS1'&&!config.dressEnabled)throw new ConflictException('This coupon is not currently available.');
+ if(choice.kind==='WELCOME250'&&stats.welcomeUsed)throw new ConflictException('WELCOME250 is for your first purchase only. Another order may already be pending.');
+ if(choice.kind==='DRESS1'&&(stats.dressUsed||stats.dressRemaining<1))throw new ConflictException(stats.dressUsed?'You have already used or reserved the ₹1 dress offer.':'All 25 ₹1 dress places are used or currently reserved.');
 }
 export async function reserveEligibility(tx,promotion){
  if(promotion.choice.kind==='NONE')return;
