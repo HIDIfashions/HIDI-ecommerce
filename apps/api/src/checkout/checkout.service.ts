@@ -169,7 +169,7 @@ export class CheckoutService {
       if (!available) throw new BadRequestException("Cash on delivery is unavailable for this PIN code. Choose online payment.");
     }
 
-    const hidiPromotion = await loadChoice(input.offer, auth);
+    const hidiPromotion = await loadChoice(input.offer, auth, {userId, walletPaise});
         const orderNumber = this.makeOrderNumber();
     const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 

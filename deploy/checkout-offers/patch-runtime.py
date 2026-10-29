@@ -9,12 +9,15 @@ def once(source,old,new):
  m=matches[0];return source[:m.start()]+new+source[m.end():]
 def service(source):
  if 'hidiPromotion' in source:
+  source=source.replace("from './offers-engine.js'", "from './offers-engine.mjs'")
   assert "from './offers-engine.mjs'" in source and 'applyChoice(tx, cart, subtotalPaise, hidiPromotion)' in source,'Unrecognized existing offer installation'
+  if 'loadChoice(input.offer, auth, {userId, walletPaise})' not in source:
+   source=once(source,'loadChoice(input.offer, auth)','loadChoice(input.offer, auth, {userId, walletPaise})')
   return source
  source="import { loadChoice, normalizedChoice, assertRetry, applyChoice, reservationItems } from './offers-engine.mjs';\n"+source
  source=once(source,'this.validate(input);','this.validate(input);\n        normalizedChoice(input.offer);')
  source=once(source,'if (existing) {','if (existing) {\n            assertRetry(existing, input);')
- source=once(source,'const orderNumber = this.makeOrderNumber();','const hidiPromotion = await loadChoice(input.offer, auth);\n        const orderNumber = this.makeOrderNumber();')
+ source=once(source,'const orderNumber = this.makeOrderNumber();','const hidiPromotion = await loadChoice(input.offer, auth, {userId, walletPaise});\n        const orderNumber = this.makeOrderNumber();')
  source=once(source,'const { shippingPaise, totalPaise } = shippingQuote(subtotalPaise);','''const hidiPricing = await applyChoice(tx, cart, subtotalPaise, hidiPromotion);
             const { shippingPaise, totalPaise, discountPaise } = hidiPricing;
             subtotalPaise = hidiPricing.subtotalPaise;''')
@@ -39,7 +42,7 @@ def patch_runtime(base,overlay,app='web'):
   if 'attachCheckoutOffers' not in controller:controller="import { attachCheckoutOffers } from './checkout-offers-controller.mjs';\n"+controller+'\nattachCheckoutOffers(CheckoutController);\n'
   else:assert 'attachCheckoutOffers(CheckoutController);' in controller
   put(folder+'checkout.controller.js',controller)
-  for src,dst in [('engine.mjs','offers-engine.mjs'),('controller.mjs','checkout-offers-controller.mjs'),('offers-storage.mjs','offers-storage.mjs'),('offers-model.mjs','offers-model.mjs')]:put(folder+dst,(HERE/src).read_text())
+  for src,dst in [('engine.mjs','offers-engine.mjs'),('redemptions.mjs','redemptions.mjs'),('controller.mjs','checkout-offers-controller.mjs'),('offers-storage.mjs','offers-storage.mjs'),('offers-model.mjs','offers-model.mjs')]:put(folder+dst,(HERE/src).read_text())
  else:
   source=(base/'server.mjs').read_text()
   if 'data-hidi-checkout-offers' not in source:

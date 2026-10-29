@@ -12,19 +12,23 @@
  function picker(){if(!quote?.dressUnlocked||!quote.candidates.length||locked)return;const modal=element('dialog',null,'hidi-offer-dialog'),heading=element('h2','Congratulations! You’ve unlocked the ₹1 dress offer');modal.setAttribute('aria-label','Choose your ₹1 dress');modal.append(heading,element('p','Pick one eligible dress and an available size. One offer per order.'));
  const grid=element('div',null,'hidi-offer-dress-grid');
  for(const dress of quote.candidates){const card=element('article');if(dress.image&&imageSource(dress.image)){const img=element('img');img.src=imageSource(dress.image);img.alt=dress.name;img.loading='lazy';card.append(img);}card.append(element('h3',dress.name),element('p','MRP '+money(dress.mrpPaise)+' · '+dress.color+' · Size '+dress.size),button('Choose size '+dress.size+' for ₹1',()=>{const version=quote.version;modal.close();modal.remove();changed({kind:'DRESS1',variantId:dress.id,version});}));grid.append(card);}
- if(!grid.childElementCount)grid.append(element('p','The ₹1 dresses are currently unavailable. You can choose 15% off instead.'));
+ if(!grid.childElementCount)grid.append(element('p','The ₹1 dresses are currently unavailable. The welcome offer may be available if this is your first order.'));
  modal.append(grid,button('Close',()=>{modal.close();modal.remove();}));modal.addEventListener('cancel',()=>modal.remove());document.body.append(modal);modal.showModal();
  if(!matchMedia('(prefers-reduced-motion: reduce)').matches){const celebration=element('div',null,'hidi-offer-confetti');celebration.setAttribute('aria-hidden','true');for(let i=0;i<24;i++){const dot=element('i');dot.style.setProperty('--x',((i*47)%100)+'%');dot.style.setProperty('--delay',(i%6)/10+'s');celebration.append(dot);}modal.append(celebration);setTimeout(()=>celebration.remove(),2200);}}
  function render(){
  if(location.pathname!=='/checkout'||!quote?.available){panel?.remove();panel=null;return;}
  if(!panel){const main=document.querySelector('main');if(!main)return;panel=element('section',null,'hidi-checkout-offers');panel.dataset.hidiCheckoutOffers='true';panel.setAttribute('aria-label','Choose your HIDI offer');const form=main.querySelector('form');if(form)form.before(panel);else main.append(panel);}
  panel.replaceChildren(element('h2','Choose your HIDI offer'),element('p','One offer per order · No coupon needed'));
- const actions=element('div');actions.append(button((choice.kind==='PERCENT15'?'✓ ':'')+'15% off',()=>changed({kind:'PERCENT15',version:quote.version})),button((choice.kind==='DRESS1'?'✓ ':'')+'Choose a dress for ₹1',picker),button('Continue without an offer',()=>changed({kind:'NONE'})));actions.children[1].disabled=busy||locked||!quote.dressUnlocked||!quote.candidates.length;panel.append(actions);
- if(quote.dressUnlocked&&!quote.candidates.length)panel.append(element('p','₹1 offer dresses are currently unavailable. You can choose 15% off instead.'));
- if(!quote.dressUnlocked)panel.append(element('p','Spend more than ₹3,999 on regular items to unlock the ₹1 dress.'));
- if(choice.kind==='PERCENT15')panel.append(element('strong','15% off applied · You save '+money(quote.discountPaise)));
+ const actions=element('div');actions.append(button((choice.kind==='WELCOME200'?'✓ ':'')+'₹200 welcome discount',()=>changed({kind:'WELCOME200',version:quote.version})),button((choice.kind==='DRESS1'?'✓ ':'')+'Choose a dress for ₹1',picker),button('Continue without an offer',()=>changed({kind:'NONE'})));actions.children[0].hidden=!quote.welcomeEnabled;actions.children[1].hidden=!quote.dressEnabled;actions.children[0].disabled=busy||locked||!quote.welcomeEligible;actions.children[1].disabled=busy||locked||!quote.dressUnlocked||!quote.candidates.length;panel.append(actions);
+ if(quote.dressUnlocked&&!quote.candidates.length)panel.append(element('p','₹1 offer dresses are currently unavailable. The welcome offer may be available if this is your first order.'));
+ if(quote.dressEnabled&&!quote.dressUnlocked&&!quote.requiresSignIn&&!quote.dressUsed&&quote.dressRemaining>0)panel.append(element('p','Shop ₹2,999 on regular items to unlock the ₹1 dress.'));
+ if(quote.requiresSignIn)panel.append(element('p','Sign in with your verified mobile number to unlock offers.'));
+ if(quote.welcomeEnabled&&!quote.requiresSignIn&&!quote.welcomeEligible)panel.append(element('p',quote.welcomeUsed?'Welcome offer unavailable: a previous or pending order already exists.':'Shop ₹1,499 to get ₹200 off your first order.'));
+ if(quote.dressEnabled&&quote.dressUsed)panel.append(element('p','Your ₹1 dress offer has already been used or reserved.'));
+ if(quote.dressEnabled&&quote.dressRemaining===0)panel.append(element('p','All 25 ₹1 dress places are used or currently reserved.'));
+ if(choice.kind==='WELCOME200')panel.append(element('strong','₹200 welcome discount applied · You save '+money(quote.discountPaise)));
  if(choice.kind==='DRESS1')panel.append(element('strong','Congratulations! You have availed the ₹1 dress offer. '+quote.gift.name+' · Size '+quote.gift.size));
- if(choice.kind!=='NONE')panel.append(element('p','Regular items '+money(quote.originalSubtotalPaise)+(choice.kind==='DRESS1'?' + Offer dress ₹1':' · Offer savings '+money(quote.discountPaise))+' · Shipping '+money(quote.shippingPaise)+' · Total before rewards '+money(quote.totalPaise)));
+ if(choice.kind!=='NONE')panel.append(element('p','Regular items '+money(quote.originalSubtotalPaise)+(choice.kind==='DRESS1'?' + Offer dress ₹1':' · Offer savings '+money(quote.discountPaise))+' · Shipping '+money(quote.shippingPaise)+' · Total '+money(quote.totalPaise)));
  if(locked)panel.append(element('p','Offer selection is locked for this payment attempt. Retry the same payment, or reload checkout to start again.'));
  if(quote.dressUnlocked&&quote.candidates.length&&lastCelebration!==localStorage.getItem('hidi_cart_session')&&choice.kind==='NONE'){lastCelebration=localStorage.getItem('hidi_cart_session');queueMicrotask(picker);}
  }
@@ -48,6 +52,7 @@
   if(typeof options?.body!=='string')return original(resource,options);
   const body=JSON.parse(options.body);
   if(choice.kind!=='NONE'){
+   if((body.walletPaise||0)>0)throw Error('Choose either this offer or reward redemption. They cannot be combined.');
    if(!quote?.available||body.expectedPayableTotalPaise!==quote.totalPaise||body.expectedTotalPaise!==quote.netSubtotalPaise)throw Error('Review your updated offer total before paying.');
    body.offer=choice;body.expectedTotalPaise=quote.originalSubtotalPaise;
   }else body.offer={kind:'NONE'};
