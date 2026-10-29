@@ -42,8 +42,8 @@ jobs:
           az acr login --name acrhidiprod0927 --only-show-errors
           python3 deploy/checkout-offers/release.py capture
           python3 deploy/welcome250/runtime.py unpack
-          echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-checkout-offers-private/api/candidate-app" >> "$GITHUB_ENV"
-          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-checkout-offers-private/web/candidate-app" >> "$GITHUB_ENV"
+          echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-checkout-offers-private/api/unpacked/rootfs/app" >> "$GITHUB_ENV"
+          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-checkout-offers-private/web/unpacked/rootfs/app" >> "$GITHUB_ENV"
       - name: Verify retained pricing, payments, checkout, admin and purchase flows
         run: |
           node deploy/checkout-offers/api-test.mjs
