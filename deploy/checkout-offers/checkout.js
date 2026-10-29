@@ -12,7 +12,7 @@
  async function getQuote(id,selection,code,signal){
   const bearer=token(),offer=selection.kind==='DRESS1'&&!selection.variantId?{kind:'NONE'}:selection;
   const response=await original('/api/store/checkout/offers/quote',{method:'POST',cache:'no-store',credentials:'same-origin',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(12000)]):AbortSignal.timeout(12000),headers:{'Content-Type':'application/json',...(bearer?{Authorization:'Bearer '+bearer}:{})},body:JSON.stringify({sessionId:id,offer,...(code?{couponCode:code}:{})})});
-  const data=await response.json();if(!response.ok)throw Error(typeof data.message==='string'?data.message:'Coupon could not be confirmed');return data;
+  const data=await response.json();if(!response.ok)throw Error(data.message==='Shop ₹1,499 of regular items to use WELCOME250'?'Shop for 1499 to avail the discount':typeof data.message==='string'?data.message:'Coupon could not be confirmed');return data;
  }
  async function apply(){
   if(busy||syncing||locked||!sessionId)return;
@@ -56,8 +56,10 @@
   if(!place())return;
   const focused=document.activeElement?.id==='hidi-coupon-code',cursor=focused?document.activeElement.selectionStart:null;
   const label=el('label','Have a coupon?');label.htmlFor='hidi-coupon-code';const row=el('div',null,'hidi-coupon-input-row'),input=el('input');input.id='hidi-coupon-code';input.type='text';input.placeholder='Enter coupon code';input.autocomplete='off';input.maxLength=32;input.value=codeDraft;input.disabled=busy||syncing||locked;input.setAttribute('aria-describedby','hidi-coupon-status');input.addEventListener('input',()=>{codeDraft=input.value;});input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();apply();}});row.append(input,button(busy?'Checking…':'Apply',apply));
-  const status=el('p',notice||'One coupon per order.','hidi-coupon-status'+(noticeError?' is-error':''));status.id='hidi-coupon-status';status.setAttribute('role',noticeError?'alert':'status');status.setAttribute('aria-live','polite');
-  panel.replaceChildren(label,row,status);
+  const status=el('p',notice||'Shop for 1499 to avail the discount','hidi-coupon-status'+(noticeError?' is-error':''));status.id='hidi-coupon-status';status.setAttribute('role',noticeError?'alert':'status');status.setAttribute('aria-live','polite');
+  const hints=el('div',null,'hidi-coupon-hint');hints.setAttribute('aria-label','Available coupon');
+  hints.append(el('span','First order? Save ₹250 with'),button('WELCOME250',()=>{codeDraft='WELCOME250';notice='';noticeError=false;render();panel.querySelector('#hidi-coupon-code').focus();},'hidi-coupon-link'));
+  panel.replaceChildren(label,row,hints,status);
   if(activeCode){
    const details=el('div',null,'hidi-coupon-applied');details.append(el('strong',activeCode));
    if(quote?.gift)details.append(el('span',quote.gift.name+' · Size '+quote.gift.size+' · ₹1'));

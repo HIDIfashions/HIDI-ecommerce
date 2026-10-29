@@ -1,8 +1,8 @@
-name: HIDI checkout offers and ₹1 dress picker
+name: HIDI coupon display release — preserve active offers
 on:
   push:
     branches: [migration/azure-sql-blob]
-    paths: [deploy/checkout-offers/**, deploy/offers/**, .github/workflows/checkout-offers-release.yml]
+    paths: [deploy/coupon-copy/**, deploy/checkout-offers/**, deploy/offers/**, .github/workflows/checkout-offers-release.yml]
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,13 +25,14 @@ jobs:
         with: {node-version: 24}
       - name: Check offer security and release syntax
         run: |
-          python3 -m py_compile deploy/checkout-offers/patch-runtime.py
+          python3 -m py_compile deploy/coupon-copy/release.py deploy/coupon-copy/layer.py
           node --test deploy/offers/model.test.mjs deploy/offers/handler.test.mjs
+          python3 -m unittest discover -s deploy/coupon-copy -p "test_*.py"
           node --check deploy/checkout-offers/probes.mjs
           node --check deploy/checkout-offers/candidate.mjs
           python3 -m py_compile deploy/checkout-offers/patch-runtime.py deploy/checkout-offers/release.py
       - name: Install exact-manifest backup tooling
-        run: sudo apt-get update -qq && sudo apt-get install -y skopeo
+        run: sudo apt-get update -qq && sudo apt-get install -y skopeo umoci
       - name: Install desktop and mobile browser test engines
         run: |
           npm install --prefix /tmp/hidi-offers-browser --no-save playwright@1.56.1
@@ -44,34 +45,35 @@ jobs:
       - name: Capture live image and verify exact rollback backup
         run: |
           az acr login --name acrhidiprod0927 --only-show-errors
-          python3 deploy/checkout-offers/release.py capture
-          echo "HIDI_CANDIDATE_API=$RUNNER_TEMP/hidi-checkout-offers-private/api/candidate-app" >> "$GITHUB_ENV"
-          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-checkout-offers-private/web/candidate-app" >> "$GITHUB_ENV"
-      - name: Compose additive API identity and offer UI overlays
-        run: python3 deploy/checkout-offers/release.py compose
+          python3 deploy/coupon-copy/release.py capture
+      - name: Package only the two checkout display assets
+        run: python3 deploy/coupon-copy/release.py compose
       - name: Verify identity signatures, audiences, admin editor and retained shopping routes
         run: |
           node deploy/checkout-offers/api-test.mjs
-          node deploy/checkout-offers/candidate.mjs
-          python3 deploy/checkout-offers/release.py seal
+          node deploy/welcome250/api-check.mjs
+          node deploy/coupon-copy/browser-check.mjs
+          python3 deploy/coupon-copy/release.py seal
       - name: Publish the exact tested images
-        run: python3 deploy/checkout-offers/release.py publish
+        run: python3 deploy/coupon-copy/release.py publish
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Release API and web with guarded recovery
+      - name: Release web assets while preserving API and active offers
         id: apply
         timeout-minutes: 20
-        run: timeout --signal=TERM --kill-after=10m 15m python3 deploy/checkout-offers/release.py apply
+        run: timeout --signal=TERM --kill-after=10m 15m python3 deploy/coupon-copy/release.py apply
       - name: Recover an interrupted owned rollout
         if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
         timeout-minutes: 15
-        run: python3 deploy/checkout-offers/release.py recover
+        run: python3 deploy/coupon-copy/release.py recover
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: checkout-offers-regression-${{ github.run_id }}-${{ github.run_attempt }}
-          path: evidence/checkout-offers
+          path: |
+            evidence/checkout-offers
+            evidence/welcome250
           retention-days: 30
