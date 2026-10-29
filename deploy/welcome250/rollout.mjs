@@ -11,7 +11,7 @@ const assetPaths=['/offers-assets/editor.js','/offers-assets/offers.css','/offer
 async function assets(){return Object.fromEntries(await Promise.all(assetPaths.map(async path=>[path,digest(await(await request(path)).text())])));}
 process.env.AZURE_STORAGE_ACCOUNT=az(['containerapp','show','-g','rg-hidi-prod','-n','hidi-web','--query',"properties.template.containers[0].env[?name=='AZURE_STORAGE_ACCOUNT'].value | [0]",'-o','tsv','--only-show-errors']);
 assert(/^[a-z0-9]{3,24}$/.test(process.env.AZURE_STORAGE_ACCOUNT),'Expected existing private offer storage');
-const store=createAzureOfferStore({getToken:async()=>az(['account','get-access-token','--resource','https://storage.azure.com/','--query','accessToken','-o','tsv','--only-show-errors'])});
+const store=createAzureOfferStore({requestFetch:async(url,options)=>{const response=await fetch(url,options);if(options?.method==='HEAD'&&!response.ok)throw Error('Private offer container verification failed (HTTP '+response.status+'). No configuration was changed.');return response;},getToken:async()=>az(['account','get-access-token','--resource','https://storage.azure.com/','--query','accessToken','-o','tsv','--only-show-errors'])});
 const save=(name,value)=>writeFile(join(evidence,name),JSON.stringify(value,null,2));
 if(mode==='prepare'){
  assert.equal(source(),process.env.GITHUB_SHA,'A newer release exists');
