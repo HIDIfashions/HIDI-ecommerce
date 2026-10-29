@@ -21,9 +21,15 @@ def unpack():
         folder.mkdir()
         layout, bundle = folder / 'oci', folder / 'unpacked'
         original = before['hidi-' + app]['image']
-        subprocess.run(['skopeo', 'copy', '--preserve-digests', '--authfile', str(authfile), 'docker://' + original, 'oci:' + str(layout) + ':runtime'], check=True)
+        manifest_bytes = subprocess.check_output(['skopeo', 'inspect', '--raw', '--authfile', str(authfile), 'docker://' + original])
+        assert 'sha256:' + hashlib.sha256(manifest_bytes).hexdigest() == original.split('@')[1]
+        manifest = json.loads(manifest_bytes)
+        subprocess.run(['skopeo', 'copy', '--format', 'oci', '--authfile', str(authfile), 'docker://' + original, 'oci:' + str(layout) + ':runtime'], check=True)
         index = json.loads((layout / 'index.json').read_text())
-        assert index['manifests'][0]['digest'] == original.split('@')[1], 'Image digest changed during copy'
+        copied = json.loads((layout / 'blobs/sha256' / index['manifests'][0]['digest'].split(':')[1]).read_text())
+        # Media-type conversion changes the manifest digest, never its config or layers.
+        assert copied['config']['digest'] == manifest['config']['digest']
+        assert [x['digest'] for x in copied['layers']] == [x['digest'] for x in manifest['layers']]
         subprocess.run(['umoci', 'unpack', '--rootless', '--image', str(layout) + ':runtime', str(bundle)], check=True)
         runtime = bundle / 'rootfs/app'
         assert runtime.is_dir()
