@@ -39,6 +39,8 @@ const redeemed=(status='CONFIRMED',phone='+919000000002',reservation='CONSUMED')
 assert.equal(summarizeUsage(Array.from({length:25},()=>redeemed()),auth.phone).dressRemaining,0);checks++;
 assert.equal(summarizeUsage([redeemed('CANCELLED',auth.phone,'RELEASED')],auth.phone).dressRemaining,25);checks++;
 assert.equal(summarizeUsage([redeemed('RETURNED',auth.phone)],auth.phone).dressRemaining,24);checks++;
+const withSupportNotes=redeemed('RETURN_REQUESTED',auth.phone);withSupportNotes.notes+='\nRETURN_REQUESTED: reference: customer returned this item\nREFUND: processed';
+assert.equal(summarizeUsage([withSupportNotes],auth.phone).dressRemaining,24);assert.equal(summarizeUsage([withSupportNotes],auth.phone).dressUsed,true);checks++;
 assert.equal(summarizeUsage([redeemed('PAYMENT_REVIEW',auth.phone,'RELEASED')],auth.phone).dressRemaining,25);checks++;
 for(const paymentStatus of ['CAPTURED','REFUNDED','PARTIALLY_REFUNDED']){f=fixture();f.state().orders.push({id:'old',customerPhone:'9000000001',status:'CANCELLED'});f.state().payments.push({orderId:'old',status:paymentStatus});await assert.rejects(f.service.prepare(input({kind:'WELCOME200',version:1},200000,180000),auth),/first order only/);checks++;}
 f=fixture({price:299900});f.state().orders.push(...Array.from({length:25},(_,i)=>({...redeemed(),id:'used-'+i})));

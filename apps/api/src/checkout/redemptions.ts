@@ -8,7 +8,9 @@ export function verifiedPhone(auth){
  const digits=auth.phone.replace(/\D/g,''),local=digits.length===12&&digits.startsWith('91')?digits.slice(2):digits;
  return /^[6-9]\d{9}$/.test(local)?'+91'+local:null;
 }
-const snapshot=order=>{try{return JSON.parse(order.notes||'null')?.hidiOffer;}catch{return null;}};
+// Checkout writes one JSON line; support appends human-readable return/refund
+// notes below it. Those notes must not erase the durable campaign identity.
+export const offerSnapshot=order=>{try{return JSON.parse((order.notes||'null').split('\n')[0])?.hidiOffer;}catch{return null;}};
 // Pending orders hold a place until the existing cancellation transaction releases
 // them. Consumed stock records confirmed redemptions, even after return/refund.
 // A late payment in PAYMENT_REVIEW never resurrects an expired offer reservation.
@@ -19,7 +21,7 @@ export function summarizeUsage(orders,phone,userId=null){
   const raw=String(order.customerPhone||'').replace(/\D/g,'');
   const same=!!phone&&(raw===phone.slice(1)||raw===phone.slice(3))||!!userId&&order.userId===userId;
   if(same&&(holdsPlace(order)||order.payments?.some(p=>PAID.includes(p.status))))welcomeUsed=true;
-  const offer=snapshot(order);
+  const offer=offerSnapshot(order);
   if(offer?.ruleSet!==RULE_SET||offer.choice?.kind!=='DRESS1'||!holdsPlace(order))continue;
   if(order.status==='PENDING_PAYMENT')dressReserved++;else dressRedeemed++;
   if(same)dressUsed=true;

@@ -1,6 +1,6 @@
 import {BadRequestException,ConflictException,UnauthorizedException} from '@nestjs/common';
 import {shippingQuote} from './shipping-policy.js';
-import {RULE_SET,RULES,verifiedPhone,usage,assertEligibility,reserveEligibility} from './redemptions.mjs';
+import {RULE_SET,RULES,verifiedPhone,usage,assertEligibility,reserveEligibility,offerSnapshot} from './redemptions.mjs';
 export const normalizedChoice=input=>{
  const value=input??{kind:'NONE'};
  if(!value||typeof value!=='object'||Array.isArray(value)||!['NONE','WELCOME200','DRESS1'].includes(value.kind))throw new BadRequestException('Choose one supported HIDI offer');
@@ -10,7 +10,7 @@ export const normalizedChoice=input=>{
  return {kind:value.kind,version:value.version,...(value.kind==='DRESS1'?{variantId:value.variantId}:{})};
 };
 export function assertRetry(existing,input){
- let saved;try{saved=JSON.parse(existing.notes||'null')?.hidiOffer?.choice;}catch{}
+ const saved=offerSnapshot(existing)?.choice;
  if(JSON.stringify(saved||{kind:'NONE'})!==JSON.stringify(normalizedChoice(input.offer)))throw new ConflictException('Offer selection changed. Start a new checkout attempt.');
  if(input.expectedPayableTotalPaise!==undefined&&input.expectedPayableTotalPaise!==existing.totalPaise)throw new ConflictException('Checkout amount changed. Start a new checkout attempt.');
 }
