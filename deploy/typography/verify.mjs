@@ -4,11 +4,13 @@ import {spawn} from 'node:child_process';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {fonts} from './registry.mjs';
+import {verifyFontLibrary,verifyLiveFontAssets} from './library-check.mjs';
 const engines=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
 const baseline=process.argv.includes('--baseline'),live=baseline||process.argv.includes('--live'),candidate=Boolean(process.env.HIDI_CANDIDATE_RUNTIME)&&!live;
 const base=live?'https://hidiindia.com':candidate?'http://127.0.0.1:3199':'http://127.0.0.1:3198';
 const out=resolve('evidence/typography');await mkdir(out,{recursive:true});
-const cases=[], routes=[];
+const cases=[], routes=[], fontLibrary=[];
 const progress=message=>console.log(new Date().toISOString()+' '+message);
 // Terminate disposable browser processes after assertions; graceful shutdown can hang on live media.
 let child,upstream,diagnostics='',blockedWrites=0;
@@ -37,7 +39,7 @@ try{
  for(const engine of (process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit').split(',')){
   progress(engine+' launch');const server=await engines[engine].launchServer({timeout:30000});const browser=await engines[engine].connect(server.wsEndpoint());
   try{
-   if(!baseline){progress(engine+' anonymous editor');const anonymous=await browser.newPage();anonymous.setDefaultTimeout(15000);await anonymous.goto(base+'/admin/typography',{waitUntil:'domcontentloaded'});await anonymous.getByText(/Sign in as the owner/).waitFor();assert(await anonymous.locator('#ht-heading').isDisabled(),'Anonymous font selector is disabled');assert(await anonymous.locator('#ht-publish').isDisabled(),'Anonymous publication is disabled');await anonymous.close();}
+   if(!baseline){progress(engine+' anonymous editor');const anonymous=await browser.newPage();anonymous.setDefaultTimeout(15000);await anonymous.goto(base+'/admin/typography',{waitUntil:'domcontentloaded'});await anonymous.getByText(/Sign in as the owner/).waitFor();assert(await anonymous.locator('#ht-heading').isDisabled(),'Anonymous font selector is disabled');assert(await anonymous.locator('#ht-publish').isDisabled(),'Anonymous publication is disabled');assert.equal(await anonymous.locator('#ht-heading option').count(),12);if(live){const loaded=await anonymous.evaluate(async names=>Promise.all(names.map(async name=>(await document.fonts.load('400 16px '+JSON.stringify('HIDI '+name))).length)),Object.values(fonts).filter(font=>font.name!=='System sans').map(font=>font.name));assert(loaded.every(count=>count>0),'All eleven hosted families load in the live browser');}await anonymous.close();}
    const context=await browser.newContext();context.setDefaultTimeout(15000);context.setDefaultNavigationTimeout(20000);
    await context.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(!live&&!['127.0.0.1','localhost'].includes(url.hostname))return route.abort();if(!['GET','HEAD','OPTIONS'].includes(req.method())&&(live||url.pathname!=='/api/hidi/typography/admin')){blockedWrites++;return route.fulfill({status:204,body:''});}return route.continue();});
    if(!live)await context.addCookies([{name:'typography-owner',value:'1',url:base}]);
@@ -81,10 +83,12 @@ try{
    }
    if(candidate||live){for(const path of ['/','/collections/all','/cart','/checkout','/account','/admin/sign-in','/admin','/admin/products']){progress(engine+' route '+path);const page=await context.newPage();await page.goto(base+path,{waitUntil:'domcontentloaded'});if(path==='/admin'||path==='/admin/products')await page.waitForURL(url=>url.pathname==='/admin/sign-in',{waitUntil:'domcontentloaded',timeout:15000});progress(engine+' loaded '+page.url());if(!baseline){await page.locator('#hidi-published-typography').waitFor({state:'attached'}).catch(async error=>{await writeFile(out+'/missing-style-'+engine+'.json',JSON.stringify({requested:path,url:page.url(),html:await page.content()},null,2));throw error;});progress(engine+' stylesheet attached '+page.url());assert.equal(await page.locator('html').getAttribute('data-hidi-type-scope'),path.startsWith('/admin')?'admin':'storefront');}if(candidate)await until(async()=>/HIDI Inter/.test(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)),'published body font on '+path);for(const width of [390,768,1440]){progress(engine+' viewport '+path+' '+width);await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Overflow '+path+' at '+width);routes.push({engine,path,width,fonts:!live});}progress(engine+' close page '+path);await page.close();}}
    progress(engine+' no-JavaScript product');const nojs=await browser.newPage({javaScriptEnabled:false});nojs.setDefaultTimeout(15000);await nojs.goto(base+(candidate||live?'/products/'+slug:'/product'),{waitUntil:'domcontentloaded'});if(!baseline)assert.equal(await nojs.locator('#hidi-published-typography').count(),1,'CSS is present before JavaScript');await nojs.close();
+   if(!live)fontLibrary.push(...await verifyFontLibrary({context,engine,base,productPath:candidate?'/products/'+slug:'/product'}));
    progress(engine+' close context');await context.close();
   }catch(error){progress(engine+' failure: '+error.stack);throw error;}finally{progress(engine+' close browser');await server.kill();progress(engine+' done');}
  }
  if(live&&!baseline){const after=await fetch(base+'/api/hidi/typography').then(r=>r.json());assert.deepEqual(after,publicBefore,'Live checks must not modify typography');}
- const result={passed:true,cases,routes,actualRuntime:candidate,serverRendered:true,productionWrites:0,blockedWrites,mode:baseline?'baseline':live?'live':candidate?'candidate':'fixture'};
+ const liveFontAssets=live&&!baseline?await verifyLiveFontAssets(base):[];
+ const result={passed:true,cases,routes,fontLibrary,liveFontAssets,actualRuntime:candidate,serverRendered:true,productionWrites:0,blockedWrites,mode:baseline?'baseline':live?'live':candidate?'candidate':'fixture'};
  await writeFile(out+'/'+(baseline?'baseline':live?'live':candidate?'candidate':'fixture')+'.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result));
 }finally{if(child&&child.exitCode===null)child.kill('SIGTERM');if(upstream){upstream.closeAllConnections();await new Promise(done=>upstream.close(done));}}

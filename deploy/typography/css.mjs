@@ -1,9 +1,13 @@
-import { fonts, validateConfig } from './registry.mjs';
-export function fontFaces(assetVersion = '') {
-  return Object.values(fonts).filter(font => font.file).map(font => `@font-face{font-family:${font.stack.split(',')[0]};src:url('/typography/assets/fonts/${font.file}${assetVersion ? '?v=' + assetVersion : ''}') format('woff2');font-style:normal;font-weight:${font.weight};font-display:swap}`).join('\n');
+import { fonts, fontSources, validateConfig } from './registry.mjs';
+export function fontFaces(assetVersion = '', ids = Object.keys(fonts)) {
+  return [...new Set(ids)].flatMap(id => {const font=fonts[id];return fontSources(font).map(face => `@font-face{font-family:${font.stack.split(',')[0]};src:url('/typography/assets/fonts/${face.file}${assetVersion ? '?v=' + assetVersion : ''}') format('woff2');font-style:normal;font-weight:${face.weight};font-display:swap}`);}).join('\n');
 }
 export function publishedCss(state) {
   let css = `:root{--hidi-typography-revision:${state.revision}}\n`;
+  // Open tabs can still have an older fonts.css after a library upgrade.
+  // Deliver the selected faces atomically with the published family settings.
+  const selected = Object.values(state.profiles).flatMap(profile => profile.published ? Object.values(validateConfig(profile.published)) : []).filter(id => !['system','inter','lora','manrope'].includes(id));
+  if (selected.length) css += fontFaces('', selected) + '\n';
   for (const scope of ['storefront', 'admin']) {
     const config = state.profiles[scope].published;
     if (!config) continue; // Preserve existing typography until the first explicit publication.

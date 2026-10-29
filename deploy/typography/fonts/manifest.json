@@ -22,5 +22,189 @@
     "tarball": "https://registry.npmjs.org/@fontsource-variable/manrope/-/manrope-5.3.0.tgz",
     "sha256": "a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972",
     "bytes": 24836
+  },
+  {
+    "name": "poppins",
+    "package": "@fontsource/poppins",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource/poppins/-/poppins-5.3.0.tgz",
+    "integrity": "sha512-cms1nM7U6SN8epIV1WMVOV8VsA645aSm3wHfzIQnkk188U341ThbJGSl2Sv54V29gnDbT2arMPfLzvVIIVCceQ==",
+    "license": "OFL-1.1",
+    "licenseSha256": "5c4a92c8f8ce0ab211f4c72889d82383c9644546115d9ba39a4f2d5b8f37014b",
+    "files": [
+      {
+        "file": "poppins-100.woff2",
+        "source": "package/files/poppins-latin-100-normal.woff2",
+        "sha256": "a9220f99b916978e5d7934b73be5ab91444871ba52a89032e4dd90e42b0a96e1",
+        "bytes": 7484
+      },
+      {
+        "file": "poppins-200.woff2",
+        "source": "package/files/poppins-latin-200-normal.woff2",
+        "sha256": "6f0c572590421075878908e0b380c5a6d404f72aa7d6d125385943be658f8399",
+        "bytes": 7932
+      },
+      {
+        "file": "poppins-300.woff2",
+        "source": "package/files/poppins-latin-300-normal.woff2",
+        "sha256": "78bc3aa78faec288bbb3bf26c9a0fa4eb67b1e69da94a17233c5cab60525efdb",
+        "bytes": 7840
+      },
+      {
+        "file": "poppins-400.woff2",
+        "source": "package/files/poppins-latin-400-normal.woff2",
+        "sha256": "7d93459d86585bfcdbb7e0376056226adb25821ee54b96236fe2123e9560929f",
+        "bytes": 7884
+      },
+      {
+        "file": "poppins-500.woff2",
+        "source": "package/files/poppins-latin-500-normal.woff2",
+        "sha256": "cd36de204aca2d5fa263a731f7c20009b5e3d754ba1f1e03c33e93a48f3e7446",
+        "bytes": 7748
+      },
+      {
+        "file": "poppins-600.woff2",
+        "source": "package/files/poppins-latin-600-normal.woff2",
+        "sha256": "f4e80d9dfd374d02989b87a27b5ed4cb78fbb177c27f1478e9a8b0afb7513149",
+        "bytes": 8000
+      },
+      {
+        "file": "poppins-700.woff2",
+        "source": "package/files/poppins-latin-700-normal.woff2",
+        "sha256": "9338e65fc077355c7a87ae0d64cc101e23b9bf8ad78ae65f0f319c857311b526",
+        "bytes": 7816
+      },
+      {
+        "file": "poppins-800.woff2",
+        "source": "package/files/poppins-latin-800-normal.woff2",
+        "sha256": "60bf0aba6526436f3930c58c12047687fbb6bff4dd180cce4613458ed3439ea2",
+        "bytes": 7824
+      },
+      {
+        "file": "poppins-900.woff2",
+        "source": "package/files/poppins-latin-900-normal.woff2",
+        "sha256": "17ea10196a490a8d3b8da162c7d4af9c301c5229f70af90dad6fa33eb951d83f",
+        "bytes": 7632
+      }
+    ]
+  },
+  {
+    "name": "montserrat",
+    "package": "@fontsource-variable/montserrat",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/montserrat/-/montserrat-5.3.0.tgz",
+    "integrity": "sha512-7PaZoxaxrWLAyrhO46v65An9LhUhfkTExWLhfbywYZCnZEgg/W1rEHnlNmZKjNZ3nJTVYyicqxlJt10z/26yTA==",
+    "license": "OFL-1.1",
+    "licenseSha256": "f429f739351287574c0c3175a9222bb3e49c7cad3f568a04f2c08d74c107724e",
+    "files": [
+      {
+        "file": "montserrat.woff2",
+        "source": "package/files/montserrat-latin-wght-normal.woff2",
+        "sha256": "06b16db7a969135d48d38c49183be7fb88d4452e2a3011957c7851941f4e4879",
+        "bytes": 37956
+      }
+    ]
+  },
+  {
+    "name": "dm-sans",
+    "package": "@fontsource-variable/dm-sans",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/dm-sans/-/dm-sans-5.3.0.tgz",
+    "integrity": "sha512-BpUG5bqePiDFMBM4ZtLSlPdAIOM990uB1dlXzIf4aw21yQR7BmykedLXXXMqGWsR18aMLOsbWccwJNh3ztTQaA==",
+    "license": "OFL-1.1",
+    "licenseSha256": "6fbd040a29c2037a765dfb9f2561e9965b5c95c6dcb5dce516089d63d5f17af7",
+    "files": [
+      {
+        "file": "dm-sans.woff2",
+        "source": "package/files/dm-sans-latin-wght-normal.woff2",
+        "sha256": "9fea608a947e67020c33cad9a6fe3d60c54119dfb8cff87768a8117a15ed7543",
+        "bytes": 36932
+      }
+    ]
+  },
+  {
+    "name": "nunito-sans",
+    "package": "@fontsource-variable/nunito-sans",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/nunito-sans/-/nunito-sans-5.3.0.tgz",
+    "integrity": "sha512-Vk1PSfckNDwgw2yGcsvJP3o/0zEW8Rp6KzbD8Ql/6iRHQshnhhAjt+cSIfAUyp5vQuSlleGHFW2LfYaaex0diw==",
+    "license": "OFL-1.1",
+    "licenseSha256": "6632e6c45fcc18cc03909a0a53d84e9775185e06203ff80d6367cf93959b91a8",
+    "files": [
+      {
+        "file": "nunito-sans.woff2",
+        "source": "package/files/nunito-sans-latin-wght-normal.woff2",
+        "sha256": "29e3890496844a9ea81975c52771c587c872b4eb317026422d1995b88d21b57d",
+        "bytes": 31076
+      }
+    ]
+  },
+  {
+    "name": "source-sans-3",
+    "package": "@fontsource-variable/source-sans-3",
+    "version": "5.3.1",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/source-sans-3/-/source-sans-3-5.3.1.tgz",
+    "integrity": "sha512-u0p5Z/PM2e1uxYOMiodLM6NVzxHwULcB6Oi7QSr2WU/sdoLBFP/BeOZ3YYHeJ6rHsjPZA1nZweZVaV7sf2MAyQ==",
+    "license": "OFL-1.1",
+    "licenseSha256": "18aabf190848725e2576eefb5c29ba06aac1029d02132252a7f312eac2e50cf3",
+    "files": [
+      {
+        "file": "source-sans-3.woff2",
+        "source": "package/files/source-sans-3-latin-wght-normal.woff2",
+        "sha256": "19143dca075972bc84e3fd9eab7416dd40cc565dccb2435a044bdfabe060c7d5",
+        "bytes": 28872
+      }
+    ]
+  },
+  {
+    "name": "playfair-display",
+    "package": "@fontsource-variable/playfair-display",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/playfair-display/-/playfair-display-5.3.0.tgz",
+    "integrity": "sha512-IHdzTvE8eGIXHteZql7KXoqdc3Gfm+Zs1u4XlSC3MeplkwviT3sx/P6gI0tLwg/xIYLF4ZJYveZ5V+bl9cnDwA==",
+    "license": "OFL-1.1",
+    "licenseSha256": "c052aafd2a71e90bcee6e69f475029d430a10d548c08ffcae350171f0e9668b1",
+    "files": [
+      {
+        "file": "playfair-display.woff2",
+        "source": "package/files/playfair-display-latin-wght-normal.woff2",
+        "sha256": "e0c764a8e9e1cce92163c55bac4b2ad6cd4cf8c696ce2289ab5c41565e65b7e2",
+        "bytes": 38404
+      }
+    ]
+  },
+  {
+    "name": "cormorant-garamond",
+    "package": "@fontsource-variable/cormorant-garamond",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/cormorant-garamond/-/cormorant-garamond-5.3.0.tgz",
+    "integrity": "sha512-rgZJ/5w3hi60swAPnrOXpZf5wEH6NTrvm4H8D9Y4b1QIFUqlX14eM3QTMU/eAznjfh0eXpO1QUqsFhiy58aoMg==",
+    "license": "OFL-1.1",
+    "licenseSha256": "732f37009943e7f4378cf37113c9bcc4716af002a8583511aa91ed5d37683e73",
+    "files": [
+      {
+        "file": "cormorant-garamond.woff2",
+        "source": "package/files/cormorant-garamond-latin-wght-normal.woff2",
+        "sha256": "d80df8ff5aecd299a61549f9e29ab1ed0b9b05f4ea71d50fe978e07d5240b235",
+        "bytes": 37640
+      }
+    ]
+  },
+  {
+    "name": "libre-baskerville",
+    "package": "@fontsource-variable/libre-baskerville",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource-variable/libre-baskerville/-/libre-baskerville-5.3.0.tgz",
+    "integrity": "sha512-lIjXwDhcdr0OxSdzlAU4G7Tnny1LhgAiPFdp3/PjwRMqYt2JLU6pQiLwz/M5lRBs/kRtHwxknPUqRt37AnqPFg==",
+    "license": "OFL-1.1",
+    "licenseSha256": "8490e863633e537100d6d18755d994ea30b0b44741876a17809d28becf45ce11",
+    "files": [
+      {
+        "file": "libre-baskerville.woff2",
+        "source": "package/files/libre-baskerville-latin-wght-normal.woff2",
+        "sha256": "22219fb90e3b9bd28debd1825fe8d9a0154a0e31f8b3fa601ac1a0a5aa5e6d1b",
+        "bytes": 33872
+      }
+    ]
   }
 ]

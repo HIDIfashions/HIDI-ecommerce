@@ -1,5 +1,5 @@
 """Typography settings overlay with exact-base backup, CAS deployment and owned rollback."""
-import argparse, importlib.util, json, os, subprocess
+import argparse, hashlib, importlib.util, json, os, subprocess
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
 def load(name,path):
@@ -10,6 +10,16 @@ g.EVIDENCE=Path('evidence/typography');g.setup()
 photo,cloud,images=g.photo,g.cloud,g.images
 P,E=g.PRIVATE,g.EVIDENCE
 save,read=g.save,g.read
+
+original_public_snapshot=g.public_snapshot
+def public_snapshot():
+    result=original_public_snapshot()
+    typography=json.loads(cloud.get('/api/hidi/typography'))
+    assert typography.get('stale') is False, 'Fresh typography state required'
+    result['typography']=typography
+    result['typographyCssSha256']=hashlib.sha256(cloud.get('/typography/published.css')).hexdigest()
+    return result
+g.public_snapshot=public_snapshot
 def tag(backup=False):return images.REGISTRY+'/hidi-web:'+('backup-typography-' if backup else 'typography-')+g.run_key()
 def digest(image):return subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image',image.split('/',1)[1],'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
 def capture():
@@ -26,7 +36,7 @@ def compose():
     folder=P/'web';folder.mkdir();base,overlay,candidate=(folder/n for n in ['base-app','overlay','candidate-app'])
     images.extract(before['hidi-web']['image'],base)
     subprocess.run(['node',str(HERE/'patch.mjs'),str(base),str(overlay)],check=True)
-    plan=read('patch.json');assert 18 <= len(plan['allowedFiles']) <= 25 and plan['unchangedRuntimeRestoredExactly'] and plan['clientBundlesUnchanged']
+    plan=read('patch.json');assert len(plan['allowedFiles']) == 42 and plan['mode']=='upgrade' and plan['protectedFilesUnchanged'] and plan['unchangedRuntimeRestoredExactly'] and plan['clientBundlesUnchanged']
     assert all(n in ['server.mjs','admin-tools/navigation.js'] or n.startswith('typography/') for n in plan['allowedFiles'])
     for name in plan['allowedFiles']:
         if name.endswith(('.js','.mjs')):subprocess.run(['node','--check',str(overlay/name)],check=True)
@@ -41,6 +51,9 @@ def seal():
     report=read('candidate.json');assert report['productionWrites']==0
     assert {(c['engine'],c['width']) for c in report['cases']}=={(e,w) for e in ['chromium','firefox','webkit'] for w in [390,768,1440]}
     assert report['actualRuntime'] and report['serverRendered']
+    expected_fonts={'playfair-display','cormorant-garamond','libre-baskerville','poppins','montserrat','dm-sans','nunito-sans','source-sans-3'}
+    assert {(c['engine'],c['font'],c['profile']) for c in report['fontLibrary']} == {(engine,font,profile) for engine in ['chromium','firefox','webkit'] for font in expected_fonts for profile in ['admin','storefront']}
+    assert all(c['preUpgradeTab'] and c['fontLoaded'] for c in report['fontLibrary'])
     save('sealed.json',{'passed':True,'sourceSha':os.environ['GITHUB_SHA'],'imageId':g.image_id(tag()),'manifest':manifest})
 def publish():
     seal();subprocess.run(['docker','push',tag()],check=True);assert g.image_id(tag())==read('sealed.json')['imageId']
@@ -53,6 +66,13 @@ def verified():
 def recover():
     if not (P/'forward-write.json').exists():return
     image=verified();before=photo.states();captured=g.private_json('public-before.json');state=g.private_json('forward-write.json')
+    try:current=json.loads(cloud.get('/api/hidi/typography'))
+    except Exception:current=None
+    # A concurrent owner may have published an added font during verification.
+    # The older image cannot understand it; never undo that owner's publication.
+    if current and current.get('stale') is False and current!=captured['typography']:
+        save('rollback.json',{'passed':False,'webStatus':'independent-typography-change-preserved','databaseWrites':False,'typographyPublicationWrites':False})
+        raise RuntimeError('Independent typography publication detected; automatic image rollback withheld')
     report=g.reconcile_failure(image,before,captured,captured,'typography'+g.run_key('a'),bool(state.get('mayComplete')));save('rollback.json',report);assert report['passed']
 def apply():
     image=verified();backups();before=photo.states();photo.unchanged(before);captured=g.private_json('public-before.json');assert g.public_snapshot()==captured
@@ -66,10 +86,10 @@ def apply():
                 url='/_next/'+name.split('/.next/')[1].replace('[slug]','%5Bslug%5D')
                 assert cloud.get(url)==(P/'web/candidate-app'/name).read_bytes()
         subprocess.run(['node',str(HERE/'verify.mjs'),'--live'],check=True,timeout=600)
-        assert json.loads(cloud.get('/api/hidi/typography'))['revision'] == 0
+        assert json.loads(cloud.get('/api/hidi/typography')) == captured['typography'], 'Published font selections changed'
         cloud.get('/api/hidi/typography/admin',401)
         assert g.public_snapshot()==captured;photo.unchanged(deployed)
-        save('after.json',{'passed':True,'sourceSha':os.environ['GITHUB_SHA'],'states':deployed,'apiUnchanged':True,'settingsPreserved':True,'databaseWrites':False,'typographyPublicationWrites':False,'liveRegressionPassed':True})
+        save('after.json',{'passed':True,'sourceSha':os.environ['GITHUB_SHA'],'states':deployed,'apiUnchanged':True,'settingsPreserved':True,'databaseWrites':False,'typographyPublicationWrites':False,'publishedFontsUnchanged':True,'publishedCssUnchanged':True,'liveRegressionPassed':True})
     except BaseException:
         recover();raise
 if __name__=='__main__':

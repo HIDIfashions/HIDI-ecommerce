@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {createTypographyHandler,initialState,injectTypography,adminPath} from '../deploy/typography/handler.mjs';
-import {presets,validateConfig} from '../deploy/typography/registry.mjs';
+import {fonts,fontSources,presets,roles,validateConfig} from '../deploy/typography/registry.mjs';
 import {publishedCss} from '../deploy/typography/css.mjs';
 export function memoryStore(){let value=null,version=0;const revisions=[];return {revisions,failSave:false,failLoad:false,failArchive:false,load:async function(){if(this.failLoad)throw Error('offline');return {value:structuredClone(value),etag:value?'"'+version+'"':null};},save:async function(next,etag){if(this.failSave)throw Error('offline');if(etag!==(value?'"'+version+'"':null))throw Object.assign(Error('Concurrent update'),{status:409});value=structuredClone(next);version++;return {etag:'"'+version+'"'};},archive:async function(revision){if(this.failArchive)throw Error('offline');revisions.push(structuredClone(revision));}};}
 async function fixture(fn){const store=memoryStore();const handler=createTypographyHandler({store,origin:'http://127.0.0.1',requestFetch:async(_url,options)=>new Response(JSON.stringify({admin:{id:'fixture',role:options.headers.cookie==='owner'?'OWNER':'CATALOG',displayName:'Test owner'}}))});const server=createServer(async(req,res)=>{if(!await handler(req,res,new URL(req.url,'http://localhost').pathname)){res.writeHead(404);res.end();}});await new Promise(done=>server.listen(0,'127.0.0.1',done));const base='http://127.0.0.1:'+server.address().port;const call=async(body,options={})=>{const r=await fetch(base+adminPath,{...(body?{method:'POST',body:JSON.stringify(body)}:{}),...options,headers:{cookie:'owner',origin:base,'content-type':'application/json',...options.headers}});return {status:r.status,data:await r.json()};};try{await fn({base,store,call,handler});}finally{server.closeAllConnections();await new Promise(done=>server.close(done));}}
@@ -20,6 +20,31 @@ test('rollback restores original defaults, retains draft and leaves the other pr
 test('identical publish is idempotent and rollback without history fails',async()=>fixture(async({call})=>{assert.equal((await call({action:'rollback',profile:'storefront',etag:null})).status,409);let r=await call({action:'publish',profile:'storefront',etag:null});const first=r.data;r=await call({action:'publish',profile:'storefront',etag:first.etag});assert.equal(r.data.etag,first.etag);assert.equal(r.data.revision,first.revision);}));
 test('public stale fallback contains the last successful publication only',async()=>fixture(async({base,call,store})=>{let r=await call({action:'save',profile:'storefront',etag:null,config:presets.editorial});await call({action:'publish',profile:'storefront',etag:r.data.etag});store.failLoad=true;const css=await fetch(base+'/typography/published.css');assert.equal(css.headers.get('x-hidi-typography-stale'),'true');assert.match(await css.text(),/HIDI Lora/);assert.equal((await call()).status,503);}));
 test('fresh process without storage returns failure rather than a success-shaped default',async()=>fixture(async({base,store})=>{store.failLoad=true;assert.equal((await fetch(base+'/typography/published.css')).status,503);}));
-test('assets allow only known filenames and read methods; fonts are self-hosted WOFF2',async()=>fixture(async({base})=>{for(const name of ['inter','lora','manrope']){const r=await fetch(base+'/typography/assets/fonts/'+name+'.woff2');assert.equal(r.status,200);assert.equal(Buffer.from(await r.arrayBuffer()).subarray(0,4).toString(),'wOF2');}assert.equal((await fetch(base+'/typography/assets/storage.mjs')).status,404);assert.equal((await fetch(base+'/typography/assets/editor.js',{method:'POST'})).status,405);const head=await fetch(base+'/typography/published.css',{method:'HEAD'});assert.equal(await head.text(),'');}));
+test('assets allow only known filenames and read methods; all font weights are self-hosted WOFF2',async()=>fixture(async({base})=>{for(const face of Object.values(fonts).flatMap(fontSources)){const r=await fetch(base+'/typography/assets/fonts/'+face.file);assert.equal(r.status,200);assert.equal(Buffer.from(await r.arrayBuffer()).subarray(0,4).toString(),'wOF2');}assert.equal((await fetch(base+'/typography/assets/storage.mjs')).status,404);assert.equal((await fetch(base+'/typography/assets/editor.js',{method:'POST'})).status,405);const head=await fetch(base+'/typography/published.css',{method:'HEAD'});assert.equal(await head.text(),'');}));
+
+test('all eight additions persist and publish independently in both profiles with selected font faces',async()=>fixture(async({base,call,store})=>{
+ let state=(await call()).data;
+ const additions=['playfair-display','cormorant-garamond','libre-baskerville','poppins','montserrat','dm-sans','nunito-sans','source-sans-3'];
+ for(const profile of ['storefront','admin'])for(const id of additions){
+  const other=profile==='admin'?'storefront':'admin',unchanged=structuredClone(state.profiles[other]);
+  const beforeCss=await fetch(base+'/typography/published.css').then(r=>r.text());
+  const saved=await call({action:'save',profile,etag:state.etag,config:Object.fromEntries(roles.map(role=>[role,id]))});assert.equal(saved.status,200);state=saved.data;
+  assert.equal(await fetch(base+'/typography/published.css').then(r=>r.text()),beforeCss);
+  const published=await call({action:'publish',profile,etag:state.etag});assert.equal(published.status,200);state=published.data;
+  assert.deepEqual(state.profiles[other],unchanged);
+  const css=await fetch(base+'/typography/published.css').then(r=>r.text());
+  for(const face of fontSources(fonts[id]))assert(css.includes('/typography/assets/fonts/'+face.file));
+  assert.deepEqual((await store.load()).value.profiles[profile].published,Object.fromEntries(roles.map(role=>[role,id])));
+ }
+ assert.equal(state.revision,16);
+}));
+
+test('legacy saved profiles and publication history survive a library upgrade unchanged',async()=>fixture(async({base,store,call})=>{
+ const previous=initialState();previous.revision=42;previous.profiles.storefront={draft:presets.modern,published:presets.editorial,previous:{config:presets.classic}};previous.history=[{version:42,config:presets.editorial,profile:'storefront',action:'publish',publishedBy:{id:'old-owner',displayName:'Owner'}}];await store.save(previous,null);
+ const loaded=(await call()).data;delete loaded.etag;assert.deepEqual(loaded,previous);
+ assert.deepEqual((await fetch(base+'/api/hidi/typography').then(r=>r.json())).profiles.storefront,presets.editorial);
+ const css=await fetch(base+'/typography/published.css').then(r=>r.text());assert(!css.includes('@font-face'),'Legacy publications retain their previous CSS output');
+ assert.deepEqual((await store.load()).value,previous);
+}));
 test('HTML injection is idempotent, server-scoped and preserves body and title',()=>{const html='<!doctype html><html lang="en"><head><title>HIDI</title></head><body>₹ हिन्दी</body></html>';const out=injectTypography(html,'admin');assert.match(out,/data-hidi-type-scope="admin"/);assert.match(out,/id="hidi-published-typography"/);assert.equal(injectTypography(out),out);assert(out.endsWith('<body>₹ हिन्दी</body></html>'));for(const fragment of ['<div>abc</div>','{"a":1}'])assert.equal(injectTypography(fragment),fragment);});
 test('CSS overrides roles only on screen without changing size, colour, layout or print',()=>{const state=initialState();state.profiles.storefront.published=presets.editorial;const css=publishedCss(state);assert.match(css,/@media screen/);assert.doesNotMatch(css,/(?:^|[;{])\s*(?:font-size|line-height|color|display|position)\s*:|@media print/);assert.match(css,/pdp-title-row h1/);});

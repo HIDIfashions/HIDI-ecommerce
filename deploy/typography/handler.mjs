@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
-import { fonts, presets, validateConfig } from './registry.mjs';
+import { fonts, fontSources, presets, validateConfig } from './registry.mjs';
 import { fontFaces, publishedCss } from './css.mjs';
 import { createAzureTypographyStore } from './storage.mjs';
 export const adminPath = '/api/hidi/typography/admin';
@@ -10,7 +10,7 @@ export function initialState() {
   return {schema: 1, revision: 0, profiles: {storefront: profile(), admin: profile()}, history: []};
 }
 const assets = new Map();
-for (const file of ['registry.mjs','editor.js','editor.css','refresh.js',...Object.values(fonts).filter(f=>f.file).map(f=>'fonts/'+f.file)]) {
+for (const file of ['registry.mjs','editor.js','editor.css','refresh.js',...Object.values(fonts).flatMap(fontSources).map(f=>'fonts/'+f.file)]) {
   const body = readFileSync(new URL(file, import.meta.url));
   assets.set(file, {body, hash:createHash('sha256').update(body).digest('hex').slice(0,16), type:file.endsWith('.woff2')?'font/woff2':file.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8'});
 }
