@@ -72,8 +72,12 @@ try{
         await page.route('**/api/hidi/portrait-order',route=>route.fulfill({status:503,contentType:'application/json',body:'{}'}));await page.goto(server.base+'/');await gallery.scrollIntoViewIfNeeded();await gallery.getByRole('heading',{name:DRESSES[0].title,exact:true}).waitFor();check(await gallery.locator('.portrait-gallery__preview').count()===5,'Order API outage preserves complete default gallery');await page.unroute('**/api/hidi/portrait-order');
         const media=server.blobs.get('brand/landing-media/current.json');media.value.ananya={active:true,autoPlay:false,items:[{type:'image',url:DRESSES[3].url,altText:'Custom portrait'}]};await page.reload();await gallery.scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.querySelectorAll('.portrait-gallery__preview').length===1);check(await gallery.locator('.portrait-gallery__story').innerText().then(t=>t.includes('A version of her.')),'Existing custom gallery still takes priority');
         await page.goto(server.base+'/admin/landing-media?section=ananya');await panel.getByText('A custom Ananya photo list is active.',{exact:false}).waitFor();check(await panel.getByRole('button',{name:'Move down: Red floral embroidered kurta',exact:true}).isDisabled(),'Custom gallery order controls disabled');
-        assert.deepEqual(errors,[]);assert.deepEqual(server.unexpected,[]);check(server.writes.every(key=>key===KEY),'Only dedicated order document written');
-        results.push({engine,width,passed:true});console.log('PASS '+engine+' '+width);
+        // Same exact WebKit layout notification is already classified in
+        // deploy/paint-performance/mirror-fallback-probe.mjs. Retain it in evidence;
+        // all other runtime errors fail, and both layouts must pass overflow checks.
+        const layoutNotices=errors.filter(error=>error==='ResizeObserver loop completed with undelivered notifications.');
+        assert.deepEqual(errors.filter(error=>!layoutNotices.includes(error)),[]);assert.deepEqual(server.unexpected,[]);check(server.writes.every(key=>key===KEY),'Only dedicated order document written');
+        results.push({engine,width,passed:true,layoutNotices});console.log('PASS '+engine+' '+width);
       }catch(error){console.error(JSON.stringify({errors,orderResponses,portrait:await page.locator('.portrait-gallery__portrait').evaluateAll(items=>items.map(i=>({html:i.outerHTML,width:i.naturalWidth,rect:i.getBoundingClientRect().toJSON()}))),srcs:await page.locator('.portrait-gallery__preview img').evaluateAll(items=>items.map(i=>i.getAttribute('src')))}));await page.screenshot({path:join(out,'failure.png'),fullPage:true});throw error;}finally{await context.close();}
     }}finally{await browser.close();}
   }
