@@ -55,7 +55,11 @@ export async function probe(base,{live=false}={}){
    await context.close();
   }}finally{await browser.close();}
  }
- assert.deepEqual(errors,[]);
- const report={passed:true,actualRuntime:true,results,errors,productionWrites:0};await writeFile(out+'/'+(live?'live':'candidate')+'.json',JSON.stringify(report,null,2));return report;
+ // Existing WebKit homepage layout notification, also recorded separately in
+ // portrait-order/regression.mjs and paint-performance/mirror-fallback-probe.mjs.
+ // Every color, overflow and interaction assertion above remains mandatory.
+ const layoutNotices=errors.filter(e=>e.engine==='webkit'&&e.path==='/'&&e.message==='ResizeObserver loop completed with undelivered notifications.');
+ const runtimeErrors=errors.filter(e=>!layoutNotices.includes(e));assert.deepEqual(runtimeErrors,[]);
+ const report={passed:true,actualRuntime:true,results,errors:runtimeErrors,layoutNotices,productionWrites:0};await writeFile(out+'/'+(live?'live':'candidate')+'.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[2]==='live')await probe('https://hidiindia.com',{live:true});
