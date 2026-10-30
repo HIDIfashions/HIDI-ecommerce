@@ -1,0 +1,37 @@
+name: Portrait order preview regression (no deployment)
+on:
+  push:
+    branches: [feat/portrait-order-preview]
+    paths: [deploy/portrait-order/**, .github/workflows/portrait-order-preview.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-portrait-browser/node_modules/playwright/index.mjs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Prepare isolated preview from versioned source and public assets
+        run: |
+          git fetch origin hidi-web-new:refs/remotes/origin/hidi-web-new
+          python3 deploy/portrait-order/prepare-preview.py /tmp/hidi-portrait-preview
+          python3 -m py_compile deploy/portrait-order/patch-runtime.py
+      - name: Install browser engines
+        run: |
+          npm install --prefix /tmp/hidi-portrait-browser --no-save playwright@1.56.1
+          node /tmp/hidi-portrait-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Test ordering, captions, storage conflicts and retained media
+        run: node deploy/portrait-order/regression.mjs /tmp/hidi-portrait-preview
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: portrait-order-preview-${{ github.run_id }}
+          path: |
+            /tmp/hidi-portrait-preview/results
+            /tmp/hidi-portrait-preview/patch-report.json
+          retention-days: 14
