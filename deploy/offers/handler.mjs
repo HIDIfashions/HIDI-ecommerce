@@ -2,6 +2,7 @@ import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {createAzureOfferStore} from './storage.mjs';
 import {initialState,editableState,validate,publicOffer,fail,RULE_SET,rules} from './model.mjs';
+import {independentState,checkoutPolicy,landingOffers,hasSelected,changeCampaign} from './campaigns.mjs';
 const API='/api/hidi/offers/admin';
 const POLICY='/api/hidi/offers/checkout-policy';
 const assets=new Map([['editor.html','text/html'],['editor.js','text/javascript'],['storefront.js','text/javascript'],['admin-link.js','text/javascript'],['offers.css','text/css'],['checkout.js','text/javascript']]);
@@ -47,7 +48,7 @@ export function createOffersHandler({origin,store=createAzureOfferStore(),reques
         if(path==='/admin/offers')await owner(req);
         const name=path==='/admin/offers'?'editor.html':path.slice('/offers-assets/'.length);
         if(!assets.has(name)||name==='editor.html'&&path!=='/admin/offers')throw fail(404,'Not found');
-        send(req,res,200,readFileSync(new URL(name,import.meta.url),'utf8'),assets.get(name));return true;
+        send(req,res,200,readFileSync(new URL(name==='editor.html'?'editor-v3.html':name==='editor.js'?'editor-v3.js':name,import.meta.url),'utf8'),assets.get(name));return true;
       }
       if(path==='/api/hidi/offers'||path===POLICY){
         if(!['GET','HEAD'].includes(req.method))throw fail(405,'Method not allowed');
@@ -55,20 +56,29 @@ export function createOffersHandler({origin,store=createAzureOfferStore(),reques
         const published=loaded.value?.published;
         if(published?.config?.ruleSet===RULE_SET&&published?.config?.couponVersion===1)validate(published.config,{publishing:true});
         // No campaign, or HIDDEN, requires no customer or business-data lookup.
-        let result=publicOffer(published,null,now());
-        if(!result.visible&&published?.config?.audience==='SELECTED')result=publicOffer(published,await customer(req),now());
-        if(path===POLICY){const config=published?.config;send(req,res,200,result.visible&&config?.checkoutEnabled===true?{available:true,version:published.version,ruleSet:RULE_SET,couponVersion:1,rules,welcomeEnabled:config.welcomeEnabled===true,dressEnabled:config.dressEnabled===true,eligibleProductIds:validate(config,{publishing:true}).eligibleProductIds}:{available:false});}
-        else send(req,res,200,result);return true;
+        const identity=hasSelected(loaded.value)?await customer(req):null;
+        send(req,res,200,path===POLICY?checkoutPolicy(loaded.value,identity,now()):landingOffers(loaded.value,identity,now()));return true;
       }
       if(!['GET','HEAD','POST'].includes(req.method))throw fail(405,'Method not allowed');
       if(req.method==='POST'&&!sameOrigin(req))throw fail(403,'Use the HIDI admin page to save changes');
       const actor=await owner(req);
-      const loaded=await store.load(),state=editableState(loaded.value||initialState());
-      if(req.method!=='POST'){send(req,res,200,{...state,etag:loaded.etag});return true;}
+      const loaded=await store.load(),state=loaded.value?.schema===3?independentState(loaded.value):editableState(loaded.value||initialState());
+      if(req.method!=='POST'){send(req,res,200,{...state,...(loaded.value?.schema===3?{}:{offers:independentState(loaded.value).offers}),etag:loaded.etag});return true;}
       const body=await json(req);
       if(!body||typeof body!=='object'||Array.isArray(body))throw fail(400,'Invalid offer action');
       if(!Object.hasOwn(body,'etag')||body.etag!==loaded.etag)throw fail(409,'Offers changed in another session. Reload before saving.');
       const time=new Date(now()).toISOString();
+      if(body.offerCode!==undefined||loaded.value?.schema===3){
+        const next=changeCampaign(loaded.value,body,{id:randomUUID(),actor,time});
+        if(['publish','restore'].includes(body.action)&&body.offerCode==='GET1'&&next.offers.GET1.published.config.checkoutEnabled){
+          const products=await requestFetch(new URL('/api/store/products',origin),{cache:'no-store',signal:AbortSignal.timeout(10000)});
+          if(!products.ok)throw fail(503,'Could not verify the dress collection. Retry publishing.');
+          const list=await products.json(),ids=next.offers.GET1.published.config.eligibleProductIds;
+          // The public catalogue is ACTIVE-only and intentionally omits status.
+          if(!Array.isArray(list)||ids.some(id=>!list.some(p=>p.id===id&&(p.status===undefined||p.status==='ACTIVE')&&p.variants?.length)))throw fail(400,'Every selected dress must be an active catalogue product. Review your collection.');
+        }
+        await store.save(next,loaded.etag);const saved=await store.load();send(req,res,200,{...saved.value,etag:saved.etag});return true;
+      }
       if(body.action==='save'){state.draft=validate(body.draft);state.savedAt=time;}
       else if(body.action==='publish'||body.action==='restore'){
         if(body.confirm!==true)throw fail(400,'Confirm the chosen audience before publishing');

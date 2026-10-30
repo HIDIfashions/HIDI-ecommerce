@@ -1,0 +1,13 @@
+# GET1 review — not deployed
+
+User requested preview before launch on 30 October 2026. Do not merge or deploy until that review is approved. Existing offer workflows auto-deploy changes under `deploy/offers` and `deploy/checkout-offers`; prepare the bounded web-only release and update those triggers before merging.
+
+Implemented independent owner-managed WELCOME250 / GET1 drafts, scoped publish/pause/restore history, checkout and landing visibility, public catalogue selection and dynamic checkout coupon hints. Existing checkout service performs all pricing, stock, eligibility, reservation and payment work; no API/payment/price changes are made here. GET1 is one extra dress at 100 paise after 399900 paise regular spend, cannot stack with WELCOME250 or rewards, first 25 qualifying orders / once per customer.
+
+`collection.mjs` records the 11 approved active matches. COR_002 and HIDI_002 were unavailable and the user approved excluding them. Fairy Lavender (website HIDI_041, attachment HIDI_040) is included only if its selling price remains below 169900 paise; current snapshot is 161500 paise.
+
+Local preview: `node deploy/get1/preview.mjs 4323`, then `/__preview/review`. Reads the public catalogue snapshot at `../outputs/get1-rollout/products.json`; local admin storage and quote fixtures are disposable. The review page shows screenshots and links to interactive admin, checkout, and the collection. No live write routes are proxied.
+
+Tests: `node --test deploy/offers/*.test.mjs`, `HIDI_CANDIDATE_API=... node deploy/welcome250/api-check.mjs`, and `HIDI_PLAYWRIGHT_MODULE=... HIDI_BROWSER_ENGINES=chromium,webkit node deploy/get1/local-check.mjs`. Firefox local binary fails to launch (`spawn UNKNOWN`) on this Windows machine; run Firefox in the release Linux runner before production. API checks currently use the locally retained compiled checkout runtime, not a newly extracted production image. The release must repeat them against the current immutable API image.
+
+Before launch: verify current product mapping / price guard, preserve WELCOME250 draft+published state, deploy the six bounded offer UI/handler files plus new modules (never the preview server), repeat isolated actual-runtime regressions including purchase flows and all three browsers, then save/publish GET1 through the owner API with ETag protection and verify checkout-only public projection. Snapshot catalogue prices, payment options, current images, landing media, header and unrelated settings. Publishing any offer advances the checkout policy version; already-prepared payments retain their snapshot and new attempts revalidate.
