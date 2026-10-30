@@ -1,8 +1,8 @@
-name: HIDI coupon display release — preserve active offers
+name: HIDI independent GET1 offers — guarded web release
 on:
   push:
     branches: [migration/azure-sql-blob]
-    paths: [deploy/coupon-copy/**, deploy/checkout-offers/**, deploy/offers/**, .github/workflows/checkout-offers-release.yml]
+    paths: [deploy/get1/**, deploy/coupon-copy/**, deploy/checkout-offers/**, deploy/offers/**, .github/workflows/checkout-offers-release.yml]
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,8 +25,8 @@ jobs:
         with: {node-version: 24}
       - name: Check offer security and release syntax
         run: |
-          python3 -m py_compile deploy/coupon-copy/release.py deploy/coupon-copy/layer.py
-          node --test deploy/offers/model.test.mjs deploy/offers/handler.test.mjs
+          python3 -m py_compile deploy/get1/release.py deploy/coupon-copy/layer.py
+          node --test deploy/offers/model.test.mjs deploy/offers/handler.test.mjs deploy/offers/campaigns.test.mjs deploy/offers/campaign-handler.test.mjs
           python3 -m unittest discover -s deploy/coupon-copy -p "test_*.py"
           node --check deploy/checkout-offers/probes.mjs
           node --check deploy/checkout-offers/candidate.mjs
@@ -45,17 +45,17 @@ jobs:
       - name: Capture live image and verify exact rollback backup
         run: |
           az acr login --name acrhidiprod0927 --only-show-errors
-          python3 deploy/coupon-copy/release.py capture
-      - name: Package only the two checkout display assets
-        run: python3 deploy/coupon-copy/release.py compose
+          python3 deploy/get1/release.py capture
+      - name: Package the six scoped offer files over the exact live web image
+        run: python3 deploy/get1/release.py compose
       - name: Verify identity signatures, audiences, admin editor and retained shopping routes
         run: |
           node deploy/checkout-offers/api-test.mjs
           node deploy/welcome250/api-check.mjs
-          node deploy/coupon-copy/browser-check.mjs
-          python3 deploy/coupon-copy/release.py seal
+          node deploy/get1/browser-check.mjs
+          python3 deploy/get1/release.py seal
       - name: Publish the exact tested images
-        run: python3 deploy/coupon-copy/release.py publish
+        run: python3 deploy/get1/release.py publish
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
@@ -64,11 +64,11 @@ jobs:
       - name: Release web assets while preserving API and active offers
         id: apply
         timeout-minutes: 20
-        run: timeout --signal=TERM --kill-after=10m 15m python3 deploy/coupon-copy/release.py apply
+        run: timeout --signal=TERM --kill-after=10m 15m python3 deploy/get1/release.py apply
       - name: Recover an interrupted owned rollout
         if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
         timeout-minutes: 15
-        run: python3 deploy/coupon-copy/release.py recover
+        run: python3 deploy/get1/release.py recover
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -76,4 +76,5 @@ jobs:
           path: |
             evidence/checkout-offers
             evidence/welcome250
+            evidence/get1
           retention-days: 30

@@ -1,6 +1,6 @@
-# GET1 review — not deployed
+# GET1 independent offer rollout
 
-User requested preview before launch on 30 October 2026. Do not merge or deploy until that review is approved. Existing offer workflows auto-deploy changes under `deploy/offers` and `deploy/checkout-offers`; prepare the bounded web-only release and update those triggers before merging.
+The user approved the preview and authorized deployment on 30 October 2026. The checkout-offers workflow now owns the six-file web-only release. The legacy two-image offer workflow is retired to prevent overlapping deployments. The release captures the current immutable API and web images, verifies rollback backups, tests the candidate, and preserves live configuration. Owner publication is a separate scoped GET1 action after the deployed code passes verification.
 
 Implemented independent owner-managed WELCOME250 / GET1 drafts, scoped publish/pause/restore history, checkout and landing visibility, public catalogue selection and dynamic checkout coupon hints. Existing checkout service performs all pricing, stock, eligibility, reservation and payment work; no API/payment/price changes are made here. GET1 is one extra dress at 100 paise after 399900 paise regular spend, cannot stack with WELCOME250 or rewards, first 25 qualifying orders / once per customer.
 
