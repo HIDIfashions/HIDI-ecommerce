@@ -22,15 +22,16 @@ export async function probe(base,{live=false}={}){
     if(value)return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(value)});
     return route.continue();
    });
-   for(const path of routes){
+   // The standalone policy has no header and requires private storage. Its
+   // source bytes and public settings are preserved by the release snapshot;
+   // test its availability on live, without granting the fixture cloud access.
+   for(const path of routes.filter(path=>live||path!=='/privacy')){
     const page=await context.newPage();page.setDefaultTimeout(60000);
     page.on('pageerror',e=>errors.push({engine,width,path,message:e.message}));
     try{
      const response=await page.goto(base+path,{waitUntil:'domcontentloaded'});
      if(path==='/privacy'){
-      // A private policy document is absent in the isolated runtime. The public
-      // policy is verified through its unchanged settings snapshot at rollout.
-      assert(live?response.ok():[200,404].includes(response.status()));results.push({engine,width,path,passed:true,privatePolicyNotWritten:true});continue;
+      assert(response.ok());results.push({engine,width,path,passed:true,privatePolicyNotWritten:true});continue;
      }
      assert(response.ok(),path+' status '+response.status());
      const guide=path.startsWith('/guides'),header=page.locator(guide?'body > header':'.site-header');await header.waitFor();
