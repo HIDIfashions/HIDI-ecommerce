@@ -3,6 +3,7 @@ import {createServer} from 'node:http';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join,resolve,extname} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {spawn} from 'node:child_process';
 import {KEY} from './storage.mjs';
 export async function startPreview(root,{port=0}={}){
   root=resolve(root);const snapshot=JSON.parse(await readFile(join(root,'public-before.json'),'utf8'));
@@ -35,6 +36,12 @@ export async function startPreview(root,{port=0}={}){
   const app=createServer(async(req,res)=>{try{
     const url=new URL(req.url,'http://local'),path=url.pathname;
     const send=(status,body,type='application/json')=>{res.writeHead(status,{'Content-Type':type,'Cache-Control':'no-store'});res.end(req.method==='HEAD'?undefined:typeof body==='string'||Buffer.isBuffer(body)?body:JSON.stringify(body));};
+    if(path.startsWith('/v1/')){
+      if(path==='/v1/admin/me'){const role=req.headers.authorization==='Bearer hidi_admin_'+ 'a'.repeat(64)?'OWNER':req.headers.authorization==='Bearer hidi_admin_'+'b'.repeat(64)?'STAFF':null;return send(role?200:401,role?{admin:{id:'fixture-user',role,permissions:['*']}}:{message:'Sign in required'});}
+      if(path==='/v1/auth/admin/activity'&&req.method==='POST')return send(req.headers.authorization==='Bearer hidi_admin_'+'a'.repeat(64)?200:401,{ok:true});
+      if(!['GET','HEAD'].includes(req.method)){unexpected.push(req.method+' '+path);return send(403,{message:'Fixture is read only'});}
+      return send(200,path.includes('products')?[]:path.includes('payment-options')?{online:true,cod:true}:{});
+    }
     if(path==='/api/admin/session'){const role=req.headers.cookie?.includes('preview=owner')?'OWNER':req.headers.cookie?.includes('preview=staff')?'STAFF':null;send(role?200:401,role?{admin:{id:'fixture-user',role}}:{message:'Sign in required'});return;}
     if(path==='/admin/landing-media'){
       if(!req.headers.cookie?.includes('preview=owner'))return send(401,{message:'Preview owner session required'});
@@ -57,6 +64,13 @@ export async function startPreview(root,{port=0}={}){
     return send(404,{message:'Preview route not found'});
   }catch(error){res.writeHead(500,{'Content-Type':'application/json'}).end(JSON.stringify({message:error.message}));}});
   await new Promise(r=>app.listen(port,'127.0.0.1',r));const base='http://127.0.0.1:'+app.address().port;handler=createHeroMediaHandler({origin:base,hasStorefront:true});
-  return {base,blobs,writes,unexpected,reset:seed,setFailure:value=>{failStore=value;},close:async()=>{app.closeAllConnections();blob.closeAllConnections();await Promise.all([new Promise(r=>app.close(r)),new Promise(r=>blob.close(r))]);}};
+  let runtime,runtimeBase=base,logs='';
+  if(process.env.HIDI_PORTRAIT_ACTUAL_RUNTIME){
+    const reserve=createServer();await new Promise(r=>reserve.listen(0,'127.0.0.1',r));const runtimePort=reserve.address().port;await new Promise(r=>reserve.close(r));
+    const actual=resolve(process.env.HIDI_PORTRAIT_ACTUAL_RUNTIME);runtimeBase='http://127.0.0.1:'+runtimePort;
+    runtime=spawn(process.execPath,['--import',new URL('./runtime-preload.mjs',import.meta.url).href,join(actual,'server.mjs')],{cwd:actual,env:{...process.env,PORT:String(runtimePort),API_URL:base+'/v1',INTERNAL_API_URL:base+'/v1'},stdio:['ignore','pipe','pipe']});runtime.stdout.on('data',data=>logs+=data);runtime.stderr.on('data',data=>logs+=data);
+    let ready=false;for(let i=0;i<150;i++){if(runtime.exitCode!==null)throw Error(logs.slice(-3000));try{if((await fetch(runtimeBase+'/health')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,200));}if(!ready)throw Error('Candidate did not start: '+logs.slice(-3000));
+  }
+  return {base:runtimeBase,actualRuntime:!!runtime,blobs,writes,unexpected,reset:seed,setFailure:value=>{failStore=value;},close:async()=>{if(runtime){runtime.kill('SIGTERM');await new Promise(r=>{if(runtime.exitCode!==null)return r();runtime.once('exit',r);setTimeout(()=>{runtime.kill('SIGKILL');r();},5000).unref();});}app.closeAllConnections();blob.closeAllConnections();await Promise.all([new Promise(r=>app.close(r)),new Promise(r=>blob.close(r))]);}};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){const server=await startPreview(process.argv[2],{port:Number(process.argv[3]||4318)});console.log('Review: '+server.base+'/review');}

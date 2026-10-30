@@ -7,15 +7,15 @@ import {DRESSES,DEFAULT_ORDER,validOrder} from './model.mjs';
 import {KEY} from './storage.mjs';
 const root=resolve(process.argv[2]),out=join(root,'results');await mkdir(out,{recursive:true});const server=await startPreview(root);let checks=0;const results=[];
 const check=(value,message)=>{assert(value,message);checks++;};
-const headers={Cookie:'preview=owner',Origin:server.base,'Content-Type':'application/json'};
+const headers={Cookie:'preview=owner; hidi_admin_access=hidi_admin_'+'a'.repeat(64),Origin:server.base,'Content-Type':'application/json'};
 const request=(path,options={})=>fetch(server.base+path,options);
 const api='/api/hidi/landing-media-portrait-order';
 const save=(order,etag,extra={})=>request(api,{method:'POST',headers,body:JSON.stringify({order,etag,...extra})});
 const state=()=>request(api,{headers}).then(r=>r.json());
 try{
   check((await request(api)).status===401,'Anonymous order access blocked');
-  check((await request(api,{headers:{Cookie:'preview=staff'}})).status===403,'Non-owner blocked');
-  check((await request('/api/hidi/portrait-order',{method:'POST'})).status===403,'Harness blocks writes to public route');
+  check((await request(api,{headers:{Cookie:'preview=staff; hidi_admin_access=hidi_admin_'+'b'.repeat(64)}})).status===403,'Non-owner blocked');
+  check([403,405].includes((await request('/api/hidi/portrait-order',{method:'POST'})).status),'Public route rejects writes');
   let data=await state();assert.deepEqual(data.order,DEFAULT_ORDER);check(data.etag===null&&data.builtinActive,'Legacy collage uses default five dresses');check(server.writes.length===0,'Reads never initialize storage');
   for(const path of ['/api/hidi/hero-config','/api/hidi/landing-media-config','/api/hidi/hero-library','/api/hidi/landing-media-library','/api/hidi/landing-media-range-text'])check((await request(path,{headers})).status===200,'Retained media route '+path);
   check((await request('/api/hidi/landing-media-library')).status===401,'Retained admin authentication');
@@ -40,7 +40,7 @@ try{
     const browser=await pw[engine].launch({headless:true,...(engine==='firefox'&&process.env.HIDI_FIREFOX_EXECUTABLE?{executablePath:process.env.HIDI_FIREFOX_EXECUTABLE}:{})});
     try{for(const width of [390,1440]){
       server.reset();const context=await browser.newContext({viewport:{width,height:1000},reducedMotion:'reduce'});
-      await context.addCookies([{name:'preview',value:'owner',url:server.base}]);await context.route('**/*',route=>new URL(route.request().url()).origin===server.base?route.continue():route.abort());
+      await context.addCookies([{name:'preview',value:'owner',url:server.base},{name:'hidi_admin_access',value:'hidi_admin_'+'a'.repeat(64),url:server.base}]);await context.route('**/*',route=>new URL(route.request().url()).origin===server.base?route.continue():route.abort());
       const page=await context.newPage(),errors=[],orderResponses=[];page.on('pageerror',error=>errors.push(error.message));page.on('response',async response=>{if(response.url().endsWith('/api/hidi/portrait-order'))orderResponses.push({status:response.status(),body:await response.text()});});page.setDefaultTimeout(20000);
       try{
         await page.goto(server.base+'/admin/landing-media?section=ananya');await page.getByText('Saved order loaded.',{exact:false}).waitFor();const panel=page.locator('#portraitOrder');
@@ -81,5 +81,5 @@ try{
       }catch(error){console.error(JSON.stringify({errors,orderResponses,portrait:await page.locator('.portrait-gallery__portrait').evaluateAll(items=>items.map(i=>({html:i.outerHTML,width:i.naturalWidth,rect:i.getBoundingClientRect().toJSON()}))),srcs:await page.locator('.portrait-gallery__preview img').evaluateAll(items=>items.map(i=>i.getAttribute('src')))}));await page.screenshot({path:join(out,'failure.png'),fullPage:true});throw error;}finally{await context.close();}
     }}finally{await browser.close();}
   }
-  await writeFile(join(out,'regression.json'),JSON.stringify({passed:true,checks,results,productionWrites:0,notDeployed:true},null,2));console.log('PASS '+checks+' checks; no production writes');
+  await writeFile(join(out,'regression.json'),JSON.stringify({passed:true,checks,results,productionWrites:0,notDeployed:true,actualRuntime:server.actualRuntime},null,2));console.log('PASS '+checks+' checks; no production writes');
 }finally{await server.close();}
