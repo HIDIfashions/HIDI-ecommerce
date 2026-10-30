@@ -35,7 +35,9 @@ export async function probe(base,{live=false}={}){
      assert(response.ok(),path+' status '+response.status());
      const guide=path.startsWith('/guides'),header=page.locator(guide?'body > header':'.site-header');await header.waitFor();
      if(!guide)await page.waitForFunction(()=>{const e=document.querySelector('.site-header');return e?.id==='site-header'?!e.hasAttribute('data-hidi-first-header'):!!document.documentElement.style.getPropertyValue('--hidi-header-height');});
-     assert(await page.locator('link[data-hidi-header-burgundy]').count(),path+' missing delivered stylesheet');
+     // The retained homepage optimizer inlines local CSS and preserves data
+     // markers on the resulting style element; Next pages keep the link.
+     assert(await page.locator('link[data-hidi-header-burgundy],style[data-hidi-header-burgundy]').count(),path+' missing delivered stylesheet');
      await page.waitForFunction(selector=>getComputedStyle(document.querySelector(selector)).backgroundColor==='rgb(89, 30, 34)',guide?'body > header':'.site-header');
      const details=await header.evaluate((e,guide)=>{const s=getComputedStyle(e),b=getComputedStyle(e,'::before'),img=e.querySelector('img'),r=e.getBoundingClientRect();return {color:s.backgroundColor,before:b.backgroundColor,opacity:b.opacity,height:r.height,logo:img?.getAttribute('src'),overflow:document.documentElement.scrollWidth>innerWidth+1};},guide);
      assert(details.logo&&details.height>40&&!details.overflow,JSON.stringify({path,details}));
@@ -47,7 +49,7 @@ export async function probe(base,{live=false}={}){
      }
      if(path==='/'||path==='/checkout')await page.screenshot({path:out+'/'+(live?'live-':'')+engine+'-'+width+'-'+(path==='/'?'home':'checkout')+'.png'});
      results.push({engine,width,path,passed:true,...details});console.log('PASS '+(live?'live ':'candidate ')+'header '+engine+' '+width+' '+path);
-    }catch(error){await page.screenshot({path:out+'/failure.png'}).catch(()=>{});throw error;}finally{page.removeAllListeners('pageerror');await page.close();}
+    }catch(error){await writeFile(out+'/failure.json',JSON.stringify({engine,width,path,error:String(error),errors,headers:await page.locator('header').evaluateAll(es=>es.map(e=>({className:e.className,background:getComputedStyle(e).background,before:getComputedStyle(e,'::before').background})))},null,2));await page.screenshot({path:out+'/failure.png'}).catch(()=>{});throw error;}finally{page.removeAllListeners('pageerror');await page.close();}
    }
    await context.close();
   }}finally{await browser.close();}
