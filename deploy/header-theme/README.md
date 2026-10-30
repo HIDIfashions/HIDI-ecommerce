@@ -15,4 +15,4 @@ node deploy/header-theme/preview.mjs 4321 ../outputs/header-theme-preview/cache
 
 Review at http://127.0.0.1:4321/__preview/review. The approved preview remains available for reference.
 
-The production gate runs 96 header cases across Chromium, Firefox and WebKit, retained coupon/purchase browser tests and 64 pricing/payment scenarios with isolated payment providers. Post-deployment checks verify headers on mobile and desktop using read-only requests. The release has an immutable rollback image and ownership-aware recovery.
+The production gate runs 90 header cases across Chromium, Firefox and WebKit, retained coupon/purchase browser tests and 64 pricing/payment scenarios with isolated payment providers. The standalone privacy policy has no header; its source/settings are preserved and its availability is checked live rather than requiring private storage in the isolated fixture. Post-deployment checks verify 16 routes on mobile and desktop using read-only requests. The release has an immutable rollback image and ownership-aware recovery.

@@ -46,7 +46,7 @@ def compose():
 def seal():
     x.seal()
     report=json.loads(Path('evidence/header-theme/candidate.json').read_text())
-    assert report['passed'] and report['actualRuntime'] and len(report['results'])==96 and report['productionWrites']==0 and not report['errors']
+    assert report['passed'] and report['actualRuntime'] and len(report['results'])==90 and report['productionWrites']==0 and not report['errors']
     r.save('header-regression.json',report)
     sealed=r.read('sealed.json')
     for name in ['header-regression.json','header-patch.json']:sealed['reports'][name]=x.digest((E/name).read_bytes())
