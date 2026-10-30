@@ -1,6 +1,12 @@
 (() => {
  if(window.__hidiCheckoutOffers)return;window.__hidiCheckoutOffers=true;
  const original=window.fetch.bind(window),KEY='hidi_supabase_session';
+ let displayPolicy=null,policyGeneration=0;
+ async function loadPolicy(){
+  const generation=++policyGeneration,bearer=token();
+  try{const response=await original('/api/hidi/offers/checkout-policy',{cache:'no-store',credentials:'same-origin',headers:bearer?{Authorization:'Bearer '+bearer}:{},signal:AbortSignal.timeout(8000)});const result=await response.json();if(generation!==policyGeneration||bearer!==token())return;displayPolicy=response.ok&&result.available===true?result:null;}catch{if(generation!==policyGeneration)return;displayPolicy=null;}
+  render();
+ }
  let choice={kind:'NONE'},quote=null,codeDraft='',activeCode='',sessionId=null,cartPresent=false,busy=false,syncing=false,locked=false,revision=0,panel=null,notice='',noticeError=false,lastPath=location.pathname,openPicker=false;
  const money=p=>'₹'+(p/100).toLocaleString('en-IN',{minimumFractionDigits:p%100?2:0,maximumFractionDigits:2});
  const token=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');return s?.expires_at>Date.now()/1000?s.access_token:null;}catch{return null;}};
@@ -30,7 +36,7 @@
  }
  function remove(){if(busy||syncing||locked)return;reset('Coupon removed.');syncing=true;render();refresh();}
  function choose(dress){if(busy||syncing||locked)return;choice={kind:'DRESS1',version:quote.version,variantId:dress.id,code:'GET1'};activeCode='GET1';codeDraft='GET1';revision++;syncing=true;closePicker();notice='Confirming your dress and updated total…';noticeError=false;render();refresh();}
- function imageSource(source){try{const u=new URL(source,location.origin);return u.protocol==='https:'||u.origin===location.origin?u.href:null;}catch{return null;}}
+ function imageSource(source){try{const u=new URL(source,location.origin);if(['hidiindia.com','thidigk.thehidi.com'].includes(u.hostname)&&u.protocol==='https:'&&u.pathname.startsWith('/media/products/'))return '/_next/image?'+new URLSearchParams({url:u.href,w:'384',q:'75'});return u.protocol==='https:'||u.origin===location.origin?u.href:null;}catch{return null;}}
  function picker(){
   if(!quote?.dressUnlocked||!activeCode||busy||syncing||locked)return;closePicker();
   const modal=el('dialog',null,'hidi-offer-dialog hidi-coupon-dialog');modal.setAttribute('aria-labelledby','hidi-coupon-picker-title');
@@ -56,9 +62,12 @@
   if(!place())return;
   const focused=document.activeElement?.id==='hidi-coupon-code',cursor=focused?document.activeElement.selectionStart:null;
   const label=el('label','Have a coupon?');label.htmlFor='hidi-coupon-code';const row=el('div',null,'hidi-coupon-input-row'),input=el('input');input.id='hidi-coupon-code';input.type='text';input.placeholder='Enter coupon code';input.autocomplete='off';input.maxLength=32;input.value=codeDraft;input.disabled=busy||syncing||locked;input.setAttribute('aria-describedby','hidi-coupon-status');input.addEventListener('input',()=>{codeDraft=input.value;});input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();apply();}});row.append(input,button(busy?'Checking…':'Apply',apply));
-  const status=el('p',notice||'Shop for 1499 to avail the discount','hidi-coupon-status'+(noticeError?' is-error':''));status.id='hidi-coupon-status';status.setAttribute('role',noticeError?'alert':'status');status.setAttribute('aria-live','polite');
+  const status=el('p',notice||(displayPolicy?.welcomeEnabled?'Shop for 1499 to avail the discount':'Enter an available coupon to apply your offer.'),'hidi-coupon-status'+(noticeError?' is-error':''));status.id='hidi-coupon-status';status.setAttribute('role',noticeError?'alert':'status');status.setAttribute('aria-live','polite');
   const hints=el('div',null,'hidi-coupon-hint');hints.setAttribute('aria-label','Available coupon');
-  hints.append(el('span','First order? Save ₹250 with'),button('WELCOME250',()=>{codeDraft='WELCOME250';notice='';noticeError=false;render();panel.querySelector('#hidi-coupon-code').focus();},'hidi-coupon-link'));
+  for(const [code,enabled,text]of [['WELCOME250',displayPolicy?.welcomeEnabled,'First order? Save ₹250 with'],['GET1',displayPolicy?.dressEnabled,'Shop ₹3,999. Add a selected dress for ₹1 with']]){
+   if(!enabled||activeCode&&activeCode!==code)continue;
+   const line=el('div',null,'hidi-coupon-hint');line.append(el('span',text),button(code,()=>{codeDraft=code;notice='';noticeError=false;render();panel.querySelector('#hidi-coupon-code').focus();},'hidi-coupon-link'));hints.append(line);
+  }
   panel.replaceChildren(label,row,hints,status);
   if(activeCode){
    const details=el('div',null,'hidi-coupon-applied');details.append(el('strong',activeCode));
@@ -117,9 +126,10 @@
   }
   return original(resource,options);
  };
- const authChanged=()=>{reset('Your account changed. Apply your coupon again.');render();if(location.pathname==='/checkout')refresh();};
+ const authChanged=()=>{displayPolicy=null;reset('Your account changed. Apply your coupon again.');render();if(location.pathname==='/checkout'){loadPolicy();refresh();}};
  window.addEventListener('hidi-auth-updated',authChanged);window.addEventListener('storage',e=>{if(e.key===KEY||e.key==='hidi_cart_session'||e.key===null)authChanged();});
  window.addEventListener('resize',()=>{if(panel)place();});
- setInterval(()=>{if(location.pathname==='/checkout'&&activeCode&&!document.hidden&&!locked&&!busy&&!syncing)refresh();},15000);
- new MutationObserver(()=>{if(lastPath!==location.pathname){lastPath=location.pathname;reset();cartPresent=false;panel?.remove();panel=null;}if(panel&&!panel.isConnected){panel=null;render();}else if(!panel&&cartPresent)render();}).observe(document.documentElement,{childList:true,subtree:true});
+ setInterval(()=>{if(location.pathname==='/checkout'&&!document.hidden){loadPolicy();if(activeCode&&!locked&&!busy&&!syncing)refresh();}},15000);
+ new MutationObserver(()=>{if(lastPath!==location.pathname){lastPath=location.pathname;reset();cartPresent=false;panel?.remove();panel=null;displayPolicy=null;if(location.pathname==='/checkout')loadPolicy();}if(panel&&!panel.isConnected){panel=null;render();}else if(!panel&&cartPresent)render();}).observe(document.documentElement,{childList:true,subtree:true});
+ if(location.pathname==='/checkout')loadPolicy();
 })();
