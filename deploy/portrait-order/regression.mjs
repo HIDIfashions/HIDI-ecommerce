@@ -55,11 +55,11 @@ try{
         await panel.getByRole('button',{name:'Save order',exact:true}).click();await panel.getByText('Order saved.',{exact:false}).waitFor();assert.deepEqual((await state()).order,draft);checks++;
         await page.reload();await page.getByText('Saved order loaded.',{exact:false}).waitFor();check(await panel.locator('li').first().getAttribute('data-dress')===DEFAULT_ORDER[1],'Saved order survives reload');
         await page.goto(server.base+'/');const gallery=page.locator('#meet-hidi');await gallery.locator('.portrait-gallery__preview').first().waitFor();await gallery.scrollIntoViewIfNeeded();
-        await page.waitForFunction(id=>document.querySelector('.portrait-gallery__preview img')?.getAttribute('src').includes(id),DEFAULT_ORDER[1]);
+        await gallery.getByRole('button',{name:'Show photograph 1: Ananya wearing a yellow floral kurta',exact:true}).waitFor();
         for(let index=0;index<draft.length;index++){
           const dress=DRESSES.find(d=>d.id===draft[index]);await gallery.locator('.portrait-gallery__preview').nth(index).click();await gallery.getByRole('heading',{name:dress.title,exact:true}).waitFor();check(await gallery.locator('.portrait-gallery__story').innerText().then(t=>t.includes(dress.caption)),'Storefront caption matches '+dress.id);
         }
-        await gallery.locator('.portrait-gallery__preview').first().click();await gallery.locator('.portrait-gallery__portrait').evaluate(img=>img.decode());check(await gallery.locator('.portrait-gallery__portrait').evaluate(img=>img.naturalWidth>1),'Main portrait renders');await gallery.screenshot({path:join(out,engine+'-'+width+'-storefront.png')});
+        await gallery.locator('.portrait-gallery__preview').first().click();await gallery.locator('.portrait-gallery__portrait').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.querySelector('.portrait-gallery__portrait')?.naturalWidth>1);check(await gallery.locator('.portrait-gallery__portrait').evaluate(img=>img.naturalWidth>1),'Main portrait renders');await gallery.screenshot({path:join(out,engine+'-'+width+'-storefront.png')});
         check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Homepage no horizontal overflow');
         await page.goto(server.base+'/admin/landing-media?section=ananya');await page.getByText('Saved order loaded.',{exact:false}).waitFor();
         await panel.getByRole('button',{name:'Use original order'}).click();check(server.writes.length===1,'Default is a draft until saved');await panel.getByRole('button',{name:'Save order',exact:true}).click();await panel.getByText('Order saved.',{exact:false}).waitFor();assert.deepEqual((await state()).order,DEFAULT_ORDER);checks++;
@@ -74,7 +74,7 @@ try{
         await page.goto(server.base+'/admin/landing-media?section=ananya');await panel.getByText('A custom Ananya photo list is active.',{exact:false}).waitFor();check(await panel.getByRole('button',{name:'Move down: Red floral embroidered kurta',exact:true}).isDisabled(),'Custom gallery order controls disabled');
         assert.deepEqual(errors,[]);assert.deepEqual(server.unexpected,[]);check(server.writes.every(key=>key===KEY),'Only dedicated order document written');
         results.push({engine,width,passed:true});console.log('PASS '+engine+' '+width);
-      }catch(error){console.error(JSON.stringify({errors,orderResponses,srcs:await page.locator('.portrait-gallery__preview img').evaluateAll(items=>items.map(i=>i.getAttribute('src')))}));await page.screenshot({path:join(out,'failure.png'),fullPage:true});throw error;}finally{await context.close();}
+      }catch(error){console.error(JSON.stringify({errors,orderResponses,portrait:await page.locator('.portrait-gallery__portrait').evaluateAll(items=>items.map(i=>({html:i.outerHTML,width:i.naturalWidth,rect:i.getBoundingClientRect().toJSON()}))),srcs:await page.locator('.portrait-gallery__preview img').evaluateAll(items=>items.map(i=>i.getAttribute('src')))}));await page.screenshot({path:join(out,'failure.png'),fullPage:true});throw error;}finally{await context.close();}
     }}finally{await browser.close();}
   }
   await writeFile(join(out,'regression.json'),JSON.stringify({passed:true,checks,results,productionWrites:0,notDeployed:true},null,2));console.log('PASS '+checks+' checks; no production writes');

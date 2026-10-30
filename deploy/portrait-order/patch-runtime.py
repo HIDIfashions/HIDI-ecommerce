@@ -39,7 +39,10 @@ def bundle(source):
     return ()=>controller.abort();
   },[]);'''
     # Reorder complete story tuples so headings, captions and alt text never detach.
-    return replace_checked(source,[(marker,marker+hook),(':K.map(([e,o,p,h])=>{',':(HidiPortraitOrder?HidiPortraitOrder.map(id=>K.find(story=>story[0]===id)):K).map(([e,o,p,h])=>{'),('caption:p}})},[p,V])','caption:p}})},[p,V,HidiPortraitOrder])')])
+    # Keep the observed img node stable when the first story changes while off-screen.
+    # The retained lazy-image wrapper observes that node only once; re-keying its
+    # inner img would leave the observer watching a detached placeholder.
+    return replace_checked(source,[(marker,marker+hook),(':K.map(([e,o,p,h])=>{',':(HidiPortraitOrder?HidiPortraitOrder.map(id=>K.find(story=>story[0]===id)):K).map(([e,o,p,h])=>{'),('caption:p}})},[p,V])','caption:p}})},[p,V,HidiPortraitOrder])'),('key:ae.src,className:"portrait-gallery__portrait"','className:"portrait-gallery__portrait"')])
 
 def patch_runtime(base,overlay):
     base,overlay=Path(base),Path(overlay);html=(base/'dist/index.html').read_bytes()
