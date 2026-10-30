@@ -11,7 +11,13 @@ for(const engine of (process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit'
   await context.addCookies([{name:'hidi_admin_access',value:'owner',url:base,httpOnly:true}]);
   await context.addInitScript(()=>{localStorage.setItem('hidi_cart_session','promo-fixture-session');localStorage.setItem('hidi_supabase_session',JSON.stringify({access_token:'selected',expires_at:Date.now()/1000+3600,user:{id:'fixture-user',phone:'+919000000001'}}));});
   await context.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(u.origin!==base){if(!['GET','HEAD'].includes(r.method()))productionWrites++;return r.resourceType()==='image'&&r.method()==='GET'?route.continue():route.abort();}if(u.pathname==='/api/store/checkout/prepare'){prepares.push(r.postDataJSON());return route.fulfill({status:403,contentType:'application/json',body:JSON.stringify({message:'Preview payment blocked'})});}return route.continue();});
-  const page=await context.newPage();page.setDefaultTimeout(25000);page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+  const page=await context.newPage();page.setDefaultTimeout(25000);const requestFailures=[];
+  page.on('pageerror',e=>errors.push({message:e.message,url:page.url(),stack:e.stack}));page.on('dialog',d=>d.accept());
+  page.on('requestfailed',r=>requestFailures.push({url:r.url(),method:r.method(),failure:r.failure()}));
+  // Let outstanding cart/wallet reads finish before intentionally replacing the
+  // document. WebKit reports a cancelled in-flight fetch as an access-control
+  // error; do not mask real page errors with a broad message filter.
+  const reload=async()=>{await page.waitForLoadState('networkidle');await page.reload();};
   try{
    await page.goto(base+'/admin/offers');await page.getByText('Owner verified.',{exact:false}).waitFor();
    const before=structuredClone(fixture.state().offers.WELCOME250);await page.locator('[data-offer="GET1"]').click();assert.equal(await page.locator('#offer-heading').textContent(),'GET1');
@@ -35,11 +41,11 @@ for(const engine of (process.env.HIDI_BROWSER_ENGINES||'chromium,firefox,webkit'
    await apply('GET1');await picker.waitFor();await picker.locator('.hidi-offer-sizes button:enabled').first().click();await status.filter({hasText:'added for ₹1'}).waitFor();
    const rewards=await page.evaluate(async()=>{try{await fetch('/api/store/checkout/prepare',{method:'POST',body:JSON.stringify({walletPaise:100})});}catch(e){return e.message;}});assert.match(rewards,/cannot be combined/);assert.equal(prepares.length,0);
    await page.evaluate(async()=>{await fetch('/api/store/checkout/prepare',{method:'POST',body:JSON.stringify({sessionId:'promo-fixture-session',walletPaise:0,expectedTotalPaise:400000,expectedPayableTotalPaise:400000})});});assert.equal(prepares.length,1);assert.equal(prepares[0].offer.code,'GET1');assert.equal(prepares[0].offer.kind,'DRESS1');assert.equal(prepares[0].expectedTotalPaise,399900);assert.equal(prepares[0].expectedPayableTotalPaise,400000);
-   fixture.setSubtotal(399899);await page.reload();await input.waitFor();await apply('GET1');await status.filter({hasText:'3,999'}).waitFor();assert.equal(await page.locator('.hidi-offer-dialog').count(),0);
-   fixture.setSubtotal(399900);await page.reload();await input.waitFor();await apply('GET1');await picker.waitFor();await picker.locator('.hidi-offer-sizes button:enabled').first().click();await status.filter({hasText:'added for ₹1'}).waitFor();
+   fixture.setSubtotal(399899);await reload();await input.waitFor();await apply('GET1');await status.filter({hasText:'3,999'}).waitFor();assert.equal(await page.locator('.hidi-offer-dialog').count(),0);
+   fixture.setSubtotal(399900);await reload();await input.waitFor();await apply('GET1');await picker.waitFor();await picker.locator('.hidi-offer-sizes button:enabled').first().click();await status.filter({hasText:'added for ₹1'}).waitFor();
    await action({action:'pause',offerCode:'GET1'});await page.evaluate(()=>dispatchEvent(new Event('hidi-cart-updated')));await status.filter({hasText:'Coupon removed'}).waitFor();policy=await(await fetch(base+'/api/hidi/offers/checkout-policy')).json();assert(policy.welcomeEnabled&&!policy.dressEnabled);await apply('WELCOME250');await status.filter({hasText:'You saved ₹250'}).waitFor();
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);results.push({engine,width,adminIndependent:true,draftIsolation:true,conflictSafe:true,checkoutOnly:true,emptyField:true,selectedStyles:11,get1PaymentPaise:400000,noStacking:true,threshold:true,pauseIndependent:true});console.log('PASS independent GET1 '+engine+' '+width);
-  }catch(e){await page.screenshot({path:out+'/'+engine+'-'+width+'-failure.png'}).catch(()=>{});console.error((await page.locator('body').innerText()).slice(-3000));throw e;}finally{await context.close();}
+  }catch(e){await page.screenshot({path:out+'/'+engine+'-'+width+'-failure.png'}).catch(()=>{});await writeFile(out+'/'+engine+'-'+width+'-diagnostics.json',JSON.stringify({engine,width,errors,requestFailures},null,2));console.error((await page.locator('body').innerText()).slice(-3000));throw e;}finally{await context.close();}
  }}finally{await browser.close();}
 }assert.equal(productionWrites,0);await writeFile(out+'/regression.json',JSON.stringify({passed:true,actualRuntime,productionWrites,liveDeployed:false,results},null,2));}
 
