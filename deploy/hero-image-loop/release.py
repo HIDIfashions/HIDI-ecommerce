@@ -86,7 +86,11 @@ def apply():
         g.conditional_write_image(p.originals()['hidi-web'],image,suffix,'hero-forward.json')
         web=c.snapshot(g.wait_ready(image,suffix,before))
         for path in ['/health','/healthz','/api/store/health/ready','/','/checkout','/cart']:c.get(path)
-        for path in ['/api/hidi/offers/admin','/admin/offers','/admin/landing-media','/api/hidi/hero-library']:c.get(path,401)
+        for path in ['/api/hidi/offers/admin','/admin/offers','/api/hidi/hero-library']:c.get(path,401)
+        # Landing Media serves a public editor shell; its private data and
+        # mutations are owner-authenticated by the retained media handler.
+        admin=c.get('/admin/landing-media')
+        assert b'id="heroChooseVideo"' in admin and b'id="heroChooseImage"' in admin
         for path,expected in g.private_json('hero-public-assets.json').items():assert x.digest(c.get(path))==expected,path
         assert b'data-hidi-hero-image-fit' in c.get('/')
         subprocess.run(['node',str(HERE/'live-check.mjs')],check=True)
