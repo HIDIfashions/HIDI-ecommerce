@@ -1,4 +1,4 @@
-name: Typography settings release
+name: Typography pairing and responsive sizes guarded release
 on:
   push:
     branches: [migration/azure-sql-blob]
@@ -8,67 +8,74 @@ permissions:
   contents: read
   id-token: write
 concurrency:
-  group: hidi-hero-guarded-release
+  group: hidi-checkout-offers-release
   cancel-in-progress: false
 jobs:
-  verify-and-release:
+  release:
+    if: github.ref == 'refs/heads/migration/azure-sql-blob'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-type-builder/node_modules/playwright/index.mjs
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-type-browser/node_modules/playwright/index.mjs
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
       PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-type-browsers
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
       - uses: actions/setup-node@v4
         with: {node-version: 24}
-      - name: Install isolated browser and backup tooling
+      - name: Validate release syntax and retained offer security
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y skopeo
-          npm install --prefix /tmp/hidi-type-builder --no-save typescript@5.9.3 playwright@1.62.1
-          mkdir -p node_modules
-          ln -s /tmp/hidi-type-builder/node_modules/typescript node_modules/typescript
-          mkdir -p apps/web/node_modules
-          ln -s /tmp/hidi-type-builder/node_modules/typescript apps/web/node_modules/typescript
-          node /tmp/hidi-type-builder/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
-      - name: Test settings, storage, authentication and existing regressions
-        run: node deploy/typography/unit.mjs
-      - name: Check current production routes in three browsers before any deployment
-        timeout-minutes: 5
-        run: node deploy/typography/verify.mjs --baseline
-      - name: Verify settings interface and real HTTP persistence in three browsers
-        run: node deploy/typography/verify.mjs
+          python3 -m py_compile deploy/typography/upgrade-release.py deploy/typography/upgrade-patch.py
+          node deploy/typography/upgrade-unit.mjs
+          python3 -m unittest discover -s deploy/coupon-copy -p 'test_*.py'
+          node --test deploy/offers/model.test.mjs deploy/offers/handler.test.mjs deploy/offers/campaigns.test.mjs deploy/offers/campaign-handler.test.mjs
+      - name: Install registry tooling and browser engines
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y skopeo umoci
+          npm install --prefix /tmp/hidi-type-browser --no-save playwright@1.56.1
+          node /tmp/hidi-type-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Back up production and compose only typography additions
+      - name: Capture live state and immutable rollback images
         run: |
           az acr login --name acrhidiprod0927 --only-show-errors
-          python3 deploy/typography/release.py capture
-          python3 deploy/typography/release.py compose
-          echo "HIDI_CANDIDATE_RUNTIME=$RUNNER_TEMP/hidi-typography-private/web/candidate-app" >> "$GITHUB_ENV"
-      - name: Verify exact retained candidate in three browsers before deployment
+          python3 deploy/typography/upgrade-release.py capture
+      - name: Compose six typography files over the current live image
+        run: python3 deploy/typography/upgrade-release.py compose
+      - name: Test typography settings and retained commerce
         run: |
           node deploy/typography/verify.mjs
-          python3 deploy/typography/release.py seal
-      - name: Publish exact tested image
-        run: python3 deploy/typography/release.py publish
+
+          node deploy/checkout-offers/api-test.mjs
+          node deploy/welcome250/api-check.mjs
+          node deploy/get1/browser-check.mjs
+          python3 deploy/typography/upgrade-release.py seal
+      - name: Publish only the tested immutable candidate
+        run: python3 deploy/typography/upgrade-release.py publish
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
           tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
           subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
-      - name: Deploy with exact-state checks and roll back if live regression fails
+      - name: Deploy web only and verify preserved live configuration
         id: apply
-        timeout-minutes: 25
-        run: timeout --signal=TERM --kill-after=10m 20m python3 deploy/typography/release.py apply
-      - name: Recover interrupted owned rollout
+        timeout-minutes: 20
+        run: timeout --signal=TERM --kill-after=10m 15m python3 deploy/typography/upgrade-release.py apply
+      - name: Recover an interrupted owned rollout
         if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
-        run: python3 deploy/typography/release.py recover
+        timeout-minutes: 15
+        run: python3 deploy/typography/upgrade-release.py recover
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: typography-release-${{ github.run_id }}
-          path: evidence/typography
+          name: typography-sizes-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            evidence/checkout-offers
+            evidence/welcome250
+            evidence/typography
+            evidence/get1
           retention-days: 30

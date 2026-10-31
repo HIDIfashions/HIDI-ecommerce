@@ -1,4 +1,4 @@
-import { fonts, fontSources, validateConfig } from './registry.mjs';
+import { fonts, fontSources, validateConfig, roles, sizeDevices } from './registry.mjs';
 export function fontFaces(assetVersion = '', ids = Object.keys(fonts)) {
   return [...new Set(ids)].flatMap(id => {const font=fonts[id];return fontSources(font).map(face => `@font-face{font-family:${font.stack.split(',')[0]};src:url('/typography/assets/fonts/${face.file}${assetVersion ? '?v=' + assetVersion : ''}') format('woff2');font-style:normal;font-weight:${face.weight};font-display:swap}`);}).join('\n');
 }
@@ -6,7 +6,7 @@ export function publishedCss(state) {
   let css = `:root{--hidi-typography-revision:${state.revision}}\n`;
   // Open tabs can still have an older fonts.css after a library upgrade.
   // Deliver the selected faces atomically with the published family settings.
-  const selected = Object.values(state.profiles).flatMap(profile => profile.published ? Object.values(validateConfig(profile.published)) : []).filter(id => !['system','inter','lora','manrope'].includes(id));
+  const selected = Object.values(state.profiles).flatMap(profile => profile.published ? roles.map(role=>validateConfig(profile.published)[role]) : []).filter(id => !['system','inter','lora','manrope'].includes(id));
   if (selected.length) css += fontFaces('', selected) + '\n';
   for (const scope of ['storefront', 'admin']) {
     const config = state.profiles[scope].published;
@@ -23,6 +23,18 @@ export function publishedCss(state) {
     const product = 'body :where(.product-name,.product-title,.pdp-title,.pdp-title-row h1,[data-typography="product"],[class*="product-card"] h3,[class*="editorial-product-card"] h3)';
     css += group([product, product + ' :where(span,a,em,strong)'], 'product');
     css += group(['body :where(button,.button,[role="button"],nav a,.header-actions a,.price,.pdp-price,[data-typography="ui"])','body :where(button,.button,[role="button"],nav a) :where(span,strong)'], 'ui');
+    if(c.sizes){
+      // Blank values emit no rule, preserving the original responsive typography.
+      // Mobile and desktop rules are disjoint so either can remain at site defaults.
+      const targets={
+        heading:['body :where(h1,.page-title,[data-typography="heading"])'],
+        body:['body','body :where(p,li,td,th,label,legend,summary,input,select,textarea)'],
+        product:[product,product+' :where(span,a,em,strong)'],
+        ui:['body :where(button,.button,[role="button"],nav a,.header-actions a,.price,.pdp-price,[data-typography="ui"])','body :where(button,.button,[role="button"],nav a) :where(span,strong)']
+      };
+      for(const device of sizeDevices){const rules=roles.filter(role=>c.sizes[device][role]!==null).map(role=>targets[role].map(selector=>root+' '+selector).join(',')+'{font-size:'+c.sizes[device][role]+'px!important}').join('');
+        if(rules)css+='@media screen and ('+(device==='mobile'?'max-width:700px':'min-width:701px')+'){'+rules+'}\n';}
+    }
   }
   return css;
 }

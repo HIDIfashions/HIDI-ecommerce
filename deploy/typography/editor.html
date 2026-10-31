@@ -7,16 +7,24 @@
       <div class="ht-profile" role="group" aria-label="Typography profile"><button type="button" data-profile="storefront" aria-pressed="true">Storefront</button><button type="button" data-profile="admin" aria-pressed="false">Admin interface</button></div>
       <div class="ht-workbench">
         <fieldset class="ht-settings" id="ht-controls" disabled aria-label="Font selection">
-          <label for="ht-preset">Font pairing<select id="ht-preset"><option value="editorial">Editorial · Lora + Inter</option><option value="modern">Modern · Manrope + Inter</option><option value="classic">Current · System sans</option><option value="custom" disabled>Custom pairing</option></select></label>
+          <label for="ht-preset">Font pairing<select id="ht-preset"><option value="editorial">Editorial · Lora + Inter</option><option value="modern">Modern · Manrope + Inter</option><option value="retail">Clean retail · Lato</option><option value="classic">Current · System sans</option><option value="custom" disabled>Custom pairing</option></select></label>
           <hr>
           <label for="ht-heading">Headings <span class="ht-muted">Page & section titles</span><select id="ht-heading" data-font-role="heading"></select></label>
           <label for="ht-body">Body text <span class="ht-muted">Descriptions & forms</span><select id="ht-body" data-font-role="body"></select></label>
           <label for="ht-product">Product names <span class="ht-muted">Cards & product details</span><select id="ht-product" data-font-role="product"></select></label>
           <label for="ht-ui">Buttons & navigation<select id="ht-ui" data-font-role="ui"></select></label>
-
+          <hr>
+          <section class="ht-size-settings" aria-labelledby="ht-size-title">
+            <h2 id="ht-size-title">Font sizes <span class="ht-muted">px</span></h2>
+            <p class="ht-muted">Set mobile and desktop sizes separately. Leave a field blank to keep its current website size.</p>
+            <div class="ht-size-grid" id="ht-size-grid"><span></span><span>Desktop</span><span>Mobile</span></div>
+            <button id="ht-size-reset" type="button">Use current website sizes</button>
+            <p class="ht-muted">Page title sizes apply to main titles. Product names have their own setting. Save your draft before publishing.</p>
+          </section>
         </fieldset>
         <section class="ht-preview-region" aria-label="Typography samples">
           <div class="ht-preview-toolbar"><span id="ht-preview-label">Storefront preview</span><div class="ht-view" role="group" aria-label="Preview state"><button type="button" data-view="draft" aria-pressed="true">Draft</button><button type="button" data-view="published" aria-pressed="false">Published</button></div></div>
+          <div class="ht-size-preview-toggle" role="group" aria-label="Font size preview"><button type="button" data-size-device="desktop" aria-pressed="true">Desktop sizes</button><button type="button" data-size-device="mobile" aria-pressed="false">Mobile sizes</button></div>
           <div class="ht-sample" id="ht-sample">
             <div class="ht-store" id="ht-store">
               <div class="ht-store-nav"><span class="ht-store-mark">HIDI</span><span class="ht-ui">New arrivals &nbsp; / &nbsp; Collections</span></div>

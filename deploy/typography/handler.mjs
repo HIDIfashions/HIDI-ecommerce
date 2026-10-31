@@ -92,7 +92,13 @@ export function createTypographyHandler({origin, hasStorefront = true, store = c
           if (!Object.hasOwn(body,'etag') || body.etag !== loaded.etag) throw fail(409,'Typography changed in another session. Reload before saving.');
           if (!['storefront','admin'].includes(body.profile)) throw fail(400,'Choose storefront or admin typography.');
           const profile = state.profiles[body.profile]; const now = new Date().toISOString();
-          if (body.action === 'save') {profile.draft = validateConfig(body.config);profile.savedAt = now;profile.savedBy = actor;}
+          if (body.action === 'save') {
+            const config=validateConfig(body.config);
+            // Older open editors submit only font families. Preserve existing size
+            // settings unless the editor explicitly supplies the sizes object.
+            if(!Object.hasOwn(config,'sizes')&&profile.draft.sizes)config.sizes=structuredClone(profile.draft.sizes);
+            profile.draft=config;profile.savedAt = now;profile.savedBy = actor;
+          }
           else if (body.action === 'publish' || body.action === 'rollback') {
             if (body.action === 'rollback' && !profile.previous) throw fail(409,'No previous publication is available.');
             const config = body.action === 'publish' ? validateConfig(profile.draft) : profile.previous.config;

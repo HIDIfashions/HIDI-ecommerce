@@ -30,10 +30,22 @@ export const presets = Object.freeze({
   classic: { heading: 'system', body: 'system', product: 'system', ui: 'system' },
   editorial: { heading: 'lora', body: 'inter', product: 'lora', ui: 'inter' },
   modern: { heading: 'manrope', body: 'inter', product: 'manrope', ui: 'inter' },
+  retail: { heading: 'lato', body: 'lato', product: 'lato', ui: 'lato' },
 });
+export const sizeLimits = Object.freeze({heading:[18,72],body:[12,24],product:[12,40],ui:[12,24]});
+export const sizeDevices = ['desktop','mobile'];
+export function emptySizes(){return Object.fromEntries(sizeDevices.map(device=>[device,Object.fromEntries(roles.map(role=>[role,null]))]));}
+export function validateSizes(value){
+  const bad=()=>{throw Object.assign(new Error('Use whole-pixel font sizes within the displayed limits, or leave them blank.'),{status:400});};
+  if(!value||Array.isArray(value)||typeof value!=='object'||Object.keys(value).length!==2||!sizeDevices.every(device=>Object.hasOwn(value,device)))bad();
+  const result=emptySizes();
+  for(const device of sizeDevices){const row=value[device];if(!row||Array.isArray(row)||typeof row!=='object'||Object.keys(row).length!==roles.length||!roles.every(role=>Object.hasOwn(row,role)))bad();
+    for(const role of roles){const n=row[role],[min,max]=sizeLimits[role];if(n!==null&&(!Number.isInteger(n)||n<min||n>max))bad();result[device][role]=n;}}
+  return result;
+}
 export function validateConfig(value) {
-  if (!value || Array.isArray(value) || typeof value !== 'object' || Object.keys(value).length !== roles.length || !roles.every(role => typeof value[role] === 'string' && Object.hasOwn(fonts, value[role]))) {
+  if (!value || Array.isArray(value) || typeof value !== 'object' || Object.keys(value).some(key=>!roles.includes(key)&&key!=='sizes') || !roles.every(role => Object.hasOwn(value,role)&&typeof value[role] === 'string' && Object.hasOwn(fonts, value[role]))) {
     throw Object.assign(new Error('Choose an available font for each typography role.'), { status: 400 });
   }
-  return Object.fromEntries(roles.map(role => [role, value[role]]));
+  return {...Object.fromEntries(roles.map(role => [role, value[role]])),...(Object.hasOwn(value,'sizes')?{sizes:validateSizes(value.sizes)}:{})};
 }

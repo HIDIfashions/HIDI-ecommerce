@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {createTypographyHandler,initialState,injectTypography,adminPath} from '../deploy/typography/handler.mjs';
-import {fonts,fontSources,presets,roles,validateConfig} from '../deploy/typography/registry.mjs';
+import {fonts,fontSources,presets,roles,validateConfig,emptySizes} from '../deploy/typography/registry.mjs';
 import {publishedCss} from '../deploy/typography/css.mjs';
 export function memoryStore(){let value=null,version=0;const revisions=[];return {revisions,failSave:false,failLoad:false,failArchive:false,load:async function(){if(this.failLoad)throw Error('offline');return {value:structuredClone(value),etag:value?'"'+version+'"':null};},save:async function(next,etag){if(this.failSave)throw Error('offline');if(etag!==(value?'"'+version+'"':null))throw Object.assign(Error('Concurrent update'),{status:409});value=structuredClone(next);version++;return {etag:'"'+version+'"'};},archive:async function(revision){if(this.failArchive)throw Error('offline');revisions.push(structuredClone(revision));}};}
 async function fixture(fn){const store=memoryStore();const handler=createTypographyHandler({store,origin:'http://127.0.0.1',requestFetch:async(_url,options)=>new Response(JSON.stringify({admin:{id:'fixture',role:options.headers.cookie==='owner'?'OWNER':'CATALOG',displayName:'Test owner'}}))});const server=createServer(async(req,res)=>{if(!await handler(req,res,new URL(req.url,'http://localhost').pathname)){res.writeHead(404);res.end();}});await new Promise(done=>server.listen(0,'127.0.0.1',done));const base='http://127.0.0.1:'+server.address().port;const call=async(body,options={})=>{const r=await fetch(base+adminPath,{...(body?{method:'POST',body:JSON.stringify(body)}:{}),...options,headers:{cookie:'owner',origin:base,'content-type':'application/json',...options.headers}});return {status:r.status,data:await r.json()};};try{await fn({base,store,call,handler});}finally{server.closeAllConnections();await new Promise(done=>server.close(done));}}
@@ -48,3 +48,21 @@ test('legacy saved profiles and publication history survive a library upgrade un
 }));
 test('HTML injection is idempotent, server-scoped and preserves body and title',()=>{const html='<!doctype html><html lang="en"><head><title>HIDI</title></head><body>₹ हिन्दी</body></html>';const out=injectTypography(html,'admin');assert.match(out,/data-hidi-type-scope="admin"/);assert.match(out,/id="hidi-published-typography"/);assert.equal(injectTypography(out),out);assert(out.endsWith('<body>₹ हिन्दी</body></html>'));for(const fragment of ['<div>abc</div>','{"a":1}'])assert.equal(injectTypography(fragment),fragment);});
 test('CSS overrides roles only on screen without changing size, colour, layout or print',()=>{const state=initialState();state.profiles.storefront.published=presets.editorial;const css=publishedCss(state);assert.match(css,/@media screen/);assert.doesNotMatch(css,/(?:^|[;{])\s*(?:font-size|line-height|color|display|position)\s*:|@media print/);assert.match(css,/pdp-title-row h1/);});
+
+test('responsive sizes accept bounded integers and reject injected, incomplete, or excessive values',()=>{
+ const sizes=emptySizes();sizes.desktop.heading=48;sizes.mobile.product=18;assert.deepEqual(validateConfig({...presets.retail,sizes}).sizes,sizes);
+ for(const value of ['18px','20; color:red',0,-1,99,16.5,Infinity]){const bad=emptySizes();bad.mobile.body=value;assert.throws(()=>validateConfig({...presets.retail,sizes:bad}),{status:400});}
+ for(const bad of [null,[],{}, {desktop:sizes.desktop}, {...sizes,tablet:sizes.mobile}, {desktop:{...sizes.desktop,extra:1},mobile:sizes.mobile}])assert.throws(()=>validateConfig({...presets.retail,sizes:bad}),{status:400});
+});
+test('font sizes save as draft, publish independently, survive old editors and restore with the prior publication',async()=>fixture(async({base,call})=>{
+ const sizes=emptySizes();sizes.desktop.heading=36;sizes.desktop.body=16;sizes.mobile.product=18;sizes.mobile.ui=14;
+ const before=await fetch(base+'/typography/published.css').then(r=>r.text());let r=await call({action:'save',profile:'storefront',etag:null,config:{...presets.retail,sizes}});assert.equal(r.status,200);assert.equal(await fetch(base+'/typography/published.css').then(r=>r.text()),before);
+ r=await call({action:'publish',profile:'storefront',etag:r.data.etag});assert.deepEqual(r.data.profiles.storefront.published.sizes,sizes);assert.equal(r.data.profiles.admin.published,null);
+ const css=await fetch(base+'/typography/published.css').then(r=>r.text());assert.match(css,/@media screen and \(max-width:700px\)/);assert.match(css,/@media screen and \(min-width:701px\)/);assert.match(css,/font-size:18px!important/);assert.doesNotMatch(css,/@media print|color:|line-height:/);
+ r=await call({action:'save',profile:'storefront',etag:r.data.etag,config:presets.modern});assert.deepEqual(r.data.profiles.storefront.draft.sizes,sizes,'An older open editor cannot discard sizes');
+ r=await call({action:'save',profile:'storefront',etag:r.data.etag,config:{...presets.retail,sizes:emptySizes()}});r=await call({action:'publish',profile:'storefront',etag:r.data.etag});assert.doesNotMatch(await fetch(base+'/typography/published.css').then(r=>r.text()),/font-size:/,'Explicit blank sizes remove every size override');
+ r=await call({action:'rollback',profile:'storefront',etag:r.data.etag});assert.deepEqual(r.data.profiles.storefront.published.sizes,sizes);assert.equal(r.data.profiles.admin.published,null);
+}));
+test('invalid sizes fail before state or publication changes',async()=>fixture(async({call,store})=>{
+ const sizes=emptySizes();sizes.desktop.ui=999;assert.equal((await call({action:'save',profile:'admin',etag:null,config:{...presets.retail,sizes}})).status,400);assert.equal((await store.load()).value,null);
+}));

@@ -4,6 +4,40 @@ Owner portal: `/admin/typography`. Save a draft, then publish it to the storefro
 or admin profile. Restoring the previous publication creates a new revision.
 Installation preserves the existing font styles until the owner first publishes.
 
+The **Clean retail · Lato** pairing uses the already bundled Lato family for all
+four roles. It is available independently in Storefront and Admin interface,
+uses the existing Save draft / Publish fonts workflow, and changes font families
+only. This is a visual match to the supplied retail reference, not a verified
+identification of that site's typeface. Adding the preset does not publish it.
+
+## Optional responsive font sizes
+
+Each profile now supports optional desktop (701 px and wider) and mobile (up to
+700 px) sizes for page titles, body text, product names, and buttons/navigation.
+Blank fields preserve the existing responsive sizes. Page-title sizes target
+main titles; product titles override that role. Sizes use bounded whole pixels:
+titles 18–72, body/UI 12–24, product names 12–40. They do not set colours,
+spacing, line heights, or print styles. Price text follows the UI size role.
+
+Sizes are optional in the existing validated configuration. Legacy four-font
+states and their generated CSS are preserved unchanged. Old open editors that
+submit font families only retain existing draft sizes; the new editor sends
+explicit null values to reset them. Save, publish, history, rollback, CAS
+conflict handling, and profile isolation include sizes. Pairing changes retain
+the size draft. The preview switches between desktop/mobile size settings and
+remains independent of published admin typography.
+
+The guarded `typography-release.yml` workflow uses `upgrade-release.py` and
+`upgrade-patch.py` for this six-file update. It appends an OCI layer without a
+Docker rebuild, preserves every font binary, runtime hook, storage adapter and
+commerce file, and verifies the exact extracted production candidate. Deployment
+does not save or publish any live typography configuration. Upgrade all web replicas before
+publishing a size-bearing configuration: older server versions reject the added
+field. A rollback to an older runtime requires restoring a compatible settings
+snapshot first. Live typography settings must remain unchanged during code
+rollout, and the current immutable production runtime must pass the release
+checks before publication is enabled.
+
 Both profiles share 24 choices: System sans, Inter, Lora, Manrope, Playfair
 Display, Cormorant Garamond, Libre Baskerville, Poppins, Montserrat, DM Sans,
 Nunito Sans, Source Sans 3, Bodoni Moda, DM Serif Display, Prata, Italiana,
