@@ -60,7 +60,7 @@ try{
   // Reject unsupported files at the dedicated image picker.
   await page.locator('#heroImageFile').setInputFiles({name:'wrong.txt',mimeType:'text/plain',buffer:Buffer.from('invalid')});await page.getByText('Choose a supported image file.',{exact:true}).waitFor();check(await page.locator('#sequence .sequence-item').count()===2,'Invalid file keeps existing draft');
   // The video picker uses the same retained streaming upload path.
-  const videoChooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Upload video',exact:true}).click();await (await videoChooser).setFiles(join(fixtureDir,'existing-hero.mp4'));
+  const videoChooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Upload video',exact:true}).click();await (await videoChooser).setFiles(join(fixtureDir,process.env.HIDI_HERO_FIXTURE?'existing-hero.webm':'existing-hero.mp4'));
   await page.getByText('Uploaded to draft. Review the desktop and mobile previews, then Publish banner.',{exact:true}).waitFor();check(await page.locator('#sequence .sequence-item').count()===3,'Video picker uploads into draft');check(server.current().items.length===1,'Uploading another video never auto-publishes');
   // Hero additions do not change the retained Ananya controls.
   await page.locator('#slots .slot').filter({hasText:"Ananya's Pick photos"}).click();check(!(await page.locator('#heroUploadOptions').isVisible()),'Hero controls hidden in other sections');check(await page.locator('#autoPlay').isVisible(),'Ananya retains manual autoplay preference');check(await page.locator('#file').isVisible(),'Other sections retain image picker');

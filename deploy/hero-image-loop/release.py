@@ -45,10 +45,12 @@ def compose():
     snap=x.captured();(fixture/'public-before.json').write_text(json.dumps({'/api/hidi/hero-config':snap['hero'],'/api/hidi/landing-media-config':snap['landing']}))
     assets=fixture/'fixtures';assets.mkdir()
     # Synthetic media exist only in the local test fixture, never production.
-    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x591e22:s=320x480:r=24','-t','3','-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',str(assets/'existing-hero.mp4')],check=True)
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x591e22:s=320x480:r=24','-t','3','-c:v','libvpx','-deadline','realtime','-pix_fmt','yuv420p',str(assets/'existing-hero.webm')],check=True)
     subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0xf4ead8:s=480x720','-frames:v','1','-threads','1',str(assets/'offer.png')],check=True)
     hero=json.loads(json.dumps(snap['hero']));assert hero['items'] and hero['items'][0]['type']=='video','Expected existing video hero'
     hero['items']=[hero['items'][0]];hero['autoPlay']=True;hero['intervalSeconds']=2
+    hero['url']='/api/hidi/hero-asset/brand/hero/media/fixture/existing-hero.webm';hero['originalName']='existing-hero.webm'
+    hero['items'][0]['url']=hero['url'];hero['items'][0]['originalName']=hero['originalName']
     (assets/'hero-config.json').write_text(json.dumps(hero))
     g.write_private('hero-public-assets.json',{'/'+name.removeprefix('dist/'):x.digest((candidate/name).read_bytes()) for name in names if name.startswith('dist/assets/')})
     with open(os.environ['GITHUB_ENV'],'a') as out:
