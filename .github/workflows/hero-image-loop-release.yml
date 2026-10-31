@@ -47,10 +47,10 @@ jobs:
         run: python3 deploy/hero-image-loop/release.py compose
       - name: Test hero uploads, playback and retained commerce
         run: |
+          node deploy/hero-image-loop/regression.mjs "$HIDI_HERO_FIXTURE"
           node deploy/checkout-offers/api-test.mjs
           node deploy/welcome250/api-check.mjs
           node deploy/get1/browser-check.mjs
-          node deploy/hero-image-loop/regression.mjs "$HIDI_HERO_FIXTURE"
           python3 deploy/hero-image-loop/release.py seal
       - name: Publish only the tested immutable candidate
         run: python3 deploy/hero-image-loop/release.py publish

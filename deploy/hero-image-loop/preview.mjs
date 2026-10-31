@@ -1,5 +1,5 @@
 // Test harness only. The actual retained media handler writes to local memory, never Azure.
-import {createServer} from 'node:http';import {readFile,writeFile} from 'node:fs/promises';import {resolve,join} from 'node:path';import {pathToFileURL} from 'node:url';
+import {createServer} from 'node:http';import {readFile,writeFile,realpath} from 'node:fs/promises';import {resolve,join} from 'node:path';import {pathToFileURL} from 'node:url';
 import {startPreview as publicPreview} from '../header-theme/preview.mjs';
 import {spawn} from 'node:child_process';
 export const OWNER='hidi_admin_'+'a'.repeat(64);
@@ -49,9 +49,10 @@ export async function startPreview(root,{port=0}={}){
  if(process.env.HIDI_HERO_FIXTURE){
   const reserve=createServer();await new Promise(r=>reserve.listen(0,'127.0.0.1',r));const runtimePort=reserve.address().port;await new Promise(r=>reserve.close(r));
   runtimeBase='http://127.0.0.1:'+runtimePort;
-  runtime=spawn(process.execPath,[join(root,'candidate/server.mjs')],{cwd:join(root,'candidate'),env:{...process.env,PORT:String(runtimePort),API_URL:base+'/v1',INTERNAL_API_URL:base+'/v1'},stdio:['ignore','pipe','pipe']});
+  const runtimeRoot=await realpath(join(root,'candidate'));
+  runtime=spawn(process.execPath,[join(runtimeRoot,'server.mjs')],{cwd:runtimeRoot,env:{...process.env,PORT:String(runtimePort),API_URL:base+'/v1',INTERNAL_API_URL:base+'/v1'},stdio:['ignore','pipe','pipe']});
   runtime.stdout.on('data',d=>runtimeLogs+=d);runtime.stderr.on('data',d=>runtimeLogs+=d);
-  let ready=false;for(let i=0;i<100;i++){if(runtime.exitCode!==null)throw Error(runtimeLogs.slice(-3000));try{if((await fetch(runtimeBase+'/health')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,200));}if(!ready)throw Error('Extracted homepage runtime did not start: '+runtimeLogs.slice(-3000));
+  let ready=false;for(let i=0;i<100;i++){if(runtime.exitCode!==null)throw Error('Homepage runtime exited '+runtime.exitCode+': '+runtimeLogs.slice(-3000));try{if((await fetch(runtimeBase+'/health')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,200));}if(!ready)throw Error('Extracted homepage runtime did not start: '+runtimeLogs.slice(-3000));
  }
  return {base,root,writes,unexpected,reset,blobs,runtimeLogs:()=>runtimeLogs,current:()=>JSON.parse(blobs.get('brand/hero/current.json').body),failUpload:()=>{failNextUpload=true},failPublish:()=>{failNextPublish=true},close:async()=>{if(runtime){runtime.kill('SIGTERM');await new Promise(r=>{if(runtime.exitCode!==null)return r();runtime.once('exit',r);setTimeout(()=>{runtime.kill('SIGKILL');r();},5000).unref();});}app.closeAllConnections();blob.closeAllConnections();await Promise.all([new Promise(r=>app.close(r)),new Promise(r=>blob.close(r)),backing.close()])}};
 }
