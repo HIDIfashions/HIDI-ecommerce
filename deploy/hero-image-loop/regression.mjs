@@ -3,7 +3,7 @@ import {startPreview,OWNER} from './preview.mjs';
 const root=resolve(process.argv[2]),out=join(root,'results');await mkdir(out,{recursive:true});
 await writeFile(join(out,'regression.json'),JSON.stringify({passed:false,status:'running',productionWrites:0},null,2));
 const pw=await import(process.env.HIDI_PLAYWRIGHT_MODULE||'file:///C:/Users/nagal/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
-const server=await startPreview(root),results=[];let checks=0,browser;
+const server=await startPreview(root),results=[];let checks=0,browser;const pages=[];
 const check=(value,message)=>{assert(value,message);checks++};const headers={Cookie:'hidi_admin_access='+OWNER};
 const fixtureDir=process.env.HIDI_HERO_FIXTURE?join(root,'fixtures'):resolve(root,'../landing-offer-loop');
 const imagePath=join(fixtureDir,'offer.png');
@@ -18,7 +18,7 @@ try{
   const label=engine+'-'+device;
   server.reset();const before=structuredClone(server.current()),context=await browser.newContext({viewport:{width,height}});await context.addCookies([{name:'hidi_admin_access',value:OWNER,url:server.base}]);
   await context.route('**/*',r=>new URL(r.request().url()).origin===server.base?r.continue():r.abort());
-  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(30000);
+  const page=await context.newPage(),errors=[];pages.push(page);page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(30000);
   await page.goto(server.base+'/admin/landing-media?section=hero');await page.getByRole('button',{name:'Upload image',exact:true}).waitFor();
   check(await page.getByRole('button',{name:'Upload video',exact:true}).isEnabled(),'Video picker available');check(await page.locator('#heroPlaybackSummary').innerText().then(x=>x.includes('Video only')),'Video-only guidance');check(!(await page.locator('#autoPlay').isVisible()),'Automatic hero playback needs no checkbox');
   await page.locator('#heroUploadOptions').screenshot({path:join(out,label+'-upload-controls.png')});
@@ -39,7 +39,7 @@ try{
   await page.getByRole('button',{name:'Publish banner',exact:true}).click();await page.getByText('Published. The storefront now uses this media list.',{exact:true}).waitFor();
   check(server.current().autoPlay===true&&server.current().items.length===2,'Publish persists automatically looping video and image');check(server.current().items[0].assetId===before.items[0].assetId,'Existing video retained');
   await page.reload();await page.getByRole('button',{name:'Publish banner',exact:true}).waitFor();check(await page.locator('#sequence .sequence-item').count()===2,'Published media survives reload');
-  const shop=await context.newPage();shop.on('pageerror',e=>errors.push(e.message));await shop.goto(server.base+'/');
+  const shop=await context.newPage();pages.push(shop);shop.on('pageerror',e=>errors.push(e.message));await shop.goto(server.base+'/');
   await shop.waitForFunction(()=>{const v=document.querySelector('video.hero-live-media');return v&&v.currentTime>.2&&!v.paused},{},{timeout:40000});
   check(!(await shop.locator('video.hero-live-media').evaluate(v=>v.loop)),'Video advances instead of looping when image is present');
   // Verify actual natural completion, no synthetic ended event.
@@ -70,5 +70,8 @@ try{
  await browser.close();browser=null;
  }
  await writeFile(join(out,'regression.json'),JSON.stringify({passed:true,checks,productionWrites:0,actualRuntime:!!process.env.HIDI_HERO_FIXTURE,actualRetainedHandler:true,storefrontImageFitOnly:true,results},null,2));
+}catch(error){
+ const diagnostics=[];for(const [i,page] of pages.entries()){if(page.isClosed())continue;await page.screenshot({path:join(out,'failure-'+i+'.png'),fullPage:true}).catch(()=>{});diagnostics.push(await page.evaluate(()=>({url:location.href,title:document.title,text:document.body.innerText.slice(0,1500),scripts:[...document.scripts].map(s=>s.src).filter(Boolean),videos:[...document.querySelectorAll('video')].map(v=>({src:v.currentSrc,paused:v.paused,readyState:v.readyState,error:v.error?.message,time:v.currentTime})),hero:document.querySelector('.hero-media')?.outerHTML.slice(0,4000)})).catch(()=>({unavailable:true})));}
+ await writeFile(join(out,'failure.json'),JSON.stringify({message:error.message,diagnostics,runtimeLogs:server.runtimeLogs()},null,2));throw error;
 }finally{await browser?.close();await server.close()}
 

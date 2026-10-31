@@ -67,6 +67,13 @@ jobs:
         if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
         timeout-minutes: 15
         run: python3 deploy/hero-image-loop/release.py recover
+      - name: Collect isolated hero test evidence
+        if: always()
+        run: |
+          mkdir -p evidence/hero-image-loop
+          if [ -d "$RUNNER_TEMP/hidi-checkout-offers-private/hero-fixture/results" ]; then
+            cp -r "$RUNNER_TEMP/hidi-checkout-offers-private/hero-fixture/results" evidence/hero-image-loop/
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
