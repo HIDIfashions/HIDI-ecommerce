@@ -17,6 +17,7 @@
  }
  function terms(offer){const b=el('button','T&C applicable','hidi-promotion-terms-button');b.type='button';b.dataset.offerTerms=offer.code;b.setAttribute('aria-label',offer.code+' terms and conditions');b.onclick=()=>show(offer,b);return b;}
  function place(){
+  if(location.pathname!==lastPath){lastPath=location.pathname;changed();return;}
   const live=current();if(dialog&&!live.some(o=>o.code===dialog.dataset.offerCode))close();
   if(location.pathname==='/'){
    const hero=document.querySelector('section.hero--campaign,section.hero[aria-labelledby="hero-title"]');const old=document.querySelector('[data-hidi-offer-strip]');
