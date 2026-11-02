@@ -2,3 +2,5 @@
 .lookup{background:white;padding:20px;border:1px solid #ded5cc;border-radius:10px}.lookup div{display:flex;gap:12px}.lookup label{display:block;margin-bottom:8px;font-size:13px}.lookup input{width:330px}.lookup p{font-size:12px}.pager{display:flex;gap:14px;align-items:center;margin:18px 0;font-size:12px}.attest{display:flex!important;gap:10px}.attest input{width:auto}.error{color:#a02727!important}header a{color:inherit}#unverify{margin-top:20px}
 
 .lookup input{min-width:0;flex:1}.lookup button{flex-shrink:0}.order-id{overflow-wrap:anywhere}.pager span{flex:1}nav a{text-decoration:none}.brand{color:#dbbb77}
+
+.attest[hidden]{display:none!important}main a{color:#591e22}
