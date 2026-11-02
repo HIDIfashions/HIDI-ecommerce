@@ -47,6 +47,7 @@ try{
   await page.locator('[data-hidi-offer-strip]').scrollIntoViewIfNeeded();
   await page.locator('[data-offer-terms]').first().waitFor();
   await page.screenshot({path:out+'/'+width+'-offers.png'});
+  await page.waitForFunction(count=>document.querySelectorAll('[data-offer-terms]').length===count,disclosures.entries.length);
   assert.equal(await page.locator('[data-offer-terms]').count(),disclosures.entries.length);
   results.push({width,terms:true,noOverflow:true});await page.close();
  }

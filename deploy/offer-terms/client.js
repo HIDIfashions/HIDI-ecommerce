@@ -1,7 +1,7 @@
 // Independent offer disclosures. No cart mutations, coupon application or payment calls.
 (()=>{
  if(window.__hidiOfferTerms)return;window.__hidiOfferTerms=true;
- const KEY='hidi_supabase_session',supported=['WELCOME250','GET1'];let entries=[],generation=0,observer,signature='',lastPath=location.pathname,dialog=null;
+ const KEY='hidi_supabase_session',supported=['WELCOME250','GET1'];let entries=[],generation=0,observer,signature='',lastPath=location.pathname,dialog=null,loadedPath=null,loadedToken;
  const token=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');return typeof s?.access_token==='string'&&s.expires_at>Date.now()/1000?s.access_token:null;}catch{return null;}};
  const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(cls)e.className=cls;return e;};
  const current=()=>entries.filter(o=>!o.endsAt||Date.now()<Date.parse(o.endsAt));
@@ -29,14 +29,14 @@
    for(const button of document.querySelectorAll('.hidi-coupon-hint button.hidi-coupon-link')){const code=button.textContent.trim(),line=button.parentElement,offer=live.find(o=>o.code===code);const old=line.querySelector('[data-offer-terms]');if(!offer){old?.remove();continue;}if(old&&old.dataset.content===offer.terms)continue;old?.remove();const b=terms(offer);b.dataset.content=offer.terms;line.append(b);}
   }else{document.querySelector('[data-hidi-offer-strip]')?.remove();document.querySelectorAll('[data-offer-terms]').forEach(b=>b.remove());close();}
  }
- function clear(){entries=[];signature='';close();document.querySelector('[data-hidi-offer-strip]')?.remove();document.querySelectorAll('[data-offer-terms]').forEach(b=>b.remove());}
+ function clear(){entries=[];signature='';loadedPath=null;loadedToken=undefined;close();document.querySelector('[data-hidi-offer-strip]')?.remove();document.querySelectorAll('[data-offer-terms]').forEach(b=>b.remove());}
  async function refresh(){const id=++generation,bearer=token(),path=location.pathname;if(!['/','/checkout'].includes(path)){clear();return;}
   try{const r=await fetch('/api/hidi/offers/details?placement='+(path==='/'?'landing':'checkout'),{credentials:'same-origin',cache:'no-store',headers:bearer?{Authorization:'Bearer '+bearer}:{},signal:AbortSignal.timeout(8000)});const data=await r.json();if(id!==generation||bearer!==token()||path!==location.pathname)return;
    if(!r.ok||!Array.isArray(data.entries))throw Error();const next=data.entries;if(next.some(o=>!supported.includes(o.code)||typeof o.title!=='string'||typeof o.terms!=='string'||o.endsAt&&(!Number.isFinite(Date.parse(o.endsAt)))))throw Error();
-   if(JSON.stringify(entries)!==JSON.stringify(next))close();entries=next;place();
+   if(JSON.stringify(entries)!==JSON.stringify(next))close();entries=next;loadedPath=path;loadedToken=bearer;place();
   }catch{if(id===generation){clear();}}
  }
- function changed(){++generation;clear();refresh();}
+ function changed(){++generation;if(location.pathname!==loadedPath||token()!==loadedToken)clear();refresh();}
  function start(){observer=new MutationObserver(place);observer.observe(document.body,{childList:true,subtree:true});refresh();setInterval(()=>{if(location.pathname!==lastPath){lastPath=location.pathname;changed();}else{place();if(!document.hidden)refresh();}},15000);}
  window.addEventListener('hidi-auth-updated',changed);window.addEventListener('storage',e=>{if(e.key===KEY||e.key===null)changed();});window.addEventListener('pageshow',changed);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
