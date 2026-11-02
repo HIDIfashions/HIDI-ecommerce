@@ -1,7 +1,7 @@
 // Independent offer disclosures. No cart mutations, coupon application or payment calls.
 (()=>{
  if(window.__hidiOfferTerms)return;window.__hidiOfferTerms=true;
- const KEY='hidi_supabase_session',supported=['WELCOME250','GET1'];let entries=[],generation=0,observer,signature='',lastPath=location.pathname,dialog=null,loadedPath=null,loadedToken;
+ const KEY='hidi_supabase_session',supported=['WELCOME250','GET1'];let entries=[],generation=0,observer,signature='',lastPath=location.pathname,dialog=null,loadedPath=null,loadedToken,restoreCode=null;
  const token=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');return typeof s?.access_token==='string'&&s.expires_at>Date.now()/1000?s.access_token:null;}catch{return null;}};
  const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(cls)e.className=cls;return e;};
  const current=()=>entries.filter(o=>!o.endsAt||Date.now()<Date.parse(o.endsAt));
@@ -13,7 +13,7 @@
   for(const line of offer.terms.split(/\n+/).map(s=>s.trim()).filter(Boolean)){if(line==='Returns & exchanges'){const section=el('section',null,'hidi-promotion-returns');section.append(el('h3',line));list=el('ul');section.append(list);d.append(section);}else list.append(el('li',line));}
   const link=el('a','Read the full Returns & Exchanges policy');link.href='/returns';link.target='_blank';link.rel='noopener';link.className='hidi-promotion-policy';
   const done=el('button','Got it','hidi-promotion-done');done.type='button';done.onclick=()=>d.close();d.append(link,done);
-  d.addEventListener('close',()=>{d.remove();if(dialog===d)dialog=null;if(trigger.isConnected)trigger.focus({preventScroll:true});});document.body.append(d);d.showModal();
+  d.addEventListener('close',()=>{d.remove();if(dialog===d)dialog=null;const target=trigger.isConnected?trigger:document.querySelector('[data-offer-terms="'+offer.code+'"]');if(target)target.focus({preventScroll:true});else{restoreCode=offer.code;place();}});document.body.append(d);d.showModal();
  }
  function terms(offer){const b=el('button','T&C applicable','hidi-promotion-terms-button');b.type='button';b.dataset.offerTerms=offer.code;b.setAttribute('aria-label',offer.code+' terms and conditions');b.onclick=()=>show(offer,b);return b;}
  function place(){
@@ -28,6 +28,7 @@
   }else if(location.pathname==='/checkout'){
    for(const button of document.querySelectorAll('.hidi-coupon-hint button.hidi-coupon-link')){const code=button.textContent.trim(),line=button.parentElement,offer=live.find(o=>o.code===code);const old=line.querySelector('[data-offer-terms]');if(!offer){old?.remove();continue;}if(old&&old.dataset.content===offer.terms)continue;old?.remove();const b=terms(offer);b.dataset.content=offer.terms;line.append(b);}
   }else{document.querySelector('[data-hidi-offer-strip]')?.remove();document.querySelectorAll('[data-offer-terms]').forEach(b=>b.remove());close();}
+  if(restoreCode){const target=document.querySelector('[data-offer-terms="'+restoreCode+'"]');if(target){target.focus({preventScroll:true});restoreCode=null;}}
  }
  function clear(){entries=[];signature='';loadedPath=null;loadedToken=undefined;close();document.querySelector('[data-hidi-offer-strip]')?.remove();document.querySelectorAll('[data-offer-terms]').forEach(b=>b.remove());}
  async function refresh(){const id=++generation,bearer=token(),path=location.pathname;if(!['/','/checkout'].includes(path)){clear();return;}
