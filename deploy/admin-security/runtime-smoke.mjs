@@ -11,7 +11,9 @@ const base='http://127.0.0.1:3196';
 try{
   let ready=false;
   for(let i=0;i<90;i++){
-    try{if((await fetch(base+'/admin/sign-in',{signal:AbortSignal.timeout(2000)})).ok){ready=true;break;}}catch{}
+    // Static sign-in is ready before the retained framework Orders shell.
+    // Wait for the shell too; an enduring 503 still fails this bounded check.
+    try{if((await fetch(base+'/admin/orders',{signal:AbortSignal.timeout(2000)})).ok){ready=true;break;}}catch{}
     if(child.exitCode!==null)throw Error('Candidate exited: '+diagnostics);
     await new Promise(done=>setTimeout(done,500));
   }

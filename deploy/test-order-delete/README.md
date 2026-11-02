@@ -9,3 +9,5 @@ Storage uses append-only, namespaced OrderAuditEvent entries. No schema migratio
 The release overlays an exact captured pair of production images, checks a bounded file allowlist, backs up both images, and uses ownership-aware conditional deployment/recovery. Existing payment, inventory, checkout, offer and reporting code is retained. All new mutations are tested only against a disposable loopback SQL Server. Six actual-runtime browser cases cover desktop/mobile Chromium, Firefox and WebKit, plus retained checkout, purchase, offer, admin-auth and media regression suites. Live checks are read-only.
 
 The retained sign-in regression accounts for the existing Typography response decoration and compares the remaining form markup and all authentication assets exactly.
+
+Its readiness gate waits for the framework Orders shell, not just the earlier static sign-in handler; a persistent startup failure remains a test failure.
