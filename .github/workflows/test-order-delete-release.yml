@@ -1,0 +1,99 @@
+name: Owner test-order cleanup guarded release
+on:
+  push:
+    branches: [migration/azure-sql-blob]
+    paths: [deploy/test-order-delete/**, .github/workflows/test-order-delete-release.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hidi-checkout-offers-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/migration/azure-sql-blob'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Disposable-CI-Only_2026!
+        ports: ['1433:1433']
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-hero-browser/node_modules/playwright/index.mjs
+      HIDI_BROWSER_ENGINES: chromium,firefox,webkit
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-hero-browsers
+      TEST_ORDER_SQL_HOST: 127.0.0.1
+      TEST_ORDER_SQL_PASSWORD: Disposable-CI-Only_2026!
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Validate owner policy and request security
+        run: |
+          python3 -m py_compile deploy/test-order-delete/release.py deploy/test-order-delete/patch.py
+          node --test deploy/test-order-delete/*.test.mjs
+          python3 -m unittest discover -s deploy/coupon-copy -p 'test_*.py'
+          node --test deploy/admin-security/handler.test.mjs deploy/offers/model.test.mjs deploy/offers/handler.test.mjs deploy/offers/campaigns.test.mjs deploy/offers/campaign-handler.test.mjs
+      - name: Install registry tooling and browser engines
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y skopeo umoci ffmpeg
+          npm install --prefix /tmp/hidi-hero-browser --no-save playwright@1.56.1
+          node /tmp/hidi-hero-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+          node /tmp/hidi-hero-browser/node_modules/playwright/cli.js install --with-deps chrome
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Capture live state and immutable rollback images
+        run: |
+          az acr login --name acrhidiprod0927 --only-show-errors
+          python3 deploy/test-order-delete/release.py capture
+      - name: Compose bounded admin changes on exact live images
+        run: python3 deploy/test-order-delete/release.py compose
+      - name: Test actual candidate against disposable SQL and all three browser engines
+        run: |
+          node deploy/test-order-delete/sql-test.mjs
+          node deploy/admin-security/api-test.mjs
+          node deploy/admin-security/runtime-smoke.mjs
+      - name: Regression test retained checkout, pricing, payments, offers and media
+        run: |
+          node deploy/responsive-hero/live-check.mjs --before
+          node deploy/checkout-offers/api-test.mjs
+          node deploy/welcome250/api-check.mjs
+          node deploy/offer-terms/browser-check.mjs
+          HIDI_TERMS_EVIDENCE=evidence/offer-terms/live-before node deploy/offer-terms/live-check.mjs --approved
+          python3 deploy/test-order-delete/release.py seal
+      - name: Publish only the tested immutable candidates
+        run: python3 deploy/test-order-delete/release.py publish
+      - uses: azure/login@v2
+        with:
+          client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af
+          tenant-id: e756fdc0-2646-4e94-ac4d-ed7c11f87f34
+          subscription-id: 91d9572d-0f0b-47fe-802d-0eef36d7c719
+      - name: Deploy and verify preserved live configuration
+        id: apply
+        timeout-minutes: 25
+        run: timeout --signal=TERM --kill-after=10m 20m python3 deploy/test-order-delete/release.py apply
+      - name: Recover an interrupted owned rollout
+        if: always() && env.WEB_IMAGE != '' && steps.apply.outcome != 'success'
+        timeout-minutes: 15
+        run: python3 deploy/test-order-delete/release.py recover
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-order-delete-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            evidence/checkout-offers
+            evidence/welcome250
+            evidence/responsive-hero
+            evidence/offer-terms
+            evidence/get1
+            evidence/admin-security
+            evidence/test-order-delete
+          retention-days: 30

@@ -1,0 +1,9 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {createServer} from 'node:http';import {createTestOrdersHandler} from './handler.mjs';
+test('proxy denies anonymous/staff, cross-origin, invalid methods and large bodies',async()=>{
+ let calls=0;const handler=createTestOrdersHandler({apiBase:'http://fixture/v1',requestFetch:async(u,o)=>{calls++;return new Response(JSON.stringify(u.endsWith('/admin/me')?{admin:{role:o.headers.authorization.includes('b'.repeat(64))?'SUPPORT':'OWNER'}}:{ok:true}),{status:200});}});
+ const server=createServer(async(req,res)=>{if(!await handler(req,res,new URL(req.url,'http://local').pathname))res.writeHead(404).end();});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,cookie='hidi_admin_access=hidi_admin_'+'a'.repeat(64),headers={cookie,origin:base,'content-type':'application/json'};
+ try{assert.equal((await fetch(base+'/admin/test-orders')).status,401);assert.equal(calls,0);assert.equal((await fetch(base+'/admin/test-orders',{headers:{cookie:cookie.replaceAll('a'.repeat(64),'b'.repeat(64))}})).status,403);assert.equal((await fetch(base+'/admin/test-orders',{headers:{cookie}})).status,200);
+ const before=calls;for(const options of [{method:'DELETE',headers},{method:'POST',headers:{...headers,origin:'https://evil.invalid'},body:'{}'},{method:'POST',headers:{...headers,'content-type':'text/plain'},body:'{}'},{method:'POST',headers,body:'x'.repeat(5000)}])assert((await fetch(base+'/api/admin/test-orders/TEST-1',options)).status>=400);assert.equal(calls,before);
+ assert.equal((await fetch(base+'/api/admin/test-orders/TEST-1',{method:'POST',headers,body:JSON.stringify({action:'delete'})})).status,200);assert.equal(calls,before+1);
+ }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
+});
