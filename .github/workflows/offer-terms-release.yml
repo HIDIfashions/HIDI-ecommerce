@@ -50,6 +50,7 @@ jobs:
       - name: Test offer details and retained pricing and payments
         run: |
           node deploy/responsive-hero/live-check.mjs --before
+          HIDI_TERMS_EVIDENCE=evidence/offer-terms/live-overlay node deploy/offer-terms/live-check.mjs --overlay
           node deploy/checkout-offers/api-test.mjs
           node deploy/welcome250/api-check.mjs
           node deploy/offer-terms/browser-check.mjs
