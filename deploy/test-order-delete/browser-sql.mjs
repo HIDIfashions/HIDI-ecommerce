@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';import {createRequire} from 'node:module';import {pathToFileURL} from 'node:url';import {createServer} from 'node:http';import {spawn} from 'node:child_process';import {mkdir,writeFile} from 'node:fs/promises';
 export async function browserSql(db,make,actor){
  const apiRoot=process.env.HIDI_CANDIDATE_API,web=process.env.HIDI_CANDIDATE_RUNTIME,require=createRequire(apiRoot+'/apps/api/package.json');
- const {Module,UnauthorizedException}=require('@nestjs/common'),{NestFactory}=require('@nestjs/core');
+ const {Module,UnauthorizedException}=require('@nestjs/common'),{NestFactory}=require('@nestjs/core'),{FastifyAdapter}=require('@nestjs/platform-fastify');
  const {TestOrderController}=await import(pathToFileURL(apiRoot+'/apps/api/dist/admin/test-orders.module.mjs'));
  const {AdminAuthService,AdminGuard}=await import(pathToFileURL(apiRoot+'/apps/api/dist/admin/admin-auth.js'));
  const {PrismaService}=await import(pathToFileURL(apiRoot+'/apps/api/dist/prisma/prisma.service.js'));
  const ownerToken='hidi_admin_'+'a'.repeat(64),staffToken='hidi_admin_'+'b'.repeat(64);
  const auth={resolveActor:async({authorization})=>{if(authorization==='Bearer '+ownerToken)return actor;if(authorization==='Bearer '+staffToken)return {...actor,role:'SUPPORT'};throw new UnauthorizedException();},hasPermission:()=>true};
  class FixtureModule{}Module({controllers:[TestOrderController],providers:[{provide:PrismaService,useValue:db},{provide:AdminAuthService,useValue:auth},AdminGuard]})(FixtureModule);
- const nest=await NestFactory.create(FixtureModule,{logger:false});await nest.listen(0,'127.0.0.1');const api=await nest.getUrl();
+ const nest=await NestFactory.create(FixtureModule,new FastifyAdapter({logger:false}),{logger:['error'],abortOnError:false});await nest.listen({port:0,host:'127.0.0.1'});const api=await nest.getUrl();
  const upstream=createServer(async(req,res)=>{const path=req.url.replace(/^\/v1/,'');const send=(status,data)=>{res.writeHead(status,{'content-type':'application/json'}).end(JSON.stringify(data));};try{
   if(path==='/admin/me'||path==='/auth/admin/activity'){const a=await auth.resolveActor({authorization:req.headers.authorization});return send(200,{admin:a,ok:true});}
   if(path.startsWith('/admin/test-orders')){let body='';for await(const c of req)body+=c;const response=await fetch(api+path,{method:req.method,headers:{authorization:req.headers.authorization||'','content-type':'application/json'},...(body?{body}:{})});res.writeHead(response.status,{'content-type':'application/json'}).end(await response.text());return;}
