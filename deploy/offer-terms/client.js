@@ -13,22 +13,25 @@
   for(const line of offer.terms.split(/\n+/).map(s=>s.trim()).filter(Boolean)){if(line==='Returns & exchanges'){const section=el('section',null,'hidi-promotion-returns');section.append(el('h3',line));list=el('ul');section.append(list);d.append(section);}else list.append(el('li',line));}
   const link=el('a','Read the full Returns & Exchanges policy');link.href='/returns';link.target='_blank';link.rel='noopener';link.className='hidi-promotion-policy';
   const done=el('button','Got it','hidi-promotion-done');done.type='button';done.onclick=()=>d.close();d.append(link,done);
-  d.addEventListener('close',()=>{d.remove();if(dialog===d)dialog=null;const target=trigger.isConnected?trigger:document.querySelector('[data-offer-terms="'+offer.code+'"]');if(target)target.focus({preventScroll:true});else{restoreCode=offer.code;place();}});document.body.append(d);d.showModal();
+  const openedPath=location.pathname;
+  d.addEventListener('close',()=>{d.remove();if(dialog===d)dialog=null;if(location.pathname!==openedPath)return;restoreCode=offer.code;restoreFocus();place();});document.body.append(d);d.showModal();
  }
  function terms(offer){const b=el('button','T&C applicable','hidi-promotion-terms-button');b.type='button';b.dataset.offerTerms=offer.code;b.setAttribute('aria-label',offer.code+' terms and conditions');b.onclick=()=>show(offer,b);return b;}
+ function restoreFocus(){if(restoreCode&&!dialog&&(document.activeElement===document.body||document.activeElement?.dataset.offerTerms===restoreCode))document.querySelector('[data-offer-terms="'+restoreCode+'"]')?.focus({preventScroll:true});}
+ document.addEventListener('focusin',e=>{if(e.target.dataset?.offerTerms)restoreCode=e.target.dataset.offerTerms;else if(!e.target.closest?.('.hidi-promotion-dialog'))restoreCode=null;});
  function place(){
   if(location.pathname!==lastPath){lastPath=location.pathname;changed();return;}
   const live=current();if(dialog&&!live.some(o=>o.code===dialog.dataset.offerCode))close();
   if(location.pathname==='/'){
    const hero=document.querySelector('section.hero--campaign,section.hero[aria-labelledby="hero-title"]');const old=document.querySelector('[data-hidi-offer-strip]');
-   const next=JSON.stringify(live);if(!live.length){old?.remove();signature='';return;}if(old&&signature===next)return;old?.remove();if(!hero)return;
+   const next=JSON.stringify(live);if(!live.length){old?.remove();signature='';return;}if(old&&signature===next){restoreFocus();return;}old?.remove();if(!hero)return;
    const strip=el('section',null,'hidi-promotion-strip');strip.dataset.hidiOfferStrip='true';strip.setAttribute('aria-label','HIDI offers');const grid=el('div',null,'hidi-promotion-grid');grid.classList.toggle('single',live.length===1);
    for(const o of live){const card=el('article',null,'hidi-promotion-card');card.dataset.offerCode=o.code;card.append(el('p',o.code,'hidi-promotion-code'),el('h2',o.title.replace(new RegExp('^'+o.code+':?\\s*'),'').trim()),el('p',o.code==='WELCOME250'?'Shop for ₹1,499 or more. Use WELCOME250.':'Shop for ₹3,999 or more. Use GET1.','hidi-promotion-description'),terms(o));grid.append(card);}
    strip.append(grid,el('p','One offer per order. Choose the offer that suits your purchase.','hidi-promotion-note'));hero.after(strip);signature=next;
   }else if(location.pathname==='/checkout'){
    for(const button of document.querySelectorAll('.hidi-coupon-hint button.hidi-coupon-link')){const code=button.textContent.trim(),line=button.parentElement,offer=live.find(o=>o.code===code);const old=line.querySelector('[data-offer-terms]');if(!offer){old?.remove();continue;}if(old&&old.dataset.content===offer.terms)continue;old?.remove();const b=terms(offer);b.dataset.content=offer.terms;line.append(b);}
   }else{document.querySelector('[data-hidi-offer-strip]')?.remove();document.querySelectorAll('[data-offer-terms]').forEach(b=>b.remove());close();}
-  if(restoreCode){const target=document.querySelector('[data-offer-terms="'+restoreCode+'"]');if(target){target.focus({preventScroll:true});restoreCode=null;}}
+  restoreFocus();
  }
  function clear(){entries=[];signature='';loadedPath=null;loadedToken=undefined;close();document.querySelector('[data-hidi-offer-strip]')?.remove();document.querySelectorAll('[data-offer-terms]').forEach(b=>b.remove());}
  async function refresh(){const id=++generation,bearer=token(),path=location.pathname;if(!['/','/checkout'].includes(path)){clear();return;}
