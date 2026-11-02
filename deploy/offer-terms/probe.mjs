@@ -8,7 +8,7 @@ export async function probe(fixture){
   await fixture.reset();fixture.setSubtotal(399900);
   for(const code of ['WELCOME250','GET1']){const state=await(await fetch(base+'/api/hidi/offers/admin',{headers})).json();await action({action:'save',offerCode:code,draft:{...state.offers[code].draft,...approved[code],checkoutEnabled:true,landingEnabled:true}});await action({action:'publish',offerCode:code,confirm:true});}
   const context=await browser.newContext({viewport:{width,height:1000},reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(30000);const errors=[];let quoteRequests=0,payments=0;
-  page.on('pageerror',e=>errors.push(e.message));await context.addInitScript(()=>{localStorage.setItem('hidi_cart_session','promo-fixture-session');localStorage.setItem('hidi_supabase_session',JSON.stringify({access_token:'selected',expires_at:Date.now()/1000+3600,user:{id:'fixture-user',phone:'+919000000001'}}));});
+  page.on('pageerror',e=>errors.push({message:e.message,path:new URL(page.url()).pathname}));await context.addInitScript(()=>{localStorage.setItem('hidi_cart_session','promo-fixture-session');localStorage.setItem('hidi_supabase_session',JSON.stringify({access_token:'selected',expires_at:Date.now()/1000+3600,user:{id:'fixture-user',phone:'+919000000001'}}));});
   await context.route('**/*',route=>{const req=route.request(),u=new URL(req.url());if(u.origin!==base||req.resourceType()==='media')return route.abort();if(u.pathname.endsWith('/offers/quote'))quoteRequests++;if(u.pathname.endsWith('/checkout/prepare')){payments++;return route.abort();}return route.continue();});
   try{for(const path of ['/','/checkout']){
    await page.goto(base+path,{waitUntil:'domcontentloaded'});await page.locator('[data-offer-terms="GET1"]').waitFor();assert.equal(await page.locator('[data-offer-terms]').count(),2);
@@ -23,7 +23,13 @@ export async function probe(fixture){
   assert.equal(await page.locator('[data-offer-terms="WELCOME250"]').count(),0);await page.getByRole('button',{name:'GET1 terms and conditions',exact:true}).click();await page.getByRole('button',{name:'Got it',exact:true}).click();assert.equal(await page.locator('#hidi-coupon-code').inputValue(),'GET1');
   // Independent visibility and publication remain authoritative.
   const s=await(await fetch(base+'/api/hidi/offers/admin',{headers})).json();await action({action:'save',offerCode:'GET1',draft:{...s.offers.GET1.draft,landingEnabled:false}});assert.equal((await(await fetch(base+'/api/hidi/offers/details?placement=landing')).json()).entries.length,2);await action({action:'publish',offerCode:'GET1',confirm:true});await page.goto(base+'/');await page.locator('[data-offer-terms="WELCOME250"]').waitFor();assert.equal(await page.locator('[data-offer-terms="GET1"]').count(),0);assert.equal((await(await fetch(base+'/api/hidi/offers/checkout-policy')).json()).dressEnabled,true);
-  assert.deepEqual(errors,[]);results.push({engine,width,independentTerms:true,returnRules:true,keyboardFocus:true,noAutomaticApplication:true,unchangedTotals:true,visibilityRespected:true});console.log('PASS offer terms '+engine+' '+width);
+  // The retained homepage already reports this transient WebKit layout notice
+  // (header-theme/probe.mjs, portrait-order/regression.mjs). Record it separately,
+  // permit it only on the homepage, and require stable visible offer geometry.
+  const layoutNotices=errors.filter(e=>engine==='webkit'&&e.path==='/'&&e.message==='ResizeObserver loop completed with undelivered notifications.');
+  assert(layoutNotices.length<=2,'Repeated layout notifications');assert.deepEqual(errors.filter(e=>!layoutNotices.includes(e)),[]);
+  const boxes=await page.locator('[data-hidi-offer-strip]').evaluate(async e=>{const samples=[];for(let i=0;i<3;i++){await new Promise(r=>requestAnimationFrame(r));const b=e.getBoundingClientRect();samples.push([b.x,b.y,b.width,b.height]);}return samples;});assert.deepEqual(boxes[1],boxes[2]);assert(boxes[2][2]>0&&boxes[2][3]>0);
+  results.push({engine,width,independentTerms:true,returnRules:true,keyboardFocus:true,noAutomaticApplication:true,unchangedTotals:true,visibilityRespected:true,layoutStable:true,layoutNotices});console.log('PASS offer terms '+engine+' '+width);
   }catch(e){await page.screenshot({path:`evidence/offer-terms/${engine}-${width}-failure.png`}).catch(()=>{});throw e;}finally{await context.close();}
  }}finally{await browser.close();}}
  await writeFile('evidence/offer-terms/regression.json',JSON.stringify({passed:true,actualRuntime:true,productionWrites:0,results},null,2));
