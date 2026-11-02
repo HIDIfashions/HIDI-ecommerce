@@ -16,7 +16,16 @@ try{
     await new Promise(done=>setTimeout(done,500));
   }
   assert(ready,'Candidate did not start: '+diagnostics);
-  assert.equal(await (await fetch(base+'/admin/sign-in')).text(),await readFile(root+'/admin-security/login.html','utf8'));
+  const signIn=await (await fetch(base+'/admin/sign-in')).text();
+  // The published Typography response middleware decorates admin HTML. Require
+  // exactly those known additions, while comparing all login markup byte-for-byte.
+  let original=signIn;
+  if(signIn.includes('data-hidi-type-scope="admin"')){
+    for(const addition of [/ data-hidi-type-scope="admin"/g,/<link rel="stylesheet" href="\/typography\/assets\/fonts\.css\?v=[a-f0-9]{16}" data-hidi-typography>/g,/<link id="hidi-published-typography" rel="stylesheet" href="\/typography\/published\.css">/g,/<script defer src="\/typography\/assets\/refresh\.js\?v=[a-f0-9]{16}"><\/script>/g]){
+      assert.equal([...original.matchAll(addition)].length,1,'Expected one retained Typography addition');original=original.replace(addition,'');
+    }
+  }
+  assert.equal(original,await readFile(root+'/admin-security/login.html','utf8'));
   for(const name of ['login.mjs','activity.mjs','sales.mjs'])assert.equal(await (await fetch(base+'/admin-security-assets/'+name)).text(),await readFile(root+'/admin-security/'+name,'utf8'));
   for(const path of ['/api/admin/session','/api/admin/sales-deletion','/admin/sales-delete'])assert.equal((await fetch(base+path)).status,401,path);
   assert.equal((await fetch(base+'/api/admin/session',{method:'POST',headers:{origin:base,'content-type':'application/json'},body:JSON.stringify({accessToken:'saved'})})).status,401);
