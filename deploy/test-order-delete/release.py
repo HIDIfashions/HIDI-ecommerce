@@ -30,11 +30,12 @@ def compose():
         original=json.loads((source/'manifest.json').read_bytes());packed=json.loads((folder/'candidate-image/manifest.json').read_bytes())
         assert original['layers']==packed['layers'][:-1]
         r.save(app+'-preservation.json',{'passed':True,'changedFiles':changed,'runtimeConfigPreserved':True,'baseLayersPreserved':True,'imageDigest':image_digest,'noSchemaChange':True,'businessWritersUnchanged':True})
+    r.save('test-order-assets.json',{'passed':True,'hashes':{name:digest((roots['web']/'test-orders'/name).read_bytes()) for name in ['app.mjs','style.css']}})
     with open(os.environ['GITHUB_ENV'],'a') as out:out.write('HIDI_CANDIDATE_API='+str(roots['api'])+'\nHIDI_CANDIDATE_RUNTIME='+str(roots['web'])+'\n')
     p.unchanged(before)
 def seal():
     r.fresh_source();p.unchanged(p.states());assert t.snapshot()==t.captured()
-    names=['api-patch.json','web-patch.json','api-preservation.json','web-preservation.json','api-checkout.json','candidate/report.json','purchase-regression/report.json','../welcome250/pricing-payment.json','../welcome250/browser.json','../get1/regression.json','../offer-terms/regression.json','../admin-security/compiled-api.json','../admin-security/runtime-smoke.json','../test-order-delete/sql.json','../test-order-delete/browser.json']
+    names=['api-patch.json','web-patch.json','api-preservation.json','web-preservation.json','test-order-assets.json','api-checkout.json','candidate/report.json','purchase-regression/report.json','../welcome250/pricing-payment.json','../welcome250/browser.json','../get1/regression.json','../offer-terms/regression.json','../admin-security/compiled-api.json','../admin-security/runtime-smoke.json','../test-order-delete/sql.json','../test-order-delete/browser.json']
     for name in names:
         report=r.read(name);assert report['passed'],name
         if name.endswith(('browser.json','report.json','regression.json')):assert len(report['results'])==6,name
@@ -75,7 +76,7 @@ def apply():
             deployed['hidi-'+app]=c.snapshot(guard.wait_ready(images[app],suffix,deployed));p.unchanged(deployed)
         for path in ['/health','/healthz','/api/store/health/ready','/','/checkout','/cart']:c.get(path)
         for path in ['/api/hidi/offers/admin','/admin/offers','/admin/test-orders','/api/admin/test-orders','/api/store/admin/test-orders']:c.get(path,401)
-        for name in ['app.mjs','style.css']:assert c.get('/test-order-assets/'+name)==(HERE/name).read_bytes()
+        for name,expected in r.read('test-order-assets.json')['hashes'].items():assert digest(c.get('/test-order-assets/'+name))==expected,'Deployed asset differs from tested candidate: '+name
         subprocess.run(['node',str(HERE.parent/'offer-terms/live-check.mjs'),'--approved'],check=True,timeout=240)
         subprocess.run(['node',str(HERE.parent/'responsive-hero/live-check.mjs')],check=True,timeout=480)
         assert t.snapshot()==t.captured(),'Live configuration changed';p.unchanged(deployed)
