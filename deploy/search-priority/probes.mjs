@@ -34,7 +34,7 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
    const pendingReads=new WeakMap(),errorHandlers=new WeakMap();
    const open=async(origin,path,prior=false)=>{
     const page=await context.newPage(),pending=new Set();pendingReads.set(page,pending);
-    page.on('request',r=>{if(['GET','HEAD'].includes(r.method())&&new URL(r.url()).pathname.startsWith('/api/'))pending.add(r);});
+    page.on('request',r=>{if(['fetch','xhr'].includes(r.resourceType())&&['GET','HEAD'].includes(r.method())&&new URL(r.url()).pathname.startsWith('/api/'))pending.add(r);});
     for(const event of ['requestfinished','requestfailed'])page.on(event,r=>pending.delete(r));
     const handler=e=>(prior?baselineErrors:errors).push({engine,width,path,message:e.message});errorHandlers.set(page,handler);page.on('pageerror',handler);
     await navigate(page,origin+path,gatewayRetries);return page;
@@ -42,7 +42,7 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
    const close=async page=>{
     const pending=pendingReads.get(page);let quiet=0;
     for(let elapsed=0;elapsed<45000&&quiet<500;elapsed+=50){await page.waitForTimeout(50);quiet=pending.size?0:quiet+50;}
-    assert.equal(pending.size,0,'Background API reads did not settle before teardown');
+    assert.equal(pending.size,0,'Background API reads did not settle before teardown: '+[...pending].map(r=>new URL(r.url()).pathname).join(', '));
     // Observe the complete scenario. Intentional page destruction is outside it.
     page.off('pageerror',errorHandlers.get(page));await page.close();
    };
