@@ -1,5 +1,5 @@
 """Render the published image banner before JavaScript from the exact current immutable runtime."""
-import importlib.util,json,os,subprocess,sys
+import importlib.util,json,os,subprocess,sys,re
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE.parent/'coupon-copy'))
@@ -24,7 +24,11 @@ def compose():
     source=P/'original-image';x.copy('docker://'+before['hidi-web']['image'],'dir:'+str(source),'--preserve-digests')
     assert x.digest((source/'manifest.json').read_bytes())==before['hidi-web']['image'].split('@')[1]
     web=x.unpack('dir:'+str(source),P/'web-base');overlay=P/'overlay'
-    plan=patch.patch_runtime(web,overlay);names=set(plan['allowedFiles']);assert names=={'paint-performance/hero.mjs','paint-performance/image-hero.mjs'};r.save('first-render-patch.json',plan)
+    plan=patch.patch_runtime(web,overlay);names=set(plan['allowedFiles'])
+    fixed={'paint-performance/hero.mjs','paint-performance/image-hero.mjs','dist/index.html'}
+    extra=names-fixed
+    assert fixed<=names and len(extra)==1 and re.fullmatch(r'dist/assets/index-[a-f0-9]{16}\.js',next(iter(extra)))
+    r.save('first-render-patch.json',plan)
     files={'app/'+name:(overlay/name).read_bytes() for name in names};layer.ALLOWED=set(files)
     image_digest=layer.build(source,P/'candidate-image',files);candidate=x.unpack('dir:'+str(P/'candidate-image'),P/'web-candidate')
     old,new=r.images.fingerprints(web),r.images.fingerprints(candidate)

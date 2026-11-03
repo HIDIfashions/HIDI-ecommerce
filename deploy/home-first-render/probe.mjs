@@ -20,10 +20,14 @@ export async function probe(base,{output='evidence/home-first-render/candidate',
     const request=route.request(),url=new URL(request.url());
     if(!['GET','HEAD'].includes(request.method()))return route.abort();
     if(/\/assets\/index-[\w-]+\.js$/.test(url.pathname))await appGate;
+    // Force the settings refresh to finish after the cached first image loads.
+    // This reproduces the old unconditional readiness reset deterministically.
+    if(url.pathname==='/api/hidi/hero-config'){await appGate;await new Promise(resolve=>setTimeout(resolve,800));}
     if(!live&&['hidiindia.com','www.hidiindia.com'].includes(url.hostname)&&url.pathname.startsWith('/api/hidi/hero-asset/'))return route.fulfill({response:await context.request.get(base+url.pathname)});
     return route.continue();
    });
    const page=await context.newPage(),errors=[];
+   const configResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/hidi/hero-config');
    page.on('pageerror',error=>errors.push(String(error)));
    page.on('requestfailed',request=>errors.push(request.url()+': '+request.failure()?.errorText));
    // Observe the first interactive image even if the three-second carousel
@@ -51,6 +55,11 @@ export async function probe(base,{output='evidence/home-first-render/candidate',
     release();
     await page.locator('.hidi-page .site-header').waitFor();
     await page.waitForFunction(()=>window.__HidiImageHandoff);
+    const pause=page.getByRole('button',{name:'Pause hero media rotation',exact:true});
+    if(await pause.count())await pause.click();
+    await configResponse;
+    await page.waitForTimeout(1000);
+    assert(await page.locator('.hero img.hero-live-media').evaluate(img=>img.complete&&img.naturalWidth>0&&getComputedStyle(img).visibility==='visible'),'Same-image settings refresh must preserve visibility');
     assert.equal(await page.locator('[data-hidi-home-discovery]').count(),0);
     const final=await page.evaluate(()=>window.__HidiImageHandoff);
     assert.equal(final.src,initial.src,'Hydration must use the same device artwork');assert.equal(final.fit,initial.fit,'Hydration must keep image fit');
