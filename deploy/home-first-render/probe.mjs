@@ -67,7 +67,9 @@ export async function probe(base,{output='evidence/home-first-render/candidate',
     await page.waitForFunction(()=>{const img=document.querySelector('.hero img.hero-live-media');return img?.complete&&img.naturalWidth>0&&getComputedStyle(img).visibility==='visible';});
     await page.screenshot({path:output+'/'+engine+'-'+width+'-loaded.png'});
     await page.getByRole('link',{name:/^shop now$/i}).click();
-    await page.waitForURL('**/collections/all');await page.locator('main').first().waitFor();
+    await page.waitForURL(url=>url.pathname.replace(/\/$/,'')==='/collections/all',{waitUntil:'domcontentloaded'});
+    await page.locator('main').first().waitFor();
+    await page.locator('a[href*="/products/"]').first().waitFor();
     results.push({engine,width,initial,final,initialImageBeforeJavaScript:true,discoveryBelowFold:true,shopLinkWorks:true});
     console.log('PASS first image before JavaScript',engine,width);
    }catch(error){
