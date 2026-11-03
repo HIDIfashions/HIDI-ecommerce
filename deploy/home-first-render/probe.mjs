@@ -23,7 +23,21 @@ export async function probe(base,{output='evidence/home-first-render/candidate',
     if(!live&&['hidiindia.com','www.hidiindia.com'].includes(url.hostname)&&url.pathname.startsWith('/api/hidi/hero-asset/'))return route.fulfill({response:await context.request.get(base+url.pathname)});
     return route.continue();
    });
-   const page=await context.newPage();
+   const page=await context.newPage(),errors=[];
+   page.on('pageerror',error=>errors.push(String(error)));
+   page.on('requestfailed',request=>errors.push(request.url()+': '+request.failure()?.errorText));
+   // Observe the first interactive image even if the three-second carousel
+   // advances while another browser assertion is waiting.
+   await page.addInitScript(()=>{
+    function sample(){
+     const img=document.querySelector('.hidi-page .hero img.hero-live-media');
+     if(img?.complete&&img.naturalWidth>0&&getComputedStyle(img).visibility==='visible'){
+      window.__HidiImageHandoff={src:new URL(img.currentSrc).pathname,fit:getComputedStyle(img).objectFit};return;
+     }
+     requestAnimationFrame(sample);
+    }
+    requestAnimationFrame(sample);
+   });
    try{
     await page.goto(base+'/',{waitUntil:'commit'});
     await page.waitForFunction(()=>{const img=document.querySelector('img[data-hidi-first-image]');return img?.complete&&img.naturalWidth>0;});
@@ -36,15 +50,24 @@ export async function probe(base,{output='evidence/home-first-render/candidate',
     await page.screenshot({path:output+'/'+engine+'-'+width+'-before-js.png'});
     release();
     await page.locator('.hidi-page .site-header').waitFor();
-    await page.waitForFunction(()=>{const img=document.querySelector('.hero img.hero-live-media');return img?.complete&&img.naturalWidth>0&&getComputedStyle(img).visibility==='visible';});
+    await page.waitForFunction(()=>window.__HidiImageHandoff);
     assert.equal(await page.locator('[data-hidi-home-discovery]').count(),0);
-    const final=await page.locator('.hero img.hero-live-media').evaluate(img=>({src:new URL(img.currentSrc).pathname,fit:getComputedStyle(img).objectFit}));
+    const final=await page.evaluate(()=>window.__HidiImageHandoff);
     assert.equal(final.src,initial.src,'Hydration must use the same device artwork');assert.equal(final.fit,initial.fit,'Hydration must keep image fit');
+    await page.getByRole('button',{name:'Show hero media 1',exact:true}).click();
+    await page.waitForFunction(()=>{const img=document.querySelector('.hero img.hero-live-media');return img?.complete&&img.naturalWidth>0&&getComputedStyle(img).visibility==='visible';});
     await page.screenshot({path:output+'/'+engine+'-'+width+'-loaded.png'});
     await page.getByRole('link',{name:/^shop now$/i}).click();
     await page.waitForURL('**/collections/all');await page.locator('main').first().waitFor();
     results.push({engine,width,initial,final,initialImageBeforeJavaScript:true,discoveryBelowFold:true,shopLinkWorks:true});
     console.log('PASS first image before JavaScript',engine,width);
+   }catch(error){
+    release();
+    const diagnostic=await page.evaluate(()=>({media:document.querySelector('.hero-media')?.outerHTML,bodyClass:document.body.className,initial:window.__HidiHeroInitial,handoff:window.__HidiImageHandoff,text:document.body.innerText.slice(0,1000)})).catch(()=>null);
+    console.error('HERO DIAGNOSTIC',JSON.stringify({engine,width,errors,diagnostic}));
+    await writeFile(output+'/'+engine+'-'+width+'-failure.json',JSON.stringify({errors,diagnostic},null,2));
+    await page.screenshot({path:output+'/'+engine+'-'+width+'-failure.png'}).catch(()=>{});
+    throw error;
    }finally{release();await context.close();}
   }}finally{await browser.close();}
  }
