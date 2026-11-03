@@ -1,0 +1,60 @@
+name: HIDI P1 live regression without deployment
+on:
+  push:
+    branches: [fix/hidi-p1-verification-20261103]
+    paths: [.github/workflows/search-priority-regression.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  live-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      HIDI_PLAYWRIGHT_MODULE: /tmp/hidi-p1-browser/node_modules/playwright/index.mjs
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/hidi-p1-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Verify SEO and analytics regression rules
+        run: |
+          python3 deploy/search-priority/test_patch.py
+          node --test deploy/collection-cleanup/navigation.test.mjs deploy/merchant-feed/feed.test.mjs deploy/seo-discovery/seo.test.mjs deploy/seo-discovery/policy-metadata.test.mjs deploy/seo-foundation/links.test.mjs tests/button-request-policy.test.mjs tests/storefront-surfaces.test.cjs deploy/ga4-purchase/analytics.test.mjs deploy/ga4-cart/analytics.test.mjs deploy/cloudflare-analytics/loader.test.mjs
+      - uses: actions/download-artifact@v4
+        with:
+          name: search-priority-regression-41674185316-1
+          run-id: 41674185316
+          github-token: ${{ github.token }}
+          path: evidence/search-priority
+      - name: Install all browser engines
+        run: |
+          npm install --prefix /tmp/hidi-p1-browser --no-save playwright@1.56.1
+          node /tmp/hidi-p1-browser/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+      - name: Verify current live storefront in nine browser and viewport combinations
+        run: node deploy/search-priority/probes.mjs https://hidiindia.com evidence/search-priority/p1-regression/live
+      - name: Verify exact deployed analytics composition and isolated purchase events
+        run: |
+          node --input-type=module <<'JS'
+          import {readFile,writeFile} from 'node:fs/promises';
+          import assert from 'node:assert/strict';
+          const base=await readFile('deploy/ga4-purchase/hidi-analytics.js','utf8');
+          const loader=await readFile('deploy/cloudflare-analytics/loader.js','utf8');
+          const expected=base+'\n;\n'+loader;
+          const response=await fetch('https://hidiindia.com/hidi-analytics.js');
+          assert(response.ok);assert.equal(await response.text(),expected,'Deployed analytics differs from reviewed composition');
+          const config=await (await fetch('https://hidiindia.com/api/hidi/analytics-config')).json();
+          assert.equal(config.enabled,true);assert.equal(config.ga4MeasurementId,'G-Z45WSHLDHG');
+          await writeFile('deploy/cloudflare-analytics/hidi-analytics.js',expected);
+          await writeFile('evidence/search-priority/p1-regression/analytics-config.json',JSON.stringify(config,null,2));
+          JS
+          node deploy/cloudflare-analytics/browser.mjs --live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hidi-p1-regression-${{ github.run_id }}
+          path: |
+            evidence/search-priority/p1-regression
+            evidence/cloudflare-analytics
+          retention-days: 30
