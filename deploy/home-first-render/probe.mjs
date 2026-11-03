@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 export async function probe(base,{output='evidence/home-first-render/candidate',live=false}={}){
+ // Capture the actual early frame while module execution is held back.
+ // document.fonts.ready can wait for DOMContentLoaded (and the held module).
+ // This changes screenshot waiting only; fonts still load and render normally.
+ process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY='1';
  const engines=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href),results=[];
  await mkdir(output,{recursive:true});
  const raw=await (await fetch(base+'/',{headers:{'X-Forwarded-Host':'hidiindia.com','X-Forwarded-Proto':'https'}})).text();
@@ -37,7 +41,7 @@ export async function probe(base,{output='evidence/home-first-render/candidate',
     const final=await page.locator('.hero img.hero-live-media').evaluate(img=>({src:new URL(img.currentSrc).pathname,fit:getComputedStyle(img).objectFit}));
     assert.equal(final.src,initial.src,'Hydration must use the same device artwork');assert.equal(final.fit,initial.fit,'Hydration must keep image fit');
     await page.screenshot({path:output+'/'+engine+'-'+width+'-loaded.png'});
-    await page.getByRole('link',{name:'SHOP NOW',exact:true}).click();
+    await page.getByRole('link',{name:/^shop now$/i}).click();
     await page.waitForURL('**/collections/all');await page.locator('main').first().waitFor();
     results.push({engine,width,initial,final,initialImageBeforeJavaScript:true,discoveryBelowFold:true,shopLinkWorks:true});
     console.log('PASS first image before JavaScript',engine,width);
