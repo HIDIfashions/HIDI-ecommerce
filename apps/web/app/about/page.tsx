@@ -33,7 +33,7 @@ export default function AboutPage() {
           <p className={styles.brandLead}>Indian wear for the many roles you carry.</p>
           <p>Introduced by actress Ananya Nagalla, HIDI brings together women’s Indian wear for work, everyday dressing and occasions. Our point of view is simple: feel comfortable, look composed and be yourself.</p>
           <div className={styles.actions}>
-            <Link href="/collections/all" className={styles.darkButton}>Explore HIDI</Link>
+            <Link href="/collections/all" className={styles.darkButton}>Shop HIDI kurta sets</Link>
             <Link href="/contact" className={styles.outlineButton}>Talk to our team ↗</Link>
           </div>
         </div>

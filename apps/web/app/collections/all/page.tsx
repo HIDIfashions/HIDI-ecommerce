@@ -5,11 +5,11 @@ import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
-const title = "Women’s Kurta Sets & Indian Wear";
-const description = "Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits. Compare product details, current prices and size information.";
+const title = "HIDI Kurta Sets & Indian Wear";
+const description = "Explore HIDI kurta sets for everyday dressing, work and celebrations. Browse printed and embroidered styles, then compare each outfit’s fabric, included pieces and available sizes.";
 
 export const metadata: Metadata = {
-  title,
+  title: { absolute: "HIDI Kurta Sets & Indian Wear for Women | Official Store" },
   description,
   alternates: { canonical: "/collections/all" },
   openGraph: {

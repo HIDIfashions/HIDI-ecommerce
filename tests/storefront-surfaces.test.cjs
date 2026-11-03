@@ -34,8 +34,8 @@ test('collection title is 24px desktop and 22px mobile, using shared font', () =
 test('Shop All exposes one exact visible SEO heading and factual intro without route links', () => {
   const page = read('apps/web/app/collections/all/page.tsx');
   const markup = page.match(/<header className="collection-header"[^>]*>([\s\S]*?)<\/header>/)[1];
-  assert.match(page, /const title = "Women’s Kurta Sets & Indian Wear";/);
-  assert.match(page, /const description = "Browse HIDI women’s kurta sets and Indian wear across work, casual and occasion edits\. Compare product details, current prices and size information\.";/);
+  assert.match(page, /const title = "HIDI Kurta Sets & Indian Wear";/);
+  assert(page.includes("Explore HIDI kurta sets for everyday dressing, work and celebrations. Browse printed and embroidered styles, then compare each outfit’s fabric, included pieces and available sizes."));
   assert.match(page, /position: 2, name: title, item: absoluteUrl\("\/collections\/all"\)/);
   assert.match(page, /<header className="collection-header" style=\{\{ display: "block" \}\}>/);
   assert.equal((markup.match(/<h1>/g)||[]).length,1);

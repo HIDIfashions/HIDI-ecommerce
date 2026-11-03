@@ -69,5 +69,13 @@ export default async function Home() {
       {services.map(({ icon: Icon, title, copy, href }) => <Link href={href} className={styles.serviceItem} key={title}><Icon size={18} strokeWidth={1.45} aria-hidden="true" /><div><strong>{title}</strong><span>{copy}</span></div></Link>)}
       <Link href={whatsappHref} className={styles.serviceItem + " " + styles.serviceLink} target={validWhatsapp ? "_blank" : undefined} rel={validWhatsapp ? "noreferrer" : undefined}><WhatsAppIcon size={18} className={styles.serviceWhatsappIcon} /><div><strong>{validWhatsapp ? "Human shopping help" : "Order & product help"}</strong><span>{validWhatsapp ? "Fit and product support on WhatsApp." : "Orders, size information and aftercare."}</span></div></Link>
     </div></section>
+    <section aria-label="Explore HIDI" data-hidi-home-discovery style={{padding:"48px 24px",maxWidth:1080,margin:"auto",textAlign:"center"}}>
+      <h2>HIDI Kurta Sets for Women</h2>
+      <p style={{maxWidth:"65ch",margin:"16px auto",lineHeight:1.7}}>Explore HIDI kurta sets for everyday dressing, work and celebrations. Browse printed and embroidered styles, then compare each outfit’s fabric, included pieces and available sizes.</p>
+      <nav aria-label="Shop HIDI collections" style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:"12px 24px"}}>
+        <Link href="/collections/all">Shop HIDI kurta sets</Link><Link href="/collections/work-wear">Work wear</Link><Link href="/collections/casual-wear">Casual wear</Link><Link href="/collections/occasional-wear">Occasion wear</Link>
+      </nav>
+      <p><Link href="/guides">Kurta set buying guides</Link> · <Link href="/about">Meet HIDI India</Link></p>
+    </section>
   </div>;
 }
