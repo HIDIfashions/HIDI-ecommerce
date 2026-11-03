@@ -156,3 +156,15 @@
 @media (max-width: 640px) { .content { padding-left: 32px; } }
 
 .wrap .section { margin: 0; padding: 0; }
+
+/* Approved five-section detail layout. */
+.wrap { margin-top: 16px; border-top: 1px solid var(--line); }
+.summary { min-height: 52px; padding: 16px 0; gap: 16px; }
+.titleWrap { font-size: 14px; }
+.content { padding: 0 0 17px; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.facts { margin: 0 0 14px; display: grid; gap: 8px; }
+.facts > div { display: grid; grid-template-columns: minmax(90px, 28%) minmax(0, 1fr); gap: 12px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; color: var(--ink); }
+.guideLink { display: inline-block; border: 0; background: transparent; padding: 0; color: var(--ink); font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+@media (max-width: 640px) { .content { padding-left: 0; font-size: 13px; } .guideLink { min-height: 44px; } }

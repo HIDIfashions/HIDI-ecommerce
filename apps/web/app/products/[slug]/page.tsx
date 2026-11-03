@@ -7,7 +7,6 @@ import { ProductMedia, ProductPurchaseSummary } from "@/components/product-purch
 import { ProductInfoAccordion } from "@/components/product-info-accordion";
 import { WishlistButton } from "@/components/wishlist-button";
 import { ProductReviews } from "@/components/product-reviews";
-import { ProductQualitySummary } from "@/components/product-quality-summary";
 import { ProductContactActions } from "@/components/product-contact-actions";
 import { RetentionTracker } from "@/components/retention-tracker";
 import { ProductCard } from "@/components/product-card";
@@ -15,7 +14,6 @@ import { RecentlyViewedProducts } from "@/components/recently-viewed-products";
 import { getProduct, getProductReviews, getRelatedProducts } from "@/lib/api";
 import { absoluteUrl, safeJsonLd } from "@/lib/site-url";
 import { productOffers } from "@/lib/seo";
-import { ProductCopy } from "@/components/product-copy";
 import { pdpInformation } from "@/lib/pdp-information";
 import { reviewedPdpSpecifications } from "@/lib/pdp-source-specifications";
 import styles from "./product-page.module.css";
@@ -173,8 +171,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <AddToCart key={product.id} product={product} />
         <div className={styles.services}><span>Free shipping</span><span>7-day returns on eligible items</span><Link href="/returns">View policy</Link></div>
         <DeliveryCheck />
-        <ProductQualitySummary product={product} specifications={information.specifications} />
-        {information.narrative && <details className={styles.description}><summary>Product description</summary><div><ProductCopy text={information.narrative} /></div></details>}
         <ProductInfoAccordion product={product} specifications={information.specifications} />
         <ProductContactActions product={product} />
       </aside>

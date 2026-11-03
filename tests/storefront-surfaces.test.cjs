@@ -31,16 +31,17 @@ test('collection title is 24px desktop and 22px mobile, using shared font', () =
   assert.match(css, /\.collection-page \.collection-header h1\s*\{[^}]*font-family:\s*var\(--font-sans\);[^}]*font-size:\s*24px;/);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.collection-page \.collection-header h1\s*\{\s*font-size:\s*22px;/);
 });
-test('Shop All exposes one exact visible SEO heading and factual intro without route links', () => {
+test('Shop All keeps one heading and approved guidance after the product browser', () => {
   const page = read('apps/web/app/collections/all/page.tsx');
   const markup = page.match(/<header className="collection-header"[^>]*>([\s\S]*?)<\/header>/)[1];
   assert.match(page, /const title = "HIDI Kurta Sets & Indian Wear";/);
   assert(page.includes("Explore HIDI kurta sets for everyday dressing, work and celebrations. Browse printed and embroidered styles, then compare each outfit’s fabric, included pieces and available sizes."));
   assert.match(page, /position: 2, name: title, item: absoluteUrl\("\/collections\/all"\)/);
-  assert.match(page, /<header className="collection-header" style=\{\{ display: "block" \}\}>/);
+  assert.match(page, /<header className="collection-header">/);
   assert.equal((markup.match(/<h1>/g)||[]).length,1);
-  assert.equal((markup.match(/hidi-collection-intro/g)||[]).length,1);
-  assert.match(markup, /<p className="hidi-collection-intro" style=\{\{ display: "block" \}\}>\{description\}<\/p>/);
+  assert.doesNotMatch(markup, /<p|hidi-collection-intro/);
+  assert(page.indexOf('className="hidi-collection-guidance"') > page.indexOf('<CollectionBrowser'));
+  assert.match(page, /<summary>Discover HIDI kurta sets<\/summary>/);
   assert.doesNotMatch(page, /<CollectionLinks/);
 });
 test('named collection headings remain a single title without injected SEO copy or links', () => {

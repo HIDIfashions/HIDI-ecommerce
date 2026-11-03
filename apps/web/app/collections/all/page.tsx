@@ -41,12 +41,18 @@ export default async function ShopAllPage() {
   return (
     <div className="container collection-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }} />
-      <header className="collection-header" style={{ display: "block" }}>
+      <header className="collection-header">
         <h1>{title}</h1>
-        <p className="hidi-collection-intro" style={{ display: "block" }}>{description}</p>
       </header>
 
       <CollectionBrowser products={products} />
+      <details className="hidi-collection-guidance">
+        <summary>Discover HIDI kurta sets</summary>
+        <div>
+          <p>Find your HIDI for everyday dressing, work and celebrations. Explore printed and embroidered kurta sets, from straight silhouettes to flowing Anarkalis.</p>
+          <p>Each product page lists its fabric, included pieces, available sizes and care instructions. Check these details to choose the outfit that suits you.</p>
+        </div>
+      </details>
     </div>
   );
 }

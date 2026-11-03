@@ -1,30 +1,42 @@
 "use client";
 import Link from "next/link";
 import { ProductCopy } from "./product-copy";
-import { ChevronDown, ClipboardList, Shirt, Truck, CircleCheck, PackageCheck, RefreshCw, ArrowUpRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { ApiProduct } from "@/lib/api";
 import { pdpInformation, type ProductSpecification } from "@/lib/pdp-information";
+import { useProductSelection } from "@/lib/use-product-selection";
+import { compareSizes } from "@/lib/product-card-utils";
 import styles from "./product-info-accordion.module.css";
 export function ProductInfoAccordion({ product, specifications = [] }: { product: ApiProduct; specifications?: ProductSpecification[] }) {
   const facts = pdpInformation(product, specifications);
+  const { color } = useProductSelection(product);
+  const sizes = product.inStock ? [...new Set(product.variants.filter(v => v.color === color && v.available > 0).map(v => v.size))].sort(compareSizes) : [];
+  const designRows = [["Fabric", facts.fabric], ["Lining", facts.lining], ["Colour", color], ...facts.specifications.map(s => [s.label, s.value])].filter(([, value]) => value);
   const sections = [
-    { title: "Material & Care", icon: Shirt, content: <>
-      <div><strong>Fabric:</strong><ProductCopy text={facts.fabric || "Fabric information is not published for this style yet."} /></div>
-      {facts.lining && <div><strong>Lining:</strong><ProductCopy text={facts.lining} /></div>}
-      <div><strong>Care:</strong><ProductCopy text={facts.care || "Follow the care label attached to the garment."} /></div>
+    { key: "fabric", title: "Fabric & design", content: <>
+      <dl className={styles.facts}>{designRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd><ProductCopy text={value} /></dd></div>)}</dl>
+      {facts.narrative && <ProductCopy text={facts.narrative} />}
     </> },
-    { title: "Shipping & Returns", icon: Truck, content: <>
-      <div className={styles.policyRows}>
-        <div className={styles.policyRow}><CircleCheck className={styles.shippingCheck} size={23} aria-hidden="true" /><div><strong>Free Shipping</strong><p>Shipping is ₹0.00 on every order.</p></div></div>
-        <div className={styles.policyRow}><PackageCheck size={23} aria-hidden="true" /><div><strong>Easy Returns</strong><p>Eligible items can be returned within 7 days of delivery, subject to our return policy.</p></div></div>
-        <div className={styles.policyRow}><RefreshCw size={23} aria-hidden="true" /><div><strong>Exchanges</strong><p>Exchange eligibility, applicable charges and product availability are subject to our exchange policy.</p></div></div>
-      </div>
-      <Link className={styles.policyLink} href="/returns#shipping-returns-exchange">View Shipping, Returns &amp; Exchange Policy <ArrowUpRight size={16} aria-hidden="true" /></Link>
+    { key: "pieces", title: "What’s included", content: facts.includes && <ProductCopy text={facts.includes} /> },
+    { key: "sizing", title: "Size & fit", content: <>
+      {facts.fit && <ProductCopy text={facts.fit} />}
+      {facts.model && <ProductCopy text={facts.model} />}
+      {sizes.length > 0 && <p>{sizes.join(" · ")}</p>}
+      <button type="button" className={styles.guideLink} onClick={() => {
+        const trigger = document.querySelector<HTMLButtonElement>('.pdp-purchase .size-row-title button[aria-controls]');
+        if (trigger?.getAttribute("aria-expanded") !== "true") trigger?.click();
+        trigger?.scrollIntoView({ block: "center", behavior: "smooth" });
+        trigger?.focus({ preventScroll: true });
+      }}>Size &amp; fit guide</button>
     </> },
-    { title: "Photography & Colour", icon: ClipboardList, content: <p>Photographic lighting and screen settings may affect how colours appear. Use the listed product information and garment care label alongside the images.</p> },
+    { key: "care", title: "Care instructions", content: <ProductCopy text={facts.care || "Follow the care label attached to the garment."} /> },
+    { key: "delivery", title: "Delivery & returns", content: <>
+      <p>Free shipping. Eligible items can be returned within 7 days of delivery, subject to HIDI’s return policy. Exchange eligibility, charges and availability follow the exchange policy.</p>
+      <Link className={styles.guideLink} href="/returns#shipping-returns-exchange">View Shipping, Returns &amp; Exchange Policy</Link>
+    </> },
   ];
-  return <div className={styles.wrap}>{sections.map(({ title, icon: Icon, content }) => <details className={styles.section} key={title} >
-    <summary className={styles.summary}><span className={styles.titleWrap}><Icon size={22} strokeWidth={1.5} aria-hidden="true" /><span>{title}</span></span><ChevronDown className={styles.chevron} size={21} strokeWidth={1.5} aria-hidden="true" /></summary>
+  return <div className={styles.wrap} data-hidi-product-details>{sections.map(({ key, title, content }) => <details className={styles.section} key={key} data-product-detail={key} open={key === "fabric"}>
+    <summary className={styles.summary}><span className={styles.titleWrap}>{title}</span><ChevronDown className={styles.chevron} size={18} strokeWidth={1.5} aria-hidden="true" /></summary>
     <div className={styles.content}>{content}</div>
   </details>)}</div>;
 }

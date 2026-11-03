@@ -1,0 +1,21 @@
+/* Approved collection heading, spacing and below-grid guidance. */
+.container.collection-page { padding-top: 32px; }
+.collection-page .collection-header { display: block; width: 100%; max-width: none; margin: 0 auto 22px; padding: 0; }
+.collection-page .collection-header h1 { margin: 0; font-family: var(--font-sans); font-size: 27px; font-weight: 500; line-height: 1.25; letter-spacing: -.02em; }
+.collection-page [class*="collection-browser_toolbar__"] { margin-bottom: 22px; }
+.hidi-collection-guidance { margin: 32px auto 0; width: 100%; border-block: 1px solid var(--line); }
+.hidi-collection-guidance > summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; list-style: none; padding: 20px 0; cursor: pointer; color: var(--ink); font: 500 15px/1.4 var(--font-sans); }
+.hidi-collection-guidance > summary::-webkit-details-marker { display: none; }
+.hidi-collection-guidance > summary::after { content: "+"; font-size: 20px; }
+.hidi-collection-guidance[open] > summary::after { content: "−"; }
+.hidi-collection-guidance > div { max-width: 720px; padding-bottom: 22px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.hidi-collection-guidance p { margin: 0; }
+.hidi-collection-guidance p + p { margin-top: 12px; }
+@media (max-width: 640px) {
+  .container.collection-page { padding-top: 22px !important; }
+  .collection-page .collection-header { display: block; margin-bottom: 17px; }
+  .collection-page .collection-header h1 { font-size: 22px; }
+  .collection-page [class*="collection-browser_toolbar__"] { margin-bottom: 16px; }
+  .hidi-collection-guidance { margin-top: 24px; }
+  .hidi-collection-guidance > div { font-size: 13px; }
+}

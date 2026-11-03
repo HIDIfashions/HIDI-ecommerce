@@ -51,11 +51,11 @@ export async function runCheckoutThemeChecks({browser,engine,scenario,until,base
    await show.click();await dialog.waitFor({state:'hidden'});assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
   }
  },{...phone,startPath:'/collections/all'});
- await scenario(browser,engine,'FIX-04','Every product has the screenshot Shipping & Returns rows and a working policy link',async page=>{
+  await scenario(browser,engine,'FIX-04','Every product has approved Delivery & returns copy and a working policy link',async page=>{
   for(const product of products.slice(0,3)){
    await settleFixtureNetwork(page,{prefetchOnly:true});
-   if(new URL(page.url()).pathname!=='/products/'+product.slug)await navigate(page,'/products/'+product.slug);const section=page.locator('details').filter({has:page.getByText('Shipping & Returns',{exact:true})});await section.waitFor();
-   await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor();assert.equal(await section.evaluate(e=>e.open),false);await section.locator('summary').click();assert(await section.evaluate(e=>e.open));assert.match(await section.innerText(),/Free Shipping[\s\S]*₹0\.00 on every order[\s\S]*Easy Returns[\s\S]*7 days[\s\S]*Exchanges/);
+   if(new URL(page.url()).pathname!=='/products/'+product.slug)await navigate(page,'/products/'+product.slug);const section=page.locator('[data-product-detail="delivery"]');await section.waitFor();
+   await page.locator('[data-hidi-react-pdp][data-hidi-hydrated="true"]').waitFor();assert.equal(await section.evaluate(e=>e.open),false);await section.locator('summary').click();assert(await section.evaluate(e=>e.open));assert.match(await section.innerText(),/Free shipping[\s\S]*7 days[\s\S]*Exchange eligibility/);
    await settleFixtureNetwork(page,{prefetchOnly:true});
    const link=section.getByRole('link',{name:/View Shipping, Returns & Exchange Policy/});await link.click();await until(()=>page.evaluate(()=>location.pathname==='/returns'&&location.hash==='#shipping-returns-exchange'),'policy route and anchor');assert.match(await page.locator('#shipping-returns-exchange').innerText(),/₹0\.00/);
   }

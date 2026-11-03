@@ -6,6 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runQualityChecks } from './storefront-quality.browser.mjs';
+import { runCleanShoppingChecks } from './clean-shopping.browser.mjs';
 import { runCheckoutThemeChecks } from './checkout-theme.browser.mjs';
 import { runRefinementChecks } from './storefront-refinements.browser.mjs';
 const pw = await import(process.env.HIDI_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href : 'playwright');
@@ -380,6 +381,7 @@ try{
       catalogueMode='empty';await page.waitForLoadState('networkidle');await page.reload({waitUntil:'networkidle'});await page.getByText('Our latest edit is being prepared.').waitFor();assert.equal(await page.locator('[data-editorial-product]').count(),0);assert.equal(await page.getByRole('heading',{name:'Wear the feeling.'}).count(),1);
     });
     await runQualityChecks({browser,engine,scenario,until,base,output,products,writes,setCartMode:value=>{cartMode=value;}});
+    await runCleanShoppingChecks({browser,engine,scenario,until,products});
     await runCheckoutThemeChecks({browser,engine,scenario,until,base,output,products,settleFixtureNetwork});
     await runRefinementChecks({browser,engine,scenario,until,products,output,base,settleFixtureNetwork});
     await browser.close();activeBrowser=null;

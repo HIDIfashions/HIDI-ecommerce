@@ -1,0 +1,126 @@
+name: HIDI clean shopping full regression
+on:
+  push:
+    branches: [fix/hidi-clean-shopping-20261104]
+  pull_request:
+    branches: [fix/hidi-clean-shopping-20261104]
+permissions:
+  contents: read
+concurrency:
+  group: hidi-azure-${{ github.ref }}-${{ (contains(github.event.head_commit.message, '[deploy-landing]') || contains(github.event.head_commit.message, '[storefront-followup]')) && github.sha || 'standard' }}
+  cancel-in-progress: false
+jobs:
+  source-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: 'sqlserver://localhost:1433;database=hidi;user=build;password=build;encrypt=true'
+      API_URL: http://127.0.0.1:4100/v1
+      # Install and every browser suite must use the same job-local binaries.
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/hidi-playwright-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - name: Test storefront, reporting rules and customer safeguards
+        id: frontend_tests
+        continue-on-error: true
+        run: node --test tests/*.test.cjs apps/web/lib/product-sharing.test.mjs
+      - run: pnpm --filter @hidi/api test:customer-experience
+      - run: pnpm --filter @hidi/api build
+      - name: Verify release guards and rollback without cloud mutations
+        run: python3 tests/shopping-ux-deploy.test.py
+      - name: Build and type-check the admin and storefront together
+        run: |
+          export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .SUPABASE_URL deploy/public-auth.json)"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(jq -r .SUPABASE_PUBLISHABLE_KEY deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER="$(jq -r '.CUSTOMER_AUTH_PROVIDER // .NEXT_PUBLIC_CUSTOMER_AUTH_PROVIDER // "hidi"' deploy/public-auth.json)"
+          export NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL="$(jq -r '.CUSTOMER_OTP_CHANNEL // .NEXT_PUBLIC_CUSTOMER_OTP_CHANNEL // "sms"' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_API_KEY="$(jq -r '.FIREBASE_API_KEY // .NEXT_PUBLIC_FIREBASE_API_KEY // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$(jq -r '.FIREBASE_AUTH_DOMAIN // .NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_PROJECT_ID="$(jq -r '.FIREBASE_PROJECT_ID // .NEXT_PUBLIC_FIREBASE_PROJECT_ID // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_APP_ID="$(jq -r '.FIREBASE_APP_ID // .NEXT_PUBLIC_FIREBASE_APP_ID // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="$(jq -r '.FIREBASE_MESSAGING_SENDER_ID // .NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID // ""' deploy/public-auth.json)"
+          export NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="$(jq -r '.FIREBASE_STORAGE_BUCKET // .NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET // ""' deploy/public-auth.json)"
+          pnpm --filter @hidi/web build
+      - name: Install isolated browser-test tooling on this runner
+        run: |
+          npm install --prefix "$RUNNER_TEMP/hidi-browser" --no-save playwright@1.56.1
+          node "$RUNNER_TEMP/hidi-browser/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+      - name: Verify installed browser engines can launch
+        env:
+          HIDI_PLAYWRIGHT_MODULE: ${{ runner.temp }}/hidi-browser/node_modules/playwright/index.mjs
+        run: |
+          node --input-type=module <<'NODE'
+          import { constants } from 'node:fs';
+          import { access } from 'node:fs/promises';
+          import { pathToFileURL } from 'node:url';
+          const pw = await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
+          for (const engine of ['chromium', 'firefox', 'webkit']) {
+            const executable = pw[engine].executablePath();
+            await access(executable, constants.X_OK);
+            const browser = await pw[engine].launch({ headless: true, timeout: 30000 });
+            try {
+              const page = await browser.newPage();
+              await page.goto('about:blank');
+              console.log(`READY ${engine}: ${executable}`);
+            } finally {
+              await browser.close();
+            }
+          }
+          NODE
+      - name: Test admin UI and BFF with isolated fixtures
+        run: |
+          for engine in chromium firefox webkit; do
+            HIDI_BROWSER_ENGINE="$engine" HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/admin-workspace.browser.mjs
+          done
+      - name: Verify homepage section backgrounds in the production build
+        id: background_tests
+        continue-on-error: true
+        run: HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" node tests/homepage-background.browser.mjs
+      - name: Verify editorial storefront across browser engines with isolated commerce
+        run: |
+          HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-storefront.browser.mjs
+          HIDI_PLAYWRIGHT_MODULE="$RUNNER_TEMP/hidi-browser/node_modules/playwright/index.mjs" HIDI_BROWSER_ENGINES=chromium,firefox,webkit node tests/editorial-polish.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: editorial-storefront-test-results
+          path: test-results/editorial-storefront
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: homepage-background-test-results
+          path: test-results/homepage-background
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-workspace-test-results
+          path: test-results/admin-workspace
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Enforce all source and background gates after collecting browser evidence
+        if: always()
+        env:
+          FRONTEND_OUTCOME: ${{ steps.frontend_tests.outcome }}
+          BACKGROUND_OUTCOME: ${{ steps.background_tests.outcome }}
+        run: test "$FRONTEND_OUTCOME" = success && test "$BACKGROUND_OUTCOME" = success
+      - name: Package exact source and original public assets
+        run: git archive --format=tar.gz --output=hidi-azure-source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hidi-azure-source
+          path: hidi-azure-source.tar.gz
+          retention-days: 7
+
