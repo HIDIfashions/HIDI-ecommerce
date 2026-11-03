@@ -16,6 +16,8 @@ const landing=await read('/api/hidi/landing-media-config'),writes=[],reads=[];
 const fixtures=Object.fromEntries(await Promise.all(['/api/hidi/hero-config','/api/hidi/landing-media-config','/api/hidi/offers','/api/hidi/portrait-order','/api/hidi/typography'].map(async path=>[path,await read(path)])));
 await mkdir('evidence/search-priority/fixtures',{recursive:true});
 await writeFile('evidence/search-priority/fixtures/public.json',JSON.stringify(fixtures));
+const fixtureAssets={};
+for(const item of fixtures['/api/hidi/hero-config'].items){for(const path of [item.url,item.type==='image'?item.mobileUrl:null].filter(Boolean)){const response=await fetch(new URL(path,'https://hidiindia.com'));assert(response.ok);fixtureAssets[new URL(path,'https://hidiindia.com').pathname]={body:Buffer.from(await response.arrayBuffer()),contentType:response.headers.get('content-type')};}}
 await mkdir('evidence/search-priority',{recursive:true});
 await writeFile('evidence/search-priority/inventory.json',JSON.stringify({passed:true,products:catalogue.length,collections:Object.fromEntries(Object.entries(collections).map(([slug,rows])=>[slug,rows.length])),readOnly:true},null,2));
 const upstream=createServer((req,res)=>{
@@ -63,7 +65,7 @@ try{
   assert.equal(updated,original,'Merchant feed changed');
 
 
-  await probe(base,'evidence/search-priority/candidate',{baseline,fixtures,inventory:{all:catalogue,...collections}});
+  await probe(base,'evidence/search-priority/candidate',{baseline,fixtures,fixtureAssets,inventory:{all:catalogue,...collections}});
   assert.deepEqual(writes,[]);
   assert(reads.some(r=>r.path==='/products'),'Runtime did not reach frozen inventory fixture');
 }catch(error){for(const name of containers)console.error(name+'\n'+docker('logs',name).slice(-3000));console.error('FIXTURE_READS',JSON.stringify({total:reads.length,categories:[...new Set(reads.filter(r=>r.path==='/products').map(r=>r.category))]}));throw error;}

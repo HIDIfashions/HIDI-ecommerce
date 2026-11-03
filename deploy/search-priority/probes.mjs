@@ -5,9 +5,9 @@ import {navigate} from '../collection-cleanup/navigation.mjs';
 const copy=JSON.parse(await readFile(new URL('./copy.json',import.meta.url),'utf8'));
 const headers={'X-Forwarded-Host':'hidiindia.com','X-Forwarded-Proto':'https'};
 const routes=['/','/collections/all','/collections/work-wear','/collections/casual-wear','/collections/occasional-wear','/collections/ananyas-pick','/about','/guides','/guides/kurta-set-buying-guide','/guides/choosing-kurta-set-size','/shipping','/returns','/cart','/checkout','/account','/admin'];
-export async function probe(base,output,{baseline,fixtures={},inventory}={}){
+export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},inventory}={}){
  await mkdir(output,{recursive:true});const engines=await import(pathToFileURL(process.env.HIDI_PLAYWRIGHT_MODULE).href);
- const results=[],writes=[],errors=[],baselineErrors=[],gatewayRetries=[];
+ const results=[],writes=[],errors=[],baselineErrors=[],gatewayRetries=[];let blockedSessionCalls=0;
  const raw=async(origin,path)=>{const r=await fetch(origin+path,{headers,signal:AbortSignal.timeout(45000)});assert(r.ok,path+' status '+r.status);return r.text();};
  const home=await raw(base,'/');assert(home.includes(copy.heading)&&home.includes(copy.intro));assert(home.includes('data-hidi-first-image="true"'),'Preserve image before JS');
  const all=await raw(base,'/collections/all');const decoded=all.replaceAll('&amp;','&');assert(decoded.includes(copy.collectionHeading)&&decoded.includes(copy.intro)&&decoded.includes(copy.collectionTitle));
@@ -19,12 +19,14 @@ export async function probe(base,output,{baseline,fixtures={},inventory}={}){
    await context.route('**/*',async route=>{
     const req=route.request(),url=new URL(req.url());
     if(!['GET','HEAD'].includes(req.method())){
-     if(req.method()==='PUT'&&url.pathname==='/api/admin/session')return route.fulfill({status:401,body:'{}'});
+     if(['PUT','DELETE'].includes(req.method())&&url.pathname==='/api/admin/session'&&!req.postData()){blockedSessionCalls++;return route.fulfill(req.method()==='PUT'?{status:401,body:'{}'}:{status:204});}
      if(url.pathname==='/api/hidi/performance'||/(^|\.)(google-analytics\.com|analytics\.google\.com|cloudflareinsights\.com)$/.test(url.hostname))return route.fulfill({status:204});
      writes.push({path:url.pathname,method:req.method()});return route.abort();
     }
     if(req.resourceType()==='script'&&/(^|\.)(googletagmanager\.com|google-analytics\.com|analytics\.google\.com|cloudflareinsights\.com|connect\.facebook\.net)$/.test(url.hostname))return route.fulfill({status:200,contentType:'application/javascript',body:''});
     if(Object.hasOwn(fixtures,url.pathname))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(fixtures[url.pathname])});
+    if(Object.hasOwn(fixtureAssets,url.pathname))return route.fulfill({status:200,...fixtureAssets[url.pathname]});
+    if(url.pathname.startsWith('/api/hidi/hero-asset/'))return route.continue();
     if(req.resourceType()==='media'||/razorpay\.com$/.test(url.hostname))return route.abort();
     if(baseline&&(url.pathname.startsWith('/media/products/')||url.pathname.startsWith('/api/hidi/hero-asset/'))){const r=await route.fetch({url:'https://hidiindia.com'+url.pathname});return route.fulfill({response:r});}
     return route.continue();
@@ -97,7 +99,7 @@ export async function probe(base,output,{baseline,fixtures={},inventory}={}){
  const priorErrors=baseline?baselineErrors:JSON.parse(await readFile('evidence/search-priority/candidate/report.json','utf8')).baselineErrors;
  const existing=errors.filter(e=>['/cart','/checkout'].includes(e.path)&&/Minified React error #418/.test(e.message)&&priorErrors.some(b=>b.path===e.path&&b.message===e.message));
  const newErrors=errors.filter(e=>!existing.includes(e));assert.deepEqual(newErrors,[]);assert.deepEqual(writes,[]);
- const report={passed:true,engines:['chromium','firefox','webkit'],results,baselineCompared:!!baseline,baselineErrors,liveWrites:0,existingPrivateErrors:existing,newRuntimeErrors:newErrors,gatewayRetries};
+ const report={passed:true,engines:['chromium','firefox','webkit'],results,baselineCompared:!!baseline,baselineErrors,liveWrites:0,blockedSessionCalls,existingPrivateErrors:existing,newRuntimeErrors:newErrors,gatewayRetries};
  await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);
