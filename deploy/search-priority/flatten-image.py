@@ -34,7 +34,8 @@ def flatten(image, tag, folder, authfile):
     inspected=json.loads(run('docker','image','inspect',tag))[0]
     # Docker inspect materializes absent default fields in a loaded config.
     defaults={'Hostname':'','Domainname':'','AttachStdin':False,'AttachStdout':False,'AttachStderr':False,'Tty':False,'OpenStdin':False,'StdinOnce':False,'OnBuild':None,'Volumes':None,'Labels':None,'StopSignal':'','Shell':None,'ArgsEscaped':False}
-    def normalized(value):return {k:v for k,v in value.items() if k not in defaults or v!=defaults[k]}
+    # Config.Image is obsolete build provenance, not the image selected at runtime.
+    def normalized(value):return {k:v for k,v in value.items() if k!='Image' and (k not in defaults or v!=defaults[k])}
     expected,actual=normalized(config['config']),normalized(inspected['Config'])
     differences=[k for k in expected.keys()|actual.keys() if expected.get(k)!=actual.get(k)]
     assert expected==actual,'Flattening changed runtime configuration fields: '+str(differences)
