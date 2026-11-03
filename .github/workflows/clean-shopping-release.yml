@@ -42,7 +42,7 @@ jobs:
       - name: Require full source, desktop and mobile commerce regression for this commit
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 deploy/storefront-refinements/source-gate.py
+        run: python3 deploy/clean-shopping/source-gate.py
       - uses: azure/login@v2
         with:
           client-id: 3d62eb64-29dc-48ee-ab35-093312bd50af

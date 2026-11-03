@@ -2,6 +2,8 @@
 from pathlib import Path
 root=Path(__file__).resolve().parents[2]
 here=root/'deploy/clean-shopping'
+gate=(root/'deploy/storefront-refinements/source-gate.py').read_text(encoding='utf-8').replace('range(90)','range(270)')
+(here/'source-gate.py').write_text(gate,encoding='utf-8')
 source=(root/'deploy/product-page/patch.mjs').read_text(encoding='utf-8')
 prefix=source.split("const components=")[0]
 (here/'patch.mjs').write_text(prefix+(here/'patch-tail.mjs').read_text(encoding='utf-8'),encoding='utf-8')
