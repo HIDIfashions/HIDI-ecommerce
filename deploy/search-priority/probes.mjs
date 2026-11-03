@@ -10,10 +10,10 @@ export async function probe(base,output,{baseline,fixtures={},inventory}={}){
  const results=[],writes=[],errors=[],baselineErrors=[],gatewayRetries=[];
  const raw=async(origin,path)=>{const r=await fetch(origin+path,{headers,signal:AbortSignal.timeout(45000)});assert(r.ok,path+' status '+r.status);return r.text();};
  const home=await raw(base,'/');assert(home.includes(copy.heading)&&home.includes(copy.intro));assert(home.includes('data-hidi-first-image="true"'),'Preserve image before JS');
- const all=await raw(base,'/collections/all');assert(all.includes(copy.collectionHeading)&&all.includes(copy.intro)&&all.includes(copy.collectionTitle));
+ const all=await raw(base,'/collections/all');const decoded=all.replaceAll('&amp;','&');assert(decoded.includes(copy.collectionHeading)&&decoded.includes(copy.intro)&&decoded.includes(copy.collectionTitle));
  for(const path of ['/robots.txt','/sitemap.xml','/google-products.xml']){const content=await raw(base,path);if(baseline)assert.equal(content,await raw(baseline,path),path+' changed');}
  for(const engine of ['chromium','firefox','webkit']){
-  const browser=await engines[engine].launch();
+  const browser=await engines[engine].launch({...(engine==='firefox'?{env:{...process.env,MOZ_DISABLE_CONTENT_SANDBOX:'1'}}:{})});
   try{for(const width of [320,390,1440]){
    const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',extraHTTPHeaders:headers});context.setDefaultTimeout(25000);
    await context.route('**/*',async route=>{
@@ -65,7 +65,7 @@ export async function probe(base,output,{baseline,fixtures={},inventory}={}){
        if(inventory){const slug=path.split('/').at(-1);assert.deepEqual(actual.map(x=>x.path).sort(),inventory[slug].map(p=>'/products/'+p.slug).sort());}
        if(baseline){const prior=await open(baseline,path,true);await prior.locator('main article').first().waitFor();assert.deepEqual(actual,await facts(prior),'Product content or prices changed');await close(prior);}
        if(width>=700)await page.getByLabel('Sort products').selectOption({label:'Price: Low to high'});
-       else{await page.getByRole('button',{name:/Filter.*Sort/i}).click();const dialog=page.getByRole('dialog',{name:'Product filters'});await dialog.waitFor();await dialog.getByRole('radio',{name:'Price: Low to high',exact:true}).check();await dialog.getByRole('button',{name:'Close filters'}).click();}
+       else{const trigger=page.getByRole('button',{name:/Filter.*Sort/i}),dialog=page.getByRole('dialog',{name:'Product filters'});for(let attempt=0;attempt<5&&!await dialog.isVisible();attempt++){if(await trigger.getAttribute('aria-expanded')!=='true')await trigger.click();try{await dialog.waitFor({state:'visible',timeout:3000});}catch(error){if(attempt===4)throw error;}}await dialog.getByRole('radio',{name:'Price: Low to high',exact:true}).check();await dialog.getByRole('button',{name:'Close filters'}).click();}
        assert.deepEqual(await facts(page),actual,'Sorting changed product set');
        if(path==='/collections/all'){
         const product=page.locator('main article h3 a').first(),name=await product.innerText();await product.click({position:{x:8,y:8}});await page.waitForURL('**/products/**');await page.getByRole('heading',{level:1,name,exact:true}).waitFor();assert(await page.locator('script[type="application/ld+json"]').count()>0);
@@ -78,7 +78,6 @@ export async function probe(base,output,{baseline,fixtures={},inventory}={}){
       }
       const privatePage=['/cart','/checkout','/account','/admin'].includes(path);
       if(privatePage){
-       if(path==='/admin')await page.waitForURL(/\/admin\/(?:login|sign-in)/).catch(()=>{});
        assert.match(await page.locator('meta[name="robots"]').first().getAttribute('content'),/noindex/);
        if(baseline){const prior=await open(baseline,path,true);await prior.waitForTimeout(800);await close(prior);}
       }else{
@@ -86,7 +85,7 @@ export async function probe(base,output,{baseline,fixtures={},inventory}={}){
        const canonical=await page.locator('link[rel="canonical"]').first().getAttribute('href');assert.equal(canonical,'https://hidiindia.com'+new URL(page.url()).pathname);
        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Horizontal overflow '+path);
       }
-     }finally{await close(page);}
+     }catch(error){await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});await writeFile(output+'/failure.html',await page.content()).catch(()=>{});throw error;}finally{await close(page);}
     }
     results.push({engine,width,routes:routes.length,initialAndRenderedCopy:true,sorting:true,productDetails:true,privateNoindex:true,status:'PASS'});
     await writeFile(output+'/progress.json',JSON.stringify({results,errors,baselineErrors,writes},null,2));console.log('PASS branded search regression',engine,width);
