@@ -34,6 +34,7 @@ export async function probe(base,output,{baseline,fixtures={},inventory}={}){
     await navigate(page,origin+path,gatewayRetries);return page;
    };
    const close=async page=>{await page.waitForTimeout(400);await page.close();};
+   const settledCatalogue=async page=>{await page.locator('[data-hidi-collection-hydrated="true"]').waitFor({state:'attached'});await page.waitForFunction(()=>[...document.querySelectorAll('main article s,main article del')].every(mrp=>mrp.parentElement.querySelector('[data-hidi-price-badge]')));};
    const facts=page=>page.locator('main article h3 a').evaluateAll(nodes=>nodes.map(n=>({name:n.textContent,path:new URL(n.href).pathname,card:n.closest('article').textContent})).sort((a,b)=>a.path.localeCompare(b.path)));
    try{
     // No-JavaScript visitors see the same useful content and working links.
@@ -56,17 +57,17 @@ export async function probe(base,output,{baseline,fixtures={},inventory}={}){
        continue;
       }
       if(path.startsWith('/collections/')){
-       await page.locator('main article').first().waitFor();const actual=await facts(page);assert(actual.length>0);
+       await page.locator('main article').first().waitFor();await settledCatalogue(page);const actual=await facts(page);assert(actual.length>0);
        if(path==='/collections/all'){
         await page.getByRole('heading',{level:1,name:copy.collectionHeading,exact:true}).waitFor();
         await page.getByText(copy.intro,{exact:true}).waitFor();assert.equal(await page.title(),copy.collectionTitle);
         await page.screenshot({path:`${output}/${engine}-${width}-collection.png`});
        }
        if(inventory){const slug=path.split('/').at(-1);assert.deepEqual(actual.map(x=>x.path).sort(),inventory[slug].map(p=>'/products/'+p.slug).sort());}
-       if(baseline){const prior=await open(baseline,path,true);await prior.locator('main article').first().waitFor();assert.deepEqual(actual,await facts(prior),'Product content or prices changed');await close(prior);}
+       if(baseline){const prior=await open(baseline,path,true);await prior.locator('main article').first().waitFor();await settledCatalogue(prior);assert.deepEqual(actual,await facts(prior),'Product content or prices changed');await close(prior);}
        if(width>=700)await page.getByLabel('Sort products').selectOption({label:'Price: Low to high'});
        else{const trigger=page.getByRole('button',{name:/Filter.*Sort/i}),dialog=page.getByRole('dialog',{name:'Product filters'});for(let attempt=0;attempt<5&&!await dialog.isVisible();attempt++){if(await trigger.getAttribute('aria-expanded')!=='true')await trigger.click();try{await dialog.waitFor({state:'visible',timeout:3000});}catch(error){if(attempt===4)throw error;}}await dialog.getByRole('radio',{name:'Price: Low to high',exact:true}).check();await dialog.getByRole('button',{name:'Close filters'}).click();}
-       assert.deepEqual(await facts(page),actual,'Sorting changed product set');
+       await settledCatalogue(page);assert.deepEqual(await facts(page),actual,'Sorting changed product set');
        if(path==='/collections/all'){
         const product=page.locator('main article h3 a').first(),name=await product.innerText();await product.click({position:{x:8,y:8}});await page.waitForURL('**/products/**');await page.getByRole('heading',{level:1,name,exact:true}).waitFor();assert(await page.locator('script[type="application/ld+json"]').count()>0);
         await page.screenshot({path:`${output}/${engine}-${width}-product.png`});
