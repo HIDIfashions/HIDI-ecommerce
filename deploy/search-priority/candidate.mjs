@@ -56,7 +56,7 @@ async function start(image){
 try{
   // Separate containers preserve the exact image entrypoint and environment,
   // while isolating each runtime's internal storefront port.
-  const baseline=await start(images.baseImage),base=await start(images.candidateTag);
+  const baseline=await start(images.baselineTag),base=await start(images.candidateTag);
   const headers={'X-Forwarded-Host':'hidiindia.com','X-Forwarded-Proto':'https'};
   const original=await (await fetch(baseline+'/google-products.xml',{headers})).text();
   const updated=await (await fetch(base+'/google-products.xml',{headers})).text();

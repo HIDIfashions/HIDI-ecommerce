@@ -37,7 +37,8 @@ def capture():
     tag=images.REGISTRY+'/hidi-web:backup-search-priority-'+guard.run_key()
     authfile=Path(os.environ.get('DOCKER_CONFIG',str(Path.home()/'.docker')))/'config.json'
     subprocess.run(['skopeo','copy','--all','--preserve-digests','--authfile',str(authfile),'docker://'+image,'docker://'+tag],check=True)
-    subprocess.run(['docker','pull',image],check=True)
+    flat=load('flatten_image',HERE/'flatten-image.py').flatten(image,'hidi-search-baseline:'+guard.run_key(),PRIVATE/'flatten',authfile)
+    save('flatten.json',flat)
     value=subprocess.check_output(['az','acr','repository','show','--name','acrhidiprod0927','--image','hidi-web:backup-search-priority-'+guard.run_key(),'--query','digest','-o','tsv','--only-show-errors'],text=True).strip()
     assert value==image.split('@',1)[1],'Backup digest mismatch'
     save('web-backup.json',{'verified':True,'originalImage':image,'backupTag':tag,'digest':value,'settingsHash':before['hidi-web']['settingsHash']})
@@ -50,14 +51,14 @@ def backups():
 def compose():
     before=photo.states();backups();photo.unchanged(before)
     folder=PRIVATE/'web';folder.mkdir();base,overlay,candidate=(folder/n for n in ['base-app','overlay','candidate-app'])
-    images.extract(before['hidi-web']['image'],base);plan=patcher.patch_runtime(base,overlay);save('patch.json',plan)
+    baseline=read('flatten.json')['baselineTag'];images.extract(baseline,base);plan=patcher.patch_runtime(base,overlay);save('patch.json',plan)
     for name in plan['allowedFiles']:
         if name.endswith(('.js','.mjs')): subprocess.run(['node','--check',str(overlay/name)],check=True)
-    (folder/'Dockerfile').write_text('FROM '+before['hidi-web']['image']+'\nCOPY --chown=node:node overlay/ /app/\n')
+    (folder/'Dockerfile').write_text('FROM '+baseline+'\nCOPY --chown=node:node overlay/ /app/\n')
     subprocess.run(['docker','build','--pull=false','-t',own_tag(),str(folder)],check=True);images.extract(own_tag(),candidate)
-    configs=json.loads(images.docker('image','inspect',before['hidi-web']['image'],own_tag()))
+    configs=json.loads(images.docker('image','inspect',baseline,own_tag()))
     report=guard.preserve.verify(base,candidate,overlay,set(plan['allowedFiles']),configs)
-    report.update({'baseImage':before['hidi-web']['image'],'candidateImageId':image_id(own_tag()),'candidateTag':own_tag()});save('web-preservation.json',report)
+    report.update({'baseImage':before['hidi-web']['image'],'baselineTag':baseline,'candidateImageId':image_id(own_tag()),'candidateTag':own_tag()});save('web-preservation.json',report)
     photo.unchanged(before);print('PASS: only reviewed collection content changed')
 def fresh_source():
     head=subprocess.check_output(['git','ls-remote','origin','refs/heads/migration/azure-sql-blob'],text=True).split()[0]
@@ -66,7 +67,7 @@ def fresh_source():
 def seal():
     fresh_source()
     photo.unchanged(photo.states());manifest={}
-    for name in ['candidate/report.json','inventory.json','patch.json','web-preservation.json']:
+    for name in ['candidate/report.json','inventory.json','patch.json','web-preservation.json','flatten.json']:
         value=read(name);assert value.get('passed') is True,name+' must pass';manifest[name]=digest(EVIDENCE/name)
     assert read('candidate/report.json')['engines']==['chromium','firefox','webkit'] and len(read('candidate/report.json')['results'])==9
     assert read('candidate/report.json')['baselineCompared'] is True
