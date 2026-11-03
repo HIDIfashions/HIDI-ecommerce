@@ -23,6 +23,7 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
      if(url.pathname==='/api/hidi/performance'||/(^|\.)(google-analytics\.com|analytics\.google\.com|cloudflareinsights\.com)$/.test(url.hostname))return route.fulfill({status:204});
      writes.push({path:url.pathname,method:req.method()});return route.abort();
     }
+    if(req.method()==='GET'&&url.pathname==='/api/admin/session')return route.fulfill({status:401,contentType:'application/json',body:'{"message":"Admin access required"}'});
     if(req.resourceType()==='script'&&/(^|\.)(googletagmanager\.com|google-analytics\.com|analytics\.google\.com|cloudflareinsights\.com|connect\.facebook\.net)$/.test(url.hostname))return route.fulfill({status:200,contentType:'application/javascript',body:''});
     if(Object.hasOwn(fixtures,url.pathname))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(fixtures[url.pathname])});
     if(Object.hasOwn(fixtureAssets,url.pathname))return route.fulfill({status:200,...fixtureAssets[url.pathname]});
@@ -36,6 +37,7 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
     const page=await context.newPage(),pending=new Set();pendingReads.set(page,pending);
     page.on('request',r=>{if(['fetch','xhr'].includes(r.resourceType())&&['GET','HEAD'].includes(r.method())&&new URL(r.url()).pathname.startsWith('/api/'))pending.add(r);});
     for(const event of ['requestfinished','requestfailed'])page.on(event,r=>pending.delete(r));
+    page.on('framenavigated',frame=>{if(frame===page.mainFrame())pending.clear();});
     const handler=e=>(prior?baselineErrors:errors).push({engine,width,path,message:e.message});errorHandlers.set(page,handler);page.on('pageerror',handler);
     await navigate(page,origin+path,gatewayRetries);return page;
    };
@@ -91,8 +93,9 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
       }
       const privatePage=['/cart','/checkout','/account','/admin'].includes(path);
       if(privatePage){
+       if(path==='/admin')await page.waitForURL('**/admin/sign-in**');
        assert.match(await page.locator('meta[name="robots"]').first().getAttribute('content'),/noindex/);
-       if(baseline){const prior=await open(baseline,path,true);await prior.waitForTimeout(800);await close(prior);}
+       if(baseline){const prior=await open(baseline,path,true);if(path==='/admin')await prior.waitForURL('**/admin/sign-in**');await prior.waitForTimeout(800);await close(prior);}
       }else{
        assert(!/noindex/.test(await page.locator('meta[name="robots"]').first().getAttribute('content')));
        const canonical=await page.locator('link[rel="canonical"]').first().getAttribute('href');assert.equal(canonical,'https://hidiindia.com'+new URL(page.url()).pathname);
@@ -107,7 +110,8 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
   }}finally{await browser.close();}
  }
  const priorErrors=baseline?baselineErrors:JSON.parse(await readFile('evidence/search-priority/candidate/report.json','utf8')).baselineErrors;
- const existing=errors.filter(e=>['/cart','/checkout'].includes(e.path)&&/Minified React error #418/.test(e.message)&&priorErrors.some(b=>b.path===e.path&&b.message===e.message));
+ const normalized=message=>message.replace(/(?:https?:\/)?\/(?:127\.0\.0\.1:\d+|hidiindia\.com)(?=\/api\/)/g,'/<origin>');
+ const existing=errors.filter(e=>((['/cart','/checkout'].includes(e.path)&&/Minified React error #418/.test(e.message))||(e.path==='/admin'&&/\/api\/admin\/session due to access control checks\.$/.test(e.message)))&&priorErrors.some(b=>b.path===e.path&&b.engine===e.engine&&normalized(b.message)===normalized(e.message)));
  const newErrors=errors.filter(e=>!existing.includes(e));assert.deepEqual(newErrors,[]);assert.deepEqual(writes,[]);
  const report={passed:true,engines:['chromium','firefox','webkit'],results,baselineCompared:!!baseline,baselineErrors,liveWrites:0,blockedSessionCalls,existingPrivateErrors:existing,newRuntimeErrors:newErrors,gatewayRetries};
  await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
