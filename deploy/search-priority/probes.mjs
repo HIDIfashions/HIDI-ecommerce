@@ -10,6 +10,7 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
  const results=[],writes=[],errors=[],baselineErrors=[],gatewayRetries=[];let blockedSessionCalls=0;
  const raw=async(origin,path)=>{const r=await fetch(origin+path,{headers,signal:AbortSignal.timeout(45000)});assert(r.ok,path+' status '+r.status);return r.text();};
  const home=await raw(base,'/');assert(home.includes(copy.heading)&&home.includes(copy.intro));assert(home.includes('data-hidi-first-image="true"'),'Preserve image before JS');
+ const admin=await raw(base,'/admin');assert(/<meta(?=[^>]*name=["']robots)(?=[^>]*content=["'][^"']*noindex)[^>]*>/i.test(admin),'Admin entry must remain noindex');
  const all=await raw(base,'/collections/all');const decoded=all.replaceAll('&amp;','&');assert(decoded.includes(copy.collectionHeading)&&decoded.includes(copy.intro)&&decoded.includes(copy.collectionTitle));
  for(const path of ['/robots.txt','/sitemap.xml','/google-products.xml']){const content=await raw(base,path);if(baseline)assert.equal(content,await raw(baseline,path),path+' changed');}
  for(const engine of ['chromium','firefox','webkit']){
@@ -39,7 +40,7 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
     for(const event of ['requestfinished','requestfailed'])page.on(event,r=>pending.delete(r));
     page.on('framenavigated',frame=>{if(frame===page.mainFrame())pending.clear();});
     const handler=e=>(prior?baselineErrors:errors).push({engine,width,path,message:e.message});errorHandlers.set(page,handler);page.on('pageerror',handler);
-    await navigate(page,origin+path,gatewayRetries);return page;
+    await navigate(page,origin+(path==='/admin'?'/admin/sign-in':path),gatewayRetries);return page;
    };
    const close=async page=>{
     const pending=pendingReads.get(page);let quiet=0;
@@ -66,6 +67,7 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
        await page.getByRole('heading',{name:copy.heading,exact:true}).waitFor();
        await page.waitForFunction(()=>{const i=document.querySelector('.hero img.hero-live-media');return i?.complete&&i.naturalWidth>0&&getComputedStyle(i).visibility==='visible';});
        assert.equal(await page.locator('h1').count(),1);await discovery.scrollIntoViewIfNeeded();
+       assert(await page.evaluate(async()=>{await document.fonts.ready;const sample=()=>JSON.stringify([document.documentElement.scrollWidth,document.querySelector('.site-header')?.getBoundingClientRect().height,document.querySelector('[data-hidi-home-discovery]')?.getBoundingClientRect().height]);const first=sample();for(let i=0;i<5;i++){await new Promise(r=>setTimeout(r,100));if(sample()!==first)return false;}return true;}),'Homepage layout did not settle');
        await page.screenshot({path:`${output}/${engine}-${width}-home-copy.png`});
        await discovery.getByRole('link',{name:copy.cta,exact:true}).click();await page.waitForURL('**/collections/all');await page.locator('main article').first().waitFor();
        continue;
@@ -103,7 +105,7 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
       }
      }catch(error){await page.screenshot({path:`${output}/${engine}-${width}-failure.png`}).catch(()=>{});await writeFile(output+'/failure.html',await page.content()).catch(()=>{});throw error;}finally{await close(page);}
     }
-    results.push({engine,width,routes:routes.length,initialAndRenderedCopy:true,sorting:true,productDetails:true,privateNoindex:true,status:'PASS'});
+    results.push({engine,width,routes:routes.length,initialAndRenderedCopy:true,homeLayoutStable:true,adminEntryNoindex:true,signedOutAdminPage:'/admin/sign-in',sorting:true,productDetails:true,privateNoindex:true,status:'PASS'});
     await writeFile(output+'/progress.json',JSON.stringify({results,errors,baselineErrors,writes},null,2));console.log('PASS branded search regression',engine,width);
    }catch(error){await writeFile(output+'/failure.json',JSON.stringify({engine,width,message:String(error),errors,baselineErrors,writes},null,2));throw error;}
    finally{await context.close();}
@@ -112,8 +114,12 @@ export async function probe(base,output,{baseline,fixtures={},fixtureAssets={},i
  const priorErrors=baseline?baselineErrors:JSON.parse(await readFile('evidence/search-priority/candidate/report.json','utf8')).baselineErrors;
  const normalized=message=>message.replace(/(?:https?:\/)?\/(?:127\.0\.0\.1:\d+|hidiindia\.com)(?=\/api\/)/g,'/<origin>');
  const existing=errors.filter(e=>((['/cart','/checkout'].includes(e.path)&&/Minified React error #418/.test(e.message))||(e.path==='/admin'&&/\/api\/admin\/session due to access control checks\.$/.test(e.message)))&&priorErrors.some(b=>b.path===e.path&&b.engine===e.engine&&normalized(b.message)===normalized(e.message)));
- const newErrors=errors.filter(e=>!existing.includes(e));assert.deepEqual(newErrors,[]);assert.deepEqual(writes,[]);
- const report={passed:true,engines:['chromium','firefox','webkit'],results,baselineCompared:!!baseline,baselineErrors,liveWrites:0,blockedSessionCalls,existingPrivateErrors:existing,newRuntimeErrors:newErrors,gatewayRetries};
+ // A single deferred resize notification is a browser layout warning.
+ // Repetition or unstable measured layout still fails; all other errors stay fatal.
+ const browserWarnings=errors.filter(e=>e.path==='/'&&e.message==='ResizeObserver loop completed with undelivered notifications.');
+ for(const warning of browserWarnings)assert.equal(browserWarnings.filter(e=>e.engine===warning.engine&&e.width===warning.width).length,1,'Repeated ResizeObserver loop');
+ const newErrors=errors.filter(e=>!existing.includes(e)&&!browserWarnings.includes(e));assert.deepEqual(newErrors,[]);assert.deepEqual(writes,[]);
+ const report={passed:true,engines:['chromium','firefox','webkit'],results,baselineCompared:!!baseline,baselineErrors,liveWrites:0,blockedSessionCalls,existingPrivateErrors:existing,browserWarnings,newRuntimeErrors:newErrors,gatewayRetries};
  await writeFile(output+'/report.json',JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]===new URL(import.meta.url).pathname)await probe(process.argv[2],process.argv[3]);
