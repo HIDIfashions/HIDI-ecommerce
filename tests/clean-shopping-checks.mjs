@@ -16,20 +16,16 @@ export async function checkCollection(page) {
   assert(geometry.font<=28&&geometry.font>=21,'Modest readable heading');
   assert(!geometry.overflow);
   if(new URL(page.url()).pathname==='/collections/all') {
-    const guide=page.locator('.hidi-collection-guidance');
-    assert.equal(await guide.count(),1);
-    assert.equal(await guide.evaluate(el=>el.open),false);
-    assert(await guide.evaluate(el=>el.getBoundingClientRect().top>=[...document.querySelectorAll('main article')].at(-1).getBoundingClientRect().bottom));
-    await guide.locator('summary').focus();await page.keyboard.press('Enter');
-    assert(await guide.evaluate(el=>el.open));
-    assert.match(await guide.innerText(),/Find your HIDI for everyday dressing/);
-    assert.equal(await guide.locator('p').count(),2);
-    await guide.locator('summary').click();assert.equal(await guide.evaluate(el=>el.open),false);
+    assert.equal((await heading.innerText()).trim(),'Shop All');
+    assert.equal(await page.locator('.hidi-collection-guidance').count(),0);
+    assert.equal(await page.getByText('Discover HIDI kurta sets',{exact:true}).count(),0);
   }
+  assert.equal(await page.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(243, 235, 221)');
   assert(await first.isVisible());
 }
 
 export async function checkProductDetails(page) {
+  assert.equal(await page.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(243, 235, 221)');
   const group=page.locator('[data-hidi-product-details]');await group.waitFor();
   assert.deepEqual(await group.locator('summary').allTextContents(),['Fabric & design','What’s included','Size & fit','Care instructions','Delivery & returns']);
   assert.equal(await page.locator('[aria-label="Product quality and fit summary"]').count(),0);

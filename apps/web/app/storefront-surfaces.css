@@ -1,7 +1,7 @@
 /* Public storefront surfaces, loaded after compatibility and typography rules.
    Keep brand chrome, semantic states, swatches and image pixels untouched. */
 :root {
-  --hidi-page-bg: #fbf6f2;
+  --hidi-page-bg: #f3ebdd;
   --paper: var(--hidi-page-bg);
   --ivory: var(--hidi-page-bg);
 }

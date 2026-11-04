@@ -17,7 +17,7 @@ test('surface overrides load after typography and compatibility styles', () => {
   assert(index > layout.indexOf('import "./launch-overrides.css"'));
 });
 test('one shared ivory token drives public surfaces', () => {
-  assert.match(css, /--hidi-page-bg:\s*#fbf6f2;/);
+  assert.match(css, /--hidi-page-bg:\s*#f3ebdd;/);
   assert.match(css, /--paper:\s*var\(--hidi-page-bg\);/);
   assert.match(css, /--ivory:\s*var\(--hidi-page-bg\);/);
 });
@@ -31,17 +31,17 @@ test('collection title is 24px desktop and 22px mobile, using shared font', () =
   assert.match(css, /\.collection-page \.collection-header h1\s*\{[^}]*font-family:\s*var\(--font-sans\);[^}]*font-size:\s*24px;/);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.collection-page \.collection-header h1\s*\{\s*font-size:\s*22px;/);
 });
-test('Shop All keeps one heading and approved guidance after the product browser', () => {
+test('Shop All keeps one simple heading and no extra collection copy', () => {
   const page = read('apps/web/app/collections/all/page.tsx');
   const markup = page.match(/<header className="collection-header"[^>]*>([\s\S]*?)<\/header>/)[1];
   assert.match(page, /const title = "HIDI Kurta Sets & Indian Wear";/);
   assert(page.includes("Explore HIDI kurta sets for everyday dressing, work and celebrations. Browse printed and embroidered styles, then compare each outfit’s fabric, included pieces and available sizes."));
-  assert.match(page, /position: 2, name: title, item: absoluteUrl\("\/collections\/all"\)/);
+  assert.match(page, /position: 2, name: "Shop All", item: absoluteUrl\("\/collections\/all"\)/);
   assert.match(page, /<header className="collection-header">/);
   assert.equal((markup.match(/<h1>/g)||[]).length,1);
   assert.doesNotMatch(markup, /<p|hidi-collection-intro/);
-  assert(page.indexOf('className="hidi-collection-guidance"') > page.indexOf('<CollectionBrowser'));
-  assert.match(page, /<summary>Discover HIDI kurta sets<\/summary>/);
+  assert.match(markup, /<h1>Shop All<\/h1>/);
+  assert.doesNotMatch(page, /hidi-collection-guidance|Discover HIDI kurta sets/);
   assert.doesNotMatch(page, /<CollectionLinks/);
 });
 test('named collection headings remain a single title without injected SEO copy or links', () => {

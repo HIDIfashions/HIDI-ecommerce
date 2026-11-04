@@ -1,7 +1,7 @@
 import { checkCollection, checkProductDetails } from './clean-shopping-checks.mjs';
 export async function runCleanShoppingChecks({browser,engine,scenario,products,until}) {
   for(const width of [320,390,768,1440]) {
-    await scenario(browser,engine,'CLEAN-COLLECTION-'+width,'Approved collection layout and accessible below-grid guidance',async page=>{
+    await scenario(browser,engine,'CLEAN-COLLECTION-'+width,'Shop All layout, ivory background and no extra collection text',async page=>{
       await page.locator('main article').first().waitFor();
       await checkCollection(page);
     },{startPath:'/collections/all',viewport:{width,height:900}});

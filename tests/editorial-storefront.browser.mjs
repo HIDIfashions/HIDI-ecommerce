@@ -181,7 +181,7 @@ try{
         await page.setViewportSize({width,height:1000});await page.evaluate(()=>scrollTo(0,0));await until(()=>page.locator('.site-header').getAttribute('data-scrolled').then(v=>v==='false'),'top header state');
         const state=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,neutral:[...document.querySelectorAll('[data-neutral-surface]')].map(el=>({bg:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage})),h1:document.querySelectorAll('main h1').length,fields:[...document.querySelectorAll('[data-editorial-product] select')].length}));
         assert(state.scroll<=state.width+1,`Horizontal overflow at ${width}`);assert.equal(state.h1,1);assert.equal(state.fields,0);assert.equal(state.neutral.length,6);
-        for(const surface of state.neutral){assert.equal(surface.bg,'rgb(251, 246, 242)');assert.equal(surface.image,'none');}
+        for(const surface of state.neutral){assert.equal(surface.bg,'rgb(243, 235, 221)');assert.equal(surface.image,'none');}
         await fontAudit(page,engine,`homepage-${width}`);
         const name=await card(page).locator('h3').evaluate(el=>getComputedStyle(el).fontSize),price=await card(page).locator('h3 + p').evaluate(el=>getComputedStyle(el).fontSize).catch(()=>null);
         const actualPrice=await card(page).locator('p').first().evaluate(el=>getComputedStyle(el).fontSize);assert.equal(name,'14px');assert.equal(actualPrice,name,'Product name and price share the same type role');

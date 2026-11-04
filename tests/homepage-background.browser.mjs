@@ -46,9 +46,9 @@ try {
       const headerBox = header.getBoundingClientRect(), heroBox = hero.getBoundingClientRect();
       return { headerSurfaceColor: getComputedStyle(header, "::before").backgroundColor, headerBottom: headerBox.bottom, heroTop: heroBox.top, home: style(home), homePaint: effective(home), neutral: neutral.map(el => ({ className: el.className, ...style(el), paint: effective(el) })), boundary: { upper: effective(privilege), lower: effective(featured) }, header: style(document.querySelector(".site-header")), headerSurface: getComputedStyle(document.querySelector(".site-header"), "::before").backgroundImage, headerInner: style(document.querySelector(".site-header .header-inner")), scrollWidth: document.documentElement.scrollWidth, viewport: innerWidth };
     });
-    results.push({ width, ...snapshot }); assert.equal(snapshot.neutral.length, 6, "All neutral homepage sections must be inspected"); assert.equal(snapshot.homePaint, "rgb(251, 246, 242)");
+    results.push({ width, ...snapshot }); assert.equal(snapshot.neutral.length, 6, "All neutral homepage sections must be inspected"); assert.equal(snapshot.homePaint, "rgb(243, 235, 221)");
     for (const section of snapshot.neutral) { assert.equal(section.image, "none", section.className); assert.equal(section.paint, snapshot.homePaint, section.className); }
-    assert.deepEqual(snapshot.boundary, { upper: "rgb(251, 246, 242)", lower: "rgb(251, 246, 242)" }); assert.equal(snapshot.headerInner.color, "rgba(0, 0, 0, 0)"); assert.equal(snapshot.headerInner.image, "none");
+    assert.deepEqual(snapshot.boundary, { upper: "rgb(243, 235, 221)", lower: "rgb(243, 235, 221)" }); assert.equal(snapshot.headerInner.color, "rgba(0, 0, 0, 0)"); assert.equal(snapshot.headerInner.image, "none");
     // Mobile/tablet navigation has its own solid brand surface; desktop keeps the editorial overlay.
     if (width <= 1000) {
       assert.equal(snapshot.headerSurface, "none", `${width}: mobile header must not overlay a gradient on the garment`);
