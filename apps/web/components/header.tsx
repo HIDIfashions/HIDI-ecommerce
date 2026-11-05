@@ -11,10 +11,10 @@ import iconStyles from "./header-icons.module.css";
 import { focusFirst, trapFocus } from "@/lib/focus-management";
 
 const mobileLinks = [
-  ["Casual Wear", "/collections/casual-wear"],
-  ["Work Wear", "/collections/work-wear"],
-  ["Occasional Wear", "/collections/occasional-wear"],
-  ["Ananya’s Pick", "/collections/ananyas-pick"],
+  ["Daily Dose", "/collections/casual-wear"],
+  ["Chill Vibes", "/collections/work-wear"],
+  ["Pretty Little Plans", "/collections/occasional-wear"],
+  ["Ananya’s Closet", "/collections/ananyas-pick"],
 ] as const;
 
 export function Header() {

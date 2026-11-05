@@ -1,4 +1,4 @@
-const RANGE_TEXT_DEFAULTS = {"version":1,"eyebrow":"A WARDROBE FOR EVERY YOU","heading":"Explore our","accent":"range.","subtitle":"Your next favourite is waiting to be found.","footer":"A little preview of what’s inside.","buttonLabel":"Explore the collections","cards":{"range-everyday":{"title":"Casual Wear"},"range-work-edit":{"title":"Work Wear"},"range-occasion":{"title":"Occasional Wear"},"range-new-arrivals":{"title":"Ananya’s Pick"},"range-shop-all":{"title":"Ananya’s Pick"}}};
+const RANGE_TEXT_DEFAULTS = {"version":1,"eyebrow":"A WARDROBE FOR EVERY YOU","heading":"Explore our","accent":"range.","subtitle":"Your next favourite is waiting to be found.","footer":"A little preview of what’s inside.","buttonLabel":"Explore the collections","cards":{"range-everyday":{"title":"Daily Dose"},"range-work-edit":{"title":"Chill Vibes"},"range-occasion":{"title":"Pretty Little Plans"},"range-new-arrivals":{"title":"Ananya’s Closet"},"range-shop-all":{"title":"Ananya’s Closet"}}};
 const RANGE_TEXT_LIMITS = {eyebrow:80,heading:80,accent:40,subtitle:200,footer:160,buttonLabel:60};
 function publicRangeText(raw) {
   const result={version:1,cards:{}};

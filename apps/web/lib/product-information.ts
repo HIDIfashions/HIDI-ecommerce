@@ -13,62 +13,62 @@ const PRODUCT_INFORMATION: Record<string, ProductInformation> = {
   "aara-sage-work-kurta": {
     productType: "Straight Kurta",
     fitDetail: "Straight fit with minimal thread detailing",
-    edit: "Work Wear",
+    edit: "Chill Vibes",
   },
   "sana-sand-kurta-set": {
     productType: "Kurta Set",
     fitDetail: "Relaxed straight fit with minimal tonal detailing",
-    edit: "Casual Wear",
+    edit: "Daily Dose",
   },
   "mahira-indigo-kurta-set": {
     productType: "Kurta Set",
     fitDetail: "Straight tailored fit with subtle neckline detailing",
-    edit: "Work Wear",
+    edit: "Chill Vibes",
   },
   "ira-beige-office-kurta-set": {
     productType: "Office Kurta Set",
     fitDetail: "Straight fit with minimal surface detailing",
-    edit: "Work Wear",
+    edit: "Chill Vibes",
   },
   "nivya-olive-work-kurta": {
     productType: "Work Kurta",
     fitDetail: "Straight fit with fine tonal embroidery",
-    edit: "Work Wear",
+    edit: "Chill Vibes",
   },
   "tara-dusty-rose-straight-kurta": {
     productType: "Straight Kurta",
     fitDetail: "Straight fit with minimal neckline detail",
-    edit: "Work Wear",
+    edit: "Chill Vibes",
   },
   "diya-blue-everyday-kurta": {
     productType: "Casual Wear Kurta",
     fitDetail: "Relaxed straight fit with minimal detailing",
-    edit: "Casual Wear",
+    edit: "Daily Dose",
   },
   "myra-peach-comfort-kurta-set": {
     productType: "Comfort Kurta Set",
     fitDetail: "Relaxed fit with fine tonal detailing",
-    edit: "Casual Wear",
+    edit: "Daily Dose",
   },
   "rhea-mint-daily-kurta": {
     productType: "Daily Kurta",
     fitDetail: "Straight fit with minimal embroidery",
-    edit: "Casual Wear",
+    edit: "Daily Dose",
   },
   "anika-ivory-embroidered-set": {
     productType: "Embroidered Set",
     fitDetail: "Straight coordinated fit with thread embroidery",
-    edit: "Occasional Wear",
+    edit: "Pretty Little Plans",
   },
   "kiara-wine-festive-kurta-set": {
     productType: "Festive Kurta Set",
     fitDetail: "Straight fit with embroidery and subtle accents",
-    edit: "Occasional Wear",
+    edit: "Pretty Little Plans",
   },
   "meher-gold-beige-occasion-set": {
     productType: "Occasion Set",
     fitDetail: "Structured straight fit with fine embroidery and subtle festive detailing",
-    edit: "Occasional Wear",
+    edit: "Pretty Little Plans",
   },
 };
 

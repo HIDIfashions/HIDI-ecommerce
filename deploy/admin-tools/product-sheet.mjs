@@ -7,6 +7,7 @@ const labels = new Map(Object.entries({
   'fabric': 'fabric', 'wash care': 'care', 'care': 'care', 'care instructions': 'care',
   'size': 'sizes', 'sizes': 'sizes', 'available sizes': 'sizes',
   'price': 'price', 'selling price': 'price', 'mrp': 'mrp',
+  "ananya's closet": 'ananyaPick', 'ananyas closet': 'ananyaPick', 'ananyas_closet': 'ananyaPick',
   "ananya's pick": 'ananyaPick', 'ananyas pick': 'ananyaPick', 'ananyas_pick': 'ananyaPick',
 }));
 const normalize = v => v.toLowerCase().trim().replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
@@ -19,7 +20,7 @@ export function optionalBoolean(raw) {
   throw new Error("Ananya's Pick must be TRUE/YES/1, FALSE/NO/0, or blank to keep the current choice.");
 }
 export function subcategoryPick(subcategory, raw) {
-  const explicit = optionalBoolean(raw), named = normalize(String(subcategory ?? '')).replace(/'/g, '') === 'ananyas pick';
+  const explicit = optionalBoolean(raw), named = ['ananyas pick','ananyas closet'].includes(normalize(String(subcategory ?? '')).replace(/'/g, ''));
   if (named && explicit === false) throw new Error("Subcategory Ananya's Pick conflicts with FALSE. Review the tag before saving.");
   return explicit ?? (named ? true : undefined);
 }

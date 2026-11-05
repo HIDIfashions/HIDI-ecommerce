@@ -1,7 +1,7 @@
 [
   {
     "id": "casual-wear",
-    "name": "Casual Wear",
+    "name": "Daily Dose",
     "description": "For your everyday kind of lovely",
     "image": "images/burgundy-set.webp",
     "alt": "Burgundy kurta and trouser set with a matching dupatta",
@@ -10,7 +10,7 @@
   },
   {
     "id": "work-wear",
-    "name": "Work Wear",
+    "name": "Chill Vibes",
     "description": "From first meetings to last plans",
     "image": "images/cream-set.webp",
     "alt": "Cream Indian-wear set with a lightly embroidered kurta",
@@ -19,7 +19,7 @@
   },
   {
     "id": "occasional-wear",
-    "name": "Occasional Wear",
+    "name": "Pretty Little Plans",
     "description": "For the moments that matter",
     "image": "images/occasion-set.webp",
     "alt": "Orange embellished occasion outfit with a deep teal dupatta",
@@ -29,21 +29,21 @@
   {
     "id": "ananyas-pick-1",
     "collectionId": "ananyas-pick",
-    "name": "Ananya’s Pick",
+    "name": "Ananya’s Closet",
     "description": "Ananya’s selected styles — photo 1",
     "image": "images/ananya-top-picks/ananya-green.webp",
-    "alt": "Ananya’s Pick — photo 1",
+    "alt": "Ananya’s Closet — photo 1",
     "mediaSlot": "range-new-arrivals",
-    "controlName": "Ananya’s Pick - Photo 1"
+    "controlName": "Ananya’s Closet - Photo 1"
   },
   {
     "id": "ananyas-pick-2",
     "collectionId": "ananyas-pick",
-    "name": "Ananya’s Pick",
+    "name": "Ananya’s Closet",
     "description": "Ananya’s selected styles — photo 2",
     "image": "images/ananya-top-picks/ananya-orange.webp",
-    "alt": "Ananya’s Pick — photo 2",
+    "alt": "Ananya’s Closet — photo 2",
     "mediaSlot": "range-shop-all",
-    "controlName": "Ananya’s Pick - Photo 2"
+    "controlName": "Ananya’s Closet - Photo 2"
   }
 ]

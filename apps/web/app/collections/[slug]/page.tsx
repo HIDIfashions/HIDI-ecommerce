@@ -9,20 +9,20 @@ export const dynamic = "force-dynamic";
 const labels: Record<string, { title: string; copy: string }> = {
   all: { title: "Shop All", copy: "Explore the complete HIDI edit in one place." },
   "new-arrivals": { title: "All Products", copy: "Explore the complete HIDI edit in one place." },
-  "work-edit": { title: "Work Wear", copy: "Considered Indian wear for your working week." },
-  everyday: { title: "Casual Wear", copy: "Easy HIDI styles for everyday plans." },
-  occasion: { title: "Occasional Wear", copy: "HIDI styles for celebrations and special occasions." },
+  "work-edit": { title: "Chill Vibes", copy: "Considered Indian wear for your working week." },
+  everyday: { title: "Daily Dose", copy: "Easy HIDI styles for everyday plans." },
+  occasion: { title: "Pretty Little Plans", copy: "HIDI styles for celebrations and special occasions." },
   "casual-wear": {"title": "Casual Kurta Sets for Women", "copy": "Explore casual kurta sets and Indian wear for everyday dressing. Browse printed and embroidered designs, then compare each style’s fabric, garment measurements, included pieces and available sizes. Check whether your chosen outfit includes pants, a dupatta or both."},
   "work-wear": {"title": "Office Wear Kurta Sets for Women", "copy": "Build your working wardrobe with HIDI’s office wear kurta sets. Compare straight and coordinated silhouettes, floral designs and embroidery. Check the fabric, garment measurements, included pieces and available sizes on each product before choosing your work outfit."},
   "occasional-wear": {"title": "Occasion Wear Kurta & Anarkali Sets", "copy": "Explore occasion wear kurta and Anarkali sets for celebrations and festive plans. Discover embroidered designs and outfits with dupattas, with the exact included pieces listed on each product. Compare fabric, garment measurements and available sizes before choosing your outfit."},
-  "ananyas-pick": { title: "Ananya’s Pick", copy: "Ananya’s selected styles from Casual, Work and Occasional Wear." },
+  "ananyas-pick": { title: "Ananya’s Closet", copy: "Ananya’s selected styles from Casual, Work and Pretty Little Plans." },
 };
 
 // Keep descriptive search metadata separate from the short storefront heading.
 const displayTitles: Record<string, string> = {
-  "casual-wear": "Casual Wear",
-  "work-wear": "Work Wear",
-  "occasional-wear": "Occasional Wear",
+  "casual-wear": "Daily Dose",
+  "work-wear": "Chill Vibes",
+  "occasional-wear": "Pretty Little Plans",
 };
 
 export async function generateMetadata({

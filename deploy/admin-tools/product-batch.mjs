@@ -4,7 +4,7 @@ export const blankTemplate=TEMPLATE_HEADERS.join(',')+'\r\n';
 const normalize=v=>String(v??'').normalize('NFKC').trim();
 export const canonical=v=>normalize(v).replace(/\s+/g,' ').toLowerCase();
 const header=v=>canonical(v).replace(/[^a-z0-9]/g,'');
-const aliases={action:'action',productid:'id',hidisku:'sku',skn:'skn',sknno:'skn',sknnumber:'skn',productslug:'slug',producturl:'slug',productname:'name',name:'name',stylecode:'style',category:'category',subcategory:'subcategory',ananyaspick:'ananyaPick',shortdescription:'shortDescription',description:'description',fabric:'fabric',care:'care',washcare:'care',color:'color',colour:'color',sizes:'sizes',size:'sizes',sellingprice:'price',price:'price',mrp:'mrp'};
+const aliases={action:'action',productid:'id',hidisku:'sku',skn:'skn',sknno:'skn',sknnumber:'skn',productslug:'slug',producturl:'slug',productname:'name',name:'name',stylecode:'style',category:'category',subcategory:'subcategory',ananyaspick:'ananyaPick',ananyascloset:'ananyaPick',shortdescription:'shortDescription',description:'description',fabric:'fabric',care:'care',washcare:'care',color:'color',colour:'color',sizes:'sizes',size:'sizes',sellingprice:'price',price:'price',mrp:'mrp'};
 const sizes=v=>[...new Set(normalize(v).toUpperCase().split(/[,;|/]+|\s+(?=(?:XXXL|XXL|XL|L|M|S|XS|3XXL)\b)/).map(s=>s.trim()).filter(Boolean))];
 export function parseDelimited(text,delimiter=','){
   if(text.length>8*1024*1024)throw new Error('CSV is limited to 8 MB. Split the batch.');
@@ -66,11 +66,11 @@ function newProductSlug(name,supplied){
 }
 export function categoryCollectionSlug(name){
   const key=canonical(name).replace(/[.]+$/,'').trim().replace(/[\s-]+/g,'');
-  return ({casualwear:'everyday',casual:'everyday',everyday:'everyday',workwear:'work-edit',work:'work-edit',workedit:'work-edit',occasionalwear:'occasion',occasionwear:'occasion',occasional:'occasion',occasion:'occasion'})[key]??null;
+  return ({dailydose:'everyday',chillvibes:'work-edit',prettylittleplans:'occasion',casualwear:'everyday',casual:'everyday',everyday:'everyday',workwear:'work-edit',work:'work-edit',workedit:'work-edit',occasionalwear:'occasion',occasionwear:'occasion',occasional:'occasion',occasion:'occasion'})[key]??null;
 }
 export function categoryOption(options,name){
   const key=canonical(name).replace(/[.]+$/,'').trim(),slug=categoryCollectionSlug(name);
-  return (options.categories||[]).find(c=>canonical(c.name).replace(/[.]+$/,'').trim()===key||canonical(c.slug)===key)
+  return (options.categories||[]).find(c=>c.slug===({everyday:'casual-wear','work-edit':'work-wear',occasion:'occasional-wear'})[slug]) || (options.categories||[]).find(c=>canonical(c.name).replace(/[.]+$/,'').trim()===key||canonical(c.slug)===key)
     ||(slug?(options.categories||[]).find(c=>categoryCollectionSlug(c.name)===slug):null);
 }
 function selectedCollections(item,body,options){

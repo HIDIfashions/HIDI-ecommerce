@@ -87,13 +87,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const collection = (() => {
     const groups: Record<string, { slug: string; name: string }> = {
-      "casual-wear": { slug: "casual-wear", name: "Casual Wear" },
-      everyday: { slug: "casual-wear", name: "Casual Wear" },
-      "work-wear": { slug: "work-wear", name: "Work Wear" },
-      "work-edit": { slug: "work-wear", name: "Work Wear" },
-      "occasional-wear": { slug: "occasional-wear", name: "Occasional Wear" },
-      occasion: { slug: "occasional-wear", name: "Occasional Wear" },
-      "ananyas-pick": { slug: "ananyas-pick", name: "Ananya’s Pick" },
+      "casual-wear": { slug: "casual-wear", name: "Daily Dose" },
+      everyday: { slug: "casual-wear", name: "Daily Dose" },
+      "work-wear": { slug: "work-wear", name: "Chill Vibes" },
+      "work-edit": { slug: "work-wear", name: "Chill Vibes" },
+      "occasional-wear": { slug: "occasional-wear", name: "Pretty Little Plans" },
+      occasion: { slug: "occasional-wear", name: "Pretty Little Plans" },
+      "ananyas-pick": { slug: "ananyas-pick", name: "Ananya’s Closet" },
     };
     return groups[product.category?.slug ?? ""]
       ?? product.collections.map(item => groups[item.slug]).find(Boolean)

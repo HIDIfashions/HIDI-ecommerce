@@ -8,19 +8,19 @@
   "buttonLabel": "Explore the collections",
   "cards": {
     "range-everyday": {
-      "title": "Casual Wear"
+      "title": "Daily Dose"
     },
     "range-work-edit": {
-      "title": "Work Wear"
+      "title": "Chill Vibes"
     },
     "range-occasion": {
-      "title": "Occasional Wear"
+      "title": "Pretty Little Plans"
     },
     "range-new-arrivals": {
-      "title": "Ananya’s Pick"
+      "title": "Ananya’s Closet"
     },
     "range-shop-all": {
-      "title": "Ananya’s Pick"
+      "title": "Ananya’s Closet"
     }
   }
 }
