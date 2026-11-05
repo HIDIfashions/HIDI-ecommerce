@@ -17,11 +17,21 @@ export function labels(text) {
   return text;
 }
 export function tooling(text,name) {
+  const matcher='function hidiCategoryMatches(categories,value){const canonical=v=>String(v??"\").normalize("NFKC").trim().toLowerCase();const key=canonical(value).replace(/[.]+$/, "");const groups='+JSON.stringify(names)+';const group=groups.find(g=>[g.name,g.slug,...g.old,...g.aliases].some(n=>canonical(n)===key));const primary=group&&categories.find(c=>c.slug===group.slug);return primary?[primary]:categories.filter(c=>canonical(c.name)===key||c.slug===value);}\n';
+  if(name.endsWith('product-batch.mjs')&&!text.includes('export function categoryCollectionSlug')){
+    assert.equal(hash(text),'089ff5d49ef218a75f14c40d26f68ddae606f91f6d00cd91cc2689e17cb751c8','Known legacy bulk parser');return text;
+  }
+  if(name.endsWith('product-sheet.mjs')&&!text.includes('export function subcategoryPick')){
+    assert.equal(hash(text),'b7ebe6dafebe23fffe2b897083643e5ebdc80b8c348dc30e71d2cb9c62a9a528','Known legacy sheet parser');return text;
+  }
+  for(const [file,key] of [['product-bulk.mjs','row'],['product-quick-fill.mjs','parsed']])if(name.endsWith(file)){
+    const old='options.categories.find(c=>c.name.toLowerCase()==='+key+'.category.toLowerCase())';
+    if(text.includes(old)){assert.equal(text.split(old).length-1,1);text=matcher+text.replace(old,'hidiCategoryMatches(options.categories,'+key+'.category)[0]');}
+  }
   if(name.endsWith('product-upload/engine.mjs')){
     const old='options.categories.filter(c=>canonical(c.name)===canonical(group.category)||c.slug===group.category)';
-    const helper='function hidiCategoryMatches(categories,value){const key=canonical(value).replace(/[.]+$/, "");const groups='+JSON.stringify(names)+';const group=groups.find(g=>[g.name,g.slug,...g.old,...g.aliases].some(n=>canonical(n)===key));const primary=group&&categories.find(c=>c.slug===group.slug);return primary?[primary]:categories.filter(c=>canonical(c.name)===key||c.slug===value);}\n';
     assert.equal(text.split(old).length-1,1,'Upload category lookup anchor');
-    text=helper+text.replace(old,'hidiCategoryMatches(options.categories,group.category)');
+    text=matcher+text.replace(old,'hidiCategoryMatches(options.categories,group.category)');
   }
   const replacements=name.endsWith('product-batch.mjs')?[
     ["ananyaspick:'ananyaPick',","ananyaspick:'ananyaPick',ananyascloset:'ananyaPick',"],

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {labels,normalizeRange,names} from './patch-runtime.mjs';
+import {labels,normalizeRange,names,tooling} from './patch-runtime.mjs';
 import {rename} from './taxonomy.mjs';
 import {categoryCollectionSlug,categoryOption,parseWorkbook} from '../admin-tools/product-batch.mjs';
 import {subcategoryPick,parseSheet} from '../admin-tools/product-sheet.mjs';
@@ -20,6 +20,13 @@ test('runtime labels preserve descriptive product facts and URLs',()=>{
   assert.equal(labels('"Occasion: Casual Wear, Festive Wear"'),'"Occasion: Casual Wear, Festive Wear"');
   assert.equal(labels('"Ananya\\u2019s Pick"'),'"Ananya’s Closet"');
   assert.equal(labels("'Ananya\\'s Pick'"),"'Ananya’s Closet'");
+});
+test('retained bulk uploader resolves old and new names to the canonical option when legacy names duplicate',()=>{
+  const code=tooling('this.match=options.categories.find(c=>c.name.toLowerCase()===row.category.toLowerCase());','product-bulk.mjs');
+  for(const name of ['Daily Dose','Casual Wear','casual-wear']){
+    const ctx={options:{categories:[{id:'legacy',slug:'casual-ware',name:'Daily Dose'},{id:'main',slug:'casual-wear',name:'Daily Dose'}]},row:{category:name}};
+    vm.runInNewContext(code,ctx);assert.equal(ctx.match.id,'main');
+  }
 });
 test('saved default range captions change while custom captions are preserved',()=>{
   const text=readFileSync(new URL('../range-text/server-text.mjs.txt',import.meta.url),'utf8');

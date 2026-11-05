@@ -1,3 +1,4 @@
+function hidiCategoryMatches(categories,value){const canonical=v=>String(v??"").normalize("NFKC").trim().toLowerCase();const key=canonical(value).replace(/[.]+$/, "");const groups=[{"slug":"casual-wear","name":"Daily Dose","old":["Casual Wear"],"aliases":["casual-ware","everyday"]},{"slug":"work-wear","name":"Chill Vibes","old":["Work Wear","Work Edit","Workwear Edit"],"aliases":["work-edit","the-workwear-edit","the-workwear-edit-office-wear"]},{"slug":"occasional-wear","name":"Pretty Little Plans","old":["Occasional Wear","Ethnic Wear","The Ethnic Edit"],"aliases":["occasion","ethnic-wear","the-ethnic-edit"]},{"slug":"ananyas-pick","name":"Ananya’s Closet","old":["Ananya’s Pick","Ananya's Pick"],"aliases":[]}];const group=groups.find(g=>[g.name,g.slug,...g.old,...g.aliases].some(n=>canonical(n)===key));const primary=group&&categories.find(c=>c.slug===group.slug);return primary?[primary]:categories.filter(c=>canonical(c.name)===key||c.slug===value);}
 import { parseSheet, detailsPayload, pricePaise } from './product-sheet.mjs';
 const $ = id => document.getElementById(id);
 const fieldLabels = { name:'Product name', categoryId:'Category', shortDescription:'Short description', fabric:'Fabric', care:'Wash care', description:'Full product details' };
@@ -14,7 +15,7 @@ async function run(work){if(busy)return;lock(true);try{await work();}catch(e){sa
 function setTarget(next){record=next;requestId=null;$('price').value='';$('mrp').value='';$('target').textContent=next?'Updating: '+next.name+' · '+next.status:'Creating a new draft';$('target').classList.toggle('selected',Boolean(next));$('review').hidden=true;$('results').replaceChildren();$('openEditor').hidden=true;}
 function review(){
   const parsed=parseSheet($('source').value);fields={...parsed.fields};selected=new Set(Object.keys(fields));
-  if(parsed.category){const match=options.categories.find(c=>c.name.toLowerCase()===parsed.category.toLowerCase());if(match){fields.categoryId=match.id;selected.add('categoryId');}else parsed.warnings.push('Category “'+parsed.category+'” has no exact match. Choose one below if needed.');}
+  if(parsed.category){const match=hidiCategoryMatches(options.categories,parsed.category)[0];if(match){fields.categoryId=match.id;selected.add('categoryId');}else parsed.warnings.push('Category “'+parsed.category+'” has no exact match. Choose one below if needed.');}
   $('fields').replaceChildren();
   for(const [key,label] of Object.entries(fieldLabels)){
     const box=document.createElement('div');if(key==='description')box.className='wide';

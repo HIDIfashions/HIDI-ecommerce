@@ -51,7 +51,7 @@ export function parseProducts(sheets) {
       for(const [column,keyName]of Object.entries(FIELD_MAP)) {const value=row[column];if(value) {text(value,column,LIMITS[keyName]);if(group.fields[keyName]!==undefined&&group.fields[keyName]!==value)throw new Error('Conflicting '+column+' for product_key '+key+'.');group.fields[keyName]=value;}}
       merge(group,'category',row.category,'category');
       const collections=list(row.collection_slugs,'collection_slugs');if(collections){if(collections.length>20||collections.some(v=>!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v)))throw new Error('Use up to 20 exact collection slugs.');merge(group,'collectionSlugs',collections,'collection_slugs',v=>JSON.stringify([...v].sort()));}
-      const pick=bool(row.ananyas_pick,'ananyas_pick');merge(group,'ananyaPick',pick,'Ananya’s Pick',v=>String(v));
+      const pick=bool(row.ananyas_pick,'ananyas_pick');merge(group,'ananyaPick',pick,'Ananya’s Closet',v=>String(v));
       const color=text(row.color||'','color',40).replace(/\s+/g,' '),size=text(row.size||'','size',20).replace(/\s+/g,' ').toUpperCase();
       if((color&&!size)||(!color&&size)||action==='NEW'&&(!color||!size))throw new Error('Enter both colour and size for each variant row.');
       if(color&&(!slugify(color)||!slugify(size)))throw new Error('Colour and size need readable English letters or numbers.');
