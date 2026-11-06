@@ -15,7 +15,7 @@ const labels: Record<string, { title: string; copy: string }> = {
   "casual-wear": {"title": "Casual Kurta Sets for Women", "copy": "Explore casual kurta sets and Indian wear for everyday dressing. Browse printed and embroidered designs, then compare each style’s fabric, garment measurements, included pieces and available sizes. Check whether your chosen outfit includes pants, a dupatta or both."},
   "work-wear": {"title": "Office Wear Kurta Sets for Women", "copy": "Build your working wardrobe with HIDI’s office wear kurta sets. Compare straight and coordinated silhouettes, floral designs and embroidery. Check the fabric, garment measurements, included pieces and available sizes on each product before choosing your work outfit."},
   "occasional-wear": {"title": "Occasion Wear Kurta & Anarkali Sets", "copy": "Explore occasion wear kurta and Anarkali sets for celebrations and festive plans. Discover embroidered designs and outfits with dupattas, with the exact included pieces listed on each product. Compare fabric, garment measurements and available sizes before choosing your outfit."},
-  "ananyas-pick": { title: "Ananya’s Closet", copy: "Ananya’s selected styles from Casual, Work and Pretty Little Plans." },
+  "ananyas-pick": { title: "Ananya’s Closet", copy: "Ananya’s selected styles across the HIDI collections." },
 };
 
 // Keep descriptive search metadata separate from the short storefront heading.

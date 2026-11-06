@@ -7,6 +7,7 @@ export const names=JSON.parse(readFileSync(new URL('./names.json',import.meta.ur
 const hash=text=>createHash('sha256').update(text).digest('hex');
 // Match labels, captions and menu strings, leaving product descriptions intact.
 export function labels(text) {
+  text=text.replaceAll('Ananya’s selected styles from Casual, Work and Occasional Wear.','Ananya’s selected styles across the HIDI collections.');
   for(const group of names)for(const old of group.old){
     const variants=[old,JSON.stringify(old).slice(1,-1),old.replaceAll("'","\\'"),old.replaceAll('’','\\u2019'),old.replaceAll('’','&#8217;'),old.replaceAll("'",'&#39;')];
     for(const value of new Set(variants)){
@@ -48,11 +49,12 @@ export function normalizeRange(text) {
   // Saved captions may still contain an old default. Normalize exact old labels
   // at read time; custom captions and all stored media/config bytes stay intact.
   for(const fn of ['publicRangeText','HidiPublicRangeText']) {
-    const anchor='function '+fn+'(raw) {';
-    if(!text.includes(anchor))continue;
-    const dictionary=Object.fromEntries(names.flatMap(g=>g.old.map(old=>[old,g.name])));
-    const code='\n  raw=raw&&{...raw,cards:Object.fromEntries(Object.entries(raw.cards||{}).map(([key,card])=>[key,{...card,title:('+JSON.stringify(dictionary)+')[card?.title]??card?.title}]))};';
-    assert.equal(text.split(anchor).length-1,1);
+    const pattern=new RegExp('function '+fn+'\\(([A-Za-z_$][\\w$]*)\\)\\s*\\{','g');
+    const matches=[...text.matchAll(pattern)];if(!matches.length)continue;
+    assert.equal(matches.length,1);const anchor=matches[0][0],arg=matches[0][1];
+    const slots={'range-everyday':'Daily Dose','range-work-edit':'Chill Vibes','range-occasion':'Pretty Little Plans','range-new-arrivals':'Ananya’s Closet','range-shop-all':'Ananya’s Closet'};
+    const old=[...new Set(names.flatMap(g=>[...g.old,g.slug,...g.aliases]).map(s=>s.toLowerCase().replace(/[^a-z0-9]/g,'')))];
+    const code='\n'+arg+'='+arg+'&&{...'+arg+',cards:Object.fromEntries(Object.entries('+arg+'.cards||{}).map(([key,card])=>[key,{...card,title:('+JSON.stringify(old)+').includes(String(card?.title??"\").toLowerCase().replace(/[^a-z0-9]/g,"\"))?(('+JSON.stringify(slots)+')[key]??card?.title):card?.title}]))};';
     text=text.replace(anchor,anchor+code);
   }
   return text;

@@ -34,6 +34,11 @@ test('saved default range captions change while custom captions are preserved',(
   assert.equal(ctx.result.cards['range-everyday'].title,'Daily Dose');
   assert.equal(ctx.result.cards['range-work-edit'].title,'My custom caption');
 });
+test('minified live carousel normalizes saved historical labels to their destination slots',()=>{
+  const code='function HidiPublicRangeText(e){return e}';
+  const ctx={};vm.runInNewContext(normalizeRange(code)+';this.result=HidiPublicRangeText({cards:{"range-everyday":{title:"THE ETHNIC EDIT"},"range-work-edit":{title:"Ananya’s Pick"},"range-occasion":{title:"Ananya’s Pick"},"range-new-arrivals":{title:"THE WORKWEAR EDIT"},"range-shop-all":{title:"THE EVERYDAY EDIT"}}});',ctx);
+  assert.deepEqual(Object.values(ctx.result.cards).map(c=>c.title),['Daily Dose','Chill Vibes','Pretty Little Plans','Ananya’s Closet','Ananya’s Closet']);
+});
 function fixture(){
   const state={category:names.slice(0,3).map((g,i)=>({id:'c'+i,slug:g.slug,name:g.old[0],active:true,position:i})),collection:names.map((g,i)=>({id:'l'+i,slug:g.slug,name:g.old[0],active:true,position:i})),products:[{id:'p1',categoryId:'c0',status:'ACTIVE'}],links:[{productId:'p1',collectionId:'l3',position:0}]};
   state.category.push({id:'legacy',slug:'casual-ware',name:'Casual ware',active:true,position:4});

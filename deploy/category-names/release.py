@@ -25,7 +25,16 @@ def search_snapshot():
         value[path]=json.loads(cloud.get(path))
     return normalize_public(value)
 def normalize_public(value):
-    if isinstance(value,dict):return {k:normalize_public(v) for k,v in value.items()}
+    if isinstance(value,dict):
+        value=dict(value)
+        if isinstance(value.get('cards'),dict):
+            value['cards']={k:dict(v) for k,v in value['cards'].items()}
+            slots={'range-everyday':'Daily Dose','range-work-edit':'Chill Vibes','range-occasion':'Pretty Little Plans','range-new-arrivals':'Ananya’s Closet','range-shop-all':'Ananya’s Closet'}
+            definitions=json.loads((HERE/'names.json').read_text())
+            old={re.sub('[^a-z0-9]','',s.lower()) for g in definitions for s in g['old']+[g['slug']]+g['aliases']}
+            for key,card in value['cards'].items():
+                if key in slots and re.sub('[^a-z0-9]','',str(card.get('title','')).lower()) in old:card['title']=slots[key]
+        return {k:normalize_public(v) for k,v in value.items()}
     if isinstance(value,list):return [normalize_public(v) for v in value]
     if isinstance(value,str):
         for group in json.loads((HERE/'names.json').read_text()):
